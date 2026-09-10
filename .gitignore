@@ -31,7 +31,8 @@ Python/
 .tmp/
 
 # Local AI Customizations (Workspace Rules)
-.agents/
+.agents/*
+!.agents/skills/
 
 # User uploads & file attachments
 uploads/

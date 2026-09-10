@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type React from 'react';
-import { Button, DatePicker, Form, Input, InputNumber, Select, Row, Col } from 'antd';
-import type { Dayjs } from 'dayjs';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Form } from 'antd';
 import dayjs from 'dayjs';
 import {
   DeleteOutlined, EditOutlined, EyeOutlined, MinusCircleOutlined,
   PlusCircleOutlined, PlusOutlined, RocketOutlined,
 } from '@ant-design/icons';
-import { ScreenHeader, DataTable, FilterTableLayout } from '../../components/list-view';
-import type { ScreenHeaderAction } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
-import { AppDrawer } from '../../components/shared/AppDrawer';
+import {
+  ScreenHeader,
+  FilterTableLayout,
+  CommonTable,
+  TableFilter,
+  CommonStatusTabs,
+  TableColumnType,
+  type TableOption,
+  type FilterOption,
+  type ScreenHeaderAction,
+} from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { berthCRUD } from '../../services/portService';
@@ -37,83 +41,27 @@ import type {
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import {
-  colors, actionPrimary, statusOperational, statusAttention, statusCritical, statusDraft,
-  borderDefault,
-  fontSizeMd, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceMd, spaceFormField,
-  primaryButtonStyle, outlineButtonStyle, drawerTitleStyle, drawerFooterStyle,
-  statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, readonlyInputStyle,
-  getDatePickerProps,
-} from '../../themetokenchk';
+import { fontWeightBold } from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { fmtNum, fmtInputNumber } from '../../utils/numFmt';
 import PortTerminalAssetForm, { type FormValues } from './PortTerminalAssetForm';
 import PortTerminalAssetDetailContent from './PortTerminalAssetDetailContent';
+import PortTerminalAssetOperationForm, {
+  type OperationMode,
+  type OperationValues,
+} from './PortTerminalAssetOperationForm';
 
-const { RangePicker } = DatePicker;
-
-type DrawerMode = 'create' | 'edit' | 'detail';
-type OperationMode = 'exploit' | 'increase' | 'decrease';
-
-interface OperationValues {
-  operatorOrgUnitId?: string;
-  unitOfMeasure?: string;
-  quantity?: number;
-  exploitationDeadline?: Dayjs;
-  totalRevenue?: number;
-  relatedCosts?: number;
-  stateBudgetPayment?: number;
-  projectAmount?: number;
-  notes?: string;
-  decisionNumber?: string;
-  decisionDate?: Dayjs;
-  adjustmentDate?: Dayjs;
-  adjustmentReason?: string;
-  originalValue?: number;
-  declarationDate?: Dayjs;
-  depreciationRate?: number;
-  assignmentDecisionNumber?: string;
-  depreciationStartDate?: Dayjs;
-  depreciationMonths?: number;
-  depreciationEndDate?: Dayjs;
-  accumulatedDepreciation?: number;
-  disposalMethod?: string;
-}
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-
-const APPROVAL: Record<string, { label: string; color: string }> = {
-  DRAFT: { label: 'Lưu tạm', color: statusDraft },
-  PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: statusAttention },
-  APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: actionPrimary },
-  APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
-  REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
-};
-
-const TAB_STATUS_LIST = [
-  { key: 'all', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', color: actionPrimary },
-  { key: 'APPROVED', label: 'Đã duyệt', color: statusOperational },
-  { key: 'REJECTED_LEVEL1', label: 'Từ chối', color: statusCritical },
+const STATUS_COUNT_KEYS = [
+  'DRAFT',
+  'PENDING_APPROVAL',
+  'APPROVED_LEVEL1',
+  'APPROVED',
+  'REJECTED_LEVEL1',
+  'REJECTED_LEVEL2',
 ];
 
-const fmtDate = (value?: string) => (value ? dayjs(value).format('DD/MM/YYYY HH:mm:ss') : '—');
-const textCell = (value?: string) => <span title={value || ''}>{value || '—'}</span>;
+type DrawerMode = 'create' | 'edit' | 'detail';
 
-const conditionBadge = (value?: string) => {
-  const color = value === 'Tốt' ? statusOperational : value === 'Không sử dụng được' ? statusCritical : statusAttention;
-  return <span style={statusBadgeStyle(color)}>{value || '—'}</span>;
-};
-
-const usageBadge = (value?: string) => {
-  const color = value === 'Đang sử dụng' ? statusOperational : value === 'Tạm dừng sử dụng' ? statusCritical : statusDraft;
-  return <span style={statusBadgeStyle(color)}>{value || '—'}</span>;
-};
+const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -121,14 +69,6 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 };
 
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
-
-const labelProps = (text: string) => ({
-  label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
-});
-
-const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
-const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
-const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 function PortTerminalAssetList() {
   const [data, setData] = useState<PortTerminalAsset[]>([]);
@@ -144,7 +84,6 @@ function PortTerminalAssetList() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [filters, setFilters] = useState<PortTerminalAssetFilters>({});
   const [draftFilters, setDraftFilters] = useState<PortTerminalAssetFilters>({});
-  const [updatedRange, setUpdatedRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>();
   const [selected, setSelected] = useState<PortTerminalAsset>();
   const [deleteTarget, setDeleteTarget] = useState<PortTerminalAsset>();
@@ -156,14 +95,6 @@ function PortTerminalAssetList() {
   const [operationForm] = Form.useForm<OperationValues>();
   const currentUser = useAuthStore((s) => s.user);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
-
-  const adjustedOriginalValue = Form.useWatch('originalValue', operationForm);
-  const adjustedAccumulatedDepreciation = Form.useWatch('accumulatedDepreciation', operationForm);
-  const adjustedRemainingValue = adjustedOriginalValue == null ? undefined
-    : Math.max(0, adjustedOriginalValue - (adjustedAccumulatedDepreciation || 0));
-  const adjustedDepreciationMonths = Form.useWatch('depreciationMonths', operationForm);
-  const adjustedMonthlyDepreciation = adjustedOriginalValue != null && adjustedDepreciationMonths && adjustedDepreciationMonths > 0
-    ? Math.round((adjustedOriginalValue / adjustedDepreciationMonths) * 100) / 100 : undefined;
 
   const orgName = useMemo(() => new Map(organizations.map(item => [item.id, item.name])), [organizations]);
   const berthMap = useMemo(() => new Map(berths.map(item => [item.id, item])), [berths]);
@@ -177,14 +108,13 @@ function PortTerminalAssetList() {
       setTotal(response.totalElements);
 
       const baseFilters = { ...filters, approvalStatus: undefined, page: 0, size: 1 };
-      const statusKeys = Object.keys(APPROVAL);
       const [all, ...statusPages] = await Promise.all([
         fetchPortTerminalAssets(baseFilters),
-        ...statusKeys.map(approvalStatus => fetchPortTerminalAssets({ ...baseFilters, approvalStatus })),
+        ...STATUS_COUNT_KEYS.map(approvalStatus => fetchPortTerminalAssets({ ...baseFilters, approvalStatus })),
       ]);
       setStatusCounts({
         all: all.totalElements,
-        ...Object.fromEntries(statusKeys.map((key, index) => [key, statusPages[index].totalElements])),
+        ...Object.fromEntries(STATUS_COUNT_KEYS.map((key, index) => [key, statusPages[index].totalElements])),
       });
     } catch (cause: unknown) {
       setError(getErrorMessage(cause, 'Không thể tải danh sách tài sản bến cảng.'));
@@ -215,7 +145,7 @@ function PortTerminalAssetList() {
     setAttachments([]);
   }, [form]);
 
-  const openEdit = (record: PortTerminalAsset) => {
+  const openEdit = useCallback((record: PortTerminalAsset) => {
     setSelected(record);
     setDrawerMode('edit');
     form.setFieldsValue({
@@ -238,7 +168,7 @@ function PortTerminalAssetList() {
     } else {
       setAttachments([]);
     }
-  };
+  }, [currentUser, form]);
 
   const handleUploadAttachment = useCallback((file: File) => {
     const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
@@ -273,7 +203,7 @@ function PortTerminalAssetList() {
     }
   }, [attachments]);
 
-  const openDetail = async (record: PortTerminalAsset) => {
+  const openDetail = useCallback(async (record: PortTerminalAsset) => {
     setSelected(record);
     setDrawerMode('detail');
     try {
@@ -290,7 +220,7 @@ function PortTerminalAssetList() {
       setIncreaseRows([]);
       setDecreaseRows([]);
     }
-  };
+  }, []);
 
   const saveAsset = async (targetAction: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED') => {
     try {
@@ -340,19 +270,26 @@ function PortTerminalAssetList() {
     if (!selected || !operationMode) return;
     try {
       const values = await operationForm.validateFields();
-      if (operationMode !== 'exploit' && adjustedOriginalValue == null) {
+      const origVal = values.originalValue;
+      if (operationMode !== 'exploit' && origVal == null) {
         toast.error('Vui lòng nhập nguyên giá sau điều chỉnh.');
         return;
       }
-      if (operationMode === 'increase' && adjustedOriginalValue! <= (selected.originalValue || 0)) {
+      if (operationMode === 'increase' && origVal! <= (selected.originalValue || 0)) {
         toast.error('Nguyên giá sau điều chỉnh phải lớn hơn nguyên giá hiện tại.');
         return;
       }
-      if (operationMode === 'decrease' && adjustedOriginalValue! >= (selected.originalValue || 0)) {
+      if (operationMode === 'decrease' && origVal! >= (selected.originalValue || 0)) {
         toast.error('Nguyên giá sau điều chỉnh phải nhỏ hơn nguyên giá hiện tại.');
         return;
       }
       setSaving(true);
+      const accDep = Number(values.accumulatedDepreciation) || 0;
+      const remAfter = origVal != null ? Math.max(0, origVal - accDep) : undefined;
+      const depMonths = Number(values.depreciationMonths) || 0;
+      const monthDep =
+        origVal != null && depMonths > 0 ? Math.round((origVal / depMonths) * 100) / 100 : undefined;
+
       const adjustmentDetails: AssetValueAdjustmentDetails = {
         ...values,
         decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
@@ -363,10 +300,10 @@ function PortTerminalAssetList() {
         adjustmentNotes: values.notes,
         valueUnit: 'VNĐ',
         originalValueBefore: selected.originalValue,
-        originalValueAfter: adjustedOriginalValue,
+        originalValueAfter: origVal,
         remainingValueBefore: selected.remainingValue,
-        remainingValueAfter: adjustedRemainingValue,
-        monthlyDepreciation: adjustedMonthlyDepreciation,
+        remainingValueAfter: remAfter,
+        monthlyDepreciation: monthDep,
       };
 
       if (operationMode === 'exploit') {
@@ -418,90 +355,190 @@ function PortTerminalAssetList() {
     }
   };
 
-  const columns = [
+  const filterOptions = useMemo<FilterOption[]>(() => [
     {
-      key: 'stt', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
-      render: (_: unknown, __: unknown, index: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + index + 1}</span>,
+      key: 'orgUnitId',
+      label: 'Đơn vị quản lý',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'assetName', dataIndex: 'assetName', label: 'Tên/Mã tài sản', width: 230, fixed: 'left' as const, ellipsis: false,
-      cellTitle: (record: PortTerminalAsset) => `${record.assetName || '—'} - ${record.assetCode || '—'}`,
-      render: (value: string, record: PortTerminalAsset) => (
-        <div>
-          <a title={value} onClick={() => void openDetail(record)} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {value || '—'}
-          </a>
-          <span title={record.assetCode} style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {record.assetCode || '—'}
-          </span>
-        </div>
-      ),
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'orgUnitId', dataIndex: 'orgUnitId', label: 'Đơn vị quản lý', width: 250,
-      render: (v: string) => <span style={{ fontWeight: fontWeightBold }}>{textCell(orgName.get(v))}</span>,
+      key: 'berthId',
+      label: 'Mã bến cảng',
+      type: 'select',
+      placeholder: 'Chọn bến cảng',
+      options: berths.map((item) => ({
+        value: item.id,
+        label: `${item.berthCode} - ${item.berthName}`,
+      })),
     },
     {
-      key: 'usingOrgUnitId', dataIndex: 'usingOrgUnitId', label: 'Đơn vị sử dụng', width: 250,
-      render: (v: string) => textCell(orgName.get(v)),
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      disabled: true,
+      defaultValue: 'PORT_TERMINAL',
+      options: [{ value: 'PORT_TERMINAL', label: 'Tài sản bến cảng' }],
     },
     {
-      key: 'berthId', dataIndex: 'berthId', label: 'Mã bến cảng', width: 190,
-      render: (v: string) => textCell(berthMap.get(v)?.berthCode),
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
     },
-    { key: 'assetType', dataIndex: 'assetType', label: 'Loại tài sản', width: 160, render: () => 'Tài sản bến cảng' },
-    { key: 'assetCondition', dataIndex: 'assetCondition', label: 'Tình trạng tài sản', width: 190, ellipsis: false, render: conditionBadge },
-    { key: 'usageStatus', dataIndex: 'usageStatus', label: 'Hiện trạng sử dụng', width: 190, ellipsis: false, render: usageBadge },
-    { key: 'assetGroup', dataIndex: 'assetGroup', label: 'Nhóm tài sản', width: 210 },
-    { key: 'useDate', dataIndex: 'useDate', label: 'Ngày sử dụng tài sản', width: 190, render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY') : '—') },
     {
-      key: 'approvalStatus', dataIndex: 'approvalStatus', label: 'Trạng thái', width: 260, ellipsis: false,
-      render: (v: keyof typeof APPROVAL) => {
-        const item = APPROVAL[v] || { label: v || '—', color: statusDraft };
-        return <span style={statusBadgeStyle(item.color)}>{item.label}</span>;
+      key: 'assetName',
+      label: 'Tên tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo tên tài sản',
+    },
+    {
+      key: 'assetCondition',
+      label: 'Tình trạng tài sản',
+      type: 'select',
+      placeholder: 'Chọn tình trạng',
+      options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+    },
+    {
+      key: 'updatedRange',
+      label: 'Ngày cập nhật',
+      type: 'dateRange',
+    },
+  ], [berths, organizations]);
+
+  const handleFilterApply = useCallback(() => {
+    setPage(1);
+    const range = draftFilters.updatedRange as [Dayjs | null, Dayjs | null] | undefined;
+    setFilters({
+      ...draftFilters,
+      updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
+      updatedTo: range?.[1]?.format('YYYY-MM-DD'),
+    });
+  }, [draftFilters]);
+
+  const handleFilterReset = useCallback(() => {
+    setDraftFilters({});
+    setFilters({});
+    setPage(1);
+  }, []);
+
+  const tableOptions = useMemo<TableOption<PortTerminalAsset>>(() => ({
+    dataKey: 'id',
+    mainColumns: [
+      {
+        title: 'TÊN/MÃ TÀI SẢN',
+        dataIndex: 'assetName',
+        type: TableColumnType.TwoLine,
+        subField: 'assetCode',
+        width: 230,
+        fixed: 'left',
+        onClick: (record) => void openDetail(record),
       },
-    },
-    {
-      key: 'updatedAt', dataIndex: 'updatedAt', label: 'Cán bộ cập nhật', width: 210, ellipsis: false,
-      cellTitle: (record: PortTerminalAsset) => `${record.updatedByName || '—'} - ${fmtDate(record.updatedAt)}`,
-      render: (value: string, record: PortTerminalAsset) => (
-        <div>
-          <div style={{ fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.updatedByName || '—'}</div>
-          <div style={cellSubtitleStyle}>{fmtDate(value)}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'submittedAt', dataIndex: 'submittedAt', label: 'Cán bộ gửi phê duyệt', width: 240, ellipsis: false,
-      cellTitle: (record: PortTerminalAsset) => `${record.submittedByName || '—'} - ${fmtDate(record.submittedAt)}`,
-      render: (value: string, record: PortTerminalAsset) => (
-        <div>
-          <div style={{ fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.submittedByName || '—'}</div>
-          <div style={cellSubtitleStyle}>{fmtDate(value)}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'portAuthorityApprovedAt', dataIndex: 'portAuthorityApprovedAt', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', width: 340, ellipsis: false,
-      cellTitle: (record: PortTerminalAsset) => `${record.portAuthorityApprovedByName || '—'} - ${fmtDate(record.portAuthorityApprovedAt)}`,
-      render: (value: string, record: PortTerminalAsset) => (
-        <div>
-          <div style={{ fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.portAuthorityApprovedByName || '—'}</div>
-          <div style={cellSubtitleStyle}>{fmtDate(value)}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'departmentApprovedAt', dataIndex: 'departmentApprovedAt', label: 'Cán bộ phê duyệt cấp Cục', width: 260, ellipsis: false,
-      cellTitle: (record: PortTerminalAsset) => `${record.departmentApprovedByName || '—'} - ${fmtDate(record.departmentApprovedAt)}`,
-      render: (value: string, record: PortTerminalAsset) => (
-        <div>
-          <div style={{ fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.departmentApprovedByName || '—'}</div>
-          <div style={cellSubtitleStyle}>{fmtDate(value)}</div>
-        </div>
-      ),
-    },
-  ];
+      {
+        title: 'ĐƠN VỊ QUẢN LÝ',
+        dataIndex: 'orgUnitId',
+        type: TableColumnType.Text,
+        width: 250,
+        bold: true,
+        render: (v) => <span style={{ fontWeight: fontWeightBold }}>{orgName.get(v as string) || '—'}</span>,
+      },
+      {
+        title: 'ĐƠN VỊ SỬ DỤNG',
+        dataIndex: 'usingOrgUnitId',
+        type: TableColumnType.Text,
+        width: 250,
+        render: (v) => orgName.get(v as string) || '—',
+      },
+      {
+        title: 'MÃ BẾN CẢNG',
+        dataIndex: 'berthId',
+        type: TableColumnType.Text,
+        width: 190,
+        render: (v) => berthMap.get(v as string)?.berthCode || '—',
+      },
+      {
+        title: 'LOẠI TÀI SẢN',
+        dataIndex: 'assetType',
+        type: TableColumnType.Text,
+        width: 160,
+        render: () => 'Tài sản bến cảng',
+      },
+      {
+        title: 'TÌNH TRẠNG TÀI SẢN',
+        dataIndex: 'assetCondition',
+        type: TableColumnType.Status,
+        width: 190,
+      },
+      {
+        title: 'HIỆN TRẠNG SỬ DỤNG',
+        dataIndex: 'usageStatus',
+        type: TableColumnType.Status,
+        width: 190,
+      },
+      {
+        title: 'NHÓM TÀI SẢN',
+        dataIndex: 'assetGroup',
+        type: TableColumnType.Text,
+        width: 210,
+      },
+      {
+        title: 'NGÀY SỬ DỤNG TÀI SẢN',
+        dataIndex: 'useDate',
+        type: TableColumnType.Date,
+        width: 190,
+      },
+      {
+        title: 'TRẠNG THÁI',
+        dataIndex: 'approvalStatus',
+        type: TableColumnType.Status,
+        width: 260,
+      },
+      {
+        title: 'CÁN BỘ CẬP NHẬT',
+        dataIndex: 'updatedByName',
+        type: TableColumnType.TwoLine,
+        subField: 'updatedAt',
+        width: 210,
+      },
+      {
+        title: 'CÁN BỘ GỬI PHÊ DUYỆT',
+        dataIndex: 'submittedByName',
+        type: TableColumnType.TwoLine,
+        subField: 'submittedAt',
+        width: 240,
+      },
+      {
+        title: 'CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
+        dataIndex: 'portAuthorityApprovedByName',
+        type: TableColumnType.TwoLine,
+        subField: 'portAuthorityApprovedAt',
+        width: 340,
+      },
+      {
+        title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
+        dataIndex: 'departmentApprovedByName',
+        type: TableColumnType.TwoLine,
+        subField: 'departmentApprovedAt',
+        width: 260,
+      },
+    ],
+    actions: (record: PortTerminalAsset) => [
+      { key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(record) },
+      { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEdit(record) },
+      { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
+      { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
+      { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
+      { key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) },
+    ],
+  }), [berthMap, openDetail, openEdit, operationForm, orgName]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(() => [
     { key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreate },
@@ -611,480 +648,92 @@ function PortTerminalAssetList() {
 
         <FilterTableLayout
           hideFilterToggle
+          statusTabsNode={
+            <CommonStatusTabs
+              activeKey={filters.approvalStatus || 'all'}
+              counts={statusCounts}
+              onChange={(_key, queryStatus) => {
+                setPage(1);
+                setFilters(current => ({ ...current, approvalStatus: queryStatus }));
+              }}
+            />
+          }
           loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
-          statusTabs={TAB_STATUS_LIST.map(tab => ({
-            key: tab.key,
-            label: tab.label,
-            count: tab.key === 'all'
-              ? (statusCounts.all || 0)
-              : tab.key === 'REJECTED_LEVEL1'
-                ? ((statusCounts.REJECTED_LEVEL1 || 0) + (statusCounts.REJECTED_LEVEL2 || 0))
-                : (statusCounts[tab.key] || 0),
-            color: tab.color,
-            active: tab.key === 'all' ? !filters.approvalStatus : filters.approvalStatus === tab.key,
-          }))}
-          onStatusTabChange={(key) => {
-            setPage(1);
-            setFilters(current => ({ ...current, approvalStatus: key === 'all' ? undefined : key }));
-          }}
-          onFilterApply={() => {
-            setPage(1);
-            setFilters({
-              ...draftFilters,
-              updatedFrom: updatedRange?.[0]?.format('YYYY-MM-DD'),
-              updatedTo: updatedRange?.[1]?.format('YYYY-MM-DD'),
-            });
-          }}
-          onFilterReset={() => {
-            setDraftFilters({});
-            setUpdatedRange(null);
-            setFilters({});
-            setPage(1);
-          }}
+          onFilterApply={handleFilterApply}
+          onFilterReset={handleFilterReset}
           filterContent={
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-              <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Đơn vị quản lý
-                </div>
-                <OrgUnitTreeSelect
-                  organizations={organizations}
-                  value={draftFilters.orgUnitId}
-                  onChange={value => setDraftFilters(current => ({ ...current, orgUnitId: value === '__all__' ? undefined : value as string }))}
-                  placeholder="Chọn đơn vị..."
-                  allowClear
-                  showPath
-                  allLabel="Tất cả"
-                  treeDefaultExpandAll={false}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Đơn vị sử dụng
-                </div>
-                <OrgUnitTreeSelect
-                  organizations={organizations}
-                  value={draftFilters.usingOrgUnitId}
-                  onChange={value => setDraftFilters(current => ({ ...current, usingOrgUnitId: value === '__all__' ? undefined : value as string }))}
-                  placeholder="Chọn đơn vị..."
-                  allowClear
-                  showPath
-                  allLabel="Tất cả"
-                  treeDefaultExpandAll={false}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Mã bến cảng
-                </div>
-                <Select
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  value={draftFilters.berthId}
-                  onChange={value => setDraftFilters(current => ({ ...current, berthId: value }))}
-                  options={berths.map(item => ({ value: item.id, label: `${item.berthCode} - ${item.berthName}` }))}
-                  placeholder="Chọn bến cảng"
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Loại tài sản
-                </div>
-                <Select
-                  disabled
-                  value="PORT_TERMINAL"
-                  options={[{ value: 'PORT_TERMINAL', label: 'Tài sản bến cảng' }]}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Mã tài sản
-                </div>
-                <Input
-                  value={draftFilters.assetCode}
-                  onChange={e => setDraftFilters(current => ({ ...current, assetCode: e.target.value }))}
-                  placeholder="Tìm theo mã tài sản"
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Tên tài sản
-                </div>
-                <Input
-                  value={draftFilters.assetName}
-                  onChange={e => setDraftFilters(current => ({ ...current, assetName: e.target.value }))}
-                  placeholder="Tìm theo tên tài sản"
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Tình trạng tài sản
-                </div>
-                <Select
-                  allowClear
-                  placeholder="Chọn tình trạng"
-                  value={draftFilters.assetCondition}
-                  onChange={value => setDraftFilters(current => ({ ...current, assetCondition: value }))}
-                  options={ASSET_CONDITIONS.map(value => ({ value, label: value }))}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Ngày cập nhật
-                </div>
-                <RangePicker
-                  format="DD/MM/YYYY"
-                  placeholder={['Từ ngày', 'Đến ngày']}
-                  allowClear
-                  popupClassName="chk-range-datepicker-popup"
-                  value={updatedRange}
-                  onChange={value => setUpdatedRange(value as [Dayjs | null, Dayjs | null] | null)}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-            </div>
+            <TableFilter
+              mode="fieldsOnly"
+              filters={filterOptions}
+              values={draftFilters}
+              onChange={setDraftFilters}
+            />
           }
         >
-          <DataTable
-            columns={columns}
+          <CommonTable
+            options={tableOptions}
             dataSource={data}
-            rowKey="id"
-            scroll={{ x: 'max-content' }}
-            rowActions={(record: PortTerminalAsset) => [
-              { key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(record) },
-              { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEdit(record) },
-              { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
-              { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
-              { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
-              { key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) },
-            ]}
-          />
-          <Pagination
             total={total}
-            current={page}
+            page={page}
             pageSize={pageSize}
-            pageSizeOptions={[20, 50, 100, 5000]}
-            onChange={(nextPage, nextSize) => {
+            loading={loading}
+            onPageChange={(nextPage, nextSize) => {
               setPage(nextPage);
               setPageSize(nextSize);
             }}
           />
         </FilterTableLayout>
 
-        {/* ── Create / Edit Drawer ──────────────────────────────────────────── */}
-        <AppDrawer
-          width="min(920px, 96vw)"
-          rootClassName="berth-drawer-scope"
-          className="berth-drawer-scope"
-          title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{drawerMode === 'edit' ? `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản bến cảng'}` : 'Thêm mới tài sản bến cảng'}</span>}
+        {/* ── Create / Edit Drawer (DynamicFormSidebar) ─────────────── */}
+        <PortTerminalAssetForm
           open={drawerMode === 'create' || drawerMode === 'edit'}
-          destroyOnHidden
+          drawerMode={drawerMode}
+          selected={selected}
+          form={form}
+          organizations={organizations}
+          berths={berths}
+          attachments={attachments}
+          saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setDrawerMode(undefined);
             form.resetFields();
           }}
-          footer={
-            drawerMode === 'edit' ? (
-              <div style={drawerFooterStyle}>
-                {(!selected?.approvalStatus || ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase())) && (
-                  <Button
-                    onClick={() => void saveAsset('DRAFT')}
-                    loading={saving && saveAction === 'DRAFT'}
-                    style={outlineButtonStyle}
-                  >
-                    Lưu tạm
-                  </Button>
-                )}
-                <Button
-                  type="primary"
-                  onClick={() => void saveAsset('APPROVED')}
-                  loading={saving && saveAction === 'APPROVED'}
-                  style={{
-                    ...primaryButtonStyle,
-                    background: statusOperational,
-                    borderColor: statusOperational,
-                  }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <Button
-                  onClick={() => void saveAsset('DRAFT')}
-                  loading={saving && saveAction === 'DRAFT'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu tạm
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => void saveAsset('PENDING_APPROVAL')}
-                  loading={saving && saveAction === 'PENDING_APPROVAL'}
-                  style={primaryButtonStyle}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => void saveAsset('APPROVED')}
-                  loading={saving && saveAction === 'APPROVED'}
-                  style={{
-                    ...primaryButtonStyle,
-                    background: statusOperational,
-                    borderColor: statusOperational,
-                  }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              </div>
-            )
-          }
-          styles={{
-            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-            body: { padding: '0 24px 12px 24px' },
-          }}
-        >
-          <Form form={form} layout="vertical">
-            <PortTerminalAssetForm
-              form={form}
-              organizations={organizations}
-              berths={berths}
-              attachments={attachments}
-              onUploadAttachment={handleUploadAttachment}
-              onDeleteAttachment={handleDeleteAttachment}
-              onDownloadAttachment={handleDownloadAttachment}
-            />
-          </Form>
-        </AppDrawer>
+          onSave={saveAsset}
+          onUploadAttachment={handleUploadAttachment}
+          onDeleteAttachment={handleDeleteAttachment}
+          onDownloadAttachment={handleDownloadAttachment}
+        />
 
-        {/* ── Detail Drawer ──────────────────────────────────────────── */}
-        <AppDrawer
-          width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-          rootClassName="berth-drawer-scope"
-          className="berth-drawer-scope"
-          title={<span style={drawerTitleStyle}>Chi tiết tài sản bến cảng{selected ? ` - ${selected.assetName}` : ''}</span>}
+        {/* ── Detail Drawer (DynamicViewSidebar) ─────────────────────── */}
+        <PortTerminalAssetDetailContent
           open={drawerMode === 'detail'}
+          selectedRecord={selected}
           onClose={() => setDrawerMode(undefined)}
-          styles={{
-            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-            body: { padding: '0 24px 12px 24px', overflow: 'hidden' },
-          }}
-          footer={null}
-        >
-          {selected && (
-            <PortTerminalAssetDetailContent
-              selectedRecord={selected}
-              orgName={orgName}
-              berthMap={berthMap}
-              exploitationRows={exploitationRows}
-              increaseRows={increaseRows}
-              decreaseRows={decreaseRows}
-            />
-          )}
-        </AppDrawer>
+          orgName={orgName}
+          berthMap={berthMap}
+          exploitationRows={exploitationRows}
+          increaseRows={increaseRows}
+          decreaseRows={decreaseRows}
+        />
 
-        {/* ── Operations Drawers ──────────────────────────────────────────── */}
-        <AppDrawer
+        {/* ── Operations Drawer (DynamicFormSidebar) ─────────────────────── */}
+        <PortTerminalAssetOperationForm
           open={Boolean(operationMode)}
-          onClose={() => setOperationMode(undefined)}
-          size="md"
-          rootClassName="berth-drawer-scope"
-          className="berth-drawer-scope"
-          title={
-            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-              {`${operationMode === 'exploit' ? 'Khai thác tài sản' : operationMode === 'increase' ? 'Tăng nguyên giá tài sản' : 'Giảm nguyên giá tài sản'} - ${selected?.assetName || ''}`}
-            </span>
-          }
-          onOk={() => void saveOperation()}
-          okText="Lưu thông tin"
-          okLoading={saving}
-          styles={{
-            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-            body: { padding: '16px 24px' },
+          operationMode={operationMode}
+          selected={selected}
+          organizations={organizations}
+          form={operationForm}
+          saving={saving}
+          onClose={() => {
+            setOperationMode(undefined);
+            operationForm.resetFields();
           }}
-          footer={
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button onClick={() => setOperationMode(undefined)} style={outlineButtonStyle}>
-                Hủy
-              </Button>
-              <Button
-                type="primary"
-                onClick={() => void saveOperation()}
-                loading={saving}
-                style={primaryButtonStyle}
-              >
-                Lưu thông tin
-              </Button>
-            </div>
-          }
-        >
-          <Form form={operationForm} layout="vertical">
-            {operationMode === 'exploit' ? (
-              <Row gutter={[24, 0]}>
-                <Col span={12}>
-                  <Form.Item name="operatorOrgUnitId" {...labelProps('Đơn vị khai thác')} required rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                    <OrgUnitTreeSelect organizations={organizations} variant="form" showPath />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Danh mục tài sản')} style={{ marginBottom: spaceFormField }}>
-                    <Input disabled value={selected?.assetName} style={readonlyInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                    <Select placeholder="Chọn đơn vị tính" options={UNITS.map(value => ({ value, label: value }))} style={selectStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="quantity" {...labelProps('Số lượng')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} formatter={fmtInputNumber} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="exploitationDeadline" {...labelProps('Thời hạn khai thác')} required rules={[{ required: true, message: 'Thời hạn khai thác là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                    <DatePicker format="DD/MM/YYYY" placeholder="Chọn thời hạn" {...getDatePickerProps({ style: selectStyle })} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="totalRevenue" {...labelProps('Tổng số tiền thu được (VNĐ)')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} formatter={fmtInputNumber} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="relatedCosts" {...labelProps('Chi phí có liên quan (VNĐ)')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} formatter={fmtInputNumber} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="stateBudgetPayment" {...labelProps('Nộp NSNN (VNĐ)')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} formatter={fmtInputNumber} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item name="projectAmount" {...labelProps('Số tiền được thực hiện dự án (VNĐ)')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} formatter={fmtInputNumber} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item name="notes" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                    <Input.TextArea rows={3} placeholder="Nhập ghi chú" style={{ borderRadius: radiusMd }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-            ) : (
-              <Row gutter={[24, 0]}>
-                <Col span={12}>
-                  <Form.Item name="decisionNumber" {...labelProps('Số QĐ tăng/giảm nguyên giá')} required rules={[{ required: true, message: 'Số quyết định là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                    <Input placeholder="Nhập số quyết định" style={inputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="decisionDate" {...labelProps('Ngày ra QĐ tăng/giảm')} required rules={[{ required: true, message: 'Ngày ra quyết định là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                    <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày ra QĐ" {...getDatePickerProps({ style: selectStyle })} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="adjustmentDate" {...labelProps('Ngày tăng/giảm nguyên giá')} required rules={[{ required: true, message: 'Ngày thay đổi là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                    <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày thay đổi" {...getDatePickerProps({ style: selectStyle })} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="adjustmentReason" {...labelProps('Lý do tăng/giảm')} required rules={[{ required: true, message: 'Lý do là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                    <Select placeholder="Chọn lý do" options={['Đầu tư bổ sung', 'Đánh giá lại', 'Nâng cấp', 'Hao mòn', 'Thanh lý một phần', 'Khác'].map(value => ({ value, label: value }))} style={selectStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Nguyên giá trước điều chỉnh')} style={{ marginBottom: spaceFormField }}>
-                    <Input disabled value={selected?.originalValue != null ? `${fmtNum(selected.originalValue)} VNĐ` : '—'} style={readonlyInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="originalValue" {...labelProps('Nguyên giá sau điều chỉnh (VNĐ)')} required rules={[{ required: true, message: 'Nguyên giá sau điều chỉnh là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} formatter={fmtInputNumber} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Giá trị còn lại trước')} style={{ marginBottom: spaceFormField }}>
-                    <Input disabled value={selected?.remainingValue != null ? `${fmtNum(selected.remainingValue)} VNĐ` : '—'} style={readonlyInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Giá trị còn lại sau')} style={{ marginBottom: spaceFormField }}>
-                    <Input disabled value={adjustedRemainingValue != null ? `${fmtNum(adjustedRemainingValue)} VNĐ` : '—'} style={readonlyInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="declarationDate" {...labelProps('Ngày kê khai tài sản')} style={{ marginBottom: spaceFormField }}>
-                    <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày kê khai" {...getDatePickerProps({ style: selectStyle })} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="depreciationRate" {...labelProps('Tỷ lệ hao mòn/Khấu hao (%)')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} max={100} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="assignmentDecisionNumber" {...labelProps('Số quyết định giao (bao gồm cả tăng vốn)')} style={{ marginBottom: spaceFormField }}>
-                    <Input placeholder="Nhập số quyết định" style={inputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="depreciationStartDate" {...labelProps('Ngày tính khấu hao')} style={{ marginBottom: spaceFormField }}>
-                    <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày tính" {...getDatePickerProps({ style: selectStyle })} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="depreciationMonths" {...labelProps('Số tháng tính khấu hao')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="depreciationEndDate" {...labelProps('Ngày hết khấu hao')} style={{ marginBottom: spaceFormField }}>
-                    <DatePicker format="DD/MM/YYYY" placeholder="Chọn ngày hết" {...getDatePickerProps({ style: selectStyle })} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="accumulatedDepreciation" {...labelProps('Khấu hao lũy kế')} style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} formatter={fmtInputNumber} placeholder="0" style={numberInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item {...labelProps('Khấu hao tháng')} style={{ marginBottom: spaceFormField }}>
-                    <Input disabled value={adjustedMonthlyDepreciation != null ? `${fmtNum(adjustedMonthlyDepreciation)} VNĐ` : '—'} style={readonlyInputStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item name="disposalMethod" {...labelProps('Hình thức xử lý tài sản')} style={{ marginBottom: spaceFormField }}>
-                    <Select allowClear placeholder="Chọn hình thức xử lý" options={['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'].map(value => ({ value, label: value }))} style={selectStyle} />
-                  </Form.Item>
-                </Col>
-                <Col span={24}>
-                  <Form.Item name="notes" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                    <Input.TextArea rows={3} placeholder="Nhập ghi chú" style={{ borderRadius: radiusMd }} />
-                  </Form.Item>
-                </Col>
-              </Row>
-            )}
-          </Form>
-        </AppDrawer>
+          onSubmit={saveOperation}
+        />
 
         {/* ── Delete Confirmation Modal ────────────────────────────── */}
         <DeleteConfirmModal

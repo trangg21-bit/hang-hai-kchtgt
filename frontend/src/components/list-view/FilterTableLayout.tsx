@@ -10,6 +10,8 @@ export interface FilterTableLayoutProps {
   filterContent: React.ReactNode;
   /** Status tabs config */
   statusTabs?: StatusTab[];
+  /** Custom status tabs node (e.g. CommonStatusTabs) */
+  statusTabsNode?: React.ReactNode;
   /** Called when a status tab is clicked */
   onStatusTabChange?: (key: string) => void;
   /** Called when Tìm kiếm button is clicked */
@@ -45,6 +47,7 @@ export interface FilterTableLayoutProps {
 export default function FilterTableLayout({
   filterContent,
   statusTabs = [],
+  statusTabsNode,
   onStatusTabChange = () => {},
   onFilterApply,
   onFilterReset,
@@ -77,7 +80,7 @@ export default function FilterTableLayout({
         }}
       >
         {/* Scrollable filter fields */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '12px 16px', paddingTop: filterTopOffset ? 12 + filterTopOffset : undefined }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: 16, paddingBottom: 12, paddingLeft: 16, paddingTop: filterTopOffset ? filterTopOffset : 0 }}>
           {filterContent}
         </div>
 
@@ -123,7 +126,7 @@ export default function FilterTableLayout({
         {/* StatusTabs */}
         {!hideStatusTabs && (
           <div style={{ ...cardStyle, marginBottom: 5, padding: statusTabsPadding, flexShrink: 0 }}>
-            <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />
+            {statusTabsNode ?? <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />}
           </div>
         )}
 

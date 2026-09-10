@@ -82,7 +82,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   const getResponsiveSize = (): string | number => {
     if (isIframe) return '100%';
     
-    const rawTarget = propSize || drawerSize || width || 'md';
+    const rawTarget = width || propSize || drawerSize || 'md';
 
     if (typeof rawTarget === 'number') {
       return rawTarget;
@@ -159,12 +159,13 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
     );
   }
 
-  const { size: _themeSize, ...safeDrawerProps } = drawerProps;
+  const safeDrawerProps = { ...drawerProps };
+  delete (safeDrawerProps as { size?: unknown }).size;
 
   return (
     <Drawer
       {...safeDrawerProps}
-      size={calculatedWidth}
+      width={calculatedWidth}
       destroyOnHidden
       open={open}
       onClose={onClose}
