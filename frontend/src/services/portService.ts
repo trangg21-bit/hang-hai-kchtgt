@@ -1540,6 +1540,29 @@ export const daiTtdhCRUD = {
   },
 };
 
+export const daiTtdhApproval = {
+  async approveC1(id: string, content?: string): Promise<void> {
+    await api.post(`/v1/dai-ttdh/${id}/approve`, { cap: 'CANG_VU', content: content?.trim() || undefined });
+  },
+
+  async approveC2(id: string, content?: string): Promise<void> {
+    await api.post(`/v1/dai-ttdh/${id}/approve`, { cap: 'CUC', content: content?.trim() || undefined });
+  },
+
+  async approve(id: string, cap: string, content?: string): Promise<void> {
+    await api.post(`/v1/dai-ttdh/${id}/approve`, { cap, content: content?.trim() || undefined });
+  },
+
+  async reject(id: string, cap: string, lyDo: string): Promise<void> {
+    await api.post(`/v1/dai-ttdh/${id}/reject`, { cap, lyDo });
+  },
+
+  async rejectStage(id: string, reason: string, currentStatus?: string): Promise<void> {
+    const cap = currentStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
+    await api.post(`/v1/dai-ttdh/${id}/reject`, { cap, lyDo: reason });
+  },
+};
+
 export const shipRepairYardCRUD = {
   async findAll(params?: {
     page?: number;

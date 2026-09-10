@@ -214,6 +214,7 @@ const histLabels: Record<string, string> = {
   'Loại đối tượng GIS': 'Loại đối tượng',
   'Loại đối tượng': 'Loại đối tượng',
   'Phạm vi khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
+  'Khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
   'Danh sách khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
   attachments: 'Tài liệu đính kèm',
@@ -916,6 +917,7 @@ export default function StormShelterListPage() {
       toast.success('Đã xóa khu tránh, trú bão');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (ex: unknown) {
@@ -933,7 +935,7 @@ export default function StormShelterListPage() {
         await stormShelterApproval.approveC2(record.id, content);
       }
       toast.success(record.approvalStatus === 'PENDING_APPROVAL' ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
-      setApproveModalOpen(false); setApprovingRecord(null); void fetchData(); void fetchCounts(orgUnit);
+      setApproveModalOpen(false); setApprovingRecord(null); setPage(1); void fetchData(); void fetchCounts(orgUnit);
     } catch (ex: unknown) {
       toast.error(ex instanceof Error ? ex.message : 'Phê duyệt thất bại');
     }
@@ -971,6 +973,7 @@ export default function StormShelterListPage() {
       await stormShelterApproval.rejectStage(rejectingRecord.id, reason, rejectingRecord.approvalStatus);
       toast.success('Từ chối thành công');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); setRejectError('');
+      setPage(1);
       void fetchData(); void fetchCounts(orgUnit);
     } catch (ex: unknown) {
       toast.error(ex instanceof Error ? ex.message : 'Từ chối thất bại');
@@ -1030,7 +1033,7 @@ export default function StormShelterListPage() {
     'maxVesselDWT', 'activeStormShelterCount', 'publishedStormShelterCount', 'underInvestmentStormShelterCount',
     'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
     'coordinateSystem', 'displayRule', 'mapSymbolId', 'spatialId',
-    'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Danh sách khu nước neo buộc tàu', 'Tài liệu đính kèm',
+    'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Danh sách khu nước neo buộc tàu', 'Tài liệu đính kèm',
     // Vietnamese label aliases:
     'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu tránh, trú bão', 'Tên khu tránh, trú bão',
     'Thuộc luồng hàng hải', 'Luồng hàng hải', 'Thuộc bến phao', 'Bến phao', 'Phân loại',
@@ -1437,24 +1440,13 @@ export default function StormShelterListPage() {
       return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
     if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    if (field === 'updatedAt' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') {
-      const t = r.submittedForApprovalAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'portAuthorityApprovedAt') {
-      const t = r.portAuthorityApprovedAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'departmentApprovedAt') {
-      const t = r.departmentApprovedAt;
-      return t ? new Date(t).getTime() : 0;
-    }
+    if (field === 'updatedAt') return r.updatedAt ?? r.createdAt ?? '';
+    if (field === 'updatedByName') return userMap.get(r.updatedBy || '') || r.updatedBy || '';
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ?? '';
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ?? '';
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ?? '';
     return r[field] ?? '';
-  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap]);
+  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1514,8 +1506,23 @@ export default function StormShelterListPage() {
     ];
     const tailColumns: any[] = [];
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
-    return allColumns.map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined }));
+    return allColumns.map(col => ({ ...col, sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined }));
   }, [page, pageSize, organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
+
+  const sortedDataSource = useMemo(() => {
+    if (!sortField) return dataSource;
+    if (sortField === 'stt') {
+      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
+    }
+    return [...dataSource].sort((a, b) => {
+      const av = getSortValue(a, sortField);
+      const bv = getSortValue(b, sortField);
+      const c = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
+      return sortOrder === 'ascend' ? c : -c;
+    });
+  }, [dataSource, sortField, sortOrder, getSortValue]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
@@ -1675,17 +1682,7 @@ export default function StormShelterListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => {
-              if (!sortField) return 0;
-              if (sortField === 'stt') {
-                const arr = [...dataSource];
-                return sortOrder === 'descend' ? (arr.reverse(), 0) : 0;
-              }
-              const av = getSortValue(a, sortField);
-              const bv = getSortValue(b, sortField);
-              const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi');
-              return sortOrder === 'ascend' ? c : -c;
-            })}
+            dataSource={sortedDataSource}
             rowKey="id"
             rowActions={rowActions}
             loading={false}
@@ -1709,7 +1706,8 @@ export default function StormShelterListPage() {
           {...drawerProps}
           rootClassName="storm-shelter-drawer-scope"
           className="storm-shelter-drawer-scope"
-          width="min(920px, 96vw)"
+          size={1000}
+          width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editStormShelterId ? 'Chỉnh sửa thông tin Khu tránh, trú bão' : 'Thêm mới Khu tránh, trú bão'}</span>}
           open={createDrawerVisible}
           destroyOnHidden
@@ -1756,6 +1754,10 @@ export default function StormShelterListPage() {
               id={editStormShelterId}
               onFinish={() => {
                 setCreateDrawerVisible(false);
+                createForm.resetFields();
+                setSortField('updatedAt');
+                setSortOrder('descend');
+                setPage(1);
                 void fetchData();
                 void fetchCounts(orgUnit);
               }}
@@ -1770,6 +1772,7 @@ export default function StormShelterListPage() {
           rootClassName="storm-shelter-drawer-scope"
           className="storm-shelter-drawer-scope"
           size={1000}
+          width="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu tránh, trú bão{detailRecord ? ` - ${detailRecord.stormShelterName}` : ''}</span>}
           open={detailDrawerVisible}
           destroyOnClose

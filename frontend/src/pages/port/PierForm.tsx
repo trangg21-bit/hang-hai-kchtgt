@@ -40,7 +40,6 @@ import {
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
 type UploadFile = { uid: string; name: string; size: number; type: string; status: string; originFileObj?: File };
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_FILE_COUNT = 10;
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -255,6 +254,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   const [symbols, setSymbols] = useState<any[]>([]);
   const [pierCodeLoading, setPierCodeLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage] = useState(1);
@@ -430,32 +430,40 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     if (file.size > MAX_FILE_SIZE) { toast.error('Kích thước file tối đa 20MB'); return false; }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf','doc','docx','xls','xlsx','jpg','jpeg','png','tiff','tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
-    if (uploadedFiles.length >= MAX_FILE_COUNT) { toast.error('Tối đa 10 file'); return false; }
     const nowIso = dayjs().toISOString();
     const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+    const newUid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setUploadedFiles((prev) => [
       ...prev,
       {
-        uid: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        name: file.name,
-        fileName: file.name,
-        size: file.size,
-        fileSize: file.size,
-        type: file.type,
-        fileType: file.type,
-        uploadedByName: uploaderName,
-        uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
-        uploadedDate: nowIso,
-        uploadedAt: nowIso,
-        createdAt: nowIso,
-        status: 'done',
-        originFileObj: file,
-      },
-    ]);
-    return false;
+        uid: newUid,
+        id: newUid,
+          name: file.name,
+          fileName: file.name,
+          size: file.size,
+          fileSize: file.size,
+          type: file.type,
+          fileType: file.type,
+          uploadedByName: uploaderName,
+          uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+          uploadedDate: nowIso,
+          uploadedAt: nowIso,
+          createdAt: nowIso,
+          status: 'done',
+          originFileObj: file,
+        },
+      ]);
+      return false;
   };
 
-  const handleRemoveFile = (file: UploadFile) => { setUploadedFiles(prev => prev.filter(x => x.uid !== file.uid)); };
+  const handleRemoveFile = (file: UploadFile) => {
+    const target = uploadedFiles.find((x: any) => x.uid === file.uid || x.id === file.uid);
+    if (target && !target.originFileObj) {
+      const attId = (target as any).id || target.uid;
+      if (attId) setPendingDeletedAttachmentIds((prev) => [...prev, attId]);
+    }
+    setUploadedFiles((prev) => prev.filter((x: any) => x.uid !== file.uid && x.id !== file.uid));
+  };
 
   const addGpsPoint = () => { setCoordinateList([...coordinateList, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]); };
   const removeCoordinate = (i: number) => { setCoordinateList(coordinateList.filter((_, idx) => idx !== i)); };
@@ -583,11 +591,30 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
         createdId = id;
       }
       else { const res = await api.post('/v1/piers', payload); createdId = res.data?.data?.id ?? res.data?.id; console.log('Created pier with id:', createdId, 'response:', res.data); }
-      if (createdId && uploadedFiles.length > 0) { let uploaded = 0; for (const fi of uploadedFiles) { const of = fi.originFileObj as File; if (!of) continue; try { const fd = new FormData(); fd.append('files', of); await api.post(`/v1/piers/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }); uploaded++; } catch { toast.error(`Tải lên tệp "${fi.name}" thất bại`); } } if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`); }
+      if (createdId && pendingDeletedAttachmentIds.length > 0) {
+        await Promise.all(
+          pendingDeletedAttachmentIds.map((attId) =>
+            api.delete(`/v1/piers/${createdId}/attachments/${attId}`).catch(() => {})
+          )
+        );
+      }
+      if (createdId && uploadedFiles.length > 0) {
+        const newFiles = uploadedFiles.filter((fi: any) => fi && fi.originFileObj);
+        if (newFiles.length > 0) {
+          const fd = new FormData();
+          newFiles.forEach((fi: any) => fd.append('files', fi.originFileObj as File));
+          try {
+            await api.post(`/v1/piers/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
+          } catch {
+            toast.error('Tải lên tệp đính kèm thất bại');
+          }
+        }
+      }
       toast.success(saveAction === 'DRAFT' ? 'Lưu tạm thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : 'Gửi phê duyệt thành công');
       onFinish(true);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra'); } finally { onSubmittingChange?.(false); }
-  }, [form, isEdit, id, uploadedFiles, onFinish, coordinateList, onSubmittingChange]);
+  }, [form, isEdit, id, uploadedFiles, pendingDeletedAttachmentIds, onFinish, coordinateList, onSubmittingChange]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
 

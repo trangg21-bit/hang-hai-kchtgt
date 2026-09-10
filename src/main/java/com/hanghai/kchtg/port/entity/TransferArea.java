@@ -150,8 +150,8 @@ public class TransferArea extends BaseEntity {
     @Column(name = "port_authority_approved_by", length = 100)
     private String portAuthorityApprovedBy;
 
-    @Size(max = 1000)
-    @Column(name = "port_authority_approval_content")
+    @Size(max = 2000)
+    @Column(name = "port_authority_approval_content", length = 2000)
     private String portAuthorityApprovalContent;
 
     @Column(name = "department_approved_at")
@@ -160,10 +160,10 @@ public class TransferArea extends BaseEntity {
     @Column(name = "department_approved_by", length = 100)
     private String departmentApprovedBy;
 
-    @Size(max = 1000)
-    @Column(name = "department_approval_content")
+    @Size(max = 2000)
+    @Column(name = "department_approval_content", length = 2000)
     private String departmentApprovalContent;
 
-    @Column(name = "rejection_reason", length = 500)
+    @Column(name = "rejection_reason", length = 2000)
     private String rejectionReason;
 }

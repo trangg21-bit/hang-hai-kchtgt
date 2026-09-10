@@ -57,8 +57,8 @@ const sectionTitleStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
-const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
-const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
+const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeMd, color: textTertiary };
+const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeMd, color: textTertiary };
 type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
 
 /** Hiển thị số ký tự đã nhập để giới hạn 5/20 chữ số của các chỉ số tổng hợp dễ nhận biết. */
@@ -136,7 +136,7 @@ const renderDmsGroup = (
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
-            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32, fontSize: fontSizeMd }}
             controls={false}
           />
           <span style={inp.unitStyle}>{inp.unit}</span>
@@ -234,11 +234,18 @@ interface PortUploadFile {
   uid: string;
   /** Tên gốc file (mappedAttachments → fileName). */
   name: string;
+  fileName?: string;
   size?: number;
+  fileSize?: number;
+  type?: string;
+  fileType?: string;
   status?: string;
   originFileObj?: File;
   uploadedByName?: string;
+  uploadedBy?: string;
   uploadedDate?: string;
+  uploadedAt?: string;
+  createdAt?: string;
 }
 
 type IndexedGpsCoordPoint = GpsCoordPoint & { _idx: number };
@@ -274,7 +281,8 @@ export interface PortFormProps {
   /** bản đồ id người dùng → tên (resovle uploadedByName giống BerthForm). */
   userMap?: Map<string, string>;
   uploadFileList: PortUploadFile[];
-  setUploadFileList: (files: PortUploadFile[]) => void;
+  setUploadFileList: React.Dispatch<React.SetStateAction<any[]>> | ((files: any) => void);
+  onDeleteAttachment?: (attId: string) => void;
   onFinish: (values: Record<string, unknown>) => void;
   onFinishFailed: () => void;
 }
@@ -305,6 +313,7 @@ export default function PortForm({
   updateInfraQty,
   uploadFileList,
   setUploadFileList,
+  onDeleteAttachment,
   recordId,
   userMap,
   onFinish,
@@ -330,17 +339,22 @@ export default function PortForm({
       const resolvedName =
         (f as any).uploadedByName ||
         ((f as any).uploadedBy && userMap?.get((f as any).uploadedBy)) ||
-        undefined;
+        (f as any).uploadedBy ||
+        currentUser?.fullName ||
+        currentUser?.username ||
+        'Cán bộ quản lý';
       return {
         ...f,
-        id: f.uid,
-        fileName: f.name,
-        fileSize: f.size,
+        id: f.uid || (f as any).id,
+        fileName: f.fileName || f.name,
+        fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
         file: f.originFileObj,
-        ...(resolvedName ? { uploadedByName: resolvedName } : {}),
+        originFileObj: f.originFileObj,
+        uploadedByName: resolvedName,
+        uploadedDate: (f as any).uploadedDate || (f as any).uploadedAt || (f as any).createdAt || dayjs().toISOString(),
       };
     }),
-    [uploadFileList, userMap],
+    [uploadFileList, userMap, currentUser],
   );
 
   // Tải file đính kèm về máy: nếu là file vừa chọn khi Thêm mới/Sửa (chưa ghi lên server)
@@ -796,7 +810,7 @@ export default function PortForm({
               disabled={!effectiveGeometryType}
               style={!effectiveGeometryType ? {
                 height: 32,
-                fontSize: fontSizeSm,
+                fontSize: fontSizeMd,
                 padding: '0 14px',
                 borderRadius: radiusPill,
                 display: 'inline-flex',
@@ -807,7 +821,7 @@ export default function PortForm({
               } : {
                 ...outlineButtonStyle,
                 height: 32,
-                fontSize: fontSizeSm,
+                fontSize: fontSizeMd,
                 padding: '0 14px',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -823,7 +837,7 @@ export default function PortForm({
               disabled={!effectiveGeometryType || (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1)}
               style={!effectiveGeometryType || (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1) ? {
                 height: 32,
-                fontSize: fontSizeSm,
+                fontSize: fontSizeMd,
                 padding: '0 14px',
                 borderRadius: radiusPill,
                 display: 'inline-flex',
@@ -836,7 +850,7 @@ export default function PortForm({
               } : {
                 ...primaryButtonStyle,
                 height: 32,
-                fontSize: fontSizeSm,
+                fontSize: fontSizeMd,
                 padding: '0 14px',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -940,8 +954,9 @@ export default function PortForm({
         <InfrastructureAttachmentTab
           attachments={mappedAttachments}
           readonly={false}
+          userMap={userMap}
           onUpload={(file) => {
-            // Logic tab "File đính kèm" chuẩn Bến cảng (BerthForm.tsx handleBeforeUpload) —
+            // Logic tab "File đính kèm" chuẩn Cầu cảng (PierForm.tsx handleBeforeUpload) / Bến cảng (BerthForm.tsx) —
             // giới hạn 10 file, 20MB/file và chỉ chấp nhận các định dạng văn bản/hình ảnh.
             const ALLOWED_EXTS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
             const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -953,23 +968,43 @@ export default function PortForm({
               toast.error('File vượt quá 20MB');
               return false;
             }
-            if (uploadFileList.length >= 10) {
-              toast.error('Tối đa 10 file đính kèm');
-              return false;
-            }
-            setUploadFileList([...uploadFileList, {
-              uid: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-              name: file.name,
-              size: file.size,
-              status: 'done',
-              originFileObj: file,
-              uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-              uploadedDate: dayjs().toISOString(),
-            }]);
+            const nowIso = dayjs().toISOString();
+            const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+            const newUid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            setUploadFileList((prev: any[]) => {
+              const currentList = Array.isArray(prev) ? prev : [];
+              return [
+                ...currentList,
+                {
+                  uid: newUid,
+                  id: newUid,
+                  name: file.name,
+                  fileName: file.name,
+                  size: file.size,
+                  fileSize: file.size,
+                  type: file.type,
+                  fileType: file.type,
+                  status: 'done',
+                  originFileObj: file,
+                  uploadedByName: uploaderName,
+                  uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+                  uploadedDate: nowIso,
+                  uploadedAt: nowIso,
+                  createdAt: nowIso,
+                },
+              ];
+            });
             return false;
           }}
           onDelete={(uid) => {
-            setUploadFileList(uploadFileList.filter((x) => x.uid !== uid));
+            const fileToDelete = uploadFileList.find((x) => x.uid === uid || (x as any).id === uid);
+            if (fileToDelete && !fileToDelete.originFileObj) {
+              const attId = (fileToDelete as any).id || fileToDelete.uid;
+              if (attId) onDeleteAttachment?.(attId);
+            }
+            setUploadFileList((prev: any[]) =>
+              (Array.isArray(prev) ? prev : []).filter((x) => x.uid !== uid && (x as any).id !== uid)
+            );
           }}
           onDownload={(uid, name) => {
             handleDownloadAttachment(uid, name);
@@ -979,28 +1014,25 @@ export default function PortForm({
     },
     // ── Tab 4: Công trình KCHT trực thuộc ──
     {
-      key: 'infra', label: 'Công trình KCHT trực thuộc',
+      key: 'infra', label: `Công trình KCHT trực thuộc (${infraList.length})`,
       children: (<div style={drawerFormScrollStyle}>
         <div style={sectionBoxStyle}>
         <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
           <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
             Công trình KCHT trực thuộc
           </span>
-          {infraList.length === 0 ? null : (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={addInfra}
-              style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              Thêm công trình
-            </Button>
-          )}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={addInfra}
+            style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeMd, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            Thêm công trình
+          </Button>
         </div>
         {infraList.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có công trình nào.</span>
-            <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} style={{ borderRadius: radiusPill }}>Thêm công trình</Button>
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có công trình nào.</span>
           </div>
         ) : (
           <DetailTable<IndexedPortInfrastructureEntry>

@@ -130,16 +130,15 @@ public class StormShelterAreaService {
                 .displayRule(request.getDisplayRule())
                 .build();
 
+        LocalDateTime now = LocalDateTime.now();
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
         String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
         applySaveAction(entity, action);
 
-        StormShelterArea saved = stormShelterAreaRepository.save(entity);
+        StormShelterArea saved = stormShelterAreaRepository.saveAndFlush(entity);
         persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
-        // Ghi lịch sử thay đổi vào infrastructure_history (chuẩn Cảng biển/Bến cảng) với actor thật từ SecurityContext
-        UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
-        changeHistoryService.recordChanges("StormShelterArea", saved.getId().toString(), actorId, new StormShelterArea(), saved);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -218,19 +217,21 @@ public class StormShelterAreaService {
         if (request.getDisplayRule() != null)
             entity.setDisplayRule(request.getDisplayRule());
 
-        if (request.getSaveAction() != null) {
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt" (APPROVED_LEVEL1)
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
-        boolean wasApproved = snapshot.getApprovalStatus() == ApprovalStatus.APPROVED
-                || snapshot.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        // Actor thật từ SecurityContext — nếu truyền "system", approvedBy = null và drawer hiện "—"
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
-        // Chụp tọa độ WKT + loại hình GIS cũ TRƯỚC khi persistGisAndMooring tạo/ghi đè spatial object (chuẩn PortService.update)
+        // Tọa độ + loại hình GIS cũ (WKT) trước khi persistGisAndMooring ghi đè spatial object
         GisGeometryType oldGeomType = null;
         String oldWkt = null;
         if (snapshot.getSpatialId() != null) {
@@ -240,12 +241,9 @@ public class StormShelterAreaService {
                 oldGeomType = oldSpatial.getGeometryType();
             }
         }
-        // Chụp danh sách phạm vi khu nước neo buộc tàu cũ TRƯỚC khi replaceMooringWaterAreas xóa/ghi lại
-        String oldMooringSummary = stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(entity.getId()).stream()
-                .map(StormShelterMooringWaterArea::getDescription)
-                .filter(d -> d != null && !d.isBlank())
-                .map(String::trim)
-                .collect(Collectors.joining(", "));
+        // Summary "Khu nước neo buộc tàu" cũ trước khi replaceMooringWaterAreas xóa + chèn lại
+        String oldMooringSummary = buildMooringWaterAreaSummary(
+                stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(entity.getId()));
 
         entity.setUpdatedAt(LocalDateTime.now());
         if (operatorId != null) {
@@ -256,39 +254,37 @@ public class StormShelterAreaService {
         persistGisAndMooring(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
 
-        // Lịch sử thay đổi chỉ ghi khi hồ sơ ĐÃ được phê duyệt trước khi sửa (chuẩn Cảng biển/Bến cảng)
+        // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
-            // 2 dòng riêng "Tọa độ GIS" + "Loại đối tượng GIS" khi có tọa độ mới (chuẩn VTS CHK)
             if (coordinates != null && !coordinates.trim().isEmpty()) {
+                GisGeometryType geomType = request.getGeometryType() != null
+                        ? request.getGeometryType() : GisGeometryType.POINT;
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
-                boolean typeChanged = request.getGeometryType() != null && oldGeomType != request.getGeometryType();
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Tọa độ GIS",
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
                             newWkt, actorId);
                 }
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Loại đối tượng GIS",
                             oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
-                            geometryTypeLabel(request.getGeometryType()), actorId);
+                            geometryTypeLabel(geomType), actorId);
                 }
             }
-            // Phạm vi khu nước neo buộc tàu (child collection) — summary đọc được thay vì toString rác
-            String newMooringSummary = request.getMooringWaterAreas() == null ? ""
-                    : request.getMooringWaterAreas().stream()
-                            .map(StormShelterMooringWaterAreaRequest::getDescription)
-                            .filter(d -> d != null && !d.isBlank())
-                            .map(String::trim)
-                            .collect(Collectors.joining(", "));
-            if (!java.util.Objects.equals(oldMooringSummary, newMooringSummary)) {
-                changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Phạm vi khu nước neo buộc tàu",
+
+            changeHistoryService.recordChanges("StormShelterArea", saved.getId().toString(),
+                    actorId, snapshot, saved);
+
+            // Summary "Khu nước neo buộc tàu" đọc được — không ghi Java toString rác của reflection
+            String newMooringSummary = buildMooringWaterAreaSummary(
+                    stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(saved.getId()));
+            if (!oldMooringSummary.equals(newMooringSummary)) {
+                changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Khu nước neo buộc tàu",
                         oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
-                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary,
-                        actorId);
+                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary, actorId);
             }
-            // Field-level: diff snapshot → saved, mỗi trường khác biệt một dòng (chuẩn ChangeHistoryService.recordChanges)
-            changeHistoryService.recordChanges("StormShelterArea", saved.getId().toString(), actorId, snapshot, saved);
         }
         evictAfterCommit();
 
@@ -417,17 +413,14 @@ public class StormShelterAreaService {
     // ── Attachment methods ──────────────────────────────────────────────
 
     @Transactional
-    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
-        }
-        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
-        if (existingCount + files.size() > 10) {
-            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
         }
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
+        java.util.List<String> uploadedFilenames = new java.util.ArrayList<>();
 
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -455,14 +448,19 @@ public class StormShelterAreaService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
-
-            // Ghi lịch sử file đính kèm chỉ khi khu tránh, trú bão đã được phê duyệt (chuẩn Bến cảng/DocumentService)
-            if ("STORM_SHELTER".equalsIgnoreCase(entityType)) {
-                recordStormShelterAttachmentHistory(entityId, originalFilename,
-                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            if (!"unknown".equals(originalFilename) && !originalFilename.isBlank()) {
+                uploadedFilenames.add(originalFilename.trim());
             }
         }
+        if ("STORM_SHELTER".equalsIgnoreCase(entityType) && !uploadedFilenames.isEmpty()) {
+            recordStormShelterAttachmentHistory(entityId, String.join(", ", uploadedFilenames),
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
+        }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
+    }
+
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+        return uploadAttachments(entityType, entityId, files, userId, null);
     }
 
     public List<AttachmentDto> listAttachments(String entityType, UUID entityId) {
@@ -471,7 +469,7 @@ public class StormShelterAreaService {
     }
 
     @Transactional
-    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId, Boolean skipHistory) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
         if (!attachment.getEntityId().equals(entityId)) {
@@ -487,18 +485,41 @@ public class StormShelterAreaService {
 
         // Ghi lịch sử file đính kèm chỉ khi khu tránh, trú bão đã được phê duyệt (chuẩn Bến cảng/DocumentService)
         if ("STORM_SHELTER".equalsIgnoreCase(entityType)) {
-            recordStormShelterAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+            recordStormShelterAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
         }
+    }
+
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+        deleteAttachment(entityType, entityId, attachmentId, userId, null);
+    }
+
+    /**
+     * Summary đọc được của bảng con "Khu nước neo buộc tàu" (storm_shelter_mooring_water_areas + điểm neo),
+     * dùng cho lịch sử thay đổi — không ghi Java toString rác của reflection.
+     */
+    private String buildMooringWaterAreaSummary(List<StormShelterMooringWaterArea> areas) {
+        if (areas == null || areas.isEmpty()) return "";
+        List<String> parts = new ArrayList<>();
+        for (StormShelterMooringWaterArea wa : areas) {
+            String desc = (wa.getDescription() == null || wa.getDescription().isBlank())
+                    ? "(khu nước không mô tả)" : wa.getDescription().trim();
+            long pointCount = stormShelterMooringWaterAreaAnchorPointRepository.findByStormShelterMooringWaterAreaId(wa.getId()).size();
+            parts.add(desc + " (" + pointCount + " điểm)");
+        }
+        return areas.size() + " khu nước: " + String.join("; ", parts);
     }
 
     /**
      * Ghi lịch sử thay đổi file đính kèm của Khu tránh, trú bão (chuẩn Port/BerthService.recordBerthAttachmentHistory:
      * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm",
-     * approvedBy = user thật từ SecurityContext). Chỉ ghi khi hồ sơ đã được phê duyệt (APPROVED / APPROVED_LEVEL2).
+     * approvedBy = user thật từ SecurityContext). Chỉ ghi khi hồ sơ đã được phê duyệt (APPROVED / APPROVED_LEVEL2). Thêm mới không ghi.
      */
     private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String fileName,
-                                                     InfrastructureHistoryStatus status) {
+                                                     InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
+            if (Boolean.TRUE.equals(skipHistory)) {
+                return;
+            }
             if (stormShelterAreaId == null || historyRepository == null) {
                 return;
             }
@@ -510,6 +531,12 @@ public class StormShelterAreaService {
             boolean wasApproved = approval == ApprovalStatus.APPROVED
                     || approval == ApprovalStatus.APPROVED_LEVEL2;
             if (!wasApproved) {
+                return;
+            }
+            // Guard: Thêm mới không ghi lịch sử đính kèm
+            if (stormShelter.getCreatedAt() != null && stormShelter.getUpdatedAt() != null
+                    && (stormShelter.getCreatedAt().isEqual(stormShelter.getUpdatedAt())
+                    || java.time.Duration.between(stormShelter.getCreatedAt(), stormShelter.getUpdatedAt()).abs().toSeconds() <= 2)) {
                 return;
             }
             String name = fileName != null ? fileName : "không rõ tên";
@@ -532,6 +559,11 @@ public class StormShelterAreaService {
             log.warn("[StormShelterAreaService] Không ghi được lịch sử file đính kèm (stormShelterAreaId={}): {}",
                     stormShelterAreaId, e.getMessage());
         }
+    }
+
+    private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String fileName,
+                                                     InfrastructureHistoryStatus status) {
+        recordStormShelterAttachmentHistory(stormShelterAreaId, fileName, status, null);
     }
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
@@ -726,24 +758,25 @@ public class StormShelterAreaService {
     }
 
     private void applySaveAction(StormShelterArea entity, String action) {
+        String currentUserId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
         switch (action) {
             case "DRAFT":
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(currentUserId);
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(currentUserId);
                 entity.setPortAuthorityApprovedAt(LocalDateTime.now());
-                entity.setPortAuthorityApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setPortAuthorityApprovedBy(currentUserId);
                 entity.setDepartmentApprovedAt(LocalDateTime.now());
-                entity.setDepartmentApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setDepartmentApprovedBy(currentUserId);
                 break;
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);

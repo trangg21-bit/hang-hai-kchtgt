@@ -32,19 +32,19 @@ public class CreateDaiTtdhRequest {
     @NotNull(message = "Địa điểm (Tỉnh/Thành phố) không được để trống")
     private Integer provinceId;
 
-    @NotBlank(message = "Địa điểm chi tiết không được để trống")
     @Size(max = 500)
     private String detailedLocation;
 
     @NotNull(message = "Tình trạng không được để trống")
     private OperationalStatus operationalStatus;
 
+    @Size(max = 2000, message = "Vùng phủ sóng không vượt quá 2000 ký tự")
     private String coverageArea;
 
-    @Size(max = 500)
+    @Size(max = 500, message = "Dịch vụ cung cấp không vượt quá 500 ký tự")
     private String servicesProvided;
 
-    @Size(max = 2000)
+    @Size(max = 2000, message = "Ghi chú không vượt quá 2000 ký tự")
     private String remarks;
 
     // ── GIS fields ─────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ public class CreateDaiTtdhRequest {
     private GisGeometryType geometryType;
     private String coordinates;
     private Integer coordinateSystem;
-    private Integer displayRule;
+    private String displayRule;
 
     private String saveAction; // DRAFT, SUBMIT, SAVE_AND_APPROVE
 }

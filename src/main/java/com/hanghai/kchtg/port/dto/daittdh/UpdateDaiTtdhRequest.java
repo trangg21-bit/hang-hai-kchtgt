@@ -47,7 +47,7 @@ public class UpdateDaiTtdhRequest {
     private GisGeometryType geometryType;
     private String coordinates;
     private Integer coordinateSystem;
-    private Integer displayRule;
+    private String displayRule;
 
     private String saveAction;
 }

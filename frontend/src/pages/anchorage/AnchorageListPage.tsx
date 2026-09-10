@@ -1432,24 +1432,13 @@ export default function AnchorageListPage() {
       return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
     if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    if (field === 'updatedAt' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') {
-      const t = r.submittedForApprovalAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'portAuthorityApprovedAt') {
-      const t = r.portAuthorityApprovedAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'departmentApprovedAt') {
-      const t = r.departmentApprovedAt;
-      return t ? new Date(t).getTime() : 0;
-    }
+    if (field === 'updatedAt') return r.updatedAt ?? r.createdAt ?? '';
+    if (field === 'updatedByName') return userMap.get(r.updatedBy || '') || r.updatedBy || '';
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ?? '';
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ?? '';
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ?? '';
     return r[field] ?? '';
-  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap]);
+  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1518,10 +1507,21 @@ export default function AnchorageListPage() {
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
     if (hasPerm('anchorage:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: icons.create, onClick: () => setCreateDrawerVisible(true) });
+      actions.push({
+        key: 'create',
+        label: 'Thêm mới',
+        variant: 'primary',
+        icon: icons.create,
+        onClick: () => {
+          setEditAnchorageId(undefined);
+          setEditBaseStatus(undefined);
+          createForm.resetFields();
+          setCreateDrawerVisible(true);
+        },
+      });
     }
     return actions;
-  }, [hasPerm]);
+  }, [hasPerm, createForm]);
 
   const sortedDataSource = useMemo(() => {
     if (!sortField) return dataSource;
@@ -1533,7 +1533,7 @@ export default function AnchorageListPage() {
       const bv = getSortValue(b, sortField);
       const c = typeof av === 'number' && typeof bv === 'number'
         ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi', { numeric: true, sensitivity: 'base' });
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
       return sortOrder === 'ascend' ? c : -c;
     });
   }, [dataSource, sortField, sortOrder, getSortValue]);
@@ -1690,6 +1690,7 @@ export default function AnchorageListPage() {
           {...drawerProps}
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
+          size={1000}
           width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editAnchorageId ? 'Chỉnh sửa thông tin Khu neo đậu' : 'Thêm mới Khu neo đậu'}</span>}
           open={createDrawerVisible}
@@ -1755,6 +1756,7 @@ export default function AnchorageListPage() {
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
           size={1000}
+          width="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); notifyEmbeddedActionClosed(); }}

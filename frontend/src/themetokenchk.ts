@@ -2475,7 +2475,7 @@ export const formTreeSelectDropdownStyle: React.CSSProperties = {
 };
 
 export const ATTACHMENT_HELPER_TEXT =
-  'Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤10MB.';
+  'Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤20MB.';
 
 export const ATTACHMENT_MAX_FILE_SIZE_MB = 10;
 

@@ -183,13 +183,14 @@ public class TransferAreaController {
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(name = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
         }
         UUID userId = SecurityUtils.getCurrentUserId();
-        List<AttachmentDto> result = transferAreaService.uploadAttachments("TRANSFER_AREA", id, files, userId);
+        List<AttachmentDto> result = transferAreaService.uploadAttachments("TRANSFER_AREA", id, files, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
     }
 
@@ -205,9 +206,10 @@ public class TransferAreaController {
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,
+            @RequestParam(name = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        transferAreaService.deleteAttachment("TRANSFER_AREA", id, attId, userId);
+        transferAreaService.deleteAttachment("TRANSFER_AREA", id, attId, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 

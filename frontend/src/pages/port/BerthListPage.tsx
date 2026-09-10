@@ -164,20 +164,118 @@ const historyFieldLabels: Record<string, string> = {
   portAuthorityApprovalContent: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
   'Trạng thái': 'Hành động',
 };
-function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
-function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>): string {
-  if (!val || val === '(null)' || val === 'null') return '(trống)';
-  if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
-  if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Lưu tạm', APPROVED_LEVEL1:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL2:'Chờ phê duyệt cấp cục', APPROVED:'Đã phê duyệt', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val.toUpperCase()] || val; }
-  if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/Vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/Vận hành', SUSPENDED:'Dừng khai thác/Vận hành', DANG_KHAI_THAC:'Đang khai thác/Vận hành', CHUA_KHAI_THAC:'Chưa khai thác/Vận hành', DUNG_KHAI_THAC:'Dừng khai thác/Vận hành' }; return m[val.toUpperCase()] || val; }
-  if (fn === 'structureType') { const opt = STRUCTURE_TYPE_OPTIONS.find(o => o.value === Number(val)); return opt ? opt.label : val; }
-  if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val)-1] || val;
-  if (fn === 'coordinateSystem') { const m: Record<string,string> = { '1':'WGS-84', '2':'VN-2000' }; return m[val] || val; }
-  if (fn === 'openingAnnouncementDate' || fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
+function normalizeHistoryKey(value: string): string {
+  return (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+
+export function historyFieldName(fn: string): string {
+  if (historyFieldLabels[fn]) return historyFieldLabels[fn];
+  const targetKey = normalizeHistoryKey(fn);
+  for (const [k, v] of Object.entries(historyFieldLabels)) {
+    if (normalizeHistoryKey(k) === targetKey || normalizeHistoryKey(v) === targetKey) return v;
+  }
+  return fn;
+}
+
+export function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>): string {
+  if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '(trống)';
+  const normKey = normalizeHistoryKey(fn);
+
+  if ((normKey === 'orgunitid' || normKey === 'donviquanly' || normKey === 'don vi quan ly' || normKey === 'don vi') && orgMap) {
+    const full = orgMap.get(val);
+    return full ? full.split(' - ').pop() || full : val;
+  }
+  if ((normKey === 'mapsymbolid' || normKey === 'bieutuong' || normKey === 'bieu tuong') && symbolMap) {
+    return symbolMap.get(val) || val;
+  }
+  if ((normKey === 'portid' || normKey === 'cangbien' || normKey === 'cang bien' || normKey === 'thuoc cang bien') && portMap) {
+    return portMap.get(val) || val;
+  }
+  if (normKey === 'approvalstatus' || normKey === 'trangthai' || normKey === 'trang thai' || normKey === 'trang thai phe duyet') {
+    const m: Record<string, string> = {
+      DRAFT: 'Lưu tạm',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      APPROVED_LEVEL2: 'Chờ phê duyệt cấp cục',
+      APPROVED: 'Đã phê duyệt',
+      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL2: 'Từ chối cấp cục',
+    };
+    return m[val.toUpperCase()] || val;
+  }
+  if (normKey === 'operationalstatus' || normKey === 'tinhtrang' || normKey === 'tinh trang') {
+    const m: Record<string, string> = {
+      OPERATIONAL: 'Đang khai thác/Vận hành',
+      NOT_YET_OPERATIONAL: 'Chưa khai thác/Vận hành',
+      SUSPENDED: 'Dừng khai thác/Vận hành',
+      DANG_KHAI_THAC: 'Đang khai thác/Vận hành',
+      CHUA_KHAI_THAC: 'Chưa khai thác/Vận hành',
+      DUNG_KHAI_THAC: 'Dừng khai thác/Vận hành',
+    };
+    return m[val.toUpperCase()] || val;
+  }
+  if (
+    normKey === 'structuretype' ||
+    normKey === 'structure_type' ||
+    normKey === 'loaiketcau' ||
+    normKey === 'loai ket cau' ||
+    normKey === 'loai ket cau ben cang' ||
+    normKey === 'loai ket cau cau cang'
+  ) {
+    const trimmedVal = val.trim();
+    const opt = STRUCTURE_TYPE_OPTIONS.find((o) => o.value === Number(trimmedVal));
+    if (opt) return opt.label;
+    const m: Record<string, string> = {
+      '1': 'Kết cấu bệ cọc cao',
+      '2': 'Kết cấu cường từ',
+      '3': 'Kết cấu trọng lực',
+      '4': 'Kết cấu khác',
+    };
+    return m[trimmedVal] || val;
+  }
+  if (normKey === 'provinceid' || normKey === 'province' || normKey === 'tinh/thanh pho' || normKey === 'tinh thanh pho') {
+    const num = Number(val.trim());
+    if (!isNaN(num) && VIETNAM_PROVINCES[num - 1]) return VIETNAM_PROVINCES[num - 1];
+    return val;
+  }
+  if (normKey === 'coordinatesystem' || normKey === 'coordinate_system' || normKey === 'hequychieu' || normKey === 'he quy chieu') {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[val.trim()] || val;
+  }
+  if (normKey === 'openingannouncementdate' || normKey.endsWith('at') || normKey.endsWith('date')) {
+    try {
+      return dayjs(val).format('DD/MM/YYYY HH:mm');
+    } catch {
+      return val;
+    }
+  }
   return val;
 }
+
+export function formatBerthHistoryValue(
+  fn: string,
+  raw: string | null,
+  orgMap?: Map<string, string>,
+  symbolMap?: Map<string, string>,
+  portMap?: Map<string, string>
+): string | null {
+  if (raw === null || raw === '(null)' || raw === '') return null;
+  const t = raw.trim();
+  if (t.startsWith('[') && t.endsWith(']')) {
+    if (t === '[]') return 'Không có';
+    const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+    return `${parts.length} công trình hạ tầng`;
+  }
+  const mapped = historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
+  if (mapped !== raw && mapped !== '' && mapped !== '(trống)') {
+    return mapped;
+  }
+  if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
+    return formatHistoryNumber(t);
+  }
+  return mapped;
+}
+
 function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
   const item = group.items?.[0] || {};
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
@@ -435,19 +533,8 @@ export default function BerthList() {
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
         }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
-        const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
-          if (t.startsWith('[') && t.endsWith(']')) {
-            if (t === '[]') return 'Không có';
-            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-            return `${parts.length} công trình hạ tầng`;
-          }
-          if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
-            return formatHistoryNumber(t);
-          }
-          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
-        };
+        const formatHistoryValue = (fn: string, raw: string | null) =>
+          formatBerthHistoryValue(fn, raw, orgMap, symbolMap, portMap);
         if (orderedChanges.length === 0) return null;
         return (
           <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
@@ -1461,9 +1548,10 @@ export default function BerthList() {
         onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
       />
 
-      {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
+      {/* ── Pier Detail Drawer (sibling — kích thước đồng bộ bằng Drawer cha) ── */}
       <AppDrawer
-        width="min(950px, 96vw)"
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        style={{ maxWidth: isEmbeddedAction ? '100%' : '96vw' }}
         rootClassName="berth-drawer-scope"
         className="berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}

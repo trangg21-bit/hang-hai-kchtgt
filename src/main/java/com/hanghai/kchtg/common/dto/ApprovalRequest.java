@@ -23,7 +23,7 @@ public class ApprovalRequest {
     @JsonAlias("quyetDinh")
     private String decision;
 
-    @Size(max = 1000, message = "Ý kiến/Lý do phê duyệt tối đa 1000 ký tự")
+    @Size(max = 2000, message = "Ý kiến/Lý do phê duyệt tối đa 2000 ký tự")
     @JsonAlias({"lyDo", "rejectReason"})
     private String reason;
 

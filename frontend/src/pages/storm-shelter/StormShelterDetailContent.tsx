@@ -947,6 +947,7 @@ export default function StormShelterDetailContent({
       rootClassName="storm-shelter-drawer-scope"
       className="storm-shelter-drawer-scope"
       size={1000}
+      width="min(1000px, 96vw)"
       title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
       open={!!viewingWaterArea}
       onClose={() => setViewingWaterArea(null)}

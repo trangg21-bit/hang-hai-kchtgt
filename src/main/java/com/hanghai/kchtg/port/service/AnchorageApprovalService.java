@@ -84,6 +84,19 @@ public class AnchorageApprovalService {
         entity.setUpdatedAt(LocalDateTime.now());
         anchorageRepository.save(entity);
 
+        // Ghi sự kiện phê duyệt vào infrastructure_history (changedField = null để getHistory
+        // phân loại vào approvalLog), chuẩn Cảng biển sau migration V20260825162500.
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(InfrastructureType.ANCHORAGE_AREA)
+                .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
+                .status(InfrastructureHistoryStatus.APPROVED)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
+                .reason(("CANG_VU".equals(cap) ? "Phê duyệt cấp Cảng vụ" : "Phê duyệt cấp Cục")
+                        + (content != null && !content.isBlank() ? ": " + content.trim() : ""))
+                .build());
+
         log.info("Anchorage [{}] approved by {} at level {}", id, userId, cap);
     }
 
@@ -101,6 +114,20 @@ public class AnchorageApprovalService {
 
         entity.setUpdatedAt(LocalDateTime.now());
         anchorageRepository.save(entity);
+
+        // Ghi sự kiện từ chối vào infrastructure_history (changedField = null để getHistory
+        // phân loại vào approvalLog), chuẩn Cảng biển sau migration V20260825162500.
+        String levelLabel = "CANG_VU".equals(cap) ? "Cảng vụ" : "Cục";
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(InfrastructureType.ANCHORAGE_AREA)
+                .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
+                .status(InfrastructureHistoryStatus.REJECTED)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
+                .reason("Từ chối cấp " + levelLabel
+                        + (reason != null && !reason.isBlank() ? ": " + reason.trim() : ""))
+                .build());
 
         log.info("Anchorage [{}] rejected by {} at level {}: {}", id, userId, isCuc ? "CUC" : "CANG_VU", reason);
     }
@@ -130,15 +157,27 @@ public class AnchorageApprovalService {
         List<Map<String, Object>> changeHistory = list.stream()
                 .filter(h -> h.getChangedField() != null)
                 .map(h -> {
+                    String field = h.getChangedField() != null ? h.getChangedField() : "";
+                    String oldValue = h.getPreviousValue() != null ? h.getPreviousValue() : "";
+                    String newValue = h.getNewValue() != null ? h.getNewValue() : "";
+                    String resolvedName = h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "";
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", h.getId());
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
-                    m.put("fieldName", h.getChangedField());
-                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
-                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
-                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("fieldName", field);
+                    m.put("changedField", field);
+                    m.put("oldValue", oldValue);
+                    m.put("previousValue", oldValue);
+                    m.put("newValue", newValue);
+                    m.put("changedBy", resolvedName);
+                    m.put("approvedByName", resolvedName);
+                    m.put("approvedBy", h.getApprovedBy() != null ? h.getApprovedBy().toString() : "");
                     m.put("changedAt", h.getApprovedDate());
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("status", h.getStatus() != null ? h.getStatus().name() : "");
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
+                    m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
                     return m;
                 })
                 .toList();
@@ -210,11 +249,20 @@ public class AnchorageApprovalService {
                     m.put("approvedBy", h.getApprovedBy() != null
                             ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
                             : null);
+                    m.put("approvedByName", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
                     m.put("approvedDate", h.getApprovedDate());
+                    m.put("changedAt", h.getApprovedDate());
                     m.put("reason", h.getReason());
                     m.put("changedField", h.getChangedField());
+                    m.put("fieldName", h.getChangedField());
                     m.put("previousValue", h.getPreviousValue());
+                    m.put("oldValue", h.getPreviousValue());
                     m.put("newValue", h.getNewValue());
+                    m.put("changedBy", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : "");
                     return m;
                 })
                 .toList();

@@ -186,13 +186,14 @@ public class StormShelterAreaController {
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(name = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
         }
         UUID userId = SecurityUtils.getCurrentUserId();
-        List<AttachmentDto> result = stormShelterAreaService.uploadAttachments("STORM_SHELTER", id, files, userId);
+        List<AttachmentDto> result = stormShelterAreaService.uploadAttachments("STORM_SHELTER", id, files, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
     }
 
@@ -208,9 +209,10 @@ public class StormShelterAreaController {
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,
+            @RequestParam(name = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        stormShelterAreaService.deleteAttachment("STORM_SHELTER", id, attId, userId);
+        stormShelterAreaService.deleteAttachment("STORM_SHELTER", id, attId, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 }

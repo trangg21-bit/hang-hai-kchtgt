@@ -72,7 +72,8 @@ public class TransferAreaService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final TransferAreaMooringWaterAreaRepository transferAreaMooringWaterAreaRepository;
     private final TransferAreaMooringWaterAreaAnchorPointRepository transferAreaMooringWaterAreaAnchorPointRepository;
-    private final InfrastructureHistoryRepository infrastructureHistoryRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final com.hanghai.kchtg.port.service.shared.ChangeHistoryService changeHistoryService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -123,18 +124,15 @@ public class TransferAreaService {
                 .displayRule(request.getDisplayRule())
                 .build();
 
+        LocalDateTime now = LocalDateTime.now();
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
         String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
         applySaveAction(entity, action);
 
-        TransferArea saved = transferAreaRepository.save(entity);
+        TransferArea saved = transferAreaRepository.saveAndFlush(entity);
         persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
-        // Actor thật từ SecurityContext — ghi trực tiếp vào infrastructure_history vì
-        // ChangeHistoryService.resolveInfrastructureType không map "TransferArea" (default SEAPORT sai).
-        UUID operatorId = SecurityUtils.getCurrentUserId();
-        recordChangeHistory(saved.getId(), InfrastructureHistoryStatus.CREATED,
-                "Thêm mới khu chuyển tải", "Trạng thái phê duyệt", null,
-                "Trạng thái phê duyệt=" + approvalLabel(saved.getApprovalStatus()), operatorId);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -213,16 +211,21 @@ public class TransferAreaService {
         if (request.getDisplayRule() != null)
             entity.setDisplayRule(request.getDisplayRule());
 
-        if (request.getSaveAction() != null) {
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
         }
 
-        boolean wasApproved = snapshot.getApprovalStatus() == ApprovalStatus.APPROVED
-                || snapshot.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        // Actor thật từ SecurityContext — nếu truyền "system", approvedBy = null và drawer hiện "—"
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
-        // Chụp tọa độ WKT + loại hình GIS cũ TRƯỚC khi persistGisAndMooring tạo/ghi đè spatial object (chuẩn PortService.update)
+        // Tọa độ + loại hình GIS cũ (WKT) trước khi persistGisAndMooring ghi đè spatial object
         GisGeometryType oldGeomType = null;
         String oldWkt = null;
         if (snapshot.getSpatialId() != null) {
@@ -232,51 +235,50 @@ public class TransferAreaService {
                 oldGeomType = oldSpatial.getGeometryType();
             }
         }
-        // Chụp danh sách phạm vi khu nước neo buộc tàu cũ TRƯỚC khi replaceMooringWaterAreas xóa/ghi lại
-        String oldMooringSummary = transferAreaMooringWaterAreaRepository.findByTransferAreaId(entity.getId()).stream()
-                .map(TransferAreaMooringWaterArea::getDescription)
-                .filter(d -> d != null && !d.isBlank())
-                .map(String::trim)
-                .collect(Collectors.joining(", "));
+        // Summary "Khu nước neo buộc tàu" cũ trước khi replaceMooringWaterAreas xóa + chèn lại
+        String oldMooringSummary = buildMooringWaterAreaSummary(
+                transferAreaMooringWaterAreaRepository.findByTransferAreaId(entity.getId()));
 
-        TransferArea saved = transferAreaRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+
+        TransferArea saved = transferAreaRepository.saveAndFlush(entity);
         persistGisAndMooring(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
 
-        // Lịch sử thay đổi chỉ ghi khi hồ sơ ĐÃ được phê duyệt trước khi sửa (chuẩn PortService.update)
+        // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
-            // 2 dòng riêng "Tọa độ GIS" + "Loại đối tượng GIS" khi có tọa độ mới (chuẩn VTS CHK)
             if (coordinates != null && !coordinates.trim().isEmpty()) {
+                GisGeometryType geomType = request.getGeometryType() != null
+                        ? request.getGeometryType() : GisGeometryType.POINT;
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
-                boolean typeChanged = request.getGeometryType() != null && oldGeomType != request.getGeometryType();
                 if (wktChanged) {
-                    recordChangeHistory(saved.getId(), InfrastructureHistoryStatus.UPDATED, null, "Tọa độ GIS",
+                    changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Tọa độ GIS",
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
-                            newWkt, operatorId);
+                            newWkt, actorId);
                 }
+                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
-                    recordChangeHistory(saved.getId(), InfrastructureHistoryStatus.UPDATED, null, "Loại đối tượng GIS",
+                    changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Loại đối tượng GIS",
                             oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
-                            geometryTypeLabel(request.getGeometryType()), operatorId);
+                            geometryTypeLabel(geomType), actorId);
                 }
             }
-            // Phạm vi khu nước neo buộc tàu (child collection) — summary đọc được thay vì toString rác
-            String newMooringSummary = request.getMooringWaterAreas() == null ? ""
-                    : request.getMooringWaterAreas().stream()
-                            .map(TransferAreaMooringWaterAreaRequest::getDescription)
-                            .filter(d -> d != null && !d.isBlank())
-                            .map(String::trim)
-                            .collect(Collectors.joining(", "));
-            if (!Objects.equals(oldMooringSummary, newMooringSummary)) {
-                recordChangeHistory(saved.getId(), InfrastructureHistoryStatus.UPDATED, null,
-                        "Phạm vi khu nước neo buộc tàu",
+
+            changeHistoryService.recordChanges("TransferArea", saved.getId().toString(),
+                    actorId, snapshot, saved);
+
+            // Summary "Khu nước neo buộc tàu" đọc được — không ghi Java toString rác của reflection
+            String newMooringSummary = buildMooringWaterAreaSummary(
+                    transferAreaMooringWaterAreaRepository.findByTransferAreaId(saved.getId()));
+            if (!oldMooringSummary.equals(newMooringSummary)) {
+                changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Khu nước neo buộc tàu",
                         oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
-                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary,
-                        operatorId);
+                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary, actorId);
             }
-            // Field-level: diff snapshot → saved, mỗi trường khác biệt một dòng (chuẩn ChangeHistoryService.recordChanges)
-            recordFieldChanges(snapshot, saved, saved.getId(), actorId);
         }
         evictAfterCommit();
 
@@ -297,8 +299,10 @@ public class TransferAreaService {
                                               String operationalStatus, String approvalStatus,
                                               String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"),
-                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize,
+                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                        Sort.Order.desc(EntityFields.CREATED_AT),
+                        Sort.Order.asc(EntityFields.ID)));
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
@@ -338,20 +342,24 @@ public class TransferAreaService {
             throw new IllegalStateException("Khu chuyển tải đã bị xóa trước đó");
         }
 
+        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cầu cảng)
+        TransferArea snapshot = buildSnapshot(entity);
         UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : "system";
+
         entity.softDelete(operatorId);
         transferAreaRepository.save(entity);
 
-        // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete, chuẩn Khu neo đậu / Khu tránh trú bão)
+        // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete)
         List<TransferAreaMooringWaterArea> waterAreas = transferAreaMooringWaterAreaRepository.findByTransferAreaId(id);
         for (TransferAreaMooringWaterArea wa : waterAreas) {
             wa.softDelete(operatorId);
             transferAreaMooringWaterAreaRepository.save(wa);
         }
 
-        // Lịch sử xóa mềm — ghi trực tiếp infrastructure_history refType TRANSSHIPMENT_AREA (chuẩn BuoyBerthService.softDelete)
-        recordChangeHistory(entity.getId(), InfrastructureHistoryStatus.DELETED, "Xóa khu chuyển tải",
-                "Trạng thái phê duyệt", null, "Trạng thái phê duyệt=Đã xóa", operatorId);
+        // Ghi lịch sử xóa mềm vào infrastructure_history với actor thật (chuẩn Cảng biển / Cầu cảng).
+        changeHistoryService.recordChanges("TransferArea", entity.getId().toString(), actorId, snapshot, entity);
+        changeHistoryService.insertChangeRecord("TransferArea", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -387,17 +395,14 @@ public class TransferAreaService {
     // ── Attachment methods ──────────────────────────────────────────────
 
     @Transactional
-    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
-        }
-        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
-        if (existingCount + files.size() > 10) {
-            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
         }
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
+        java.util.List<String> uploadedFilenames = new java.util.ArrayList<>();
 
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -425,10 +430,19 @@ public class TransferAreaService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
-            recordAttachmentHistory(entityType, entityId, originalFilename,
-                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, userId);
+            if (!"unknown".equals(originalFilename) && !originalFilename.isBlank()) {
+                uploadedFilenames.add(originalFilename.trim());
+            }
+        }
+        if ("TRANSFER_AREA".equalsIgnoreCase(entityType) && !uploadedFilenames.isEmpty()) {
+            recordTransferAreaAttachmentHistory(entityId, String.join(", ", uploadedFilenames),
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
+    }
+
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+        return uploadAttachments(entityType, entityId, files, userId, null);
     }
 
     public List<AttachmentDto> listAttachments(String entityType, UUID entityId) {
@@ -446,20 +460,27 @@ public class TransferAreaService {
     }
 
     @Transactional
-    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId, Boolean skipHistory) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
-        recordAttachmentHistory(entityType, entityId, attachment.getFileName(),
-                InfrastructureHistoryStatus.ATTACHMENT_DELETED, userId);
+        if ("TRANSFER_AREA".equalsIgnoreCase(entityType)) {
+            recordTransferAreaAttachmentHistory(entityId, fileName,
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
+        }
+    }
+
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+        deleteAttachment(entityType, entityId, attachmentId, userId, null);
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -663,125 +684,7 @@ public class TransferAreaService {
         portCacheService.evictAfterCommit();
     }
 
-    /**
-     * Ghi một dòng lịch sử khu chuyển tải trực tiếp vào {@code infrastructure_history} với
-     * refType = TRANSSHIPMENT_AREA (ChangeHistoryService.resolveInfrastructureType không map
-     * "TransferArea" → default SEAPORT sai, nên không dùng service đó; chuẩn DocumentService/BuoyBerthService).
-     */
-    private void recordChangeHistory(UUID refId, InfrastructureHistoryStatus status, String reason,
-                                     String changedField, String previousValue, String newValue, UUID approvedBy) {
-        if (refId == null) {
-            return;
-        }
-        infrastructureHistoryRepository.save(InfrastructureHistory.builder()
-                .refId(refId)
-                .refType(InfrastructureType.TRANSSHIPMENT_AREA)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(status)
-                .approvedBy(approvedBy)
-                .approvedDate(LocalDateTime.now())
-                .reason(reason)
-                .changedField(changedField)
-                .previousValue(previousValue)
-                .newValue(newValue)
-                .build());
-    }
-
-    /**
-     * Ghi lịch sử tải lên/xóa tài liệu đính kèm — chỉ khi hồ sơ ĐÃ được phê duyệt
-     * (chuẩn DocumentService.recordPortAttachmentHistory).
-     */
-    private void recordAttachmentHistory(String entityType, UUID entityId, String fileName,
-                                         InfrastructureHistoryStatus status, UUID userId) {
-        try {
-            if (!"TRANSFER_AREA".equalsIgnoreCase(entityType) || entityId == null) {
-                return;
-            }
-            TransferArea area = transferAreaRepository.findById(entityId).orElse(null);
-            if (area == null) {
-                return;
-            }
-            ApprovalStatus approval = area.getApprovalStatus();
-            boolean wasApproved = approval == ApprovalStatus.APPROVED
-                    || approval == ApprovalStatus.APPROVED_LEVEL2;
-            if (!wasApproved) {
-                return;
-            }
-            String name = fileName != null ? fileName : "không rõ tên";
-            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
-            recordChangeHistory(entityId, status,
-                    (uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name,
-                    "Tài liệu đính kèm",
-                    uploaded ? "—" : name,
-                    uploaded ? name : "—",
-                    userId != null ? userId : SecurityUtils.getCurrentUserId());
-        } catch (Exception e) {
-            log.warn("Không ghi được lịch sử tài liệu đính kèm khu chuyển tải (entityId={}): {}", entityId, e.getMessage());
-        }
-    }
-
-    /**
-     * Field-level diff snapshot → saved, mỗi trường khác biệt một dòng (chuẩn ChangeHistoryService.recordChanges)
-     * nhưng refType = TRANSSHIPMENT_AREA và actor là UUID thật (không fallback "system").
-     */
-    private void recordFieldChanges(TransferArea oldEntity, TransferArea newEntity, UUID refId, String changedBy) {
-        if (oldEntity == null || newEntity == null || refId == null) {
-            return;
-        }
-        UUID userUuid = null;
-        try {
-            if (changedBy != null) {
-                userUuid = UUID.fromString(changedBy);
-            }
-        } catch (Exception ignored) {
-        }
-        for (java.lang.reflect.Field field : TransferArea.class.getDeclaredFields()) {
-            String name = field.getName();
-            if (name.equals(EntityFields.ID) || name.equals(EntityFields.CREATED_AT)
-                    || name.equals(EntityFields.UPDATED_AT) || name.equals(EntityFields.DELETED_AT)
-                    || name.equals(EntityFields.CREATED_BY) || name.equals(EntityFields.UPDATED_BY)) {
-                continue;
-            }
-            field.setAccessible(true);
-            try {
-                Object oldValue = field.get(oldEntity);
-                Object newValue = field.get(newEntity);
-                if (historyValuesEqual(oldValue, newValue)) {
-                    continue;
-                }
-                recordChangeHistory(refId, InfrastructureHistoryStatus.UPDATED, null,
-                        field.getName(), historyFormatValue(oldValue), historyFormatValue(newValue), userUuid);
-            } catch (IllegalAccessException e) {
-                log.warn("Không đọc được trường {} khi ghi lịch sử khu chuyển tải: {}", field.getName(), e.getMessage());
-            }
-        }
-    }
-
-    private boolean historyValuesEqual(Object a, Object b) {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        if (a instanceof Enum<?> ea && b instanceof Enum<?> eb) {
-            return ea == eb;
-        }
-        if (a instanceof List<?> la && b instanceof List<?> lb) {
-            return la.equals(lb);
-        }
-        if (a instanceof Number && b instanceof Number) {
-            try {
-                return new java.math.BigDecimal(a.toString()).compareTo(new java.math.BigDecimal(b.toString())) == 0;
-            } catch (NumberFormatException e) {
-                return ((Number) a).doubleValue() == ((Number) b).doubleValue();
-            }
-        }
-        return a.equals(b);
-    }
-
-    private String historyFormatValue(Object value) {
-        if (value == null) return "(null)";
-        if (value instanceof LocalDateTime dt) return dt.toString();
-        if (value instanceof Enum<?> e) return e.name();
-        return value.toString();
-    }
+    // ── Lịch sử thay đổi (infrastructure_history — chuẩn Cảng biển sau migration V20260825162500) ──
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
@@ -793,18 +696,67 @@ public class TransferAreaService {
         };
     }
 
-    /** Nhãn trạng thái phê duyệt tiếng Việt cho dòng lịch sử (chuẩn BuoyBerthApprovalService). */
-    private static String approvalLabel(ApprovalStatus st) {
-        if (st == null) return "";
-        return switch (st) {
-            case APPROVED_LEVEL1 -> "Chờ phê duyệt cấp Cảng vụ/Chi cục";
-            case APPROVED_LEVEL2 -> "Chờ phê duyệt cấp cục";
-            case APPROVED -> "Đã phê duyệt";
-            case REJECTED_LEVEL1 -> "Từ chối cấp Cảng vụ/Chi cục";
-            case REJECTED_LEVEL2 -> "Từ chối cấp cục";
-            case DRAFT -> "Lưu tạm";
-            default -> st.getLabel();
-        };
+    /**
+     * Summary đọc được của bảng con "Khu nước neo buộc tàu" (transfer_area_mooring_water_areas + điểm neo),
+     * dùng cho lịch sử thay đổi — không ghi Java toString rác của reflection.
+     */
+    private String buildMooringWaterAreaSummary(List<TransferAreaMooringWaterArea> areas) {
+        if (areas == null || areas.isEmpty()) return "";
+        List<String> parts = new ArrayList<>();
+        for (TransferAreaMooringWaterArea wa : areas) {
+            String desc = (wa.getDescription() == null || wa.getDescription().isBlank())
+                    ? "(khu nước không mô tả)" : wa.getDescription().trim();
+            long pointCount = transferAreaMooringWaterAreaAnchorPointRepository.findByTransferAreaMooringWaterAreaId(wa.getId()).size();
+            parts.add(desc + " (" + pointCount + " điểm)");
+        }
+        return areas.size() + " khu nước: " + String.join("; ", parts);
+    }
+
+    /**
+     * Ghi lịch sử file đính kèm Khu chuyển tải (chuẩn Cảng biển DocumentService.recordPortAttachmentHistory:
+     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
+     * Chỉ ghi khi entityType = "TRANSFER_AREA" và hồ sơ đã duyệt. Thêm mới không ghi.
+     */
+    private void recordTransferAreaAttachmentHistory(UUID transferAreaId, String fileName,
+                                                     InfrastructureHistoryStatus status, Boolean skipHistory) {
+        try {
+            if (Boolean.TRUE.equals(skipHistory)) return;
+            TransferArea transferArea = transferAreaRepository.findById(transferAreaId).orElse(null);
+            if (transferArea == null) return;
+            ApprovalStatus approval = transferArea.getApprovalStatus();
+            boolean wasApproved = approval == ApprovalStatus.APPROVED
+                    || approval == ApprovalStatus.APPROVED_LEVEL2;
+            if (!wasApproved) return;
+            // Guard: Thêm mới không ghi lịch sử đính kèm
+            if (transferArea.getCreatedAt() != null && transferArea.getUpdatedAt() != null
+                    && (transferArea.getCreatedAt().isEqual(transferArea.getUpdatedAt())
+                    || java.time.Duration.between(transferArea.getCreatedAt(), transferArea.getUpdatedAt()).abs().toSeconds() <= 2)) {
+                return;
+            }
+            String name = fileName != null ? fileName : "không rõ tên";
+            boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(transferAreaId)
+                    .refType(InfrastructureType.TRANSSHIPMENT_AREA)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(status)
+                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedDate(LocalDateTime.now())
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
+                    .changedField("Tài liệu đính kèm")
+                    .previousValue(uploaded ? "—" : name)
+                    .newValue(uploaded ? name : "—")
+                    .build());
+            log.info("Đã ghi lịch sử {} file đính kèm của Khu chuyển tải [{}]: {}",
+                    uploaded ? "tải lên" : "xóa", transferAreaId, name);
+        } catch (Exception e) {
+            log.warn("Không ghi được lịch sử file đính kèm Khu chuyển tải [{}]: {}", transferAreaId, e.getMessage());
+        }
+    }
+
+    private void recordTransferAreaAttachmentHistory(UUID transferAreaId, String fileName,
+                                                     InfrastructureHistoryStatus status) {
+        recordTransferAreaAttachmentHistory(transferAreaId, fileName, status, null);
     }
 
     /**
