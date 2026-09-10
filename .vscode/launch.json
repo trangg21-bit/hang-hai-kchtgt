@@ -1,45 +1,49 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "java",
-            "name": "Spring Boot - KchtgApplication (Local)",
-            "request": "launch",
-            "mainClass": "com.hanghai.kchtg.KchtgApplication",
-            "projectName": "kchtg",
-            "cwd": "${workspaceFolder}",
-            "javaExec": "${userHome}/.antigravity-ide/extensions/redhat.java-1.56.0-win32-x64/jre/21.0.12.1-win32-x86_64/bin/java.exe",
-            "vmArgs": "-Dspring.profiles.active=local -Dfile.encoding=UTF-8 -XX:ReservedCodeCacheSize=512m -XX:InitialCodeCacheSize=64m -Xms512m -Xmx2048m",
-            "env": {
-                "spring.profiles.active": "local"
-            }
-        },
-        {
-            "type": "java",
-            "name": "Spring Boot - KchtgApplication (Local - Terminal)",
-            "request": "launch",
-            "mainClass": "com.hanghai.kchtg.KchtgApplication",
-            "projectName": "kchtg",
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "javaExec": "${userHome}/.antigravity-ide/extensions/redhat.java-1.56.0-win32-x64/jre/21.0.12.1-win32-x86_64/bin/java.exe",
-            "vmArgs": "-Dspring.profiles.active=local -Dfile.encoding=UTF-8 -XX:ReservedCodeCacheSize=512m -XX:InitialCodeCacheSize=64m -Xms512m -Xmx2048m",
-            "env": {
-                "spring.profiles.active": "local"
-            }
-        },
-        {
-            "type": "java",
-            "name": "Spring Boot - KchtgApplication (Local H2)",
-            "request": "launch",
-            "mainClass": "com.hanghai.kchtg.KchtgApplication",
-            "projectName": "kchtg",
-            "cwd": "${workspaceFolder}",
-            "javaExec": "${userHome}/.antigravity-ide/extensions/redhat.java-1.56.0-win32-x64/jre/21.0.12.1-win32-x86_64/bin/java.exe",
-            "vmArgs": "-Dspring.profiles.active=local-h2 -Dfile.encoding=UTF-8",
-            "env": {
-                "spring.profiles.active": "local-h2"
-            }
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot - KchtgApplication (Local)",
+      "request": "launch",
+      "mainClass": "com.hanghai.kchtg.KchtgApplication",
+      "projectName": "kchtg",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "internalConsoleOptions": "openOnSessionStart",
+      "javaExec": "${userHome}/.antigravity-ide/extensions/redhat.java-1.56.0-win32-x64/jre/21.0.12.1-win32-x86_64/bin/java.exe",
+      "vmArgs": "-Dspring.profiles.active=local -Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true -XX:ReservedCodeCacheSize=512m -XX:InitialCodeCacheSize=64m -Xms512m -Xmx2048m",
+      "env": {
+        "spring.profiles.active": "local"
+      }
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot - KchtgApplication (Local - Terminal)",
+      "request": "launch",
+      "mainClass": "com.hanghai.kchtg.KchtgApplication",
+      "projectName": "kchtg",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "javaExec": "${userHome}/.antigravity-ide/extensions/redhat.java-1.56.0-win32-x64/jre/21.0.12.1-win32-x86_64/bin/java.exe",
+      "vmArgs": "-Dspring.profiles.active=local -Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true -XX:ReservedCodeCacheSize=512m -XX:InitialCodeCacheSize=64m -Xms512m -Xmx2048m",
+      "env": {
+        "spring.profiles.active": "local"
+      }
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot - KchtgApplication (Local H2)",
+      "request": "launch",
+      "mainClass": "com.hanghai.kchtg.KchtgApplication",
+      "projectName": "kchtg",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "internalConsoleOptions": "openOnSessionStart",
+      "javaExec": "${userHome}/.antigravity-ide/extensions/redhat.java-1.56.0-win32-x64/jre/21.0.12.1-win32-x86_64/bin/java.exe",
+      "vmArgs": "-Dspring.profiles.active=local-h2 -Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true",
+      "env": {
+        "spring.profiles.active": "local-h2"
+      }
+    }
+  ]
 }

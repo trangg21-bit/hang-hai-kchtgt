@@ -274,28 +274,76 @@ import { spaceFormField, radiusPill } from '../tokens';
   - Thêm mới luôn hiển thị đủ 3 nút: 'Lưu tạm', 'Lưu và gửi phê duyệt', 'Lưu và phê duyệt' chuẩn Bến cảng. Tiêu đề Drawer dùng `fontSize: 16` (`<span style={{ ...drawerTitleStyle, fontSize: 16 }}>...</span>`), `rootClassName="<res>-drawer-scope"`.
 - **Quy chuẩn Lịch sử thay đổi (Audit Trail)**: Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).
 
-### Reference Implementation
+### Reference Implementation & Golden Layout Standard (MẪU CHUẨN BẮT BUỘC)
 
-Xem `frontend/src/pages/UsersPage.tsx` — đây là mẫu chuẩn cho cả list screen + form modal.
+- Màn hình danh sách nghiệp vụ KCHTGT Hàng hải chuẩn mực: **`frontend/src/pages/assetmovement/PortTerminalAssetList.tsx`** (Tài sản bến cảng) và **`frontend/src/pages/assetmovement/TransferAreaAssetList.tsx`** (Tài sản khu chuyển tải).
+- Mọi màn hình danh sách KCHTGT **BẮT BUỘC** có bố cục layout 100% tương tự màn **Tài sản bến cảng**:
+  1. **Wrapper tổng**: Bọc trong `<ThemeTokenProvider tokens={themeTokenChk}>` với flexbox dọc (`display: 'flex', flexDirection: 'column', height: '100%', gap: 12`). **BẮT BUỘC dùng prop `tokens={themeTokenChk}` (TUYỆT ĐỐI CẤM dùng `value={...}`)**.
+  2. **ScreenHeader**:
+     - Breadcrumb cấp 1 ("Quản lý tài sản KCHT hàng hải" hoặc phân hệ tương ứng) > cấp 2 ("Tên màn hình"). Không truyền `title` riêng để giữ khoảng cách gọn đẹp.
+     - Nút hành động chính: "+ Thêm mới" dạng pill button bo tròn (`variant: 'primary'`, màu xanh navy `actionPrimary` / `#204e9c`, icon `<PlusOutlined />`, chữ trắng, không viền, cao 40px, `borderRadius: radiusPill` 999px) ở góc trên bên phải.
+  3. **FilterTableLayout**:
+     - Bắt buộc đặt `hideFilterToggle={true}`.
+     - **Sidebar lọc bên trái** (rộng cố định 280px):
+       - Nhúng `<TableFilter mode="fieldsOnly" filters={filterOptions} values={draftFilters} onChange={setDraftFilters} />`.
+       - Tất cả input, select, dateRange dùng bo tròn pill (`radiusPill` 999px, chiều cao chuẩn `40px`).
+       - Đáy Sidebar cố định: chỉ gồm 2 nút:
+         - **Nút Reload tròn** (bên trái): `shape="circle"`, kích thước 38x38px, viền xám `borderDefault`, icon `<ReloadOutlined />` màu xám `textSecondary`.
+         - **Nút Tìm kiếm pill xanh** (bên phải): `type="primary"`, nền xanh navy `actionPrimary` (`#204e9c`), chữ trắng, icon `<SearchOutlined />`, `borderRadius: radiusPill`, cao 40px.
+         - Tuyệt đối không để nhân đôi nút hoặc xuất hiện nút phễu mở rộng.
+       - Tuyệt đối không thêm trường `approvalStatus` vào danh sách trường của Sidebar nếu đã dùng `CommonStatusTabs`.
+     - **Khu vực hiển thị bên phải**:
+       - **Card trên (Status Tabs)**: `statusTabsNode={<CommonStatusTabs activeKey={filters.approvalStatus || 'all'} counts={statusCounts} onChange={...} />}` với 6 tab semantic chuẩn (Tất cả, Lưu tạm, Chờ Cảng vụ duyệt, Chờ Cục duyệt, Đã duyệt, Từ chối), hiển thị badge số lượng dạng viên thuốc (`radiusPill`).
+       - **Card dưới (Data Table)**: `CommonTable` (hoặc `DataTable`) nhận `options={tableOptions}` và `dataSource={data}`.
+         - Cột STT căn giữa, cố định trái.
+         - Cột TÊN/MÃ TÀI SẢN dạng `TableColumnType.TwoLine` (tên đậm trên click xem chi tiết, mã xám dưới), cố định trái.
+         - Cột ĐƠN VỊ in đậm (`fontWeightBold`).
+         - Cột TÌNH TRẠNG/TRẠNG THÁI dạng viên thuốc bo tròn 2 đầu (`radiusPill`).
+         - Cột Thao tác 3 chấm cố định bên phải: Nút tròn 32x32px (`shape="circle"`), nền trắng, viền xám nhẹ `1px solid #e4e4e4`, icon `<MoreOutlined />`.
+         - Phân trang ở góc dưới bên phải ("Tổng cộng: N", các nút chuyển trang, "20 / trang").
 
-Chi tiết xem tại: [`docs/conventions/form-and-list-patterns.md`](docs/conventions/form-and-list-patterns.md)
+### Quy chuẩn Màu sắc Nút & Thành phần Tương tác (Button Color & Interaction Styling Rules)
+
+| Vị trí | Nút / Control | Hình dáng (Shape) | Chiều cao / Size | Màu nền (Background) | Màu chữ / Icon | Viền (Border) |
+|---|---|---|---|---|---|---|
+| **ScreenHeader** | `+ Thêm mới` | Viên thuốc (`radiusPill` 999px) | `40px` | `actionPrimary` (`#204e9c` / Navy) | `#FFFFFF` (Trắng) | Không viền (`border: 'none'`) |
+| **Sidebar Đáy** | `Tìm kiếm` | Viên thuốc (`radiusPill` 999px) | `40px`, padding: `0 14px` | `actionPrimary` (`#204e9c` / Navy) | `#FFFFFF` (Trắng) | `1px solid #204e9c` |
+| **Sidebar Đáy** | `Làm mới (Reload)` | Tròn (`shape="circle"`) | `38px x 38px` | Trắng / Trong suốt | `textSecondary` (`#5E6278`) | `1px solid #e4e4e4` (`borderDefault`) |
+| **Bảng (DataTable)** | `Hành động (...)` | Tròn (`shape="circle"`) | `32px x 32px` | `#FFFFFF` (Trắng) | `textSecondary` (`#5E6278`) | `1px solid #e4e4e4` (`borderDefault`) |
+| **Drawer Footer** | `Lưu tạm` | Viên thuốc (`radiusPill` 999px) | `40px` | `#FFFFFF` (Trắng) | `textSecondary` (`#5E6278`) | `1px solid #e4e4e4` |
+| **Drawer Footer** | `Lưu và gửi duyệt` | Viên thuốc (`radiusPill` 999px) | `40px` | `#0284C7` (Xanh da trời Sky) | `#FFFFFF` (Trắng) | `border: 'none'` |
+| **Drawer Footer** | `Lưu và phê duyệt` | Viên thuốc (`radiusPill` 999px) | `40px` | `statusOperational` (`#1BAF7A` / Emerald) | `#FFFFFF` (Trắng) | `border: 'none'` |
+| **Modal / Drawer** | `Hủy / Đóng` | Viên thuốc (`radiusPill` 999px) | `40px` | `#FFFFFF` (Trắng) | `textSecondary` (`#5E6278`) | `1px solid #e4e4e4` |
+
+#### Quy chuẩn Màu sắc Badges Trạng thái & Tình trạng (Pill Badges Standard):
+- **Cấu trúc Style**: Bo tròn 2 đầu (`borderRadius: radiusPill` / `999px`), `padding: '2px 10px'`, `fontSize: 13px`, `fontWeight: 500`.
+- **Màu nền và viền**: Nền mờ `${color}15`, viền `1px solid ${color}40`, màu chữ `${color}`.
+- **Bảng ánh xạ màu**:
+  - `Tất cả`: `#0E6FD6` hoặc `#204e9c`
+  - `Lưu tạm` (DRAFT): `#93A3B3` (Xám)
+  - `Chờ Cảng vụ duyệt` / `Hư hỏng cần sửa chữa`: `#EDA100` (Vàng cam Amber)
+  - `Chờ Cục duyệt`: `#0284C7` (Xanh da trời Sky)
+  - `Đã duyệt` / `Tốt (Đang hoạt động)`: `#1BAF7A` (Xanh lá Emerald)
+  - `Từ chối` / `Không sử dụng được`: `#E34948` (Đỏ tươi Rose)
+
+Chi tiết xem tại: [`docs/conventions/list-screen-ui-standard.md`](docs/conventions/list-screen-ui-standard.md) và [`docs/conventions/form-and-list-patterns.md`](docs/conventions/form-and-list-patterns.md)
 
 ### Agent workflow
 
 ```
 PMO Lead
   └── Dispatch Dev làm màn danh sách / popup → PHẢI chép constraints vào prompt:
-        "Dùng ScreenHeader + FilterBar + StatusTabs + DataTable + Pagination
-         từ frontend/src/components/list-view/.
+        "Dùng ScreenHeader + FilterTableLayout + TableFilter (mode='fieldsOnly') + CommonStatusTabs + CommonTable.
          KHÔNG tự tạo search/filter UI riêng, KHÔNG tự tạo table riêng.
+         Sidebar lọc rộng 280px, hideFilterToggle={true}, đáy chỉ có 2 nút: Reload tròn + Tìm kiếm pill xanh.
          Filter đơn vị có parentId phải dùng TreeSelect/Cascader dạng cây, giữ value là orgUnitId.
          Form.Item marginBottom = spaceFormField (12px).
          Input/Select borderRadius = radiusPill (999px), height = 40.
-         Xem UsersPage.tsx làm mẫu chuẩn.
-         Đọc docs/conventions/form-and-list-patterns.md để biết chi tiết."
+         Xem PortTerminalAssetList.tsx và UsersPage.tsx làm mẫu chuẩn.
+         Đọc docs/conventions/list-screen-ui-standard.md để biết chi tiết."
 ```
 
-**⚠️ PMO LEAD: workers KHÔNG đọc AGENTS.md. Bạn PHẢI copy quy tắc trên vào brief và luôn gửi kèm link `docs/conventions/form-and-list-patterns.md`.**
+**⚠️ PMO LEAD: workers KHÔNG đọc AGENTS.md. Bạn PHẢI copy quy tắc trên vào brief và luôn gửi kèm link `docs/conventions/list-screen-ui-standard.md`.**
 
 ## Feature Brief Template Convention (MANDATORY — mọi BA agent làm feature-brief PHẢI đọc)
 
