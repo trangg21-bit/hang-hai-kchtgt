@@ -432,12 +432,20 @@ public class RadarStationService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> getTabCounts(UUID orgUnitId, String keyword, String conditionStatus) {
+        return getTabCounts(orgUnitId, keyword, null, conditionStatus);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getTabCounts(UUID orgUnitId, String keyword, String stationName, String conditionStatus) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(keyword) + "%"
                 : null;
+        String stationNamePattern = (stationName != null && !stationName.trim().isEmpty())
+                ? "%" + normalizeSearchKeyword(stationName) + "%"
+                : null;
         List<Object[]> rows = repository.countByApprovalStatus(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, conditionStatus);
+                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, stationNamePattern, conditionStatus);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("", 0L);
@@ -476,9 +484,23 @@ public class RadarStationService {
                                                    String conditionStatus, String approvalStatusStr,
                                                    String legacyStatus, UUID updatedBy, LocalDateTime updatedFrom, LocalDateTime updatedTo,
                                                    Pageable pageable) {
+        return searchPaged(keyword, null, code, orgUnitId, seaportId, vtsSystemId, vtsOperationCenterId,
+                operatingUnitId, provinceId, conditionStatus, approvalStatusStr, legacyStatus, updatedBy, updatedFrom, updatedTo, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RadarStationResponse> searchPaged(String keyword, String stationName, String code, UUID orgUnitId, UUID seaportId,
+                                                   UUID vtsSystemId, UUID vtsOperationCenterId,
+                                                   UUID operatingUnitId, Integer provinceId,
+                                                   String conditionStatus, String approvalStatusStr,
+                                                   String legacyStatus, UUID updatedBy, LocalDateTime updatedFrom, LocalDateTime updatedTo,
+                                                   Pageable pageable) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(keyword) + "%"
+                : null;
+        String stationNamePattern = (stationName != null && !stationName.trim().isEmpty())
+                ? "%" + normalizeSearchKeyword(stationName) + "%"
                 : null;
         String codePattern = (code != null && !code.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(code) + "%"
@@ -488,7 +510,7 @@ public class RadarStationService {
                 : null;
 
         return repository.searchPaged(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, codePattern,
+                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, stationNamePattern, codePattern,
                 seaportId, vtsSystemId, vtsOperationCenterId, operatingUnitId, provinceId,
                 conditionStatus, statusEnum, updatedBy, updatedFrom, updatedTo, pageable)
                 .map(this::toResponse);

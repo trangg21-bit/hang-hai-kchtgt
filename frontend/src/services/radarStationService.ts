@@ -39,8 +39,8 @@ export const radarStationCRUD = {
     return toArray<RadarStationOptionResponse>(res.data);
   },
 
-  async getTabCounts(orgUnitId?: string, keyword?: string, conditionStatus?: string): Promise<Record<string, number>> {
-    const sp = buildSearchParams({ orgUnitId, keyword, conditionStatus });
+  async getTabCounts(orgUnitId?: string, keyword?: string, conditionStatus?: string, stationName?: string): Promise<Record<string, number>> {
+    const sp = buildSearchParams({ orgUnitId, keyword, conditionStatus, stationName });
     const res = await api.get(`${BASE_PATH}/tab-counts?${sp}`);
     return toSingle<Record<string, number>>(res.data) || {};
   },
@@ -52,6 +52,7 @@ export const radarStationCRUD = {
   async searchPaged(params?: ListParams): Promise<SearchResponse<RadarStationResponse>> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
+      stationName: params?.stationName,
       code: params?.code,
       orgUnitId: params?.orgUnitId,
       seaportId: params?.seaportId,
@@ -165,7 +166,9 @@ export const radarStationAttachment = {
   async upload(id: string, files: File | File[]): Promise<RadarStationAttachment[]> {
     const fileList = Array.isArray(files) ? files : [files];
     const formData = new FormData();
-    fileList.forEach((f) => formData.append('files', f));
+    fileList.forEach((f) => {
+      formData.append('files', f);
+    });
     const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

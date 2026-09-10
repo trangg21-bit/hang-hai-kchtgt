@@ -13,6 +13,7 @@ import {
   Col,
   Tabs,
   InputNumber,
+  type InputNumberProps,
 } from 'antd';
 import {
   PlusOutlined,
@@ -70,7 +71,7 @@ import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -125,6 +126,42 @@ import {
   historyNewValueStyle,
   historyArrowStyle,
 } from '../../themetokenchk';
+
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
+
+const parseNumber20 = (value: unknown): any => {
+  if (!value) return '' as any;
+  const str = String(value).replace(/[^0-9.]/g, '');
+  const parts = str.split('.');
+  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
+  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
+};
+
+const getValueFromEvent20 = (val: unknown): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const str = String(val).replace(/[^0-9.]/g, '');
+  const parts = str.split('.');
+  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
+  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
+  if (sliced.endsWith('.')) return sliced as any;
+  const num = Number(sliced);
+  return isNaN(num) ? null : num;
+};
+
+const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 // ── Field name translation (lịch sử thay đổi) ───────────────────────
 
@@ -537,6 +574,19 @@ function adjustGpsListForGeometry(list: { lat: number; lng: number }[], geom: st
   return next;
 }
 
+/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
+};
+
 export default function DikeRevetmentList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s: any) => s.user);
@@ -549,6 +599,8 @@ export default function DikeRevetmentList() {
     || currentUser?.role === 'ROLE_SYSTEM_ADMIN' || currentUser?.role === 'ROLE_SUPER_ADMIN';
 
   // ── Filter state ─────────────────────────────────────────────────
+  const [inputName, setInputName] = useState('');
+  const [inputCode, setInputCode] = useState('');
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterMa] = useState('');
   const [filterSeaportId, setFilterCangBienId] = useState<string | undefined>();
@@ -643,6 +695,7 @@ export default function DikeRevetmentList() {
   }, [seaports, createOrgUnitId]);
   // Chống race khi đóng/mở drawer nhanh trong lúc getById nạp chi tiết (chuẩn /vts-operation-center)
   const editOpenSeqRef = useRef(0);
+  const gisCoordSnapshotRef = useRef<{ coords: any[]; symbolId?: string }>({ coords: [], symbolId: undefined });
 
   // ── Load danh bạ người dùng → map UUID sang tên hiển thị "Người tải lên" trong tab File đính kèm
   //    (chuẩn /berth & /beacon-stations: dùng userMap id→fullName thay vì để lộ UUID/placeholder) ──
@@ -669,7 +722,8 @@ export default function DikeRevetmentList() {
   // ── GIS: auto-fill Hệ quy chiếu + Quy tắc hiển thị + đồng bộ số điểm theo Loại đối tượng (chuẩn /berth)
   useEffect(() => {
     if (!createGeometryType) {
-      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
+      createForm.setFields([{ name: 'symbolId', errors: [] }]);
       setCoordinateList([]);
       setGpsError(null);
       return;
@@ -756,16 +810,40 @@ export default function DikeRevetmentList() {
     if (!val) return;
     if (val.geometryType) createForm.setFieldValue('geometryType', val.geometryType);
     if (val.symbolId) createForm.setFieldValue('symbolId', val.symbolId);
-    if (val.coordinates) {
-      const ec = parseWktToCoordinates(val.coordinates);
-      if (ec.length > 0) {
-        setCoordinateList(ec.map((c) => {
-          const latDms = ddToDms(c.latitude);
-          const lngDms = ddToDms(c.longitude);
-          return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-        }));
-        setGpsError(null);
+    const points = parseGisCoordinates(val);
+    if (points.length > 0) {
+      const currentGeom = val.geometryType || createGeometryType;
+      if (currentGeom === 'POINT') {
+        const p = points[0];
+        const latDms = ddToDms(p.latitude);
+        const lngDms = ddToDms(p.longitude);
+        setCoordinateList([{
+          latD: latDms.d, latM: latDms.m, latS: latDms.s,
+          lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+        }]);
+      } else {
+        setCoordinateList((prev) => {
+          const toDms = (p: { latitude: number; longitude: number }) => {
+            const lat = ddToDms(p.latitude);
+            const lng = ddToDms(p.longitude);
+            return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+          };
+          const newRows = points.map(toDms);
+          const merged = [...prev];
+          let newIdx = 0;
+          const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
+          for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
+            if (!isFilled(merged[i])) {
+              merged[i] = newRows[newIdx++];
+            }
+          }
+          while (newIdx < newRows.length) {
+            merged.push(newRows[newIdx++]);
+          }
+          return merged;
+        });
       }
+      setGpsError(null);
     }
   };
   const [activeTabKey, setActiveTabKey] = useState('general');
@@ -897,8 +975,8 @@ export default function DikeRevetmentList() {
       const res = await dikeRevetmentCRUD.search({
         page,
         size: pageSize,
-        code: filterCode || undefined,
-        keyword: filterName || undefined,
+        code: filterCode.trim() || undefined,
+        dikeRevetmentName: filterName.trim() || undefined,
         seaportId: filterSeaportId,
         location: filterLocation,
         dikeRevetmentType: filterType,
@@ -928,8 +1006,8 @@ export default function DikeRevetmentList() {
     const statuses: (ApprovalStatus | undefined)[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'];
     const filterScope = {
       orgUnitId: filterUnitId && filterUnitId !== '__all__' ? filterUnitId : undefined,
-      code: filterCode || undefined,
-      keyword: filterName || undefined,
+      code: filterCode.trim() || undefined,
+      dikeRevetmentName: filterName.trim() || undefined,
       seaportId: filterSeaportId,
       location: filterLocation,
       dikeRevetmentType: filterType,
@@ -975,8 +1053,14 @@ export default function DikeRevetmentList() {
     });
   };
 
-  const handleFilterApply = () => { setPage(1); fetchData(); };
+  const handleFilterApply = () => {
+    setFilterName(inputName);
+    setFilterMa(inputCode);
+    setPage(1);
+  };
   const handleFilterReset = () => {
+    setInputName('');
+    setInputCode('');
     setFilterName('');
     setFilterMa('');
     setFilterCangBienId(undefined);
@@ -994,6 +1078,10 @@ export default function DikeRevetmentList() {
 
   // ── Drawer helpers ───────────────────────────────────────────────
   const openCreateDrawer = useCallback(() => {
+    if (!hasPerm?.('dikerevetment:create')) {
+      message.warning('Bạn không có quyền thêm mới công trình đê kè');
+      return;
+    }
     editOpenSeqRef.current += 1;
     setEditingRecord(null);
     setDetailRecord(null);
@@ -1040,6 +1128,10 @@ export default function DikeRevetmentList() {
   }, [createForm, isElevatedOrg]);
 
   const openEditDrawer = useCallback((record: DikeRevetmentResponse) => {
+    if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dikerevetment' })) {
+      message.warning('Bạn không có quyền chỉnh sửa công trình đê kè này');
+      return;
+    }
     editOpenSeqRef.current += 1;
     const seq = editOpenSeqRef.current;
     setEditingRecord(record);
@@ -1123,6 +1215,10 @@ export default function DikeRevetmentList() {
   }, [createForm]);
 
   const openDetailDrawer = useCallback(async (record: DikeRevetmentResponse) => {
+    if (!hasPerm?.('dikerevetment:read')) {
+      message.warning('Bạn không có quyền xem chi tiết công trình đê kè');
+      return;
+    }
     editOpenSeqRef.current += 1;
     setDetailRecord(record);
     setEditingRecord(null);
@@ -1396,6 +1492,10 @@ export default function DikeRevetmentList() {
 
   // ── History ──────────────────────────────────────────────────────
   const openHistoryModal = useCallback(async (record: DikeRevetmentResponse) => {
+    if (!hasPerm?.('dikerevetment:history')) {
+      message.warning('Bạn không có quyền xem lịch sử công trình đê kè');
+      return;
+    }
     setHistoryTarget(record);
     setHistoryRecords([]);
     setHistorySearch('');
@@ -1790,13 +1890,22 @@ export default function DikeRevetmentList() {
       fixed: 'left' as const,
       render: (_: any, record: DikeRevetmentResponse) => (
         <div>
-          <a
-            title={record.dikeRevetmentName || ''}
-            onClick={() => openDetailDrawer(record)}
-            style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          >
-            {record.dikeRevetmentName || null}
-          </a>
+          {hasPerm?.('dikerevetment:read') ? (
+            <a
+              title={record.dikeRevetmentName || ''}
+              onClick={() => openDetailDrawer(record)}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {record.dikeRevetmentName || null}
+            </a>
+          ) : (
+            <span
+              title={record.dikeRevetmentName || ''}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}
+            >
+              {record.dikeRevetmentName || null}
+            </span>
+          )}
           <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {record.code || null}
           </span>
@@ -1913,7 +2022,7 @@ export default function DikeRevetmentList() {
       width: 245,
       render: (status: string) => <ApprovalStatusBadge status={status} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />,
     },
-  ], [page, pageSize, openDetailDrawer, isElevatedOrg]);
+  ], [page, pageSize, openDetailDrawer, isElevatedOrg, hasPerm]);
 
   const rowActions = useCallback((record: DikeRevetmentResponse) => {
     const actions: any[] = [];
@@ -1944,7 +2053,7 @@ export default function DikeRevetmentList() {
       });
     }
     // Lịch sử thay đổi.
-    if (canRead) {
+    if (hasPerm('dikerevetment:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',
@@ -1963,42 +2072,44 @@ export default function DikeRevetmentList() {
     }
     // Vòng 1 — Cảng vụ/Chi cục duyệt hồ sơ Chờ Cảng vụ duyệt.
     if (canApproveC1 && isPendingC1) {
+      const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
       actions.push({
         key: 'approveC1',
-        label: 'Phê duyệt',
+        label: isCreatorSelfApprove ? 'Phê duyệt cấp Cảng vụ (không thể tự duyệt)' : 'Phê duyệt cấp Cảng vụ',
         icon: themeTokenChk.icons.approve,
+        disabled: isCreatorSelfApprove,
         onClick: () => openApproveModal(record),
       });
-    }
-    if (canApproveC1 && isPendingC1) {
       actions.push({
         key: 'rejectC1',
-        label: 'Từ chối',
+        label: isCreatorSelfApprove ? 'Từ chối cấp Cảng vụ (không thể tự duyệt)' : 'Từ chối cấp Cảng vụ',
         icon: themeTokenChk.icons.reject,
         danger: true,
+        disabled: isCreatorSelfApprove,
         onClick: () => openRejectModal(record),
       });
     }
     // Vòng 2 — Cục duyệt hồ sơ Chờ Cục duyệt.
     if (canApproveC2 && isPendingC2) {
+      const isApprover1SelfApprove = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
       actions.push({
         key: 'approveC2',
-        label: 'Phê duyệt',
+        label: isApprover1SelfApprove ? 'Phê duyệt cấp Cục (không thể tự duyệt)' : 'Phê duyệt cấp Cục',
         icon: themeTokenChk.icons.approve,
+        disabled: isApprover1SelfApprove,
         onClick: () => openApproveModal(record),
       });
-    }
-    if (canApproveC2 && isPendingC2) {
       actions.push({
         key: 'rejectC2',
-        label: 'Từ chối',
+        label: isApprover1SelfApprove ? 'Từ chối cấp Cục (không thể tự duyệt)' : 'Từ chối cấp Cục',
         icon: themeTokenChk.icons.reject,
         danger: true,
+        disabled: isApprover1SelfApprove,
         onClick: () => openRejectModal(record),
       });
     }
     // Quy tắc 11 (approval-2-level-spec.md 3.6): chỉ xóa được hồ sơ Lưu tạm.
-    if (canDelete && isDraft) {
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dikerevetment' })) {
       actions.push({
         key: 'delete',
         label: 'Xóa',
@@ -2008,7 +2119,7 @@ export default function DikeRevetmentList() {
       });
     }
     return actions;
-  }, [hasPerm, canApproveC1, canApproveC2, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openDeleteModal, openHistoryModal]);
+  }, [hasPerm, currentUser, canApproveC1, canApproveC2, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openDeleteModal, openHistoryModal]);
 
   const filterLabel = { ...filterLabelStyle, fontSize: 13.5 };
 
@@ -2035,9 +2146,9 @@ export default function DikeRevetmentList() {
       <Input
         placeholder="Tìm theo tên đê kè"
         allowClear
-        value={filterName}
-        onChange={(e) => { setFilterName(e.target.value.trim()); setPage(1); }}
-        onPressEnter={() => { setPage(1); fetchData(); }}
+        value={inputName}
+        onChange={(e) => setInputName(e.target.value)}
+        onPressEnter={handleFilterApply}
         style={filterInputStyle}
       />
     </div>
@@ -2049,9 +2160,9 @@ export default function DikeRevetmentList() {
             <Input
               placeholder="Tìm theo mã đê kè"
               allowClear
-              value={filterCode}
-              onChange={(e) => { setFilterMa(e.target.value.trim()); setPage(1); }}
-              onPressEnter={() => { setPage(1); fetchData(); }}
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
+              onPressEnter={handleFilterApply}
               style={filterInputStyle}
             />
           </div>
@@ -2696,7 +2807,11 @@ export default function DikeRevetmentList() {
 
       <ScreenHeader
         breadcrumb={[{ label: 'Quản lý KCHTGT' }, { label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' }]}
-        actions={[{ key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreateDrawer }]}
+        actions={[
+          hasPerm?.('dikerevetment:create')
+            ? { key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary' as const, onClick: openCreateDrawer }
+            : null,
+        ].filter(Boolean) as Array<{ key: string; label: string; icon?: React.ReactNode; variant?: 'primary' | 'outline' | 'subtle' | 'default'; onClick: () => void }>}
       />
 
       <FilterTableLayout
@@ -2956,44 +3071,55 @@ export default function DikeRevetmentList() {
                                 {...labelProps('Chiều dài (m)')}
                                 required
                                 style={formFieldStyle}
+                                getValueFromEvent={getValueFromEvent20}
                                 rules={[{ required: true, message: 'Vui lòng nhập chiều dài' }]}
                               >
-                                <InputNumber
+                                <NumberInputWithCount
                                   min={0.01}
-                                  max={99999}
                                   step={0.01}
                                   precision={2}
                                   placeholder="0"
-                                  formatter={fmtInputNumber}
-                                  style={{ width: '100%', ...inputStyle }}
+                                  style={numberInputStyle}
+                                  maxLength={20}
+                                  parser={parseNumber20}
                                 />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item name="height" {...labelProps('Chiều cao (m)')} style={formFieldStyle}>
-                                <InputNumber
+                              <Form.Item
+                                name="height"
+                                {...labelProps('Chiều cao (m)')}
+                                style={formFieldStyle}
+                                getValueFromEvent={getValueFromEvent20}
+                              >
+                                <NumberInputWithCount
                                   min={0}
-                                  max={99999}
                                   step={0.01}
                                   precision={2}
                                   placeholder="0"
-                                  formatter={fmtInputNumber}
-                                  style={{ width: '100%', ...inputStyle }}
+                                  style={numberInputStyle}
+                                  maxLength={20}
+                                  parser={parseNumber20}
                                 />
                               </Form.Item>
                             </Col>
                           </Row>
                           <Row gutter={formRowGutter}>
                             <Col span={12}>
-                              <Form.Item name="crestElevation" {...labelProps('Cao trình đỉnh (m)')} style={formFieldStyle}>
-                                <InputNumber
+                              <Form.Item
+                                name="crestElevation"
+                                {...labelProps('Cao trình đỉnh (m)')}
+                                style={formFieldStyle}
+                                getValueFromEvent={getValueFromEvent20}
+                              >
+                                <NumberInputWithCount
                                   min={0}
-                                  max={99999}
                                   step={0.01}
                                   precision={2}
                                   placeholder="0"
-                                  formatter={fmtInputNumber}
-                                  style={{ width: '100%', ...inputStyle }}
+                                  style={numberInputStyle}
+                                  maxLength={20}
+                                  parser={parseNumber20}
                                 />
                               </Form.Item>
                             </Col>
@@ -3071,7 +3197,17 @@ export default function DikeRevetmentList() {
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item name="symbolId" {...labelProps('Biểu tượng')} style={formFieldStyle}>
+                              <Form.Item
+                                name="symbolId"
+                                {...labelProps('Biểu tượng')}
+                                required={!!createGeometryType}
+                                rules={
+                                  createGeometryType
+                                    ? [{ required: true, message: 'Vui lòng chọn biểu tượng' }]
+                                    : []
+                                }
+                                style={formFieldStyle}
+                              >
                                 <Select
                                   placeholder="Chọn biểu tượng bản đồ"
                                   allowClear
@@ -3131,7 +3267,13 @@ export default function DikeRevetmentList() {
                             <Space size={8}>
                               <Button
                                 icon={<EnvironmentOutlined style={{ color: !createGeometryType ? undefined : actionPrimary }} />}
-                                onClick={() => setGisMapOpen(true)}
+                                onClick={() => {
+                                  gisCoordSnapshotRef.current = {
+                                    coords: coordinateList.map((c) => ({ ...c })),
+                                    symbolId: createForm.getFieldValue('symbolId'),
+                                  };
+                                  setGisMapOpen(true);
+                                }}
                                 disabled={!createGeometryType}
                                 style={!createGeometryType ? {
                                   height: 32,
@@ -3282,17 +3424,34 @@ export default function DikeRevetmentList() {
           </div>
         }
         open={gisMapOpen}
-        onCancel={() => setGisMapOpen(false)}
+        onCancel={() => {
+          setCoordinateList(gisCoordSnapshotRef.current.coords);
+          createForm.setFieldValue('symbolId', gisCoordSnapshotRef.current.symbolId);
+          setGisMapOpen(false);
+        }}
         destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
-          <Button key="cancel" onClick={() => setGisMapOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
+          <Button
+            key="cancel"
+            onClick={() => {
+              setCoordinateList(gisCoordSnapshotRef.current.coords);
+              createForm.setFieldValue('symbolId', gisCoordSnapshotRef.current.symbolId);
+              setGisMapOpen(false);
+            }}
+            style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
+          >
             Hủy
           </Button>,
-          <Button key="ok" type="primary"
-            onClick={() => { setGisMapOpen(false); toast.success('Đã xác nhận vị trí từ bản đồ'); }}
-            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}>
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => {
+              setGisMapOpen(false);
+            }}
+            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
+          >
             Xác nhận tọa độ
           </Button>,
         ]}
@@ -3302,11 +3461,11 @@ export default function DikeRevetmentList() {
             inline
             height={520}
             value={{
-              geometryType: createGeometryType || 'LINE',
-              coordinates: serializeCoordinatesToWkt(validateDmsCoordinates(coordinateList, createGeometryType || 'LINE').validCoords, createGeometryType || 'LINE'),
+              geometryType: createGeometryType || 'POINT',
+              coordinates: serializeCoordinatesToWkt(validateDmsCoordinates(coordinateList, createGeometryType || 'POINT').validCoords, createGeometryType || 'POINT'),
               symbolId: createForm.getFieldValue('symbolId'),
             }}
-            defaultGeometryType={(createGeometryType as any) || 'LINE'}
+            defaultGeometryType={(createGeometryType as any) || 'POINT'}
             onChange={applyMapSelection}
           />
         </div>

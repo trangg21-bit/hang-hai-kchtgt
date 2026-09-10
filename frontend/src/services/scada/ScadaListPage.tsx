@@ -58,6 +58,7 @@ import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
 import { userService } from "../userService";
+import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
 import type { Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
@@ -278,11 +279,13 @@ const ScadaListPage = () => {
   const [pageSize, setPageSize] = useState(20);
 
   // Filters
+  const [inputDeviceName, setInputDeviceName] = useState("");
+  const [inputDeviceCode, setInputDeviceCode] = useState("");
+  const [filterDeviceName, setFilterDeviceName] = useState("");
+  const [filterDeviceCode, setFilterDeviceCode] = useState("");
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState({
     orgUnitId: "" as string,
-    deviceName: "",
-    deviceCode: "",
     operationalStatus: undefined as number | undefined,
     approvalStatus: "" as string,
     province: "" as string,
@@ -314,6 +317,7 @@ const ScadaListPage = () => {
           orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
+          deviceName: filterDeviceName.trim() || undefined,
           approvalStatus: s.status,
         })
       )
@@ -332,7 +336,7 @@ const ScadaListPage = () => {
         counts.REJECTED_LEVEL1 +
         counts.REJECTED_LEVEL2
     );
-  }, [filterValues.orgUnitId]);
+  }, [filterValues.orgUnitId, filterDeviceName]);
 
   // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
   // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
@@ -554,6 +558,10 @@ const ScadaListPage = () => {
 
   // Mở Drawer Xem chi tiết + nạp danh sách File đính kèm (read-only tab)
   const openDetailRecord = useCallback((record: ScadaResponse) => {
+    if (!hasPerm?.("scada:read")) {
+      toast.warning("Bạn không có quyền xem chi tiết hệ thống SCADA");
+      return;
+    }
     setSelectedRecord(record);
     setDetailAttachments([]);
     setDetailsSpecsOpen(true);
@@ -562,7 +570,7 @@ const ScadaListPage = () => {
     void fetchScadaAttachments(record.id)
       .then((list: any[]) => setDetailAttachments(Array.isArray(list) ? list : []))
       .catch(() => setDetailAttachments([]));
-  }, []);
+  }, [hasPerm]);
 
   const columns = useMemo(
     () => {
@@ -605,15 +613,25 @@ const ScadaListPage = () => {
         ellipsis: false,
         render: (val: string, record: ScadaResponse) => (
           <div style={{ minWidth: 0 }}>
-            <button
-              type="button"
-              className="kcht-cell-title"
-              onClick={() => openDetailRecord(record)}
-              style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-              title={val || null}
-            >
-              {val || null}
-            </button>
+            {hasPerm?.("scada:read") ? (
+              <button
+                type="button"
+                className="kcht-cell-title"
+                onClick={() => openDetailRecord(record)}
+                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                title={val || null}
+              >
+                {val || null}
+              </button>
+            ) : (
+              <span
+                className="kcht-cell-title"
+                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                title={val || null}
+              >
+                {val || null}
+              </span>
+            )}
             <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
           </div>
         ),
@@ -753,7 +771,7 @@ const ScadaListPage = () => {
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder, openDetailRecord]
+    [page, pageSize, sortField, sortOrder, openDetailRecord, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -950,6 +968,10 @@ const ScadaListPage = () => {
   };
 
   const openHistory = useCallback(async (r: ScadaResponse) => {
+    if (!hasPerm?.("scada:history")) {
+      toast.warning("Bạn không có quyền xem lịch sử hệ thống SCADA");
+      return;
+    }
     setHistoryTarget(r);
     setSelectedRecord(r);
     setHistoryEntityName(r.deviceName || '');
@@ -967,7 +989,7 @@ const ScadaListPage = () => {
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [hasPerm]);
 
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
@@ -1191,9 +1213,13 @@ const ScadaListPage = () => {
   };
 
   const openUpdateDrawer = useCallback((record: ScadaResponse) => {
+    if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "scada" })) {
+      toast.warning("Bạn không có quyền chỉnh sửa hệ thống SCADA này");
+      return;
+    }
     setUpdateTarget(record);
     setUpdateModalOpen(true);
-  }, []);
+  }, [hasPerm]);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -1209,6 +1235,10 @@ const ScadaListPage = () => {
         if (linkedAction === "edit") {
           openUpdateDrawer(record);
         } else {
+          if (!hasPerm?.("scada:read")) {
+            toast.warning("Bạn không có quyền xem chi tiết hệ thống SCADA");
+            return;
+          }
           setSelectedRecord(record);
           setDetailDrawerOpen(true);
         }
@@ -1222,23 +1252,24 @@ const ScadaListPage = () => {
     return () => {
       active = false;
     };
-  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
+  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer, hasPerm]);
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: ScadaResponse) => {
-      const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [
-        {
+      const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [];
+
+      if (hasPerm?.("scada:read")) {
+        actions.push({
           key: "view",
           label: "Xem chi tiết",
           icon: icons.view,
           onClick: () => openDetailRecord(record),
-        },
-      ];
+        });
+      }
 
-      // Chỉnh sửa: hồ sơ Lưu tạm (DRAFT) luôn sửa được; hồ sơ Đã phê duyệt (APPROVED) chỉ mở cho
-      // người có quyền phê duyệt cấp Cục (scada:approvec2) — chuẩn CHK. PENDING/REJECTED không mở.
-      if (record.approvalStatus === "DRAFT" || (record.approvalStatus === "APPROVED" && canSaveAndApprove)) {
+      // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy)
+      if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "scada" })) {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
@@ -1248,12 +1279,14 @@ const ScadaListPage = () => {
       }
 
       // Lịch sử thay đổi (Audit trail — chuẩn CHK: Xem chi tiết → Chỉnh sửa → Lịch sử)
-      actions.push({
-        key: "history",
-        label: "Lịch sử",
-        icon: icons.history,
-        onClick: () => openHistory(record),
-      });
+      if (hasPerm?.("scada:history")) {
+        actions.push({
+          key: "history",
+          label: "Lịch sử",
+          icon: icons.history,
+          onClick: () => openHistory(record),
+        });
+      }
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + scada:update → Gửi phê duyệt (submitScada)
       if (
@@ -1334,7 +1367,7 @@ const ScadaListPage = () => {
       }
 
       // Chỉ hồ sơ "Lưu tạm" mới được xóa (phê duyệt 2 cấp — như /vts-system)
-      if (hasPerm?.("scada:delete") && record.approvalStatus === "DRAFT") {
+      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: "scada" })) {
         actions.push({
           key: "delete",
           label: "Xóa",
@@ -1364,9 +1397,8 @@ const ScadaListPage = () => {
         orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
-        search: filterValues.deviceCode || filterValues.deviceName || undefined,
-        deviceCode: filterValues.deviceCode || undefined,
-        deviceName: filterValues.deviceName || undefined,
+        deviceCode: filterDeviceCode.trim() || undefined,
+        deviceName: filterDeviceName.trim() || undefined,
         operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
         approvalStatus: filterValues.approvalStatus || undefined,
         province: filterValues.province || undefined,
@@ -1388,7 +1420,7 @@ const ScadaListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   const fetchOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
@@ -1435,15 +1467,18 @@ const ScadaListPage = () => {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
+    setFilterDeviceName(inputDeviceName);
+    setFilterDeviceCode(inputDeviceCode);
     setPage(0);
-    fetchData();
-  }, [fetchData, filterValues.updatedFrom, filterValues.updatedTo]);
+  }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
   const handleFilterReset = useCallback(() => {
+    setInputDeviceName("");
+    setInputDeviceCode("");
+    setFilterDeviceName("");
+    setFilterDeviceCode("");
     setFilterValues({
       orgUnitId: "",
-      deviceName: "",
-      deviceCode: "",
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -1455,8 +1490,7 @@ const ScadaListPage = () => {
       updatedTo: "",
     });
     setPage(0);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
@@ -1794,6 +1828,10 @@ const ScadaListPage = () => {
                 icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
+                  if (!hasPerm?.("scada:create")) {
+                    toast.warning("Bạn không có quyền thêm mới hệ thống SCADA");
+                    return;
+                  }
                   setCreateModalOpen(true);
                 },
               }
@@ -1837,13 +1875,8 @@ const ScadaListPage = () => {
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
               <Input placeholder="Tìm theo tên thiết bị..." allowClear
-                value={filterValues.deviceName || ""}
-                onChange={(e) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    deviceName: e.target.value,
-                  }))
-                }
+                value={inputDeviceName}
+                onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </SidebarFilterField>
@@ -1852,13 +1885,8 @@ const ScadaListPage = () => {
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
                   <Input placeholder="Tìm theo mã thiết bị..." allowClear
-                    value={filterValues.deviceCode || ""}
-                    onChange={(e) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        deviceCode: e.target.value,
-                      }))
-                    }
+                    value={inputDeviceCode}
+                    onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </SidebarFilterField>

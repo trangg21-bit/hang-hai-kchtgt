@@ -27,7 +27,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -91,9 +93,10 @@ public class RadarStationController {
     public ResponseEntity<ApiResponse<Map<String, Long>>> getTabCounts(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String stationName,
             @RequestParam(required = false) String conditionStatus) {
         try {
-            Map<String, Long> counts = service.getTabCounts(orgUnitId, keyword, conditionStatus);
+            Map<String, Long> counts = service.getTabCounts(orgUnitId, keyword, stationName, conditionStatus);
             return ResponseEntity.ok(ApiResponse.success("Thống kê số lượng theo trạng thái", counts));
         } catch (Exception e) {
             log.warn("Lỗi khi lấy tab counts trạm radar: {}", e.getMessage());
@@ -131,6 +134,7 @@ public class RadarStationController {
     @GetMapping("/search-paged")
     public ResponseEntity<ApiResponse<Page<RadarStationResponse>>> searchPaged(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String stationName,
             @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID seaportId,
@@ -152,9 +156,9 @@ public class RadarStationController {
             Sort sort = Sort.by(Sort.Direction.fromString(sortOrder), sortBy);
             PageRequest pageable = PageRequest.of(page, size, sort);
             Page<RadarStationResponse> responses = service.searchPaged(
-                    keyword, code, orgUnitId, seaportId, vtsSystemId, vtsOperationCenterId,
+                    keyword, stationName, code, orgUnitId, seaportId, vtsSystemId, vtsOperationCenterId,
                     operatingUnitId, provinceId, conditionStatus, approvalStatus, status,
-                    updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo), pageable);
+                    updatedBy, parseUpdatedFrom(updatedFrom), parseUpdatedTo(updatedTo), pageable);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm trạm radar thành công", responses));
         } catch (Exception e) {
             log.warn("Lỗi khi tìm kiếm phân trang trạm radar: {}", e.getMessage());
@@ -316,7 +320,7 @@ public class RadarStationController {
 
     // ── Attachment endpoints (InfrastructureAttachment, ref_type RADAR_STATION) ──
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:update')")
+    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<RadarStationAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
@@ -389,14 +393,36 @@ public class RadarStationController {
                 .body(resource);
     }
 
-    private LocalDateTime parseLocalDateTime(String dateStr) {
+    private LocalDateTime parseUpdatedFrom(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty())
             return null;
+        String trimmed = dateStr.trim();
         try {
-            return LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME);
+            if (trimmed.length() == 10) {
+                return LocalDate.parse(trimmed).atStartOfDay();
+            }
+            return LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
             try {
-                return LocalDateTime.parse(dateStr + "T00:00:00");
+                return LocalDateTime.parse(trimmed + "T00:00:00");
+            } catch (Exception e2) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseUpdatedTo(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty())
+            return null;
+        String trimmed = dateStr.trim();
+        try {
+            if (trimmed.length() == 10) {
+                return LocalDate.parse(trimmed).atTime(LocalTime.MAX);
+            }
+            return LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_DATE_TIME);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(trimmed + "T23:59:59.999999");
             } catch (Exception e2) {
                 return null;
             }

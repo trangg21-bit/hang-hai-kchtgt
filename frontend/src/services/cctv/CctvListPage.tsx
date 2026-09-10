@@ -58,6 +58,7 @@ import CctvForm, { type CctvFormRef } from "./CctvForm";
 import { DetailTable } from "../../components/shared/DetailTable";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { useAuthStore } from "../../store/authStore";
 import EmptyState from "../../components/EmptyState";
@@ -303,11 +304,13 @@ const CctvListPage = () => {
   const [pageSize, setPageSize] = useState(20);
 
   // Filters
+  const [inputDeviceName, setInputDeviceName] = useState("");
+  const [inputDeviceCode, setInputDeviceCode] = useState("");
+  const [filterDeviceName, setFilterDeviceName] = useState("");
+  const [filterDeviceCode, setFilterDeviceCode] = useState("");
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState({
     orgUnitId: "" as string,
-    deviceName: "",
-    deviceCode: "",
     operationalStatus: undefined as number | undefined,
     approvalStatus: "" as string,
     province: "" as string,
@@ -339,6 +342,7 @@ const CctvListPage = () => {
           orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
+          deviceName: filterDeviceName.trim() || undefined,
           approvalStatus: s.status,
         })
       )
@@ -357,7 +361,7 @@ const CctvListPage = () => {
         counts.REJECTED_LEVEL1 +
         counts.REJECTED_LEVEL2
     );
-  }, [filterValues.orgUnitId]);
+  }, [filterValues.orgUnitId, filterDeviceName]);
 
   // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
   // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
@@ -512,13 +516,17 @@ const CctvListPage = () => {
 
   // Mở Drawer Xem chi tiết + nạp danh sách File đính kèm (read-only tab)
   const openViewDetail = useCallback((record: CctvResponse) => {
+    if (!hasPerm?.('cctv:read')) {
+      toast.warning('Bạn không có quyền xem chi tiết hệ thống CCTV');
+      return;
+    }
     setSelectedRecord(record);
     setDetailDrawerOpen(true);
     setAttachmentItems([]);
     void fetchCctvAttachments(record.id)
       .then((list: RawAttachmentItem[]) => setAttachmentItems(toAttachmentItemList(list)))
       .catch(() => { /* ignore */ });
-  }, []);
+  }, [hasPerm]);
 
   const columns = useMemo(
     () => {
@@ -565,15 +573,25 @@ const CctvListPage = () => {
         ellipsis: false,
         render: (val: string, record: CctvResponse) => (
           <div style={{ minWidth: 0 }}>
-            <button
-              type="button"
-              className="kcht-cell-title"
-              onClick={() => openViewDetail(record)}
-              style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-              title={val || null}
-            >
-              {val || null}
-            </button>
+            {hasPerm?.('cctv:read') ? (
+              <button
+                type="button"
+                className="kcht-cell-title"
+                onClick={() => openViewDetail(record)}
+                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                title={val || null}
+              >
+                {val || null}
+              </button>
+            ) : (
+              <span
+                className="kcht-cell-title"
+                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                title={val || null}
+              >
+                {val || null}
+              </span>
+            )}
             <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
           </div>
         ),
@@ -713,7 +731,7 @@ const CctvListPage = () => {
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder, openViewDetail]
+    [page, pageSize, sortField, sortOrder, openViewDetail, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1191,18 +1209,19 @@ const CctvListPage = () => {
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: CctvResponse) => {
-      const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [
-        {
+      const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [];
+
+      if (hasPerm?.("cctv:read")) {
+        actions.push({
           key: "view",
           label: "Xem chi tiết",
           icon: icons.view,
           onClick: () => openViewDetail(record),
-        },
-      ];
+        });
+      }
 
-      // Chỉnh sửa: hồ sơ Đã phê duyệt chỉ người có quyền phê duyệt cấp Cục (cctv:approvec2) mới sửa được
-      // (chuẩn §3.6 + 12 điều vàng #8); các trạng thái khác vẫn mở theo yêu cầu nghiệp vụ 2026-08-26.
-      if (record.approvalStatus !== "APPROVED" || canSaveAndApprove) {
+      // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy)
+      if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "cctv" })) {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
@@ -1214,25 +1233,27 @@ const CctvListPage = () => {
         });
       }
 
-      actions.push({
-        key: "history",
-        label: "Lịch sử",
-        icon: icons.history,
-        onClick: () => {
-          setSelectedRecord(record);
-          setHistoryEntityName(record.deviceName || '');
-          setHistoryModalVisible(true);
-          setHistoryRecords([]);
-          setLoadingHistory(false);
-          setLoadingMoreHistory(false);
-          setHasMoreHistory(true);
-          setHistorySearch('');
-          setHistorySearchInput('');
-          setHistoryDateFrom('');
-          setHistoryDateTo('');
-          setHistoryPage(0);
-        },
-      });
+      if (hasPerm?.("cctv:history")) {
+        actions.push({
+          key: "history",
+          label: "Lịch sử",
+          icon: icons.history,
+          onClick: () => {
+            setSelectedRecord(record);
+            setHistoryEntityName(record.deviceName || '');
+            setHistoryModalVisible(true);
+            setHistoryRecords([]);
+            setLoadingHistory(false);
+            setLoadingMoreHistory(false);
+            setHasMoreHistory(true);
+            setHistorySearch('');
+            setHistorySearchInput('');
+            setHistoryDateFrom('');
+            setHistoryDateTo('');
+            setHistoryPage(0);
+          },
+        });
+      }
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + cctv:update → Gửi phê duyệt (submitCctv)
       if (
@@ -1313,7 +1334,7 @@ const CctvListPage = () => {
       }
 
       // Chỉ hồ sơ "Lưu tạm" mới được xóa (phê duyệt 2 cấp — như /vts-system)
-      if (hasPerm?.("cctv:delete") && record.approvalStatus === "DRAFT") {
+      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: "cctv" })) {
         actions.push({
           key: "delete",
           label: "Xóa",
@@ -1343,9 +1364,8 @@ const CctvListPage = () => {
         orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
-        search: filterValues.deviceCode || filterValues.deviceName || undefined,
-        deviceCode: filterValues.deviceCode || undefined,
-        deviceName: filterValues.deviceName || undefined,
+        deviceCode: filterDeviceCode.trim() || undefined,
+        deviceName: filterDeviceName.trim() || undefined,
         operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
         approvalStatus: filterValues.approvalStatus || undefined,
         province: filterValues.province || undefined,
@@ -1367,7 +1387,7 @@ const CctvListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   const fetchOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
@@ -1411,15 +1431,18 @@ const CctvListPage = () => {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
+    setFilterDeviceName(inputDeviceName);
+    setFilterDeviceCode(inputDeviceCode);
     setPage(0);
-    fetchData();
-  }, [fetchData, filterValues.updatedFrom, filterValues.updatedTo]);
+  }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
   const handleFilterReset = useCallback(() => {
+    setInputDeviceName("");
+    setInputDeviceCode("");
+    setFilterDeviceName("");
+    setFilterDeviceCode("");
     setFilterValues({
       orgUnitId: "",
-      deviceName: "",
-      deviceCode: "",
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -1431,8 +1454,7 @@ const CctvListPage = () => {
       updatedTo: "",
     });
     setPage(0);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
@@ -1833,6 +1855,10 @@ const CctvListPage = () => {
                 icon: <PlusOutlined />,
                 variant: "primary" as const,
                 onClick: () => {
+                  if (!hasPerm?.("cctv:create")) {
+                    toast.warning("Bạn không có quyền thêm mới hệ thống CCTV");
+                    return;
+                  }
                   createForm.resetFields();
                   setCreateModalOpen(true);
                 },
@@ -1878,13 +1904,8 @@ const CctvListPage = () => {
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
               <Input placeholder="Tìm theo tên thiết bị..." allowClear
-                value={filterValues.deviceName || ""}
-                onChange={(e) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    deviceName: e.target.value,
-                  }))
-                }
+                value={inputDeviceName}
+                onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </SidebarFilterField>
@@ -1893,13 +1914,8 @@ const CctvListPage = () => {
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
                   <Input placeholder="Tìm theo mã thiết bị..." allowClear
-                    value={filterValues.deviceCode || ""}
-                    onChange={(e) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        deviceCode: e.target.value,
-                      }))
-                    }
+                    value={inputDeviceCode}
+                    onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </SidebarFilterField>

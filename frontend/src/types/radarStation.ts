@@ -52,6 +52,7 @@ export interface RadarStationResponse {
   operatingUnitId?: string;
   operatingUnitName?: string;
   provinceId?: string;
+  provinceName?: string;
   unitOfMeasure?: string;
   quantity?: number;
   conditionStatus?: string;
@@ -134,6 +135,7 @@ export interface UpdateRadarStationRequest extends Partial<CreateRadarStationReq
 
 export interface ListParams {
   keyword?: string;
+  stationName?: string;
   code?: string;
   orgUnitId?: string;
   seaportId?: string;

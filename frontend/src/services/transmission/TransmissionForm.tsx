@@ -1,7 +1,7 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs,
+  Row, Col, Form, Input, Select, InputNumber, type InputNumberProps, Tabs,
   Button, Space, DatePicker, Modal,
 } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import {
   colors, DRAWER_TABLE_SCROLL_Y,
-  textTertiary, borderDefault, actionPrimary, statusCritical,
+  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, spaceMd,
   surfaceCard, readonlyInputStyle,
@@ -61,6 +61,34 @@ const labelProps = (text: string) => ({
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
+
+const parseNumber5 = (value: unknown): any => {
+  if (!value) return '' as any;
+  const digits = String(value).replace(/\D/g, '');
+  return (digits.length > 5 ? digits.slice(0, 5) : digits) as any;
+};
+
+const getValueFromEvent5 = (val: unknown): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const str = String(val).replace(/\D/g, '');
+  return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
+};
+
 const textAreaStyle: React.CSSProperties = { borderRadius: 8 };
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với chuẩn /berth
@@ -136,6 +164,18 @@ const UOM_OPTIONS = [
   { label: 'Trụ', value: 26 },
   { label: 'VNĐ', value: 27 },
 ];
+/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
+};
 
 const dmsUnitStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -306,6 +346,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const gisCoordSnapshotRef = useRef<{ coords: Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>; symbolId?: string }>({ coords: [], symbolId: undefined });
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [pendingDeletedIds, setPendingDeletedIds] = useState<string[]>([]);
 
@@ -381,8 +422,10 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   // Đồng bộ số dòng tọa độ theo loại hình hình học
   useEffect(() => {
     if (!watchedGeometryType) {
-      form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setCoordinateList([]);
+      setGpsError(null);
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
@@ -861,13 +904,21 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   name="quantity"
                   {...labelProps('Số lượng')}
                   style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent5}
                   rules={[
                     { required: true, message: 'Vui lòng nhập số lượng' },
-                    { type: 'number', min: 1, message: 'Số lượng phải lớn hơn 0' },
                   ]}
                   initialValue={1}
                 >
-                  <InputNumber min={1} placeholder="Nhập số lượng..." style={numberInputStyle} />
+                  <NumberInputWithCount
+                    min={1}
+                    step={1}
+                    precision={0}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    maxLength={5}
+                    parser={parseNumber5}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -1012,8 +1063,12 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                 <Form.Item
                   name="mapSymbolId"
                   {...labelProps('Biểu tượng')}
-                  required={hasLocation}
-                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  required={!!watchedGeometryType}
+                  rules={
+                    watchedGeometryType
+                      ? [{ required: true, message: 'Vui lòng chọn biểu tượng' }]
+                      : []
+                  }
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select
@@ -1080,7 +1135,13 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
               <Space size={8}>
                 <Button
                   icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
-                  onClick={() => setGisModalOpen(true)}
+                  onClick={() => {
+                    gisCoordSnapshotRef.current = {
+                      coords: coordinateList.map((c) => ({ ...c })),
+                      symbolId: form.getFieldValue('mapSymbolId'),
+                    };
+                    setGisModalOpen(true);
+                  }}
                   disabled={!watchedGeometryType}
                   style={!watchedGeometryType ? {
                     height: 32,
@@ -1244,10 +1305,28 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
               setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid));
             }}
             onDownload={async (uid, name) => {
+              const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
+              const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+              if (rawFile) {
+                const url = window.URL.createObjectURL(rawFile);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name || (rawFile as File).name || 'attachment';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                return;
+              }
+
               if (isEdit && id) {
-                await downloadTransmissionAttachment(id, uid, name);
+                try {
+                  await downloadTransmissionAttachment(id, uid, name);
+                } catch {
+                  toast.error('Không thể tải xuống tệp đính kèm');
+                }
               } else {
-                toast.info(`Đang tải xuống tệp: ${name}`);
+                toast.error('Không tìm thấy tệp để tải xuống');
               }
             }}
           />
@@ -1271,29 +1350,37 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => setGisModalOpen(false)}
+        onCancel={() => {
+          setCoordinateList(gisCoordSnapshotRef.current.coords);
+          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+          setGisModalOpen(false);
+        }}
         destroyOnClose
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => setGisModalOpen(false)}
+            onClick={() => {
+              setCoordinateList(gisCoordSnapshotRef.current.coords);
+              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+              setGisModalOpen(false);
+            }}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
           </Button>,
           <Button
-            key="ok"
+            key="confirm"
             type="primary"
             onClick={() => setGisModalOpen(false)}
-            style={{ ...primaryButtonStyle, height: 36 }}
+            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
           </Button>,
         ]}
       >
-        <div style={{ padding: '8px 0' }}>
+        <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 12 }}>
           <GisLocationSelector
             inline={true}
             value={{
@@ -1307,64 +1394,51 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   }));
                 return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
               })(),
-              symbolId: form.getFieldValue('mapIcon') || undefined,
+              symbolId: form.getFieldValue('mapSymbolId') || undefined,
             }}
             defaultGeometryType={watchedGeometryType || 'POINT'}
             height={520}
-            onChange={(val) => {
-              if (val?.coordinates) {
-                const points = parseWktToCoordinates(val.coordinates);
-                if (points.length > 0) {
-                  if (watchedGeometryType === 'POINT') {
-                    const p = points[0];
-                    const latDms = ddToDms(p.latitude);
-                    const lngDms = ddToDms(p.longitude);
-                    setCoordinateList([
-                      {
-                        latD: latDms.d,
-                        latM: latDms.m,
-                        latS: latDms.s,
-                        lngD: lngDms.d,
-                        lngM: lngDms.m,
-                        lngS: lngDms.s,
-                      },
-                    ]);
-                    setGpsError(null);
-                    return;
-                  }
+            onChange={(val: any) => {
+              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
+              const points = parseGisCoordinates(val);
+              if (points.length > 0) {
+                if (watchedGeometryType === 'POINT') {
+                  const p = points[0];
+                  const latDms = ddToDms(p.latitude);
+                  const lngDms = ddToDms(p.longitude);
+                  setCoordinateList([
+                    {
+                      latD: latDms.d,
+                      latM: latDms.m,
+                      latS: latDms.s,
+                      lngD: lngDms.d,
+                      lngM: lngDms.m,
+                      lngS: lngDms.s,
+                    },
+                  ]);
+                } else {
                   setCoordinateList((prev) => {
-                    const existing = prev || [];
-                    const key = (p: { latitude: number; longitude: number }) =>
-                      `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(
-                      existing
-                        .filter((c) => c.latD != null && c.lngD != null)
-                        .map((c) =>
-                          key({
-                            latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                            longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                          }),
-                        ),
-                    );
-                    const toAdd = points
-                      .filter((p) => !existingKeys.has(key(p)))
-                      .map((p) => {
-                        const latDms = ddToDms(p.latitude);
-                        const lngDms = ddToDms(p.longitude);
-                        return {
-                          latD: latDms.d,
-                          latM: latDms.m,
-                          latS: latDms.s,
-                          lngD: lngDms.d,
-                          lngM: lngDms.m,
-                          lngS: lngDms.s,
-                        };
-                      });
-                    if (toAdd.length === 0) return existing;
-                    return [...existing, ...toAdd];
+                    const toDms = (p: { latitude: number; longitude: number }) => {
+                      const lat = ddToDms(p.latitude);
+                      const lng = ddToDms(p.longitude);
+                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+                    };
+                    const newRows = points.map(toDms);
+                    const merged = [...prev];
+                    let newIdx = 0;
+                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
+                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
+                      if (!isFilled(merged[i])) {
+                        merged[i] = newRows[newIdx++];
+                      }
+                    }
+                    while (newIdx < newRows.length) {
+                      merged.push(newRows[newIdx++]);
+                    }
+                    return merged;
                   });
-                  setGpsError(null);
                 }
+                setGpsError(null);
               }
             }}
           />

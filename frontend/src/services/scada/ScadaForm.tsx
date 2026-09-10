@@ -1,4 +1,4 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
@@ -27,12 +27,14 @@ import { useAuthStore } from '../../store/authStore';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
+import { userService } from '../userService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { Symbol as MapSymbolType } from '../symbolService';
 import {
   GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt,
+  ddToDms,
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
 import {
@@ -142,15 +144,19 @@ const UNIT_OF_MEASURE_OPTIONS = [
   { label: 'VNĐ', value: 27 },
 ];
 
-function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
-  if (dd == null || Number.isNaN(dd)) return { d: null, m: null, s: null };
-  const abs = Math.abs(dd);
-  const d = Math.floor(abs);
-  const minFloat = (abs - d) * 60;
-  const m = Math.floor(minFloat);
-  const s = Math.round((minFloat - m) * 60 * 10000) / 10000;
-  return { d: dd < 0 ? -d : d, m, s };
-}
+/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
+};
+
 
 const dmsUnitStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -300,10 +306,25 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   const [coordinateList, setCoordinateList] = useState<DmsCoordinateItem[]>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalVisible, setGisModalVisible] = useState(false);
+  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string }>({ coords: [], symbolId: undefined });
 
   // Attachments state
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [existingFiles, setExistingFiles] = useState<RawAttachmentItem[]>([]);
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const map = new Map<string, string>();
+        (resp.items || []).forEach((u: any) => {
+          if (u.id) map.set(u.id, u.fullName || u.username);
+        });
+        setUserMap(map);
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   // Form watchers
   const watchedGeometryType = Form.useWatch('geometryType', form);
@@ -431,7 +452,13 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
 
   // GIS Geometry Type changes: adjust coordinateList
   useEffect(() => {
-    if (!watchedGeometryType) return;
+    if (!watchedGeometryType) {
+      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+      setCoordinateList([]);
+      setGpsError(null);
+      return;
+    }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     setCoordinateList((prev) => {
@@ -528,6 +555,37 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       }
     })();
   }, [isEdit, id, form]);
+
+  const handleBeforeUpload = (file: File): false => {
+    if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) {
+      toast.error('Định dạng không hỗ trợ'); return false;
+    }
+    if (uploadedFiles.length >= 10) { toast.error('Số lượng tệp đính kèm tối đa là 10 tệp'); return false; }
+    const nowIso = dayjs().toISOString();
+    const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+    setUploadedFiles((prev) => [
+      ...prev,
+      {
+        uid: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        name: file.name,
+        fileName: file.name,
+        size: file.size,
+        fileSize: file.size,
+        type: file.type,
+        fileType: file.type,
+        uploadedByName: uploaderName,
+        uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+        uploadedDate: nowIso,
+        uploadedAt: nowIso,
+        createdAt: nowIso,
+        status: 'done',
+        originFileObj: file as unknown as UploadFile['originFileObj'],
+      },
+    ]);
+    return false;
+  };
 
   // Imperative Submit
   useImperativeHandle(ref, () => ({
@@ -1031,7 +1089,17 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                       </Form.Item>
                     </Col>
                     <Col span={12}>
-                      <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+                      <Form.Item
+                        name="mapSymbolId"
+                        {...labelProps('Biểu tượng')}
+                        required={!!watchedGeometryType}
+                        rules={
+                          watchedGeometryType
+                            ? [{ required: true, message: 'Vui lòng chọn biểu tượng' }]
+                            : []
+                        }
+                        style={{ marginBottom: spaceFormField }}
+                      >
                         <Select
                           placeholder="Chọn biểu tượng bản đồ"
                           allowClear
@@ -1082,7 +1150,13 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                     <Space size={8}>
                       <Button
                         icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
-                        onClick={() => setGisModalVisible(true)}
+                        onClick={() => {
+                          gisCoordSnapshotRef.current = {
+                            coords: coordinateList.map((c) => ({ ...c })),
+                            symbolId: form.getFieldValue('mapSymbolId'),
+                          };
+                          setGisModalVisible(true);
+                        }}
                         disabled={!watchedGeometryType}
                         style={!watchedGeometryType ? {
                           height: 32,
@@ -1208,16 +1282,30 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           },
           {
             key: 'attachments',
-            label: 'Tệp đính kèm',
+            label: `Tệp đính kèm (${uploadedFiles.length})`,
             children: (
               <div style={drawerFormScrollStyle}>
                 <InfrastructureAttachmentTab
-                  attachments={uploadedFiles}
+                  attachments={uploadedFiles.map((f: any) => ({
+                    ...f,
+                    id: f.uid || f.id,
+                    fileName: f.name || f.fileName || (f.originFileObj as File)?.name || '—',
+                    fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
+                    uploadedByName:
+                      f.uploadedByName ||
+                      (f.uploadedBy ? userMap.get(f.uploadedBy) || f.uploadedBy : '') ||
+                      currentUser?.fullName ||
+                      currentUser?.username ||
+                      'Cán bộ quản lý',
+                    uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
+                  }))}
+                  readonly={false}
+                  userMap={userMap}
                   onUpload={(file) => {
-                    setUploadedFiles((prev) => [...prev, file]);
+                    handleBeforeUpload(file);
+                    return false;
                   }}
-                  onDelete={async (file) => {
-                    const attId = file.uid;
+                  onDelete={async (attId: string) => {
                     const isExisting = existingFiles.some((a) => a.id === attId);
                     if (isExisting && id) {
                       try {
@@ -1228,12 +1316,32 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         return;
                       }
                     }
-                    setUploadedFiles((prev) => prev.filter((f) => f.uid !== file.uid));
+                    setUploadedFiles((prev) => prev.filter((f) => (f.uid || (f as any).id) !== attId));
                     setExistingFiles((prev) => prev.filter((a) => a.id !== attId));
                   }}
-                  onDownload={(attId, fileName) => {
-                    if (id) {
-                      downloadScadaAttachment(id, attId, fileName);
+                  onDownload={async (uid, name) => {
+                    const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
+                    const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+                    if (rawFile) {
+                      const url = window.URL.createObjectURL(rawFile);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = name || (rawFile as File).name || 'attachment';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      window.URL.revokeObjectURL(url);
+                      return;
+                    }
+
+                    if (isEdit && id) {
+                      try {
+                        await downloadScadaAttachment(id, uid, name);
+                      } catch {
+                        toast.error('Không thể tải xuống tệp đính kèm');
+                      }
+                    } else {
+                      toast.error('Không tìm thấy tệp để tải xuống');
                     }
                   }}
                 />
@@ -1252,13 +1360,33 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           </div>
         }
         open={gisModalVisible}
-        onCancel={() => setGisModalVisible(false)}
+        onCancel={() => {
+          setCoordinateList(gisCoordSnapshotRef.current.coords);
+          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+          setGisModalVisible(false);
+        }}
         destroyOnClose
         width="94vw"
         style={{ maxWidth: 1400, top: 20 }}
         footer={[
-          <Button key="close" type="primary" onClick={() => setGisModalVisible(false)} style={primaryButtonStyle}>
-            Xong
+          <Button
+            key="cancel"
+            onClick={() => {
+              setCoordinateList(gisCoordSnapshotRef.current.coords);
+              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+              setGisModalVisible(false);
+            }}
+            style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
+          >
+            Hủy
+          </Button>,
+          <Button
+            key="confirm"
+            type="primary"
+            onClick={() => setGisModalVisible(false)}
+            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
+          >
+            Xác nhận tọa độ
           </Button>,
         ]}
       >
@@ -1267,30 +1395,54 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             inline={true}
             defaultGeometryType={(watchedGeometryType as 'POINT' | 'LINE' | 'POLYGON') || 'POINT'}
             height={520}
-            onChange={(val) => {
-              const wkt = val?.coordinates || '';
-              if (wkt) {
-                const points = parseWktToCoordinates(wkt);
-                if (points.length > 0) {
+            value={{
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: (() => {
+                const valid = coordinateList
+                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+                  .map((c) => ({
+                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
+                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
+                  }));
+                return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
+              })(),
+              symbolId: form.getFieldValue('mapSymbolId') || undefined,
+            }}
+            onChange={(val: any) => {
+              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
+              const points = parseGisCoordinates(val);
+              if (points.length > 0) {
+                if (watchedGeometryType === 'POINT') {
+                  const p = points[0];
+                  const latDms = ddToDms(p.latitude);
+                  const lngDms = ddToDms(p.longitude);
+                  setCoordinateList([{
+                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
+                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+                  }]);
+                } else {
                   setCoordinateList((prev) => {
-                    const existing = prev || [];
-                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(existing
-                      .filter((c) => c.latD != null && c.lngD != null)
-                      .map((c) => key({
-                        latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                        longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                      })));
-                    const toAdd = points.filter((p) => !existingKeys.has(key(p))).map((p) => {
-                      const latDms = ddToDms(p.latitude);
-                      const lngDms = ddToDms(p.longitude);
-                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                    });
-                    if (toAdd.length === 0) return existing;
-                    return [...existing, ...toAdd];
+                    const toDms = (p: { latitude: number; longitude: number }) => {
+                      const lat = ddToDms(p.latitude);
+                      const lng = ddToDms(p.longitude);
+                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+                    };
+                    const newRows = points.map(toDms);
+                    const merged = [...prev];
+                    let newIdx = 0;
+                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
+                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
+                      if (!isFilled(merged[i])) {
+                        merged[i] = newRows[newIdx++];
+                      }
+                    }
+                    while (newIdx < newRows.length) {
+                      merged.push(newRows[newIdx++]);
+                    }
+                    return merged;
                   });
-                  setGpsError(null);
                 }
+                setGpsError(null);
               }
             }}
           />

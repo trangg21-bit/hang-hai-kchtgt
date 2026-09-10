@@ -435,6 +435,30 @@ public class EffectivePermissionService {
             }
         }
 
+        // 8c. RadarStation / TramRadar resource alias
+        if ("radarstation".equals(resource) || "tramradar".equals(resource)) {
+            if (permissions.contains(PermissionConstants.build("radarstation", action))
+                    || permissions.contains(PermissionConstants.build("tramradar", action))
+                    || permissions.contains("radarstation:manage")
+                    || permissions.contains("tramradar:manage")
+                    || permissions.contains("radarstation:*")
+                    || permissions.contains("tramradar:*")) {
+                return true;
+            }
+        }
+
+        // 8d. BeaconStation / BeaconLight resource alias
+        if ("beaconstation".equals(resource) || "beaconlight".equals(resource)) {
+            if (permissions.contains(PermissionConstants.build("beaconstation", action))
+                    || permissions.contains(PermissionConstants.build("beaconlight", action))
+                    || permissions.contains("beaconstation:manage")
+                    || permissions.contains("beaconlight:manage")
+                    || permissions.contains("beaconstation:*")
+                    || permissions.contains("beaconlight:*")) {
+                return true;
+            }
+        }
+
         // 9. Document domain fallbacks for port planning, adjustments, operation plans,
         // maintenance plans
         if (Set.of("portplanning", "planningadjustment", "operationplan", "maintenanceplan").contains(resource)) {

@@ -1,8 +1,8 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
-  Button, Space, DatePicker, Modal,
+  Button, Space, DatePicker, Modal, type InputNumberProps,
 } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import {
   colors, DRAWER_TABLE_SCROLL_Y,
-  textTertiary, borderDefault, actionPrimary, statusCritical,
+  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, textAreaStyle,
@@ -46,6 +46,54 @@ import {
 } from '../../utils/gisGeometry';
 
 const fontSizeMd = 13.5;
+
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+/** Hiển thị số ký tự đã nhập để giới hạn 5/20 chữ số dễ nhận biết (chuẩn màn /port). */
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
+
+const parseNumber5 = (value: unknown): any => {
+  if (!value) return '' as any;
+  const digits = String(value).replace(/\D/g, '');
+  return (digits.length > 5 ? digits.slice(0, 5) : digits) as any;
+};
+
+const getValueFromEvent5 = (val: unknown): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const str = String(val).replace(/\D/g, '');
+  return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
+};
+
+const parseNumber20 = (value: unknown): any => {
+  if (!value) return '' as any;
+  const str = String(value).replace(/[^0-9.]/g, '');
+  const parts = str.split('.');
+  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
+  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
+};
+
+const getValueFromEvent20 = (val: unknown): any => {
+  if (val === null || val === undefined || val === '') return null;
+  const str = String(val).replace(/[^0-9.]/g, '');
+  const parts = str.split('.');
+  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
+  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
+  if (sliced.endsWith('.')) return sliced;
+  const num = Number(sliced);
+  return isNaN(num) ? null : num;
+};
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -126,6 +174,19 @@ const dmsUnitEndStyle: React.CSSProperties = {
   borderRadius: '0 999px 999px 0',
   fontSize: fontSizeSm,
   color: textTertiary,
+};
+
+/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
 };
 
 /**
@@ -237,6 +298,7 @@ export default forwardRef(function BeaconStationForm(
   }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const gisCoordSnapshotRef = useRef<{ coords: any[]; symbolId?: string }>({ coords: [], symbolId: undefined });
   const [codeLoading, setCodeLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
 
@@ -374,7 +436,13 @@ export default forwardRef(function BeaconStationForm(
 
   // Adjust coordinate list when geometry type changes
   useEffect(() => {
-    if (!watchedGeometryType) return;
+    if (!watchedGeometryType) {
+      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+      setCoordinateList([]);
+      setGpsError(null);
+      return;
+    }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     setCoordinateList((prev) => {
@@ -383,8 +451,8 @@ export default forwardRef(function BeaconStationForm(
           latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null,
         }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+      if (watchedGeometryType === 'POINT') {
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({
@@ -684,8 +752,15 @@ export default forwardRef(function BeaconStationForm(
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="lightRange" {...labelProps('Tầm hiệu lực ánh sáng (hải lý)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tầm hiệu lực' }]}>
-                  <InputNumber min={0.01} max={60} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                <Form.Item
+                  name="lightRange"
+                  {...labelProps('Tầm hiệu lực ánh sáng (hải lý)')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Vui lòng nhập tầm hiệu lực' }]}
+                  getValueFromEvent={getValueFromEvent20}
+                >
+                  <NumberInputWithCount min={0.01} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
                 </Form.Item>
               </Col>
             </Row>
@@ -715,13 +790,23 @@ export default forwardRef(function BeaconStationForm(
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn (m)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber min={0} max={99999} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                <Form.Item
+                  name="towerHeight"
+                  {...labelProps('Chiều cao tháp đèn (m)')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                >
+                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="lightHeight" {...labelProps('Chiều cao tâm sáng (m)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber min={0} max={99999} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                <Form.Item
+                  name="lightHeight"
+                  {...labelProps('Chiều cao tâm sáng (m)')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                >
+                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
                 </Form.Item>
               </Col>
             </Row>
@@ -780,20 +865,43 @@ export default forwardRef(function BeaconStationForm(
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="area" {...labelProps('Diện tích (m²)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber min={0} max={99999} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                <Form.Item
+                  name="area"
+                  {...labelProps('Diện tích (m²)')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                >
+                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="stationArea" {...labelProps('Diện tích sử dụng trạm đèn (m²)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber min={0} max={99999} step={0.01} precision={2} placeholder="0" style={numberInputStyle} />
+                <Form.Item
+                  name="stationArea"
+                  {...labelProps('Diện tích sử dụng trạm đèn (m²)')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                >
+                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber min={0} max={99999} step={1} precision={0} placeholder="0" style={numberInputStyle} />
+                <Form.Item
+                  name="staffCount"
+                  {...labelProps('Số lượng nhân sự bố trí')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent5}
+                >
+                  <NumberInputWithCount
+                    min={0}
+                    step={1}
+                    precision={0}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    maxLength={5}
+                    parser={parseNumber5}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -823,7 +931,17 @@ export default forwardRef(function BeaconStationForm(
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="mapSymbolId"
+                  {...labelProps('Biểu tượng')}
+                  required={!!watchedGeometryType}
+                  rules={
+                    watchedGeometryType
+                      ? [{ required: true, message: 'Vui lòng chọn biểu tượng' }]
+                      : []
+                  }
+                  style={{ marginBottom: spaceFormField }}
+                >
                   <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
                     {symbols.map((sym) => (
                       <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
@@ -860,7 +978,13 @@ export default forwardRef(function BeaconStationForm(
               <Space size={8}>
                 <Button
                   icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
-                  onClick={() => setGisModalOpen(true)}
+                  onClick={() => {
+                    gisCoordSnapshotRef.current = {
+                      coords: coordinateList.map((c) => ({ ...c })),
+                      symbolId: form.getFieldValue('mapSymbolId'),
+                    };
+                    setGisModalOpen(true);
+                  }}
                   disabled={!watchedGeometryType}
                   style={!watchedGeometryType ? {
                     height: 32,
@@ -1001,16 +1125,36 @@ export default forwardRef(function BeaconStationForm(
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
           onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid)); }}
           onDownload={async (uid, name) => {
-            if (isEdit && id) {
-              const blob = await beaconStationCRUD.downloadAttachment(id, uid);
-              const url = window.URL.createObjectURL(blob);
+            const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
+            const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+            if (rawFile) {
+              const url = window.URL.createObjectURL(rawFile);
               const a = document.createElement('a');
               a.href = url;
-              a.download = name;
+              a.download = name || (rawFile as File).name || 'attachment';
+              document.body.appendChild(a);
               a.click();
+              document.body.removeChild(a);
               window.URL.revokeObjectURL(url);
+              return;
+            }
+
+            if (isEdit && id) {
+              try {
+                const blob = await beaconStationCRUD.downloadAttachment(id, uid);
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name || 'attachment';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+              } catch {
+                toast.error('Không thể tải xuống tệp đính kèm');
+              }
             } else {
-              toast.info(`Đang tải xuống tệp: ${name}`);
+              toast.error('Không tìm thấy tệp để tải xuống');
             }
           }}
         />
@@ -1031,13 +1175,33 @@ export default forwardRef(function BeaconStationForm(
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => setGisModalOpen(false)}
+        onCancel={() => {
+          setCoordinateList(gisCoordSnapshotRef.current.coords);
+          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+          setGisModalOpen(false);
+        }}
         destroyOnClose
         width="94vw"
         style={{ maxWidth: 1400, top: 20 }}
         footer={[
-          <Button key="close" type="primary" onClick={() => setGisModalOpen(false)} style={primaryButtonStyle}>
-            Xong
+          <Button
+            key="cancel"
+            onClick={() => {
+              setCoordinateList(gisCoordSnapshotRef.current.coords);
+              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+              setGisModalOpen(false);
+            }}
+            style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
+          >
+            Hủy
+          </Button>,
+          <Button
+            key="confirm"
+            type="primary"
+            onClick={() => setGisModalOpen(false)}
+            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
+          >
+            Xác nhận tọa độ
           </Button>,
         ]}
       >
@@ -1046,30 +1210,54 @@ export default forwardRef(function BeaconStationForm(
             inline={true}
             defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
+            value={{
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: (() => {
+                const valid = coordinateList
+                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+                  .map((c) => ({
+                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
+                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
+                  }));
+                return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
+              })(),
+              symbolId: form.getFieldValue('mapSymbolId') || undefined,
+            }}
             onChange={(val: any) => {
-              const wkt = val?.coordinates || (typeof val === 'string' ? val : '');
-              if (wkt) {
-                const points = parseWktToCoordinates(wkt);
-                if (points.length > 0) {
+              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
+              const points = parseGisCoordinates(val);
+              if (points.length > 0) {
+                if (watchedGeometryType === 'POINT') {
+                  const p = points[0];
+                  const latDms = ddToDms(p.latitude);
+                  const lngDms = ddToDms(p.longitude);
+                  setCoordinateList([{
+                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
+                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+                  }]);
+                } else {
                   setCoordinateList((prev) => {
-                    const existing = prev || [];
-                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(existing
-                      .filter((c) => c.latD != null && c.lngD != null)
-                      .map((c) => key({
-                        latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                        longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                      })));
-                    const toAdd = points.filter((p) => !existingKeys.has(key(p))).map((p) => {
-                      const latDms = ddToDms(p.latitude);
-                      const lngDms = ddToDms(p.longitude);
-                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                    });
-                    if (toAdd.length === 0) return existing;
-                    return [...existing, ...toAdd];
+                    const toDms = (p: { latitude: number; longitude: number }) => {
+                      const lat = ddToDms(p.latitude);
+                      const lng = ddToDms(p.longitude);
+                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+                    };
+                    const newRows = points.map(toDms);
+                    const merged = [...prev];
+                    let newIdx = 0;
+                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
+                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
+                      if (!isFilled(merged[i])) {
+                        merged[i] = newRows[newIdx++];
+                      }
+                    }
+                    while (newIdx < newRows.length) {
+                      merged.push(newRows[newIdx++]);
+                    }
+                    return merged;
                   });
-                  setGpsError(null);
                 }
+                setGpsError(null);
               }
             }}
           />

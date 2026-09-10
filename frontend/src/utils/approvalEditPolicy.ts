@@ -149,9 +149,8 @@ export function canEditApprovalRecord(
   // Lưu tạm / Bị trả về: người nhập sửa được nếu có quyền cập nhật.
   if (isEditableByOwner(st)) {
     const perms = [
-      ...(resource ? [`${resource}:update`, `${resource}:write`] : []),
+      ...(resource ? [`${resource}:update`, `${resource}:write`] : ['data:update']),
       ...extraUpdatePerms,
-      'data:update',
     ];
     return perms.some(checkPerm);
   }

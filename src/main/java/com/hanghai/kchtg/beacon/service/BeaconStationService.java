@@ -808,6 +808,7 @@ public class BeaconStationService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .updatedBy(entity.getUpdatedBy())
+                .updatedByName(userResolverService.resolveName(entity.getUpdatedBy()))
                 .build();
     }
 

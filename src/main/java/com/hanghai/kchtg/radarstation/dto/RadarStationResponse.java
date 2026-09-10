@@ -40,6 +40,7 @@ public class RadarStationResponse {
     private UUID operatingUnitId;
     private String operatingUnitName;
     private Integer provinceId;
+    private String provinceName;
     private String unitOfMeasure;
     private Integer quantity;
     private String note;

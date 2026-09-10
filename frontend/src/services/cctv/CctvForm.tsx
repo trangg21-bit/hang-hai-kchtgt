@@ -1,4 +1,4 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
@@ -34,6 +34,7 @@ import type { Symbol as MapSymbol } from '../symbolService';
 import { useAuthStore } from '../../store/authStore';
 import {
   GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt,
+  ddToDms,
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
 import {
@@ -131,19 +132,19 @@ const UNIT_OF_MEASURE_OPTIONS = [
   { label: 'VNĐ', value: 27 },
 ];
 
-function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
-  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  const abs = Math.abs(dd);
-  let d = Math.floor(abs);
-  let mFloat = (abs - d) * 60;
-  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
-  let m = Math.floor(mFloat);
-  let sFloat = (mFloat - m) * 60;
-  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
-  let s = Math.round(sFloat * 100) / 100;
-  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
-}
+/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
+};
+
 
 const dmsUnitStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -306,6 +307,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
+  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string }>({ coords: [], symbolId: undefined });
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [, setExistingFiles] = useState<CctvAttachmentResponse[]>([]);
 
@@ -391,7 +393,13 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
-    if (!watchedGeometryType) return;
+    if (!watchedGeometryType) {
+      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+      setCoordinateList([]);
+      setGpsError(null);
+      return;
+    }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     setCoordinateList((prev) => {
@@ -953,7 +961,17 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="mapSymbolId"
+                  {...labelProps('Biểu tượng')}
+                  required={!!watchedGeometryType}
+                  rules={
+                    watchedGeometryType
+                      ? [{ required: true, message: 'Vui lòng chọn biểu tượng' }]
+                      : []
+                  }
+                  style={{ marginBottom: spaceFormField }}
+                >
                   <Select
                     placeholder="Chọn biểu tượng bản đồ"
                     allowClear
@@ -1001,7 +1019,13 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
               <Space size={8}>
                 <Button
                   icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
-                  onClick={() => setGisModalOpen(true)}
+                  onClick={() => {
+                    gisCoordSnapshotRef.current = {
+                      coords: coordinateList.map((c) => ({ ...c })),
+                      symbolId: form.getFieldValue('mapSymbolId'),
+                    };
+                    setGisModalOpen(true);
+                  }}
                   disabled={!watchedGeometryType}
                   style={!watchedGeometryType ? {
                     height: 32,
@@ -1152,10 +1176,28 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid));
           }}
           onDownload={async (uid, name) => {
+            const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
+            const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+            if (rawFile) {
+              const url = window.URL.createObjectURL(rawFile);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = name || (rawFile as File).name || 'attachment';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              window.URL.revokeObjectURL(url);
+              return;
+            }
+
             if (isEdit && id) {
-              await downloadCctvAttachment(id, uid, name);
+              try {
+                await downloadCctvAttachment(id, uid, name);
+              } catch {
+                toast.error('Không thể tải xuống tệp đính kèm');
+              }
             } else {
-              toast.info(`Đang tải xuống tệp: ${name}`);
+              toast.error('Không tìm thấy tệp để tải xuống');
             }
           }}
         />
@@ -1182,53 +1224,89 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => setGisModalOpen(false)}
+        onCancel={() => {
+          setCoordinateList(gisCoordSnapshotRef.current.coords);
+          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+          setGisModalOpen(false);
+        }}
         destroyOnClose
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => setGisModalOpen(false)}
+            onClick={() => {
+              setCoordinateList(gisCoordSnapshotRef.current.coords);
+              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+              setGisModalOpen(false);
+            }}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
           </Button>,
           <Button
-            key="ok"
+            key="confirm"
             type="primary"
             onClick={() => setGisModalOpen(false)}
-            style={{ ...primaryButtonStyle, height: 36 }}
+            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
           </Button>,
         ]}
       >
-        <div style={{ padding: '8px 0' }}>
+        <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 12 }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType="POINT"
+            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
-            onChange={(val) => {
-              if (val?.coordinates) {
-                const points = parseWktToCoordinates(val.coordinates);
-                if (points.length > 0) {
+            value={{
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: (() => {
+                const valid = coordinateList
+                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+                  .map((c) => ({
+                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
+                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
+                  }));
+                return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
+              })(),
+              symbolId: form.getFieldValue('mapSymbolId') || undefined,
+            }}
+            onChange={(val: any) => {
+              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
+              const points = parseGisCoordinates(val);
+              if (points.length > 0) {
+                if (watchedGeometryType === 'POINT') {
+                  const p = points[0];
+                  const latDms = ddToDms(p.latitude);
+                  const lngDms = ddToDms(p.longitude);
+                  setCoordinateList([{
+                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
+                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+                  }]);
+                } else {
                   setCoordinateList((prev) => {
-                    const existing = prev || [];
-                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(existing
-                      .filter(c => c.latD != null && c.lngD != null)
-                      .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
-                    const toAdd = points.filter(p => !existingKeys.has(key(p))).map(p => {
-                      const latDms = ddToDms(p.latitude);
-                      const lngDms = ddToDms(p.longitude);
-                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                    });
-                    if (toAdd.length === 0) return existing;
-                    return [...existing, ...toAdd];
+                    const toDms = (p: { latitude: number; longitude: number }) => {
+                      const lat = ddToDms(p.latitude);
+                      const lng = ddToDms(p.longitude);
+                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+                    };
+                    const newRows = points.map(toDms);
+                    const merged = [...prev];
+                    let newIdx = 0;
+                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
+                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
+                      if (!isFilled(merged[i])) {
+                        merged[i] = newRows[newIdx++];
+                      }
+                    }
+                    while (newIdx < newRows.length) {
+                      merged.push(newRows[newIdx++]);
+                    }
+                    return merged;
                   });
-                  setGpsError(null);
                 }
+                setGpsError(null);
               }
             }}
           />
