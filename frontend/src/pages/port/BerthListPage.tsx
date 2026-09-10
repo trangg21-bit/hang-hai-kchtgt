@@ -511,7 +511,8 @@ export default function BerthList() {
   // F-018: Đơn vị quản lý là bộ lọc bắt buộc (giống Cảng biển):
   // tự chọn mặc định = đơn vị của user đang đăng nhập, nếu không khớp thì lấy đơn vị đầu tiên
   useEffect(() => {
-    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
+    const isIframe = window.self !== window.top;
+    const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
     if (parentOrgUnits && parentOrgUnits.length > 0) {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
@@ -786,6 +787,7 @@ export default function BerthList() {
       toast.success('Đã xóa bến cảng');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
     } catch (err: unknown) {
@@ -802,6 +804,7 @@ export default function BerthList() {
       await berthApproval.approve(record.id, cap, content || 'Đã phê duyệt');
       toast.success('Đã phê duyệt bến cảng');
       setApproveModalOpen(false); setApprovingRecord(null);
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
   }, [fetchData, fetchCounts, managingUnitId]);
@@ -812,6 +815,7 @@ export default function BerthList() {
       await berthCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
       toast.success('Đã gửi phê duyệt bến cảng');
       setSubmitModalOpen(false); setSubmittingRecord(null);
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
   }, [submittingRecord, fetchData, fetchCounts, managingUnitId]);
@@ -830,6 +834,7 @@ export default function BerthList() {
       await berthApproval.reject(rejectingRecord.id, 'CANG_VU', reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, managingUnitId]);
@@ -1310,7 +1315,7 @@ export default function BerthList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" initialValues={{}}>
-          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
         </Form>
       </AppDrawer>
 
@@ -1363,7 +1368,7 @@ export default function BerthList() {
         {editBerthId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { closeEditDrawer(); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { closeEditDrawer(); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </AppDrawer>

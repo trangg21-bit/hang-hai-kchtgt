@@ -1959,6 +1959,9 @@ export default function GISChartView() {
     return () => {
       window.removeEventListener('message', handleMessage);
       delete (window as any).handleKchtAction;
+      delete (window as any).kchtDetailCache;
+      delete (window as any).kchtOrgUnits;
+      delete (window as any).kchtSymbols;
     };
   }, []);
 
@@ -2206,10 +2209,16 @@ export default function GISChartView() {
 
   useEffect(() => {
     (window as any).kchtOrgUnits = orgUnits;
+    return () => {
+      delete (window as any).kchtOrgUnits;
+    };
   }, [orgUnits]);
 
   useEffect(() => {
     (window as any).kchtSymbols = symbols;
+    return () => {
+      delete (window as any).kchtSymbols;
+    };
   }, [symbols]);
 
   // Màn hình mặc định để "Tất cả đơn vị" và tự tải danh sách. URL vẫn có thể

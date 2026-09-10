@@ -264,7 +264,8 @@ export default function WaterZoneListPage() {
 
   useEffect(() => {
     // 1. Try to use symbols cache from parent window
-    const parentSymbols = (window.parent as any)?.kchtSymbols;
+    const isIframe = window.self !== window.top;
+    const parentSymbols = isIframe ? (window.parent as any)?.kchtSymbols : undefined;
     if (parentSymbols && parentSymbols.length > 0) {
       setSymbols(parentSymbols);
     }

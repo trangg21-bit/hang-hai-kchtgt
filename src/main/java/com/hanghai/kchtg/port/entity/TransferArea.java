@@ -77,20 +77,20 @@ public class TransferArea extends BaseEntity {
     @Column(name = "shape_description", columnDefinition = "TEXT")
     private String shapeDescription;
 
-    @Column(name = "area", precision = 15, scale = 2)
+    @Column(name = "area", precision = 28, scale = 4)
     private BigDecimal area;
 
-    @Column(name = "design_water_depth", precision = 10, scale = 2)
-    private BigDecimal designWaterDepth;
+    @Column(name = "design_water_depth", length = 20)
+    private String designWaterDepth;
 
-    @Column(name = "current_water_depth", precision = 10, scale = 2)
-    private BigDecimal currentWaterDepth;
+    @Column(name = "current_water_depth", length = 20)
+    private String currentWaterDepth;
 
-    @Column(name = "bottom_elevation_design", precision = 10, scale = 2)
-    private BigDecimal bottomElevationDesign;
+    @Column(name = "bottom_elevation_design", length = 20)
+    private String bottomElevationDesign;
 
-    @Column(name = "max_vessel_dwt", precision = 15, scale = 2)
-    private BigDecimal maxVesselDWT;
+    @Column(name = "max_vessel_dwt", length = 20)
+    private String maxVesselDWT;
 
     @Column(name = "active_transfer_count")
     private Integer activeTransferCount;

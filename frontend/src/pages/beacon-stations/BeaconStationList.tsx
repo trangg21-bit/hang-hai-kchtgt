@@ -426,7 +426,8 @@ export default function BeaconStationList() {
   // Đơn vị quản lý là bộ lọc bắt buộc (giống Bến cảng):
   // tự chọn mặc định = đơn vị của user đang đăng nhập; nếu không khớp thì lấy đơn vị đầu tiên
   useEffect(() => {
-    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
+    const isIframe = window.self !== window.top;
+    const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
     if (parentOrgUnits && parentOrgUnits.length > 0) {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {

@@ -30,7 +30,7 @@ public class MooringWaterArea extends BaseEntity {
     @Column(name = "anchorage_id", nullable = false)
     private UUID anchorageId;
 
-    @Column(name = "description", length = 1000)
+    @Column(name = "description", length = 2000)
     private String description;
 
     @Column(name = "geometry_type", length = 20)

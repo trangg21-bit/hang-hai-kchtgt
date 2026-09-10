@@ -57,6 +57,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -78,6 +79,7 @@ public class AnchorageService {
     private final MooringWaterAreaRepository mooringWaterAreaRepository;
     private final MooringWaterAreaAnchorPointRepository mooringWaterAreaAnchorPointRepository;
     private final InfrastructureHistoryRepository historyRepository;
+    private final ChangeHistoryService changeHistoryService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -91,6 +93,14 @@ public class AnchorageService {
             throw new IllegalArgumentException("Không thể tạo khu neo đậu: cảng biển cha phải ở trạng thái được phê duyệt");
         }
 
+        if (request.getAnchorageName() == null || request.getAnchorageName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Tên khu neo đậu không được để trống");
+        }
+        String trimmedName = request.getAnchorageName().trim();
+        if (anchorageRepository.existsByAnchorageName(trimmedName)) {
+            throw new IllegalArgumentException("Tên khu neo đậu \"" + trimmedName + "\" đã tồn tại");
+        }
+
         // RecordSecurityLevel secLevel = request.getSecurityLevel() != null ? request.getSecurityLevel()
         //         : RecordSecurityLevel.NORMAL;
         // RecordSecurityLevel.validateAssignment(secLevel, "anchorage", SecurityUtils.getCurrentUserPermissions(),
@@ -101,7 +111,7 @@ public class AnchorageService {
         Anchorage entity = Anchorage.builder()
                 // .securityLevel(secLevel)
                 .anchorageCode(code)
-                .anchorageName(request.getAnchorageName())
+                .anchorageName(trimmedName)
                 .portId(request.getPortId())
                 .orgUnitId(port.getOrgUnitId())
                 .navigationChannelId(request.getNavigationChannelId())
@@ -133,10 +143,6 @@ public class AnchorageService {
         Anchorage saved = anchorageRepository.save(entity);
         persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
-        // Ghi lịch sử thay đổi vào infrastructure_history với actor thật (chuẩn Cảng biển PortService).
-        UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
-        recordFieldChanges(new Anchorage(), saved, saved.getId(), actorId);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -161,8 +167,17 @@ public class AnchorageService {
         //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
         //     entity.setSecurityLevel(request.getSecurityLevel());
         // }
-        if (request.getAnchorageName() != null)
-            entity.setAnchorageName(request.getAnchorageName());
+        if (request.getAnchorageName() != null) {
+            String trimmedName = request.getAnchorageName().trim();
+            if (trimmedName.isEmpty()) {
+                throw new IllegalArgumentException("Tên khu neo đậu không được để trống");
+            }
+            if (!trimmedName.equalsIgnoreCase(entity.getAnchorageName())
+                    && anchorageRepository.existsByAnchorageNameAndIdNot(trimmedName, entity.getId())) {
+                throw new IllegalArgumentException("Tên khu neo đậu \"" + trimmedName + "\" đã tồn tại");
+            }
+            entity.setAnchorageName(trimmedName);
+        }
         if (request.getPortId() != null) {
             Port parent = portRepository.findById(request.getPortId())
                     .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
@@ -213,18 +228,19 @@ public class AnchorageService {
         if (request.getDisplayRule() != null)
             entity.setDisplayRule(request.getDisplayRule());
 
-        if (request.getSaveAction() != null) {
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt" (APPROVED_LEVEL1)
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
         // Actor thật từ SecurityContext — nếu truyền "system", approvedBy = null và drawer hiện "—"
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
-        boolean wasApproved = snapshot.getApprovalStatus() == ApprovalStatus.APPROVED
-                || snapshot.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
         // Tọa độ + loại hình GIS cũ (WKT) trước khi persistGisAndMooring ghi đè spatial object
         GisGeometryType oldGeomType = null;
@@ -240,7 +256,12 @@ public class AnchorageService {
         String oldMooringSummary = buildMooringWaterAreaSummary(
                 mooringWaterAreaRepository.findByAnchorageId(entity.getId()));
 
-        Anchorage saved = anchorageRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+
+        Anchorage saved = anchorageRepository.saveAndFlush(entity);
         persistGisAndMooring(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
 
@@ -252,25 +273,26 @@ public class AnchorageService {
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
                 if (wktChanged) {
-                    insertHistoryRecord(saved.getId(), "Tọa độ GIS",
+                    changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Tọa độ GIS",
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
-                    insertHistoryRecord(saved.getId(), "Loại đối tượng GIS",
+                    changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Loại đối tượng GIS",
                             oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
                             geometryTypeLabel(geomType), actorId);
                 }
             }
-            // Field-level thay đổi theo từng trường (recordChanges bị tắt từ migration V20260825162500)
-            recordFieldChanges(snapshot, saved, saved.getId(), actorId);
+
+            changeHistoryService.recordChanges("Anchorage", saved.getId().toString(),
+                    actorId, snapshot, saved);
 
             // Summary "Khu nước neo buộc tàu" đọc được — không ghi Java toString rác của reflection
             String newMooringSummary = buildMooringWaterAreaSummary(
                     mooringWaterAreaRepository.findByAnchorageId(saved.getId()));
             if (!oldMooringSummary.equals(newMooringSummary)) {
-                insertHistoryRecord(saved.getId(), "Khu nước neo buộc tàu",
+                changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Khu nước neo buộc tàu",
                         oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
                         newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary, actorId);
             }
@@ -295,12 +317,14 @@ public class AnchorageService {
                                            String operationalStatus, String approvalStatus,
                                            String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"),
-                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize,
+                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                        Sort.Order.desc(EntityFields.CREATED_AT),
+                        Sort.Order.asc(EntityFields.ID)));
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
-        java.time.LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
+        java.time.LocalDateTime updatedToDt = parseUpdatedTo(updatedTo);
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả khu neo đậu của toàn bộ đơn vị con (hậu duệ), giống logic BerthService
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
@@ -342,20 +366,28 @@ public class AnchorageService {
         if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
             throw new IllegalArgumentException("Chỉ được xóa khu neo đậu ở trạng thái Nháp");
         }
-        long waterAreaCount = mooringWaterAreaRepository.countByAnchorageIdAndDeletedAtIsNull(id);
-        if (waterAreaCount > 0) {
-            throw new IllegalStateException("Không thể xóa: khu neo đậu đang có " + waterAreaCount
-                    + " phạm vi khu nước neo buộc tàu liên kết");
+        if (entity.getDeletedAt() != null) {
+            throw new IllegalStateException("Khu neo đậu đã bị xóa trước đó");
         }
-        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Bến cảng)
+
+        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cầu cảng)
         Anchorage snapshot = buildSnapshot(entity);
-        entity.softDelete(SecurityUtils.getCurrentUserId());
-        anchorageRepository.save(entity);
-        // Ghi lịch sử xóa mềm vào infrastructure_history với actor thật (chuẩn Cảng biển).
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
-        recordFieldChanges(snapshot, entity, entity.getId(), actorId);
-        insertHistoryRecord(entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
+
+        entity.softDelete(operatorId);
+        anchorageRepository.save(entity);
+
+        // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete)
+        List<MooringWaterArea> waterAreas = mooringWaterAreaRepository.findByAnchorageId(id);
+        for (MooringWaterArea wa : waterAreas) {
+            wa.softDelete(operatorId);
+            mooringWaterAreaRepository.save(wa);
+        }
+
+        // Ghi lịch sử xóa mềm vào infrastructure_history với actor thật (chuẩn Cảng biển / Cầu cảng).
+        changeHistoryService.recordChanges("Anchorage", entity.getId().toString(), actorId, snapshot, entity);
+        changeHistoryService.insertChangeRecord("Anchorage", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -379,7 +411,13 @@ public class AnchorageService {
                 } catch (NumberFormatException ignored) {}
             }
         }
-        return prefix + String.format("%03d", maxNum + 1);
+        int num = maxNum + 1;
+        String candidate = prefix + String.format("%03d", num);
+        while (anchorageRepository.existsByAnchorageCode(candidate)) {
+            num++;
+            candidate = prefix + String.format("%03d", num);
+        }
+        return candidate;
     }
 
     // ── Attachment methods ──────────────────────────────────────────────
@@ -396,6 +434,7 @@ public class AnchorageService {
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
+        java.util.List<String> uploadedFilenames = new java.util.ArrayList<>();
 
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -423,10 +462,13 @@ public class AnchorageService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
-            if ("ANCHORAGE".equalsIgnoreCase(entityType)) {
-                recordAnchorageAttachmentHistory(entityId, originalFilename,
-                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            if (!"unknown".equals(originalFilename) && !originalFilename.isBlank()) {
+                uploadedFilenames.add(originalFilename.trim());
             }
+        }
+        if ("ANCHORAGE".equalsIgnoreCase(entityType) && !uploadedFilenames.isEmpty()) {
+            recordAnchorageAttachmentHistory(entityId, String.join(", ", uploadedFilenames),
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
     }
@@ -569,15 +611,52 @@ public class AnchorageService {
     }
 
     private void parseLatLng(String coordinates, AnchorageResponse response) {
-        if (coordinates == null || !coordinates.startsWith("POINT(")) return;
+        if (coordinates == null || coordinates.isBlank()) return;
         try {
-            String inner = coordinates.substring(6, coordinates.length() - 1).trim();
-            String[] parts = inner.split("\\s+");
-            if (parts.length == 2) {
-                response.setLongitude(new BigDecimal(parts[0]));
-                response.setLatitude(new BigDecimal(parts[1]));
+            String trimmed = coordinates.trim();
+            if (trimmed.toUpperCase().startsWith("POINT")) {
+                int start = trimmed.indexOf('(') + 1;
+                int end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("LINESTRING")) {
+                int start = trimmed.indexOf('(') + 1;
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("POLYGON")) {
+                int start = trimmed.indexOf("((") + 2;
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf("))", start);
+                if (start > 1 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
             }
         } catch (Exception ignored) { }
+    }
+
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) {
+            return GisSpatialObjectType.POINT_OTHER;
+        } else if (geomType == GisGeometryType.LINE) {
+            return GisSpatialObjectType.LINE_OTHER;
+        }
+        return GisSpatialObjectType.POLYGON_ANCHORAGE;
     }
 
     private List<MooringWaterAreaResponse> toMooringWaterAreaResponses(UUID anchorageId) {
@@ -607,9 +686,13 @@ public class AnchorageService {
             GisGeometryType geomType = geometryType != null ? geometryType : GisGeometryType.POINT;
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(), saved.getAnchorageName(), "ANCHORAGE_" + saved.getAnchorageCode(),
-                    geomType, GisSpatialObjectType.POLYGON_ANCHORAGE, wkt, saved.getId(),
+                    geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
                     InfrastructureType.ANCHORAGE_AREA);
             saved.setSpatialId(spatialObj.getId());
+            anchorageRepository.save(saved);
+        } else if (saved.getSpatialId() != null) {
+            gisSpatialObjectService.delete(saved.getSpatialId());
+            saved.setSpatialId(null);
             anchorageRepository.save(saved);
         }
         replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
@@ -651,9 +734,10 @@ public class AnchorageService {
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
         break;
       case "SUBMIT":
-        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setSubmittedForApprovalAt(LocalDateTime.now());
-        entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+        entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system");
+        entity.setRejectionReason(null);
         break;
       case "APPROVED":
       case "SAVE_AND_APPROVE":
@@ -720,8 +804,45 @@ public class AnchorageService {
 
     private LocalDateTime parseLocalDateTime(String dt) {
         if (dt == null || dt.isBlank()) return null;
-        try { return LocalDateTime.parse(dt); }
-        catch (Exception e) { return null; }
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atStartOfDay();
+            }
+            if (s.contains(" ")) {
+                s = s.replace(" ", "T");
+            }
+            if (s.endsWith("Z")) {
+                return java.time.Instant.parse(s).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            }
+            if (s.contains("+") || (s.length() > 19 && s.indexOf('-', 10) > 0)) {
+                return java.time.OffsetDateTime.parse(s).toLocalDateTime();
+            }
+            return LocalDateTime.parse(s);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(dt.trim(), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseUpdatedTo(String dt) {
+        if (dt == null || dt.isBlank()) return null;
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
+            }
+            LocalDateTime ldt = parseLocalDateTime(s);
+            if (ldt != null && ldt.getNano() == 0) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ── Lịch sử thay đổi (infrastructure_history — chuẩn Cảng biển sau migration V20260825162500) ──
@@ -734,94 +855,6 @@ public class AnchorageService {
             case LINE -> "Đối tượng đường";
             case POLYGON -> "Đối tượng vùng";
         };
-    }
-
-    /**
-     * Chèn 1 dòng lịch sử refType = ANCHORAGE_AREA.
-     * Không dùng ChangeHistoryService.insertChangeRecord vì resolveInfrastructureType("Anchorage")
-     * rơi vào default SEAPORT (thiếu mapping ANCHORAGE) → dòng không hiển thị ở drawer Khu neo đậu.
-     */
-    private void insertHistoryRecord(UUID entityId, String fieldName, String oldValue, String newValue, String actorId) {
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(entityId)
-                .refType(InfrastructureType.ANCHORAGE_AREA)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.UPDATED)
-                .approvedBy(parseActorId(actorId))
-                .approvedDate(LocalDateTime.now())
-                .changedField(fieldName)
-                .previousValue(oldValue)
-                .newValue(newValue)
-                .build());
-    }
-
-    /**
-     * So sánh từng field giữa bản snapshot cũ và bản đã lưu, mỗi field thay đổi thành 1 dòng
-     * infrastructure_history (cùng ngữ nghĩa recordChanges của change_logs trước migration
-     * V20260825162500, nhưng refType = ANCHORAGE_AREA và changedBy = actor thật).
-     */
-    private void recordFieldChanges(Anchorage oldEntity, Anchorage newEntity, UUID entityId, String actorId) {
-        if (oldEntity == null || newEntity == null) return;
-        UUID actorUuid = parseActorId(actorId);
-        for (java.lang.reflect.Field field : Anchorage.class.getDeclaredFields()) {
-            if (isSkippedHistoryField(field.getName())) continue;
-            field.setAccessible(true);
-            try {
-                Object oldValue = field.get(oldEntity);
-                Object newValue = field.get(newEntity);
-                if (!historyValuesEqual(oldValue, newValue)) {
-                    historyRepository.save(InfrastructureHistory.builder()
-                            .refId(entityId)
-                            .refType(InfrastructureType.ANCHORAGE_AREA)
-                            .approvalLevel(ApprovalLevel.LEVEL_0)
-                            .status(InfrastructureHistoryStatus.UPDATED)
-                            .approvedBy(actorUuid)
-                            .approvedDate(LocalDateTime.now())
-                            .changedField(field.getName())
-                            .previousValue(historyFormatValue(oldValue))
-                            .newValue(historyFormatValue(newValue))
-                            .build());
-                }
-            } catch (IllegalAccessException e) {
-                log.warn("Không đọc được field {} của Anchorage để ghi lịch sử: {}", field.getName(), e.getMessage());
-            }
-        }
-    }
-
-    private boolean isSkippedHistoryField(String name) {
-        return EntityFields.ID.equals(name)
-                || EntityFields.CREATED_AT.equals(name)
-                || EntityFields.UPDATED_AT.equals(name)
-                || EntityFields.DELETED_AT.equals(name)
-                || EntityFields.CREATED_BY.equals(name)
-                || EntityFields.UPDATED_BY.equals(name);
-    }
-
-    private boolean historyValuesEqual(Object a, Object b) {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        if (a instanceof Enum<?> ea && b instanceof Enum<?> eb) return ea == eb;
-        if (a instanceof Number && b instanceof Number) {
-            try {
-                return new java.math.BigDecimal(a.toString()).compareTo(new java.math.BigDecimal(b.toString())) == 0;
-            } catch (NumberFormatException e) {
-                return ((Number) a).doubleValue() == ((Number) b).doubleValue();
-            }
-        }
-        return a.equals(b);
-    }
-
-    private String historyFormatValue(Object value) {
-        if (value == null) return "(null)";
-        if (value instanceof LocalDateTime dt) return dt.toString();
-        if (value instanceof Enum<?> e) return e.name();
-        return value.toString();
-    }
-
-    private UUID parseActorId(String actorId) {
-        if (actorId == null || actorId.isBlank() || "system".equals(actorId)) return null;
-        try { return UUID.fromString(actorId); }
-        catch (Exception e) { return null; }
     }
 
     /**

@@ -830,7 +830,8 @@ export default function DikeRevetmentList() {
   // Đơn vị quản lý bắt buộc: tự chọn mặc định = đơn vị user đang đăng nhập;
   // nếu tài khoản cấp Cục/admin (không có org khớp) thì để “Tất cả”.
   useEffect(() => {
-    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
+    const isIframe = window.self !== window.top;
+    const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
     if (parentOrgUnits && parentOrgUnits.length > 0) {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {

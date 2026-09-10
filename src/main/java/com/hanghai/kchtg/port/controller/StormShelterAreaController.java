@@ -110,6 +110,26 @@ public class StormShelterAreaController {
         return ResponseEntity.ok(ApiResponse.success("Xóa khu tránh, trú bão thành công", null));
     }
 
+    @PostMapping("/{id}/approve/c1")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Approving StormShelterArea C1: id={}, user={}", id, authentication.getName());
+        stormShelterAreaApprovalService.approve(id, authentication.getName(), "CANG_VU", reason);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Approving StormShelterArea C2: id={}, user={}", id, authentication.getName());
+        stormShelterAreaApprovalService.approve(id, authentication.getName(), "CUC", reason);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
     @PostMapping("/{id}/approve")
     // @PreAuthorize("@auth.check(authentication, 'stormshelter:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
     public ResponseEntity<ApiResponse<Void>> approve(
@@ -125,10 +145,13 @@ public class StormShelterAreaController {
     // @PreAuthorize("@auth.check(authentication, 'stormshelter:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @Valid @RequestBody RejectRequest request,
+            @RequestBody(required = false) RejectRequest request,
+            @RequestParam(required = false) String reason,
             Authentication authentication) {
-        log.info("Rejecting StormShelterArea: id={}, cap={}", id, request.getCap());
-        stormShelterAreaApprovalService.reject(id, authentication.getName(), request.getCap(), request.getLyDo());
+        String cap = request != null ? request.getCap() : null;
+        String lyDo = request != null && request.getLyDo() != null ? request.getLyDo() : reason;
+        log.info("Rejecting StormShelterArea: id={}, cap={}, reason={}", id, cap, lyDo);
+        stormShelterAreaApprovalService.reject(id, authentication.getName(), cap, lyDo);
         return ResponseEntity.ok(ApiResponse.success("Từ chối khu tránh, trú bão thành công", null));
     }
 

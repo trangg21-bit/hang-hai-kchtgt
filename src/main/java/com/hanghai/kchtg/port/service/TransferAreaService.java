@@ -302,7 +302,7 @@ public class TransferAreaService {
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
-        java.time.LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
+        java.time.LocalDateTime updatedToDt = parseUpdatedTo(updatedTo);
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả khu chuyển tải của toàn bộ đơn vị con (hậu duệ), giống logic BerthService
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
@@ -334,15 +334,22 @@ public class TransferAreaService {
         if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
             throw new IllegalArgumentException("Chỉ được xóa khu chuyển tải ở trạng thái Nháp");
         }
-        long waterAreaCount = transferAreaMooringWaterAreaRepository.countByTransferAreaIdAndDeletedAtIsNull(id);
-        if (waterAreaCount > 0) {
-            throw new IllegalStateException("Không thể xóa: khu chuyển tải đang có " + waterAreaCount
-                    + " phạm vi khu nước neo buộc tàu liên kết");
+        if (entity.getDeletedAt() != null) {
+            throw new IllegalStateException("Khu chuyển tải đã bị xóa trước đó");
         }
-        entity.softDelete(SecurityUtils.getCurrentUserId());
-        transferAreaRepository.save(entity);
-        // Lịch sử xóa mềm — ghi trực tiếp infrastructure_history refType TRANSSHIPMENT_AREA (chuẩn BuoyBerthService.softDelete)
+
         UUID operatorId = SecurityUtils.getCurrentUserId();
+        entity.softDelete(operatorId);
+        transferAreaRepository.save(entity);
+
+        // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete, chuẩn Khu neo đậu / Khu tránh trú bão)
+        List<TransferAreaMooringWaterArea> waterAreas = transferAreaMooringWaterAreaRepository.findByTransferAreaId(id);
+        for (TransferAreaMooringWaterArea wa : waterAreas) {
+            wa.softDelete(operatorId);
+            transferAreaMooringWaterAreaRepository.save(wa);
+        }
+
+        // Lịch sử xóa mềm — ghi trực tiếp infrastructure_history refType TRANSSHIPMENT_AREA (chuẩn BuoyBerthService.softDelete)
         recordChangeHistory(entity.getId(), InfrastructureHistoryStatus.DELETED, "Xóa khu chuyển tải",
                 "Trạng thái phê duyệt", null, "Trạng thái phê duyệt=Đã xóa", operatorId);
         if (entity.getSpatialId() != null) {
@@ -368,7 +375,13 @@ public class TransferAreaService {
                 } catch (NumberFormatException ignored) {}
             }
         }
-        return prefix + String.format("%03d", maxNum + 1);
+        int num = maxNum + 1;
+        String candidate = prefix + String.format("%03d", num);
+        while (transferAreaRepository.existsByTransferAreaCode(candidate)) {
+            num++;
+            candidate = prefix + String.format("%03d", num);
+        }
+        return candidate;
     }
 
     // ── Attachment methods ──────────────────────────────────────────────
@@ -840,7 +853,44 @@ public class TransferAreaService {
 
     private LocalDateTime parseLocalDateTime(String dt) {
         if (dt == null || dt.isBlank()) return null;
-        try { return LocalDateTime.parse(dt); }
-        catch (Exception e) { return null; }
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atStartOfDay();
+            }
+            if (s.contains(" ")) {
+                s = s.replace(" ", "T");
+            }
+            if (s.endsWith("Z")) {
+                return java.time.Instant.parse(s).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            }
+            if (s.contains("+") || (s.length() > 19 && s.indexOf('-', 10) > 0)) {
+                return java.time.OffsetDateTime.parse(s).toLocalDateTime();
+            }
+            return LocalDateTime.parse(s);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(dt.trim(), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseUpdatedTo(String dt) {
+        if (dt == null || dt.isBlank()) return null;
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
+            }
+            LocalDateTime ldt = parseLocalDateTime(s);
+            if (ldt != null && ldt.getNano() == 0) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

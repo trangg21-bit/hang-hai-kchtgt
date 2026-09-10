@@ -130,7 +130,12 @@ public class BuoyBerthService {
         String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
         applySaveAction(entity, action);
 
-        BuoyBerth saved = buoyBerthRepository.save(entity);
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+        BuoyBerth saved = buoyBerthRepository.saveAndFlush(entity);
         persistGis(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude());
         // Chỉ CHỈNH SỬA mới ghi lịch sử — tạo mới không ghi (quyết định nghiệp vụ 2026-08-28)
@@ -266,7 +271,12 @@ public class BuoyBerthService {
             applySaveAction(entity, request.getSaveAction());
         }
 
-        BuoyBerth saved = buoyBerthRepository.save(entity);
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+        BuoyBerth saved = buoyBerthRepository.saveAndFlush(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude());
 
@@ -349,7 +359,7 @@ public class BuoyBerthService {
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
-        java.time.LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
+        java.time.LocalDateTime updatedToDt = parseUpdatedTo(updatedTo);
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả bến phao của toàn bộ đơn vị con (hậu duệ)
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
@@ -781,7 +791,44 @@ public class BuoyBerthService {
 
     private LocalDateTime parseLocalDateTime(String dt) {
         if (dt == null || dt.isBlank()) return null;
-        try { return LocalDateTime.parse(dt); }
-        catch (Exception e) { return null; }
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atStartOfDay();
+            }
+            if (s.contains(" ")) {
+                s = s.replace(" ", "T");
+            }
+            if (s.endsWith("Z")) {
+                return java.time.Instant.parse(s).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            }
+            if (s.contains("+") || (s.length() > 19 && s.indexOf('-', 10) > 0)) {
+                return java.time.OffsetDateTime.parse(s).toLocalDateTime();
+            }
+            return LocalDateTime.parse(s);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(dt.trim(), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseUpdatedTo(String dt) {
+        if (dt == null || dt.isBlank()) return null;
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
+            }
+            LocalDateTime ldt = parseLocalDateTime(s);
+            if (ldt != null && ldt.getNano() == 0) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

@@ -1,5 +1,22 @@
-import { useState } from 'react';
-import { Tabs, Button, Modal, Drawer, Tooltip } from 'antd';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Tabs, Button, Modal, Tooltip, Drawer } from 'antd';
+
+const getFilterSearchTopY = (): number => {
+  if (typeof window === 'undefined') return 0;
+  const filterFooter = document.querySelector('.filter-action-footer');
+  if (filterFooter) {
+    const rect = filterFooter.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  const searchBtn = Array.from(document.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === 'Tìm kiếm' && !b.closest('.ant-drawer')
+  );
+  if (searchBtn && searchBtn.parentElement) {
+    const rect = searchBtn.parentElement.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  return Math.round(window.innerHeight - 89);
+};
 import {
   AuditOutlined, BankOutlined, DownloadOutlined, DownOutlined, EnvironmentOutlined, EyeOutlined,
   FileImageOutlined, FileOutlined, FileTextOutlined, RightOutlined, SlidersOutlined,
@@ -19,7 +36,7 @@ import {
   fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
   spaceSm, spaceMd, spaceFormField,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
-  drawerTitleStyle, drawerCloseBtnStyle,
+  drawerTitleStyle, drawerProps, drawerCloseBtnStyle,
 } from '../../themetokenchk';
 import type { Anchorage } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -164,7 +181,6 @@ export default function AnchorageDetailContent({
     return `${dms.d}° ${dms.m}' ${dms.s}" ${isLat ? 'N' : 'E'}`;
   };
 
-  const [technicalOpen, setTechnicalOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [waterAreaOpen, setWaterAreaOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
@@ -173,6 +189,38 @@ export default function AnchorageDetailContent({
   const [incidentOpen, setIncidentOpen] = useState(true);
 
   const [viewingWaterArea, setViewingWaterArea] = useState<any | null>(null);
+  const [viewingMapParamsOpen, setViewingMapParamsOpen] = useState(true);
+  const [viewingAnchorPointsOpen, setViewingAnchorPointsOpen] = useState(true);
+
+  const viewingAnchorBoxRef = useRef<HTMLDivElement>(null);
+  const [viewingAnchorBoxHeight, setViewingAnchorBoxHeight] = useState<number | undefined>();
+
+  const updateViewingAnchorBoxHeight = useCallback(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen || !viewingAnchorBoxRef.current) return;
+    const targetY = getFilterSearchTopY();
+    const boxRect = viewingAnchorBoxRef.current.getBoundingClientRect();
+    if (boxRect.top > 0) {
+      const h = Math.round(targetY - boxRect.top);
+      setViewingAnchorBoxHeight(Math.max(230, h));
+    }
+  }, [viewingWaterArea, viewingAnchorPointsOpen]);
+
+  useEffect(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen) return;
+    updateViewingAnchorBoxHeight();
+    const t1 = setTimeout(updateViewingAnchorBoxHeight, 60);
+    const t2 = setTimeout(updateViewingAnchorBoxHeight, 180);
+    const t3 = setTimeout(updateViewingAnchorBoxHeight, 350);
+    window.addEventListener('resize', updateViewingAnchorBoxHeight);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', updateViewingAnchorBoxHeight);
+    };
+  }, [viewingWaterArea, viewingAnchorPointsOpen, viewingMapParamsOpen, updateViewingAnchorBoxHeight]);
+
+  const viewingAnchorTableScrollY = viewingAnchorBoxHeight ? Math.max(70, viewingAnchorBoxHeight - 148) : 'calc(100vh - 500px)';
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewImageFile, setPreviewImageFile] = useState<any>(null);
@@ -218,7 +266,7 @@ export default function AnchorageDetailContent({
   const coords = parseGisCoordinates(r);
   const portLabel = r.portId ? (portMap.get(r.portId) || portOptions.find(o => o.value === r.portId)?.label || r.portId) : '';
   const buoyLabel = r.buoyStationName || (r.buoyStationId ? buoyStationMap.get(r.buoyStationId) || r.buoyStationId : '');
-  const provinceLabel = r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || String(r.provinceId)) : '';
+  const provinceLabel = (r as any).province || (r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || String(r.provinceId)) : '');
 
   return (
     <>
@@ -249,6 +297,9 @@ export default function AnchorageDetailContent({
         box-sizing: border-box !important;
         overflow: visible !important;
       }
+      .anchorage-detail-content-wrapper .chk-detail-row:last-child {
+        border-bottom: none !important;
+      }
       .anchorage-detail-content-wrapper .chk-detail-row--full { grid-column: 1 / -1 !important; }
       .anchorage-detail-content-wrapper .chk-detail-label,
       .anchorage-detail-content-wrapper .sec-col1-label,
@@ -258,13 +309,19 @@ export default function AnchorageDetailContent({
         min-width: 215px !important;
         max-width: 215px !important;
         flex-shrink: 0 !important;
-        color: #12468c !important;
+        color: ${colors.sidebarBg} !important;
         font-weight: 600 !important;
         font-size: 13.5px !important;
         text-align: left !important;
         line-height: 1.5 !important;
         align-self: flex-start !important;
         white-space: normal !important;
+      }
+      .anchorage-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+        width: auto !important;
+        min-width: 220px !important;
+        max-width: 320px !important;
+        white-space: nowrap !important;
       }
       .anchorage-detail-content-wrapper .chk-detail-row .sec-col2-label {
         width: 250px !important;
@@ -279,15 +336,17 @@ export default function AnchorageDetailContent({
         margin-left: 1px !important;
         margin-right: 4px !important;
       }
-      .anchorage-detail-content-wrapper .chk-detail-row.chk-detail-row--code .chk-detail-label {
+      .anchorage-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label {
         width: auto !important;
         min-width: auto !important;
         max-width: none !important;
         flex-shrink: 0 !important;
       }
-      .anchorage-detail-content-wrapper .chk-detail-row.chk-detail-row--code .chk-detail-value {
-        margin-left: 28px !important;
+      .anchorage-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
         justify-content: flex-start !important;
+        white-space: nowrap !important;
       }
       .anchorage-detail-content-wrapper .chk-detail-value {
         color: #1e293b !important;
@@ -367,7 +426,7 @@ export default function AnchorageDetailContent({
                     ['Thuộc cảng biển', <span key="port" style={{ fontWeight: fontWeightBold }}>{portLabel}</span>],
                     ['Thuộc bến phao', buoyLabel],
                     ['Thuộc luồng hàng hải', waterwayMap?.get(r.navigationChannelId || '') || r.navigationChannelId || ''],
-                    ['Địa điểm (Tỉnh/Thành phố)', provinceLabel],
+                    ['Địa điểm (Tỉnh/Thành Phố)', provinceLabel],
                     ['Tình trạng', (() => {
                       const s = r.operationalStatus;
                       const b = s && operationalStyleMap[s];
@@ -377,7 +436,7 @@ export default function AnchorageDetailContent({
                     const isCode = label === 'Mã khu neo đậu';
                     const isLongCode = isCode && ((r.anchorageCode || '').trim().length > 20);
                     return (
-                      <div key={label as string} className={`chk-detail-row ${isLongCode ? 'chk-detail-row--code' : ''}`}>
+                      <div key={label as string} className={`chk-detail-row ${isLongCode ? 'chk-detail-row--compact' : ''}`}>
                         <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
                         <span className="chk-detail-value">{value}</span>
                       </div>
@@ -391,35 +450,32 @@ export default function AnchorageDetailContent({
               </div>
 
               {/* Section 2: Thông số kỹ thuật & Năng lực khai thác */}
-              <div style={{ ...sectionBoxStyle, padding: technicalOpen ? sectionBoxStyle.padding : spaceMd }}>
-                <div onClick={() => setTechnicalOpen(!technicalOpen)} style={{ ...sectionHeaderStyle, marginBottom: technicalOpen ? spaceMd : 0, paddingBottom: technicalOpen ? spaceSm : 0, borderBottom: technicalOpen ? sectionHeaderStyle.borderBottom : 'none', cursor: 'pointer', userSelect: 'none' }}>
+              <div style={sectionBoxStyle}>
+                <div style={sectionHeaderStyle}>
                   <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông số kỹ thuật & Năng lực khai thác</span></div>
-                  {technicalOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                 </div>
-                {technicalOpen && (
-                  <div className="chk-detail-grid">
-                    {[
-                      ['Hình dạng', r.shapeDescription || ''],
-                      ['Diện tích (ha)', formatNumericDisplay(r.area)],
-                      ['Độ sâu khu nước theo thiết kế (m)', formatNumericDisplay(r.designWaterDepth)],
-                      ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', formatNumericDisplay(r.currentWaterDepth)],
-                      ['Cao độ đáy bến thiết kế', formatNumericDisplay(r.bottomElevationDesign)],
-                      ['Cỡ tàu khai thác theo công bố (DWT)', formatNumericDisplay(r.maxVesselDWT)],
-                      ['Số lượng khu neo đậu đang khai thác', formatNumericDisplay(r.activeAnchorageCount)],
-                      ['Số lượng khu neo đậu đã công bố', formatNumericDisplay(r.publishedAnchorageCount)],
-                      ['Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng', formatNumericDisplay(r.underInvestmentAnchorageCount)],
-                    ].map(([label, value], index) => (
-                      <div key={label as string} className="chk-detail-row">
-                        <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
-                        <span className="chk-detail-value">{value}</span>
-                      </div>
-                    ))}
-                    <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label sec-col1-label">Ghi chú</span>
-                      <span className="chk-detail-value">{r.remarks || ''}</span>
+                <div className="chk-detail-grid">
+                  {[
+                    ['Hình dạng', r.shapeDescription || ''],
+                    ['Diện tích (ha)', formatNumericDisplay(r.area)],
+                    ['Độ sâu khu nước theo thiết kế (m)', formatNumericDisplay(r.designWaterDepth)],
+                    ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', formatNumericDisplay(r.currentWaterDepth)],
+                    ['Cao độ đáy bến thiết kế', formatNumericDisplay(r.bottomElevationDesign)],
+                    ['Cỡ tàu khai thác theo công bố (DWT)', formatNumericDisplay(r.maxVesselDWT)],
+                    ['Số lượng khu neo đậu đang khai thác', formatNumericDisplay(r.activeAnchorageCount)],
+                    ['Số lượng khu neo đậu đã công bố', formatNumericDisplay(r.publishedAnchorageCount)],
+                    ['Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng', formatNumericDisplay(r.underInvestmentAnchorageCount)],
+                  ].map(([label, value], index) => (
+                    <div key={label as string} className="chk-detail-row">
+                      <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
+                      <span className="chk-detail-value">{value}</span>
                     </div>
+                  ))}
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label sec-col1-label">Ghi chú</span>
+                    <span className="chk-detail-value">{r.remarks || ''}</span>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Section 3: Thông tin công bố mở, đưa vào sử dụng */}
@@ -430,16 +486,18 @@ export default function AnchorageDetailContent({
                 </div>
                 {announcementOpen && (
                   <div className="chk-detail-grid">
-                    {[
-                      ['Thời điểm công bố mở, đưa vào sử dụng', formatDateOnly(r.openingAnnouncementDate)],
-                      ['Quyết định công bố/ Văn bản cho phép khai thác', r.publicDecision || ''],
-                      ['Văn bản thỏa thuận đầu tư xây dựng', r.investmentAgreement || ''],
-                    ].map(([label, value], index) => (
-                      <div key={label} className={`chk-detail-row ${index === 2 ? 'chk-detail-row--full' : ''}`}>
-                        <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
-                        <span className="chk-detail-value">{value}</span>
-                      </div>
-                    ))}
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Thời điểm công bố mở, đưa vào sử dụng</span>
+                      <span className="chk-detail-value">{formatDateOnly(r.openingAnnouncementDate)}</span>
+                    </div>
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Quyết định công bố/ Văn bản cho phép khai thác</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.publicDecision || (r as any).openingDecision || ''}</span>
+                    </div>
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Văn bản thỏa thuận đầu tư xây dựng</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.investmentAgreement || (r as any).investmentAgreementDoc || ''}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -451,26 +509,68 @@ export default function AnchorageDetailContent({
                   {waterAreaOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                 </div>
                 {waterAreaOpen && (
-                  <div style={{ marginTop: 4 }}>
+                  <>
+                    {(r as any).waterAreaNeutralScope && (
+                      <div className="chk-detail-grid" style={{ marginBottom: (Array.isArray(r.mooringWaterAreas) && r.mooringWaterAreas.length > 0) ? spaceSm : 0 }}>
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label sec-col1-label">Phạm vi khu nước neo buộc tàu</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{(r as any).waterAreaNeutralScope}</span>
+                        </div>
+                      </div>
+                    )}
                     <DetailTable
+                      size="small"
                       dataSource={(Array.isArray(r.mooringWaterAreas) ? r.mooringWaterAreas : []).map((wa, i) => ({ ...wa, key: i }))}
                       emptyText="Chưa có dữ liệu"
                       rowKey={(rec: any) => rec.key}
-                      scroll={{ x: 600 }}
+                      scrollY={130}
+                      pageSize={5}
+                      pageSizeOptions={[5, 10, 20]}
                       columns={[
-                        { title: 'STT', width: 60 },
-                        { title: 'Phạm vi khu nước neo buộc tàu', dataIndex: 'description', key: 'description', render: (d?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{d || ''}</span> },
+                        { title: 'STT', width: 50, align: 'center' as const },
                         {
-                          title: 'Thao tác', key: 'actions', width: 100, align: 'center' as const,
+                          title: 'Phạm vi khu nước neo buộc tàu',
+                          dataIndex: 'description',
+                          key: 'description',
+                          render: (d?: string, rec?: any) => (
+                            <a
+                              style={{
+                                fontSize: fontSizeMd,
+                                color: actionPrimary,
+                                fontWeight: fontWeightBold,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                display: 'block',
+                                cursor: 'pointer',
+                              }}
+                              title={d || ''}
+                              onClick={() => setViewingWaterArea(rec)}
+                            >
+                              {d || ''}
+                            </a>
+                          ),
+                        },
+                        {
+                          title: 'Thao tác',
+                          key: 'actions',
+                          width: 100,
+                          align: 'center' as const,
                           render: (_v: any, rec: any) => (
                             <Tooltip title="Xem chi tiết điểm neo">
-                              <Button type="text" size="small" icon={<EyeOutlined />} style={{ color: actionPrimary, fontSize: fontSizeMd }} onClick={() => setViewingWaterArea(rec)} />
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EyeOutlined />}
+                                style={{ color: actionPrimary, fontSize: fontSizeMd }}
+                                onClick={() => setViewingWaterArea(rec)}
+                              />
                             </Tooltip>
                           ),
                         },
                       ]}
                     />
-                  </div>
+                  </>
                 )}
               </div>
 
@@ -482,16 +582,21 @@ export default function AnchorageDetailContent({
                 </div>
                 {approvalOpen && (
                   <div className="chk-detail-grid">
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Trạng thái</span>
-                      <span className="chk-detail-value">
-                        {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
-                          <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
-                            {approvalStyleMap[r.approvalStatus].label}
+                    {(() => {
+                      const isPendingPortAuthority = r.approvalStatus === 'PENDING_APPROVAL' || r.approvalStatus === 'CHO_PHE_DUYET' || approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục';
+                      return (
+                        <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
+                          <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                          <span className="chk-detail-value">
+                            {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
+                              <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
+                                {approvalStyleMap[r.approvalStatus].label}
+                              </span>
+                            ) : ''}
                           </span>
-                        ) : ''}
-                      </span>
-                    </div>
+                        </div>
+                      );
+                    })()}
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
                       <span className="chk-detail-value">
@@ -526,7 +631,7 @@ export default function AnchorageDetailContent({
                     </div>
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
-                      <span className="chk-detail-value">{r.portAuthorityApprovalContent || ''}</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.portAuthorityApprovalContent || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
@@ -542,7 +647,7 @@ export default function AnchorageDetailContent({
                     </div>
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
-                      <span className="chk-detail-value">{r.departmentApprovalContent || ''}</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.departmentApprovalContent || ''}</span>
                     </div>
                   </div>
                 )}
@@ -558,7 +663,7 @@ export default function AnchorageDetailContent({
                 <div className="chk-detail-grid">
                   {[
                     ['Loại đối tượng', (() => { const gt = String((r as any).geometryType || ''); const labels: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return labels[gt] || gt || ''; })()],
-                    ['Biểu tượng', (() => { const symbolId = r.mapSymbolId || ''; const name = symbolMap.get(symbolId) || symbolId || ''; const image = symbolImageMap.get(symbolId); return name ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>{image ? <img src={image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{name}</span> : ''; })()],
+                    ['Biểu tượng', (() => { const symbolId = r.mapSymbolId || (r as any).bieuTuongId || ''; const name = symbolMap.get(symbolId) || symbolId || ''; const image = symbolImageMap.get(symbolId); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>{image ? <img src={image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{name}</span>; })()],
                     ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem || '')],
                     ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : ''],
                   ].map(([label, value], index) => (
@@ -579,7 +684,7 @@ export default function AnchorageDetailContent({
                   emptyText="Chưa có tọa độ GPS nào"
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                   columns={[
-                    { title: 'STT', width: 60 },
+                    { title: 'STT', width: 50, align: 'center' as const },
                     { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_value, record) => renderDmsText(record.lat, true) },
                     { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_value, record) => renderDmsText(record.lng, false) },
                   ]}
@@ -593,14 +698,14 @@ export default function AnchorageDetailContent({
           children: (
             <div style={{ paddingTop: 6 }}>
               <div style={{ marginBottom: spaceSm }}>
-                <span style={detailLabelStyle}>Danh sách tài liệu đính kèm</span>
+                <span style={detailLabelStyle}>File đính kèm</span>
               </div>
               <DetailTable
                 dataSource={detailFiles.map((f) => ({ ...f }))}
                 emptyText="Chưa có tài liệu đính kèm"
                 scrollY={detailFiles.length === 0 ? undefined : DRAWER_TABLE_SCROLL_Y.detailView}
                 columns={[
-                  { title: 'STT', width: 60 },
+                  { title: 'STT', width: 50, align: 'center' as const },
                   {
                     title: 'Tên tài liệu',
                     dataIndex: 'fileName',
@@ -625,7 +730,7 @@ export default function AnchorageDetailContent({
                     dataIndex: 'fileSize',
                     key: 'fileSize',
                     width: 120,
-                    align: 'right' as const,
+                    align: 'left' as const,
                     render: (v: number, rec: any) => {
                       const sz = v || rec.size || 0;
                       return sz ? (sz > 1024 * 1024 ? `${(sz / (1024 * 1024)).toFixed(2)} MB` : `${(sz / 1024).toFixed(1)} KB`) : '';
@@ -643,7 +748,7 @@ export default function AnchorageDetailContent({
                     dataIndex: 'uploadedAt',
                     key: 'uploadedAt',
                     width: 150,
-                    align: 'center' as const,
+                    align: 'left' as const,
                     render: (v: string, rec: any) => {
                       const dt = v || rec.uploadedDate || rec.createdAt;
                       return dt ? dayjs(dt).format('DD/MM/YYYY HH:mm') : '';
@@ -719,11 +824,11 @@ export default function AnchorageDetailContent({
                     rowKey={(rec) => rec.id || rec.planCode || rec.code || ''}
                     scrollY={160}
                     columns={[
-                      { title: 'STT', width: 60 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                       { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v, rec) => v || rec.name || '' },
-                      { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 160, align: 'center' as const, render: (v, rec) => fmtDateTime(v || rec.startTime || rec.start || null) },
-                      { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 160, align: 'center' as const, render: (v, rec) => fmtDateTime(v || rec.endTime || rec.end || null) },
+                      { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'left' as const, render: (v, rec) => fmtDateTime(v || rec.startTime || rec.start || null) },
+                      { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'left' as const, render: (v, rec) => fmtDateTime(v || rec.endTime || rec.end || null) },
                     ]}
                   />
                 )}
@@ -740,11 +845,11 @@ export default function AnchorageDetailContent({
                     rowKey={(rec) => rec.id || rec.planCode || rec.code || ''}
                     scrollY={160}
                     columns={[
-                      { title: 'STT', width: 60 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                       { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v, rec) => v || rec.name || '' },
-                      { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 160, align: 'center' as const, render: (v, rec) => fmtDateTime(v || rec.start || rec.startDate || null) },
-                      { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 160, align: 'center' as const, render: (v, rec) => fmtDateTime(v || rec.end || rec.endDate || null) },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'left' as const, render: (v, rec) => fmtDateTime(v || rec.start || rec.startDate || null) },
+                      { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'left' as const, render: (v, rec) => fmtDateTime(v || rec.end || rec.endDate || null) },
                     ]}
                   />
                 )}
@@ -761,11 +866,11 @@ export default function AnchorageDetailContent({
                     rowKey={(rec) => rec.id || rec.incidentCode || rec.code || ''}
                     scrollY={160}
                     columns={[
-                      { title: 'STT', width: 60 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                       { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v, rec) => v || rec.type || '' },
                       { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v) => v || '' },
-                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 160, align: 'center' as const, render: (v, rec) => fmtDateTime(v || rec.time || null) },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v, rec) => fmtDateTime(v || rec.time || null) },
                     ]}
                   />
                 )}
@@ -830,55 +935,279 @@ export default function AnchorageDetailContent({
 
     {/* ── Drawer chi tiết khu nước neo buộc tàu (không đẩy Drawer cha) ── */}
     <Drawer
+      {...drawerProps}
+      rootClassName="anchorage-drawer-scope"
+      className="anchorage-drawer-scope"
+      size={1000}
       title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
-      width={900}
-      placement="right"
       open={!!viewingWaterArea}
       onClose={() => setViewingWaterArea(null)}
-      destroyOnHidden
+      destroyOnClose
       push={false}
-      closable={false}
       extra={<Button type="text" onClick={() => setViewingWaterArea(null)} style={drawerCloseBtnStyle}>✕</Button>}
-      styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}
+      footer={null}
+      styles={{
+        header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+        body: { padding: '0 24px 12px 24px' },
+      }}
     >
       {viewingWaterArea && (
-        <div style={{ paddingTop: 3 }}>
-          <div className="chk-detail-grid">
-            <div className="chk-detail-row chk-detail-row--full">
-              <span className="chk-detail-label sec-col1-label">Phạm vi khu nước neo buộc tàu</span>
-              <span className="chk-detail-value">{viewingWaterArea.description || ''}</span>
-            </div>
-          </div>
-          <div style={{ marginBottom: spaceMd, marginTop: spaceMd }}>
-            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>Vị trí cụ thể điểm neo</span>
-          </div>
-          <div className="chk-detail-grid">
-            {[
-              ['Loại đối tượng', (() => { const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return viewingWaterArea.geometryType ? m[viewingWaterArea.geometryType] || viewingWaterArea.geometryType : ''; })()],
-              ['Biểu tượng', (() => { const symName = symbolMap.get(viewingWaterArea.mapSymbolId || '') || viewingWaterArea.mapSymbolId || ''; const symImg = symbolImageMap.get(viewingWaterArea.mapSymbolId || ''); return symName ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span> : ''; })()],
-              ['Hệ quy chiếu', viewingWaterArea.coordinateSystem === 1 ? 'WGS-84' : viewingWaterArea.coordinateSystem === 2 ? 'VN-2000' : (viewingWaterArea.coordinateSystem || '')],
-              ['Quy tắc hiển thị', viewingWaterArea.displayRule || ''],
-            ].map(([label, value], i) => (
-              <div key={i} className="chk-detail-row">
-                <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
-                <span className="chk-detail-value">{value}</span>
+        <div className="anchorage-detail-content-wrapper">
+          <style>{`
+            .anchorage-detail-content-wrapper,
+            .anchorage-detail-content-wrapper .chk-detail-label,
+            .anchorage-detail-content-wrapper .chk-detail-value {
+              font-size: 13.5px !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-grid {
+              display: grid !important;
+              grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+              column-gap: 28px !important;
+              row-gap: 0 !important;
+              align-items: stretch !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-row {
+              display: flex !important;
+              align-items: flex-start !important;
+              min-height: 36px !important;
+              padding: 7px 0 !important;
+              border-bottom: 1px solid #f1f5f9 !important;
+              line-height: 1.5 !important;
+              gap: 10px !important;
+              width: 100% !important;
+              box-sizing: border-box !important;
+              overflow: visible !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-row:last-child {
+              border-bottom: none !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-row--full {
+              grid-column: 1 / -1 !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-label,
+            .anchorage-detail-content-wrapper .sec-col1-label,
+            .anchorage-detail-content-wrapper .chk-detail-row .sec-col1-label,
+            .anchorage-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+              width: 215px !important;
+              min-width: 215px !important;
+              max-width: 215px !important;
+              flex-shrink: 0 !important;
+              color: ${colors.sidebarBg} !important;
+              font-weight: 600 !important;
+              font-size: 13.5px !important;
+              text-align: left !important;
+              line-height: 1.5 !important;
+              align-self: flex-start !important;
+              white-space: normal !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+              width: auto !important;
+              min-width: 220px !important;
+              max-width: 320px !important;
+              white-space: nowrap !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-row .sec-col2-label {
+              width: 250px !important;
+              min-width: 250px !important;
+              max-width: 250px !important;
+              flex-shrink: 0 !important;
+              color: ${colors.sidebarBg} !important;
+              font-weight: 600 !important;
+              font-size: 13.5px !important;
+              text-align: left !important;
+              line-height: 1.5 !important;
+              align-self: flex-start !important;
+              white-space: normal !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-label::after {
+              content: ':' !important;
+              margin-left: 1px !important;
+              margin-right: 4px !important;
+            }
+            .anchorage-detail-content-wrapper .chk-detail-value {
+              flex: 1 1 auto !important;
+              color: #1e293b !important;
+              font-size: 13.5px !important;
+              font-weight: 500 !important;
+              line-height: 1.5 !important;
+              min-width: 0 !important;
+              word-break: break-word !important;
+            }
+          `}</style>
+
+          <div style={{ ...generalScrollerStyle, maxHeight: 'calc(100vh - 72px)', paddingTop: 10, paddingRight: 4, overflowY: 'auto', overflowX: 'hidden' }}>
+            {/* Box 1: Thông số đối tượng bản đồ */}
+            <div style={{ ...sectionBoxStyle, padding: viewingMapParamsOpen ? sectionBoxStyle.padding : '12px 18px' }}>
+              <div
+                onClick={() => setViewingMapParamsOpen(!viewingMapParamsOpen)}
+                style={{
+                  ...sectionHeaderStyle,
+                  marginBottom: viewingMapParamsOpen ? 10 : 0,
+                  paddingBottom: viewingMapParamsOpen ? 8 : 0,
+                  borderBottom: viewingMapParamsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                }}
+              >
+                <div style={sectionTitleStyle}>
+                  <EnvironmentOutlined style={{ color: actionPrimary }} />
+                  <span>Thông số đối tượng bản đồ</span>
+                </div>
+                {viewingMapParamsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
               </div>
-            ))}
-          </div>
-          <div style={{ marginTop: spaceSm }}>
-            <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Tọa độ điểm neo</span>
-            <DetailTable
-              dataSource={(Array.isArray(viewingWaterArea.anchorPoints) ? viewingWaterArea.anchorPoints : []).map((p: any, i: number) => ({ ...p, key: i }))}
-              emptyText="Không có điểm neo"
-              rowKey={(rec: any) => rec.key}
-              tableLayout="fixed"
-              columns={[
-                { title: 'STT', width: 60 },
-                { title: 'Tên điểm neo', dataIndex: 'name', key: 'name', width: 350, render: (name?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} title={name || ''}>{name || ''}</span> },
-                { title: 'Vĩ độ (N)', key: 'lat', width: 205, align: 'center' as const, render: (_v: any, rec: any) => renderDmsText(rec.latitude, true) },
-                { title: 'Kinh độ (E)', key: 'lng', width: 205, align: 'center' as const, render: (_v: any, rec: any) => renderDmsText(rec.longitude, false) },
-              ]}
-            />
+              {viewingMapParamsOpen && (
+                <div className="chk-detail-grid">
+                  <div className="chk-detail-row chk-detail-row--full">
+                    <span className="chk-detail-label sec-col1-label">Phạm vi khu nước neo buộc tàu</span>
+                    <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 110, overflowY: 'auto' }}>
+                      {viewingWaterArea.description || ''}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
+                    <span className="chk-detail-value">
+                      {(() => {
+                        const m: Record<string, string> = {
+                          POINT: 'Đối tượng điểm',
+                          LINE: 'Đối tượng đường',
+                          POLYGON: 'Đối tượng vùng',
+                        };
+                        return viewingWaterArea.geometryType ? m[viewingWaterArea.geometryType] || viewingWaterArea.geometryType : '';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
+                    <span className="chk-detail-value">
+                      {(() => {
+                        const symName = symbolMap.get(viewingWaterArea.mapSymbolId || '') || viewingWaterArea.mapSymbolId || '';
+                        const symImg = symbolImageMap.get(viewingWaterArea.mapSymbolId || '');
+                        const symImgSrc = symImg ? (symImg.startsWith('data:') ? symImg : `data:image/png;base64,${symImg}`) : undefined;
+                        return symName ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            {symImgSrc ? (
+                              <img
+                                src={symImgSrc}
+                                alt=""
+                                style={{ width: 22, height: 22, objectFit: 'contain' }}
+                              />
+                            ) : null}
+                            {symName}
+                          </span>
+                        ) : '';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
+                    <span className="chk-detail-value">
+                      {viewingWaterArea.coordinateSystem === 1
+                        ? 'WGS-84'
+                        : viewingWaterArea.coordinateSystem === 2
+                        ? 'VN-2000'
+                        : (viewingWaterArea.coordinateSystem || '')}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
+                    <span className="chk-detail-value">
+                      {viewingWaterArea.displayRule || 'Độ, phút, giây (DMS)'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Box 2: Tọa độ điểm neo */}
+            <div
+              ref={viewingAnchorBoxRef}
+              style={{
+                ...sectionBoxStyle,
+                padding: viewingAnchorPointsOpen ? sectionBoxStyle.padding : '12px 18px',
+                height: viewingAnchorPointsOpen ? (viewingAnchorBoxHeight ? `${viewingAnchorBoxHeight}px` : undefined) : 'auto',
+                minHeight: viewingAnchorPointsOpen ? 230 : undefined,
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box',
+                marginBottom: 0,
+              }}
+            >
+              <div
+                onClick={() => setViewingAnchorPointsOpen(!viewingAnchorPointsOpen)}
+                style={{
+                  ...sectionHeaderStyle,
+                  marginBottom: viewingAnchorPointsOpen ? 10 : 0,
+                  paddingBottom: viewingAnchorPointsOpen ? 8 : 0,
+                  borderBottom: viewingAnchorPointsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  flexShrink: 0,
+                }}
+              >
+                <div style={sectionTitleStyle}>
+                  <EnvironmentOutlined style={{ color: actionPrimary }} />
+                  <span>Tọa độ điểm neo ({(viewingWaterArea.anchorPoints || []).length})</span>
+                </div>
+                {viewingAnchorPointsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+              </div>
+              {viewingAnchorPointsOpen && (
+                <DetailTable
+                  size="small"
+                  scroll={{ x: 590 }}
+                  pageSize={10}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  dataSource={(Array.isArray(viewingWaterArea.anchorPoints) ? viewingWaterArea.anchorPoints : []).map((p: any, i: number) => ({ ...p, key: i }))}
+                  emptyText="Chưa có dữ liệu tọa độ điểm neo"
+                  rowKey={(rec: any) => rec.key}
+                  scrollY={viewingAnchorTableScrollY}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                  columns={[
+                    {
+                      title: 'STT',
+                      width: 50,
+                      align: 'center' as const,
+                      render: (_: unknown, __: unknown, idx: number) => idx + 1,
+                    },
+                    {
+                      title: 'Tên điểm neo',
+                      dataIndex: 'name',
+                      key: 'name',
+                      width: 180,
+                      render: (name?: string) => (
+                        <span
+                          style={{
+                            fontSize: fontSizeMd,
+                            color: textPrimary,
+                            fontWeight: fontWeightBold,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            display: 'block',
+                          }}
+                          title={name || ''}
+                        >
+                          {name || ''}
+                        </span>
+                      ),
+                    },
+                    {
+                      title: 'Vĩ độ (Latitude - N)',
+                      key: 'lat',
+                      width: 180,
+                      align: 'center' as const,
+                      render: (_v: unknown, rec: any) => renderDmsText(rec.latitude, true),
+                    },
+                    {
+                      title: 'Kinh độ (Longitude - E)',
+                      key: 'lng',
+                      width: 180,
+                      align: 'center' as const,
+                      render: (_v: unknown, rec: any) => renderDmsText(rec.longitude, false),
+                    },
+                  ]}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

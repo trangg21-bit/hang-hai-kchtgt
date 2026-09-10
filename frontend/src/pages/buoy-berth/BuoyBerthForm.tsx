@@ -288,28 +288,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedPortId = Form.useWatch('portId', form);
 
-  /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới. */
-  const useMaxReached = (name: string, max: number): boolean => {
-    const raw = Form.useWatch(name, form) ?? '';
-    const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
-    return len >= max;
-  };
-  const atMax = {
-    buoyBerthName: useMaxReached('buoyBerthName', 255),
-    detailedLocation: useMaxReached('detailedLocation', 500),
-    publicDecision: useMaxReached('publicDecision', 2000),
-    investmentAgreement: useMaxReached('investmentAgreement', 2000),
-    mooringWaterAreaScope: useMaxReached('mooringWaterAreaScope', 2000),
-    currentWaterDepth: useMaxReached('currentWaterDepth', 20),
-    bottomElevationDesign: useMaxReached('bottomElevationDesign', 20),
-    maxVesselDWT: useMaxReached('maxVesselDWT', 20),
-    plannedVesselDWT: useMaxReached('plannedVesselDWT', 20),
-    designCapacity: useMaxReached('designCapacity', 20),
-    activeBuoyBerthCount: useMaxReached('activeBuoyBerthCount', 5),
-    publishedBuoyBerthCount: useMaxReached('publishedBuoyBerthCount', 5),
-    underInvestmentBuoyBerthCount: useMaxReached('underInvestmentBuoyBerthCount', 5),
-    cargoThroughput: useMaxReached('cargoThroughput', 20),
-  };
+
 
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);

@@ -125,7 +125,12 @@ public class BerthService {
         String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
         applySaveAction(entity, action);
 
-        Berth saved = berthRepository.save(entity);
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+        Berth saved = berthRepository.saveAndFlush(entity);
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -148,7 +153,8 @@ public class BerthService {
                     refId,
                     InfrastructureType.PORT_TERMINAL);
             saved.setSpatialId(spatialObj.getId());
-            saved = berthRepository.save(saved);
+            saved.setUpdatedAt(LocalDateTime.now());
+            saved = berthRepository.saveAndFlush(saved);
         }
 
         log.info("Created Berth [{}] code={}", saved.getId(), saved.getBerthCode());
@@ -175,7 +181,7 @@ public class BerthService {
             Integer structureType, String operationalFunction,
             Integer provinceId, String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"),
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
                 Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus)
                 : null;
@@ -401,7 +407,11 @@ public class BerthService {
             applySaveAction(entity, request.getSaveAction());
         }
 
-        Berth saved = berthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+        Berth saved = berthRepository.saveAndFlush(entity);
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
             // Lấy tọa độ + loại hình cũ (WKT) trước khi createOrUpdate ghi đè spatial object
@@ -429,7 +439,8 @@ public class BerthService {
                     refId,
                     InfrastructureType.PORT_TERMINAL);
             saved.setSpatialId(spatialObj.getId());
-            saved = berthRepository.save(saved);
+            saved.setUpdatedAt(LocalDateTime.now());
+            saved = berthRepository.saveAndFlush(saved);
 
             // Lịch sử vị trí theo chuẩn Cảng biển / TTDH VTS: 2 dòng riêng
             // "Tọa độ GIS" + "Loại đối tượng GIS", kèm approvedBy = user thật.

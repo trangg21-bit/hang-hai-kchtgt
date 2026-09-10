@@ -22,6 +22,12 @@ public interface AnchorageRepository extends JpaRepository<Anchorage, UUID> {
 
     boolean existsByAnchorageCode(String anchorageCode);
 
+    @Query("SELECT COUNT(a) > 0 FROM Anchorage a WHERE LOWER(TRIM(a.anchorageName)) = LOWER(TRIM(:anchorageName)) AND a.deletedAt IS NULL")
+    boolean existsByAnchorageName(@Param("anchorageName") String anchorageName);
+
+    @Query("SELECT COUNT(a) > 0 FROM Anchorage a WHERE LOWER(TRIM(a.anchorageName)) = LOWER(TRIM(:anchorageName)) AND a.id <> :id AND a.deletedAt IS NULL")
+    boolean existsByAnchorageNameAndIdNot(@Param("anchorageName") String anchorageName, @Param("id") UUID id);
+
     @Query("SELECT a FROM Anchorage a WHERE a.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR a.orgUnitId = :orgUnitId)")
     Page<Anchorage> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);

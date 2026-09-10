@@ -770,6 +770,7 @@ export default function PierListPage() {
       toast.success('Đã xóa cầu cảng');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (ex: unknown) {
@@ -787,7 +788,7 @@ export default function PierListPage() {
         await pierApproval.approveC2(record.id, content);
       }
       toast.success(record.approvalStatus === 'PENDING_APPROVAL' ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
-      setApproveModalOpen(false); setApprovingRecord(null); void fetchData(); void fetchCounts(orgUnit);
+      setApproveModalOpen(false); setApprovingRecord(null); setPage(1); void fetchData(); void fetchCounts(orgUnit);
     }
     catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Phê duyệt thất bại'); }
   }, [fetchData, fetchCounts, orgUnit]);
@@ -795,7 +796,7 @@ export default function PierListPage() {
   const handleSubmitApproval = useCallback((record: Pier) => { setSubmittingRecord(record); setSubmitModalOpen(true); }, []);
   const confirmSubmitApproval = useCallback(async () => {
     if (!submittingRecord) return;
-    try { await pierCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' } as any); toast.success('Đã gửi phê duyệt'); setSubmitModalOpen(false); setSubmittingRecord(null); void fetchData(); void fetchCounts(orgUnit); }
+    try { await pierCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' } as any); toast.success('Đã gửi phê duyệt'); setSubmitModalOpen(false); setSubmittingRecord(null); setPage(1); void fetchData(); void fetchCounts(orgUnit); }
     catch (ex: unknown) { toast.error(ex instanceof Error ? ex.message : 'Gửi thất bại'); }
   }, [submittingRecord, fetchData, fetchCounts, orgUnit]);
 
@@ -813,6 +814,7 @@ export default function PierListPage() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
+      setPage(1);
       void fetchData(); void fetchCounts(orgUnit);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
@@ -979,13 +981,23 @@ export default function PierListPage() {
 
   // Giá trị sort theo cột hiển thị (map id → label) để click header cột nào cũng sort đúng thứ tự nhìn thấy
   const getSortValue = useCallback((r: any, field: string): string | number => {
+    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
+    if (field === 'pierName') return r.pierName ?? '';
     if (field === 'structureType') return STRUCTURE_TYPE_OPTIONS.find(o => o.value === r.structureType)?.label ?? '';
     if (field === 'portId') return portMap.get(r.portId) ?? r.portId ?? '';
     if (field === 'berthName') return berthOptions.find(b => b.value === r.berthId)?.label ?? r.berthName ?? r.tenBenCang ?? r.berthId ?? '';
     if (field === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
+    if (field === 'province') return r.province ?? '';
     if (field === 'constructionGrade') return CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === r.constructionGrade)?.label ?? '';
+    if (field === 'operationalFunction') return formatOperationalFunction(r.operationalFunction, '');
+    if (field === 'operationalStatus') return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
+    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    if (field === 'updatedAt') return r.updatedAt ?? '';
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ?? '';
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ?? '';
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ?? '';
     return r[field] ?? '';
-  }, [portMap, berthOptions, waterwayMap]);
+  }, [organizations, orgMap, portMap, berthOptions, waterwayMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1014,9 +1026,9 @@ export default function PierListPage() {
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : ''}</span> },
     { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 240, ellipsis: true, sortable: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatOperationalFunction(v, '')}</span> },
-    { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 190, sortable: true,
+    { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
       render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; } },
-    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, sortable: true,
+    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
       render: (v: string) => {
         const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
         return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
@@ -1032,7 +1044,10 @@ export default function PierListPage() {
     const tailColumns: any[] = [
     ];
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
-    return allColumns.map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined }));
+    return allColumns.map(col => ({
+      ...col,
+      sortOrder: col.sortable ? (col.key === sortField ? sortOrder : null) : undefined,
+    }));
   }, [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
@@ -1198,7 +1213,7 @@ export default function PierListPage() {
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>
-          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); createForm.resetFields(); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
+          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); createForm.resetFields(); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
         </Form>
       </Drawer>
 

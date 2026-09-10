@@ -2,11 +2,13 @@ package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.entity.TransferArea;
 import com.hanghai.kchtg.port.repository.TransferAreaRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -78,17 +80,20 @@ public class TransferAreaApprovalService {
             throw new IllegalArgumentException("Cấp phê duyệt không hợp lệ: " + cap);
         }
 
-        ApprovalLog approvalLogRecord = ApprovalLog.builder()
-                .entityType("TransferArea")
-                .entityId(id.toString())
-                .decision("APPROVED")
-                .cap(cap)
-                .decidedBy(userId)
-                .decidedAt(LocalDateTime.now())
-                .build();
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; không ghi lịch sử (chuẩn Khu neo đậu)
-        // approvalLogRepository.save(approvalLogRecord);
         transferAreaRepository.save(entity);
+
+        // Ghi sự kiện phê duyệt vào infrastructure_history (changedField = null để getHistory
+        // phân loại vào approvalLog), chuẩn Cảng biển/Khu neo đậu sau migration V20260825162500.
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(InfrastructureType.TRANSSHIPMENT_AREA)
+                .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
+                .status(InfrastructureHistoryStatus.APPROVED)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
+                .reason(("CANG_VU".equals(cap) ? "Phê duyệt cấp Cảng vụ" : "Phê duyệt cấp Cục")
+                        + (content != null && !content.isBlank() ? ": " + content.trim() : ""))
+                .build());
 
         log.info("TransferArea [{}] approved by {} at level {}", id, userId, cap);
     }
@@ -104,18 +109,21 @@ public class TransferAreaApprovalService {
         entity.setApprovalStatus(isLevel2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
-        ApprovalLog approvalLog = ApprovalLog.builder()
-                .entityType("TransferArea")
-                .entityId(id.toString())
-                .decision("REJECTED")
-                .cap(cap)
-                .reason(reason)
-                .decidedBy(userId)
-                .decidedAt(LocalDateTime.now())
-                .build();
-        // [TẠM TẮT GHI LỊCH SỬ] Bảng approval_logs đã bị V20260825162500 drop; không ghi lịch sử (chuẩn Khu neo đậu)
-        // approvalLogRepository.save(approvalLog);
         transferAreaRepository.save(entity);
+
+        // Ghi sự kiện từ chối vào infrastructure_history (changedField = null để getHistory
+        // phân loại vào approvalLog), chuẩn Cảng biển sau migration V20260825162500.
+        String levelLabel = "CANG_VU".equals(cap) ? "Cảng vụ" : "Cục";
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(InfrastructureType.TRANSSHIPMENT_AREA)
+                .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
+                .status(InfrastructureHistoryStatus.REJECTED)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
+                .reason("Từ chối cấp " + levelLabel
+                        + (reason != null && !reason.isBlank() ? ": " + reason.trim() : ""))
+                .build());
 
         log.info("TransferArea [{}] rejected by {} at level {}: {}", id, userId, cap, reason);
     }
@@ -160,6 +168,7 @@ public class TransferAreaApprovalService {
         result.put("currentApprovalStatus", entity.getApprovalStatus());
         result.put("changeHistory", changeHistory);
         result.put("approvalLog", approvalLog);
+        result.put("histories", list);
         return result;
     }
 

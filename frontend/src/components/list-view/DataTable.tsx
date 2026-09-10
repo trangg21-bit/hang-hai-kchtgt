@@ -23,10 +23,17 @@ const HEADER_CHAR_WIDTH = 8.8;
 const HEADER_HORIZONTAL_PADDING = 24;
 const HEADER_SORTER_WIDTH = 22;
 
+function extractHeaderLabel(val: any): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number') return String(val);
+  if (React.isValidElement(val)) return extractHeaderLabel((val.props as any)?.children);
+  if (Array.isArray(val)) return val.map(extractHeaderLabel).join('');
+  return '';
+}
+
 function headerMinWidth(column: any): number {
-  const label = typeof column?.label === 'string'
-    ? column.label
-    : typeof column?.title === 'string' ? column.title : '';
+  const label = extractHeaderLabel(column?.label ?? column?.title);
   if (!label) return 0;
   const sorterSpace = (column.sortable || column.sorter) ? HEADER_SORTER_WIDTH : 0;
   return Math.ceil(label.length * HEADER_CHAR_WIDTH) + HEADER_HORIZONTAL_PADDING + sorterSpace;
@@ -293,12 +300,15 @@ const DataTable: React.FC<DataTableProps> = ({
     const sorterFn = typeof col.sorter === 'function'
       ? col.sorter
       : isSortable
-        ? (a: any, b: any) => {
-            const aVal = a[dataKey] ?? '';
-            const bVal = b[dataKey] ?? '';
-            if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
-            return String(aVal).localeCompare(String(bVal), 'vi');
-          }
+        ? (onSort
+            ? true
+            : (a: any, b: any) => {
+                const aVal = a[dataKey] ?? '';
+                const bVal = b[dataKey] ?? '';
+                if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
+                return String(aVal).localeCompare(String(bVal), 'vi');
+              }
+          )
         : undefined;
 
     const colObj: any = {
@@ -384,6 +394,8 @@ const DataTable: React.FC<DataTableProps> = ({
 
     if (col.sortOrder !== undefined) {
       colObj.sortOrder = col.sortOrder;
+    } else if (onSort && isSortable) {
+      colObj.sortOrder = null;
     }
 
     return colObj;

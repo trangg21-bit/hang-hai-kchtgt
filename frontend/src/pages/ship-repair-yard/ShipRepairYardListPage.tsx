@@ -628,7 +628,8 @@ export default function ShipRepairYardList() {
 
   // ── Load organizations ──────────────────────────────────────────
   useEffect(() => {
-    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
+    const isIframe = window.self !== window.top;
+    const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
     if (parentOrgUnits && parentOrgUnits.length > 0) {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {

@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Button, Modal, Input, Select, DatePicker,
   Drawer, Space, Typography, Form,
@@ -18,7 +20,6 @@ import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -58,7 +59,7 @@ import {
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle, icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle,
+  cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 
@@ -73,7 +74,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL2: { color: statusOperational, label: 'Đã phê duyệt' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
@@ -86,6 +87,11 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
   OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
   NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
   SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
+  TAM_NGUNG: { color: statusCritical, label: 'Tạm ngừng' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
 };
 
 const TAB_STATUS_LIST = [
@@ -138,39 +144,105 @@ function formatDate(d: string | null | undefined): string {
   try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
 }
 
+const EXCLUDED_CHANGE_FIELDS = new Set([
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'updatedBy',
+  'submittedForApprovalAt',
+  'submittedForApprovalBy',
+  'portAuthorityApprovedAt',
+  'portAuthorityApprovedBy',
+  'departmentApprovedAt',
+  'departmentApprovedBy',
+  'portAuthorityApprovalContent',
+  'departmentApprovalContent',
+  'rejectionReason',
+  'attachments',
+  'spatialId',
+  'Thời điểm gửi phê duyệt',
+  'Người gửi phê duyệt',
+  'Thời điểm Cảng vụ phê duyệt',
+  'Cán bộ Cảng vụ phê duyệt',
+  'Thời điểm Cục phê duyệt',
+  'Cán bộ Cục phê duyệt',
+  'Nội dung Cảng vụ phê duyệt',
+  'Nội dung Cục phê duyệt',
+  'Lý do từ chối',
+  'Vị trí không gian',
+]);
+
+const NUMERIC_HISTORY_FIELDS = new Set([
+  'area',
+  'designWaterDepth',
+  'currentWaterDepth',
+  'bottomElevationDesign',
+  'maxVesselDWT',
+  'activeTransferCount',
+  'publishedTransferCount',
+  'underInvestmentTransferCount',
+  'Diện tích (ha)',
+  'Độ sâu thiết kế',
+  'Độ sâu hiện tại',
+  'Cao trình đáy thiết kế',
+  'Trọng tải tàu lớn nhất (DWT)',
+  'Số vị trí đang khai thác',
+  'Số vị trí công bố',
+  'Số vị trí thỏa thuận đầu tư',
+]);
+
 const histLabels: Record<string, string> = {
   transferAreaCode: 'Mã khu chuyển tải',
   transferAreaName: 'Tên khu chuyển tải',
   portId: 'Thuộc cảng biển',
   orgUnitId: 'Đơn vị quản lý',
-  provinceId: 'Tỉnh/Thành phố',
+  provinceId: 'Địa điểm (Tỉnh/Thành Phố)',
+  province: 'Địa điểm (Tỉnh/Thành Phố)',
   detailedLocation: 'Địa điểm chi tiết',
   operationalFunctions: 'Công năng khai thác',
   operationalStatus: 'Tình trạng',
   approvalStatus: 'Trạng thái',
   shapeDescription: 'Hình dạng',
   area: 'Diện tích (ha)',
-  designWaterDepth: 'Độ sâu thiết kế (m)',
-  currentWaterDepth: 'Độ sâu hiện tại (m)',
-  bottomElevationDesign: 'Cao độ đáy thiết kế (m)',
-  maxVesselDWT: 'Cỡ tàu khai thác tối đa (DWT)',
-  activeTransferCount: 'Số lượng khu chuyển tải đang khai thác',
-  publishedTransferCount: 'Số lượng khu chuyển tải đã công bố',
-  underInvestmentTransferCount: 'Số lượng khu chuyển tải đang thỏa thuận đầu tư',
+  designWaterDepth: 'Độ sâu thiết kế',
+  currentWaterDepth: 'Độ sâu hiện tại',
+  bottomElevationDesign: 'Cao trình đáy thiết kế',
+  maxVesselDWT: 'Trọng tải tàu lớn nhất (DWT)',
+  activeTransferCount: 'Số vị trí đang khai thác',
+  publishedTransferCount: 'Số vị trí công bố',
+  underInvestmentTransferCount: 'Số vị trí thỏa thuận đầu tư',
   remarks: 'Ghi chú',
-  openingAnnouncementDate: 'Thời điểm công bố mở',
-  publicDecision: 'Quyết định công bố/văn bản cho phép khai thác',
-  investmentAgreement: 'Văn bản thỏa thuận đầu tư',
-  activityStartDate: 'Từ ngày',
-  activityEndDate: 'Đến ngày',
+  openingAnnouncementDate: 'Ngày công bố',
+  publicDecision: 'Quyết định công bố',
+  investmentAgreement: 'Thỏa thuận đầu tư',
+  activityStartDate: 'Thời gian hoạt động từ',
+  activityEndDate: 'Thời gian hoạt động đến',
   coordinateSystem: 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
   mapSymbolId: 'Biểu tượng',
-  'Tọa độ GIS': 'Tọa độ GIS',
-  'Loại đối tượng GIS': 'Loại đối tượng GIS',
-  'Tài liệu đính kèm': 'Tài liệu đính kèm',
+  mooringWaterAreas: 'Phạm vi khu nước neo buộc tàu',
   'Phạm vi khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
+  'Tọa độ GIS': 'Tọa độ GPS',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  'Loại đối tượng GIS': 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm',
+  spatialId: 'Vị trí không gian',
   'Trạng thái': 'Hành động',
+  submittedForApprovalAt: 'Thời điểm gửi phê duyệt',
+  submittedForApprovalBy: 'Người gửi phê duyệt',
+  portAuthorityApprovedAt: 'Thời điểm Cảng vụ phê duyệt',
+  portAuthorityApprovedBy: 'Cán bộ Cảng vụ phê duyệt',
+  departmentApprovedAt: 'Thời điểm Cục phê duyệt',
+  departmentApprovedBy: 'Cán bộ Cục phê duyệt',
+  portAuthorityApprovalContent: 'Nội dung Cảng vụ phê duyệt',
+  departmentApprovalContent: 'Nội dung Cục phê duyệt',
+  rejectionReason: 'Lý do từ chối',
+  // Backward compatibility:
+  'Cảng biển': 'Thuộc cảng biển',
+  'Tỉnh/Thành phố': 'Địa điểm (Tỉnh/Thành Phố)',
+  'Biểu tượng bản đồ': 'Biểu tượng',
 };
 
 function histField(fn: string): string { return histLabels[fn] || fn; }
@@ -183,46 +255,71 @@ function histVal(
   portMap?: Map<string, string>,
 ): string {
   if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
-  if (fn === 'operationalFunctions') return formatOperationalFunctions(val);
-  if (fn === 'orgUnitId' && orgMap) { const f = orgMap.get(val); return f ? f.split(' - ').pop() || f : val; }
-  if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'approvalStatus') {
+  const v = val.trim();
+  if (fn === 'operationalFunctions') return formatOperationalFunctions(v);
+  if ((fn === 'orgUnitId' || fn === 'Đơn vị quản lý') && orgMap) {
+    const f = orgMap.get(v);
+    return f ? f.split(' - ').pop() || f : v;
+  }
+  if ((fn === 'portId' || fn === 'Thuộc cảng biển' || fn === 'Cảng biển') && portMap) return portMap.get(v) || v;
+  if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'Biểu tượng bản đồ') && symbolMap) return symbolMap.get(v) || v;
+  if (fn === 'approvalStatus' || fn === 'Trạng thái' || fn === 'Trạng thái phê duyệt') {
     const m: Record<string, string> = {
       DRAFT: 'Lưu tạm',
       PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
       APPROVED: 'Đã phê duyệt',
       DA_PHE_DUYET: 'Đã phê duyệt',
+      APPROVED_LEVEL2: 'Đã phê duyệt',
       REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL2: 'Từ chối cấp cục',
+      TU_CHOI: 'Từ chối cấp Cảng vụ/Chi cục',
     };
-    return m[val?.toUpperCase()] || val;
+    return m[v.toUpperCase()] || v;
   }
-  if (fn === 'operationalStatus') {
+  if (fn === 'operationalStatus' || fn === 'Tình trạng' || fn === 'Tình trạng hoạt động') {
     const m: Record<string, string> = {
       OPERATIONAL: 'Đang khai thác/vận hành',
       NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
       SUSPENDED: 'Dừng khai thác/vận hành',
+      HIEN_HANH: 'Hiện hành',
+      TAM_NGUNG: 'Tạm ngừng',
+      DANG_KHAI_THAC: 'Đang khai thác/vận hành',
+      CHUA_KHAI_THAC: 'Chưa khai thác/vận hành',
+      DUNG_KHAI_THAC: 'Dừng khai thác/vận hành',
     };
-    return m[val?.toUpperCase()] || val;
+    return m[v.toUpperCase()] || v;
   }
-  if (fn === 'provinceId') {
-    const num = Number(val);
-    return num > 0 && num <= VIETNAM_PROVINCES.length ? VIETNAM_PROVINCES[num - 1] : val;
+  if (fn === 'provinceId' || fn === 'province' || fn === 'Địa điểm (Tỉnh/Thành Phố)' || fn === 'Địa điểm (Tỉnh/Thành phố)' || fn === 'Tỉnh/Thành phố') {
+    const num = Number(v);
+    if (!isNaN(num) && num >= 1 && num <= VIETNAM_PROVINCES.length) {
+      return VIETNAM_PROVINCES[num - 1];
+    }
+    return v;
   }
-  if (fn === 'coordinateSystem') { const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' }; return m[val] || val; }
-  if (fn.endsWith('At') || fn.endsWith('Date')) {
+  if (fn === 'geometryType' || fn === 'Loại đối tượng' || fn === 'Loại đối tượng GIS') {
+    const m: Record<string, string> = {
+      POINT: 'Điểm',
+      LINE: 'Đường',
+      POLYGON: 'Vùng',
+    };
+    return m[v.toUpperCase()] || v;
+  }
+  if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[v] || v;
+  }
+  if (fn.endsWith('At') || fn.endsWith('Date') || fn.includes('Thời điểm') || fn.includes('Ngày') || fn.includes('Thời gian')) {
     try {
-      let d = dayjs(val);
-      if (!d.isValid()) { d = dayjs((val || '').replace(/\.\d+$/, '')); }
-      return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : val;
-    } catch { return val; }
+      let d = dayjs(v);
+      if (!d.isValid()) { d = dayjs(v.replace(/\.\d+$/, '')); }
+      return d.isValid() ? (fn.includes('openingAnnouncementDate') || fn.includes('activityStartDate') || fn.includes('activityEndDate') || fn.includes('Ngày') || fn.includes('Thời gian') ? d.format('DD/MM/YYYY') : d.format('DD/MM/YYYY HH:mm')) : v;
+    } catch { return v; }
   }
-  return val;
+  return v;
 }
 
 function historyTimestamp(item: any): string {
@@ -231,7 +328,7 @@ function historyTimestamp(item: any): string {
 
 function historyActor(item: any): string {
   const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '';
+  return raw || '—';
 }
 
 function normalizeHistoryKey(value: string): string {
@@ -291,22 +388,121 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
   });
 }
 
+function splitHistoryFileNames(value: string | null | undefined): string[] {
+  const text = String(value || '').trim();
+  if (!text || ['—', '-', '(null)', 'null', '(trống)', 'undefined', '[]', 'chưa có', 'chua co'].includes(text.toLowerCase())) return [];
+  const stripPrefix = (name: string): string => name.trim().replace(/^(thêm|xóa|cũ|mới|them|xoa|cu|moi)\s*:?\s+/i, '').trim();
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed.map((it: any) => {
+          if (it === null || it === undefined) return '';
+          if (typeof it === 'string') return stripPrefix(it);
+          if (typeof it === 'object' && it.fileName) return stripPrefix(it.fileName);
+          if (typeof it === 'object' && it.name) return stripPrefix(it.name);
+          return stripPrefix(String(it));
+        }).filter(Boolean);
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  return text
+    .split(/[,\n;]/)
+    .map((item) => stripPrefix(item))
+    .filter((item) => item && !['—', '-', '(null)', 'null', '(trống)', 'undefined'].includes(item.toLowerCase()));
+}
+
+function consolidateHistoryChanges(changes: Array<{ field: string; oldValue: string | null; newValue: string | null }>): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
+  if (!Array.isArray(changes) || changes.length <= 1) return changes || [];
+  const result: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+  const attachmentChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+
+  for (const c of changes) {
+    const norm = normalizeHistoryKey(c.field);
+    if (norm.includes('dinh kem') || norm.includes('attachment') || norm.includes('tep tin') || norm.includes('file')) {
+      attachmentChanges.push(c);
+    } else {
+      const existing = result.find(r => normalizeHistoryKey(r.field) === norm);
+      if (existing) {
+        existing.newValue = c.newValue;
+      } else {
+        result.push({ ...c });
+      }
+    }
+  }
+
+  if (attachmentChanges.length > 0) {
+    if (attachmentChanges.length === 1) {
+      result.push(attachmentChanges[0]);
+    } else {
+      const allOldFiles: string[] = [];
+      const allNewFiles: string[] = [];
+      for (const ac of attachmentChanges) {
+        splitHistoryFileNames(ac.oldValue).forEach(f => {
+          if (!allOldFiles.includes(f)) allOldFiles.push(f);
+        });
+        splitHistoryFileNames(ac.newValue).forEach(f => {
+          if (!allNewFiles.includes(f)) allNewFiles.push(f);
+        });
+      }
+      const netOld = allOldFiles.filter(f => !allNewFiles.includes(f));
+      const netNew = allNewFiles.filter(f => !allOldFiles.includes(f));
+      if (netOld.length > 0 || netNew.length > 0) {
+        result.push({
+          field: 'Tài liệu đính kèm',
+          oldValue: netOld.length > 0 ? netOld.join(', ') : '—',
+          newValue: netNew.length > 0 ? netNew.join(', ') : '—',
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
 function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—' || val === '-' || val === '') {
-    return '';
+  if (val === null || val === undefined || val === '—' || val === '' || val === '-' || val === '–') {
+    return <span style={{ color: textTertiary }}>—</span>;
   }
   const normKey = normalizeHistoryKey(field);
   const normVal = normalizeHistoryKey(val);
+  const rawValue = String(val ?? '').trim();
+
+  // ── Tài liệu đính kèm: hiển thị từng tên tệp kèm icon FileOutlined ──
+  if (normKey.includes('dinh kem') || normKey.includes('attachment') || normKey.includes('tep tin') || normKey.includes('file')) {
+    const fileNames = splitHistoryFileNames(rawValue);
+    if (fileNames.length === 0) return <span style={{ color: textTertiary }}>—</span>;
+    if (fileNames.length === 1) {
+      return (
+        <span title={fileNames[0]} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+          <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+          <span>{fileNames[0]}</span>
+        </span>
+      );
+    }
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+        {fileNames.map((fileName, fi) => (
+          <span key={fi} title={fileName} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+            <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+            <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fileName}</span>
+          </span>
+        ))}
+      </span>
+    );
+  }
 
   if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved') {
+    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
       return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
     }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level2' || normVal.includes('cuc duyet') || normVal.includes('cap cuc')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
+      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
     }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'approved_level1' || normVal.includes('cang vu')) {
-      return (<span style={statusBadgeStyle(actionPrimary)}>{val}</span>);
+    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
     }
     if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
       return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
@@ -314,18 +510,7 @@ function renderHistoryValueTag(field: string, val: string | null) {
     return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
   }
 
-  if (normKey === 'operationalstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('dang khai thac') || normVal.includes('operational')) {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal.includes('chua khai thac') || normVal.includes('not_yet')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal.includes('dung khai thac') || normVal.includes('suspended')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-  }
-
+  // Tình trạng (operationalStatus) không dùng badge — hiển thị text bình thường theo yêu cầu người dùng
   return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
 }
 
@@ -338,18 +523,15 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
   }
-
   if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
     return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
   }
   if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
     return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
   }
-
   if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
     return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
   }
-
   if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
@@ -376,7 +558,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
     if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
-    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level2') || nv.includes('cuc duyet') || nv.includes('approved_level1')) {
+    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
       return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
     }
     if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
@@ -391,13 +573,13 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   }
 
   if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
   if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
     return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
@@ -416,15 +598,21 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
 }
 
 export default function TransferAreaListPage() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
+
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
-  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation') || userPermissions.includes('*');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
-  const [filterName, setFilterName] = useState('');
-  const [filterCode, setFilterCode] = useState('');
+  const [nameInput, setNameInput] = useState('');
+  const [codeInput, setCodeInput] = useState('');
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
-  const [filterProvince, setFilterProvince] = useState<number | undefined>();
+  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+  const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterOperationalFunctions, setFilterOperationalFunctions] = useState<string[]>([]);
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
@@ -437,23 +625,26 @@ export default function TransferAreaListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [, setError] = useState<Error | null>(null);
   const [sortField, setSortField] = useState('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
-  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+
   const orgMap = useMemo(() => {
     const m = new Map<string, string>();
     organizations.forEach(o => m.set(o.id, o.name));
     return m;
   }, [organizations]);
+
   const portMap = useMemo(() => {
     const m = new Map<string, string>();
     portOptions.forEach((o) => m.set(o.value, o.label));
     return m;
   }, [portOptions]);
+
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
   const [editTransferAreaId, setEditTransferAreaId] = useState<string | undefined>();
@@ -472,7 +663,7 @@ export default function TransferAreaListPage() {
   const [rejectError, setRejectError] = useState('');
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submittingRecord, setSubmittingRecord] = useState<TransferArea | null>(null);
-  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const [submitting, setSubmitting] = useState(false);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<TransferArea | null>(null);
@@ -487,8 +678,9 @@ export default function TransferAreaListPage() {
     const from = historyFilters.fromDate || '';
     const to = historyFilters.toDate || '';
     return (Array.isArray(historyRecords) ? historyRecords : []).filter((r: any) => {
+      const fn = String(r?.fieldName || r?.changedField || '').trim();
+      if (EXCLUDED_CHANGE_FIELDS.has(fn)) return false;
       if (q) {
-        const fn = String(r?.fieldName || r?.changedField || '').toLowerCase();
         const label = histField(fn) || fn;
         const rawHits = [fn, label, r?.oldValue, r?.newValue, r?.previousValue, r?.value, r?.reason, r?.ghiChu, r?.note]
           .filter((v) => v !== null && v !== undefined)
@@ -509,8 +701,8 @@ export default function TransferAreaListPage() {
       return true;
     });
   }, [historyRecords, historyFilters, orgMap, symbolMap, portMap]);
-  const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
 
+  const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const openHistory = useCallback(async (r: TransferArea) => {
@@ -532,25 +724,41 @@ export default function TransferAreaListPage() {
 
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'portId', 'transferAreaCode', 'transferAreaName', 'operationalFunctions',
-    'operationalStatus', 'provinceId', 'detailedLocation', 'shapeDescription', 'area',
+    'operationalStatus', 'provinceId', 'province', 'detailedLocation', 'shapeDescription', 'area',
     'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT',
     'activeTransferCount', 'publishedTransferCount', 'underInvestmentTransferCount',
     'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
     'activityStartDate', 'activityEndDate', 'coordinateSystem', 'displayRule', 'mapSymbolId',
-    'Phạm vi khu nước neo buộc tàu', 'Tọa độ GIS', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
+    'Phạm vi khu nước neo buộc tàu', 'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
+    // Vietnamese label aliases:
+    'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu chuyển tải', 'Tên khu chuyển tải',
+    'Công năng khai thác', 'Tình trạng', 'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố',
+    'Địa điểm chi tiết', 'Hình dạng', 'Diện tích (ha)', 'Độ sâu thiết kế', 'Độ sâu hiện tại',
+    'Cao trình đáy thiết kế', 'Trọng tải tàu lớn nhất (DWT)', 'Số vị trí đang khai thác',
+    'Số vị trí công bố', 'Số vị trí thỏa thuận đầu tư', 'Ghi chú', 'Ngày công bố',
+    'Quyết định công bố', 'Thỏa thuận đầu tư', 'Thời gian hoạt động từ', 'Thời gian hoạt động đến',
+    'Hệ quy chiếu', 'Quy tắc hiển thị', 'Biểu tượng', 'Biểu tượng bản đồ',
   ];
 
   const renderTransferAreaHistoryTimeline = (records: any[]) => {
     const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const isUpdateAction = (status: string, reason?: string) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
     const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 2 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      if (isSameGroup) {
         prev.items.push(r);
       } else {
         groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
@@ -562,45 +770,53 @@ export default function TransferAreaListPage() {
         <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
       </div>
     );
-    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || ''; } };
+    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || '—'; } };
     return (
       <div>{groups.map((g, gi) => {
         const rec0 = g.items[0] || {};
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
-        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '';
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
+        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
+        const rawChanges = g.items.flatMap((item: any) => historyChangeRows(item));
+        const changes = consolidateHistoryChanges(rawChanges).sort((a: any, b: any) => {
           const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        }).filter((c: any) => c.field !== 'attachments' && c.field !== 'spatialId');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+        }).filter((c: any) => c.field && !EXCLUDED_CHANGE_FIELDS.has(c.field));
         const actionMeta = resolveHistoryActionMeta(g, changes);
+        const isCreate = actionMeta.label === 'Thêm mới' || changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const barColor = actionMeta.color;
         const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
+          if (raw === null || raw === undefined || raw === '(null)' || raw === 'null' || raw === '') return null;
+          const t = String(raw).trim();
+          if (!t || t === '(null)' || t === 'null') return null;
           if (t.startsWith('[') && t.endsWith(']')) {
             if (t === '[]') return 'Không có';
             const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
             return `${parts.length} hạng mục`;
           }
           if (fn === 'operationalFunctions') {
-            return formatOperationalFunctions(raw);
+            return formatOperationalFunctions(t);
           }
-          if (/^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? n.toLocaleString('vi-VN') : t;
+          const resolved = histVal(fn, t, orgMap, symbolMap, portMap);
+          if (resolved !== t) {
+            return resolved;
           }
-          return histVal(fn, raw, orgMap, symbolMap, portMap);
+          if (NUMERIC_HISTORY_FIELDS.has(fn)) {
+            if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
+              return formatHistoryNumber(t);
+            }
+          }
+          return resolved;
         };
         const validChanges = changes.filter((c: any) => {
-          if (!c.field) return false;
+          if (!c.field || EXCLUDED_CHANGE_FIELDS.has(c.field)) return false;
           const ov = formatHistoryValue(c.field, c.oldValue);
           const nv = formatHistoryValue(c.field, c.newValue);
           if (ov == null && nv == null) return false;
           if (ov === nv) return false;
+          if (typeof ov === 'string' && typeof nv === 'string' && ov.trim() === nv.trim()) return false;
           return true;
         });
         const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
@@ -610,7 +826,7 @@ export default function TransferAreaListPage() {
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                 <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : ''}
+                  {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
                   <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
@@ -618,7 +834,7 @@ export default function TransferAreaListPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
                 <Typography.Text style={historyMetaRowStyle}>
-                  Người cập nhật: {g.actor || ''}
+                  Người cập nhật: {g.actor || '—'}
                 </Typography.Text>
                 <Typography.Text style={historyMetaRowStyle}>
                   Đơn vị: {unitName}
@@ -637,10 +853,10 @@ export default function TransferAreaListPage() {
                     const ov = formatHistoryValue(fn, change.oldValue);
                     const nv = formatHistoryValue(fn, change.newValue);
                     const renderCell = (rawVal: string | null) => {
-                      if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
+                      if ((fn === 'mapSymbolId' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && rawVal && rawVal !== '(null)') {
                         const img = symbolImageMap.get(rawVal);
                         const name = symbolMap.get(rawVal) || rawVal;
-                        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain' }} /> : null}{name}</span>;
+                        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
                       }
                       return null;
                     };
@@ -695,7 +911,9 @@ export default function TransferAreaListPage() {
             defaultOrgUnitRef.current = data[0].id;
           }
         }
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     })();
     (async () => {
       try {
@@ -704,7 +922,9 @@ export default function TransferAreaListPage() {
         const m = new Map<string, string>();
         u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id));
         setUserMap(m);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     })();
     (async () => {
       try {
@@ -713,18 +933,23 @@ export default function TransferAreaListPage() {
         const m = new Map<string, string>();
         const imgMap = new Map<string, string>();
         s.forEach((x: any) => {
-          m.set(x.id, x.name);
-          if (x.image) imgMap.set(x.id, x.image);
+          const imgUrl = x.image
+            ? (x.image.startsWith('data:') || x.image.startsWith('http') ? x.image : `data:image/png;base64,${x.image}`)
+            : '';
+          if (x.id) {
+            m.set(x.id, x.name);
+            if (imgUrl) imgMap.set(x.id, imgUrl);
+          }
+          if (x.code) {
+            m.set(x.code, x.name);
+            if (imgUrl) imgMap.set(x.code, imgUrl);
+          }
         });
         setSymbolMap(m);
         setSymbolImageMap(imgMap);
-      } catch {}
-    })();
-    (async () => {
-      try {
-        const r = await portCRUD.findAll({ page: 1, size: 1000 });
-        (r.data || []).forEach((p: any) => portMap.set(p.id, p.portName));
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     })();
   }, []);
 
@@ -741,7 +966,9 @@ export default function TransferAreaListPage() {
         if (orgUnit && orgUnit !== '__all__') p.orgUnitId = orgUnit;
         const r = await portCRUD.search(p);
         setPortOptions((r.data || []).map((x: any) => ({ value: x.id, label: x.portName })));
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     })();
   }, [orgUnit]);
 
@@ -773,19 +1000,23 @@ export default function TransferAreaListPage() {
       });
       c['all'] = childSum;
       setTabCounts(c);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
+    setError(null);
     try {
+      const provinceIdx = filterProvince ? VIETNAM_PROVINCES.indexOf(filterProvince) + 1 : undefined;
       const r = await transferAreaCRUD.search({
         orgUnitId: orgUnit && orgUnit !== '__all__' ? orgUnit : undefined,
-        transferAreaName: filterName.trim() || undefined,
-        transferAreaCode: filterCode.trim() || undefined,
+        transferAreaName: nameInput.trim() || undefined,
+        transferAreaCode: codeInput.trim() || undefined,
         portId: filterPortId || undefined,
-        provinceId: filterProvince,
+        provinceId: provinceIdx && provinceIdx > 0 ? provinceIdx : undefined,
         operationalStatus: filterOperationalStatus,
         approvalStatus: TAB_QUERY_MAP[activeTab],
         operationalFunctions: filterOperationalFunctions.length > 0 ? filterOperationalFunctions.join(',') : undefined,
@@ -794,16 +1025,31 @@ export default function TransferAreaListPage() {
         page,
         pageSize,
       });
-      setDataSource(r.data);
+      const mapped = (r.data || []).map((item: any) => ({
+        ...item,
+        province: item.province || (item.provinceId ? VIETNAM_PROVINCES[Number(item.provinceId) - 1] : '') || '',
+      }));
+      setDataSource(mapped);
       setTotal(r.total);
-    } catch {
+    } catch (ex: unknown) {
       setIsError(true);
+      setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách khu chuyển tải'));
     } finally {
       setIsLoading(false);
     }
   }, [
-    orgUnit, filterName, filterCode, filterPortId, filterProvince, filterOperationalStatus,
-    activeTab, filterOperationalFunctions, filterUpdatedFrom, filterUpdatedTo, page, pageSize,
+    orgUnit,
+    nameInput,
+    codeInput,
+    filterPortId,
+    filterProvince,
+    filterOperationalStatus,
+    activeTab,
+    filterOperationalFunctions,
+    filterUpdatedFrom,
+    filterUpdatedTo,
+    page,
+    pageSize,
   ]);
 
   useEffect(() => {
@@ -822,8 +1068,8 @@ export default function TransferAreaListPage() {
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
     setOrgUnit(oid);
-    setFilterName('');
-    setFilterCode('');
+    setNameInput('');
+    setCodeInput('');
     setFilterPortId(undefined);
     setFilterProvince(undefined);
     setFilterOperationalStatus(undefined);
@@ -844,25 +1090,66 @@ export default function TransferAreaListPage() {
     setDetailRecord(record);
     setDetailFiles([]);
     try {
-      const r = await transferAreaCRUD.listAttachments(record.id);
-      setDetailFiles(r || []);
+      const r = await api.get(`/v1/transfer-area/${record.id}/attachments`);
+      setDetailFiles(r.data?.data || []);
     } catch {
       setDetailFiles([]);
     }
     try {
       const fresh = await transferAreaCRUD.findById(record.id);
       setDetailRecord(fresh);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  const dd2dms = (dd: number) => {
+  useEffect(() => {
+    if (!isEmbeddedAction || !linkedRecordId) return;
+    let cancelled = false;
+    transferAreaCRUD.findById(linkedRecordId)
+      .then((record) => {
+        if (cancelled) return;
+        if (linkedAction === 'detail') {
+          void openDetailDrawer(record);
+        } else {
+          setEditTransferAreaId(linkedRecordId);
+          setEditBaseStatus(record.approvalStatus);
+          setCreateDrawerVisible(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết khu chuyển tải');
+      });
+    return () => { cancelled = true; };
+  }, [isEmbeddedAction, linkedAction, linkedRecordId, openDetailDrawer]);
+
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (isEmbeddedAction) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, [isEmbeddedAction]);
+
+  const closeFormDrawer = useCallback(() => {
+    setCreateDrawerVisible(false);
+    setEditTransferAreaId(undefined);
+    setEditBaseStatus(undefined);
+    createForm.resetFields();
+    notifyEmbeddedActionClosed();
+  }, [createForm, notifyEmbeddedActionClosed]);
+
+  const closeDetailDrawer = useCallback(() => {
+    setDetailDrawerVisible(false);
+    setDetailRecord(null);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
+
+  const ddToDms = (dd: number): { d: number; m: number; s: number } => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-    const a = Math.abs(dd);
-    return {
-      d: Math.floor(a),
-      m: Math.floor((a - Math.floor(a)) * 60),
-      s: +((a - Math.floor(a) - Math.floor((a - Math.floor(a)) * 60) / 60) * 3600).toFixed(2),
-    };
+    const abs = Math.abs(dd);
+    const d = Math.floor(abs);
+    const m = Math.floor((abs - d) * 60);
+    const s = parseFloat(((abs - d - m / 60) * 3600).toFixed(2));
+    return { d, m, s };
   };
 
   const openDeleteModal = useCallback((record: TransferArea) => {
@@ -878,6 +1165,7 @@ export default function TransferAreaListPage() {
       toast.success('Đã xóa khu chuyển tải');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (ex: unknown) {
@@ -897,6 +1185,7 @@ export default function TransferAreaListPage() {
       toast.success(record.approvalStatus === 'APPROVED_LEVEL1' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ/Chi cục');
       setApproveModalOpen(false);
       setApprovingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (ex: unknown) {
@@ -912,10 +1201,11 @@ export default function TransferAreaListPage() {
   const confirmSubmitApproval = useCallback(async () => {
     if (!submittingRecord) return;
     try {
-      await transferAreaApproval.submit(submittingRecord.id);
+      await transferAreaCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' } as any);
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (ex: unknown) {
@@ -943,6 +1233,7 @@ export default function TransferAreaListPage() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (err: unknown) {
@@ -951,9 +1242,9 @@ export default function TransferAreaListPage() {
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, orgUnit]);
 
   const headerActions = useMemo(() => {
-    const acts: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
+    const actions: any[] = [];
     if (hasPerm('transferarea:create')) {
-      acts.push({
+      actions.push({
         key: 'create',
         label: 'Thêm mới',
         icon: icons.create,
@@ -966,131 +1257,89 @@ export default function TransferAreaListPage() {
         },
       });
     }
-    return acts;
+    return actions;
   }, [hasPerm, createForm]);
 
-  const filterContent = (
-    <>
-      <style>{`.transfer-area-filter .ant-select-selector { border-radius: 999px !important; } .transfer-area-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .transfer-area-filter .ant-select-content-item { max-width: 45% !important; } .transfer-area-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
-      <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Đơn vị quản lý
-        </div>
-        <OrgUnitTreeSelect
-          organizations={organizations}
-          placeholder="Chọn đơn vị..."
-          allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
-          value={orgUnit}
-          onChange={(v) => { setOrgUnit(v); setPage(1); }}
-        />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên khu chuyển tải</div>
-        <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm theo tên khu chuyển tải"
-          value={filterName} onChange={e => setFilterName(e.target.value)}
-          onPressEnter={handleFilterApply}
-          allowClear prefix={<SearchOutlined style={{ color: textTertiary }} />} />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-        <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tình trạng" allowClear
-          value={filterOperationalStatus} onChange={v => { setFilterOperationalStatus(v); setPage(1); }}
-          options={[
-            { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
-            { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/vận hành' },
-            { value: 'SUSPENDED', label: 'Dừng khai thác/vận hành' },
-          ]} />
-      </div>
-      {filterCollapsed && (<>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn cảng biển" allowClear
-            value={filterPortId} onChange={v => { setFilterPortId(v); setPage(1); }}
-            options={portOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã khu chuyển tải</div>
-          <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm theo mã khu chuyển tải"
-            value={filterCode} onChange={e => setFilterCode(e.target.value)}
-            onPressEnter={handleFilterApply}
-            allowClear prefix={<SearchOutlined style={{ color: textTertiary }} />} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
-          <Select mode="multiple" className="transfer-area-filter" style={{ width: '100%', borderRadius: radiusPill, fontSize: fontSizeMd }} allowClear showSearch optionFilterProp="label" maxTagCount="responsive" placeholder="Công năng khai thác"
-            options={OPERATIONAL_FUNCTIONS_OPTIONS} value={filterOperationalFunctions} onChange={v => { setFilterOperationalFunctions(v || []); setPage(1); }} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-            value={filterProvince} onChange={v => { setFilterProvince(v); setPage(1); }}
-            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-            options={VIETNAM_PROVINCES.map((p, idx) => ({ value: idx + 1, label: p }))} />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-          <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Từ ngày', 'Đến ngày']} allowClear
-            value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-            onChange={(dates) => {
-              setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
-              setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
-              setPage(1);
-            }}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-        </div>
-      </>)}
-    </>
+  const rowActions = useCallback(
+    (record: TransferArea) => {
+      const actions: any[] = [
+        { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
+      ];
+      const st = record.approvalStatus || '';
+      const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'transferarea', extraApprovePerms: ['transferarea:approve'] });
+      if (editable) {
+        actions.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: icons.edit,
+          onClick: () => {
+            setEditTransferAreaId(record.id);
+            setEditBaseStatus(record.approvalStatus);
+            setCreateDrawerVisible(true);
+          },
+        });
+      }
+      if (['DRAFT', 'NHAP'].includes(st) && hasPerm('transferarea:update')) {
+        actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
+      }
+      if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('transferarea:update')) {
+        actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
+      }
+      if (hasPerm('transferarea:history')) {
+        actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      }
+      if (hasPerm('transferarea:approvec1') && st === 'PENDING_APPROVAL') {
+        actions.push({
+          key: 'approve_c1',
+          label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+          icon: icons.approve,
+          onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); },
+        });
+        actions.push({
+          key: 'reject_c1',
+          label: 'Từ chối cấp Cảng vụ/Chi cục',
+          icon: icons.reject,
+          danger: true,
+          onClick: () => openRejectModal(record),
+        });
+      }
+      if (hasPerm('transferarea:approvec2') && st === 'APPROVED_LEVEL1') {
+        actions.push({
+          key: 'approve_c2',
+          label: 'Phê duyệt cấp Cục',
+          icon: icons.approve,
+          onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); },
+        });
+        actions.push({
+          key: 'reject_c2',
+          label: 'Từ chối cấp Cục',
+          icon: icons.reject,
+          danger: true,
+          onClick: () => openRejectModal(record),
+        });
+      }
+      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'transferarea', extraDeletePerms: ['pier:delete', 'port:delete'] })) {
+        actions.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: icons.delete,
+          danger: true,
+          onClick: () => openDeleteModal(record),
+        });
+      }
+      return actions;
+    },
+    [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]
   );
 
-  const rowActions = useCallback((record: TransferArea) => {
-    const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
-    const st = record.approvalStatus || '';
-    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'transferarea', extraApprovePerms: ['transferarea:approve'] });
-    if (editable) {
-      actions.push({
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: icons.edit,
-        onClick: () => {
-          setEditTransferAreaId(record.id);
-          setEditBaseStatus(record.approvalStatus);
-          setCreateDrawerVisible(true);
-        },
-      });
-    }
-    if (['DRAFT', 'NHAP'].includes(st) && hasPerm('transferarea:update')) {
-      actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
-    }
-    if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('transferarea:update')) {
-      actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
-    }
-    if (hasPerm('transferarea:history')) {
-      actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
-    }
-    const canApproveC1 = hasPerm('transferarea:approvec1') || hasPerm('transferarea:approve');
-    const canApproveC2 = hasPerm('transferarea:approvec2') || hasPerm('transferarea:approve');
-    if (canApproveC1 && (st === 'PENDING_APPROVAL' || st === 'CHO_PHE_DUYET')) {
-      actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
-      actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
-    }
-    if (canApproveC2 && st === 'APPROVED_LEVEL1') {
-      actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
-      actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
-    }
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'transferarea' })) {
-      actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
-    }
-    return actions;
-  }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
-
   const auditColumns = useMemo(() => {
-    if (!isAuditViewer) return [];
     return [
       {
-        label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230, sortable: true,
+        label: 'Cán bộ gửi Phê duyệt',
+        dataIndex: 'submittedForApprovalAt',
+        key: 'submittedForApprovalAt',
+        width: 230,
+        sortable: true,
         render: (v: string | null, record: TransferArea) => {
           const name = userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '';
           const date = formatDate(v);
@@ -1105,7 +1354,11 @@ export default function TransferAreaListPage() {
         },
       },
       {
-        label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovedAt', key: 'portAuthorityApprovedAt', width: 350, sortable: true,
+        label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+        dataIndex: 'portAuthorityApprovedAt',
+        key: 'portAuthorityApprovedAt',
+        width: 350,
+        sortable: true,
         render: (v: string | null, record: TransferArea) => {
           const name = userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '';
           const date = formatDate(v);
@@ -1120,7 +1373,11 @@ export default function TransferAreaListPage() {
         },
       },
       {
-        label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'departmentApprovedAt', key: 'departmentApprovedAt', width: 260, sortable: true,
+        label: 'Cán bộ phê duyệt cấp Cục',
+        dataIndex: 'departmentApprovedAt',
+        key: 'departmentApprovedAt',
+        width: 260,
+        sortable: true,
         render: (v: string | null, record: TransferArea) => {
           const name = userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '';
           const date = formatDate(v);
@@ -1135,79 +1392,142 @@ export default function TransferAreaListPage() {
         },
       },
     ];
-  }, [isAuditViewer, userMap]);
+  }, [userMap]);
 
   const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label ?? r.portId ?? '';
+    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || r.orgUnitName || '';
+    if (field === 'transferAreaName') return r.transferAreaName ?? '';
+    if (field === 'transferAreaCode') return r.transferAreaCode ?? '';
+    if (field === 'portId') return portMap.get(r.portId) ?? r.portName ?? r.portId ?? '';
+    if (field === 'province' || field === 'provinceId') return r.province || (r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || '';
     if (field === 'operationalFunctions') return formatOperationalFunctions(r.operationalFunctions);
-    if (field === 'provinceId') return r.provinceId ? VIETNAM_PROVINCES[r.provinceId - 1] ?? '' : '';
     if (field === 'operationalStatus') {
-      const m: Record<string, string> = {
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-        SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[r.operationalStatus] || r.operationalStatus || '';
+      return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
-    if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
+    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    if (field === 'updatedAt' || field === 'updatedByName') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'submittedForApprovalAt') {
+      const t = r.submittedForApprovalAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'portAuthorityApprovedAt') {
+      const t = r.portAuthorityApprovedAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'departmentApprovedAt') {
+      const t = r.departmentApprovedAt;
+      return t ? new Date(t).getTime() : 0;
+    }
     return r[field] ?? '';
-  }, [organizations, orgMap, portOptions]);
+  }, [portMap, organizations, orgMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       {
-        label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
-        render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span>,
+        label: 'STT',
+        key: 'stt',
+        width: 60,
+        fixed: 'left' as const,
+        align: 'center' as const,
+        render: (_: any, __: any, i: number) => (
+          <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span>
+        ),
       },
       {
-        label: 'Tên/Mã khu chuyển tải', key: 'transferAreaName', dataIndex: 'transferAreaName', width: 240, fixed: 'left' as const, sortable: true,
+        label: <span>Tên/Mã khu chuyển tải</span>,
+        dataIndex: 'transferAreaName',
+        key: 'transferAreaName',
+        width: 240,
+        fixed: 'left' as const,
+        sortable: true,
+        ellipsis: false,
         render: (v: string, record: TransferArea) => (
           <div>
-            <a title={v} onClick={() => openDetailDrawer(record)} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {v}
+            <a
+              title={v || ''}
+              onClick={(e) => {
+                e.stopPropagation();
+                openDetailDrawer(record);
+              }}
+              style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+            >
+              {v || ''}
             </a>
-            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {record.transferAreaCode || ''}
             </span>
           </div>
         ),
       },
       {
-        label: 'Đơn vị quản lý', key: 'orgUnitId', dataIndex: 'orgUnitId', width: 260, sortable: true,
-        render: (_v: string | null, record: TransferArea) => (
+        label: 'Đơn vị quản lý',
+        dataIndex: 'orgUnitId',
+        key: 'orgUnitId',
+        width: 260,
+        sortable: true,
+        render: (v: string | null, r: TransferArea) => (
           <span style={{ fontWeight: fontWeightBold }}>
-            {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || ''}
+            {resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}
           </span>
         ),
       },
       {
-        label: 'Thuộc cảng biển', key: 'portId', dataIndex: 'portId', width: 200, sortable: true,
-        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '',
+        label: 'Thuộc cảng biển',
+        dataIndex: 'portId',
+        key: 'portId',
+        width: 200,
+        sortable: true,
+        render: (v: string) => (
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span>
+        ),
       },
       {
-        label: 'Địa điểm (Tỉnh/Thành phố)', key: 'provinceId', dataIndex: 'provinceId', width: 220, sortable: true,
-        render: (v: number | null) => (v ? VIETNAM_PROVINCES[v - 1] : ''),
+        label: 'Địa điểm (Tỉnh/Thành phố)',
+        dataIndex: 'province',
+        key: 'province',
+        width: 250,
+        sortable: true,
+        render: (v?: string, r?: any) => (
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            {v || (r?.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || ''}
+          </span>
+        ),
       },
       {
-        label: 'Công năng khai thác', key: 'operationalFunctions', dataIndex: 'operationalFunctions', width: 240, ellipsis: true, sortable: true,
+        label: 'Công năng khai thác',
+        dataIndex: 'operationalFunctions',
+        key: 'operationalFunctions',
+        width: 240,
+        ellipsis: true,
+        sortable: true,
         render: (v?: string) => (
-          <span title={formatOperationalFunctions(v)} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-            {formatOperationalFunctions(v)}
-          </span>
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatOperationalFunctions(v)}</span>
         ),
       },
       {
-        label: 'Tình trạng', key: 'operationalStatus', dataIndex: 'operationalStatus', width: 210, sortable: true,
-        render: (v: string | null) => {
-          const s = v ? OPERATIONAL_STYLE_MAP[v] : null;
-          return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
+        label: 'Tình trạng',
+        dataIndex: 'operationalStatus',
+        key: 'operationalStatus',
+        width: 240,
+        ellipsis: false,
+        sortable: true,
+        render: (v: string) => {
+          const b = v && OPERATIONAL_STYLE_MAP[v];
+          return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null;
         },
       },
       {
-        label: 'Trạng thái', key: 'approvalStatus', dataIndex: 'approvalStatus', width: 260, sortable: true,
+        label: 'Trạng thái',
+        dataIndex: 'approvalStatus',
+        key: 'approvalStatus',
+        width: 320,
+        ellipsis: false,
+        sortable: true,
         render: (v: string) => {
-          const s = v ? (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()]) : null;
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         },
       },
@@ -1230,11 +1550,173 @@ export default function TransferAreaListPage() {
     const allColumns = [...baseColumns, ...auditColumns];
     return allColumns.map((col) => ({
       ...col,
-      sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
+      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
     }));
   }, [
-    page, pageSize, sortField, sortOrder, openDetailDrawer, organizations, orgMap, portOptions, userMap, auditColumns,
+    page,
+    pageSize,
+    sortField,
+    sortOrder,
+    openDetailDrawer,
+    organizations,
+    orgMap,
+    portMap,
+    userMap,
+    auditColumns,
   ]);
+
+  const sortedDataSource = useMemo(() => {
+    if (!sortField) return dataSource;
+    if (sortField === 'stt') {
+      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
+    }
+    return [...dataSource].sort((a, b) => {
+      const av = getSortValue(a, sortField);
+      const bv = getSortValue(b, sortField);
+      const c = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi', { numeric: true, sensitivity: 'base' });
+      return sortOrder === 'ascend' ? c : -c;
+    });
+  }, [dataSource, sortField, sortOrder, getSortValue]);
+
+  const filterContent = (
+    <>
+      <style>{`
+        .transfer-area-filter .ant-select-selector { border-radius: 999px !important; }
+        .transfer-area-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; }
+        .transfer-area-filter .ant-select-content-item { max-width: 45% !important; }
+        .transfer-area-filter .ant-select-selection-item { border-radius: 999px !important; }
+      `}</style>
+      <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Đơn vị quản lý
+        </div>
+        <OrgUnitTreeSelect
+          organizations={organizations}
+          placeholder="Chọn đơn vị..."
+          allowClear
+          showPath
+          allLabel="Tất cả"
+          treeDefaultExpandAll={false}
+          value={orgUnit}
+          onChange={(v) => { setOrgUnit(v); setPage(1); }}
+        />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Tên khu chuyển tải
+        </div>
+        <Input
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+          placeholder="Tìm theo tên khu chuyển tải"
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
+          onPressEnter={handleFilterApply}
+          allowClear
+          prefix={<SearchOutlined style={{ color: textTertiary }} />}
+        />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Tình trạng
+        </div>
+        <Select
+          style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+          placeholder="Chọn tình trạng"
+          allowClear
+          value={filterOperationalStatus}
+          onChange={(v) => setFilterOperationalStatus(v)}
+          options={[
+            { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
+            { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/vận hành' },
+            { value: 'SUSPENDED', label: 'Dừng khai thác/vận hành' },
+          ]}
+        />
+      </div>
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Thuộc cảng biển
+            </div>
+            <Select
+              style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+              placeholder="Chọn cảng biển"
+              allowClear
+              showSearch
+              value={filterPortId}
+              onChange={(v) => setFilterPortId(v)}
+              options={portOptions}
+              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Mã khu chuyển tải
+            </div>
+            <Input
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+              placeholder="Tìm theo mã khu chuyển tải"
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              onPressEnter={handleFilterApply}
+              allowClear
+              prefix={<SearchOutlined style={{ color: textTertiary }} />}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Công năng khai thác
+            </div>
+            <Select
+              mode="multiple"
+              className="transfer-area-filter"
+              style={{ width: '100%', borderRadius: radiusPill, fontSize: fontSizeMd }}
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              maxTagCount="responsive"
+              placeholder="Chọn công năng khai thác"
+              options={OPERATIONAL_FUNCTIONS_OPTIONS}
+              value={filterOperationalFunctions}
+              onChange={(v) => setFilterOperationalFunctions(v || [])}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Địa điểm (Tỉnh/Thành phố)
+            </div>
+            <Select
+              style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+              placeholder="Chọn tỉnh/thành phố"
+              allowClear
+              showSearch
+              value={filterProvince}
+              onChange={(v) => setFilterProvince(v)}
+              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Ngày cập nhật
+            </div>
+            <DatePicker.RangePicker
+              {...getRangePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })}
+              allowClear
+              value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+              onChange={(dates) => {
+                setFilterUpdatedFrom(dates?.[0] ? dates[0].startOf('day').format('YYYY-MM-DD 00:00:00') : undefined);
+                setFilterUpdatedTo(dates?.[1] ? dates[1].endOf('day').format('YYYY-MM-DD 23:59:59') : undefined);
+                setPage(1);
+              }}
+            />
+          </div>
+        </>
+      )}
+    </>
+  );
 
   return (
     <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 } as unknown as ThemeToken}>
@@ -1362,7 +1844,13 @@ export default function TransferAreaListPage() {
         />
         <FilterTableLayout
           filterContent={filterContent}
-          statusTabs={TAB_STATUS_LIST.map(t => ({ key: t.key, label: t.label, color: t.color, count: tabCounts[t.key] ?? 0, active: activeTab === t.key }))}
+          statusTabs={TAB_STATUS_LIST.map((t) => ({
+            key: t.key,
+            label: t.label,
+            color: t.color,
+            count: tabCounts[t.key] ?? 0,
+            active: activeTab === t.key,
+          }))}
           onStatusTabChange={handleTabChange}
           onFilterApply={handleFilterApply}
           onFilterReset={handleFilterReset}
@@ -1374,17 +1862,7 @@ export default function TransferAreaListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => {
-              if (!sortField) return 0;
-              if (sortField === 'stt') {
-                const arr = [...dataSource];
-                return sortOrder === 'descend' ? (arr.reverse(), 0) : 0;
-              }
-              const av = getSortValue(a, sortField);
-              const bv = getSortValue(b, sortField);
-              const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi');
-              return sortOrder === 'ascend' ? c : -c;
-            })}
+            dataSource={sortedDataSource}
             rowKey="id"
             rowActions={rowActions}
             loading={false}
@@ -1408,13 +1886,18 @@ export default function TransferAreaListPage() {
           {...drawerProps}
           rootClassName="transfer-area-drawer-scope"
           className="transfer-area-drawer-scope"
-          width="min(920px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editTransferAreaId ? 'Chỉnh sửa thông tin Khu chuyển tải' : 'Thêm mới Khu chuyển tải'}</span>}
           open={createDrawerVisible}
-          destroyOnHidden
-          onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
-          afterOpenChange={(open) => { if (!open) { setEditTransferAreaId(undefined); setEditBaseStatus(undefined); } }}
-          extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+          destroyOnClose
+          onClose={closeFormDrawer}
+          afterOpenChange={(open) => {
+            if (!open) {
+              setEditTransferAreaId(undefined);
+              setEditBaseStatus(undefined);
+            }
+          }}
+          extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
             <div style={drawerFooterStyle}>
               {(() => {
@@ -1490,7 +1973,10 @@ export default function TransferAreaListPage() {
               form={createForm}
               id={editTransferAreaId}
               onFinish={() => {
-                setCreateDrawerVisible(false);
+                closeFormDrawer();
+                setSortField('updatedAt');
+                setSortOrder('descend');
+                setPage(1);
                 void fetchData();
                 void fetchCounts(orgUnit);
               }}
@@ -1507,8 +1993,8 @@ export default function TransferAreaListPage() {
           size={1000}
           title={<span style={drawerTitleStyle}>Chi tiết khu chuyển tải{detailRecord ? ` - ${detailRecord.transferAreaName}` : ''}</span>}
           open={detailDrawerVisible}
-          onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-          extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
+          onClose={closeDetailDrawer}
+          extra={<Button type="text" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
             body: { padding: '0 24px 12px 24px' },
@@ -1523,9 +2009,10 @@ export default function TransferAreaListPage() {
               symbolMap={symbolMap}
               symbolImageMap={symbolImageMap}
               portOptions={portOptions}
+              portMap={portMap}
               userMap={userMap}
               detailFiles={detailFiles}
-              ddToDms={dd2dms}
+              ddToDms={ddToDms}
               approvalStyleMap={APPROVAL_STYLE_MAP}
               operationalStyleMap={OPERATIONAL_STYLE_MAP}
               operationPlanList={(detailRecord as any)?.operationPlanList}

@@ -55,7 +55,9 @@ public class PortApprovalService {
     public void submit(UUID id, UUID userId) {
         Port entity = loadPort(id);
         infrastructureApprovalService.submit(entity, InfrastructureType.SEAPORT, userId);
-        portRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
     }
 
@@ -65,7 +67,9 @@ public class PortApprovalService {
         Port entity = loadPort(id);
         infrastructureApprovalService.approveC1(entity, InfrastructureType.SEAPORT,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        portRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
         notificationService.sendApprovalNotification("Port", id.toString(), String.valueOf(userId), null);
     }
@@ -76,7 +80,9 @@ public class PortApprovalService {
         Port entity = loadPort(id);
         infrastructureApprovalService.approveC2(entity, InfrastructureType.SEAPORT,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        portRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
         notificationService.sendApprovalNotification("Port", id.toString(), String.valueOf(userId), null);
     }
@@ -95,7 +101,9 @@ public class PortApprovalService {
             infrastructureApprovalService.approveC1(entity, InfrastructureType.SEAPORT,
                     ApprovalStatus.REJECTED.name(), reason, userId);
         }
-        portRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
         changeHistoryService.insertChangeRecord("Port", id, "Lý do từ chối", null, reason, String.valueOf(userId));
     }
@@ -148,7 +156,8 @@ public class PortApprovalService {
             approvalWorkflowService.reject(currentStatusStr, "Port", id.toString(), userId, reason);
             entity.setApprovalStatus(ApprovalStatus.REJECTED);
         }
-        Port saved = portRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        Port saved = portRepository.saveAndFlush(entity);
         changeHistoryService.recordChanges("Port", saved.getId().toString(), "system", snapshot, saved);
         portCacheService.evictAfterCommit();
 
