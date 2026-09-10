@@ -74,21 +74,33 @@ public class PlanningCategory {
     @Column(name = "classification", length = 100)
     private String classification;
 
-    /** Số lượng cầu cảng (row 30). */
+    /** Số lượng cầu cảng — Excel row 27 (Hiện trạng, giá trị đơn) HOẶC row 30 (Sau quy hoạch, KB thấp). */
     @Column(name = "berth_count")
     private Integer berthCount;
 
-    /** Chiều dài (m) (row 31). */
+    /** Số cầu cảng KB cao — Excel row 30 (Sau quy hoạch). Cặp low-high với berthCount. NULL cho phase HIEN_TRANG. */
+    @Column(name = "berth_count_high")
+    private Integer berthCountHigh;
+
+    /** Chiều dài (m) — Excel row 28 (Hiện trạng, đơn) HOẶC row 31 (Sau quy hoạch, KB thấp). */
     @Column(name = "length", precision = 15, scale = 2)
     private BigDecimal lengthM;
 
-    /** Cỡ tàu (tấn) / Dự kiến cỡ tàu (row 32 / 35). */
+    /** Chiều dài (m) KB cao — Excel row 31 (Sau quy hoạch). Cặp low-high với lengthM. NULL cho phase HIEN_TRANG. */
+    @Column(name = "length_high", precision = 15, scale = 2)
+    private BigDecimal lengthHigh;
+
+    /** Cỡ tàu (tấn) — Excel row 29 (Hiện trạng) HOẶC row 32 (Dự kiến cỡ tàu — Sau quy hoạch, đơn). */
     @Column(name = "ship_size", length = 100)
     private String shipSize;
 
-    /** Dự kiến công suất (Triệu tấn) (row 36). */
+    /** Dự kiến công suất (Triệu tấn) — Excel row 33 (Sau quy hoạch, KB thấp). */
     @Column(name = "capacity", precision = 15, scale = 2)
     private BigDecimal capacity;
+
+    /** Dự kiến công suất (Triệu tấn) KB cao — Excel row 33 (Sau quy hoạch). Cặp low-high với capacity. NULL cho phase HIEN_TRANG. */
+    @Column(name = "capacity_high", precision = 15, scale = 2)
+    private BigDecimal capacityHigh;
 
     /** Diện tích vùng đất (ha) (row 37). */
     @Column(name = "land_area", precision = 15, scale = 2)

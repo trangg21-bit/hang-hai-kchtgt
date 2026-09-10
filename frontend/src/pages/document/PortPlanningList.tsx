@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Row, Select, Tabs } from 'antd';
+import { Button, Col, DatePicker, Descriptions, Form, Input, InputNumber, Row, Select, Tabs } from 'antd';
 import type { FormInstance } from 'antd';
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  AppstoreOutlined,
+  AuditOutlined,
+  BarChartOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  FileTextOutlined,
+  LineChartOutlined,
+  PaperClipOutlined,
+  PlusOutlined,
+  SlidersOutlined,
+} from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import api from '../../services/api';
 import {
@@ -9,7 +21,8 @@ import {
   fetchPortPlanningById,
   createQuyHoach,
   updateQuyHoach,
-  deleteQuyHoach,
+  uploadPortPlanningAttachment,
+  deletePortPlanningAttachment,
 } from '../../services/document/api';
 import type {
   QuyHoachBenCangResponse,
@@ -21,7 +34,11 @@ import type {
 } from '../../services/document/types';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { FilterOrgUnitTreeSelect, FormOrgUnitTreeSelect } from '../../components/org-unit';
+import { organizationService, type Organization } from '../../services/organizationService';
+import { colors } from '../../theme';
 import EmptyState from '../../components/EmptyState';
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
@@ -31,29 +48,33 @@ import {
   fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
-  fontSizeSm,
   inputStyle,
   outlineButtonStyle,
   primaryButtonStyle,
   radiusPill,
-  radiusTextArea,
+  radiusMd,
+  readonlyInputStyle,
   selectStyle,
   spaceFormField,
-  spaceLg,
-  spaceMd,
   spaceSm,
   spaceXs,
   statusAttention,
   statusCritical,
   statusDraft,
   statusOperational,
-  textPrimary,
   textSecondary,
   borderDefault,
-  radiusSm,
   getSidebarRangePickerProps,
 } from '../../tokens';
-import { DRAWER_TABLE_SCROLL_Y, getDatePickerProps, labelProps } from '../../themetokenchk';
+import {
+  DRAWER_TABLE_SCROLL_Y,
+  drawerFooterStyle,
+  drawerFormScrollStyle,
+  drawerTabBarStyle,
+  drawerTitleStyle,
+  getDatePickerProps,
+  labelProps,
+} from '../../themetokenchk';
 
 /** Trạng thái quy hoạch (PlanningStatus — D6): tên enum + nhãn tiếng Việt. */
 const PLANNING_STATUS_LABELS: Record<string, string> = {
@@ -203,12 +224,38 @@ function CargoRowTotals({
   );
 }
 
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '14px 18px 10px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 12,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
 export default function PortPlanningList() {
   const hasPermission = usePermissionStore((s: PermissionState) => s.hasPermission);
   const canRead = hasPermission('portplanning:read') || hasPermission('document:read');
   const canCreate = hasPermission('portplanning:create') || hasPermission('document:create');
   const canUpdate = hasPermission('portplanning:update') || hasPermission('document:update');
-  const canDelete = hasPermission('portplanning:delete') || hasPermission('document:delete');
 
   const [form] = Form.useForm();
   const [dataSource, setDataSource] = useState<QuyHoachBenCangResponse[]>([]);
@@ -223,17 +270,33 @@ export default function PortPlanningList() {
   const [keyword, setKeyword] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
   const [orgUnitFilter, setOrgUnitFilter] = useState<string | undefined>();
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
   const [groupFilter, setGroupFilter] = useState<string | undefined>();
+  const [seaportGroupFilter, setSeaportGroupFilter] = useState<string | undefined>();
   const [decisionRange, setDecisionRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [updatedRange, setUpdatedRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const [drawerMode, setDrawerMode] = useState<'view' | 'create' | 'edit' | null>(null);
   const [editingItem, setEditingItem] = useState<QuyHoachBenCangResponse | null>(null);
   const [detail, setDetail] = useState<QuyHoachBenCangResponse | null>(null);
 
-  // Lựa chọn nhánh "Nếu Nhóm = Cảng biển / Cảng cạn" trên form (BR-132-01).
-  const watchedGroup = Form.useWatch('planningGroup', form) as PlanningGroup | undefined;
   // Dữ liệu master data cho picker (chỉ tải khi mở drawer).
+  const cargoWatcher = Form.useWatch(['cargoForecasts', 0], form) as
+    | { containerMin?: number; containerMax?: number; generalCargoMin?: number; generalCargoMax?: number; liquidMin?: number; liquidMax?: number }
+    | undefined;
   const [masterOptions, setMasterOptions] = useState<Record<string, MasterRecord[]>>({});
 
   const loadMasterData = useCallback(async () => {
@@ -260,7 +323,11 @@ export default function PortPlanningList() {
         decisionFrom: decisionRange?.[0] ? decisionRange[0].format('YYYY-MM-DD') : undefined,
         decisionTo: decisionRange?.[1] ? decisionRange[1].format('YYYY-MM-DD') : undefined,
       });
-      setDataSource(response.content || []);
+      let items = response.content || [];
+      if (seaportGroupFilter) {
+        items = items.filter((item) => item.seaportGroup === seaportGroupFilter);
+      }
+      setDataSource(items);
       setTotal(response.totalElements || 0);
       setStatusCounts(response.statusCounts || {});
     } catch (error: unknown) {
@@ -269,7 +336,7 @@ export default function PortPlanningList() {
     } finally {
       setLoading(false);
     }
-  }, [decisionRange, keyword, orgUnitFilter, page, pageSize, statusFilter]);
+  }, [decisionRange, keyword, orgUnitFilter, page, pageSize, seaportGroupFilter, statusFilter]);
 
   useEffect(() => {
     void loadData();
@@ -290,6 +357,80 @@ export default function PortPlanningList() {
     ];
   }, [statusCounts, statusFilter, total]);
 
+  const [formTabKey, setFormTabKey] = useState('general');
+  const [uploadedFiles, setUploadedFiles] = useState<InfrastructureAttachmentItem[]>([]);
+
+  const handleAttachmentUpload = useCallback(
+    async (file: File) => {
+      // If we are creating a new record, we don't have an ID yet. We will just hold the file.
+      // If we are editing, we can upload it immediately.
+      if (editingItem?.id) {
+        try {
+          const res = await uploadPortPlanningAttachment(editingItem.id, file);
+          const newItem: InfrastructureAttachmentItem = {
+            id: res.id,
+            fileName: res.fileName,
+            fileSize: res.fileSize,
+            fileType: res.fileType,
+            uploadedByName: res.uploadedByName || 'Người dùng',
+            uploadedDate: res.uploadedDate || dayjs().format('YYYY-MM-DD HH:mm'),
+            filePath: res.filePath,
+          };
+          setUploadedFiles((prev) => [...prev, newItem]);
+          toast.success('Tải lên thành công');
+        } catch {
+          toast.error('Tải lên thất bại');
+        }
+      } else {
+        const newItem: InfrastructureAttachmentItem = {
+          id: `file_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          uploadedByName: 'Người dùng',
+          uploadedDate: dayjs().format('YYYY-MM-DD HH:mm'),
+          file,
+        };
+        setUploadedFiles((prev) => [...prev, newItem]);
+      }
+      return false;
+    },
+    [editingItem],
+  );
+
+  const handleAttachmentDelete = useCallback(
+    async (attachmentId: string) => {
+      if (editingItem?.id && !attachmentId.startsWith('file_')) {
+        try {
+          await deletePortPlanningAttachment(editingItem.id, attachmentId);
+          toast.success('Xóa file thành công');
+        } catch {
+          toast.error('Xóa file thất bại');
+          return;
+        }
+      }
+      setUploadedFiles((prev) => prev.filter((f) => f.id !== attachmentId));
+    },
+    [editingItem],
+  );
+
+  const handleAttachmentDownload = useCallback(
+    (attachmentId: string, name: string) => {
+      if (editingItem?.id && !attachmentId.startsWith('file_')) {
+        const url = `/api/v1/port-planning/${editingItem.id}/attachments/${attachmentId}/download`;
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', name);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+      } else {
+        toast.info(`File chưa được lưu trên server`);
+      }
+    },
+    [editingItem],
+  );
+
   const openView = useCallback(async (record: QuyHoachBenCangResponse) => {
     setEditingItem(record);
     setDetail(null);
@@ -305,6 +446,8 @@ export default function PortPlanningList() {
   const openCreate = useCallback(() => {
     setEditingItem(null);
     setDetail(null);
+    setUploadedFiles([]);
+    setFormTabKey('general');
     form.resetFields();
     form.setFieldsValue({ planningGroup: 'SEAPORT', status: 'DRAFT' });
     setDrawerMode('create');
@@ -315,6 +458,7 @@ export default function PortPlanningList() {
     async (record: QuyHoachBenCangResponse) => {
       setEditingItem(record);
       setDetail(null);
+      setFormTabKey('general');
       setDrawerMode('edit');
       void loadMasterData();
       let source = record;
@@ -324,6 +468,17 @@ export default function PortPlanningList() {
         // Fallback: dùng bản ghi từ danh sách.
       }
       setDetail(source);
+      setUploadedFiles(
+        (source.planningFiles || []).map((f) => ({
+          id: f.id || f.fileName || `file_${Math.random().toString(36).slice(2, 7)}`,
+          fileName: f.fileName || '',
+          fileSize: f.fileSize,
+          fileType: f.fileType,
+          uploadedByName: f.uploadedByName || f.uploadedBy || 'Người dùng',
+          uploadedDate: f.uploadedDate || f.uploadedAt || dayjs().format('YYYY-MM-DD HH:mm'),
+          filePath: f.filePath,
+        })),
+      );
       form.setFieldsValue({
         orgUnitId: source.orgUnitId,
         decisionNumber: source.decisionNumber,
@@ -333,6 +488,7 @@ export default function PortPlanningList() {
         seaportGroup: source.seaportGroup,
         dryPortId: source.dryPortId,
         planToYear: source.planToYear ? dayjs(String(source.planToYear), 'YYYY') : null,
+        projectName: source.projectName || source.decisionNumber || '',
         planContent: source.planContent,
         landWaterDemand: source.landWaterDemand,
         capitalDemand: source.capitalDemand,
@@ -341,7 +497,20 @@ export default function PortPlanningList() {
         implementationOrg: source.implementationOrg,
         status: source.status,
         cargoForecasts: source.cargoForecasts || [],
-        planningCategories: source.planningCategories || [],
+        planningCategoryCurrent: (() => {
+          const curCat = (source.planningCategories || []).find((c) => c.phase === 'HIEN_TRANG') || {};
+          const futCat = (source.planningCategories || []).find((c) => c.phase === 'SAU_QUY_HOACH') || {};
+          return {
+            ...futCat,
+            ...curCat,
+            portCategory: curCat.portCategory || futCat.portCategory,
+            portName: curCat.portName || futCat.portName,
+            exploitationFunction: curCat.exploitationFunction || futCat.exploitationFunction,
+            classification: curCat.classification || futCat.classification,
+            note: curCat.note || futCat.note,
+          };
+        })(),
+        planningCategoryFuture: (source.planningCategories || []).find((c) => c.phase === 'SAU_QUY_HOACH') || {},
         files: source.planningFiles || [],
       });
     },
@@ -352,6 +521,7 @@ export default function PortPlanningList() {
     setDrawerMode(null);
     setEditingItem(null);
     setDetail(null);
+    setUploadedFiles([]);
     form.resetFields();
   }, [form]);
 
@@ -391,33 +561,17 @@ export default function PortPlanningList() {
       };
     });
 
-    const planningCategories: PortPlanningCategoryItem[] = (
-      (values.planningCategories as unknown[]) || []
-    ).map((item) => {
-      const row = item as Record<string, unknown>;
-      return {
-        phase: (text(row.phase) as PortPlanningCategoryItem['phase']) || 'HIEN_TRANG',
-        classification: text(row.classification),
-        portId: text(row.portId),
-        portName: text(row.portName),
-        exploitationFunction: text(row.exploitationFunction),
-        berthCount: toNumber(row.berthCount),
-        length: toNumber(row.length),
-        shipSize: text(row.shipSize),
-        capacity: toNumber(row.capacity),
-        landArea: toNumber(row.landArea),
-        waterArea: toNumber(row.waterArea),
-        note: text(row.note),
-      };
-    });
+    const cur = (values.planningCategoryCurrent as Record<string, unknown>) || {};
+    const fut = (values.planningCategoryFuture as Record<string, unknown>) || {};
+    const planningCategories: PortPlanningCategoryItem[] = [
+      { phase: 'HIEN_TRANG', portCategory: text(cur.portCategory), portName: text(cur.portName), exploitationFunction: text(cur.exploitationFunction), classification: text(cur.classification), berthCount: toNumber(cur.berthCount), length: toNumber(cur.length), shipSize: text(cur.shipSize), note: text(cur.note) },
+      { phase: 'SAU_QUY_HOACH', portCategory: text(cur.portCategory), portName: text(cur.portName), exploitationFunction: text(cur.exploitationFunction), classification: text(cur.classification), berthCount: toNumber(fut.berthCount), berthCountHigh: toNumber(fut.berthCountHigh), length: toNumber(fut.length), lengthHigh: toNumber(fut.lengthHigh), shipSize: text(fut.shipSize), capacity: toNumber(fut.capacity), capacityHigh: toNumber(fut.capacityHigh), landArea: toNumber(fut.landArea), waterArea: toNumber(fut.waterArea), note: text(cur.note) },
+    ];
 
-    const files: PlanningFileItem[] = ((values.files as unknown[]) || []).map((item) => {
-      const row = item as { fileName?: string };
-      return { fileName: text(row.fileName) };
-    });
-
+    const projectName = text(values.projectName) || text(values.decisionNumber) || '';
     return {
-      orgUnitId: text(values.orgUnitId) ?? '',
+      projectName,
+      orgUnitId: text(values.orgUnitId) || (undefined as any),
       decisionNumber: text(values.decisionNumber) ?? '',
       decisionDate: dateOnly(values.decisionDate),
       planningGroup: (text(values.planningGroup) as PlanningGroup) || 'SEAPORT',
@@ -434,9 +588,9 @@ export default function PortPlanningList() {
       status: (text(values.status) as QuyHoachBenCangCreateRequest['status']) || 'DRAFT',
       cargoForecasts,
       planningCategories,
-      fileUploadIds: files.map((f) => f.fileName || '').filter(Boolean),
+      fileUploadIds: uploadedFiles.map((f) => f.fileName || '').filter(Boolean),
     };
-  }, []);
+  }, [uploadedFiles]);
 
   const submitForm = useCallback(async () => {
     try {
@@ -447,7 +601,16 @@ export default function PortPlanningList() {
         await updateQuyHoach(editingItem.id, payload);
         toast.success('Cập nhật hồ sơ quy hoạch thành công');
       } else {
-        await createQuyHoach(payload);
+        const res: any = await createQuyHoach(payload);
+        const newId = res?.id ?? res?.data?.id;
+        if (newId) {
+          // Upload new files
+          for (const f of uploadedFiles) {
+            if (f.file) {
+              await uploadPortPlanningAttachment(newId, f.file).catch(() => {});
+            }
+          }
+        }
         toast.success('Đã tạo hồ sơ quy hoạch thành công');
       }
       closeDrawer();
@@ -459,29 +622,7 @@ export default function PortPlanningList() {
     } finally {
       setSubmitting(false);
     }
-  }, [buildPayload, closeDrawer, editingItem, form, loadData]);
-
-  const confirmDelete = useCallback(
-    (record: QuyHoachBenCangResponse) => {
-      modal.confirm({
-        title: 'Xóa hồ sơ quy hoạch',
-        content: `Bạn có chắc chắn muốn xóa hồ sơ quy hoạch "${record.decisionNumber || record.id}"?`,
-        okText: 'Xóa',
-        cancelText: 'Hủy',
-        okButtonProps: { danger: true },
-        onOk: async () => {
-          try {
-            await deleteQuyHoach(record.id);
-            toast.success('Xóa hồ sơ quy hoạch thành công');
-            await loadData();
-          } catch (error: unknown) {
-            toast.error(errorText(error, 'Có lỗi khi xóa hồ sơ quy hoạch'));
-          }
-        },
-      });
-    },
-    [loadData],
-  );
+  }, [buildPayload, closeDrawer, editingItem, form, loadData, uploadedFiles]);
 
   const groupColumn = useCallback(
     (_: string, record: QuyHoachBenCangResponse) =>
@@ -492,7 +633,7 @@ export default function PortPlanningList() {
   );
 
   const targetPortName = useCallback(
-    (record: QuyHoachBenCangResponse) => record.seaportName || record.dryPortName || '—',
+    (_value: string, record: QuyHoachBenCangResponse) => record.seaportName || record.dryPortName || '—',
     [],
   );
 
@@ -516,6 +657,14 @@ export default function PortPlanningList() {
         render: (v: string) => fmtDate(v),
       },
       { key: 'planningGroup', dataIndex: 'planningGroup', label: 'Nhóm', width: 130, render: groupColumn },
+      {
+        key: 'seaportGroup',
+        dataIndex: 'seaportGroup',
+        label: 'Nhóm cảng biển',
+        width: 150,
+        ellipsis: true,
+        render: (v: string) => v || '—',
+      },
       {
         key: 'targetPort',
         dataIndex: 'seaportName',
@@ -568,12 +717,9 @@ export default function PortPlanningList() {
       if (canUpdate) {
         actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => void openEdit(record) });
       }
-      if (canDelete) {
-        actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => confirmDelete(record) });
-      }
       return actions;
     },
-    [canDelete, canRead, canUpdate, confirmDelete, openEdit, openView],
+    [canRead, canUpdate, openEdit, openView],
   );
 
   const cargoColumns: DataTableColumn[] = [
@@ -591,35 +737,68 @@ export default function PortPlanningList() {
     { key: 'classification', dataIndex: 'classification', label: 'Phân loại', width: 140, render: (v: string) => PORT_CLASSIFICATION_LABELS[v] || v || '—' },
     { key: 'portName', dataIndex: 'portName', label: 'Cảng, bến cảng, cầu cảng', width: 240, ellipsis: true, render: (v: string) => v || '—' },
     { key: 'exploitationFunction', dataIndex: 'exploitationFunction', label: 'Công năng khai thác', width: 200, ellipsis: true, render: (v: string) => v || '—' },
-    { key: 'berthCount', dataIndex: 'berthCount', label: 'Số lượng cầu cảng', width: 140, render: (v?: number) => v ?? '—' },
-    { key: 'length', dataIndex: 'length', label: 'Chiều dài (m)', width: 130, render: (v?: number) => fmtNumber(v) },
+    {
+      key: 'berthCount',
+      dataIndex: 'berthCount',
+      label: 'Số lượng cầu cảng',
+      width: 150,
+      render: (_: unknown, record: PortPlanningCategoryItem) =>
+        record.phase === 'SAU_QUY_HOACH' && record.berthCountHigh !== undefined && record.berthCountHigh !== null
+          ? `${record.berthCount ?? '—'} – ${record.berthCountHigh}`
+          : (record.berthCount ?? '—'),
+    },
+    {
+      key: 'length',
+      dataIndex: 'length',
+      label: 'Chiều dài (m)',
+      width: 150,
+      render: (_: unknown, record: PortPlanningCategoryItem) =>
+        record.phase === 'SAU_QUY_HOACH' && record.lengthHigh !== undefined && record.lengthHigh !== null
+          ? `${fmtNumber(record.length)} – ${fmtNumber(record.lengthHigh)}`
+          : fmtNumber(record.length),
+    },
     { key: 'shipSize', dataIndex: 'shipSize', label: 'Cỡ tàu (tấn)', width: 130, render: (v?: string) => v || '—' },
-    { key: 'capacity', dataIndex: 'capacity', label: 'Công suất (Triệu tấn)', width: 170, render: (v?: number) => fmtNumber(v) },
+    {
+      key: 'capacity',
+      dataIndex: 'capacity',
+      label: 'Công suất (Triệu tấn)',
+      width: 170,
+      render: (_: unknown, record: PortPlanningCategoryItem) =>
+        record.phase === 'SAU_QUY_HOACH' && record.capacityHigh !== undefined && record.capacityHigh !== null
+          ? `${fmtNumber(record.capacity)} – ${fmtNumber(record.capacityHigh)}`
+          : fmtNumber(record.capacity),
+    },
     { key: 'landArea', dataIndex: 'landArea', label: 'Diện tích đất (ha)', width: 150, render: (v?: number) => fmtNumber(v) },
     { key: 'waterArea', dataIndex: 'waterArea', label: 'Diện tích nước (ha)', width: 150, render: (v?: number) => fmtNumber(v) },
     { key: 'note', dataIndex: 'note', label: 'Ghi chú', width: 180, ellipsis: true, render: (v: string) => v || '—' },
   ];
 
-  const fileColumns: DataTableColumn[] = [
-    { key: 'fileName', dataIndex: 'fileName', label: 'Tên tệp', width: 420, ellipsis: true, render: (v: string) => v || '—' },
-  ];
-
   const filterContent = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceMd }}>
-      <Form.Item label="Từ khóa" style={{ marginBottom: spaceFormField }}>
+    <>
+      {/* ── 3 trường cơ bản luôn hiển thị (chuẩn Recipe) ── */}
+      <div style={{ marginBottom: 12, marginTop: spaceSm }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Đơn vị quản lý
+        </div>
+          <FilterOrgUnitTreeSelect value={orgUnitFilter} onChange={setOrgUnitFilter} organizations={organizations} placeholder="Chọn đơn vị quản lý" />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Số quyết định quy hoạch
+        </div>
         <Input
-          placeholder="Số quyết định, nội dung quy hoạch..."
+          placeholder="Nhập số quyết định..."
           value={keywordInput}
           onChange={(e) => setKeywordInput(e.target.value)}
-          style={inputStyle}
+          style={{ borderRadius: radiusPill, height: 40 }}
           allowClear
           onPressEnter={() => setPage(1)}
         />
-      </Form.Item>
-      <Form.Item label="Đơn vị quản lý" style={{ marginBottom: spaceFormField }}>
-        <FilterOrgUnitTreeSelect value={orgUnitFilter} onChange={setOrgUnitFilter} placeholder="Chọn đơn vị quản lý" />
-      </Form.Item>
-      <Form.Item label="Nhóm" style={{ marginBottom: spaceFormField }}>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Nhóm
+        </div>
         <Select
           value={groupFilter}
           onChange={(value) => {
@@ -629,48 +808,95 @@ export default function PortPlanningList() {
           placeholder="Chọn nhóm (Cảng biển / Cảng cạn)"
           allowClear
           options={Object.entries(PLANNING_GROUP_LABELS).map(([value, label]) => ({ value, label }))}
-          style={{ ...selectStyle, width: '100%' }}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
-      </Form.Item>
-      {groupFilter === 'SEAPORT' && (
-        <Form.Item label="Cảng biển quy hoạch" style={{ marginBottom: spaceFormField }}>
-          <Select
-            placeholder="Chọn cảng biển quy hoạch..."
-            allowClear
-            showSearch
-            filterOption={false}
-            onSearch={() => undefined}
-            options={masterOptions.SEAPORT?.map((r) => ({
-              value: r.id,
-              label: r.code ? `${r.name} (${r.code})` : r.name,
-            }))}
-            style={{ ...selectStyle, width: '100%' }}
-          />
-        </Form.Item>
+      </div>
+
+      {/* ── Các trường nâng cao (hiển thị khi bấm nút Lọc nâng cao) ── */}
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Nhóm cảng biển
+            </div>
+            <Select
+              value={seaportGroupFilter}
+              onChange={(val) => {
+                setSeaportGroupFilter(val);
+                setPage(1);
+              }}
+              placeholder="Chọn nhóm cảng biển..."
+              allowClear
+              options={['Nhóm 1', 'Nhóm 2', 'Nhóm 3', 'Nhóm 4', 'Nhóm 5'].map((g) => ({ value: g, label: g }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
+
+          {groupFilter !== 'DRY_PORT' && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                Cảng biển quy hoạch
+              </div>
+              <Select
+                placeholder="Chọn cảng biển quy hoạch..."
+                allowClear
+                showSearch
+                filterOption={false}
+                onSearch={() => undefined}
+                options={masterOptions.SEAPORT?.map((r) => ({
+                  value: r.id,
+                  label: r.code ? `${r.name} (${r.code})` : r.name,
+                }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              />
+            </div>
+          )}
+
+          {groupFilter === 'DRY_PORT' && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                Cảng cạn quy hoạch
+              </div>
+              <Select
+                placeholder="Chọn cảng cạn quy hoạch..."
+                allowClear
+                options={masterOptions.DRY_PORT?.map((r) => ({
+                  value: r.id,
+                  label: r.code ? `${r.name} (${r.code})` : r.name,
+                }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              />
+            </div>
+          )}
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Khoảng ngày quyết định
+            </div>
+            <DatePicker.RangePicker
+              {...getSidebarRangePickerProps()}
+              value={decisionRange}
+              onChange={(value) => setDecisionRange(value as [Dayjs | null, Dayjs | null] | null)}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              format="DD/MM/YYYY"
+            />
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Khoảng ngày cập nhật
+            </div>
+            <DatePicker.RangePicker
+              {...getSidebarRangePickerProps()}
+              value={updatedRange}
+              onChange={(value) => setUpdatedRange(value as [Dayjs | null, Dayjs | null] | null)}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              format="DD/MM/YYYY"
+            />
+          </div>
+        </>
       )}
-      {groupFilter === 'DRY_PORT' && (
-        <Form.Item label="Cảng cạn quy hoạch" style={{ marginBottom: spaceFormField }}>
-          <Select
-            placeholder="Chọn cảng cạn quy hoạch..."
-            allowClear
-            options={masterOptions.DRY_PORT?.map((r) => ({
-              value: r.id,
-              label: r.code ? `${r.name} (${r.code})` : r.name,
-            }))}
-            style={{ ...selectStyle, width: '100%' }}
-          />
-        </Form.Item>
-      )}
-      <Form.Item label="Khoảng ngày quyết định" style={{ marginBottom: spaceFormField }}>
-        <DatePicker.RangePicker
-          {...getSidebarRangePickerProps()}
-          value={decisionRange}
-          onChange={(value) => setDecisionRange(value as [Dayjs | null, Dayjs | null] | null)}
-          style={{ ...selectStyle, width: '100%' }}
-          format="DD/MM/YYYY"
-        />
-      </Form.Item>
-    </div>
+    </>
   );
 
   const viewRecord = detail || editingItem;
@@ -678,13 +904,13 @@ export default function PortPlanningList() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
       <ScreenHeader
-        breadcrumb={[{ label: 'Quản lý văn bản & thông tin nghiệp vụ' }, { label: 'Quản lý quy hoạch bến cảng' }]}
+        breadcrumb={[{ label: 'Quản lý quy hoạch & vận hành' }, { label: 'Quản lý thông tin quy hoạch bến cảng' }]}
         actions={
           canCreate
             ? [
                 {
                   key: 'create',
-                  label: 'Tạo mới quy hoạch',
+                  label: 'Thêm mới',
                   icon: <PlusOutlined />,
                   variant: 'primary',
                   onClick: openCreate,
@@ -694,7 +920,8 @@ export default function PortPlanningList() {
         }
       />
       <FilterTableLayout
-        hideFilterToggle
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         statusTabs={statusTabs}
         onStatusTabChange={(key) => {
           setStatusFilter(key);
@@ -711,7 +938,9 @@ export default function PortPlanningList() {
           setOrgUnitFilter(undefined);
           setStatusFilter('ALL');
           setGroupFilter(undefined);
+          setSeaportGroupFilter(undefined);
           setDecisionRange(null);
+          setUpdatedRange(null);
           setPage(1);
         }}
         loading={loading}
@@ -730,12 +959,43 @@ export default function PortPlanningList() {
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>
 
-      <Drawer
-        title={drawerMode === 'view' ? 'Chi tiết hồ sơ quy hoạch' : drawerMode === 'edit' ? 'Cập nhật quy hoạch bến cảng' : 'Tạo mới quy hoạch bến cảng'}
+      <AppDrawer
+        width="min(920px, 96vw)"
+        rootClassName="port-planning-drawer-scope"
+        className="port-planning-drawer-scope"
+        title={
+          <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+            {drawerMode === 'view'
+              ? 'Chi tiết thông tin quy hoạch bến cảng'
+              : drawerMode === 'edit'
+                ? 'Cập nhật thông tin quy hoạch bến cảng'
+                : 'Thêm mới thông tin quy hoạch bến cảng'}
+          </span>
+        }
         open={drawerMode !== null}
         onClose={closeDrawer}
-        width={drawerMode === 'view' ? 1100 : 1040}
         destroyOnClose
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '16px 24px 32px', overflowY: 'auto' },
+        }}
+        footer={
+          drawerMode !== 'view' ? (
+            <div style={drawerFooterStyle}>
+              <Button style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }} onClick={closeDrawer}>
+                Hủy
+              </Button>
+              <Button
+                type="primary"
+                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                loading={submitting}
+                onClick={() => void submitForm()}
+              >
+                {drawerMode === 'edit' ? 'Cập nhật' : 'Thêm mới'}
+              </Button>
+            </div>
+          ) : null
+        }
       >
         {drawerMode === 'view' && viewRecord ? (
           <Tabs
@@ -744,109 +1004,146 @@ export default function PortPlanningList() {
                 key: 'general',
                 label: 'Thông tin chung',
                 children: (
-                  <div>
-                    <Descriptions
-                      column={2}
-                      size="small"
-                      bordered
-                      labelStyle={{ width: 220, fontWeight: fontWeightMedium, color: textSecondary }}
-                      items={[
-                        { key: 'decisionNumber', label: 'Số quyết định quy hoạch', children: viewRecord.decisionNumber || '—' },
-                        { key: 'decisionDate', label: 'Ngày quyết định quy hoạch', children: fmtDate(viewRecord.decisionDate) },
-                        {
-                          key: 'orgUnit',
-                          label: 'Đơn vị quản lý',
-                          children: viewRecord.orgUnitName || viewRecord.orgUnitId || '—',
-                        },
-                        {
-                          key: 'group',
-                          label: 'Nhóm',
-                          children:
-                            PLANNING_GROUP_LABELS[viewRecord.planningGroup || ''] || viewRecord.planningGroup || '—',
-                        },
-                        {
-                          key: 'target',
-                          label: 'Cảng biển / cảng cạn quy hoạch',
-                          span: 2,
-                          children:
-                            viewRecord.seaportName ||
-                            viewRecord.dryPortName ||
-                            viewRecord.seaportId ||
-                            viewRecord.dryPortId ||
-                            '—',
-                        },
-                        {
-                          key: 'planToYear',
-                          label: 'Dự báo quy hoạch đến năm',
-                          children: viewRecord.planToYear ? String(viewRecord.planToYear) : '—',
-                        },
-                        {
-                          key: 'status',
-                          label: 'Trạng thái',
-                          children: renderPill(
-                            PLANNING_STATUS_LABELS[viewRecord.status || ''] || viewRecord.status || '—',
-                            PLANNING_STATUS_COLORS[viewRecord.status || ''] || statusDraft,
-                          ),
-                        },
-                        { key: 'planContent', label: 'Nội dung quy hoạch', span: 2, children: viewRecord.planContent || '—' },
-                        { key: 'landWaterDemand', label: 'Nhu cầu sử dụng đất và mặt nước', span: 2, children: viewRecord.landWaterDemand || '—' },
-                        { key: 'capitalDemand', label: 'Nhu cầu vốn đầu tư', span: 2, children: viewRecord.capitalDemand || '—' },
-                        { key: 'implementationSolution', label: 'Giải pháp thực hiện quy hoạch', span: 2, children: viewRecord.implementationSolution || '—' },
-                        { key: 'priorityProjects', label: 'Dự án ưu tiên đầu tư', span: 2, children: viewRecord.priorityProjects || '—' },
-                        { key: 'implementationOrg', label: 'Tổ chức thực hiện quy hoạch', span: 2, children: viewRecord.implementationOrg || '—' },
-                        {
-                          key: 'updated',
-                          label: 'Người cập nhật / Ngày cập nhật',
-                          children:
-                            viewRecord.updatedByName ||
-                            viewRecord.updatedBy ||
-                            '—',
-                        },
-                        { key: 'updatedDate', label: '', children: fmtDateTime(viewRecord.updatedDate) },
-                      ]}
-                    />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                      <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
+                        Thông tin cơ bản
+                      </div>
+                      <Descriptions
+                        column={2}
+                        size="small"
+                        bordered
+                        labelStyle={{ width: 220, fontWeight: fontWeightMedium, color: textSecondary }}
+                        items={[
+                          { key: 'decisionNumber', label: 'Số quyết định quy hoạch', children: viewRecord.decisionNumber || '—' },
+                          { key: 'decisionDate', label: 'Ngày quyết định quy hoạch', children: fmtDate(viewRecord.decisionDate) },
+                          {
+                            key: 'orgUnit',
+                            label: 'Đơn vị quản lý',
+                            children: viewRecord.orgUnitName || viewRecord.orgUnitId || '—',
+                          },
+                          {
+                            key: 'target',
+                            label: 'Cảng biển quy hoạch',
+                            children:
+                              viewRecord.seaportName ||
+                              viewRecord.seaportId ||
+                              '—',
+                          },
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
+                        Dự báo hàng hóa thông qua cảng
+                      </div>
+                      <DataTable
+                        dense
+                        columns={cargoColumns}
+                        dataSource={viewRecord.cargoForecasts || []}
+                        rowKey={(record: PortPlanningCargoForecast) => record.id || String(Math.random())}
+                        scroll={{ y: 220 }}
+                        emptyState={<EmptyState description="Chưa có dự báo hàng hóa" />}
+                      />
+                    </div>
                   </div>
                 ),
               },
               {
-                key: 'cargo',
-                label: 'Dự báo hàng hóa thông qua cảng',
+                key: 'planning',
+                label: 'Quy hoạch',
                 children: (
-                  <DataTable
-                    dense
-                    columns={cargoColumns}
-                    dataSource={viewRecord.cargoForecasts || []}
-                    rowKey={(record: PortPlanningCargoForecast) => record.id || String(Math.random())}
-                    scroll={{ y: DRAWER_TABLE_SCROLL_Y.pureTable }}
-                    emptyState={<EmptyState description="Chưa có dự báo hàng hóa" />}
-                  />
-                ),
-              },
-              {
-                key: 'categories',
-                label: 'Danh mục quy hoạch chi tiết',
-                children: (
-                  <DataTable
-                    dense
-                    columns={categoryColumns}
-                    dataSource={viewRecord.planningCategories || []}
-                    rowKey={(record: PortPlanningCategoryItem) => record.id || String(Math.random())}
-                    scroll={{ y: DRAWER_TABLE_SCROLL_Y.pureTable }}
-                    emptyState={<EmptyState description="Chưa có danh mục quy hoạch chi tiết" />}
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div>
+                      <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
+                        Kế hoạch quy hoạch
+                      </div>
+                      <Descriptions
+                        column={2}
+                        size="small"
+                        bordered
+                        labelStyle={{ width: 220, fontWeight: fontWeightMedium, color: textSecondary }}
+                        items={[
+                          { key: 'projectName', label: 'Mục tiêu quy hoạch', span: 2, children: viewRecord.projectName || '—' },
+                          { key: 'planToYear', label: 'Dự báo quy hoạch đến năm', span: 2, children: viewRecord.planToYear ? String(viewRecord.planToYear) : '—' },
+                          { key: 'planContent', label: 'Nội dung quy hoạch', span: 2, children: viewRecord.planContent || '—' },
+                          { key: 'landWaterDemand', label: 'Nhu cầu sử dụng đất và mặt nước', children: viewRecord.landWaterDemand || '—' },
+                          { key: 'capitalDemand', label: 'Nhu cầu vốn đầu tư', children: viewRecord.capitalDemand || '—' },
+                          { key: 'implementationSolution', label: 'Giải pháp thực hiện quy hoạch', children: viewRecord.implementationSolution || '—' },
+                          { key: 'priorityProjects', label: 'Dự án ưu tiên đầu tư', children: viewRecord.priorityProjects || '—' },
+                          { key: 'implementationOrg', label: 'Tổ chức thực hiện quy hoạch', span: 2, children: viewRecord.implementationOrg || '—' },
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: 8 }}>
+                        Danh mục quy hoạch chi tiết
+                      </div>
+                      <DataTable
+                        dense
+                        columns={categoryColumns}
+                        dataSource={viewRecord.planningCategories || []}
+                        rowKey={(record: PortPlanningCategoryItem) => record.id || String(Math.random())}
+                        scroll={{ y: 220 }}
+                        emptyState={<EmptyState description="Chưa có danh mục quy hoạch chi tiết" />}
+                      />
+                    </div>
+                  </div>
                 ),
               },
               {
                 key: 'files',
-                label: 'File đính kèm',
+                label: `File đính kèm (${(viewRecord.planningFiles || []).length})`,
                 children: (
-                  <DataTable
-                    dense
-                    columns={fileColumns}
-                    dataSource={viewRecord.planningFiles || []}
-                    rowKey={(record: PlanningFileItem) => record.id || String(Math.random())}
-                    scroll={{ y: DRAWER_TABLE_SCROLL_Y.pureTable }}
-                    emptyState={<EmptyState description="Chưa có file đính kèm" />}
+                  <InfrastructureAttachmentTab
+                    attachments={(viewRecord.planningFiles || []).map((f) => ({
+                      id: f.id || f.fileName || `file_${Math.random().toString(36).slice(2, 7)}`,
+                      fileName: f.fileName || '',
+                      fileSize: f.fileSize,
+                      uploadedByName: f.uploadedByName || f.uploadedBy || '—',
+                      uploadedDate: f.uploadedDate || f.uploadedAt || '—',
+                      filePath: f.filePath,
+                    }))}
+                    readonly={true}
+                    onDownload={handleAttachmentDownload}
+                  />
+                ),
+              },
+              {
+                key: 'tracking',
+                label: 'Xử lý và theo dõi',
+                children: (
+                  <Descriptions
+                    column={2}
+                    size="small"
+                    bordered
+                    labelStyle={{ width: 220, fontWeight: fontWeightMedium, color: textSecondary }}
+                    items={[
+                      {
+                        key: 'updated',
+                        label: 'Người cập nhật',
+                        children:
+                          viewRecord.updatedByName ||
+                          viewRecord.updatedBy ||
+                          '—',
+                      },
+                      { key: 'updatedDate', label: 'Ngày cập nhật', children: fmtDateTime(viewRecord.updatedDate) },
+                      {
+                        key: 'created',
+                        label: 'Người tạo',
+                        children: viewRecord.createdByName || viewRecord.createdBy || '—',
+                      },
+                      { key: 'createdDate', label: 'Ngày tạo', children: fmtDateTime(viewRecord.createdDate) },
+                      {
+                        key: 'status',
+                        label: 'Trạng thái',
+                        span: 2,
+                        children: renderPill(
+                          PLANNING_STATUS_LABELS[viewRecord.status || ''] || viewRecord.status || '—',
+                          PLANNING_STATUS_COLORS[viewRecord.status || ''] || statusDraft,
+                        ),
+                      },
+                    ]}
                   />
                 ),
               },
@@ -854,237 +1151,432 @@ export default function PortPlanningList() {
           />
         ) : (
           <Form form={form} layout="vertical">
-            <Form.Item
-              name="orgUnitId"
-              label="Đơn vị quản lý"
-              style={{ marginBottom: spaceFormField }}
-              rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-            >
-              <FormOrgUnitTreeSelect placeholder="Chọn đơn vị quản lý (bắt buộc)" />
-            </Form.Item>
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item
-                  name="decisionNumber"
-                  {...labelProps('Số quyết định quy hoạch')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Vui lòng nhập số quyết định quy hoạch' }]}
-                >
-                  <Input placeholder="Nhập số quyết định quy hoạch..." style={inputStyle} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="decisionDate"
-                  {...labelProps('Ngày quyết định quy hoạch')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Vui lòng chọn ngày quyết định quy hoạch' }]}
-                >
-                  <DatePicker
-                    {...getDatePickerProps()}
-                    format="DD/MM/YYYY"
-                    placeholder="Chọn ngày quyết định"
-                    style={{ ...inputStyle, width: '100%' }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={spaceMd}>
-              <Col span={8}>
-                <Form.Item
-                  name="planningGroup"
-                  {...labelProps('Nhóm')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Vui lòng chọn nhóm' }]}
-                >
-                  <Select
-                    options={Object.entries(PLANNING_GROUP_LABELS).map(([value, label]) => ({ value, label }))}
-                    placeholder="Cảng biển / Cảng cạn"
-                    style={{ ...selectStyle, width: '100%' }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                <Form.Item
-                  name="planToYear"
-                  {...labelProps('Dự báo quy hoạch đến năm')}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <DatePicker
-                    {...getDatePickerProps()}
-                    picker="year"
-                    placeholder="Chọn năm"
-                    style={{ ...inputStyle, width: '100%' }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={8}>
-                {drawerMode === 'edit' && editingItem ? (
-                  <Form.Item label="Mã hồ sơ" style={{ marginBottom: spaceFormField }}>
-                    <Input disabled value={editingItem.projectName || editingItem.id} style={inputStyle} />
-                  </Form.Item>
-                ) : null}
-              </Col>
-            </Row>
-            {watchedGroup === 'SEAPORT' && (
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item
-                    name="seaportId"
-                    {...labelProps('Cảng biển quy hoạch')}
-                    style={{ marginBottom: spaceFormField }}
-                    rules={[{ required: true, message: 'Vui lòng chọn cảng biển quy hoạch' }]}
-                  >
-                    <Select
-                      placeholder="Chọn cảng biển quy hoạch (từ danh mục cảng biển)..."
-                      showSearch
-                      optionFilterProp="label"
-                      options={masterOptions.SEAPORT?.map((r) => ({
-                        value: r.id,
-                        label: r.code ? `${r.name} (${r.code})` : r.name,
-                      }))}
-                      style={{ ...selectStyle, width: '100%' }}
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    name="seaportGroup"
-                    {...labelProps('Nhóm cảng biển')}
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <Input placeholder="Nhập nhóm cảng biển (ví dụ: Nhóm 1...)" style={inputStyle} />
-                  </Form.Item>
-                </Col>
-              </Row>
-            )}
-            {watchedGroup === 'DRY_PORT' && (
-              <Form.Item
-                name="dryPortId"
-                {...labelProps('Cảng cạn quy hoạch')}
-                style={{ marginBottom: spaceFormField }}
-                rules={[{ required: true, message: 'Vui lòng chọn cảng cạn quy hoạch' }]}
-              >
-                <Select
-                  placeholder="Chọn cảng cạn quy hoạch (từ danh mục cảng cạn)..."
-                  showSearch
-                  optionFilterProp="label"
-                  options={masterOptions.DRY_PORT?.map((r) => ({
-                    value: r.id,
-                    label: r.code ? `${r.name} (${r.code})` : r.name,
-                  }))}
-                  style={{ ...selectStyle, width: '100%' }}
-                />
-              </Form.Item>
-            )}
-            <Form.Item name="planContent" {...labelProps('Nội dung quy hoạch')} style={{ marginBottom: spaceFormField }}>
-              <Input.TextArea rows={3} placeholder="Mô tả nội dung quy hoạch..." style={{ borderRadius: radiusTextArea }} />
-            </Form.Item>
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item name="landWaterDemand" {...labelProps('Nhu cầu sử dụng đất và mặt nước')} style={{ marginBottom: spaceFormField }}>
-                  <Input.TextArea rows={2} placeholder="Nhu cầu sử dụng đất và mặt nước..." style={{ borderRadius: radiusTextArea }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="capitalDemand" {...labelProps('Nhu cầu vốn đầu tư')} style={{ marginBottom: spaceFormField }}>
-                  <Input.TextArea rows={2} placeholder="Nhu cầu vốn đầu tư..." style={{ borderRadius: radiusTextArea }} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={spaceMd}>
-              <Col span={12}>
-                <Form.Item name="implementationSolution" {...labelProps('Giải pháp thực hiện quy hoạch')} style={{ marginBottom: spaceFormField }}>
-                  <Input.TextArea rows={2} placeholder="Giải pháp thực hiện quy hoạch..." style={{ borderRadius: radiusTextArea }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="priorityProjects" {...labelProps('Dự án ưu tiên đầu tư')} style={{ marginBottom: spaceFormField }}>
-                  <Input.TextArea rows={2} placeholder="Dự án ưu tiên đầu tư..." style={{ borderRadius: radiusTextArea }} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Form.Item name="implementationOrg" {...labelProps('Tổ chức thực hiện quy hoạch')} style={{ marginBottom: spaceFormField }}>
-              <Input.TextArea rows={2} placeholder="Tổ chức thực hiện quy hoạch..." style={{ borderRadius: radiusTextArea }} />
-            </Form.Item>
+            <Tabs
+              activeKey={formTabKey}
+              onChange={setFormTabKey}
+              tabBarStyle={drawerTabBarStyle}
+              items={[
+                {
+                  key: 'general',
+                  label: (
+                    <span>
+                      <FileTextOutlined style={{ marginRight: 6 }} />
+                      Thông tin chung
+                    </span>
+                  ),
+                  children: (
+                    <div style={drawerFormScrollStyle}>
+                      {/* Khối 1: Thông tin cơ bản (STT 1-6) */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <FileTextOutlined style={{ color: colors.sidebarBg }} />
+                            <span>Thông tin cơ bản</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="orgUnitId"
+                              {...labelProps('Đơn vị quản lý')}
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
+                            >
+                              <FormOrgUnitTreeSelect organizations={organizations} placeholder="Chọn đơn vị quản lý (bắt buộc)" />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="seaportId"
+                              {...labelProps('Cảng biển quy hoạch')}
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Vui lòng chọn cảng biển quy hoạch' }]}
+                            >
+                              <Select
+                                placeholder="Chọn cảng biển quy hoạch..."
+                                showSearch
+                                optionFilterProp="label"
+                                options={masterOptions.SEAPORT?.map((r) => ({
+                                  value: r.id,
+                                  label: r.code ? `${r.name} (${r.code})` : r.name,
+                                }))}
+                                style={{ ...selectStyle, width: '100%' }}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="decisionNumber"
+                              {...labelProps('Số quyết định quy hoạch')}
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Vui lòng nhập số quyết định quy hoạch' }]}
+                            >
+                              <Input placeholder="Nhập số quyết định quy hoạch..." style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="decisionDate"
+                              {...labelProps('Ngày quyết định quy hoạch')}
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Vui lòng chọn ngày quyết định quy hoạch' }]}
+                            >
+                              <DatePicker
+                                {...getDatePickerProps()}
+                                format="DD/MM/YYYY"
+                                placeholder="Chọn ngày quyết định"
+                                style={{ ...inputStyle, width: '100%' }}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        {drawerMode === 'edit' && editingItem ? (
+                          <Row gutter={[24, 0]}>
+                            <Col span={12}>
+                              <Form.Item {...labelProps('Mã hồ sơ')} style={{ marginBottom: spaceFormField }}>
+                                <Input disabled value={editingItem.projectName || editingItem.id} style={inputStyle} />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        ) : null}
+                      </div>
 
-            <SectionTitle title="Dự báo hàng hóa thông qua cảng" />
-            <Form.List name="cargoForecasts">
-              {(fields, { add, remove }) => (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-                  {fields.map((field) => (
-                    <CargoForecastRow key={field.key} field={field} remove={remove} form={form} />
-                  ))}
-                  {fields.length === 0 && (
-                    <Button type="dashed" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }} onClick={() => add({})}>
-                      Thêm dòng dự báo hàng hóa
-                    </Button>
-                  )}
-                </div>
-              )}
-            </Form.List>
-
-            <SectionTitle title="Danh mục quy hoạch chi tiết (hiện trạng / sau quy hoạch)" />
-            <Form.List name="planningCategories">
-      {(fields, { add, remove }) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-          {fields.map((field) => (
-            <PlanningCategoryRow key={field.key} field={field} remove={remove} />
-          ))}
-          {fields.length === 0 && (
-            <Button type="dashed" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }} onClick={() => add({ phase: 'HIEN_TRANG' })}>
-              Thêm danh mục quy hoạch chi tiết
-            </Button>
-          )}
-        </div>
-      )}
-    </Form.List>
-
-            <SectionTitle title="File đính kèm" />
-            <Form.List name="files">
-              {(fields, { add, remove }) => (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-                  {fields.map((field) => (
-                    <Row key={field.key} gutter={spaceSm} align="middle">
-                      <Col span={21}>
+                      {/* Khối 2: Dự báo hàng hóa thông qua cảng (STT 7-13) */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <BarChartOutlined style={{ color: colors.sidebarBg }} />
+                            <span>Dự báo hàng hóa thông qua cảng</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item name={['cargoForecasts', 0, 'classification']} {...labelProps('Phân loại')} style={{ marginBottom: spaceFormField }}>
+                              <Select
+                                placeholder="Chọn phân loại (CB/BC/CC)..."
+                                options={Object.entries(PORT_CLASSIFICATION_LABELS).map(([value, label]) => ({ value, label }))}
+                                style={{ ...selectStyle, width: '100%' }}
+                                allowClear
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item {...labelProps('Cảng, bến cảng, cầu cảng')} style={{ marginBottom: spaceFormField }}>
+                              <MasterRecordPicker form={form} name={0} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <NumberPairField field={{ name: 0 }} name="containerMin" label="Container tối thiểu (tấn)" placeholder="Tối thiểu" />
+                          <NumberPairField field={{ name: 0 }} name="containerMax" label="Container tối đa (tấn)" placeholder="Tối đa" />
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <NumberPairField field={{ name: 0 }} name="generalCargoMin" label="Tổng hợp, rời tối thiểu (tấn)" placeholder="Tối thiểu" />
+                          <NumberPairField field={{ name: 0 }} name="generalCargoMax" label="Tổng hợp, rời tối đa (tấn)" placeholder="Tối đa" />
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <NumberPairField field={{ name: 0 }} name="liquidMin" label="Lỏng, khí tối thiểu (tấn)" placeholder="Tối thiểu" />
+                          <NumberPairField field={{ name: 0 }} name="liquidMax" label="Lỏng, khí tối đa (tấn)" placeholder="Tối đa" />
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item {...labelProps('Tổng cộng tối thiểu (tấn)')} style={{ marginBottom: spaceFormField }}>
+                              <InputNumber
+                                disabled
+                                value={num(cargoWatcher?.containerMin) + num(cargoWatcher?.generalCargoMin) + num(cargoWatcher?.liquidMin)}
+                                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                                placeholder="0"
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item {...labelProps('Tổng cộng tối đa (tấn)')} style={{ marginBottom: spaceFormField }}>
+                              <InputNumber
+                                disabled
+                                value={num(cargoWatcher?.containerMax) + num(cargoWatcher?.generalCargoMax) + num(cargoWatcher?.liquidMax)}
+                                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                                placeholder="0"
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <Col span={24}>
+                            <Form.Item name={['cargoForecasts', 0, 'note']} {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
+                              <Input placeholder="Ghi chú (dự báo hàng hóa)..." style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'planning',
+                  label: (
+                    <span>
+                      <SlidersOutlined style={{ marginRight: 6 }} />
+                      Quy hoạch
+                    </span>
+                  ),
+                  children: (
+                    <div style={drawerFormScrollStyle}>
+                      {/* Khối 1: Kế hoạch quy hoạch (STT 14-21) */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <SlidersOutlined style={{ color: colors.sidebarBg }} />
+                            <span>Kế hoạch quy hoạch</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="projectName"
+                              {...labelProps('Mục tiêu quy hoạch')}
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Vui lòng nhập mục tiêu quy hoạch' }]}
+                            >
+                              <Input placeholder="Nhập mục tiêu quy hoạch..." style={inputStyle} maxLength={200} showCount />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="planToYear"
+                              {...labelProps('Dự báo quy hoạch đến năm')}
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Vui lòng chọn năm' }]}
+                            >
+                              <DatePicker
+                                {...getDatePickerProps()}
+                                picker="year"
+                                placeholder="Chọn năm"
+                                style={{ ...inputStyle, width: '100%' }}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
                         <Form.Item
-                          name={[field.name, 'fileName']}
-                          style={{ marginBottom: 0 }}
-                          rules={[{ required: true, message: 'Nhập tên file' }]}
+                          name="planContent"
+                          {...labelProps('Nội dung quy hoạch')}
+                          style={{ marginBottom: spaceFormField }}
                         >
-                          <Input placeholder="Tên file đính kèm..." style={inputStyle} />
+                          <Input.TextArea
+                            rows={3}
+                            showCount
+                            maxLength={2000}
+                            placeholder="Mô tả nội dung quy hoạch..."
+                            style={{ borderRadius: radiusMd }}
+                          />
                         </Form.Item>
-                      </Col>
-                      <Col span={3} style={{ textAlign: 'center' }}>
-                        <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
-                      </Col>
-                    </Row>
-                  ))}
-                  {fields.length === 0 && (
-                    <Button type="dashed" icon={<PlusOutlined />} style={{ borderRadius: radiusPill }} onClick={() => add({ fileName: '' })}>
-                      Thêm file đính kèm
-                    </Button>
-                  )}
-                </div>
-              )}
-            </Form.List>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="landWaterDemand"
+                              {...labelProps('Nhu cầu sử dụng đất và mặt nước')}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input.TextArea
+                                rows={2}
+                                showCount
+                                maxLength={1000}
+                                placeholder="Nhu cầu sử dụng đất và mặt nước..."
+                                style={{ borderRadius: radiusMd }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="capitalDemand"
+                              {...labelProps('Nhu cầu vốn đầu tư')}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input.TextArea
+                                rows={2}
+                                showCount
+                                maxLength={1000}
+                                placeholder="Nhu cầu vốn đầu tư..."
+                                style={{ borderRadius: radiusMd }}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Form.Item
+                          name="implementationSolution"
+                          {...labelProps('Giải pháp thực hiện quy hoạch')}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Input.TextArea
+                            rows={2}
+                            showCount
+                            maxLength={2000}
+                            placeholder="Giải pháp thực hiện quy hoạch..."
+                            style={{ borderRadius: radiusMd }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name="priorityProjects"
+                          {...labelProps('Dự án ưu tiên đầu tư')}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Input.TextArea
+                            rows={2}
+                            showCount
+                            maxLength={2000}
+                            placeholder="Dự án ưu tiên đầu tư..."
+                            style={{ borderRadius: radiusMd }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name="implementationOrg"
+                          {...labelProps('Tổ chức thực hiện quy hoạch')}
+                          style={{ marginBottom: spaceFormField }}
+                        >
+                          <Input.TextArea
+                            rows={2}
+                            showCount
+                            maxLength={2000}
+                            placeholder="Tổ chức thực hiện quy hoạch..."
+                            style={{ borderRadius: radiusMd }}
+                          />
+                        </Form.Item>
+                      </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceSm, marginTop: spaceLg }}>
-              <Button style={{ ...outlineButtonStyle, borderRadius: radiusPill }} onClick={closeDrawer}>
-                Hủy
-              </Button>
-              <Button
-                type="primary"
-                style={{ ...primaryButtonStyle, borderRadius: radiusPill }}
-                loading={submitting}
-                onClick={() => void submitForm()}
-              >
-                {drawerMode === 'edit' ? 'Cập nhật' : 'Tạo mới'}
-              </Button>
-            </div>
+                      {/* Khối 2A: Danh mục quy hoạch chi tiết (5 trường chung — Excel rows 22-26) */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <AppstoreOutlined style={{ color: colors.sidebarBg }} />
+                            <span>Danh mục quy hoạch chi tiết</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <PcField ns="planningCategoryCurrent" name="portCategory" label="Phân loại (CB/BC/CC)" kind="text" placeholder="Cảng biển / Bến cảng / Cầu cảng" />
+                          <PcField ns="planningCategoryCurrent" name="portName" label="Cảng, bến, cầu cụ thể" kind="text" placeholder="Tên cảng / bến cảng / cầu cảng..." />
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <PcField ns="planningCategoryCurrent" name="exploitationFunction" label="Công năng khai thác" kind="text" placeholder="Công năng khai thác..." />
+                          <PcField ns="planningCategoryCurrent" name="classification" label="Phân loại" kind="text" placeholder="Phân loại..." />
+                        </Row>
+                        <PcField ns="planningCategoryCurrent" name="note" label="Ghi chú" kind="textarea" placeholder="Ghi chú..." fullRow />
+                      </div>
+
+                      {/* Khối 2B: Danh mục quy hoạch chi tiết — Hiện trạng (3 trường — Excel rows 27-29) */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <AppstoreOutlined style={{ color: colors.sidebarBg }} />
+                            <span>Danh mục quy hoạch chi tiết — Hiện trạng</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <PcField ns="planningCategoryCurrent" name="berthCount" label="Số lượng cầu cảng" kind="number" span={8} placeholder="0" />
+                          <PcField ns="planningCategoryCurrent" name="length" label="Chiều dài (m)" kind="number" precision={2} span={8} placeholder="Chiều dài" />
+                          <PcField ns="planningCategoryCurrent" name="shipSize" label="Cỡ tàu (tấn)" kind="text" span={8} placeholder="Cỡ tàu..." />
+                        </Row>
+                      </div>
+
+                      {/* Khối 2C: Danh mục quy hoạch chi tiết — Sau quy hoạch (6 trường, 3 DoubleInput — Excel rows 30-35) */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <AppstoreOutlined style={{ color: colors.sidebarBg }} />
+                            <span>Danh mục quy hoạch chi tiết — Sau quy hoạch</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <PcField ns="planningCategoryFuture" name="berthCount" label="Số cầu cảng — KB thấp" kind="number" placeholder="0" />
+                          <PcField ns="planningCategoryFuture" name="berthCountHigh" label="Số cầu cảng — KB cao" kind="number" placeholder="0" />
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <PcField ns="planningCategoryFuture" name="length" label="Chiều dài (m) — KB thấp" kind="number" precision={2} placeholder="Chiều dài" />
+                          <PcField ns="planningCategoryFuture" name="lengthHigh" label="Chiều dài (m) — KB cao" kind="number" precision={2} placeholder="Chiều dài" />
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <PcField ns="planningCategoryFuture" name="capacity" label="Dự kiến công suất (Triệu tấn) — KB thấp" kind="number" precision={2} placeholder="Công suất" />
+                          <PcField ns="planningCategoryFuture" name="capacityHigh" label="Dự kiến công suất (Triệu tấn) — KB cao" kind="number" precision={2} placeholder="Công suất" />
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <PcField ns="planningCategoryFuture" name="shipSize" label="Dự kiến cỡ tàu (tấn)" kind="text" span={8} placeholder="Cỡ tàu..." />
+                          <PcField ns="planningCategoryFuture" name="landArea" label="Diện tích vùng đất (ha)" kind="number" precision={2} span={8} placeholder="Diện tích đất" />
+                          <PcField ns="planningCategoryFuture" name="waterArea" label="Diện tích vùng nước (ha)" kind="number" precision={2} span={8} placeholder="Diện tích nước" />
+                        </Row>
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'files',
+                  label: (
+                    <span>
+                      <PaperClipOutlined style={{ marginRight: 6 }} />
+                      File đính kèm ({uploadedFiles.length})
+                    </span>
+                  ),
+                  children: (
+                    <div style={drawerFormScrollStyle}>
+                      <InfrastructureAttachmentTab
+                        attachments={uploadedFiles}
+                        readonly={false}
+                        onUpload={handleAttachmentUpload}
+                        onDelete={handleAttachmentDelete}
+                        onDownload={handleAttachmentDownload}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  key: 'tracking',
+                  label: (
+                    <span>
+                      <AuditOutlined style={{ marginRight: 6 }} />
+                      Xử lý và theo dõi
+                    </span>
+                  ),
+                  children: (
+                    <div style={drawerFormScrollStyle}>
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <AuditOutlined style={{ color: colors.sidebarBg }} />
+                            <span>Thông tin xử lý và theo dõi</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item {...labelProps('Người cập nhật')} style={{ marginBottom: spaceFormField }}>
+                              <Input disabled value={editingItem?.updatedByName || editingItem?.updatedBy || 'admin'} style={readonlyInputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item {...labelProps('Ngày cập nhật')} style={{ marginBottom: spaceFormField }}>
+                              <Input disabled value={editingItem?.updatedDate ? fmtDateTime(editingItem.updatedDate) : fmtDateTime(new Date().toISOString())} style={readonlyInputStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item {...labelProps('Trạng thái hồ sơ')} style={{ marginBottom: spaceFormField }}>
+                              <Input disabled value={PLANNING_STATUS_LABELS[editingItem?.status || 'DRAFT'] || 'Lưu tạm'} style={readonlyInputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item {...labelProps('Người tạo')} style={{ marginBottom: spaceFormField }}>
+                              <Input disabled value={editingItem?.createdByName || editingItem?.createdBy || 'admin'} style={readonlyInputStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </Form>
         )}
-      </Drawer>
+      </AppDrawer>
     </div>
   );
 }
@@ -1097,29 +1589,13 @@ function fmtNumber(v?: number | null): string {
   return v === undefined || v === null || Number.isNaN(Number(v)) ? '—' : String(Number(v));
 }
 
-function SectionTitle({ title }: { title: string }) {
-  return (
-    <div
-      style={{
-        fontWeight: fontWeightBold,
-        fontSize: fontSizeMd,
-        color: textPrimary,
-        margin: `${spaceMd}px 0 ${spaceSm}px`,
-        padding: `${spaceXs}px ${spaceSm}px`,
-        background: `${actionPrimary}0F`,
-        borderRadius: radiusSm,
-      }}
-    >
-      {title}
-    </div>
-  );
-}
-
 function CargoForecastRow({
+  index,
   field,
   remove,
   form,
 }: {
+  index: number;
   field: { key: number; name: number };
   remove: (index: number) => void;
   form: FormInstance;
@@ -1128,48 +1604,53 @@ function CargoForecastRow({
     | { containerMin?: number; containerMax?: number; generalCargoMin?: number; generalCargoMax?: number; liquidMin?: number; liquidMax?: number }
     | undefined;
   return (
-    <div
-      style={{
-        border: `1px solid ${borderDefault}`,
-        borderRadius: radiusSm,
-        padding: spaceSm,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: spaceXs,
-      }}
-    >
-      <Row gutter={spaceSm} align="middle">
-        <Col span={7}>
-          <Form.Item name={[field.name, 'classification']} style={{ marginBottom: spaceXs }}>
+    <div style={sectionBoxStyle}>
+      <div style={sectionHeaderStyle}>
+        <div style={sectionTitleStyle}>
+          <LineChartOutlined style={{ color: colors.sidebarBg }} />
+          <span>Dự báo hàng hóa #{index + 1}</span>
+        </div>
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => remove(field.name)}
+          title="Xóa dòng"
+        />
+      </div>
+      <Row gutter={[24, 0]}>
+        <Col span={12}>
+          <Form.Item name={[field.name, 'classification']} {...labelProps('Phân loại')} style={{ marginBottom: spaceFormField }}>
             <Input placeholder="Phân loại (CB/BC/CC)..." style={inputStyle} />
           </Form.Item>
         </Col>
-        <Col span={15}>
-          <Form.Item style={{ marginBottom: spaceXs }}>
+        <Col span={12}>
+          <Form.Item {...labelProps('Cảng, bến cảng, cầu cảng')} style={{ marginBottom: spaceFormField }}>
             <MasterRecordPicker form={form} name={field.name} />
           </Form.Item>
         </Col>
-        <Col span={2} style={{ textAlign: 'center' }}>
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
-        </Col>
       </Row>
-      <Row gutter={spaceSm}>
-        <NumberPairField field={field} name="containerMin" placeholder="Container tối thiểu (tấn)" />
-        <NumberPairField field={field} name="containerMax" placeholder="Container tối đa (tấn)" />
-        <NumberPairField field={field} name="generalCargoMin" placeholder="Tổng hợp, rời tối thiểu (tấn)" />
-        <NumberPairField field={field} name="generalCargoMax" placeholder="Tổng hợp, rời tối đa (tấn)" />
-        <NumberPairField field={field} name="liquidMin" placeholder="Lỏng, khí tối thiểu (tấn)" />
-        <NumberPairField field={field} name="liquidMax" placeholder="Lỏng, khí tối đa (tấn)" />
+      <Row gutter={[24, 0]}>
+        <NumberPairField field={field} name="containerMin" label="Container tối thiểu (tấn)" placeholder="Tối thiểu" />
+        <NumberPairField field={field} name="containerMax" label="Container tối đa (tấn)" placeholder="Tối đa" />
       </Row>
-      <Row gutter={spaceSm} align="middle">
-        <Col span={18}>
-          <Form.Item name={[field.name, 'note']} style={{ marginBottom: 0 }}>
+      <Row gutter={[24, 0]}>
+        <NumberPairField field={field} name="generalCargoMin" label="Tổng hợp, rời tối thiểu (tấn)" placeholder="Tối thiểu" />
+        <NumberPairField field={field} name="generalCargoMax" label="Tổng hợp, rời tối đa (tấn)" placeholder="Tối đa" />
+      </Row>
+      <Row gutter={[24, 0]}>
+        <NumberPairField field={field} name="liquidMin" label="Lỏng, khí tối thiểu (tấn)" placeholder="Tối thiểu" />
+        <NumberPairField field={field} name="liquidMax" label="Lỏng, khí tối đa (tấn)" placeholder="Tối đa" />
+      </Row>
+      <Row gutter={[24, 0]}>
+        <Col span={12}>
+          <Form.Item name={[field.name, 'note']} {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
             <Input placeholder="Ghi chú (dự báo hàng hóa)..." style={inputStyle} />
           </Form.Item>
         </Col>
-        <Col span={6}>
-          <div style={{ display: 'inline-flex', gap: spaceSm, alignItems: 'center' }}>
-            <span style={{ color: textSecondary, fontSize: fontSizeSm }}>Tổng cộng:</span>
+        <Col span={12}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, marginBottom: spaceFormField }}>
+            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tổng cộng (tấn):</span>
             <CargoRowTotals
               containerMin={rowWatcher?.containerMin}
               containerMax={rowWatcher?.containerMax}
@@ -1185,11 +1666,21 @@ function CargoForecastRow({
   );
 }
 
-function NumberPairField({ field, name, placeholder }: { field: { name: number }; name: string; placeholder: string }) {
+function NumberPairField({
+  field,
+  name,
+  label,
+  placeholder,
+}: {
+  field: { name: number };
+  name: string;
+  label: string;
+  placeholder: string;
+}) {
   return (
-    <Col span={4}>
-      <Form.Item name={[field.name, name]} style={{ marginBottom: spaceXs }}>
-        <InputNumber min={0} precision={2} style={{ width: '100%', borderRadius: radiusPill }} placeholder={placeholder} />
+    <Col span={12}>
+      <Form.Item name={[field.name, name]} {...labelProps(label)} style={{ marginBottom: spaceFormField }}>
+        <InputNumber min={0} precision={2} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} placeholder={placeholder} />
       </Form.Item>
     </Col>
   );
@@ -1198,123 +1689,34 @@ function NumberPairField({ field, name, placeholder }: { field: { name: number }
 /** Picker chọn cảng / bến cảng / cầu cảng từ master data của module cảng biển (lưu UUID bản ghi). */
 function MasterRecordPicker({ form, name }: { form: FormInstance; name: number }) {
   const [options, setOptions] = useState<MasterRecord[]>([]);
-  const [kind, setKind] = useState('CB');
+  const classification = Form.useWatch(['cargoForecasts', name, 'classification'], form);
   const value = Form.useWatch(['cargoForecasts', name, 'portId'], form);
 
   useEffect(() => {
+    const kind = classification || 'CB';
     void fetchMasterRecords(kind).then(setOptions);
-  }, [kind]);
+  }, [classification]);
 
   return (
-    <div style={{ display: 'flex', gap: spaceXs, alignItems: 'center' }}>
-      <Select
-        value={kind}
-        onChange={(next) => {
-          setKind(next);
-          form.setFieldValue(['cargoForecasts', name, 'portId'], undefined);
-          form.setFieldValue(['cargoForecasts', name, 'portName'], '');
-        }}
-        style={{ width: 96, borderRadius: radiusPill }}
-        options={Object.entries(PORT_CLASSIFICATION_LABELS).map(([value, label]) => ({ value, label }))}
-      />
-      <Select
-        showSearch
-        optionFilterProp="label"
-        placeholder="Chọn cảng, bến cảng, cầu cảng..."
-        value={value}
-        onChange={(nextId: string) => {
-          form.setFieldValue(['cargoForecasts', name, 'portId'], nextId || undefined);
-          const record = options.find((o) => o.id === nextId);
-          form.setFieldValue(['cargoForecasts', name, 'portName'], record?.name || '');
-        }}
-        style={{ ...selectStyle, width: '100%', borderRadius: radiusPill }}
-        options={options.map((r) => ({ value: r.id, label: r.code ? `${r.name} (${r.code})` : r.name }))}
-        allowClear
-      />
-    </div>
+    <Select
+      showSearch
+      optionFilterProp="label"
+      placeholder="Chọn cảng, bến cảng, cầu cảng..."
+      value={value}
+      onChange={(nextId: string) => {
+        form.setFieldValue(['cargoForecasts', name, 'portId'], nextId || undefined);
+        const record = options.find((o) => o.id === nextId);
+        form.setFieldValue(['cargoForecasts', name, 'portName'], record?.name || '');
+      }}
+      style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+      options={options.map((r) => ({ value: r.id, label: r.code ? `${r.name} (${r.code})` : r.name }))}
+      allowClear
+    />
   );
 }
 
-function PlanningCategoryRow({
-  field,
-  remove,
-}: {
-  field: { key: number; name: number };
-  remove: (index: number) => void;
-}) {
-  return (
-    <div
-      style={{
-        border: `1px solid ${borderDefault}`,
-        borderRadius: radiusSm,
-        padding: spaceSm,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: spaceXs,
-      }}
-    >
-      <Row gutter={spaceSm} align="middle">
-        <Col span={3}>
-          <Form.Item name={[field.name, 'phase']} style={{ marginBottom: spaceXs }} initialValue="HIEN_TRANG">
-            <Select options={PLANNING_PHASE_OPTIONS} style={{ ...selectStyle, width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item name={[field.name, 'classification']} style={{ marginBottom: spaceXs }}>
-            <Input placeholder="Phân loại (CB/BC/CC)..." style={inputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={6}>
-          <Form.Item name={[field.name, 'portName']} style={{ marginBottom: spaceXs }}>
-            <Input placeholder="Cảng, bến cảng, cầu cảng..." style={inputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={6}>
-          <Form.Item name={[field.name, 'exploitationFunction']} style={{ marginBottom: spaceXs }}>
-            <Input placeholder="Công năng khai thác..." style={inputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={3}>
-          <Form.Item name={[field.name, 'berthCount']} style={{ marginBottom: spaceXs }}>
-            <InputNumber min={0} precision={0} style={{ width: '100%', borderRadius: radiusPill }} placeholder="Số cầu cảng" />
-          </Form.Item>
-        </Col>
-        <Col span={2} style={{ textAlign: 'center' }}>
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
-        </Col>
-      </Row>
-      <Row gutter={spaceSm}>
-        <Col span={4}>
-          <Form.Item name={[field.name, 'length']} style={{ marginBottom: spaceXs }}>
-            <InputNumber min={0} precision={2} style={{ width: '100%', borderRadius: radiusPill }} placeholder="Chiều dài (m)" />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item name={[field.name, 'shipSize']} style={{ marginBottom: spaceXs }}>
-            <Input placeholder="Cỡ tàu (tấn)..." style={inputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item name={[field.name, 'capacity']} style={{ marginBottom: spaceXs }}>
-            <InputNumber min={0} precision={2} style={{ width: '100%', borderRadius: radiusPill }} placeholder="Công suất (Triệu tấn)" />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item name={[field.name, 'landArea']} style={{ marginBottom: spaceXs }}>
-            <InputNumber min={0} precision={2} style={{ width: '100%', borderRadius: radiusPill }} placeholder="Diện tích đất (ha)" />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item name={[field.name, 'waterArea']} style={{ marginBottom: spaceXs }}>
-            <InputNumber min={0} precision={2} style={{ width: '100%', borderRadius: radiusPill }} placeholder="Diện tích nước (ha)" />
-          </Form.Item>
-        </Col>
-        <Col span={4}>
-          <Form.Item name={[field.name, 'note']} style={{ marginBottom: 0 }}>
-            <Input placeholder="Ghi chú..." style={inputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-    </div>
-  );
+function PcField(p: { ns: string; name: string; label: string; kind: 'text' | 'number' | 'textarea'; placeholder?: string; precision?: number; span?: number; fullRow?: boolean }) {
+  const c = p.kind === 'number' ? <InputNumber min={0} precision={p.precision ?? 0} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} placeholder={p.placeholder} /> : p.kind === 'textarea' ? <Input.TextArea rows={2} showCount maxLength={500} placeholder={p.placeholder} style={{ borderRadius: radiusMd }} /> : <Input placeholder={p.placeholder} style={inputStyle} />;
+  const it = <Form.Item name={[p.ns, p.name]} {...labelProps(p.label)} style={{ marginBottom: p.fullRow ? 0 : spaceFormField }}>{c}</Form.Item>;
+  return p.fullRow ? it : <Col span={p.span ?? 12}>{it}</Col>;
 }

@@ -233,18 +233,87 @@ public class PortPlanningService {
 
     // ── File Management (F-132) ──────────────────────────────────────
 
+    @org.springframework.beans.factory.annotation.Value("${app.upload.planning-path:uploads/planning}")
+    private String uploadDir;
+
+    private static final java.util.Set<String> ALLOWED_EXTENSIONS = java.util.Set.of(
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png", ".tiff");
+
     @Transactional
-    public PlanningFileResponse uploadFile(PlanningFileCreateRequest request) {
-        log.info("Uploading PlanningFile for planningId: {}", request.getPortPlanningId());
+    public PlanningFileResponse uploadAttachment(UUID planningId, org.springframework.web.multipart.MultipartFile file) {
+        log.info("Uploading PlanningFile for planningId: {}", planningId);
+        PortPlanning planning = findPlanning(planningId);
+        if (file.getSize() > 20 * 1024 * 1024) {
+            throw new IllegalArgumentException("Kích thước file không được vượt quá 20MB");
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isBlank()) {
+            throw new IllegalArgumentException("Tên file không được để trống");
+        }
+        String extension = "";
+        int dot = originalFilename.lastIndexOf('.');
+        if (dot >= 0) {
+            extension = originalFilename.substring(dot).toLowerCase();
+        }
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("Định dạng file không được hỗ trợ");
+        }
+        java.nio.file.Path directory = java.nio.file.Paths.get(uploadDir).toAbsolutePath().normalize();
+        String safeName = java.nio.file.Paths.get(originalFilename).getFileName().toString();
+        java.nio.file.Path destination = directory.resolve(planningId + "_" + System.currentTimeMillis() + "_" + safeName).normalize();
+        if (!destination.startsWith(directory)) {
+            throw new IllegalArgumentException("Tên tệp không hợp lệ");
+        }
+        try {
+            java.nio.file.Files.createDirectories(directory);
+            file.transferTo(destination.toFile());
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi lưu file: " + e.getMessage());
+        }
         PlanningFile fq = PlanningFile.builder()
-                .portPlanningId(request.getPortPlanningId())
-                .fileName(request.getFileName())
-                .fileType(request.getFileType())
-                .filePath(request.getFilePath())
-                .fileSize(request.getFileSize())
-                .uploadedBy(request.getUploadedBy())
+                .portPlanningId(planningId)
+                .fileName(originalFilename)
+                .fileType(file.getContentType())
+                .filePath(destination.toString())
+                .fileSize(file.getSize())
+                .uploadedBy(SecurityUtils.getCurrentUserId().toString())
                 .build();
         return toPlanningFileResponse(planningFileRepository.save(fq));
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID planningId, UUID attachmentId) {
+        PlanningFile file = planningFileRepository.findById(attachmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy file"));
+        if (!file.getPortPlanningId().equals(planningId)) {
+            throw new IllegalArgumentException("File không thuộc quy hoạch này");
+        }
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(file.getFilePath()));
+        } catch (Exception e) {
+            log.warn("Could not delete physical file: {}", file.getFilePath());
+        }
+        planningFileRepository.delete(file);
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.core.io.Resource downloadAttachment(UUID planningId, UUID attachmentId) {
+        PlanningFile file = planningFileRepository.findById(attachmentId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy file"));
+        if (!file.getPortPlanningId().equals(planningId)) {
+            throw new IllegalArgumentException("File không thuộc quy hoạch này");
+        }
+        try {
+            java.nio.file.Path filePath = java.nio.file.Paths.get(file.getFilePath()).normalize();
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(filePath.toUri());
+            if (resource.exists() || resource.isReadable()) {
+                return resource;
+            } else {
+                throw new RuntimeException("Không thể đọc file");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi tải file: " + e.getMessage());
+        }
     }
 
     // ── Search Logging (F-133) ───────────────────────────────────────
@@ -300,9 +369,12 @@ public class PortPlanningService {
                     .exploitationFunction(r.getExploitationFunction())
                     .classification(r.getClassification())
                     .berthCount(r.getBerthCount())
+                    .berthCountHigh(r.getBerthCountHigh())
                     .lengthM(r.getLengthM())
+                    .lengthHigh(r.getLengthHigh())
                     .shipSize(r.getShipSize())
                     .capacity(r.getCapacity())
+                    .capacityHigh(r.getCapacityHigh())
                     .landArea(r.getLandArea())
                     .waterArea(r.getWaterArea())
                     .note(r.getNote())
@@ -375,9 +447,12 @@ public class PortPlanningService {
                             .exploitationFunction(hm.getExploitationFunction())
                             .classification(hm.getClassification())
                             .berthCount(hm.getBerthCount())
+                            .berthCountHigh(hm.getBerthCountHigh())
                             .lengthM(hm.getLengthM())
+                            .lengthHigh(hm.getLengthHigh())
                             .shipSize(hm.getShipSize())
                             .capacity(hm.getCapacity())
+                            .capacityHigh(hm.getCapacityHigh())
                             .landArea(hm.getLandArea())
                             .waterArea(hm.getWaterArea())
                             .note(hm.getNote())
