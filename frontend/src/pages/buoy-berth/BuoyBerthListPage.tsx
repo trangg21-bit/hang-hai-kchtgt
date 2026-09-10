@@ -1806,9 +1806,10 @@ export default function BuoyBerthList() {
         {renderDetailContent()}
       </AppDrawer>
 
-      {/* ── Kết cấu hạ tầng Detail Drawer (Khu neo đậu / Khu tránh, trú bão) — sibling size 950 như bến cảng ── */}
+      {/* ── Kết cấu hạ tầng Detail Drawer (Khu neo đậu / Khu tránh, trú bão) — kích thước đồng bộ bằng Drawer cha ── */}
       <AppDrawer
-        size={950}
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        style={{ maxWidth: '96vw' }}
         rootClassName="buoy-berth-drawer-scope"
         className="buoy-berth-drawer-scope"
         title={<span style={drawerTitleStyle}>

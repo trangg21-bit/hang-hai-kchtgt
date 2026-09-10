@@ -88,8 +88,8 @@ public class DaiTtdhService {
                 .servicesProvided(request.getServicesProvided())
                 .remarks(request.getRemarks())
                 .mapSymbolId(request.getMapSymbolId())
-                .coordinateSystem(request.getCoordinateSystem())
-                .displayRule(request.getDisplayRule())
+                .coordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : (request.getGeometryType() != null ? 1 : null))
+                .displayRule(request.getDisplayRule() != null ? request.getDisplayRule() : (request.getGeometryType() != null ? "Độ, phút, giây (DMS)" : null))
                 .build();
 
         String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
@@ -114,9 +114,36 @@ public class DaiTtdhService {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        // ── Lịch sử thay đổi (chuẩn Cảng biển PortService/BuoyBerthService) ──
-        // Chụp GIS cũ (WKT + loại hình) và trạng thái phê duyệt TRƯỚC khi mutate,
-        // để sau persistGis so sánh và ghi dòng "Tọa độ GIS"/"Loại đối tượng GIS".
+        // ── Lịch sử thay đổi (chuẩn Cầu cảng PierService / Cảng biển PortService) ──
+        // Chụp snapshot trước khi mutate để so sánh trường thay đổi
+        DaiTtdh snapshot = DaiTtdh.builder()
+                .daiTtdhCode(entity.getDaiTtdhCode())
+                .daiTtdhName(entity.getDaiTtdhName())
+                .orgUnitId(entity.getOrgUnitId())
+                .operatingUnitId(entity.getOperatingUnitId())
+                .stationLevel(entity.getStationLevel())
+                .provinceId(entity.getProvinceId())
+                .detailedLocation(entity.getDetailedLocation())
+                .operationalStatus(entity.getOperationalStatus())
+                .approvalStatus(entity.getApprovalStatus())
+                .coverageArea(entity.getCoverageArea())
+                .servicesProvided(entity.getServicesProvided())
+                .remarks(entity.getRemarks())
+                .mapSymbolId(entity.getMapSymbolId())
+                .coordinateSystem(entity.getCoordinateSystem())
+                .displayRule(entity.getDisplayRule())
+                .spatialId(entity.getSpatialId())
+                .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
+                .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .portAuthorityApprovedAt(entity.getPortAuthorityApprovedAt())
+                .portAuthorityApprovedBy(entity.getPortAuthorityApprovedBy())
+                .portAuthorityApprovalContent(entity.getPortAuthorityApprovalContent())
+                .departmentApprovedAt(entity.getDepartmentApprovedAt())
+                .departmentApprovedBy(entity.getDepartmentApprovedBy())
+                .departmentApprovalContent(entity.getDepartmentApprovalContent())
+                .rejectionReason(entity.getRejectionReason())
+                .build();
+
         GisGeometryType oldGeomType = null;
         String oldWkt = null;
         if (entity.getSpatialId() != null) {
@@ -126,8 +153,9 @@ public class DaiTtdhService {
                 oldGeomType = oldSpatial.getGeometryType();
             }
         }
-        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
+        boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
+                || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
         // if (request.getSecurityLevel() != null) {
         //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "daittdh",
@@ -157,24 +185,51 @@ public class DaiTtdhService {
         if (request.getRemarks() != null)
             entity.setRemarks(request.getRemarks());
         entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
+        if (request.getCoordinateSystem() != null) {
             entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
+        } else if (request.getGeometryType() != null && entity.getCoordinateSystem() == null) {
+            entity.setCoordinateSystem(1);
+        }
+        if (request.getDisplayRule() != null) {
             entity.setDisplayRule(request.getDisplayRule());
+        } else if (request.getGeometryType() != null && entity.getDisplayRule() == null) {
+            entity.setDisplayRule("Độ, phút, giây (DMS)");
+        }
 
-        if (request.getSaveAction() != null) {
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt" (APPROVED_LEVEL1)
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        }
+
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        String actorId = operatorId != null ? operatorId.toString() : currentActorId(null);
+        if (actorId == null) {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+                actorId = auth.getName();
+            }
+        }
+        if (actorId == null) {
+            actorId = "system";
+        }
+
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
         }
 
         DaiTtdh saved = daiTtdhRepository.save(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude());
-        // Lịch sử GIS — chỉ khi hồ sơ ĐÃ duyệt bị sửa (chuẩn Cảng biển)
-        recordGisHistory(saved, wasApproved, oldGeomType, oldWkt,
-                request.getGeometryType(), coordinates);
+
+        // Lịch sử thay đổi (chuẩn Cảng biển / Bến cảng):
+        // Ghi nhận biến động trường khi chỉnh sửa bản ghi
+        recordGisHistory(saved, oldGeomType, oldWkt,
+                request.getGeometryType(), coordinates, actorId);
+        changeHistoryService.recordChanges("DAI_TTDH", saved.getId().toString(),
+                actorId, snapshot, saved);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -194,8 +249,10 @@ public class DaiTtdhService {
                                          String operationalStatus, String approvalStatus,
                                          String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"),
-                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Pageable pageable = PageRequest.of(page, pageSize,
+                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                        Sort.Order.desc(EntityFields.CREATED_AT),
+                        Sort.Order.asc(EntityFields.ID)));
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
@@ -250,13 +307,10 @@ public class DaiTtdhService {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
         }
-        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
-        if (existingCount + files.size() > 10) {
-            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
-        }
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         List<Attachment> savedAttachments = new java.util.ArrayList<>();
+        List<String> uploadedFileNames = new java.util.ArrayList<>();
 
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -284,8 +338,12 @@ public class DaiTtdhService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
-            // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
-            recordAttachmentHistory(entityType, entityId, originalFilename, true);
+            uploadedFileNames.add(originalFilename);
+        }
+
+        // Lịch sử "Tài liệu đính kèm" gộp thành 1 bản ghi (chuẩn Cầu cảng PierService / Cảng biển PortService)
+        if (!uploadedFileNames.isEmpty()) {
+            recordAttachmentHistory(entityType, entityId, String.join(", ", uploadedFileNames), true, userId);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(Collectors.toList());
     }
@@ -308,8 +366,17 @@ public class DaiTtdhService {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
-        // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
-        recordAttachmentHistory(entityType, entityId, attachment.getFileName(), false);
+        // Lịch sử "Tài liệu đính kèm" (chuẩn Cảng biển)
+        recordAttachmentHistory(entityType, entityId, attachment.getFileName(), false, userId);
+    }
+
+    public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc entity này");
+        }
+        return attachment;
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -352,17 +419,17 @@ public class DaiTtdhService {
 
     /**
      * Lịch sử GIS theo chuẩn Cảng biển (PortService/BuoyBerthService): ghi 2 dòng
-     * "Tọa độ GIS" + "Loại đối tượng GIS" (refType DAI_TTDH) chỉ khi hồ sơ ĐÃ duyệt
-     * bị sửa vị trí/loại hình. Với bản ghi mới tạo (create) wasApproved luôn false
-     * nên không có dòng nào được ghi — giống hệt PortService/BuoyBerthService.
+     * "Tọa độ GIS" + "Loại đối tượng GIS" (refType DAI_TTDH) khi hồ sơ
+     * bị sửa vị trí/loại hình.
      */
-    private void recordGisHistory(DaiTtdh saved, boolean wasApproved,
+    private void recordGisHistory(DaiTtdh saved,
                                   GisGeometryType oldGeomType, String oldWkt,
-                                  GisGeometryType requestGeomType, String coordinates) {
-        if (!wasApproved) return;
+                                  GisGeometryType requestGeomType, String coordinates,
+                                  String actorId) {
         if (coordinates == null || coordinates.trim().isEmpty()) return;
-        String actorId = currentActorId(null);
-        if (actorId == null) return;
+        if (actorId == null || actorId.trim().isEmpty()) {
+            actorId = "system";
+        }
 
         String newWkt = coordinates.trim();
         if (oldWkt == null || !newWkt.equals(oldWkt.trim())) {
@@ -379,10 +446,10 @@ public class DaiTtdhService {
     }
 
     /**
-     * Lịch sử "Tài liệu đính kèm" (chuẩn Cảng biển ShipRepairYardService) — chỉ
-     * khi hồ sơ đã duyệt (APPROVED/APPROVED_LEVEL2). Actor = user thật.
+     * Lịch sử "Tài liệu đính kèm" (chuẩn Cảng biển ShipRepairYardService) —
+     * ghi nhận khi thêm hoặc xóa tệp đính kèm.
      */
-    private void recordAttachmentHistory(String entityType, UUID entityId, String fileName, boolean uploaded) {
+    private void recordAttachmentHistory(String entityType, UUID entityId, String fileName, boolean uploaded, UUID userId) {
         try {
             if (entityType == null || !InfrastructureType.DAI_TTDH.name().equalsIgnoreCase(entityType)) {
                 return;
@@ -391,14 +458,16 @@ public class DaiTtdhService {
             if (daiTtdh == null) {
                 return;
             }
-            boolean wasApproved = daiTtdh.getApprovalStatus() == ApprovalStatus.APPROVED
-                    || daiTtdh.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-            if (!wasApproved) {
-                return;
-            }
-            String actorId = currentActorId(null);
+            String actorId = userId != null ? userId.toString() : currentActorId(null);
             if (actorId == null) {
-                return;
+                org.springframework.security.core.Authentication auth =
+                        org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+                    actorId = auth.getName();
+                }
+            }
+            if (actorId == null) {
+                actorId = "system";
             }
             String name = fileName != null ? fileName : "không rõ tên";
             changeHistoryService.insertChangeRecord("DAI_TTDH", entityId, "Tài liệu đính kèm",
@@ -419,7 +488,13 @@ public class DaiTtdhService {
         if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
             wkt = "POINT(" + longitude + " " + latitude + ")";
         }
-        if (wkt != null && !wkt.trim().isEmpty()) {
+        if (geometryType == null || (wkt != null && wkt.trim().isEmpty()) || (wkt == null && longitude == null && latitude == null)) {
+            if (saved.getSpatialId() != null) {
+                gisSpatialObjectService.delete(saved.getSpatialId());
+                saved.setSpatialId(null);
+                daiTtdhRepository.save(saved);
+            }
+        } else if (wkt != null && !wkt.trim().isEmpty()) {
             GisGeometryType geomType = geometryType != null ? geometryType : GisGeometryType.POINT;
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(), saved.getDaiTtdhName(), "DAI_TTDH_" + saved.getDaiTtdhCode(),
@@ -431,6 +506,8 @@ public class DaiTtdhService {
     }
 
     private void applySaveAction(DaiTtdh entity, String action) {
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        String actor = currentUserId != null ? currentUserId.toString() : null;
         switch (action) {
             case "DRAFT":
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
@@ -438,17 +515,17 @@ public class DaiTtdhService {
             case "SUBMIT":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(actor);
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setSubmittedForApprovalBy(actor);
                 entity.setPortAuthorityApprovedAt(LocalDateTime.now());
-                entity.setPortAuthorityApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setPortAuthorityApprovedBy(actor);
                 entity.setDepartmentApprovedAt(LocalDateTime.now());
-                entity.setDepartmentApprovedBy(SecurityUtils.getCurrentUserId().toString());
+                entity.setDepartmentApprovedBy(actor);
                 break;
             default:
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
@@ -463,6 +540,17 @@ public class DaiTtdhService {
 
     public DaiTtdhResponse toResponse(DaiTtdh entity) {
         if (entity == null) return null;
+
+        String resolvedDisplayRule = entity.getDisplayRule();
+        if (resolvedDisplayRule == null || "1".equals(resolvedDisplayRule)) {
+            if (entity.getSpatialId() != null || entity.getCoordinateSystem() != null) {
+                resolvedDisplayRule = "Độ, phút, giây (DMS)";
+            }
+        }
+        Integer resolvedCoordSys = entity.getCoordinateSystem();
+        if (resolvedCoordSys == null && entity.getSpatialId() != null) {
+            resolvedCoordSys = 1;
+        }
 
         DaiTtdhResponse response = DaiTtdhResponse.builder()
                 .id(entity.getId())
@@ -482,8 +570,8 @@ public class DaiTtdhService {
                 .servicesProvided(entity.getServicesProvided())
                 .remarks(entity.getRemarks())
                 .mapSymbolId(entity.getMapSymbolId())
-                .coordinateSystem(entity.getCoordinateSystem())
-                .displayRule(entity.getDisplayRule())
+                .coordinateSystem(resolvedCoordSys)
+                .displayRule(resolvedDisplayRule)
                 .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
                 .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
                 .portAuthorityApprovedAt(entity.getPortAuthorityApprovedAt())
@@ -521,13 +609,19 @@ public class DaiTtdhService {
     }
 
     private void parseLatLng(String coordinates, DaiTtdhResponse response) {
-        if (coordinates == null || !coordinates.startsWith("POINT(")) return;
+        if (coordinates == null) return;
+        String trimmed = coordinates.trim().toUpperCase();
+        if (!trimmed.startsWith("POINT")) return;
         try {
-            String inner = coordinates.substring(6, coordinates.length() - 1).trim();
-            String[] parts = inner.split("\\s+");
-            if (parts.length == 2) {
-                response.setLongitude(new BigDecimal(parts[0]));
-                response.setLatitude(new BigDecimal(parts[1]));
+            int start = trimmed.indexOf('(');
+            int end = trimmed.lastIndexOf(')');
+            if (start >= 0 && end > start) {
+                String inner = coordinates.substring(start + 1, end).trim();
+                String[] parts = inner.split("\\s+");
+                if (parts.length == 2) {
+                    response.setLongitude(new BigDecimal(parts[0]));
+                    response.setLatitude(new BigDecimal(parts[1]));
+                }
             }
         } catch (Exception ignored) { }
     }

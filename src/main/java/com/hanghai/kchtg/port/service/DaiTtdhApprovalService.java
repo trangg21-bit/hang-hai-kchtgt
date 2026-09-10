@@ -121,10 +121,18 @@ public class DaiTtdhApprovalService {
 
         List<InfrastructureHistory> list =
                 historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DAI_TTDH, id);
-        Map<UUID, String> userNameMap = resolveUserNames(list);
+        Map<UUID, User> userMap = resolveUsers(list);
+        Map<UUID, String> userNameMap = new HashMap<>();
+        Map<UUID, String> userOrgUnitMap = new HashMap<>();
+        userMap.forEach((uid, u) -> {
+            userNameMap.put(uid, formatUserIdentity(u));
+            if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null) {
+                userOrgUnitMap.put(uid, u.getOrgUnit().getName());
+            }
+        });
 
         List<Map<String, Object>> changeHistory = list.stream()
-                .map(h -> toChangeHistoryEntry(h, entityId, entityType, userNameMap))
+                .map(h -> toChangeHistoryEntry(h, entityId, entityType, userNameMap, userOrgUnitMap))
                 .collect(Collectors.toList());
 
         // Các dòng phê duyệt legacy (changedField = null, chỉ có status/reason) vẫn hiển thị ở tab Phê duyệt
@@ -173,9 +181,10 @@ public class DaiTtdhApprovalService {
         return Map.of("entityType", entityType, "changeHistory", list, "entityNames", entityNames);
     }
 
-    /** Chuyển một dòng infrastructure_history thành entry của changeHistory (đã phân giải actor). */
+    /** Chuyển một dòng infrastructure_history thành entry của changeHistory (đã phân giải actor và đơn vị). */
     private Map<String, Object> toChangeHistoryEntry(InfrastructureHistory h, String entityId,
-                                                     String entityType, Map<UUID, String> userNameMap) {
+                                                     String entityType, Map<UUID, String> userNameMap,
+                                                     Map<UUID, String> userOrgUnitMap) {
         Map<String, Object> m = new HashMap<>();
         m.put("id", h.getId());
         m.put("entityType", entityType);
@@ -183,17 +192,21 @@ public class DaiTtdhApprovalService {
         m.put("changedField", h.getChangedField());
         m.put("previousValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
         m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
-        m.put("changedBy", h.getApprovedBy() != null
-                ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+        String actor = h.getApprovedBy() != null
+                ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "";
+        m.put("changedBy", actor);
+        m.put("approvedBy", actor);
         m.put("changedAt", h.getApprovedDate());
+        m.put("approvedDate", h.getApprovedDate());
+        m.put("orgUnitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
         m.put("status", h.getStatus() != null ? h.getStatus().getCode() : null);
         m.put("reason", h.getReason());
         m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
         return m;
     }
 
-    /** Phân giải UUID actor → tên đầy đủ (fallback username) theo chuẩn PortApprovalService. */
-    private Map<UUID, String> resolveUserNames(List<InfrastructureHistory> list) {
+    /** Phân giải User và OrgUnit theo chuẩn PortApprovalService. */
+    private Map<UUID, User> resolveUsers(List<InfrastructureHistory> list) {
         Set<UUID> userIds = list.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
@@ -201,10 +214,10 @@ public class DaiTtdhApprovalService {
         if (userIds.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<UUID, String> userNameMap = new HashMap<>();
+        Map<UUID, User> map = new HashMap<>();
         userRepository.findAllByIdInWithOrgUnit(userIds)
-                .forEach(u -> userNameMap.put(u.getId(), formatUserIdentity(u)));
-        return userNameMap;
+                .forEach(u -> map.put(u.getId(), u));
+        return map;
     }
 
     private String formatUserIdentity(User user) {

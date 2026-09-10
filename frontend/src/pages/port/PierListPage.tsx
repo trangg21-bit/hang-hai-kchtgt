@@ -140,25 +140,223 @@ const histLabels: Record<string, string> = {
   'Loại đối tượng GIS': 'Loại đối tượng GIS',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
 };
-function histField(fn: string): string { return histLabels[fn] || fn; }
-function histVal(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, berthMap?: Map<string, string>, waterwayMap?: Map<string, string>): string {
+export function normalizeHistoryKey(value: string): string {
+  return (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+
+export function histField(fn: string): string {
+  if (histLabels[fn]) return histLabels[fn];
+  const targetKey = normalizeHistoryKey(fn);
+  for (const [k, v] of Object.entries(histLabels)) {
+    if (normalizeHistoryKey(k) === targetKey || normalizeHistoryKey(v) === targetKey) return v;
+  }
+  return fn;
+}
+
+export function histVal(
+  fn: string,
+  val: string | null,
+  orgMap?: Map<string, string>,
+  symbolMap?: Map<string, string>,
+  portMap?: Map<string, string>,
+  berthMap?: Map<string, string>,
+  waterwayMap?: Map<string, string>
+): string {
   if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
-  if (fn === 'operationalFunction') return formatOperationalFunction(val, '');
-  if (fn === 'orgUnitId' && orgMap) { const f = orgMap.get(val); return f ? f.split(' - ').pop() || f : val; }
-  if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'berthId' && berthMap) return berthMap.get(val) || val;
-  if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
-  if (fn === 'structureType') { const m: Record<string,string> = { '1':'Kết cấu bệ cọc cao', '2':'Kết cấu cường từ', '3':'Kết cấu trọng lực', '4':'Kết cấu khác' }; return m[val] || val; }
-  if (fn === 'constructionGrade') { const m: Record<string,string> = { '1':'Cấp đặc biệt', '2':'Cấp 1', '3':'Cấp 2', '4':'Cấp 3', '5':'Cấp 4' }; return m[val] || val; }
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Lưu tạm', PENDING:'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1:'Chờ phê duyệt cấp cục', APPROVED:'Đã phê duyệt', APPROVED_LEVEL2:'Đã duyệt (lịch sử)', REJECTED:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp cục' }; return m[val?.toUpperCase()] || val; }
-  if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/vận hành', SUSPENDED:'Dừng khai thác/vận hành', HIEN_HANH:'Hiện hành', TAM_NGUNG:'Tạm ngừng', DANG_KHAI_THAC:'Đang khai thác/vận hành', CHUA_KHAI_THAC:'Chưa khai thác/vận hành', DUNG_KHAI_THAC:'Dừng khai thác/vận hành' }; return m[val?.toUpperCase()] || val; }
-  if (fn === 'pierType') { const m: Record<string,string> = { CONTAINER:'Container', TONG_HOP:'Tổng hợp', HANH_KHACH:'Hành khách', CHUYEN_DUNG_XANG_DAU:'Chuyên dùng xăng dầu', CHUYEN_DUNG_ROI_QUANG:'Chuyên dùng rời/quặng', KHAC:'Khác' }; return m[val?.toUpperCase()] || val; }
-  if (fn === 'province') return VIETNAM_PROVINCES[Number(val)-1] || val;
-  if (fn === 'coordinateSystem') { const m: Record<string,string> = { '1':'WGS-84', '2':'VN-2000' }; return m[val] || val; }
-  if (fn === 'receivesLargeVessel') { return val === 'true' ? 'Có' : val === 'false' ? 'Không' : val; }
-  if (fn.endsWith('At') || fn.endsWith('Date')) { try { let d = dayjs(val); if (!d.isValid()) { d = dayjs((val || '').replace(/\.\d+$/, '')); } return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : val; } catch { return val; } }
+  const normKey = normalizeHistoryKey(fn);
+
+  if (normKey === 'operationalfunction' || normKey === 'congnang' || normKey === 'congnangkhaithac' || normKey === 'cong nang' || normKey === 'cong nang khai thac') {
+    return formatOperationalFunction(val, '');
+  }
+  if ((normKey === 'orgunitid' || normKey === 'donviquanly' || normKey === 'don vi quan ly' || normKey === 'don vi') && orgMap) {
+    const f = orgMap.get(val);
+    return f ? f.split(' - ').pop() || f : val;
+  }
+  if ((normKey === 'portid' || normKey === 'cangbien' || normKey === 'cang bien' || normKey === 'thuoc cang bien') && portMap) {
+    return portMap.get(val) || val;
+  }
+  if ((normKey === 'berthid' || normKey === 'bencang' || normKey === 'ben cang' || normKey === 'thuoc ben cang') && berthMap) {
+    return berthMap.get(val) || val;
+  }
+  if ((normKey === 'mapsymbolid' || normKey === 'bieutuong' || normKey === 'bieu tuong' || normKey === 'ky hieu ban do') && symbolMap) {
+    return symbolMap.get(val) || val;
+  }
+  if ((normKey === 'navigationchannelid' || normKey === 'luonghanghai' || normKey === 'luong hang hai' || normKey === 'thuoc luong hang hai') && waterwayMap) {
+    return waterwayMap.get(val) || val;
+  }
+  if (
+    normKey === 'structuretype' ||
+    normKey === 'structure_type' ||
+    normKey === 'loaiketcau' ||
+    normKey === 'loai ket cau' ||
+    normKey === 'loai ket cau cau cang' ||
+    normKey === 'loai ket cau ben cang'
+  ) {
+    const trimmedVal = val.trim();
+    const opt = STRUCTURE_TYPE_OPTIONS.find((o) => o.value === Number(trimmedVal));
+    if (opt) return opt.label;
+    const m: Record<string, string> = {
+      '1': 'Kết cấu bệ cọc cao',
+      '2': 'Kết cấu cường từ',
+      '3': 'Kết cấu trọng lực',
+      '4': 'Kết cấu khác',
+    };
+    return m[trimmedVal] || val;
+  }
+  if (
+    normKey === 'constructiongrade' ||
+    normKey === 'construction_grade' ||
+    normKey === 'phancapcongtrinh' ||
+    normKey === 'phan cap cong trinh' ||
+    normKey === 'cap cong trinh'
+  ) {
+    const trimmedVal = val.trim();
+    const opt = CONSTRUCTION_GRADE_OPTIONS.find((o) => o.value === Number(trimmedVal));
+    if (opt) return opt.label;
+    const m: Record<string, string> = {
+      '1': 'Cấp đặc biệt',
+      '2': 'Cấp 1',
+      '3': 'Cấp 2',
+      '4': 'Cấp 3',
+      '5': 'Cấp 4',
+    };
+    return m[trimmedVal] || val;
+  }
+  if (
+    normKey === 'conditionstatus' ||
+    normKey === 'condition_status' ||
+    normKey === 'tinhtrangkythuat' ||
+    normKey === 'tinh trang ky thuat' ||
+    normKey === 'tinh trang hoat dong'
+  ) {
+    return themeTokenChk.getConditionStatusLabel(val);
+  }
+  if (
+    normKey === 'approvalstatus' ||
+    normKey === 'approval_status' ||
+    normKey === 'trangthai' ||
+    normKey === 'trang thai' ||
+    normKey === 'trang thai phe duyet'
+  ) {
+    const m: Record<string, string> = {
+      DRAFT: 'Lưu tạm',
+      PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+      APPROVED: 'Đã phê duyệt',
+      APPROVED_LEVEL2: 'Đã duyệt (lịch sử)',
+      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL2: 'Từ chối cấp cục',
+    };
+    return m[val?.toUpperCase()] || val;
+  }
+  if (
+    normKey === 'operationalstatus' ||
+    normKey === 'operational_status' ||
+    normKey === 'tinhtrang' ||
+    normKey === 'tinh trang' ||
+    normKey === 'tinh trang khai thac'
+  ) {
+    const m: Record<string, string> = {
+      OPERATIONAL: 'Đang khai thác/vận hành',
+      NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+      SUSPENDED: 'Dừng khai thác/vận hành',
+      HIEN_HANH: 'Hiện hành',
+      TAM_NGUNG: 'Tạm ngừng',
+      DANG_KHAI_THAC: 'Đang khai thác/vận hành',
+      CHUA_KHAI_THAC: 'Chưa khai thác/vận hành',
+      DUNG_KHAI_THAC: 'Dừng khai thác/vận hành',
+    };
+    return m[val?.toUpperCase()] || val;
+  }
+  if (
+    normKey === 'piertype' ||
+    normKey === 'pier_type' ||
+    normKey === 'loaicau' ||
+    normKey === 'loai cau' ||
+    normKey === 'loai cau cang'
+  ) {
+    const m: Record<string, string> = {
+      CONTAINER: 'Container',
+      TONG_HOP: 'Tổng hợp',
+      HANH_KHACH: 'Hành khách',
+      CHUYEN_DUNG_XANG_DAU: 'Chuyên dùng xăng dầu',
+      CHUYEN_DUNG_ROI_QUANG: 'Chuyên dùng rời/quặng',
+      KHAC: 'Khác',
+    };
+    return m[val?.toUpperCase()] || val;
+  }
+  if (
+    normKey === 'province' ||
+    normKey === 'provinceid' ||
+    normKey === 'province_id' ||
+    normKey === 'tinh/thanh pho' ||
+    normKey === 'tinh thanh pho'
+  ) {
+    const num = Number(val.trim());
+    if (!isNaN(num) && VIETNAM_PROVINCES[num - 1]) return VIETNAM_PROVINCES[num - 1];
+    return val;
+  }
+  if (
+    normKey === 'coordinatesystem' ||
+    normKey === 'coordinate_system' ||
+    normKey === 'hequychieu' ||
+    normKey === 'he quy chieu'
+  ) {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[val.trim()] || val;
+  }
+  if (
+    normKey === 'receiveslargevessel' ||
+    normKey === 'receives_large_vessel' ||
+    normKey === 'nhantau lon' ||
+    normKey === 'tiep nhan tau lon'
+  ) {
+    return val === 'true' ? 'Có' : val === 'false' ? 'Không' : val;
+  }
+  if (normKey.endsWith('at') || normKey.endsWith('date') || normKey.includes('ngay')) {
+    try {
+      let d = dayjs(val);
+      if (!d.isValid()) {
+        d = dayjs((val || '').replace(/\.\d+$/, ''));
+      }
+      return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : val;
+    } catch {
+      return val;
+    }
+  }
   return val;
+}
+
+export function formatPierHistoryValue(
+  fn: string,
+  raw: string | null,
+  orgMap?: Map<string, string>,
+  symbolMap?: Map<string, string>,
+  portMap?: Map<string, string>,
+  berthMap?: Map<string, string>,
+  waterwayMap?: Map<string, string>
+): string | null {
+  if (raw === null || raw === '(null)' || raw === '') return null;
+  const t = raw.trim();
+  if (t.startsWith('[') && t.endsWith(']')) {
+    if (t === '[]') return 'Không có';
+    const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+    return `${parts.length} hạng mục`;
+  }
+  if (fn === 'operationalFunction') {
+    const mapped = formatOperationalFunction(raw, '');
+    return mapped || null;
+  }
+  const mapped = histVal(fn, raw, orgMap, symbolMap, portMap, berthMap, waterwayMap);
+  if (mapped !== raw && mapped !== '') {
+    return mapped;
+  }
+  if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
+    return formatHistoryNumber(t);
+  }
+  return mapped;
 }
 
 // ── History helpers (chuẩn VTS CHK — copy từ BuoyBerthListPage) ─────────
@@ -168,9 +366,6 @@ function historyTimestamp(item: any): string {
 function historyActor(item: any): string {
   const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
   return raw || '—';
-}
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 }
 function normalizedHistoryFields(value: string): string[] {
   const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
@@ -375,7 +570,7 @@ export default function PierListPage() {
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
   const [filterConstructionGrade, setFilterConstructionGrade] = useState<number | undefined>();
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
-  const [filterOperationalFunction, setFilterOperationalFunction] = useState<string[]>([]);
+  const [filterOperationalFunction, setFilterOperationalFunction] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('all');
@@ -517,23 +712,8 @@ export default function PierListPage() {
         const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const actionMeta = resolveHistoryActionMeta(g, changes);
         const barColor = actionMeta.color;
-        const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
-          if (t.startsWith('[') && t.endsWith(']')) {
-            if (t === '[]') return 'Không có';
-            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-            return `${parts.length} hạng mục`;
-          }
-          if (fn === 'operationalFunction') {
-            const mapped = formatOperationalFunction(raw, '');
-            return mapped || null;
-          }
-          if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
-            return formatHistoryNumber(t);
-          }
-          return histVal(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
-        };
+        const formatHistoryValue = (fn: string, raw: string | null) =>
+          formatPierHistoryValue(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
         const validChanges = changes.filter((c: any) => {
           if (!c.field) return false;
           const ov = formatHistoryValue(c.field, c.oldValue);
@@ -666,7 +846,7 @@ export default function PierListPage() {
         navigationChannelId: filterWaterwayId,
         constructionGrade: filterConstructionGrade,
         structureType: filterStructureType,
-        operationalFunction: filterOperationalFunction && filterOperationalFunction.length > 0 ? filterOperationalFunction.join(',') : undefined,
+        operationalFunction: filterOperationalFunction || undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         page, pageSize,
@@ -691,7 +871,7 @@ export default function PierListPage() {
     setFilterPortId(undefined); setFilterBerthId(undefined); setFilterPierType(undefined);
     setFilterProvince(undefined); setFilterOperationalStatus(undefined);
     setFilterWaterwayId(undefined); setFilterConstructionGrade(undefined); setFilterStructureType(undefined);
-    setFilterOperationalFunction(''); setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
+    setFilterOperationalFunction(undefined); setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
   }, []);
   const handleTabChange = useCallback((key: string) => { setActiveTab(key); setPage(1); }, []);
@@ -892,8 +1072,8 @@ export default function PierListPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
-          <Select mode="multiple" style={{ width: '100%', borderRadius: radiusPill, fontSize: fontSizeMd }} allowClear showSearch optionFilterProp="label" maxTagCount="responsive" placeholder="Công năng khai thác"
-            options={OPERATIONAL_FUNCTION_OPTIONS} value={filterOperationalFunction} onChange={v => setFilterOperationalFunction(v || [])} />
+          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} allowClear showSearch optionFilterProp="label" placeholder="Chọn công năng khai thác"
+            options={OPERATIONAL_FUNCTION_OPTIONS} value={filterOperationalFunction} onChange={v => setFilterOperationalFunction(v)} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
@@ -1196,9 +1376,9 @@ export default function PierListPage() {
       </FilterTableLayout>
 
       <Drawer {...drawerProps} rootClassName="pier-drawer-scope" className="pier-drawer-scope" width="min(920px, 96vw)" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa thông tin Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
-        onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+        onClose={closeFormDrawer}
         afterOpenChange={(open) => { if (!open) { setEditPierId(undefined); setEditBaseStatus(undefined); } }}
-        extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+        extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={<div style={drawerFooterStyle}>{(() => {
           const st = !editPierId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
           if (st === 'APPROVED') {
@@ -1217,16 +1397,17 @@ export default function PierListPage() {
         </Form>
       </Drawer>
 
-      <Drawer {...drawerProps} rootClassName="pier-drawer-scope" className="pier-drawer-scope" size={1000} title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }}
-        extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); setBerthDetail(null); }} style={drawerCloseBtnStyle}>✕</Button>}
+      <Drawer {...drawerProps} rootClassName="pier-drawer-scope" className="pier-drawer-scope" size={1000} width="min(1000px, 96vw)" title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
+        onClose={closeDetailDrawer}
+        extra={<Button type="text" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
         {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} infrastructureList={infrastructureList} onViewInfraDetail={openInfraDetail} operationPlanList={(detailRecord as any)?.operationPlanList} maintenancePlanList={(detailRecord as any)?.maintenancePlanList} incidentList={(detailRecord as any)?.incidentList} />}
       </Drawer>
 
-      {/* ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — drawer lồng 950 ── */}
+      {/* ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — kích thước đồng bộ bằng Drawer cha ── */}
       <AppDrawer
-        size={950}
+        size={1000}
+        width="min(1000px, 96vw)"
         rootClassName="pier-drawer-scope"
         className="pier-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết kết cấu hạ tầng{infraDetail?.record ? ` - ${infraDetail.record.shipRepairYardName || ''}` : ''}</span>}

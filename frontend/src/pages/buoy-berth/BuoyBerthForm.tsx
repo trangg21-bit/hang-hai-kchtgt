@@ -37,7 +37,6 @@ import { useAuthStore } from '../../store/authStore';
 import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_FILE_COUNT = 10;
 
 // Màn Cảng biển / Cầu cảng dùng font 13.5px cho phần tiêu đề/chỉ số trong drawer.
 const fontSizeMd = 13.5;
@@ -279,6 +278,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
+  const initialApprovalStatusRef = useRef<string | undefined>(undefined);
 
   const [indicatorOpen, setIndicatorOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
@@ -311,6 +311,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   const [, setExistingFiles] = useState<any[]>([]);
 
   useEffect(() => {
@@ -424,6 +425,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           );
         } catch { setExistingFiles([]); }
         editPortIdRef.current = data.portId;
+        initialApprovalStatusRef.current = data.approvalStatus;
         initialBuoyBerthCodeRef.current = data.buoyBerthCode;
         form.setFieldsValue({
           orgUnitId: data.orgUnitId, portId: data.portId,
@@ -479,35 +481,43 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       .catch(() => toast.error('Không thể tải xuống tệp đính kèm'));
   };
 
-  const handleRemoveFile = (file: UploadFile) => { setUploadedFiles(prev => prev.filter(x => x.uid !== file.uid)); };
+  const handleRemoveFile = (file: UploadFile) => {
+    const target = uploadedFiles.find((x: any) => x.uid === file.uid || x.id === file.uid);
+    if (target && !target.originFileObj) {
+      const attId = (target as any).id || target.uid;
+      if (attId) setPendingDeletedAttachmentIds((prev) => [...prev, attId]);
+    }
+    setUploadedFiles((prev) => prev.filter((x: any) => x.uid !== file.uid && x.id !== file.uid));
+  };
 
   const handleBeforeUpload = (file: File): false => {
     if (file.size > MAX_FILE_SIZE) { toast.error('Kích thước file tối đa 20MB'); return false; }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) { toast.error('Định dạng không hỗ trợ'); return false; }
-    if (uploadedFiles.length >= MAX_FILE_COUNT) { toast.error('Tối đa 10 file'); return false; }
     const nowIso = dayjs().toISOString();
     const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
-    setUploadedFiles(p => [
+    const newUid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    setUploadedFiles((p) => [
       ...p,
       {
-        uid: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        name: file.name,
-        fileName: file.name,
-        size: file.size,
-        fileSize: file.size,
-        type: file.type,
-        fileType: file.type,
-        uploadedByName: uploaderName,
-        uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
-        uploadedDate: nowIso,
-        uploadedAt: nowIso,
-        createdAt: nowIso,
-        status: 'done' as const,
-        originFileObj: file as any,
-      },
-    ]);
-    return false;
+        uid: newUid,
+        id: newUid,
+          name: file.name,
+          fileName: file.name,
+          size: file.size,
+          fileSize: file.size,
+          type: file.type,
+          fileType: file.type,
+          uploadedByName: uploaderName,
+          uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+          uploadedDate: nowIso,
+          uploadedAt: nowIso,
+          createdAt: nowIso,
+          status: 'done' as const,
+          originFileObj: file as any,
+        },
+      ]);
+      return false;
   };
 
   const removeCoordinate = (i: number) => { setCoordinateList(p => p.filter((_, idx) => idx !== i)); };
@@ -669,13 +679,25 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       let createdBuoyBerthId: string | undefined;
       if (isEdit && id) { await buoyBerthCRUD.update({ ...payload, id } as any); createdBuoyBerthId = id; }
       else { const res: any = await buoyBerthCRUD.create(payload as any); createdBuoyBerthId = res?.id ?? res?.data?.id; }
+      const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+      if (createdBuoyBerthId && pendingDeletedAttachmentIds.length > 0) {
+        await Promise.all(
+          pendingDeletedAttachmentIds.map((attId) =>
+            api.delete(`/v1/buoy-berth/${createdBuoyBerthId}/attachments/${attId}`, {
+              params: { skipHistory: !wasApproved },
+            }).catch(() => {})
+          )
+        );
+      }
       if (createdBuoyBerthId && uploadedFiles.length > 0) {
-        for (const fi of uploadedFiles) {
-          const of = fi.originFileObj as File;
-          if (!of) continue;
+        const newFiles = uploadedFiles.filter((fi: any) => fi && fi.originFileObj);
+        if (newFiles.length > 0) {
           const fd = new FormData();
-          fd.append('files', of);
-          await api.post(`/v1/buoy-berth/${createdBuoyBerthId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => {});
+          newFiles.forEach((fi: any) => fd.append('files', fi.originFileObj as File));
+          await api.post(`/v1/buoy-berth/${createdBuoyBerthId}/attachments`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
         }
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu tạm thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : 'Gửi phê duyệt thành công');
@@ -688,7 +710,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, isEdit, id, onFinish, onSubmittingChange, coordinateList, uploadedFiles]);
+  }, [form, isEdit, id, onFinish, onSubmittingChange, coordinateList, uploadedFiles, pendingDeletedAttachmentIds]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
 

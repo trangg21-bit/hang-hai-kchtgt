@@ -22,10 +22,14 @@ public class HistoryEntry {
     private ApprovalLevel approvalLevel;
     private String status;
     private String approvedBy;
+    private String approvedByName;
     private String orgUnitName;
     private LocalDateTime approvedDate;
+    private LocalDateTime changedAt;
     private String reason;
     private String changedField;
+    private String fieldName;
     private String previousValue;
+    private String oldValue;
     private String newValue;
 }

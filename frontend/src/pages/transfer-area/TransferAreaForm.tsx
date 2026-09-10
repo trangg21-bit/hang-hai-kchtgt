@@ -44,7 +44,6 @@ import {
 type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
 type UploadFile = { uid: string; name: string; size: number; type: string; status: string; originFileObj?: File };
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const MAX_FILE_COUNT = 10;
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -354,6 +353,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
 
   // Attachments (Tab 3)
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
 
   // Mooring Water Areas (Khu nước neo buộc tàu)
   const [waterAreaList, setWaterAreaList] = useState<MooringWaterAreaItem[]>([]);
@@ -434,6 +434,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
   const viewingAnchorTableScrollY = viewingAnchorBoxHeight ? Math.max(70, viewingAnchorBoxHeight - 148) : 'calc(100vh - 500px)';
 
   const editPortIdRef = useRef<string | undefined>(undefined);
+  const initialApprovalStatusRef = useRef<string | undefined>(undefined);
 
   // Load organizations
   useEffect(() => {
@@ -533,6 +534,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
       try {
         const d: any = await transferAreaCRUD.findById(id);
         editPortIdRef.current = d.portId;
+        initialApprovalStatusRef.current = d.approvalStatus;
         form.setFieldsValue({
           orgUnitId: d.orgUnitId,
           portId: d.portId,
@@ -664,33 +666,39 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
       toast.error('Định dạng không hỗ trợ');
       return false;
     }
-    if (uploadedFiles.length >= MAX_FILE_COUNT) { toast.error('Tối đa 10 file'); return false; }
     const nowIso = dayjs().toISOString();
     const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+    const newUid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     setUploadedFiles((prev) => [
       ...prev,
       {
-        uid: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        name: file.name,
-        fileName: file.name,
-        size: file.size,
-        fileSize: file.size,
-        type: file.type,
-        fileType: file.type,
-        uploadedByName: uploaderName,
-        uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
-        uploadedDate: nowIso,
-        uploadedAt: nowIso,
-        createdAt: nowIso,
-        status: 'done',
-        originFileObj: file,
-      },
-    ]);
-    return false;
+        uid: newUid,
+        id: newUid,
+          name: file.name,
+          fileName: file.name,
+          size: file.size,
+          fileSize: file.size,
+          type: file.type,
+          fileType: file.type,
+          uploadedByName: uploaderName,
+          uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+          uploadedDate: nowIso,
+          uploadedAt: nowIso,
+          createdAt: nowIso,
+          status: 'done',
+          originFileObj: file,
+        },
+      ]);
+      return false;
   };
 
   const handleRemoveFile = (file: UploadFile) => {
-    setUploadedFiles(prev => prev.filter(x => x.uid !== file.uid));
+    const target = uploadedFiles.find((x: any) => x.uid === file.uid || x.id === file.uid);
+    if (target && !target.originFileObj) {
+      const attId = target.id || target.uid;
+      if (attId) setPendingDeletedAttachmentIds((prev) => [...prev, attId]);
+    }
+    setUploadedFiles(prev => prev.filter(x => x.uid !== file.uid && (x as any).id !== file.uid));
   };
 
   // GPS points
@@ -1056,6 +1064,19 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         createdId = res?.id ?? res?.data?.id;
       }
 
+      const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+
+      // Delete removed attachments
+      if (createdId && pendingDeletedAttachmentIds.length > 0) {
+        await Promise.all(
+          pendingDeletedAttachmentIds.map((attId) =>
+            api.delete(`/v1/transfer-area/${createdId}/attachments/${attId}`, {
+              params: { skipHistory: !wasApproved },
+            }).catch(() => {})
+          )
+        );
+      }
+
       // Upload newly added files
       if (createdId && uploadedFiles.length > 0) {
         const newFiles = uploadedFiles.filter((fi: any) => fi.originFileObj);
@@ -1065,7 +1086,10 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
             newFiles.forEach((fi: any) => {
               fd.append('files', fi.originFileObj as File);
             });
-            await api.post(`/v1/transfer-area/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await api.post(`/v1/transfer-area/${createdId}/attachments`, fd, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+              params: { skipHistory: !wasApproved },
+            });
             toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
           } catch {
             toast.error('Tải lên tệp đính kèm thất bại');
@@ -1090,7 +1114,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
     } finally {
       onSubmittingChange?.(false);
     }
-  }, [form, isEdit, id, uploadedFiles, waterAreaList, coordinateList, onFinish, onSubmittingChange]);
+  }, [form, isEdit, id, uploadedFiles, pendingDeletedAttachmentIds, waterAreaList, coordinateList, onFinish, onSubmittingChange]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
 
@@ -1738,6 +1762,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         rootClassName="transfer-area-drawer-scope"
         className="transfer-area-drawer-scope"
         size={1000}
+        width="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
         open={waterAreaDrawerOpen}
         onClose={closeWaterAreaDrawer}
@@ -2007,6 +2032,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         rootClassName="transfer-area-drawer-scope"
         className="transfer-area-drawer-scope"
         size={1000}
+        width="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
         open={!!viewingWaterArea}
         onClose={() => setViewingWaterArea(null)}

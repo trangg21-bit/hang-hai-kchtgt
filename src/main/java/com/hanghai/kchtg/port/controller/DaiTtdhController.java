@@ -174,4 +174,31 @@ public class DaiTtdhController {
         daiTtdhService.deleteAttachment("DAI_TTDH", id, attId, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.port.entity.Attachment attachment = daiTtdhService.getAttachment("DAI_TTDH", id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!java.nio.file.Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = java.nio.file.Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        if (contentType == null) {
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+        String downloadName = attachment.getFileName();
+        String encodedFileName = java.net.URLEncoder.encode(downloadName, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadName + "\"; filename*=UTF-8''" + encodedFileName)
+                .body(resource);
+    }
 }

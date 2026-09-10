@@ -475,7 +475,7 @@ export default function PortDetailContent({
                   <Button
                     icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
                     onClick={() => setGisModalOpen(true)}
-                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeMd, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                   >
                     Xem vị trí trên bản đồ
                   </Button>
@@ -539,7 +539,7 @@ export default function PortDetailContent({
           ),
         },
         {
-          key: 'infraOther', label: 'Kết cấu hạ tầng',
+          key: 'infraOther', label: `Kết cấu hạ tầng (${otherInfra.length})`,
           children: (
             <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
               {/* Box 1: Danh sách KCHT thuộc cảng biển (kèm lọc loại) */}

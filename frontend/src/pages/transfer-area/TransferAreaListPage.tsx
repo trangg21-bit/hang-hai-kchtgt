@@ -6,6 +6,7 @@ import {
   Drawer, Space, Typography, Form,
 } from 'antd';
 import {
+  FileOutlined,
   HistoryOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
@@ -62,6 +63,7 @@ import {
   cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
+import { formatHistoryNumber } from '../../utils/numFmt';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ──
 const fontSizeMd = 13.5;
@@ -222,6 +224,7 @@ const histLabels: Record<string, string> = {
   displayRule: 'Quy tắc hiển thị',
   mapSymbolId: 'Biểu tượng',
   mooringWaterAreas: 'Phạm vi khu nước neo buộc tàu',
+  'Khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
   'Phạm vi khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
   'Tọa độ GIS': 'Tọa độ GPS',
   'Tọa độ GPS': 'Tọa độ GPS',
@@ -614,7 +617,7 @@ export default function TransferAreaListPage() {
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
-  const [filterOperationalFunctions, setFilterOperationalFunctions] = useState<string[]>([]);
+  const [filterOperationalFunctions, setFilterOperationalFunctions] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState('all');
@@ -729,7 +732,7 @@ export default function TransferAreaListPage() {
     'activeTransferCount', 'publishedTransferCount', 'underInvestmentTransferCount',
     'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
     'activityStartDate', 'activityEndDate', 'coordinateSystem', 'displayRule', 'mapSymbolId',
-    'Phạm vi khu nước neo buộc tàu', 'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
+    'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
     // Vietnamese label aliases:
     'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu chuyển tải', 'Tên khu chuyển tải',
     'Công năng khai thác', 'Tình trạng', 'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố',
@@ -1019,7 +1022,7 @@ export default function TransferAreaListPage() {
         provinceId: provinceIdx && provinceIdx > 0 ? provinceIdx : undefined,
         operationalStatus: filterOperationalStatus,
         approvalStatus: TAB_QUERY_MAP[activeTab],
-        operationalFunctions: filterOperationalFunctions.length > 0 ? filterOperationalFunctions.join(',') : undefined,
+        operationalFunctions: filterOperationalFunctions || undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         page,
@@ -1073,7 +1076,7 @@ export default function TransferAreaListPage() {
     setFilterPortId(undefined);
     setFilterProvince(undefined);
     setFilterOperationalStatus(undefined);
-    setFilterOperationalFunctions([]);
+    setFilterOperationalFunctions(undefined);
     setFilterUpdatedFrom(undefined);
     setFilterUpdatedTo(undefined);
     setActiveTab('all');
@@ -1131,8 +1134,6 @@ export default function TransferAreaListPage() {
 
   const closeFormDrawer = useCallback(() => {
     setCreateDrawerVisible(false);
-    setEditTransferAreaId(undefined);
-    setEditBaseStatus(undefined);
     createForm.resetFields();
     notifyEmbeddedActionClosed();
   }, [createForm, notifyEmbeddedActionClosed]);
@@ -1405,24 +1406,13 @@ export default function TransferAreaListPage() {
       return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
     if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    if (field === 'updatedAt' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') {
-      const t = r.submittedForApprovalAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'portAuthorityApprovedAt') {
-      const t = r.portAuthorityApprovedAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'departmentApprovedAt') {
-      const t = r.departmentApprovedAt;
-      return t ? new Date(t).getTime() : 0;
-    }
+    if (field === 'updatedAt') return r.updatedAt ?? r.createdAt ?? '';
+    if (field === 'updatedByName') return userMap.get(r.updatedBy || '') || r.updatedBy || '';
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ?? '';
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ?? '';
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ?? '';
     return r[field] ?? '';
-  }, [portMap, organizations, orgMap]);
+  }, [portMap, organizations, orgMap, userMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1575,7 +1565,7 @@ export default function TransferAreaListPage() {
       const bv = getSortValue(b, sortField);
       const c = typeof av === 'number' && typeof bv === 'number'
         ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi', { numeric: true, sensitivity: 'base' });
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
       return sortOrder === 'ascend' ? c : -c;
     });
   }, [dataSource, sortField, sortOrder, getSortValue]);
@@ -1670,17 +1660,15 @@ export default function TransferAreaListPage() {
               Công năng khai thác
             </div>
             <Select
-              mode="multiple"
               className="transfer-area-filter"
-              style={{ width: '100%', borderRadius: radiusPill, fontSize: fontSizeMd }}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
               allowClear
               showSearch
               optionFilterProp="label"
-              maxTagCount="responsive"
               placeholder="Chọn công năng khai thác"
               options={OPERATIONAL_FUNCTIONS_OPTIONS}
               value={filterOperationalFunctions}
-              onChange={(v) => setFilterOperationalFunctions(v || [])}
+              onChange={(v) => setFilterOperationalFunctions(v)}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1886,6 +1874,7 @@ export default function TransferAreaListPage() {
           {...drawerProps}
           rootClassName="transfer-area-drawer-scope"
           className="transfer-area-drawer-scope"
+          size={1000}
           width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editTransferAreaId ? 'Chỉnh sửa thông tin Khu chuyển tải' : 'Thêm mới Khu chuyển tải'}</span>}
           open={createDrawerVisible}
@@ -1915,7 +1904,7 @@ export default function TransferAreaListPage() {
                     </Button>
                   );
                 }
-                if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
+                if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
                   return (
                     <Button
                       htmlType="button"
@@ -1991,6 +1980,7 @@ export default function TransferAreaListPage() {
           rootClassName="transfer-area-drawer-scope"
           className="transfer-area-drawer-scope"
           size={1000}
+          width="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu chuyển tải{detailRecord ? ` - ${detailRecord.transferAreaName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={closeDetailDrawer}

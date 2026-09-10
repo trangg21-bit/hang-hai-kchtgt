@@ -1049,9 +1049,8 @@ public class PortService {
 
     @Transactional
     public List<AttachmentDto> uploadAttachmentsGeneric(UUID portId, List<MultipartFile> files, UUID userId) {
-        long count = attachmentRepository.countByEntityTypeAndEntityId("PORT", portId);
-        if (count + files.size() > 10) throw new IllegalArgumentException("Tối đa 10 file");
         List<Attachment> saved = new ArrayList<>();
+        List<String> uploadedFileNames = new ArrayList<>();
         java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
         for (MultipartFile f : files) {
             String fn = f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown";
@@ -1063,7 +1062,10 @@ public class PortService {
             String sp = filePath.toString();
             Attachment a = new Attachment(); a.setEntityType("PORT"); a.setEntityId(portId); a.setFileName(fn); a.setFilePath(sp); a.setFileSize(f.getSize()); a.setContentType(f.getContentType()); a.setUploadedBy(userId);
             saved.add(attachmentRepository.save(a));
-            recordAttachmentHistory(portId, userId, fn, InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            uploadedFileNames.add(fn);
+        }
+        if (!uploadedFileNames.isEmpty()) {
+            recordAttachmentHistory(portId, userId, String.join(", ", uploadedFileNames), InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
         }
         return saved.stream().map(this::toAttachmentDto2).collect(Collectors.toList());
     }

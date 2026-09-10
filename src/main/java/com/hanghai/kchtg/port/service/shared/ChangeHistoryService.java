@@ -58,6 +58,7 @@ public class ChangeHistoryService {
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
             case "TRANSFERAREA", "TRANSFER_AREA", "TRANSSHIPMENT_AREA", "KHU_CHUYEN_TAI" -> InfrastructureType.TRANSSHIPMENT_AREA;
             case "ANCHORAGE", "KHU_NEO_DAU", "ANCHORAGE_AREA" -> InfrastructureType.ANCHORAGE_AREA;
+            case "BUOYBERTH", "BUOY_BERTH", "BEN_PHAO" -> InfrastructureType.BUOY_BERTH;
             default -> InfrastructureType.SEAPORT;
         };
     }

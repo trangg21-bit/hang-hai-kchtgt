@@ -33,7 +33,7 @@ public class DaiTtdhResponse {
     // ── GIS fields ─────────────────────────────────────────────────────
     private UUID mapSymbolId;
     private Integer coordinateSystem;
-    private Integer displayRule;
+    private String displayRule;
     private GisGeometryType geometryType;
     private String coordinates;
     private BigDecimal latitude;

@@ -939,6 +939,7 @@ export default function AnchorageDetailContent({
       rootClassName="anchorage-drawer-scope"
       className="anchorage-drawer-scope"
       size={1000}
+      width="min(1000px, 96vw)"
       title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
       open={!!viewingWaterArea}
       onClose={() => setViewingWaterArea(null)}

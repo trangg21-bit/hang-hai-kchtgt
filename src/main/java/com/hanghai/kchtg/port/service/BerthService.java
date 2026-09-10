@@ -691,12 +691,8 @@ public class BerthService {
     @Transactional
     public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files,
             UUID userId) {
-        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
-        if (existingCount + files.size() > 10) {
-            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
-        }
-
         List<Attachment> savedAttachments = new java.util.ArrayList<>();
+        List<String> uploadedFileNames = new java.util.ArrayList<>();
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -723,13 +719,17 @@ public class BerthService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
+            uploadedFileNames.add(originalFilename);
+        }
 
-            // Ghi lịch sử file đính kèm chỉ khi bến cảng cha đã duyệt (chuẩn Cảng biển/DocumentService)
+        // Ghi lịch sử file đính kèm chỉ khi bến cảng cha đã duyệt (chuẩn Cảng biển/DocumentService)
+        if (!uploadedFileNames.isEmpty()) {
+            String mergedNames = String.join(", ", uploadedFileNames);
             if ("BERTH".equalsIgnoreCase(entityType)) {
-                recordBerthAttachmentHistory(entityId, originalFilename,
+                recordBerthAttachmentHistory(entityId, mergedNames,
                         InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
             } else if ("PIER".equalsIgnoreCase(entityType)) {
-                recordPierAttachmentHistory(entityId, originalFilename,
+                recordPierAttachmentHistory(entityId, mergedNames,
                         InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
             }
         }

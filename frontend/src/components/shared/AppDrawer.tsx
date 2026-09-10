@@ -88,13 +88,12 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
       return rawTarget;
     }
 
-    // Nếu truyền chuỗi số hoặc px hoặc %
+    // Nếu truyền chuỗi số hoặc biểu thức CSS tùy chỉnh (min, calc, px, %...) ngoài preset
     if (typeof rawTarget === 'string') {
-      if (/^\d+$/.test(rawTarget)) return Number(rawTarget);
-      if (rawTarget.endsWith('px')) return rawTarget;
-      if (rawTarget.endsWith('%') && rawTarget !== '100%') {
+      if (!['sm', 'md', 'lg', 'xl', 'full'].includes(rawTarget)) {
+        if (/^\d+$/.test(rawTarget)) return Number(rawTarget);
         if (!screens.md) return '100%';
-        if (!screens.lg) return '80%';
+        if (!screens.lg && rawTarget.endsWith('%') && rawTarget !== '100%') return '80%';
         return rawTarget;
       }
     }
@@ -160,7 +159,7 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   }
 
   const safeDrawerProps = { ...drawerProps };
-  delete (safeDrawerProps as { size?: unknown }).size;
+  delete (safeDrawerProps as Record<string, unknown>).size;
 
   return (
     <Drawer

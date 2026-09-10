@@ -635,7 +635,7 @@ export default function InfrastructureAttachmentTab({
               Kéo thả tệp vào đây hoặc nhấp để chọn tệp tải lên
             </p>
             <p style={{ fontSize: fontSizeSm, color: textTertiary, margin: 0 }}>
-              Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Tối đa 10 file, mỗi file ≤ {maxSizeMB}MB.
+              Hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF. Mỗi file ≤ {maxSizeMB}MB.
             </p>
           </Upload.Dragger>
         </div>

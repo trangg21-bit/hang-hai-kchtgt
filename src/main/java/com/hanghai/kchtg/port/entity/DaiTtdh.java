@@ -88,8 +88,8 @@ public class DaiTtdh extends BaseEntity {
     @Column(name = "coordinate_system")
     private Integer coordinateSystem;
 
-    @Column(name = "display_rule")
-    private Integer displayRule;
+    @Column(name = "display_rule", length = 255)
+    private String displayRule;
 
     @Column(name = "spatial_id")
     private UUID spatialId;

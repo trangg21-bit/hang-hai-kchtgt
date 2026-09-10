@@ -137,10 +137,13 @@ public class AnchorageService {
                 .displayRule(request.getDisplayRule())
                 .build();
 
+        LocalDateTime now = LocalDateTime.now();
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
         String action = request.getSaveAction() != null ? request.getSaveAction() : "DRAFT";
         applySaveAction(entity, action);
 
-        Anchorage saved = anchorageRepository.save(entity);
+        Anchorage saved = anchorageRepository.saveAndFlush(entity);
         persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
         evictAfterCommit();
@@ -423,13 +426,9 @@ public class AnchorageService {
     // ── Attachment methods ──────────────────────────────────────────────
 
     @Transactional
-    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
-        }
-        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
-        if (existingCount + files.size() > 10) {
-            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
         }
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
@@ -468,9 +467,13 @@ public class AnchorageService {
         }
         if ("ANCHORAGE".equalsIgnoreCase(entityType) && !uploadedFilenames.isEmpty()) {
             recordAnchorageAttachmentHistory(entityId, String.join(", ", uploadedFilenames),
-                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
+    }
+
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+        return uploadAttachments(entityType, entityId, files, userId, null);
     }
 
     public List<AttachmentDto> listAttachments(String entityType, UUID entityId) {
@@ -479,12 +482,13 @@ public class AnchorageService {
     }
 
     @Transactional
-    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId, Boolean skipHistory) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
+        String fileName = attachment.getFileName();
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -492,9 +496,13 @@ public class AnchorageService {
         }
         attachmentRepository.delete(attachment);
         if ("ANCHORAGE".equalsIgnoreCase(entityType)) {
-            recordAnchorageAttachmentHistory(entityId, attachment.getFileName(),
-                    InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+            recordAnchorageAttachmentHistory(entityId, fileName,
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
         }
+    }
+
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+        deleteAttachment(entityType, entityId, attachmentId, userId, null);
     }
 
     public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
@@ -729,6 +737,7 @@ public class AnchorageService {
     }
 
   private void applySaveAction(Anchorage entity, String action) {
+    String currentUserId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
     switch (action) {
       case "DRAFT":
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
@@ -736,18 +745,18 @@ public class AnchorageService {
       case "SUBMIT":
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setSubmittedForApprovalAt(LocalDateTime.now());
-        entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system");
+        entity.setSubmittedForApprovalBy(currentUserId);
         entity.setRejectionReason(null);
         break;
       case "APPROVED":
       case "SAVE_AND_APPROVE":
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setSubmittedForApprovalAt(LocalDateTime.now());
-        entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+        entity.setSubmittedForApprovalBy(currentUserId);
         entity.setPortAuthorityApprovedAt(LocalDateTime.now());
-        entity.setPortAuthorityApprovedBy(SecurityUtils.getCurrentUserId().toString());
+        entity.setPortAuthorityApprovedBy(currentUserId);
         entity.setDepartmentApprovedAt(LocalDateTime.now());
-        entity.setDepartmentApprovedBy(SecurityUtils.getCurrentUserId().toString());
+        entity.setDepartmentApprovedBy(currentUserId);
         break;
       default:
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
@@ -876,17 +885,24 @@ public class AnchorageService {
     /**
      * Ghi lịch sử file đính kèm Khu neo đậu (chuẩn Cảng biển DocumentService.recordPortAttachmentHistory:
      * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
-     * Chỉ ghi khi entityType = "ANCHORAGE" và hồ sơ đã duyệt.
+     * Chỉ ghi khi entityType = "ANCHORAGE" và hồ sơ đã duyệt. Thêm mới không ghi.
      */
     private void recordAnchorageAttachmentHistory(UUID anchorageId, String fileName,
-                                                  InfrastructureHistoryStatus status) {
+                                                  InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
+            if (Boolean.TRUE.equals(skipHistory)) return;
             Anchorage anchorage = anchorageRepository.findById(anchorageId).orElse(null);
             if (anchorage == null) return;
             ApprovalStatus approval = anchorage.getApprovalStatus();
             boolean wasApproved = approval == ApprovalStatus.APPROVED
                     || approval == ApprovalStatus.APPROVED_LEVEL2;
             if (!wasApproved) return;
+            // Guard: Thêm mới không ghi lịch sử đính kèm
+            if (anchorage.getCreatedAt() != null && anchorage.getUpdatedAt() != null
+                    && (anchorage.getCreatedAt().isEqual(anchorage.getUpdatedAt())
+                    || java.time.Duration.between(anchorage.getCreatedAt(), anchorage.getUpdatedAt()).abs().toSeconds() <= 2)) {
+                return;
+            }
             String name = fileName != null ? fileName : "không rõ tên";
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             historyRepository.save(InfrastructureHistory.builder()
@@ -906,5 +922,10 @@ public class AnchorageService {
         } catch (Exception e) {
             log.warn("Không ghi được lịch sử file đính kèm Khu neo đậu [{}]: {}", anchorageId, e.getMessage());
         }
+    }
+
+    private void recordAnchorageAttachmentHistory(UUID anchorageId, String fileName,
+                                                  InfrastructureHistoryStatus status) {
+        recordAnchorageAttachmentHistory(anchorageId, fileName, status, null);
     }
 }

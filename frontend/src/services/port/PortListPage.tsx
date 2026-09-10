@@ -65,7 +65,9 @@ async function uploadPortAttachments(portId: string, files: any[]): Promise<numb
   const newFiles = (files || []).filter((f: any) => f && f.originFileObj);
   if (newFiles.length === 0) return 0;
   const formData = new FormData();
-  newFiles.forEach((f: any) => formData.append('files', f.originFileObj as File));
+  newFiles.forEach((fi: any) => {
+    formData.append('files', fi.originFileObj as File);
+  });
   await api.post(`/v1/ports/${portId}/attachments`, formData, { headers: { 'Content-Type': undefined } });
   return newFiles.length;
 }
@@ -751,6 +753,7 @@ export default function PortListPage() {
   // Infrastructure list for create modal
   const [infraList, setInfraList] = useState<Array<{ stt: number; infraName: string; quantity: number | null }>>([]);
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   // GPS coordinates — 6 trường DMS riêng (latD/latM/latS/lngD/lngM/lngS — chuẩn VTS CHK)
   const [gpsCoordList, setGpsCoordList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -922,6 +925,7 @@ export default function PortListPage() {
     setUpdateModalVisible(false);
     setInfraList([]);
     setUploadFileList([]);
+    setPendingDeletedAttachmentIds([]);
     setGpsCoordList([]);
     updateForm.resetFields();
     if (window.self !== window.top) {
@@ -1321,16 +1325,17 @@ export default function PortListPage() {
       toast.success(currentAction === 'draft' ? 'Lưu tạm thành công' : 'Lưu và phê duyệt thành công');
       createForm.resetFields();
 
+      const pendingFiles = [...uploadFileList];
       setInfraList([]);
       setGpsCoordList([]);
       setUploadFileList([]);
       setCreateModalVisible(false);
 
       // Upload files after port created successfully
-      if (createdPortId && uploadFileList.length > 0) {
+      if (createdPortId && pendingFiles.length > 0) {
         let uploaded = 0;
         try {
-          const uploaded = await uploadPortAttachments(createdPortId, uploadFileList);
+          uploaded = await uploadPortAttachments(createdPortId, pendingFiles);
           if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
         } catch { /* non-blocking */ }
       }
@@ -1469,12 +1474,20 @@ export default function PortListPage() {
       if (window.parent && (window.parent as any).kchtDetailCache) {
         (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
       }
-      // Upload files after update
+      // Delete removed attachments
+      if (selectedRecord?.id && pendingDeletedAttachmentIds.length > 0) {
+        await Promise.all(
+          pendingDeletedAttachmentIds.map((attId) =>
+            api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`).catch(() => {})
+          )
+        );
+      }
       // Upload files after port updated
-      if (selectedRecord?.id && uploadFileList.length > 0) {
+      const pendingFiles = [...uploadFileList];
+      if (selectedRecord?.id && pendingFiles.length > 0) {
         let uploaded = 0;
         try {
-          const uploaded = await uploadPortAttachments(selectedRecord.id, uploadFileList);
+          uploaded = await uploadPortAttachments(selectedRecord.id, pendingFiles);
           if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
         } catch { /* non-blocking */ }
       }
@@ -2325,19 +2338,23 @@ export default function PortListPage() {
       {(!isIframeModal || action === 'edit') && (
         <AppDrawer
           size={isIframeModal ? '100%' : 1000}
+          width={isIframeModal ? '100%' : 'min(920px, 96vw)'}
+          rootClassName="port-drawer-scope"
+          className="port-drawer-scope"
+          destroyOnHidden
           mask={!isIframeModal}
           title={
             <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-              {selectedRecord
-                ? `Chỉnh sửa thông tin — ${selectedRecord.portName}`
-                : 'Chỉnh sửa thông tin cảng biển'}
+              Chỉnh sửa thông tin Cảng biển
             </span>
           }
           open={updateModalVisible}
           onClose={closeUpdateModal}
           footer={
             <div style={drawerFooterStyle}>
-              <Button htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'draft'; updateForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
+              {!(selectedRecord?.approvalStatus === 'APPROVED' || selectedRecord?.approvalStatus === 'APPROVED_LEVEL2') && (
+                <Button htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'draft'; updateForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
+              )}
               <Button type="primary" htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'approve'; updateForm.submit(); }} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
             </div>
           }
@@ -2369,6 +2386,7 @@ export default function PortListPage() {
             updateInfraQty={updateInfraQty}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
+            onDeleteAttachment={(attId) => setPendingDeletedAttachmentIds((prev) => [...prev, attId])}
             recordId={selectedRecord?.id}
             userMap={userMap}
             onFinish={handleUpdateFinish}
@@ -2383,6 +2401,9 @@ export default function PortListPage() {
       {(!isIframeModal || action === 'detail') && (
         <AppDrawer
           size={isIframeModal ? '100%' : 1000}
+          width={isIframeModal ? '100%' : 'min(1000px, 96vw)'}
+          rootClassName="port-drawer-scope"
+          className="port-drawer-scope"
           mask={!isIframeModal}
           title={
             selectedRecord
@@ -2422,7 +2443,10 @@ export default function PortListPage() {
 
       {/* ── Chi tiết KCHT khác (Drawer lồng — không chuyển trang) ── */}
       <AppDrawer
-        size={isIframeModal ? '100%' : 950}
+        size={isIframeModal ? '100%' : 1000}
+        width={isIframeModal ? '100%' : 'min(1000px, 96vw)'}
+        rootClassName="port-drawer-scope"
+        className="port-drawer-scope"
         mask={!isIframeModal}
         title={
           <span style={drawerTitleStyle}>
@@ -2463,7 +2487,11 @@ export default function PortListPage() {
 
       {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
       <AppDrawer
-        size={900}
+        size={isIframeModal ? '100%' : 1000}
+        width={isIframeModal ? '100%' : 'min(1000px, 96vw)'}
+        rootClassName="port-drawer-scope"
+        className="port-drawer-scope"
+        mask={!isIframeModal}
         title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{pierDetailRecord ? ` - ${pierDetailRecord.pierName || pierDetailRecord.pierCode || ''}` : ''}</span>}
         open={pierDetailOpen}
         onClose={() => setPierDetailOpen(false)}
