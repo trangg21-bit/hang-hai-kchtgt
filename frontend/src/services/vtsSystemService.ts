@@ -294,19 +294,25 @@ export const vtsSystemCRUD = {
 };
 
 export const vtsSystemApproval = {
-  async submit(id: string): Promise<VtsSystemResponse> {
+  async submit(id: string): Promise<VtsSystemResponse & { message?: string }> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/submit`);
-    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+    const single = toSingle<VtsSystemResponse>(res.data) || ({} as VtsSystemResponse);
+    if (res.data?.message) (single as any).message = res.data.message;
+    return single;
   },
 
-  async approveC1(id: string, data: ApprovalRequest): Promise<VtsSystemResponse> {
+  async approveC1(id: string, data: ApprovalRequest): Promise<VtsSystemResponse & { message?: string }> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/approve/c1`, data);
-    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+    const single = toSingle<VtsSystemResponse>(res.data) || ({} as VtsSystemResponse);
+    if (res.data?.message) (single as any).message = res.data.message;
+    return single;
   },
 
-  async approveC2(id: string, data: ApprovalRequest): Promise<VtsSystemResponse> {
+  async approveC2(id: string, data: ApprovalRequest): Promise<VtsSystemResponse & { message?: string }> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/approve/c2`, data);
-    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+    const single = toSingle<VtsSystemResponse>(res.data) || ({} as VtsSystemResponse);
+    if (res.data?.message) (single as any).message = res.data.message;
+    return single;
   },
 
   async getHistory(id: string, page?: number, pageSize?: number, filters?: { keyword?: string; fromDate?: string; toDate?: string }): Promise<HistoryEntry[]> {

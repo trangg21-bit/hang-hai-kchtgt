@@ -248,12 +248,13 @@ export default function VtsSystemList() {
     if (!approveTargetId) return;
     try {
       const payload: ApprovalRequest = { decision: 'APPROVED', reason: content };
+      let res: any;
       if (approveLevel === 'c1') {
-        await vtsSystemApproval.approveC1(approveTargetId, payload);
-        toast.success('Phê duyệt cấp 1 thành công');
+        res = await vtsSystemApproval.approveC1(approveTargetId, payload);
+        toast.success(res?.message || 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
       } else {
-        await vtsSystemApproval.approveC2(approveTargetId, payload);
-        toast.success('Phê duyệt cấp 2 thành công');
+        res = await vtsSystemApproval.approveC2(approveTargetId, payload);
+        toast.success(res?.message || 'Phê duyệt cấp Cục thành công');
       }
       // Drawer chi tiết đọc từ cache dùng chung — không xóa thì lần mở sau vẫn
       // hiển thị trạng thái phê duyệt cũ.
@@ -274,10 +275,11 @@ export default function VtsSystemList() {
     if (!rejectTargetId) return;
     try {
       const payload: ApprovalRequest = { decision: 'REJECTED', reason: rejectReason.trim() };
-      if (rejectLevel === 'c1') await vtsSystemApproval.approveC1(rejectTargetId, payload);
-      else await vtsSystemApproval.approveC2(rejectTargetId, payload);
+      let res: any;
+      if (rejectLevel === 'c1') res = await vtsSystemApproval.approveC1(rejectTargetId, payload);
+      else res = await vtsSystemApproval.approveC2(rejectTargetId, payload);
       invalidateVtsDetailCache(rejectTargetId);
-      toast.success('Đã từ chối'); setRejectModalOpen(false); refreshList();
+      toast.success(res?.message || 'Từ chối phê duyệt hồ sơ thành công'); setRejectModalOpen(false); refreshList();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Lỗi từ chối'); }
   };
 

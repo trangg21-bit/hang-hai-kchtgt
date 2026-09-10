@@ -989,6 +989,9 @@ body, .ant-layout {
   height: 38px !important;
   font-size: 13px !important;
 }
+.chk-dms-input-number .ant-input-number-input {
+  text-align: center !important;
+}
 
 .ant-input-textarea-show-count,
 .ant-input-textarea {

@@ -425,12 +425,15 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       },
     ] as const;
 
+    const hasError = started && inputs.some((inp) => !!inp.msg);
+
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: 360, margin: '0 auto', minWidth: 0 }}>
           {inputs.map((inp) => (
             <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
               <InputNumber
+                className="chk-dms-input-number"
                 value={inp.value}
                 min={0}
                 max={inp.max}
@@ -440,20 +443,22 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                 status={inp.msg ? 'error' : undefined}
                 onFocus={(e) => e.currentTarget.select()}
                 onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
-                style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+                style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32, textAlign: 'center' }}
                 controls={false}
               />
               <span style={inp.unitStyle}>{inp.unit}</span>
             </div>
           ))}
         </div>
-        <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
-          {inputs.map((inp) => (
-            <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
-              {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
-            </div>
-          ))}
-        </div>
+        {hasError && (
+          <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', width: '100%', maxWidth: 360, margin: `${spaceXs}px auto 0 auto`, minWidth: 0, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+            {inputs.map((inp) => (
+              <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width, textAlign: 'center' }}>
+                {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -1260,17 +1265,22 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                               title: 'STT',
                               width: 60,
                               align: 'center' as const,
+                              onCell: () => ({ style: { verticalAlign: 'middle' } }),
                               render: (_v: any, _r: any, idx: number) => idx + 1,
                             },
                             {
                               title: 'Vĩ độ (Latitude - N)',
                               key: 'lat',
+                              align: 'center' as const,
+                              onCell: () => ({ style: { verticalAlign: 'middle' } }),
                               render: (_v: any, record: any) =>
                                 renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                             },
                             {
                               title: 'Kinh độ (Longitude - E)',
                               key: 'lng',
+                              align: 'center' as const,
+                              onCell: () => ({ style: { verticalAlign: 'middle' } }),
                               render: (_v: any, record: any) =>
                                 renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                             },
@@ -1278,7 +1288,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                               title: '',
                               width: 50,
                               align: 'center' as const,
-                              onCell: () => ({ style: { verticalAlign: 'top' } }),
+                              onCell: () => ({ style: { verticalAlign: 'middle' } }),
                               render: (_v: any, record: any) => (
                                 <Button
                                   type="text"

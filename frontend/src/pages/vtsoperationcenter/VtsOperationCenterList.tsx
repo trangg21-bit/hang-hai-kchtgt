@@ -305,11 +305,11 @@ export default function VtsOperationCenterList() {
     if (!approveTargetId) return;
     try {
       if (approveLevel === 'c1') {
-        await vtsOperationCenterService.approveC1(approveTargetId, 'APPROVED', content);
-        toast.success('Phê duyệt cấp 1 thành công');
+        const res = await vtsOperationCenterService.approveC1(approveTargetId, 'APPROVED', content);
+        toast.success(res?.message || 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
       } else {
-        await vtsOperationCenterService.approveC2(approveTargetId, 'APPROVED', content);
-        toast.success('Phê duyệt cấp 2 thành công');
+        const res = await vtsOperationCenterService.approveC2(approveTargetId, 'APPROVED', content);
+        toast.success(res?.message || 'Phê duyệt cấp Cục thành công');
       }
       setApproveModalOpen(false);
       refreshList();
@@ -331,8 +331,8 @@ export default function VtsOperationCenterList() {
     }
     if (!rejectTargetId) return;
     try {
-      await vtsOperationCenterService.reject(rejectTargetId, rejectReason.trim());
-      toast.success('Đã từ chối');
+      const res = await vtsOperationCenterService.reject(rejectTargetId, rejectReason.trim());
+      toast.success(res?.message || 'Từ chối phê duyệt hồ sơ thành công');
       setRejectModalOpen(false);
       refreshList();
     } catch (err: unknown) {
@@ -656,8 +656,8 @@ export default function VtsOperationCenterList() {
         icon: icons.submit,
         onClick: async () => {
           try {
-            await vtsOperationCenterService.submit(record.id);
-            toast.success('Gửi duyệt thành công');
+            const res = await vtsOperationCenterService.submit(record.id);
+            toast.success(res?.message || 'Gửi phê duyệt thành công');
             refreshList();
           } catch (e: unknown) {
             toast.error(e instanceof Error ? e.message : 'Lỗi gửi duyệt');
