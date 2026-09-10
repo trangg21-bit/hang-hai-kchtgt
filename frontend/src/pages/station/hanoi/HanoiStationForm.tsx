@@ -153,6 +153,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
   const [attachments, setAttachments] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<string[]>([]);
 
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -796,6 +797,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
             onFinishFailed={onFinishFailed}
             style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
           >
+            <style>{requiredMarkStyle}</style>
             <Tabs
               activeKey={activeTab}
               onChange={setActiveTab}

@@ -29,6 +29,7 @@ import {
   radiusPill,
   statusBadgeStyle,
   outlineButtonStyle,
+  primaryButtonStyle,
   surfaceCard,
   DRAWER_TABLE_SCROLL_Y,
   getConditionStatusColor,
@@ -38,6 +39,7 @@ import { getProvinceNameById } from '../../../types/common';
 import DetailTable from '../../../components/shared/DetailTable';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
+import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { parseWktToCoordinates } from '../../../utils/gisGeometry';
 
@@ -216,6 +218,7 @@ export default function InmarsatStationDetailContent({
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
+  const [mapModalOpen, setMapModalOpen] = useState(false);
 
   const [attachmentList, setAttachmentList] = useState<any[]>(attachments);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
@@ -1079,6 +1082,42 @@ export default function InmarsatStationDetailContent({
       />
 
 
+
+      {/* GIS Location Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+              Xem vị trí trên bản đồ chuyên dụng
+            </span>
+          </div>
+        }
+        open={mapModalOpen}
+        onCancel={() => setMapModalOpen(false)}
+        destroyOnClose
+        width="94vw"
+        style={{ top: 20, maxWidth: '1400px' }}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setMapModalOpen(false)} style={{ ...primaryButtonStyle, height: 36 }}>
+            Đóng
+          </Button>,
+        ]}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <GisLocationSelector
+            inline={true}
+            defaultGeometryType={(record?.geometryType as any) || 'POINT'}
+            disabled
+            height={520}
+            value={{
+              geometryType: (record?.geometryType || (record as any)?.objectType || 'POINT') as any,
+              coordinates: record?.coordinates || '',
+              symbolId: record?.symbolId || (record as any)?.symbol,
+            }}
+          />
+        </div>
+      </Modal>
 
       {/* Image Preview Modal */}
       {previewImageUrl && (

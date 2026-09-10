@@ -127,6 +127,8 @@ const formatHistoryValue = (field: string, val: unknown): string => {
 
 export default function HanoiStationList() {
   const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
   const handledLinkedRecordRef = useRef<string | null>(null);
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
