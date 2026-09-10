@@ -60,4 +60,5 @@ public class AisSystemListItem {
     private UUID approverLevel2;
     private String approverLevel2Name;
     private LocalDateTime approvedDateLevel2;
+    private String rejectionReason;
 }

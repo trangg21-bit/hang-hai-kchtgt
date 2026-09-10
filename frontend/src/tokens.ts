@@ -722,6 +722,8 @@ export const historyInfoCardStyle: React.CSSProperties = {
   padding: spaceMd,
   paddingLeft: spaceLg,
   overflow: 'hidden',
+  alignSelf: 'stretch',
+  boxSizing: 'border-box',
 };
 
 /** Thanh dọc gradient bên trái card: đậm → nhạt theo màu truyền vào */

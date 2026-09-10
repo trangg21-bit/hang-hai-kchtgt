@@ -53,6 +53,7 @@ export const hanoiStationService = {
       size: params?.size || 20,
       sortBy: params?.sortBy,
       sortDir: params?.sortDir,
+      sort: params?.sortBy ? `${params.sortBy},${params.sortDir || 'asc'}` : (params as any)?.sort,
     });
     // Số trên tab chỉ đổi khi bộ lọc đổi — lật trang hay đổi tab mà vẫn gọi
     // /counts là nhân đôi số request cho cùng một kết quả.
@@ -96,8 +97,9 @@ export const hanoiStationService = {
     return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
   },
 
-  async update(id: string, data: UpdateHanoiStationRequest): Promise<HanoiStationItem> {
-    const res = await api.put(`${BASE_PATH}/${id}`, data);
+  async update(id: string, data: UpdateHanoiStationRequest, action?: string): Promise<HanoiStationItem> {
+    const url = action ? `${BASE_PATH}/${id}?action=${action}` : `${BASE_PATH}/${id}`;
+    const res = await api.put(url, data);
     return toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
   },
 
@@ -132,6 +134,18 @@ export const hanoiStationService = {
   },
 
   async approveL2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+    return this.approveC2(id, statusOrContent, maybeContent);
+  },
+
+  async approveLevel1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+    return this.approveC1(id, statusOrContent, maybeContent);
+  },
+
+  async approveLevel2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+    return this.approveC2(id, statusOrContent, maybeContent);
+  },
+
+  async approve(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
     return this.approveC2(id, statusOrContent, maybeContent);
   },
 

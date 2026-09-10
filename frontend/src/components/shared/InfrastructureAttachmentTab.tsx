@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Upload, Button, Modal } from 'antd';
+import { useState, useRef } from 'react';
+import { Upload, Button, Modal, Spin } from 'antd';
 import {
   InboxOutlined,
   FileOutlined,
@@ -11,13 +11,14 @@ import {
 import dayjs from 'dayjs';
 import toast from '../ToastNotification';
 import DetailTable from './DetailTable';
-import { useAuthStore } from '../../store/authStore';
+import api from '../../services/api';
 import {
   actionPrimary,
   textPrimary,
   textTertiary,
   borderDefault,
   radiusMd,
+  radiusPill,
   fontSizeMd,
   fontSizeSm,
   fontWeightBold,
@@ -159,17 +160,98 @@ export default function InfrastructureAttachmentTab({
   readonlyBerthLayout = false,
   loadReadonlyPreviewImage,
 }: InfrastructureAttachmentTabProps) {
-  const currentUser = useAuthStore((s) => s.user);
+  const activeBlobUrlRef = useRef<string | null>(null);
+  const uploadedFilesRef = useRef<Map<string, File>>(new Map());
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewRecord, setPreviewRecord] = useState<InfrastructureAttachmentItem | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const handleClosePreview = () => {
+    if (activeBlobUrlRef.current) {
+      URL.revokeObjectURL(activeBlobUrlRef.current);
+      activeBlobUrlRef.current = null;
+    }
+    setPreviewVisible(false);
+    setPreviewImageUrl('');
+    setPreviewError(null);
+    setPreviewLoading(false);
+  };
 
   const handleBeforeUpload = (file: File) => {
     if (!validateAttachmentFile(file, { maxSizeMB })) {
       return false;
     }
+    const fileKey = `${file.name}_${file.size}`;
+    uploadedFilesRef.current.set(fileKey, file);
+    uploadedFilesRef.current.set(file.name, file);
+    const fileWithTempId = file as File & { _tempId?: string };
+    if (fileWithTempId._tempId) {
+      uploadedFilesRef.current.set(fileWithTempId._tempId, file);
+    }
     onUpload?.(file);
     return false;
+  };
+
+  const resolveLocalFile = (record: InfrastructureAttachmentItem): File | undefined => {
+    return (
+      record.originFileObj ||
+      record.file ||
+      (record.id ? uploadedFilesRef.current.get(record.id) : undefined) ||
+      (record.fileName && record.fileSize ? uploadedFilesRef.current.get(`${record.fileName}_${record.fileSize}`) : undefined) ||
+      (record.fileName ? uploadedFilesRef.current.get(record.fileName) : undefined)
+    );
+  };
+
+  const handleDownload = async (record: InfrastructureAttachmentItem) => {
+    const rawFile = resolveLocalFile(record);
+    if (rawFile) {
+      const url = URL.createObjectURL(rawFile);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = record.fileName || rawFile.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+    if (record.url && (record.url.startsWith('blob:') || record.url.startsWith('data:'))) {
+      const link = document.createElement('a');
+      link.href = record.url;
+      link.download = record.fileName || 'tai-lieu';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    if (onDownload) {
+      onDownload(record.id, record.fileName);
+      return;
+    }
+    const targetPath = record.filePath || record.url;
+    if (targetPath) {
+      let cleanPath = targetPath;
+      if (cleanPath.startsWith('/api/')) {
+        cleanPath = cleanPath.replace(/^\/api/, '');
+      } else if (!cleanPath.startsWith('/')) {
+        cleanPath = `/${cleanPath}`;
+      }
+      try {
+        const res = await api.get(cleanPath, { responseType: 'blob' });
+        const blobUrl = URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = record.fileName || 'tai-lieu';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        console.error('Lỗi khi tải file:', e);
+      }
+    }
   };
 
   const handlePreview = async (record: InfrastructureAttachmentItem) => {
@@ -177,27 +259,81 @@ export default function InfrastructureAttachmentTab({
       onPreview(record);
       return;
     }
-    const rawFile = record.originFileObj || record.file;
-    if (rawFile) {
-      const blobUrl = URL.createObjectURL(rawFile);
-      setPreviewImageUrl(blobUrl);
-    } else if (record.url) {
-      setPreviewImageUrl(record.url);
-    } else if (loadReadonlyPreviewImage && record.id) {
+    if (activeBlobUrlRef.current) {
+      URL.revokeObjectURL(activeBlobUrlRef.current);
+      activeBlobUrlRef.current = null;
+    }
+    if (loadReadonlyPreviewImage && record.id) {
+      setPreviewRecord(record);
+      setPreviewVisible(true);
+      setPreviewError(null);
+      setPreviewLoading(true);
+      setPreviewImageUrl('');
       try {
         const data = await loadReadonlyPreviewImage(record.id);
         const imageSource = data instanceof Blob ? URL.createObjectURL(data) : data;
+        if (data instanceof Blob) {
+          activeBlobUrlRef.current = imageSource;
+        }
         setPreviewImageUrl(imageSource);
+        setPreviewLoading(false);
+        return;
       } catch {
-        setPreviewImageUrl('');
+        // Fall back to local file / URL preview
       }
-    } else if (record.filePath) {
-      setPreviewImageUrl(record.filePath);
-    } else {
-      setPreviewImageUrl('');
     }
     setPreviewRecord(record);
     setPreviewVisible(true);
+    setPreviewError(null);
+
+    const rawFile = resolveLocalFile(record);
+    if (rawFile) {
+      const blobUrl = URL.createObjectURL(rawFile);
+      activeBlobUrlRef.current = blobUrl;
+      setPreviewImageUrl(blobUrl);
+      setPreviewLoading(false);
+      return;
+    }
+
+    if (record.url && (record.url.startsWith('data:') || record.url.startsWith('blob:'))) {
+      setPreviewImageUrl(record.url);
+      setPreviewLoading(false);
+      return;
+    }
+
+    const targetPath = record.filePath || record.url;
+    if (targetPath) {
+      if (/^https?:\/\//i.test(targetPath) && !targetPath.includes('/api/')) {
+        setPreviewImageUrl(targetPath);
+        setPreviewLoading(false);
+        return;
+      }
+      setPreviewLoading(true);
+      setPreviewImageUrl('');
+      try {
+        let cleanPath = targetPath;
+        if (cleanPath.startsWith('/api/')) {
+          cleanPath = cleanPath.replace(/^\/api/, '');
+        } else if (!cleanPath.startsWith('/')) {
+          cleanPath = `/${cleanPath}`;
+        }
+        const res = await api.get(cleanPath, { responseType: 'blob' });
+        const contentType = res.headers?.['content-type'] || 'image/jpeg';
+        const blob = new Blob([res.data], { type: contentType });
+        const blobUrl = URL.createObjectURL(blob);
+        activeBlobUrlRef.current = blobUrl;
+        setPreviewImageUrl(blobUrl);
+      } catch (err) {
+        console.error('Lỗi khi tải hình ảnh đính kèm:', err);
+        setPreviewError('Không thể tải hình ảnh từ máy chủ.');
+      } finally {
+        setPreviewLoading(false);
+      }
+      return;
+    }
+
+    setPreviewError('Không tìm thấy đường dẫn tệp tin.');
+    setPreviewLoading(false);
   };
 
   const effectiveScrollY = scrollY || (readonly ? DRAWER_TABLE_SCROLL_Y.detailView : DRAWER_TABLE_SCROLL_Y.withDragger);
@@ -211,6 +347,7 @@ export default function InfrastructureAttachmentTab({
       title: 'STT',
       width: isBerthReadonlyLayout ? 50 : 60,
       align: 'center' as const,
+      render: (_: unknown, __: unknown, index: number) => index + 1,
     },
     {
       title: 'Tên tài liệu',
@@ -238,7 +375,7 @@ export default function InfrastructureAttachmentTab({
                 if (isImg) {
                   handlePreview(record);
                 } else {
-                  onDownload?.(record.id, name);
+                  handleDownload(record);
                 }
               }}
               title={isImg ? `${name} (Nhấp để xem chi tiết ảnh)` : `${name} (Nhấp để tải xuống)`}
@@ -371,7 +508,7 @@ export default function InfrastructureAttachmentTab({
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onClick={() => onDownload?.(record.id, record.fileName)}
+                onClick={() => handleDownload(record)}
                 title="Tải xuống tệp đính kèm"
               />
             </div>
@@ -409,7 +546,7 @@ export default function InfrastructureAttachmentTab({
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              onClick={() => onDownload?.(record.id, record.fileName)}
+              onClick={() => handleDownload(record)}
               title="Tải xuống tệp đính kèm"
             />
             <Button
@@ -499,19 +636,19 @@ export default function InfrastructureAttachmentTab({
           </div>
         }
         open={previewVisible}
-        onCancel={() => setPreviewVisible(false)}
+        onCancel={handleClosePreview}
         footer={[
-          ...(onDownload && previewRecord ? [
+          ...(previewRecord ? [
             <Button
               key="download"
               icon={<DownloadOutlined />}
-              onClick={() => onDownload(previewRecord.id, previewRecord.fileName)}
-              style={{ borderRadius: 999 }}
+              onClick={() => handleDownload(previewRecord)}
+              style={{ borderRadius: radiusPill }}
             >
               Tải xuống
             </Button>,
           ] : []),
-          <Button key="close" type="primary" onClick={() => setPreviewVisible(false)} style={{ borderRadius: 999, background: actionPrimary, borderColor: actionPrimary }}>
+          <Button key="close" type="primary" onClick={handleClosePreview} style={{ borderRadius: radiusPill, background: actionPrimary, borderColor: actionPrimary }}>
             Đóng
           </Button>,
         ]}
@@ -519,8 +656,15 @@ export default function InfrastructureAttachmentTab({
         centered
         destroyOnClose
       >
-        <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: radiusMd }}>
-          {previewImageUrl ? (
+        <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: radiusMd }}>
+          {previewLoading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <Spin size="large" />
+              <span style={{ color: textTertiary, fontSize: fontSizeSm }}>Đang tải hình ảnh...</span>
+            </div>
+          ) : previewError ? (
+            <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{previewError}</div>
+          ) : previewImageUrl ? (
             <img
               src={previewImageUrl}
               alt={previewRecord?.fileName || 'Ảnh đính kèm'}
@@ -533,7 +677,7 @@ export default function InfrastructureAttachmentTab({
               }}
             />
           ) : (
-            <div style={{ color: textTertiary }}>Đang tải hình ảnh hoặc không có sẵn bản xem trước</div>
+            <div style={{ color: textTertiary }}>Không có sẵn bản xem trước</div>
           )}
         </div>
       </Modal>

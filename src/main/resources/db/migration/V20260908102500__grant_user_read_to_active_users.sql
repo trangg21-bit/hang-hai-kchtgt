@@ -2,6 +2,7 @@
 -- Migration: V20260908102500__grant_user_read_to_active_users.sql
 -- Description: Cấp quyền user:read (Xem hồ sơ cá nhân / người dùng) cho tất cả tài khoản người dùng đang hoạt động
 -- ============================================================================
+ALTER TABLE IF EXISTS app_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 DO $$
 BEGIN

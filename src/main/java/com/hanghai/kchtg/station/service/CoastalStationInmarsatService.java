@@ -971,6 +971,7 @@ public class CoastalStationInmarsatService {
                 .get(attachmentPath != null ? attachmentPath : "uploads/inmarsat-attachments").toAbsolutePath()
                 .normalize();
         List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+        LocalDateTime batchNow = LocalDateTime.now();
         for (org.springframework.web.multipart.MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
             String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
@@ -1010,7 +1011,8 @@ public class CoastalStationInmarsatService {
                         "—",
                         originalFilename,
                         "Tải lên tài liệu đính kèm: " + originalFilename,
-                        userId);
+                        userId,
+                        batchNow);
             }
         }
         return savedAttachments.stream().map(this::toAttachmentResponse).toList();
@@ -1066,7 +1068,8 @@ public class CoastalStationInmarsatService {
         return CoastalStationInmarsatAttachmentResponse.builder()
                 .id(a.getId())
                 .fileName(a.getFileName())
-                .filePath(a.getFilePath())
+                .filePath("/api/v1/stations/inmarsat/" + a.getRefId()
+                        + "/attachments/" + a.getId() + "/download")
                 .fileSize(a.getFileSize())
                 .documentType(a.getFileType() != null ? a.getFileType().getCode() : "OTHER")
                 .uploadedBy(a.getUploadedBy())

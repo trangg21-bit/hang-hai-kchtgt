@@ -53,6 +53,17 @@ public class HistoryService {
                               String previousValue, String newValue,
                               String reason,
                               UUID changedBy) {
+        recordHistory(refType, refId, action, changedField, previousValue, newValue, reason, changedBy, LocalDateTime.now());
+    }
+
+    @Transactional
+    public void recordHistory(InfrastructureType refType, UUID refId,
+                              StationHistoryActionType action,
+                              String changedField,
+                              String previousValue, String newValue,
+                              String reason,
+                              UUID changedBy,
+                              LocalDateTime approvedDate) {
         if (refType == null || refId == null) {
             return;
         }
@@ -62,7 +73,7 @@ public class HistoryService {
                 .approvalLevel(toApprovalLevel(action))
                 .status(toStatus(action))
                 .approvedBy(changedBy)
-                .approvedDate(LocalDateTime.now())
+                .approvedDate(approvedDate != null ? approvedDate : LocalDateTime.now())
                 .changedField(changedField)
                 .previousValue(previousValue)
                 .newValue(newValue)
@@ -75,7 +86,7 @@ public class HistoryService {
                               StationHistoryActionType action,
                               String previousValue, String newValue,
                               UUID changedBy) {
-        recordHistory(refType, refId, action, null, previousValue, newValue, null, changedBy);
+        recordHistory(refType, refId, action, null, previousValue, newValue, null, changedBy, LocalDateTime.now());
     }
 
     @Transactional
@@ -88,6 +99,7 @@ public class HistoryService {
         if (refType == null || refId == null || oldValues == null || oldValues.isEmpty()) {
             return;
         }
+        LocalDateTime now = LocalDateTime.now();
         for (Map.Entry<String, String> entry : oldValues.entrySet()) {
             String fieldName = entry.getKey();
             String oldVal = entry.getValue() != null && !entry.getValue().isBlank() ? entry.getValue() : "—";
@@ -102,7 +114,8 @@ public class HistoryService {
                     oldVal,
                     newVal,
                     "Cập nhật " + fieldName,
-                    changedBy);
+                    changedBy,
+                    now);
         }
     }
 

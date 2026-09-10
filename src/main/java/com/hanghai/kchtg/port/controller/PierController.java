@@ -9,6 +9,7 @@ import com.hanghai.kchtg.port.service.PierApprovalService;
 import com.hanghai.kchtg.port.service.PierService;
 import com.hanghai.kchtg.port.dto.berth.ApproveRequest;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.dto.berth.RejectRequest;
 
 import com.hanghai.kchtg.port.service.BerthService;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -157,8 +158,11 @@ public class PierController {
     @PreAuthorize("@auth.check(authentication, 'pier:approve')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @RequestParam(required = false) String reason) {
-        pierApprovalService.reject(id, reason, SecurityUtils.getCurrentUserId());
+            @Valid @RequestBody RejectRequest request,
+            Authentication authentication) {
+        String userId = authentication != null ? authentication.getName() : null;
+        log.info("Rejecting Pier: id={}, cap={}, userId={}", id, request.getCap(), userId);
+        pierApprovalService.reject(id, userId, request.getCap(), request.getLyDo());
         return ResponseEntity.ok(ApiResponse.success("Từ chối cầu cảng thành công", null));
     }
 

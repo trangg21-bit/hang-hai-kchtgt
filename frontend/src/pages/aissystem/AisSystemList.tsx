@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Modal, Input, Select, DatePicker } from 'antd';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import { aisSystemService } from '../../services/aisSystemService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
@@ -9,42 +10,67 @@ import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type { AisSystemListItem, AisSystemResponse } from '../../types/aisSystem';
 import { UNIT_OF_MEASURE_MAP, UnitOfMeasure } from '../../types/aisSystem';
-import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
+import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, DataTable, Pagination } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import AisSystemForm from './AisSystemForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
+import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
+import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 import toast from '../../components/ToastNotification';
 import {
-  actionPrimary, textSecondary,
-  fontWeightBold, fontWeightMedium, fontSizeMd,
-  spaceMd, spaceFormField,
-  statusOperational, statusCritical, statusAttention,
-  selectStyle, statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, textAreaStyle,
-  getRangePickerProps, getSidebarDatePickerProps,
+  actionPrimary, textSecondary, textTertiary,
+  fontWeightBold, fontWeightMedium,
+  spaceSm, spaceMd, spaceFormField,
+  statusOperational, statusCritical, statusAttention, statusDraft,
+  statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
+  textAreaStyle, colors, radiusPill,
+  getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
-import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+
+const fontSizeMd = 13.5;
+
+const filterLabelStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd,
+  marginBottom: spaceSm,
+};
+
+const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  NHAP: { color: statusDraft, label: 'Lưu tạm' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
+};
+
+const CONDITION_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  OPERATIONAL: { color: statusOperational, label: 'Đang hoạt động' },
+  STOPPED: { color: statusCritical, label: 'Dừng hoạt động' },
+  MAINTENANCE: { color: statusAttention, label: 'Đang bảo trì' },
+  UNDER_CONSTRUCTION: { color: actionPrimary, label: 'Đang xây dựng' },
+  NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+};
 
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
-
-const CONDITION_COLOR: Record<ConditionStatus, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-};
 
 export function AisSystemList() {
   const [searchParams] = useSearchParams();
@@ -57,6 +83,11 @@ export function AisSystemList() {
   const currentUser = useAuthStore((s) => s.user);
   const { hasPermission } = usePermissionStore();
   const hasPerm = useCallback((perm: string) => hasPermission(perm), [hasPermission]);
+
+  const customAisTokens = useMemo(() => ({
+    ...themeTokenChk,
+    fontSizeMd: 13.5,
+  }), []);
 
   const [loading, setLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -143,8 +174,8 @@ export function AisSystemList() {
   // thể trả ít hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
   const [historyPage, setHistoryPage] = useState(0);
   const [historyTargetId, setHistoryTargetId] = useState<string | null>(null);
-  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate: string; toDate: string }>(
-    { keyword: '', fromDate: '', toDate: '' },
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>(
+    { keyword: '' },
   );
 
   const [approveModalOpen, setApproveModalOpen] = useState(false);
@@ -339,37 +370,14 @@ export function AisSystemList() {
     fetchData();
   }, [fetchData]);
 
-  const countDraft = statusCounts['DRAFT'] || 0;
-  const countPendingApproval = (statusCounts['PENDING_APPROVAL'] || 0) + (statusCounts['PROPOSED'] || 0);
-  const countApprovedLevel1 = statusCounts['APPROVED_LEVEL1'] || 0;
-  const countApproved = (statusCounts['APPROVED'] || 0) + (statusCounts['APPROVED_LEVEL2'] || 0);
-  const countRejectedLevel1 = (statusCounts['REJECTED_LEVEL1'] || 0) + (statusCounts['REJECTED'] || 0);
-  const countRejectedLevel2 = statusCounts['REJECTED_LEVEL2'] || 0;
-  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejectedLevel1 + countRejectedLevel2;
-
-  const statusTabs = useMemo(() => [
-    { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !filterApprovalStatus },
-    { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: '#93A3B3', active: filterApprovalStatus === ApprovalStatus.DRAFT },
-    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: countPendingApproval, color: statusAttention, active: filterApprovalStatus === ApprovalStatus.PENDING_APPROVAL },
-    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: countApprovedLevel1, color: '#0284C7', active: filterApprovalStatus === ApprovalStatus.APPROVED_LEVEL1 },
-    { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: filterApprovalStatus === ApprovalStatus.APPROVED },
-    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: countRejectedLevel1, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 },
-    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: countRejectedLevel2, color: statusCritical, active: filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 },
-  ], [countAll, countDraft, countPendingApproval, countApprovedLevel1, countApproved, countRejectedLevel1, countRejectedLevel2, filterApprovalStatus]);
-
-  const handleTabChange = (key: string) => {
-    setPage(1);
-    const approvalStatus = key === 'ALL'
-      ? undefined
-      : key as ApprovalStatus;
-    setFilterApprovalStatus(approvalStatus);
-  };
-
-  const handleFilterSearch = (vals: typeof filterValues) => {
-    setPage(1);
-    setFilterValues(vals);
-    setAppliedFilterValues(vals);
-  };
+  const { statusTabs, handleTabChange } = useStandardApprovalStatusTabs(
+    statusCounts,
+    filterApprovalStatus,
+    (status) => {
+      setFilterApprovalStatus(status);
+      setPage(1);
+    }
+  );
 
   const handleFilterReset = () => {
     setPage(1);
@@ -387,7 +395,7 @@ export function AisSystemList() {
     setLoadingMoreHistory(false);
     setHasMoreHistory(true);
     setHistoryPage(0);
-    setHistoryFilters({ keyword: '', fromDate: '', toDate: '' });
+    setHistoryFilters({ keyword: '' });
   };
 
   // Nạp lại trang đầu mỗi khi mở drawer hoặc đổi điều kiện lọc. Lọc chạy ở server
@@ -439,29 +447,38 @@ export function AisSystemList() {
     finally { setLoadingMoreHistory(false); }
   }, [historyTargetId, loadingHistory, loadingMoreHistory, hasMoreHistory, historyPage, historyFilters]);
 
-  const confirmDelete = (record: AisSystemListItem) => {
-    Modal.confirm({
-      title: 'Xác nhận xóa hệ thống AIS',
-      icon: <span style={{ color: statusCritical, fontSize: 22, marginRight: 8 }}>⚠</span>,
-      content: (
-        <div>
-          <p>Bạn có chắc chắn muốn xóa hệ thống AIS <strong>{record.name}</strong> ({record.code})?</p>
-          <p style={{ color: textSecondary, fontSize: '14px' }}>Hành động này không thể hoàn tác.</p>
-        </div>
-      ),
-      okText: 'Xác nhận xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk: async () => {
-        try {
-          await aisSystemService.delete(record.id);
-          toast.success('Xóa hệ thống AIS thành công');
-          refreshList();
-        } catch (err: any) {
-          toast.error(err?.response?.data?.message || err?.message || 'Xóa thất bại');
-        }
-      },
+  const handleHistoryFilterChange = (filters: { keyword: string; fromDate?: string; toDate?: string }) => {
+    setHistoryFilters({
+      keyword: filters.keyword || '',
+      fromDate: filters.fromDate || undefined,
+      toDate: filters.toDate || undefined,
     });
+  };
+
+  // ── Delete confirmation modal (Chuẩn Bến cảng) ───────────────────
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingRecord, setDeletingRecord] = useState<AisSystemListItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const openDeleteModal = (record: AisSystemListItem) => {
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingRecord) return;
+    setDeleteLoading(true);
+    try {
+      await aisSystemService.delete(deletingRecord.id);
+      toast.success('Đã xóa hệ thống AIS');
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      refreshList();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err?.message || 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const openApprove = (record: AisSystemListItem, level: 'c1' | 'c2') => {
@@ -512,6 +529,8 @@ export function AisSystemList() {
     }
   };
 
+  const isRejectedTab = filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2;
+
   const columns = useMemo(() => [
     {
       key: 'stt',
@@ -519,29 +538,40 @@ export function AisSystemList() {
       width: 60,
       align: 'center' as const,
       fixed: 'left' as const,
-      render: (_: any, __: any, index: number) => (page - 1) * pageSize + index + 1,
+      render: (_: any, __: any, index: number) => (
+        <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + index + 1}</span>
+      ),
     },
     {
       key: 'name',
-      label: 'Tên / Mã thiết bị',
+      label: 'Tên/Mã hệ thống AIS',
       dataIndex: 'name',
       width: 260,
       fixed: 'left' as const,
+      ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('name'),
-      render: (_: any, record: AisSystemListItem) => (
-        <div
-          style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          onClick={() => {
-            setEditingId(record.id);
-            setSelectedRecord(record as any);
-            setModalMode('detail');
-            setIsModalOpen(true);
-          }}
-        >
-          <div style={cellTitleStyle} title={record.name || ''}>{record.name || '—'}</div>
-          <div style={cellSubtitleStyle} title={record.code || ''}>{record.code || '—'}</div>
+      render: (val: string, record: AisSystemListItem) => (
+        <div>
+          <a
+            title={val}
+            onClick={() => {
+              setEditingId(record.id);
+              setSelectedRecord(record as any);
+              setModalMode('detail');
+              setIsModalOpen(true);
+            }}
+            style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {val || '—'}
+          </a>
+          <span
+            title={record.code}
+            style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {record.code || '—'}
+          </span>
         </div>
       ),
     },
@@ -549,23 +579,24 @@ export function AisSystemList() {
       key: 'orgUnitName',
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
-      width: 200,
+      width: 240,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('orgUnitName'),
       render: (v: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v || '—'}>
-          {v || '—'}
-        </div>
+        <span style={{ fontWeight: fontWeightBold }} title={v}>{v || '—'}</span>
       ),
     },
     {
       key: 'vtsOperationCenterName',
       label: 'Thuộc TTDH VTS / Trạm Radar',
       dataIndex: 'vtsOperationCenterName',
-      width: 220,
+      width: 290,
       ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('vtsOperationCenterName'),
       render: (_: any, record: AisSystemListItem) => {
         const val = record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || '—';
         return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
@@ -587,13 +618,12 @@ export function AisSystemList() {
     },
     {
       key: 'province',
-      label: 'Địa điểm (Tỉnh/TP)',
+      label: 'Địa điểm (Tỉnh/Thành phố)',
       dataIndex: 'provinceId',
-      width: 180,
+      width: 200,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      // DataTable lấy khóa sắp xếp từ `dataIndex` nên cột này gửi lên `provinceId`.
       sortOrder: sortOrderFor('provinceId'),
       render: (_: any, r: AisSystemListItem) => {
         const val = r.provinceName || getProvinceNameById(r.provinceId) || '—';
@@ -649,14 +679,9 @@ export function AisSystemList() {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
-      render: (v: string) => {
-        const label = CONDITION_STATUS_MAP[v as ConditionStatus] || v;
-        const color = CONDITION_COLOR[v as ConditionStatus] || textSecondary;
-        return (
-          <span style={statusBadgeStyle(color)}>
-            {label}
-          </span>
-        );
+      render: (val: ConditionStatus | string) => {
+        const s = CONDITION_STYLE_MAP[val] || { color: textTertiary, label: val || '—' };
+        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
     },
     {
@@ -669,8 +694,19 @@ export function AisSystemList() {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
-      render: (_: any, record: AisSystemListItem) => (
-        <ApprovalStatusBadge status={record.approvalStatus} />
+      render: (val: ApprovalStatus | string) => <ApprovalStatusBadge status={val as ApprovalStatus} />,
+    },
+    {
+      key: 'rejectionReason',
+      label: 'Lý do từ chối',
+      dataIndex: 'rejectionReason',
+      width: 260,
+      hidden: !isRejectedTab,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('rejectionReason'),
+      render: (val: string) => (
+        <span title={val || ''} style={{ color: textSecondary }}>{val || '—'}</span>
       ),
     },
     {
@@ -682,26 +718,42 @@ export function AisSystemList() {
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      sortOrder: sortOrderFor('updatedAt'),
-      render: (_: any, record: AisSystemListItem) => {
-        const updaterName = record.updatedByName || record.createdByName || '—';
-        const updateDate = record.updatedAt || record.createdAt;
+      sortOrder: sortOrderFor('updatedByName'),
+      render: (val: string, record: AisSystemListItem) => {
+        const name = val || record.updatedByName || record.createdByName || '—';
+        const date = record.updatedAt || record.createdAt;
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {updaterName}
-            </span>
-            <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
-              {updateDate ? dayjs(updateDate).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </span>
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
           </div>
         );
       },
     },
-  ], [page, pageSize, operatingUnitOptions, sortField, sortDirection]);
+  ], [page, pageSize, isRejectedTab, operatingUnitOptions, sortField, sortDirection]);
 
   const rowActions = (record: AisSystemListItem) => {
-    const isCreator = Boolean(currentUser?.id && record.createdBy === currentUser.id);
+    const uid = currentUser?.userId || currentUser?.id;
+    const isCreator = Boolean(uid && (record.createdBy === uid || (record as any).userId === uid));
+    const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1Name === currentUser?.fullName));
+    const userUnitType = currentUser?.unitType || '';
+    const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+    const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
+
     const actions: any[] = [
       {
         key: 'detail',
@@ -756,7 +808,7 @@ export function AisSystemList() {
       });
     }
 
-    if (hasPerm('aissystem:approvec1') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && !isCreator) {
+    if ((hasPerm('aissystem:approvec1') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -772,7 +824,7 @@ export function AisSystemList() {
       });
     }
 
-    if (hasPerm('aissystem:approvec2') && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1) {
+    if ((hasPerm('aissystem:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel) && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',
@@ -794,7 +846,7 @@ export function AisSystemList() {
         label: 'Xóa',
         icon: icons.delete,
         danger: true,
-        onClick: () => confirmDelete(record),
+        onClick: () => openDeleteModal(record),
       });
     }
 
@@ -802,8 +854,122 @@ export function AisSystemList() {
   };
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={customAisTokens}>
+      <div className="ais-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <style>{`
+          /* ── Cỡ chữ 13.5px chuẩn toàn màn Hệ thống AIS & filter sidebar ── */
+          .ais-page-wrapper,
+          .ais-page-wrapper .ant-table,
+          .ais-page-wrapper .ant-table-cell,
+          .ais-page-wrapper .ant-table-thead > tr > th,
+          .ais-page-wrapper .ant-table-tbody > tr > td,
+          .ais-page-wrapper .ant-input,
+          .ais-page-wrapper .ant-select,
+          .ais-page-wrapper .ant-select-selector,
+          .ais-page-wrapper .ant-select-selection-item,
+          .ais-page-wrapper .ant-select-selection-placeholder,
+          .ais-page-wrapper .ant-select-selection-search-input,
+          .ais-page-wrapper .ant-select-item-option-content,
+          .ais-page-wrapper .ant-tree-select,
+          .ais-page-wrapper .ant-tree-select .ant-select-selection-item,
+          .ais-page-wrapper .ant-tree-select .ant-select-selection-placeholder,
+          .ais-page-wrapper .ant-picker,
+          .ais-page-wrapper .ant-picker-input > input,
+          .ais-page-wrapper .ant-picker-range-separator,
+          .ais-page-wrapper .ant-btn,
+          .ais-page-wrapper .ant-pagination,
+          .ais-page-wrapper .ant-pagination-item,
+          .ais-page-wrapper .ant-pagination-total-text,
+          .ais-page-wrapper .ant-breadcrumb,
+          .ais-page-wrapper .ant-form-item-label > label,
+          .ais-page-wrapper input::placeholder,
+          .ais-page-wrapper .ant-picker-input > input::placeholder,
+          .ais-drawer-scope,
+          .ais-drawer-scope .ant-drawer-content,
+          .ais-drawer-scope .ant-tabs-tab,
+          .ais-drawer-scope .chk-detail-label,
+          .ais-drawer-scope .chk-detail-value,
+          .ais-drawer-scope .ant-table,
+          .ais-drawer-scope .ant-table-cell,
+          .ais-drawer-scope .ant-table-thead > tr > th,
+          .ais-drawer-scope .ant-btn,
+          .ais-drawer-scope .ant-select,
+          .ais-drawer-scope .ant-input,
+          .ais-drawer-scope .ant-form-item-label > label {
+            font-size: 13.5px !important;
+          }
+
+          /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+          .ais-page-wrapper div:has(> button[aria-pressed]) {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            justify-content: center !important;
+            justify-content: safe center !important;
+            align-items: center !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
+            scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 2px 16px 6px 16px !important;
+            gap: 20px !important;
+          }
+          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+            height: 6px !important;
+            display: block !important;
+          }
+          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 999px !important;
+          }
+          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 999px !important;
+          }
+          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+          }
+          .ais-page-wrapper div:has(> button[aria-pressed]) > button {
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+          }
+
+          /* ── Responsive ScreenHeader co dãn đẹp khi zoom ── */
+          .ais-page-wrapper > div:first-of-type {
+            flex-wrap: wrap !important;
+            gap: 10px !important;
+          }
+
+          /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+          .ais-drawer-scope .ant-drawer-content-wrapper {
+            max-width: 100vw !important;
+          }
+          @media (max-width: 1024px) {
+            .ais-drawer-scope .chk-detail-grid {
+              grid-template-columns: 1fr !important;
+              column-gap: 0 !important;
+            }
+            .ais-drawer-scope .chk-detail-row--full {
+              grid-column: 1 !important;
+            }
+          }
+          @media (max-width: 640px) {
+            .ais-drawer-scope .chk-detail-row {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 4px !important;
+              padding: 8px 0 !important;
+            }
+            .ais-drawer-scope .chk-detail-label {
+              width: 100% !important;
+            }
+            .ais-drawer-scope .chk-detail-value {
+              width: 100% !important;
+            }
+          }
+        `}</style>
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
@@ -831,10 +997,12 @@ export function AisSystemList() {
           onStatusTabChange={handleTabChange}
           filterContent={
             <>
-              <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
+              {/* ── BỘ LỌC CƠ BẢN (LUÔN HIỂN THỊ) — Chuẩn VTS / Bến cảng: 1. ĐVQL, 2. Tên, 3. Tình trạng ── */}
+              <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+                <div style={filterLabelStyle}>Đơn vị quản lý</div>
                 <OrgUnitTreeSelect
                   organizations={orgUnitOptions}
-                  placeholder="Tất cả đơn vị"
+                  placeholder="Chọn đơn vị..."
                   allowClear
                   treeDefaultExpandAll={true}
                   listHeight={256}
@@ -842,26 +1010,41 @@ export function AisSystemList() {
                   onChange={(value) => {
                     setFilterValues((prev) => ({ ...prev, orgUnitId: value, vtsOperationCenterId: undefined }));
                   }}
-                  style={{ ...selectStyle, width: '100%' }}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                 />
-              </SidebarFilterField>
+              </div>
 
-              <SidebarFilterField label="Tên thiết bị">
+              <div style={{ marginBottom: 12 }}>
+                <div style={filterLabelStyle}>Tên hệ thống AIS</div>
                 <Input
-                  placeholder="Nhập tên thiết bị"
+                  placeholder="Tìm theo tên hệ thống AIS"
                   allowClear
-                  value={filterValues.name}
-                  onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
+                  value={filterValues.name || ''}
+                  onChange={(event) => setFilterValues((prev) => ({ ...prev, name: event.target.value }))}
                   onPressEnter={() => handleFilterSearch(filterValues)}
-                  style={inputStyle}
+                  style={{ borderRadius: radiusPill, height: 40 }}
                 />
-              </SidebarFilterField>
+              </div>
 
+              <div style={{ marginBottom: 12 }}>
+                <div style={filterLabelStyle}>Tình trạng</div>
+                <Select
+                  placeholder="Chọn tình trạng"
+                  allowClear
+                  value={filterValues.conditionStatus}
+                  onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
+                  options={CONDITION_STATUS_OPTIONS}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                />
+              </div>
+
+              {/* ── BỘ LỌC NÂNG CAO (ẨN / HIỆN THEO NÚT BỘ LỌC NÂNG CAO) ── */}
               {filterCollapsed && (
                 <>
-                  <SidebarFilterField label="Thuộc TTDH VTS / Trạm Radar">
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Thuộc TTDH VTS / Trạm Radar</div>
                     <Select
-                      placeholder="Tất cả TTDH / Trạm Radar"
+                      placeholder="Chọn TTDH / Trạm Radar"
                       allowClear
                       showSearch
                       filterOption={(input, option) =>
@@ -870,57 +1053,26 @@ export function AisSystemList() {
                       value={filterValues.vtsOperationCenterId}
                       onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsOperationCenterId: value }))}
                       options={combinedLocationOptions}
-                      style={{ ...selectStyle, width: '100%' }}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     />
-                  </SidebarFilterField>
+                  </div>
 
-                  <SidebarFilterField label="Mã thiết bị">
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Mã hệ thống AIS</div>
                     <Input
-                      placeholder="Nhập mã thiết bị"
+                      placeholder="Tìm theo mã hệ thống AIS"
                       allowClear
-                      value={filterValues.code}
-                      onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
+                      value={filterValues.code || ''}
+                      onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
                       onPressEnter={() => handleFilterSearch(filterValues)}
-                      style={inputStyle}
+                      style={{ borderRadius: radiusPill, height: 40 }}
                     />
-                  </SidebarFilterField>
+                  </div>
 
-                  <SidebarFilterField label="Tình trạng">
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Địa điểm (Tỉnh/Thành phố)</div>
                     <Select
-                      placeholder="Tất cả tình trạng"
-                      allowClear
-                      value={filterValues.conditionStatus}
-                      onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
-                      options={CONDITION_STATUS_OPTIONS}
-                      style={{ ...selectStyle, width: '100%' }}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Năm đưa vào sử dụng">
-                    <DatePicker
-                      {...getSidebarDatePickerProps({
-                        picker: 'year',
-                        format: 'YYYY',
-                        placeholder: 'Tất cả năm',
-                        value: filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null,
-                        onChange: (date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined })),
-                      })}
-                      style={{ ...selectStyle, width: '100%' }}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Ngày cập nhật">
-                    <DatePicker.RangePicker
-                      {...getRangePickerProps({
-                        value: filterValues.updateDateRange,
-                        onChange: (dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates })),
-                      })}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Địa điểm (Tỉnh / TP)">
-                    <Select
-                      placeholder="Tất cả tỉnh thành"
+                      placeholder="Chọn tỉnh/thành phố"
                       allowClear
                       showSearch
                       filterOption={(input, option) =>
@@ -929,9 +1081,35 @@ export function AisSystemList() {
                       value={filterValues.provinceId}
                       onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
                       options={VIETNAM_PROVINCE_OPTIONS}
-                      style={{ ...selectStyle, width: '100%' }}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     />
-                  </SidebarFilterField>
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Năm đưa vào sử dụng</div>
+                    <DatePicker
+                      picker="year"
+                      format="YYYY"
+                      placeholder="Chọn năm"
+                      allowClear
+                      value={filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null}
+                      onChange={(date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined }))}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Ngày cập nhật</div>
+                    <DatePicker.RangePicker
+                      {...getRangePickerProps()}
+                      format="DD/MM/YYYY"
+                      placeholder={['Từ ngày', 'Đến ngày']}
+                      allowClear
+                      value={filterValues.updateDateRange}
+                      onChange={(dates: any) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates }))}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                    />
+                  </div>
                 </>
               )}
             </>
@@ -971,9 +1149,10 @@ export function AisSystemList() {
           records={historyRecords}
           loading={loadingHistory}
           serverFiltered
-          onFilterChange={setHistoryFilters}
+          onFilterChange={handleHistoryFilterChange}
           onLoadMore={loadMoreHistory}
           loadingMore={loadingMoreHistory}
+          variant="berth"
         />
 
         <ApprovalModal
@@ -992,7 +1171,7 @@ export function AisSystemList() {
           cancelText="Hủy"
           okButtonProps={{ danger: true }}
         >
-          <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối:</p>
+          <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
           <Input.TextArea
             rows={3}
             value={rejectReason}
@@ -1003,6 +1182,22 @@ export function AisSystemList() {
             style={textAreaStyle}
           />
         </Modal>
+
+        {/* ── Delete Confirmation Modal (Chuẩn Bến cảng) ────────────── */}
+        <DeleteConfirmModal
+          open={deleteModalOpen}
+          onCancel={() => {
+            if (!deleteLoading) {
+              setDeleteModalOpen(false);
+              setDeletingRecord(null);
+            }
+          }}
+          onConfirm={handleConfirmDelete}
+          loading={deleteLoading}
+          itemType="hệ thống trạm bờ AIS"
+          itemName={deletingRecord?.name}
+          itemCode={deletingRecord?.code}
+        />
       </div>
     </ThemeTokenProvider>
   );

@@ -218,11 +218,12 @@ Khi dùng trong filter sidebar:
 ```
 - **Quy chuẩn Bo tròn đồng bộ (Pill & Rounded Inputs)**:
   - **Ô nhập 1 dòng (`Input`, `Select`, `TreeSelect`, `DatePicker`, `InputNumber`)**: Bắt buộc dùng `style={{ borderRadius: radiusPill, height: 40 }}` (bo tròn viên thuốc 2 đầu `999px`).
-  - **Ô nhập nhiều dòng (`Input.TextArea` — Phạm vi, Thông báo hàng hải, Ghi chú, Lý do...)**: Bắt buộc dùng `style={textAreaStyle}` hoặc `style={{ borderRadius: 20, padding: '10px 16px' }}` (bo cong mềm mại góc lớn `20px` đồng điệu 100% với ô Input viên thuốc, đệm lề trong để văn bản không bị lẹm góc).
+  - **Ô văn bản 2000 / 4000 ký tự (Phạm vi áp dụng, Thông báo hàng hải, Vùng phủ sóng, Ghi chú...)**: **BẮT BUỘC** thiết kế dưới dạng **ô `Input` 1 dòng** (`height: 40px`, `borderRadius: radiusPill`, `style={inputStyle}`, có `showCount` và `maxLength={2000}` hoặc `4000`), **kéo dài toàn bộ chiều rộng form (`<Col span={24}>`)** để tận dụng tối đa không gian hiển thị chuỗi dài (TUYỆT ĐỐI KHÔNG để dồn 1 bên `<Col span={12}>` làm trống nửa màn hình, và KHÔNG làm `TextArea` nhiều dòng).
+  - **Ô nhập nhiều dòng (`Input.TextArea`)**: Chỉ dùng cho các popup modal xác nhận đặc thù (như Modal nhập Lý do từ chối phê duyệt) hoặc trường hợp ngoại lệ người dùng yêu cầu, bắt buộc dùng `style={textAreaStyle}` hoặc `style={{ borderRadius: 20, padding: '10px 16px' }}` (bo cong mềm mại góc lớn `20px` đồng điệu 100% với ô Input viên thuốc, đệm lề trong để văn bản không bị lẹm góc).
   - **Khoảng cách và Bố cục Lưới Form**:
     - Sử dụng `<Row gutter={[24, 0]}>` với `spaceFormField: 12px` ở `Form.Item`.
-    - Ô 1 dòng: `<Col span={12}>` (chiếm 50% dòng).
-    - Ô `TextArea` nhiều dòng, bảng con hoặc upload file: `<Col span={24}>` (chiếm 100% chiều ngang).
+    - Ô 1 dòng thông thường: `<Col span={12}>` (chiếm 50% dòng); Ô văn bản 2000 / 4000 ký tự: `<Col span={24}>` (kéo dài hết 100% dòng).
+    - Bảng con hoặc upload file: `<Col span={24}>` (chiếm 100% chiều ngang).
   - **Nút bấm Footer**: Tất cả nút (Lưu tạm, Lưu và gửi duyệt, Lưu và phê duyệt, Hủy...) đều dùng `borderRadius: radiusPill` và `height: 40`.
   - **Tab Lịch sử**: Bắt buộc ẩn khi Thêm mới (`drawerMode === 'create'`), chỉ hiện khi Xem chi tiết (`view`) hoặc Sửa (`edit`).
 

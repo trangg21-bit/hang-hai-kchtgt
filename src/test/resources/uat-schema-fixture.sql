@@ -420,6 +420,8 @@ CREATE TABLE app_users (
     password VARCHAR(255),
     email VARCHAR(150),
     status VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP
 );
 

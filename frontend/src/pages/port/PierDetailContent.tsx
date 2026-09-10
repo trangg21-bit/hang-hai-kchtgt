@@ -12,14 +12,15 @@ import {
   detailLabelStyle, generalScrollerStyle, sectionBoxStyle,
   sectionHeaderStyle, sectionTitleStyle,
 } from '../../components/detail-drawer/detailSkin';
-import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
+  colors,
   actionPrimary, textTertiary, surfaceCard,
   fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, radiusPill,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 
 // Đồng bộ cỡ chữ 13.5px toàn màn chi tiết như Bến cảng (BerthDetailContent.tsx)
@@ -634,7 +635,7 @@ export default function PierDetailContent({
                 emptyText="Chưa có tài liệu đính kèm"
                 scrollY={detailFiles.length === 0 ? undefined : DRAWER_TABLE_SCROLL_Y.detailView}
                 columns={[
-                  { title: 'STT', width: 50, align: 'center' as const },
+                  { title: 'STT', width: 50, align: 'center' as const, render: (_: any, __: any, idx: number) => idx + 1 },
                   {
                     title: 'Tên tài liệu',
                     dataIndex: 'fileName',
@@ -654,8 +655,8 @@ export default function PierDetailContent({
                     },
                   },
                   { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'left' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
-                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '' },
-                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 150, align: 'left' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
+                  { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string, item: any) => item?.uploadedByName || (item?.uploadedBy ? userMap?.get(item.uploadedBy) || item.uploadedBy : '') || userMap?.get(v) || v || '' },
+                  { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 150, align: 'left' as const, render: (v: string, item: any) => { const d = v || item?.uploadedDate || item?.createdDate; return d ? dayjs(d).format('DD/MM/YYYY HH:mm') : ''; } },
                   {
                     title: 'Thao tác',
                     key: 'actions',

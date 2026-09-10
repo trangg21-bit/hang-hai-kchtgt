@@ -703,7 +703,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
                 style={formFieldStyle}
               >
-                <Input placeholder="Nhập địa điểm chi tiết (số nhà, đường, xã/phường...)" maxLength={500} showCount style={inputStyle} />
+                <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
             <Col span={6}>
@@ -825,7 +825,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
             style={formFieldStyle}
           >
-            <Input.TextArea rows={3} placeholder="Nhập ghi chú (nếu có)" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
+            <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
           </Form.Item>
         </div>
       ),

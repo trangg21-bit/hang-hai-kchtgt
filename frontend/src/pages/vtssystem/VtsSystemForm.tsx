@@ -8,17 +8,13 @@ import {
   Tabs,
   Row,
   Col,
-  Drawer,
   DatePicker,
-  Alert,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, CloseOutlined, FileTextOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, FileTextOutlined, BankOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import { focusErrorTab } from '../../utils/formValidationHelper';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
-import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
-import { radarStationService } from '../../services/radarStationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type {
   VtsSystemResponse,
@@ -27,25 +23,53 @@ import type {
 } from '../../types/vtsSystem';
 import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import {
-  drawerTitleStyle, drawerFooterStyle, primaryButtonStyle, outlineButtonStyle,
+  drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   requiredMarkStyle, inputStyle,
-  drawerTabBarStyle, drawerStyles, drawerFormScrollStyle, spaceFormField, spaceMd, radiusPill, sidebarBg,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm,
-  textSecondary, textTertiary, textPrimary,
-  statusCritical, statusAttention, statusOperational, actionPrimary, textAreaStyle,
-  readonlyInputStyle, selectStyle, drawerCloseBtnStyle, statusBadgeStyle,
+  drawerTabBarStyle, drawerFormScrollStyle, spaceFormField, radiusPill, sidebarBg,
+  fontWeightBold, fontSizeMd, fontSizeSm,
+  statusOperational, actionPrimary,
+  readonlyInputStyle, selectStyle,
   generateTempId,
   getDatePickerProps,
   DRAWER_TABLE_SCROLL_Y,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  borderDefault,
 } from '../../themetokenchk';
-import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import AppDrawer from '../../components/shared/AppDrawer';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import VtsSystemDetailContent from './VtsSystemDetailContent';
+
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '14px 18px 10px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 12,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
 
 const detailTableStyle = `
   .chk-detail-table-card .ant-table table {
@@ -115,129 +139,22 @@ export interface VtsSystemFormProps {
   onSuccess?: () => void;
 }
 
-export const ConditionStatusBadge: React.FC<{ status?: ConditionStatus | number | string }> = React.memo(({ status }) => {
-  const label = getConditionStatusLabel(status);
-  const color = getConditionStatusColor(status);
 
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '2px 10px',
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        border: `1px solid ${color}40`,
-        color,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      <span style={{ width: 6, height: 6, borderRadius: '50%', background: color }} />
-      {label}
-    </span>
-  );
-});
-
-export const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
-  if (status == null || status === '') return <span>—</span>;
-  const label = getConditionStatusLabel(status);
-  const color = getConditionStatusColor(status);
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 10px',
-        border: `1px solid ${color}40`,
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: fontWeightMedium,
-        background: `${color}15`,
-        color,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {label}
-    </span>
-  );
-};
-
-export const MaritimeNoticeView: React.FC<{ url?: string; rawValue?: string }> = React.memo(({ url, rawValue }) => {
-  if (!url && !rawValue) return <span style={{ color: textTertiary }}>—</span>;
-  if (!url) return <span style={{ color: textPrimary }}>{rawValue}</span>;
-
-  return (
-    <Button
-      type="link"
-      icon={<FileTextOutlined style={{ color: actionPrimary }} />}
-      onClick={() => window.open(url, '_blank')}
-      style={{
-        padding: 0,
-        height: 'auto',
-        color: actionPrimary,
-        fontWeight: fontWeightMedium,
-        fontSize: fontSizeMd,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-      }}
-    >
-      {rawValue || 'Xem thông báo hàng hải'}
-    </Button>
-  );
-});
-
-export const PortDisplay: React.FC<{ portId?: string; ports?: any[] }> = React.memo(({ portId, ports = [] }) => {
-  const port = ports.find((p) => p.id === portId);
-  const displayName = port?.portName || port?.name || portId || '—';
-  return (
-    <Input
-      readOnly
-      value={displayName}
-      style={{
-        ...inputStyle,
-        borderRadius: radiusPill,
-        height: 40,
-        background: '#f8fafc',
-        cursor: 'default',
-        color: textPrimary,
-      }}
-    />
-  );
-});
-
-const renderApprovalBadge = (status?: ApprovalStatus | string) => {
-  const map: Record<string, { label: string; color: string }> = {
-    DRAFT: { label: 'Lưu tạm', color: textTertiary },
-    PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: statusAttention },
-    APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: '#0284C7' },
-    APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
-    REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-    REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
-    ARCHIVED: { label: 'Đã xóa', color: textTertiary },
-  };
-  const item = map[String(status || '').toUpperCase()] || { label: String(status || '—'), color: textSecondary };
-  return (
-    <span style={statusBadgeStyle(item.color)}>
-      {item.label}
-    </span>
-  );
-};
 
 const ZoneCellInput = React.memo(({
   value = '',
   placeholder,
   onChange,
   style,
+  maxLength,
+  showCount,
 }: {
   value?: string;
   placeholder?: string;
   onChange: (val: string) => void;
   style?: React.CSSProperties;
+  maxLength?: number;
+  showCount?: boolean;
 }) => {
   const [localVal, setLocalVal] = useState(value || '');
   const timerRef = useRef<any>(null);
@@ -269,6 +186,8 @@ const ZoneCellInput = React.memo(({
       onChange={handleChange}
       onBlur={handleBlur}
       style={style}
+      maxLength={maxLength}
+      showCount={showCount}
     />
   );
 });
@@ -284,7 +203,6 @@ export default function VtsSystemForm({
   onSuccess,
 }: VtsSystemFormProps) {
   const currentUser = useAuthStore((state: AuthState) => state.user);
-  const userPermissions = (currentUser?.permissions as string[]) || [];
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   const [form] = Form.useForm();
@@ -292,7 +210,6 @@ export default function VtsSystemForm({
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tabKey, setTabKey] = useState<string>('general');
-  const [detailTabKey, setDetailTabKey] = useState<string>('general');
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
 
@@ -307,18 +224,6 @@ export default function VtsSystemForm({
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [isLoadingZones, setIsLoadingZones] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-
-  const [otherInfraTypeFilter, setOtherInfraTypeFilter] = useState<string>('VTS_OPERATION_CENTER');
-  const [otherInfraPage, setOtherInfraPage] = useState<number>(1);
-  const [otherInfraPageSize, setOtherInfraPageSize] = useState<number>(20);
-  const [otherInfraTotal, setOtherInfraTotal] = useState<number>(0);
-  const [otherInfraList, setOtherInfraList] = useState<Array<{ id: string; type: string; typeLabel: string; name: string }>>([]);
-  const [isLoadingOtherInfra, setIsLoadingOtherInfra] = useState(false);
-  const [otherInfraError, setOtherInfraError] = useState<string | null>(null);
-
-  const [operationPlanList] = useState<any[]>([]);
-  const [maintenancePlanList] = useState<any[]>([]);
-  const [incidentList] = useState<any[]>([]);
 
   const isCreateMode = propMode === 'create';
   const isEditMode = propMode === 'edit';
@@ -349,6 +254,8 @@ export default function VtsSystemForm({
       fileSize: file.size,
       uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
       uploadedDate: new Date().toISOString(),
+      file,
+      originFileObj: file,
     };
     setAttachmentList((prev) => [...prev, newAttachment]);
     toast.success(`Đã thêm tệp ${file.name}`);
@@ -369,9 +276,6 @@ export default function VtsSystemForm({
     setAttachmentList((prev) => prev.filter((a) => a.id !== attId));
     toast.success('Đã xóa tệp đính kèm');
   };
-
-  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
-  const canSaveAndApprove = hasPerm('vts:approvec2') || hasPerm('vtssystem:approvec2') || isCucLevel;
 
   // Load options
   useEffect(() => {
@@ -423,7 +327,6 @@ export default function VtsSystemForm({
       setZonesLoaded(true);
       setFilesLoaded(true);
       setTabKey('general');
-      setDetailTabKey('general');
       vtsSystemCRUD.generateCode()
         .then((res) => {
           if (mounted && res?.code) {
@@ -487,11 +390,10 @@ export default function VtsSystemForm({
     return () => { mounted = false; };
   }, [editId, initialData, initialDataOnly, isCreateMode, open]);
 
-  // Lazy load zones khi người dùng chuyển sang tab zones
+  // Lazy load zones khi người dùng chuyển sang tab zones (create / edit)
   useEffect(() => {
-    if (!editId || zonesLoaded) return;
-    const currentTab = isDetailMode ? detailTabKey : tabKey;
-    if (currentTab === 'zones') {
+    if (!editId || zonesLoaded || isDetailMode) return;
+    if (tabKey === 'zones') {
       setIsLoadingZones(true);
       vtsSystemCRUD.getZones(editId)
         .then((zones) => {
@@ -509,13 +411,12 @@ export default function VtsSystemForm({
         .catch(() => {})
         .finally(() => setIsLoadingZones(false));
     }
-  }, [editId, detailTabKey, tabKey, zonesLoaded, isDetailMode]);
+  }, [editId, tabKey, zonesLoaded, isDetailMode]);
 
-  // Lazy load attachments khi người dùng chuyển sang tab files
+  // Lazy load attachments khi người dùng chuyển sang tab files (create / edit)
   useEffect(() => {
-    if (!editId || filesLoaded) return;
-    const currentTab = isDetailMode ? detailTabKey : tabKey;
-    if (currentTab === 'files') {
+    if (!editId || filesLoaded || isDetailMode) return;
+    if (tabKey === 'files') {
       setIsLoadingFiles(true);
       vtsSystemCRUD.getAttachments(editId)
         .then((files) => {
@@ -525,64 +426,7 @@ export default function VtsSystemForm({
         .catch(() => {})
         .finally(() => setIsLoadingFiles(false));
     }
-  }, [editId, detailTabKey, tabKey, filesLoaded, isDetailMode]);
-
-  // Tải danh sách kết cấu hạ tầng con thuộc loại đối tượng đang chọn (phân trang 20 bản ghi)
-  useEffect(() => {
-    if (!editId || !isDetailMode || detailTabKey !== 'otherInfra') return;
-
-    let cancelled = false;
-    setIsLoadingOtherInfra(true);
-    setOtherInfraError(null);
-
-    const fetchOtherInfra = async () => {
-      try {
-        if (otherInfraTypeFilter === 'VTS_OPERATION_CENTER') {
-          const res = await vtsOperationCenterService.search({
-            vtsSystemId: editId,
-            page: otherInfraPage,
-            size: otherInfraPageSize,
-          });
-          if (cancelled) return;
-          const items = (res.items || []).map((item: any) => ({
-            id: item.id,
-            type: 'VTS_OPERATION_CENTER',
-            typeLabel: 'Trung tâm điều hành VTS',
-            name: item.name || item.code || '—',
-          }));
-          setOtherInfraList(items);
-          setOtherInfraTotal(res.total || items.length);
-        } else if (otherInfraTypeFilter === 'RADAR_STATION') {
-          const res = await radarStationService.search({
-            vtsSystemId: editId,
-            page: otherInfraPage,
-            size: otherInfraPageSize,
-          });
-          if (cancelled) return;
-          const items = (res.items || []).map((item: any) => ({
-            id: item.id,
-            type: 'RADAR_STATION',
-            typeLabel: 'Trạm Radar VTS',
-            name: item.stationName || item.name || item.code || '—',
-          }));
-          setOtherInfraList(items);
-          setOtherInfraTotal(res.total || items.length);
-        }
-      } catch (err: any) {
-        if (cancelled) return;
-        setOtherInfraList([]);
-        setOtherInfraTotal(0);
-        setOtherInfraError('Không tải được danh sách kết cấu hạ tầng liên quan.');
-      } finally {
-        if (!cancelled) setIsLoadingOtherInfra(false);
-      }
-    };
-
-    fetchOtherInfra();
-    return () => {
-      cancelled = true;
-    };
-  }, [editId, detailTabKey, otherInfraTypeFilter, otherInfraPage, otherInfraPageSize, isDetailMode]);
+  }, [editId, tabKey, filesLoaded, isDetailMode]);
 
   const populateForm = (data: VtsSystemResponse) => {
     form.setFieldsValue({
@@ -703,17 +547,7 @@ export default function VtsSystemForm({
     return list;
   }, [organizations, operatingOrganizations, record?.operatingOrgId, record?.operatingOrgName]);
 
-  const getOperatingOrgDisplayName = (r: VtsSystemResponse | null) => {
-    if (!r) return '—';
-    if (r.operatingOrgName) return r.operatingOrgName;
-    if (r.operatingOrgId) {
-      const foundOrg = organizations?.find((o) => String(o.id) === String(r.operatingOrgId));
-      if (foundOrg?.name) return foundOrg.name;
-      const foundOp = operatingOrganizations?.find((o) => String(o.id) === String(r.operatingOrgId));
-      if (foundOp?.name) return foundOp.name;
-    }
-    return (r as any).operatingUnitName || (r.operatingOrgId ? String(r.operatingOrgId) : '—');
-  };
+
 
   const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
   const effectiveOrgUnitId = selectedOrgUnitId || record?.orgUnitId;
@@ -731,9 +565,37 @@ export default function VtsSystemForm({
   }, [rawPorts, effectiveOrgUnitId, organizations]);
 
   const handleSubmitForm = async (values: any) => {
+    // Validate danh sách vùng VTS trước khi submit
+    for (let i = 0; i < zoneList.length; i++) {
+      const z = zoneList[i];
+      if (!z.code || !z.code.trim()) {
+        toast.warning(`Vui lòng nhập Mã vùng cho dòng thứ ${i + 1} tại tab Thông tin vùng VTS`);
+        setTabKey('zones');
+        return;
+      }
+      if (!z.name || !z.name.trim()) {
+        toast.warning(`Vui lòng nhập Tên vùng VTS cho dòng thứ ${i + 1} tại tab Thông tin vùng VTS`);
+        setTabKey('zones');
+        return;
+      }
+    }
+
+    const seenCodes = new Set<string>();
+    for (const z of zoneList) {
+      const codeKey = (z.code || '').trim().toLowerCase();
+      if (codeKey) {
+        if (seenCodes.has(codeKey)) {
+          toast.warning(`Mã vùng VTS "${z.code.trim()}" bị trùng lặp. Vui lòng kiểm tra lại.`);
+          setTabKey('zones');
+          return;
+        }
+        seenCodes.add(codeKey);
+      }
+    }
+
     setIsSubmitting(true);
     try {
-      const payload: CreateVtsSystemRequest = {
+      const payload: CreateVtsSystemRequest | UpdateVtsSystemRequest = {
         orgUnitId: values.orgUnitId,
         owningOrgId: values.owningOrgId || values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
@@ -749,8 +611,8 @@ export default function VtsSystemForm({
         note: values.note,
         zones: zoneList.map((z: any) => ({
           id: (z.id && !String(z.id).startsWith('temp-') && !String(z.id).startsWith('zone-')) ? z.id : undefined,
-          code: z.code,
-          name: z.name,
+          code: z.code.trim(),
+          name: z.name.trim(),
           conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
         })),
       };
@@ -773,6 +635,8 @@ export default function VtsSystemForm({
           await vtsSystemApproval.submit(created.id).catch(() => {});
           await vtsSystemApproval.approveC2(created.id, { decision: 'APPROVED', reason: 'Lưu và phê duyệt trực tiếp' });
         }
+        setPendingFiles([]);
+        setPendingDeletedAttachments([]);
         const msg =
           actionTypeRef.current === 'draft'
             ? 'Lưu tạm hệ thống VTS thành công'
@@ -797,9 +661,33 @@ export default function VtsSystemForm({
             console.warn('Failed to upload some pending files on edit', uploadErr);
           }
         }
+        const isAlreadyApproved =
+          record?.approvalStatus === ApprovalStatus.APPROVED ||
+          (record?.approvalStatus as string) === 'APPROVED_LEVEL2';
+
+        if (actionTypeRef.current === 'submit') {
+          await vtsSystemApproval.submit(editId);
+        } else if (actionTypeRef.current === 'approve') {
+          if (!isAlreadyApproved) {
+            if (record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1) {
+              await vtsSystemApproval.approveC2(editId, { decision: 'APPROVED', reason: 'Lưu và phê duyệt trực tiếp' });
+            } else {
+              await vtsSystemApproval.submit(editId);
+              await vtsSystemApproval.approveC2(editId, { decision: 'APPROVED', reason: 'Lưu và phê duyệt trực tiếp' });
+            }
+          }
+        }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);
-        toast.success('Cập nhật thành công');
+        const msg =
+          actionTypeRef.current === 'draft'
+            ? 'Lưu tạm thành công'
+            : actionTypeRef.current === 'submit'
+              ? 'Lưu và gửi phê duyệt thành công'
+              : actionTypeRef.current === 'approve'
+                ? 'Lưu và phê duyệt thành công'
+                : 'Cập nhật thành công';
+        toast.success(msg);
         onSuccess?.();
       }
     } catch (err) {
@@ -814,526 +702,82 @@ export default function VtsSystemForm({
       toast.warning('Không tìm thấy mã tệp đính kèm');
       return;
     }
+    // 1. Kiểm tra trong danh sách tệp chờ lưu
+    const pendingFile = pendingFiles.find((f) => (f as any)._tempId === attId || f.name === fileName || (f as any).name === fileName);
+    if (pendingFile) {
+      const url = URL.createObjectURL(pendingFile);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || pendingFile.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // 2. Kiểm tra trong danh sách attachment hiện tại có chứa tệp cục bộ
+    const targetAtt = attachmentList.find((a) => a.id === attId || a.fileName === fileName);
+    const rawFile = targetAtt?.originFileObj || targetAtt?.file;
+    if (rawFile) {
+      const url = URL.createObjectURL(rawFile);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName || rawFile.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // 3. Nếu là tệp mới thêm tạm thời chưa lưu máy chủ
+    if (String(attId).startsWith('temp')) {
+      toast.info('Tệp đính kèm mới tải lên, hãy lưu hồ sơ trước khi tải xuống từ máy chủ');
+      return;
+    }
+
+    // 4. Tải từ máy chủ
+    const targetId = record?.id || editId;
+    if (!targetId) {
+      toast.warning('Không xác định được hồ sơ VTS');
+      return;
+    }
     try {
-      if (editId) {
-        await vtsSystemCRUD.downloadAttachment(editId, attId, fileName);
+      await vtsSystemCRUD.downloadAttachment(targetId, attId, fileName);
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        toast.error('Tệp đính kèm không tồn tại trên máy chủ lưu trữ');
       } else {
-        toast.info('Tệp đính kèm mới tải lên');
+        toast.error(err?.message || 'Lỗi khi tải xuống tệp đính kèm');
       }
-    } catch {
-      toast.error('Lỗi khi tải xuống tệp đính kèm');
     }
   };
 
-  // ── Render Detail Mode Content ───────────────────────────────────
-  const renderDetailContent = () => {
-    if (!record) return null;
-
-    const displayZones = zoneList || [];
-    const displayAttachments = attachmentList || [];
-
-    return (
-      <div>
-        <style>{detailTableStyle}</style>
-        <Tabs
-          activeKey={detailTabKey}
-          onChange={setDetailTabKey}
-          tabBarStyle={drawerTabBarStyle}
-          animated={false}
-          items={[
-            {
-              key: 'general',
-              label: 'Thông tin chung',
-              children: (
-                <div style={drawerFormScrollStyle}>
-                  <div className="chk-detail-grid">
-                    {/* 1. Mã hệ thống VTS */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Mã hệ thống VTS</span><span className="chk-detail-value">{record.code || '—'}</span></div>
-                    {/* 2. Tên hệ thống VTS */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Tên hệ thống VTS</span><span className="chk-detail-value">{record.systemName || '—'}</span></div>
-                    
-                    {/* 3. Đơn vị quản lý */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
-                    {/* 4. Đơn vị chủ quản */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị chủ quản</span><span className="chk-detail-value">{record.owningOrgName || '—'}</span></div>
-
-                    {/* 5. Đơn vị vận hành */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị vận hành</span><span className="chk-detail-value">{getOperatingOrgDisplayName(record)}</span></div>
-                    {/* 6. Thuộc cảng biển */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Thuộc cảng biển</span><span className="chk-detail-value">{record.portName || '—'}</span></div>
-
-                    {/* 7. Địa điểm (Tỉnh/TP) */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{record.province || (record.provinceId ? getProvinceNameById(record.provinceId) : '—')}</span></div>
-                    {/* 8. Địa điểm chi tiết */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.address || '—'}</span></div>
-
-                    {/* 9. Thời gian bắt đầu hoạt động */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Thời gian bắt đầu hoạt động</span><span className="chk-detail-value">{record.operationStartDate ? dayjs(record.operationStartDate).format('DD/MM/YYYY') : '—'}</span></div>
-                    <div style={{ border: 'none' }} />
-
-                    {/* 10. Phạm vi áp dụng */}
-                    <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Phạm vi áp dụng</span><span className="chk-detail-value">{record.scope || '—'}</span></div>
-
-                    {/* 11. Thông báo hàng hải */}
-                    <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Thông báo hàng hải</span><span className="chk-detail-value">{record.maritimeNotice || '—'}</span></div>
-
-                    {/* 12. Tình trạng */}
-                    <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionStatusBadge(record.conditionStatus)}</span></div>
-                    <div style={{ border: 'none' }} />
-
-                    {/* 13. Ghi chú */}
-                    <div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Ghi chú</span><span className="chk-detail-value">{record.note || '—'}</span></div>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              key: 'zones',
-              label: 'Thông tin vùng VTS',
-              children: (
-                <DetailTable
-                  scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-                  dataSource={displayZones}
-                  emptyText={isLoadingZones ? "Đang tải dữ liệu vùng VTS..." : "Chưa có dữ liệu vùng VTS"}
-                  rowKey={(r: any) => r.id || r.code || r.name}
-                  columns={[
-                    { title: 'STT', width: 60, align: 'center' },
-                    { title: 'Mã vùng', dataIndex: 'code', key: 'code', width: 200, render: (v) => v || '—' },
-                    {
-                      title: 'Tên vùng VTS',
-                      dataIndex: 'name',
-                      key: 'name',
-                      width: 440,
-                      render: (v) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</span>,
-                    },
-                    {
-                      title: 'Tình trạng',
-                      key: 'conditionStatus',
-                      width: 180,
-                      render: (_v, r: any) => renderConditionStatusBadge(r.conditionStatus || r.status || ConditionStatus.OPERATIONAL),
-                    },
-                  ]}
-                />
-              ),
-            },
-            {
-              key: 'files',
-              label: 'File đính kèm',
-              children: (
-                <InfrastructureAttachmentTab
-                  attachments={displayAttachments}
-                  readonly={true}
-                  isLoading={isLoadingFiles}
-                  onDownload={handleDownloadAttachment}
-                />
-              ),
-            },
-            {
-              key: 'otherInfra',
-              label: 'Danh sách KCHT khác thuộc VTS',
-              children: (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, height: 38, marginBottom: 12 }}>
-                    <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap' }}>
-                      Loại đối tượng
-                    </span>
-                    <Select
-                      showSearch
-                      value={otherInfraTypeFilter}
-                      onChange={(val) => {
-                        setOtherInfraTypeFilter(val);
-                        setOtherInfraPage(1);
-                      }}
-                      filterOption={(input, option) =>
-                        normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
-                      }
-                      options={[
-                        { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
-                        { value: 'RADAR_STATION', label: 'Trạm Radar VTS' },
-                      ]}
-                      style={{ ...selectStyle, width: 280, height: 38 }}
-                    />
-                  </div>
-                  {otherInfraError && <Alert type="warning" showIcon message={otherInfraError} style={{ marginBottom: spaceMd }} />}
-                  <DetailTable
-                    scrollY="calc(100vh - 378px)"
-                    dataSource={otherInfraList}
-                    total={otherInfraTotal}
-                    pageSize={otherInfraPageSize}
-                    currentPage={otherInfraPage}
-                    onPageChange={(page, size) => {
-                      setOtherInfraPage(page);
-                      if (size) setOtherInfraPageSize(size);
-                    }}
-                    loading={isLoadingOtherInfra}
-                    emptyText={isLoadingOtherInfra ? 'Đang tải dữ liệu KCHT khác...' : 'Chưa có kết cấu hạ tầng khác thuộc hệ thống VTS'}
-                    rowKey={(r: any) => r.id || `${r.type}-${r.name}`}
-                    columns={[
-                      {
-                        title: 'STT',
-                        width: 60,
-                        align: 'center',
-                        render: (_: any, __: any, index: number) => (otherInfraPage - 1) * otherInfraPageSize + index + 1,
-                      },
-                      {
-                        title: 'Loại đối tượng',
-                        dataIndex: 'typeLabel',
-                        key: 'typeLabel',
-                        width: 240,
-                        render: (v: string) => (
-                          <span style={{ fontWeight: fontWeightMedium, color: textPrimary }}>
-                            {v || '—'}
-                          </span>
-                        ),
-                      },
-                      {
-                        title: 'Tên kết cấu hạ tầng',
-                        dataIndex: 'name',
-                        key: 'name',
-                        render: (v: string) => (
-                          <span
-                            style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }}
-                            title={v}
-                          >
-                            {v || '—'}
-                          </span>
-                        ),
-                      },
-                    ]}
-                  />
-                </div>
-              ),
-            },
-            {
-              key: 'operationMaintenance',
-              label: 'Vận hành & bảo trì',
-              children: (
-                <Tabs
-                  defaultActiveKey="operation"
-                  tabBarStyle={{ ...drawerTabBarStyle, marginTop: 0, marginBottom: 12 }}
-                  animated={false}
-                  items={[
-                    {
-                      key: 'operation',
-                      label: 'Thông tin vận hành khai thác',
-                      children: (
-                        <DetailTable
-                          scrollY="calc(100vh - 378px)"
-                          dataSource={operationPlanList}
-                          emptyText="Chưa có dữ liệu"
-                          rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
-                          columns={[
-                            {
-                              title: 'STT',
-                              width: 60,
-                              align: 'center',
-                              render: (_: any, __: any, index: number) => index + 1,
-                            },
-                            {
-                              title: 'Mã kế hoạch vận hành khai thác',
-                              dataIndex: 'planCode',
-                              key: 'planCode',
-                              width: 240,
-                              render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
-                            },
-                            {
-                              title: 'Tên kế hoạch vận hành khai thác',
-                              dataIndex: 'planName',
-                              key: 'planName',
-                              width: 260,
-                              render: (v: string, r: any) => (
-                                <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
-                                  {v || r.name || '—'}
-                                </span>
-                              ),
-                            },
-                            {
-                              title: 'Ngày bắt đầu vận hành khai thác dự kiến',
-                              dataIndex: 'startDate',
-                              key: 'startDate',
-                              width: 260,
-                              render: (v: any, r: any) => (
-                                <span style={{ color: textPrimary }}>
-                                  {v ? dayjs(v).format('DD/MM/YYYY') : (r.startTime ? dayjs(r.startTime).format('DD/MM/YYYY') : '—')}
-                                </span>
-                              ),
-                            },
-                            {
-                              title: 'Ngày kết thúc vận hành khai thác dự kiến',
-                              dataIndex: 'endDate',
-                              key: 'endDate',
-                              width: 260,
-                              render: (v: any, r: any) => (
-                                <span style={{ color: textPrimary }}>
-                                  {v ? dayjs(v).format('DD/MM/YYYY') : (r.endTime ? dayjs(r.endTime).format('DD/MM/YYYY') : '—')}
-                                </span>
-                              ),
-                            },
-                          ]}
-                        />
-                      ),
-                    },
-                    {
-                      key: 'maintenance',
-                      label: 'Thông tin bảo trì',
-                      children: (
-                        <DetailTable
-                          scrollY="calc(100vh - 378px)"
-                          dataSource={maintenancePlanList}
-                          emptyText="Chưa có dữ liệu"
-                          rowKey={(r: any) => r.id || r.planCode || r.code || Math.random().toString()}
-                          columns={[
-                            {
-                              title: 'STT',
-                              width: 60,
-                              align: 'center',
-                              render: (_: any, __: any, index: number) => index + 1,
-                            },
-                            {
-                              title: 'Mã kế hoạch bảo trì',
-                              dataIndex: 'planCode',
-                              key: 'planCode',
-                              width: 240,
-                              render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
-                            },
-                            {
-                              title: 'Tên kế hoạch bảo trì',
-                              dataIndex: 'planName',
-                              key: 'planName',
-                              width: 260,
-                              render: (v: string, r: any) => (
-                                <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.name}>
-                                  {v || r.name || '—'}
-                                </span>
-                              ),
-                            },
-                            {
-                              title: 'Thời gian bắt đầu bảo trì dự kiến',
-                              dataIndex: 'startTime',
-                              key: 'startTime',
-                              width: 240,
-                              render: (v: any, r: any) => (
-                                <span style={{ color: textPrimary }}>
-                                  {v ? dayjs(v).format('DD/MM/YYYY') : (r.startDate ? dayjs(r.startDate).format('DD/MM/YYYY') : '—')}
-                                </span>
-                              ),
-                            },
-                            {
-                              title: 'Thời gian kết thúc bảo trì dự kiến',
-                              dataIndex: 'endTime',
-                              key: 'endTime',
-                              width: 240,
-                              render: (v: any, r: any) => (
-                                <span style={{ color: textPrimary }}>
-                                  {v ? dayjs(v).format('DD/MM/YYYY') : (r.endDate ? dayjs(r.endDate).format('DD/MM/YYYY') : '—')}
-                                </span>
-                              ),
-                            },
-                          ]}
-                        />
-                      ),
-                    },
-                    {
-                      key: 'incident',
-                      label: 'Thông tin sự cố',
-                      children: (
-                        <DetailTable
-                          scrollY="calc(100vh - 378px)"
-                          dataSource={incidentList}
-                          emptyText="Chưa có dữ liệu"
-                          rowKey={(r: any) => r.id || r.incidentCode || r.code || Math.random().toString()}
-                          columns={[
-                            {
-                              title: 'STT',
-                              width: 60,
-                              align: 'center',
-                              render: (_: any, __: any, index: number) => index + 1,
-                            },
-                            {
-                              title: 'Mã sự cố',
-                              dataIndex: 'incidentCode',
-                              key: 'incidentCode',
-                              width: 200,
-                              render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.code || '—'}</span>,
-                            },
-                            {
-                              title: 'Loại sự cố',
-                              dataIndex: 'incidentType',
-                              key: 'incidentType',
-                              width: 220,
-                              render: (v: string, r: any) => <span style={{ color: textPrimary }}>{v || r.type || '—'}</span>,
-                            },
-                            {
-                              title: 'Địa điểm xảy ra sự cố',
-                              dataIndex: 'location',
-                              key: 'location',
-                              width: 260,
-                              render: (v: string, r: any) => (
-                                <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: textPrimary }} title={v || r.address}>
-                                  {v || r.address || '—'}
-                                </span>
-                              ),
-                            },
-                            {
-                              title: 'Thời gian xảy ra sự cố',
-                              dataIndex: 'incidentTime',
-                              key: 'incidentTime',
-                              width: 200,
-                              render: (v: any, r: any) => (
-                                <span style={{ color: textPrimary }}>
-                                  {v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : (r.time ? dayjs(r.time).format('DD/MM/YYYY HH:mm:ss') : '—')}
-                                </span>
-                              ),
-                            },
-                          ]}
-                        />
-                      ),
-                    },
-                  ]}
-                />
-              ),
-            },
-            {
-              key: 'handlingAndTracking',
-              label: 'Xử lý & theo dõi',
-              children: (
-                <div style={drawerFormScrollStyle}>
-                  <div className="chk-detail-grid">
-                    {/* 30. Trạng thái phê duyệt */}
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Trạng thái phê duyệt</span>
-                      <span className="chk-detail-value">{renderApprovalBadge(record.approvalStatus)}</span>
-                    </div>
-                    <div style={{ border: 'none' }} />
-
-                    {/* 31. Ngày cập nhật & 32. Cán bộ cập nhật */}
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Ngày cập nhật</span>
-                      <span className="chk-detail-value">
-                        {record.updatedDate
-                          ? dayjs(record.updatedDate).format('DD/MM/YYYY HH:mm:ss')
-                          : record.createdDate
-                          ? dayjs(record.createdDate).format('DD/MM/YYYY HH:mm:ss')
-                          : '—'}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Cán bộ cập nhật</span>
-                      <span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span>
-                    </div>
-
-                    {/* 33. Ngày gửi phê duyệt & 34. Cán bộ gửi phê duyệt */}
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Ngày gửi phê duyệt</span>
-                      <span className="chk-detail-value">
-                        {record.submittedDate ? dayjs(record.submittedDate).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
-                      <span className="chk-detail-value">{record.submittedByName || record.createdByName || '—'}</span>
-                    </div>
-
-                    {/* 35. Ngày phê duyệt cấp Cảng vụ/Chi cục & 36. Cán bộ phê duyệt cấp Cảng vụ/Chi cục */}
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                      <span className="chk-detail-value">
-                        {record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
-                      <span className="chk-detail-value">
-                        {record.approverLevel1Name || record.approverLevel1 || '—'}
-                      </span>
-                    </div>
-
-                    {/* 37. Nội dung phê duyệt (Cảng vụ/Chi cục) */}
-                    <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label">Nội dung phê duyệt</span>
-                      <span className="chk-detail-value">
-                        {record.approvalContentLevel1 || '—'}
-                      </span>
-                    </div>
-
-                    {/* 38. Ngày phê duyệt cấp Cục & 39. Cán bộ phê duyệt cấp Cục */}
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Ngày phê duyệt cấp Cục</span>
-                      <span className="chk-detail-value">
-                        {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span>
-                      <span className="chk-detail-value">
-                        {record.approverLevel2Name || record.approverLevel2 || '—'}
-                      </span>
-                    </div>
-
-                    {/* 40. Nội dung phê duyệt (Cục) */}
-                    <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label">Nội dung phê duyệt</span>
-                      <span className="chk-detail-value">
-                        {record.approvalContentLevel2 || '—'}
-                      </span>
-                    </div>
-
-                    {record.rejectionReason && (
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label">Lý do từ chối</span>
-                        <span className="chk-detail-value" style={{ color: statusCritical }}>
-                          {record.rejectionReason}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ),
-            },
-          ]}
-        />
-      </div>
-    );
-  };
-
   return (
-    <Drawer
-      rootClassName="vtssystemchk-theme-scope"
-      width="50%"
-      placement="right"
-      closable={false}
-      open={open}
-      onClose={onCancel}
-      styles={drawerStyles}
+    <AppDrawer
+      rootClassName="vts-drawer-scope"
+      className="vts-drawer-scope"
+      style={isDetailMode ? { maxWidth: '96vw' } : undefined}
+      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
+      open={Boolean(open)}
+      onClose={onCancel || (() => {})}
+      styles={{
+        header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+        body: { padding: '0 24px 12px 24px', overflow: isDetailMode ? 'hidden' : undefined },
+      }}
       title={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={drawerTitleStyle}>
-            {isDetailMode
-              ? (record?.systemName ? `Xem chi tiết — ${record.systemName}` : 'Xem chi tiết hệ thống VTS')
-              : isCreateMode
-                ? 'Thêm mới hệ thống VTS'
-                : (record?.systemName ? `Chỉnh sửa — ${record.systemName}` : 'Chỉnh sửa hệ thống VTS')}
-          </span>
-          <Button
-            type="text"
-            onClick={onCancel}
-            style={{
-              ...drawerCloseBtnStyle,
-              borderRadius: '50%',
-              width: 32,
-              height: 32,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
-          </Button>
-        </div>
+        <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+          {isDetailMode
+            ? (record?.systemName ? `Chi tiết hệ thống VTS - ${record.systemName}` : 'Chi tiết hệ thống VTS')
+            : isCreateMode
+              ? 'Thêm mới hệ thống VTS'
+              : (record?.systemName ? `Chỉnh sửa thông tin — ${record.systemName}` : 'Chỉnh sửa thông tin')}
+        </span>
       }
       footer={
         isDetailMode ? null : (
-          <div style={drawerFooterStyle}>
+          <>
             {isCreateMode ? (
               <>
                 <Button
@@ -1351,37 +795,64 @@ export default function VtsSystemForm({
                 >
                   Lưu và gửi phê duyệt
                 </Button>
-                {canSaveAndApprove && (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
+                <Button
+                  type="primary"
+                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                  loading={isSubmitting && actionType === 'approve'}
+                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                >
+                  Lưu và phê duyệt
+                </Button>
               </>
             ) : (
               <>
-                <Button onClick={onCancel} style={outlineButtonStyle}>Hủy</Button>
+                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
+                  <>
+                    <Button
+                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'draft'}
+                      style={outlineButtonStyle}
+                    >
+                      Lưu tạm
+                    </Button>
+                    <Button
+                      type="primary"
+                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'submit'}
+                      style={primaryButtonStyle}
+                    >
+                      Lưu và gửi phê duyệt
+                    </Button>
+                  </>
+                )}
                 <Button
                   type="primary"
-                  onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
-                  loading={isSubmitting}
-                  style={primaryButtonStyle}
+                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                  loading={isSubmitting && actionType === 'approve'}
+                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
                 >
-                  Cập nhật
+                  Lưu và phê duyệt
                 </Button>
               </>
             )}
-          </div>
+          </>
         )
       }
     >
       <style>{detailTableStyle}</style>
-      <Spin spinning={isLoading}>
-        {isDetailMode ? renderDetailContent() : (
+      {isDetailMode ? (
+        isLoading ? (
+          <div style={{ padding: '16px 0' }}>
+            <LoadingSkeleton rows={6} />
+          </div>
+        ) : (
+          <VtsSystemDetailContent
+            selectedRecord={record || initialData!}
+            onClose={onCancel}
+          />
+        )
+      ) : (
+        <Spin spinning={isLoading}>
           <Form
             form={form}
             layout="vertical"
@@ -1426,194 +897,216 @@ export default function VtsSystemForm({
                   label: 'Thông tin chung',
                   children: (
                     <div style={drawerFormScrollStyle}>
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã hệ thống VTS</span>}
-                            name="code"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input
-                              placeholder="Mã tự sinh"
-                              disabled={true}
-                              maxLength={50}
-                              style={readonlyInputStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên hệ thống VTS</span>}
-                            name="systemName"
-                            rules={[{ required: true, message: 'Vui lòng nhập tên hệ thống VTS' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input placeholder="Nhập tên hệ thống VTS" maxLength={255} showCount style={inputStyle} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
-                            name="orgUnitId"
-                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <OrgUnitTreeSelect
-                              organizations={organizations}
-                              placeholder="Chọn đơn vị quản lý"
-                              disabled={isEditMode}
-                              popupMatchSelectWidth={true}
-                              style={selectStyle}
-                              onChange={(val) => {
-                                form.setFieldValue('orgUnitId', val);
-                                const curPort = form.getFieldValue('portId');
-                                if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
-                                  form.setFieldValue('portId', undefined);
-                                }
-                              }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị chủ quản</span>}
-                            name="owningOrgId"
-                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị chủ quản' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <OrgUnitTreeSelect
-                              organizations={organizations}
-                              placeholder="Chọn đơn vị chủ quản"
-                              popupMatchSelectWidth={true}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị vận hành</span>}
-                            name="operatingOrgId"
-                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              showSearch
-                              allowClear
-                              placeholder="Chọn đơn vị vận hành"
-                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                              options={operatingUnitOptions}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc cảng biển</span>}
-                            name="portId"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder={!effectiveOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
-                              disabled={!effectiveOrgUnitId}
-                              allowClear
-                              showSearch
-                              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
-                              options={filteredPortOptions}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
-                            name="provinceId"
-                            rules={[{ required: true, message: 'Vui lòng chọn địa điểm' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              showSearch
-                              allowClear
-                              placeholder="Chọn địa điểm"
-                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                              options={VIETNAM_PROVINCE_OPTIONS}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
-                            name="address"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thời gian bắt đầu hoạt động</span>}
-                            name="operationStartDate"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <DatePicker
-                              {...getDatePickerProps({
-                                placeholder: 'Chọn thời gian bắt đầu hoạt động',
-                                getPopupContainer: (trigger: HTMLElement) => trigger.parentElement || document.body,
-                              })}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Phạm vi áp dụng</span>}
-                            name="scope"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" showCount maxLength={2000} style={textAreaStyle} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông báo hàng hải</span>}
-                            name="maritimeNotice"
-                            rules={[{ required: true, message: 'Vui lòng nhập thông báo hàng hải' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input.TextArea rows={3} placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={textAreaStyle} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
-                            name="conditionStatus"
-                            rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn tình trạng"
-                              options={CONDITION_STATUS_OPTIONS}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                          <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
-                            name="note"
-                            style={{ marginBottom: 0 }}
-                          >
-                            <Input.TextArea rows={3} placeholder="Nhập ghi chú" showCount maxLength={2000} style={textAreaStyle} />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                      {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <BankOutlined style={{ color: actionPrimary }} />
+                            <span>Thông tin cơ bản & Quản lý vận hành</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã hệ thống VTS</span>}
+                              name="code"
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input
+                                placeholder="Mã tự sinh"
+                                disabled={true}
+                                maxLength={50}
+                                style={readonlyInputStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên hệ thống VTS</span>}
+                              name="systemName"
+                              rules={[{ required: true, message: 'Vui lòng nhập tên hệ thống VTS' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập tên hệ thống VTS" maxLength={255} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
+                              name="orgUnitId"
+                              rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <OrgUnitTreeSelect
+                                organizations={organizations}
+                                placeholder="Chọn đơn vị quản lý"
+                                disabled={isEditMode}
+                                popupMatchSelectWidth={true}
+                                style={selectStyle}
+                                onChange={(val) => {
+                                  form.setFieldValue('orgUnitId', val);
+                                  const curPort = form.getFieldValue('portId');
+                                  if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
+                                    form.setFieldValue('portId', undefined);
+                                  }
+                                }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc cảng biển</span>}
+                              name="portId"
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder={!effectiveOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+                                disabled={!effectiveOrgUnitId}
+                                allowClear
+                                showSearch
+                                filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
+                                options={filteredPortOptions}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị chủ quản</span>}
+                              name="owningOrgId"
+                              rules={[{ required: true, message: 'Vui lòng chọn đơn vị chủ quản' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <OrgUnitTreeSelect
+                                organizations={organizations}
+                                placeholder="Chọn đơn vị chủ quản"
+                                popupMatchSelectWidth={true}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị vận hành</span>}
+                              name="operatingOrgId"
+                              rules={[{ required: true, message: 'Vui lòng chọn đơn vị vận hành' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                showSearch
+                                allowClear
+                                placeholder="Chọn đơn vị vận hành"
+                                filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                                options={operatingUnitOptions}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
+                              name="provinceId"
+                              rules={[{ required: true, message: 'Vui lòng chọn địa điểm' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                showSearch
+                                allowClear
+                                placeholder="Chọn địa điểm"
+                                filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                                options={VIETNAM_PROVINCE_OPTIONS}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
+                              name="conditionStatus"
+                              rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder="Chọn tình trạng"
+                                options={CONDITION_STATUS_OPTIONS}
+                                style={selectStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thời gian bắt đầu hoạt động</span>}
+                              name="operationStartDate"
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <DatePicker
+                                {...getDatePickerProps({
+                                  placeholder: 'Chọn thời gian bắt đầu hoạt động',
+                                  getPopupContainer: (trigger: HTMLElement) => trigger.parentElement || document.body,
+                                })}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
+                              name="address"
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* ── Section 2: Phạm vi áp dụng & Thông báo hàng hải ── */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <FileTextOutlined style={{ color: actionPrimary }} />
+                            <span>Phạm vi áp dụng & Thông báo hàng hải</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={24}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Phạm vi áp dụng</span>}
+                              name="scope"
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập phạm vi áp dụng" showCount maxLength={2000} style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông báo hàng hải</span>}
+                              name="maritimeNotice"
+                              rules={[{ required: true, message: 'Vui lòng nhập thông báo hàng hải' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
+                              name="note"
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập ghi chú" showCount maxLength={2000} style={inputStyle} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
                     </div>
                   ),
                 },
                 {
                   key: 'zones',
-                  label: 'Thông tin vùng VTS',
+                  label: `Thông tin vùng VTS (${zoneList.length})`,
                   children: (
                     <DetailTable
+                      loading={isLoadingZones}
                       scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
                       dataSource={zoneList}
                       emptyText="Chưa có dữ liệu vùng VTS"
@@ -1659,11 +1152,13 @@ export default function VtsSystemForm({
                           title: 'Mã vùng',
                           dataIndex: 'code',
                           key: 'code',
-                          width: 200,
+                          width: 180,
                           render: (val, r: any) => (
                             <ZoneCellInput
                               value={val}
                               placeholder="Nhập mã vùng"
+                              maxLength={50}
+                              showCount
                               onChange={(text) => {
                                 setZoneList((prev) =>
                                   prev.map((item) =>
@@ -1681,11 +1176,13 @@ export default function VtsSystemForm({
                           title: 'Tên vùng VTS',
                           dataIndex: 'name',
                           key: 'name',
-                          width: 440,
+                          width: 360,
                           render: (val, r: any) => (
                             <ZoneCellInput
                               value={val}
                               placeholder="Nhập tên vùng VTS"
+                              maxLength={255}
+                              showCount
                               onChange={(text) => {
                                 setZoneList((prev) =>
                                   prev.map((item) =>
@@ -1702,7 +1199,7 @@ export default function VtsSystemForm({
                         {
                           title: 'Tình trạng',
                           key: 'conditionStatus',
-                          width: 180,
+                          width: 160,
                           render: (_val, r: any) => (
                             <Select
                               value={r.conditionStatus || r.status || ConditionStatus.OPERATIONAL}
@@ -1721,8 +1218,9 @@ export default function VtsSystemForm({
                           ),
                         },
                         {
-                          title: '',
-                          width: 60,
+                          title: 'Thao tác',
+                          key: 'actions',
+                          width: 80,
                           align: 'center',
                           render: (_v, r: any) => (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1743,9 +1241,10 @@ export default function VtsSystemForm({
                 },
                 {
                   key: 'files',
-                  label: 'File đính kèm',
+                  label: `File đính kèm (${attachmentList.length})`,
                   children: (
                     <InfrastructureAttachmentTab
+                      isLoading={isLoadingFiles}
                       attachments={attachmentList}
                       readonly={!attachmentsEditable}
                       onUpload={handleUploadAttachment}
@@ -1757,8 +1256,8 @@ export default function VtsSystemForm({
               ]}
             />
           </Form>
-        )}
-      </Spin>
-    </Drawer>
+        </Spin>
+      )}
+    </AppDrawer>
   );
 }

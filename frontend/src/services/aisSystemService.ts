@@ -95,6 +95,7 @@ export const aisSystemService = {
           size: params?.size || 20,
           sortBy: params?.sortBy,
           sortDir: params?.sortDir,
+          sort: (params as any)?.sort || (params?.sortBy ? `${params.sortBy},${params.sortDir || 'desc'}` : undefined),
           includeCounts: params?.includeCounts,
         });
         const res = await api.get(`${BASE_PATH}?${sp}`);
@@ -178,6 +179,10 @@ export const aisSystemService = {
   async listAttachments(id: string): Promise<AisSystemAttachment[]> {
     const res = await api.get(`${BASE_PATH}/${id}/attachments`);
     return toArray<AisSystemAttachment>(res.data);
+  },
+
+  async getAttachments(id: string): Promise<AisSystemAttachment[]> {
+    return this.listAttachments(id);
   },
 
   async uploadAttachments(id: string, files: File[]): Promise<AisSystemAttachment[]> {

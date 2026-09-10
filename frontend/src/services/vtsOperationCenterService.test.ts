@@ -95,6 +95,8 @@ describe('vtsOperationCenterService Unit Tests', () => {
         name: 'TT Hải Phòng',
         vtsSystemId: 'vts-1',
         orgUnitId: 'org-1',
+        provinceId: 1,
+        conditionStatus: 'OPERATIONAL' as any,
       });
       expect(api.post).toHaveBeenCalledWith('/v1/vts-operation-center', expect.anything());
       expect(res.id).toBe('123');
@@ -104,7 +106,7 @@ describe('vtsOperationCenterService Unit Tests', () => {
       (api.put as any).mockResolvedValueOnce({
         data: { success: true, data: { id: '123', name: 'Đã sửa' } },
       });
-      const res = await vtsOperationCenterService.update('123', { name: 'Đã sửa' });
+      const res = await vtsOperationCenterService.update('123', { name: 'Đã sửa' } as any);
       expect(api.put).toHaveBeenCalledWith('/v1/vts-operation-center/123', { name: 'Đã sửa' });
       expect(res.name).toBe('Đã sửa');
     });

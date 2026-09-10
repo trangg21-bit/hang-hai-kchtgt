@@ -301,6 +301,7 @@ public class VtsOperationCenterService {
         VtsOperationCenter saved = repository.save(entity);
 
         if (wasApproved && !previousValues.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
             for (Map.Entry<String, String> entry : previousValues.entrySet()) {
                 String field = entry.getKey();
                 String fieldName = getFieldDisplayName(field);
@@ -318,6 +319,7 @@ public class VtsOperationCenterService {
                         .approvalLevel(ApprovalLevel.LEVEL_2)
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
+                        .approvedDate(now)
                         .changedField(fieldName)
                         .previousValue(oldVal)
                         .newValue(newVal)
@@ -716,6 +718,7 @@ public class VtsOperationCenterService {
                         .orElse(null);
 
         List<VtsSystemAttachmentResponse> uploaded = new ArrayList<>();
+        LocalDateTime batchNow = LocalDateTime.now();
         for (MultipartFile f : files) {
             if (f.isEmpty())
                 continue;
@@ -741,15 +744,16 @@ public class VtsOperationCenterService {
                 throw new RuntimeException("Không thể lưu file " + originalFilename, e);
             }
 
+            String relativePath = "uploads/vts_operation_center/" + id + "/" + storedFileName;
             InfrastructureAttachment attachment = InfrastructureAttachment.builder()
                     .refId(id)
                     .refType(InfrastructureType.VTS_OPERATION_CENTER)
                     .fileName(originalFilename)
-                    .filePath(filePath.toString())
+                    .filePath(relativePath)
                     .fileSize(f.getSize())
                     .fileType(AttachmentFileType.fromValue(f.getContentType()))
                     .uploadedBy(userId)
-                    .uploadedDate(LocalDateTime.now())
+                    .uploadedDate(batchNow)
                     .build();
 
             InfrastructureAttachment saved = attachmentRepository.save(attachment);
@@ -762,7 +766,7 @@ public class VtsOperationCenterService {
                         .approvalLevel(ApprovalLevel.LEVEL_0)
                         .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
-                        .approvedDate(LocalDateTime.now())
+                        .approvedDate(batchNow)
                         .reason("Tải lên tài liệu đính kèm: " + originalFilename)
                         .changedField("Tài liệu đính kèm")
                         .previousValue("—")
@@ -1203,7 +1207,8 @@ public class VtsOperationCenterService {
         return VtsSystemAttachmentResponse.builder()
                 .id(att.getId())
                 .fileName(att.getFileName())
-                .filePath(att.getFilePath())
+                .filePath("/api/v1/vts-operation-center/" + att.getRefId()
+                        + "/attachments/" + att.getId() + "/download")
                 .fileSize(att.getFileSize())
                 .documentType(att.getFileType() != null ? att.getFileType().name() : null)
                 .uploadedBy(att.getUploadedBy())

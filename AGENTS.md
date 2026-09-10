@@ -260,18 +260,18 @@ import { spaceFormField, radiusPill } from '../tokens';
 - **KHÔNG** hardcode margin-bottom Form.Item — dùng `spaceFormField` (12px)
 - **KHÔNG** hardcode border-radius — dùng `radiusPill` (999px) cho Input, Select, Button
 - `height: 40` cho mọi Input, Select
+- **Quy chuẩn ô văn bản 2000 / 4000 ký tự (Phạm vi áp dụng, Thông báo hàng hải, Vùng phủ sóng, Ghi chú...)**: **BẮT BUỘC** thiết kế dưới dạng **ô `Input` 1 dòng** (`height: 40px`, `borderRadius: radiusPill`, `style={inputStyle}`, có `showCount` và `maxLength={2000}` hoặc `4000`), **kéo dài toàn bộ chiều rộng form (`<Col span={24}>`)** để tận dụng tối đa không gian hiển thị chuỗi dài (TUYỆT ĐỐI KHÔNG để dồn 1 bên `<Col span={12}>` làm trống nửa màn hình, và KHÔNG làm `TextArea` nhiều dòng).
 - **Cấu trúc Tab trong Drawer**: Các tab thông tin được thiết kế linh hoạt, phản ánh đúng đặc thù nghiệp vụ của từng loại tài sản KCHT. Toàn bộ thông tin phê duyệt, cán bộ xét duyệt và nội dung phê duyệt **BẮT BUỘC nằm trong mục toggle 'Thông tin phê duyệt' tại Tab 'Thông tin chung'**; **TUYỆT ĐỐI KHÔNG** tạo thêm tab riêng *"Thông tin log cập nhật"* trong Drawer chi tiết. Lịch sử thay đổi chi tiết chỉ được mở từ nút "Lịch sử" trên menu hành động dòng (`rowActions`).
 - **Quy chuẩn Khoảng cách Cố định từ Phân trang xuống Vạch kẻ Footer Drawer (MANDATORY DRAWER PAGINATION & SCROLL_Y STANDARD)**:
   - Khoảng cách từ thanh phân trang (`Tổng cộng: ...`) xuống đường vạch kẻ footer của Drawer **BẮT BUỘC LUÔN LUÔN CỐ ĐỊNH** (khoảng cách chuẩn 16px - 20px, `marginTop: 8px, marginBottom: 8px` trong `DetailTable`).
   - Chiều cao thân bảng `.ant-table-body` được khóa cứng bằng `height`, `min-height`, `max-height` đồng bộ trong `DetailTable` để khi chuyển sang trang có ít bản ghi (Page 2 có 1, 2, 4 dòng), thanh phân trang **ĐỨNG IM 100%, KHÔNG BỊ NHẢY LÊN TRÊN**.
-  - **Tổng cao độ từ đỉnh Tab Pane đến đáy thanh phân trang BẮT BUỘC BẰNG NHAU TRÊN MỌI TAB**: $H_{\text{top}} + H_{\text{thead}} (38\text{px}) + \text{scrollY} = \mathbf{100\text{vh} - 290\text{px}}$.
   - **BẮT BUỘC sử dụng hằng số `DRAWER_TABLE_SCROLL_Y` từ `themetokenchk.ts` cho MỌI màn hình**:
-    - `DRAWER_TABLE_SCROLL_Y.pureTable = 'calc(100vh - 328px)'` (Tab chỉ có bảng thuần).
-    - `DRAWER_TABLE_SCROLL_Y.withButton = 'calc(100vh - 370px)'` (Tab có nút bấm trên đầu cao 32px + margin 10px).
-    - `DRAWER_TABLE_SCROLL_Y.withDragger = 'calc(100vh - 442px)'` (Tab có khung Upload Dragger khóa cứng `height: 104px, boxSizing: 'border-box'` + margin 10px).
-    - `DRAWER_TABLE_SCROLL_Y.detailView = 'calc(100vh - 296px)'` (Tab trong Drawer Xem chi tiết).
-  - **Tuyệt đối CẤM** để phát sinh thanh cuộn dọc ngoài Drawer body. Chuyển qua lại giữa các Tab trong Drawer thì thanh phân trang **BẮT BUỘC đứng im tuyệt đối tại cùng 1 tọa độ Y duy nhất (sai số = 0px)**.
-- **Quy chuẩn Dropdown Popup DatePicker & RangePicker**: Mọi ô chọn ngày tháng **BẮT BUỘC** sử dụng helper từ `themetokenchk.ts`: `getDatePickerProps` (cho DatePicker đơn: `popupClassName="chk-form-datepicker-popup"`, co dãn ôm khít 100% theo chiều rộng ô input, ô ngày `26px × 26px`, nút Hôm nay không bị cắt) và `getRangePickerProps` (cho DatePicker.RangePicker chọn khoảng ngày: `popupClassName="chk-range-datepicker-popup"`, kích thước x2 gồm 2 panel cạnh nhau `560px`, ô ngày `26px` đồng bộ). Tuyệt đối không để cố định pixel hoặc lệch kích thước giữa các màn hình.
+    - `DRAWER_TABLE_SCROLL_Y.detailView = 'calc(100vh - 224px)'` (Tab trong Drawer Xem chi tiết: không có footer, bảng đứng 1 mình kéo dài sát đáy đường kẻ đỏ, phân trang cố định sát đáy cách 12px-16px).
+    - `DRAWER_TABLE_SCROLL_Y.pureTable = 'calc(100vh - 280px)'` (Tab chỉ có bảng thuần trong form Thêm mới/Sửa có Footer nút bấm).
+    - `DRAWER_TABLE_SCROLL_Y.withButton = 'calc(100vh - 322px)'` (Tab có nút bấm trên đầu cao 32px + margin 10px).
+    - `DRAWER_TABLE_SCROLL_Y.withDragger = 'calc(100vh - 394px)'` (Tab có khung Upload Dragger khóa cứng `height: 104px, boxSizing: 'border-box'` + margin 10px).
+    - `DRAWER_TABLE_SCROLL_Y.detailGis = 'calc(100vh - 356px)'` (Tab GIS trong Drawer Xem chi tiết: Header cố định 132px).
+  - Thêm mới luôn hiển thị đủ 3 nút: 'Lưu tạm', 'Lưu và gửi phê duyệt', 'Lưu và phê duyệt' chuẩn Bến cảng. Tiêu đề Drawer dùng `fontSize: 16` (`<span style={{ ...drawerTitleStyle, fontSize: 16 }}>...</span>`), `rootClassName="<res>-drawer-scope"`.
 - **Quy chuẩn Lịch sử thay đổi (Audit Trail)**: Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).
 
 ### Reference Implementation

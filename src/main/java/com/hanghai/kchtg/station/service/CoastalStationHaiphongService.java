@@ -859,6 +859,7 @@ public class CoastalStationHaiphongService {
 
         java.nio.file.Path basePath = java.nio.file.Paths.get("uploads", "haiphong-attachments");
         List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+        LocalDateTime batchNow = LocalDateTime.now();
 
         for (org.springframework.web.multipart.MultipartFile file : files) {
             if (file.isEmpty()) continue;
@@ -895,7 +896,8 @@ public class CoastalStationHaiphongService {
                         "—",
                         originalFilename,
                         "Tải lên tài liệu đính kèm: " + originalFilename,
-                        userId
+                        userId,
+                        batchNow
                 );
             }
         }
@@ -948,7 +950,8 @@ public class CoastalStationHaiphongService {
         return CoastalStationHaiphongAttachmentResponse.builder()
                 .id(a.getId())
                 .fileName(a.getFileName())
-                .filePath(a.getFilePath())
+                .filePath("/api/v1/stations/haiphong/" + a.getRefId()
+                        + "/attachments/" + a.getId() + "/download")
                 .fileSize(a.getFileSize())
                 .documentType(a.getFileType() != null ? a.getFileType().name() : null)
                 .uploadedBy(a.getUploadedBy())

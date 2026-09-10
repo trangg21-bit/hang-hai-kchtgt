@@ -48,6 +48,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
+        LEFT JOIN User uu ON uu.id = t.updatedBy
         WHERE t.deletedAt IS NULL
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)

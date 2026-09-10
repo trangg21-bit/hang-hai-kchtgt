@@ -42,6 +42,9 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
         LEFT JOIN VtsOperationCenter voc ON voc.id = t.vtsOperationCenterId
+        LEFT JOIN RadarStation rs ON rs.id = t.radarStationId
+        LEFT JOIN User u ON u.id = t.updatedBy
+        LEFT JOIN User uCreate ON uCreate.id = t.createdBy
         WHERE t.deletedAt IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)

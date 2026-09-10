@@ -358,7 +358,7 @@ public class ShipRepairFacilityService {
             entry.setApprovalLevel(h.getApprovalLevel());
             entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
             entry.setApprovedBy(h.getApprovedBy() != null
-                    ? userNames.getOrDefault(h.getApprovedBy(), null)
+                    ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
             entry.setReason(h.getReason());

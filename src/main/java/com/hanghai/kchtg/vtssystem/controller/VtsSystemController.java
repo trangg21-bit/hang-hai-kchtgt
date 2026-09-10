@@ -9,6 +9,7 @@ import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.annotation.DataScope;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -112,8 +113,8 @@ public class VtsSystemController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsSystemResponse>> getById(
             @PathVariable UUID id,
-            @RequestParam(defaultValue = "false") boolean includeZones,
-            @RequestParam(defaultValue = "false") boolean includeAttachments,
+            @RequestParam(defaultValue = "true") boolean includeZones,
+            @RequestParam(defaultValue = "true") boolean includeAttachments,
             Authentication authentication) {
         VtsSystemResponse response = service.getById(id, includeZones, includeAttachments);
         return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
@@ -293,6 +294,78 @@ public class VtsSystemController {
         return ResponseEntity.ok(ApiResponse.success("Xóa tài liệu đính kèm thành công", null));
     }
 
+    @Value("${app.upload.attachment-path:uploads/vts-attachments}")
+    private String attachmentUploadPath = "uploads/vts-attachments";
+
+    private Path resolveAttachmentFilePath(InfrastructureAttachment attachment, UUID id) {
+        if (attachment == null || attachment.getFilePath() == null) {
+            return null;
+        }
+        String rawPath = attachment.getFilePath();
+
+        // 1. Kiểm tra trực tiếp đường dẫn lưu trữ
+        try {
+            Path directPath = Paths.get(rawPath).toAbsolutePath().normalize();
+            if (Files.isRegularFile(directPath)) {
+                return directPath;
+            }
+        } catch (Exception ignored) {
+        }
+
+        // 2. Kiểm tra đường dẫn tương đối theo thư mục chạy ứng dụng
+        try {
+            Path cwdRelative = Paths.get(".").toAbsolutePath().normalize().resolve(rawPath).normalize();
+            if (Files.isRegularFile(cwdRelative)) {
+                return cwdRelative;
+            }
+        } catch (Exception ignored) {
+        }
+
+        // 3. Chuẩn hóa đường dẫn chứa "uploads/"
+        try {
+            String normalizedRaw = rawPath.replace("\\", "/");
+            int uploadsIdx = normalizedRaw.indexOf("uploads/");
+            if (uploadsIdx >= 0) {
+                String subPath = normalizedRaw.substring(uploadsIdx);
+                Path fromUploads = Paths.get(subPath).toAbsolutePath().normalize();
+                if (Files.isRegularFile(fromUploads)) {
+                    return fromUploads;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        // 4. Tìm kiếm trong thư mục đính kèm của hồ sơ VTS
+        try {
+            List<Path> candidateDirs = List.of(
+                    Paths.get(attachmentUploadPath, id.toString()).toAbsolutePath().normalize(),
+                    Paths.get("uploads", "vts-attachments", id.toString()).toAbsolutePath().normalize());
+            String targetFileName = attachment.getFileName();
+            for (Path entityDir : candidateDirs) {
+                if (Files.isDirectory(entityDir)) {
+                    try (var stream = Files.list(entityDir)) {
+                        java.util.Optional<Path> match = stream
+                                .filter(Files::isRegularFile)
+                                .filter(p -> {
+                                    String fname = p.getFileName().toString();
+                                    return fname.endsWith(targetFileName)
+                                            || fname.equalsIgnoreCase(targetFileName)
+                                            || (targetFileName != null && fname.contains(targetFileName))
+                                            || rawPath.contains(fname);
+                                })
+                                .findFirst();
+                        if (match.isPresent()) {
+                            return match.get();
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        return null;
+    }
+
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @DataScope
     @GetMapping("/{id}/attachments/{attachmentId}/download")
@@ -300,8 +373,8 @@ public class VtsSystemController {
             @PathVariable UUID id,
             @PathVariable UUID attachmentId) {
         InfrastructureAttachment attachment = service.getAttachment(id, attachmentId);
-        Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
-        if (!Files.isRegularFile(path)) {
+        Path path = resolveAttachmentFilePath(attachment, id);
+        if (path == null || !Files.isRegularFile(path)) {
             return ResponseEntity.notFound().build();
         }
         Resource resource = new FileSystemResource(path);
@@ -314,10 +387,12 @@ public class VtsSystemController {
         MediaType mediaType = contentType == null
                 ? MediaType.APPLICATION_OCTET_STREAM
                 : MediaType.parseMediaType(contentType);
+        String originalFileName = attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment";
+        String encodedFileName = java.net.URLEncoder.encode(originalFileName, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
         return ResponseEntity.ok()
                 .contentType(mediaType)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + attachment.getFileName().replace("\"", "") + "\"")
+                        "inline; filename=\"" + originalFileName + "\"; filename*=UTF-8''" + encodedFileName)
                 .body(resource);
     }
 

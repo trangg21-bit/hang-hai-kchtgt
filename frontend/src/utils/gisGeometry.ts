@@ -550,6 +550,38 @@ export const validateDmsCoordinates = (
 export const parseWktToCoordinates = (wkt?: string): { latitude: number; longitude: number }[] => {
   if (!wkt) return [];
   const normalizedWkt = wkt.trim().replace(/^SRID=\d+\s*;/i, '').trim();
+  if (!normalizedWkt) return [];
+
+  // Hỗ trợ JSON array: [lng, lat] hoặc [[lng, lat], ...] hoặc [{latitude, longitude}, ...]
+  if (normalizedWkt.startsWith('[') || normalizedWkt.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(normalizedWkt);
+      if (Array.isArray(parsed)) {
+        if (parsed.length >= 2 && typeof parsed[0] === 'number' && typeof parsed[1] === 'number') {
+          return [{ longitude: Number(parsed[0]), latitude: Number(parsed[1]) }];
+        }
+        const out: { latitude: number; longitude: number }[] = [];
+        for (const item of parsed) {
+          if (Array.isArray(item) && item.length >= 2) {
+            out.push({ longitude: Number(item[0]), latitude: Number(item[1]) });
+          } else if (item && typeof item === 'object') {
+            const lat = Number(item.latitude ?? item.lat);
+            const lng = Number(item.longitude ?? item.lng);
+            if (!isNaN(lat) && !isNaN(lng)) out.push({ latitude: lat, longitude: lng });
+          }
+        }
+        if (out.length > 0) return out;
+      } else if (parsed && typeof parsed === 'object') {
+        const coords = parsed.coordinates;
+        if (Array.isArray(coords)) {
+          if (coords.length >= 2 && typeof coords[0] === 'number') {
+            return [{ longitude: Number(coords[0]), latitude: Number(coords[1]) }];
+          }
+        }
+      }
+    } catch {}
+  }
+
   const coordinates = flattenGeometryCoordinates(parseWktToCoords(normalizedWkt))
     .map(([longitude, latitude]) => ({ latitude, longitude }));
 

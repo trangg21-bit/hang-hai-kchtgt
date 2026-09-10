@@ -1,4 +1,5 @@
 import {
+  actionPrimary,
   statusAttention,
   statusOperational,
   statusCritical,
@@ -28,8 +29,8 @@ interface ApprovalStatusBadgeProps {
  */
 export const APPROVAL_STATUS_STYLE: Record<string, { label: string; color: string }> = {
   DRAFT: { label: 'Lưu tạm', color: statusDraft },
-  PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: statusAttention },
-  APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: '#0284C7' },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
   APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
@@ -59,10 +60,10 @@ export const APPROVAL_STATUS_OPTIONS = [
 ].map((value) => ({ value, label: APPROVAL_STATUS_STYLE[value].label }));
 
 /** Trạng thái → tên token màu, để badge đổi theo bộ theme đang áp. */
-const STATUS_COLOR_TOKEN: Record<string, 'statusDraft' | 'statusAttention' | 'statusInfo' | 'statusCritical' | 'statusOperational' | 'textTertiary'> = {
+const STATUS_COLOR_TOKEN: Record<string, 'statusDraft' | 'statusAttention' | 'statusInfo' | 'statusCritical' | 'statusOperational' | 'textTertiary' | 'actionPrimary'> = {
   DRAFT: 'statusDraft',
-  PENDING_APPROVAL: 'statusAttention',
-  APPROVED_LEVEL1: 'statusInfo',
+  PENDING_APPROVAL: 'actionPrimary',
+  APPROVED_LEVEL1: 'statusAttention',
   REJECTED_LEVEL1: 'statusCritical',
   REJECTED_LEVEL2: 'statusCritical',
   APPROVED: 'statusOperational',

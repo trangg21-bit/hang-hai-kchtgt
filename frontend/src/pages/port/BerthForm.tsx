@@ -30,14 +30,13 @@ import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { berthCRUD, portCRUD } from '../../services/portService';
-import { symbolService } from '../../services/symbolService';
+import { symbolService, type Symbol } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { userService } from '../../services/userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { LineObject } from '../../types/lineObject';
-import type { Symbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
-import { GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt, dmsToDd } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -726,37 +725,10 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
               </span>
               <Space size={8}>
                 <Button
-                  icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
+                  icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
                   onClick={() => setGisModalOpen(true)}
                   disabled={!watchedGeometryType}
                   style={!watchedGeometryType ? {
-                    height: 32,
-                    fontSize: fontSizeSm,
-                    padding: '0 14px',
-                    borderRadius: radiusPill,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    opacity: 0.6,
-                    cursor: 'not-allowed',
-                  } : {
-                    ...outlineButtonStyle,
-                    height: 32,
-                    fontSize: fontSizeSm,
-                    padding: '0 14px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  Chọn tọa độ trên bản đồ
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={addGpsPoint}
-                  disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
-                  style={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1) ? {
                     height: 32,
                     fontSize: fontSizeSm,
                     padding: '0 14px',
@@ -768,6 +740,38 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                     borderColor: '#d9d9d9',
                     color: 'rgba(0, 0, 0, 0.25)',
                     cursor: 'not-allowed',
+                    boxShadow: 'none',
+                  } : {
+                    ...outlineButtonStyle,
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                  title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi chọn tọa độ trên bản đồ' : undefined}
+                >
+                  Chọn tọa độ trên bản đồ
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined style={{ color: (!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? 'rgba(0, 0, 0, 0.25)' : undefined }} />}
+                  onClick={addGpsPoint}
+                  disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
+                  style={(!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? {
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    borderRadius: radiusPill,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: '#f5f5f5',
+                    borderColor: '#d9d9d9',
+                    color: 'rgba(0, 0, 0, 0.25)',
+                    cursor: 'not-allowed',
+                    boxShadow: 'none',
                   } : {
                     ...primaryButtonStyle,
                     height: 32,
@@ -777,7 +781,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                     alignItems: 'center',
                     gap: 4,
                   }}
-                  title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
+                  title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi thêm tọa độ' : (watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined)}
                 >
                   Thêm tọa độ
                 </Button>
@@ -917,29 +921,48 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType="POINT"
+            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
+            value={{
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+                  .map((c) => ({
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
+              symbolId: form.getFieldValue('symbolId'),
+            }}
             onChange={(val) => {
               if (val?.coordinates) {
                 // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ
                 const points = parseWktToCoordinates(val.coordinates);
                 if (points.length > 0) {
-                  setCoordinateList((prev) => {
-                    const existing = prev || [];
-                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(existing
-                      .filter(c => c.latD != null && c.lngD != null)
-                      .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
-                    const toAdd = points.filter(p => !existingKeys.has(key(p))).map(p => {
-                      const latDms = ddToDms(p.latitude);
-                      const lngDms = ddToDms(p.longitude);
-                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                    });
-                    if (toAdd.length === 0) return existing;
-                    return [...existing, ...toAdd];
+                  const geom = ((val?.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+                  const newPoints = points.map((p) => {
+                    const latDms = ddToDms(p.latitude);
+                    const lngDms = ddToDms(p.longitude);
+                    return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
                   });
+
+                  // Khi chọn tọa độ từ bản đồ, cập nhật trực tiếp danh sách điểm mới được chọn (không cộng dồn vào điểm cũ)
+                  if (geom === 'POINT') {
+                    setCoordinateList([newPoints[0]]);
+                  } else {
+                    setCoordinateList(newPoints);
+                  }
                   setGpsError(null);
                 }
+              }
+              if (val?.geometryType) {
+                form.setFieldValue('geometryType', val.geometryType);
+              }
+              if (val?.symbolId) {
+                form.setFieldValue('symbolId', val.symbolId);
               }
             }}
           />

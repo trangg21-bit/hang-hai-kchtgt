@@ -444,7 +444,7 @@ export default function NavigationChannelDetailContent({
     <div className="channel-detail-content-wrapper">
       <style>{`
         .channel-detail-content-wrapper {
-          overflow-x: hidden !important;
+          overflow: hidden !important;
           width: 100% !important;
           box-sizing: border-box !important;
         }

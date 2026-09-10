@@ -518,37 +518,10 @@ export default forwardRef(function DaiTtdhForm({ form, id, onFinish, onSubmittin
         </span>
         <Space size={8}>
           <Button
-            icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? undefined : actionPrimary }} />}
+            icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
             onClick={() => setGisModalOpen(true)}
             disabled={!watchedGeometryType}
             style={!watchedGeometryType ? {
-              height: 32,
-              fontSize: fontSizeSm,
-              padding: '0 14px',
-              borderRadius: radiusPill,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              opacity: 0.6,
-              cursor: 'not-allowed',
-            } : {
-              ...outlineButtonStyle,
-              height: 32,
-              fontSize: fontSizeSm,
-              padding: '0 14px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            Chọn tọa độ trên bản đồ
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={addGpsPoint}
-            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
-            style={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1) ? {
               height: 32,
               fontSize: fontSizeSm,
               padding: '0 14px',
@@ -560,6 +533,38 @@ export default forwardRef(function DaiTtdhForm({ form, id, onFinish, onSubmittin
               borderColor: '#d9d9d9',
               color: 'rgba(0, 0, 0, 0.25)',
               cursor: 'not-allowed',
+              boxShadow: 'none',
+            } : {
+              ...outlineButtonStyle,
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi chọn tọa độ trên bản đồ' : undefined}
+          >
+            Chọn tọa độ trên bản đồ
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined style={{ color: (!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? 'rgba(0, 0, 0, 0.25)' : undefined }} />}
+            onClick={addGpsPoint}
+            disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
+            style={(!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? {
+              height: 32,
+              fontSize: fontSizeSm,
+              padding: '0 14px',
+              borderRadius: radiusPill,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              background: '#f5f5f5',
+              borderColor: '#d9d9d9',
+              color: 'rgba(0, 0, 0, 0.25)',
+              cursor: 'not-allowed',
+              boxShadow: 'none',
             } : {
               ...primaryButtonStyle,
               height: 32,
@@ -569,7 +574,7 @@ export default forwardRef(function DaiTtdhForm({ form, id, onFinish, onSubmittin
               alignItems: 'center',
               gap: 4,
             }}
-            title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
+            title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi thêm tọa độ' : (watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined)}
           >
             Thêm tọa độ
           </Button>

@@ -957,4 +957,76 @@ class VtsSystemServiceTest {
         assertTrue(savedHistory.getNewValue().contains("Thêm Vùng Mới (VZ-NEW)"));
         assertTrue(savedHistory.getNewValue().contains("Thêm doc_moi.pdf"));
     }
+
+    @Test
+    void testUpdate_Validation_EmptyCode_ThrowsException() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        VtsZoneDto emptyCodeZone = VtsZoneDto.builder().code("").name("Vùng 1").build();
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder().zones(List.of(emptyCodeZone)).build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                service.update(TEST_ID, updateReq, UUID.randomUUID())
+        );
+        assertTrue(ex.getMessage().contains("Mã vùng VTS không được để trống"));
+    }
+
+    @Test
+    void testUpdate_Validation_EmptyName_ThrowsException() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        VtsZoneDto emptyNameZone = VtsZoneDto.builder().code("VZ-01").name("   ").build();
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder().zones(List.of(emptyNameZone)).build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                service.update(TEST_ID, updateReq, UUID.randomUUID())
+        );
+        assertTrue(ex.getMessage().contains("Tên vùng VTS không được để trống"));
+    }
+
+    @Test
+    void testUpdate_Validation_DuplicateCode_ThrowsException() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        VtsZoneDto zone1 = VtsZoneDto.builder().code("VZ-DUP").name("Vùng 1").build();
+        VtsZoneDto zone2 = VtsZoneDto.builder().code("vz-dup").name("Vùng 2").build();
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder().zones(List.of(zone1, zone2)).build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                service.update(TEST_ID, updateReq, UUID.randomUUID())
+        );
+        assertTrue(ex.getMessage().contains("Mã vùng VTS không được trùng lặp"));
+    }
+
+    @Test
+    void testUpdate_InPlaceUpdate_ModifiesEntitiesProperly() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        UUID existingZoneId = UUID.randomUUID();
+        com.hanghai.kchtg.vtssystem.entity.VtsZone existingZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(existingZoneId).code("VZ-OLD").name("Tên Cũ").conditionStatus(ConditionStatus.OPERATIONAL).vtsSystem(entity).build();
+        entity.setZones(new java.util.ArrayList<>(List.of(existingZone)));
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VtsZoneDto modDto = VtsZoneDto.builder().id(existingZoneId).code("VZ-UPDATED").name("Tên Mới").conditionStatus(ConditionStatus.OPERATIONAL).build();
+        VtsZoneDto newDto = VtsZoneDto.builder().code("VZ-BRAND-NEW").name("Vùng Mới").conditionStatus(ConditionStatus.OPERATIONAL).build();
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder().zones(List.of(modDto, newDto)).build();
+        service.update(TEST_ID, updateReq, UUID.randomUUID());
+
+        assertEquals(2, entity.getZones().size());
+        // Verify existing entity was updated in-place (same object reference)
+        assertSame(existingZone, entity.getZones().get(0));
+        assertEquals("VZ-UPDATED", existingZone.getCode());
+        assertEquals("Tên Mới", existingZone.getName());
+
+        // Verify new entity was added without pre-assigned ID
+        com.hanghai.kchtg.vtssystem.entity.VtsZone newlyAddedZone = entity.getZones().get(1);
+        assertNull(newlyAddedZone.getId());
+        assertEquals("VZ-BRAND-NEW", newlyAddedZone.getCode());
+        assertEquals("Vùng Mới", newlyAddedZone.getName());
+    }
 }

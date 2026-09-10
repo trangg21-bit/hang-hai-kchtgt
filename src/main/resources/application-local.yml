@@ -16,8 +16,8 @@ spring:
     username: ${DB_USER:admin}
     password: ${DB_PASS:Etc@1234}
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: 30
+      minimum-idle: 5
       connection-timeout: 30000
   devtools:
     restart:

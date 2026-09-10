@@ -16,11 +16,14 @@ import toast from '../../components/ToastNotification';
 import {
   textTertiary, surfaceCard,
   fontSizeSm, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceSm, spaceMd, spaceFormField, actionPrimary, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
+  actionPrimary, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
   statusOperational, statusAttention, statusCritical,
+  spaceSm,
 } from '../../themetokenchk';
 
 const fontSizeMd = 13.5;
+const spaceMd = 12;
+const spaceFormField = 12;
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { pierCRUD } from '../../services/portService';
@@ -195,7 +198,7 @@ export default function BerthDetailContent({
     <div className="berth-detail-content-wrapper">
       <style>{`
         .berth-detail-content-wrapper {
-          overflow-x: hidden !important;
+          overflow: hidden !important;
           width: 100% !important;
           box-sizing: border-box !important;
         }
@@ -232,6 +235,13 @@ export default function BerthDetailContent({
         }
 
         .berth-detail-content-wrapper .chk-detail-row:last-child {
+          border-bottom: none !important;
+        }
+
+        /* Loại bỏ hoàn toàn đường kẻ gạch ngang dưới ô bảng khi không có dữ liệu */
+        .berth-detail-content-wrapper .ant-table-placeholder > td,
+        .berth-detail-content-wrapper .ant-table-placeholder .ant-table-cell,
+        .berth-detail-content-wrapper .ant-table-tbody > tr.ant-table-placeholder > td {
           border-bottom: none !important;
         }
 
@@ -650,7 +660,7 @@ export default function BerthDetailContent({
                   emptyText="Chưa có tài liệu đính kèm"
                   scrollY={detailFiles.length === 0 ? undefined : DRAWER_TABLE_SCROLL_Y.detailView}
                   columns={[
-                    { title: 'STT', width: 50, align: 'center' },
+                    { title: 'STT', width: 50, align: 'center' as const, render: (_: any, __: any, idx: number) => idx + 1 },
                     {
                       title: 'Tên tài liệu',
                       dataIndex: 'fileName',
@@ -689,8 +699,8 @@ export default function BerthDetailContent({
                       },
                     },
                     { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'left', render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
-                    { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '' },
-                    { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'left', render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
+                    { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string, item: any) => item?.uploadedByName || (item?.uploadedBy ? userMap?.get(item.uploadedBy) || item.uploadedBy : '') || userMap?.get(v) || v || '' },
+                    { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'left', render: (v: string, item: any) => { const d = v || item?.uploadedDate || item?.createdDate; return d ? dayjs(d).format('DD/MM/YYYY HH:mm') : ''; } },
                     {
                       title: 'Thao tác',
                       key: 'actions',
@@ -734,18 +744,18 @@ export default function BerthDetailContent({
           {
             key: 'infra', label: 'Kết cấu hạ tầng',
             children: (
-              <div style={{ paddingTop: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: spaceSm }}>
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, height: 32, boxSizing: 'border-box' }}>
                   <span style={{ ...detailLabelStyle, display: 'inline-block' }}>Kết cấu hạ tầng thuộc bến cảng</span>
                   <Select allowClear placeholder="Chọn loại kết cấu hạ tầng" value={infraTypeFilter || undefined}
                     onChange={(v: string | undefined) => setInfraTypeFilter(v || '')}
-                    options={[{ value: 'Pier', label: 'Cầu cảng' }]} style={{ width: 260, borderRadius: 999, height: 40 }} />
+                    options={[{ value: 'Pier', label: 'Cầu cảng' }]} style={{ width: 260, borderRadius: 999, height: 32 }} />
                 </div>
                 <DetailTable
                   dataSource={infraRows}
                   emptyText="Chưa có dữ liệu"
                   rowKey={(r: any) => r.id || r.infraName || r.name}
-                  scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
+                  scrollY="calc(100vh - 320px)"
                   columns={[
                     { title: 'STT', width: 50, align: 'center' },
                     { title: 'Loại kết cấu hạ tầng', dataIndex: 'infraType', key: 'type', render: (_v: string, rec: any) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{rec.infraType === 'Pier' ? 'Cầu cảng' : rec.infraType || ''}</span> },
@@ -758,7 +768,7 @@ export default function BerthDetailContent({
                     ) },
                   ]}
                 />
-              </div>
+              </>
             ),
           },
           {

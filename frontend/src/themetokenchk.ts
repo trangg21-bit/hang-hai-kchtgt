@@ -239,22 +239,31 @@ export const scrollbarThumbHover = 'rgba(0, 0, 0, 0.25)';
 
 /**
  * Chuẩn chiều cao bảng trong Drawer (DRAWER_TABLE_SCROLL_Y)
- * Đảm bảo khoảng cách từ thanh phân trang xuống vạch kẻ footer luôn luôn cố định (16px - 20px)
- * và tổng cao độ giữa các Tab bằng nhau tuyệt đối (100vh - 290px):
+ * Khóa cứng khoảng cách từ thanh phân trang xuống đáy Drawer luôn luôn cố định:
+ * - Chuẩn tham chiếu từ Tab 'Kết cấu hạ tầng' (BerthDetailContent: scrollY="calc(100vh - 320px)")
+ * - detailView: calc(100vh - 320px) (Drawer Xem chi tiết: Tab File đính kèm, Vùng VTS...)
+ * - detailViewWithFilter: calc(100vh - 320px) (Tab có thanh lọc/select 32px trên đầu như Tab Kết cấu hạ tầng)
+ * - detailGis: calc(100vh - 426px) (Tab GIS trong Drawer Xem chi tiết: Top box 4 dòng + header 32px cân bằng ~146px)
+ * - pureTable: calc(100vh - 328px) (Form Thêm mới/Sửa có footer 3 nút bấm)
+ * - withButton: calc(100vh - 370px) (Form Thêm mới/Sửa có nút bấm trên đầu 32px + 10px margin)
+ * - withDragger: calc(100vh - 442px) (Form Thêm mới/Sửa có khung Upload Dragger 104px + 10px margin)
+ * - withGisForm: calc(100vh - 522px) (Form Thêm mới/Sửa có Top controls GIS 194px)
  */
 export const DRAWER_TABLE_SCROLL_Y = {
-  /** Tab chỉ có bảng thuần (không có nút hay upload phía trên) */
+  /** Tab chỉ có bảng thuần trong form Thêm mới/Sửa có Footer nút bấm */
   pureTable: 'calc(100vh - 328px)',
-  /** Tab có nút bấm ở trên (Button 32px + margin 10px = 42px) */
+  /** Tab có nút bấm ở trên trong form Thêm mới/Sửa (Button 32px + margin 10px = 42px) */
   withButton: 'calc(100vh - 370px)',
-  /** Tab có khung Upload Dragger (Dragger 104px + margin 10px = 114px) */
+  /** Tab có khung Upload Dragger trong form Thêm mới/Sửa (Dragger 104px + margin 10px = 114px) */
   withDragger: 'calc(100vh - 442px)',
   /** Tab GIS trong form tạo/sửa (Top controls cố định 194px) */
   withGisForm: 'calc(100vh - 522px)',
-  /** Tab trong Drawer Xem chi tiết (Đồng bộ tọa độ Y chính xác tuyệt đối với Thêm mới / Sửa) */
-  detailView: 'calc(100vh - 328px)',
-  /** Tab GIS trong Drawer Xem chi tiết (Đồng bộ chuẩn cao độ với detailView, Header và Section box cân bằng 122px) */
-  detailGis: 'calc(100vh - 450px)',
+  /** Tab trong Drawer Xem chi tiết: Tab thuần chỉ có bảng (File đính kèm, Vùng VTS...) - cố định chuẩn đáy theo Tab Kết cấu hạ tầng */
+  detailView: 'calc(100vh - 320px)',
+  /** Tab trong Drawer Xem chi tiết có thanh lọc/nút bấm trên đầu (32px + 8px margin như Tab Kết cấu hạ tầng) */
+  detailViewWithFilter: 'calc(100vh - 320px)',
+  /** Tab GIS trong Drawer Xem chi tiết (Top box thông số + GPS header cố định ~146px, đáy bảng thẳng hàng với Tab Kết cấu hạ tầng) */
+  detailGis: 'calc(100vh - 426px)',
 } as const;
 
 /** --info-color của chk, ghi đè --kt-info của Metronic (#7239ea tím). */
@@ -441,14 +450,14 @@ export const getConditionStatusColor = (status?: unknown): string => {
 
   // 1. Dừng hoạt động / Ngừng hoạt động / Tạm dừng / Hỏng
   if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
-      || norm.includes('tam dung') || norm.includes('khong hoat dong')
-      || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
-      || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
+    || norm.includes('tam dung') || norm.includes('khong hoat dong')
+    || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
+    || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
     return statusCritical;
   }
   // 2. Đang bảo trì / Đang bảo dưỡng / Sửa chữa / Cần bảo dưỡng
   if (norm.includes('bao tri') || norm.includes('bao duong') || norm.includes('sua chua')
-      || norm.includes('maintenance') || norm.includes('warning') || norm === '2') {
+    || norm.includes('maintenance') || norm.includes('warning') || norm === '2') {
     return statusAttention;
   }
   // 3. Đang xây dựng / Xây dựng
@@ -469,13 +478,13 @@ export const getConditionStatusLabel = (status?: unknown): string => {
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
   if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
-      || norm.includes('tam dung') || norm.includes('khong hoat dong')
-      || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
-      || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
+    || norm.includes('tam dung') || norm.includes('khong hoat dong')
+    || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
+    || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
     return 'Dừng hoạt động';
   }
   if (norm.includes('bao tri') || norm.includes('bao duong') || norm.includes('sua chua')
-      || norm.includes('maintenance') || norm.includes('warning') || norm === '2') {
+    || norm.includes('maintenance') || norm.includes('warning') || norm === '2') {
     return 'Đang bảo trì';
   }
   if (norm.includes('xay dung') || norm.includes('construction') || norm === 'under_construction' || norm === '3') {
@@ -750,6 +759,12 @@ textarea.ant-input {
 .ant-modal .ant-modal-footer .ant-btn-primary {
   background: ${actionPrimary} !important;
   border-color: ${actionPrimary} !important;
+}
+.ant-modal .ant-modal-footer .ant-btn-primary.ant-btn-dangerous,
+.ant-modal .ant-modal-footer .ant-btn-dangerous.ant-btn-primary {
+  background: ${statusCritical} !important;
+  border-color: ${statusCritical} !important;
+  color: #ffffff !important;
 }
 
 /* ── Chuẩn hóa ô chọn nhiều (Select mode="multiple") hiển thị toàn bộ ── */
@@ -1120,14 +1135,6 @@ textarea.ant-input {
   background: ${tableRowHoverBgFixed} !important; 
 }
 
-/* ── Drawer & Detail Table Card Standard (Khóa cứng phân trang cố định đáy, đỉnh bảng đồng đều) ── */
-.ant-drawer .ant-drawer-body {
-  overflow: hidden !important;
-  padding: 0 24px !important;
-}
-.ant-drawer .ant-drawer-body:not(:has(.ant-tabs)) {
-  padding: 16px 24px !important;
-}
 .ant-drawer .ant-drawer-body::-webkit-scrollbar,
 .ant-drawer .ant-tabs-content-holder div::-webkit-scrollbar,
 .ant-drawer .ant-tabs-tabpane div::-webkit-scrollbar {
@@ -2303,6 +2310,7 @@ export const inputStyle: React.CSSProperties = {
 export const selectStyle: React.CSSProperties = {
   borderRadius: radiusPill,
   height: controlHeight,
+  width: '100%',
 };
 
 export const textAreaStyle: React.CSSProperties = {

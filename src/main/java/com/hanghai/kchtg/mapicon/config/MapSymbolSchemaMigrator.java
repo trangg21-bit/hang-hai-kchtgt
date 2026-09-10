@@ -91,11 +91,26 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
             }
 
             // 4. Ensure port_id exists and drop legacy GIS fields from vts_operation_center (unified in gis_spatial_objects)
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center ADD COLUMN IF NOT EXISTS port_id UUID");
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS geometry_type");
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS coordinates");
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS coordinate_system");
-            jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center ADD COLUMN IF NOT EXISTS symbol_id UUID");
+            List<String> vtsOpCols = jdbcTemplate.queryForList(
+                    "SELECT LOWER(column_name) FROM information_schema.columns WHERE LOWER(table_name) = 'vts_operation_center'",
+                    String.class
+            );
+            java.util.Set<String> vtsColSet = new java.util.HashSet<>(vtsOpCols);
+            if (!vtsColSet.contains("port_id")) {
+                jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center ADD COLUMN IF NOT EXISTS port_id UUID");
+            }
+            if (vtsColSet.contains("geometry_type")) {
+                jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS geometry_type");
+            }
+            if (vtsColSet.contains("coordinates")) {
+                jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS coordinates");
+            }
+            if (vtsColSet.contains("coordinate_system")) {
+                jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center DROP COLUMN IF EXISTS coordinate_system");
+            }
+            if (!vtsColSet.contains("symbol_id")) {
+                jdbcTemplate.execute("ALTER TABLE IF EXISTS vts_operation_center ADD COLUMN IF NOT EXISTS symbol_id UUID");
+            }
 
             // 6. Ensure ARCHIVED (status 7) records in vts_system have deleted_at set so they are excluded from list
             jdbcTemplate.execute("UPDATE vts_system SET deleted_at = CURRENT_TIMESTAMP WHERE approval_status = 7 AND deleted_at IS NULL");

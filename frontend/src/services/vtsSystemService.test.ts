@@ -71,7 +71,12 @@ describe('vtsSystemService Unit Tests', () => {
 
       const result = await vtsSystemCRUD.getById('vts-123');
 
-      expect(api.get).toHaveBeenCalledWith('/v1/vts-system/vts-123', undefined);
+      expect(api.get).toHaveBeenCalledWith('/v1/vts-system/vts-123', {
+        params: {
+          includeZones: true,
+          includeAttachments: true,
+        },
+      });
       expect(result.id).toBe('vts-123');
     });
 
@@ -106,7 +111,7 @@ describe('vtsSystemService Unit Tests', () => {
 
   describe('vtsSystemApproval', () => {
     it('should submit C1 level approval', async () => {
-      const approvalReq = { approved: true, comment: 'Đồng ý C1' };
+      const approvalReq: any = { decision: 'APPROVED', reason: 'Đồng ý C1' };
       vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: { id: 'vts-1', approvalStatus: 'PENDING_C2' } } } as any);
 
       const result = await vtsSystemApproval.approveC1('vts-1', approvalReq);
@@ -116,7 +121,7 @@ describe('vtsSystemService Unit Tests', () => {
     });
 
     it('should submit C2 level approval', async () => {
-      const approvalReq = { approved: true, comment: 'Đồng ý C2 (Phê duyệt cấp Cục)' };
+      const approvalReq: any = { decision: 'APPROVED', reason: 'Đồng ý C2 (Phê duyệt cấp Cục)' };
       vi.mocked(api.post).mockResolvedValueOnce({ data: { success: true, data: { id: 'vts-1', approvalStatus: 'APPROVED' } } } as any);
 
       const result = await vtsSystemApproval.approveC2('vts-1', approvalReq);
@@ -210,7 +215,7 @@ describe('vtsSystemService Unit Tests', () => {
       };
       vi.mocked(api.get).mockResolvedValueOnce(mockResponse as any);
 
-      const result = await vtsSystemCRUD.list({
+      await vtsSystemCRUD.list({
         page: 0,
         size: 10,
         includeCounts: false,
@@ -230,6 +235,7 @@ describe('vtsSystemService Unit Tests', () => {
         includeAttachments: false,
       });
 
+      expect(result).toEqual(mockItem);
       expect(api.get).toHaveBeenCalledWith('/v1/vts-system/vts-123', {
         params: { includeZones: true, includeAttachments: false },
       });

@@ -84,13 +84,14 @@ export const inmarsatStationService = {
 
 
 
-  async create(payload: CoastalStationInmarsatRequest): Promise<CoastalStationInmarsatResponse> {
-    const res = await api.post(BASE_PATH, payload);
+  async create(payload: CoastalStationInmarsatRequest, action = 'DRAFT'): Promise<CoastalStationInmarsatResponse> {
+    const res = await api.post(`${BASE_PATH}?action=${action}`, payload);
     return res.data;
   },
 
-  async update(id: string, payload: CoastalStationInmarsatUpdateRequest): Promise<CoastalStationInmarsatResponse> {
-    const res = await api.put(`${BASE_PATH}/${id}`, payload);
+  async update(id: string, payload: CoastalStationInmarsatUpdateRequest, action?: string): Promise<CoastalStationInmarsatResponse> {
+    const url = action ? `${BASE_PATH}/${id}?action=${action}` : `${BASE_PATH}/${id}`;
+    const res = await api.put(url, payload);
     return res.data;
   },
 
@@ -111,6 +112,26 @@ export const inmarsatStationService = {
   async approveL2(id: string): Promise<CoastalStationInmarsatResponse> {
     const res = await api.post(`${BASE_PATH}/${id}/approve-l2`);
     return res.data;
+  },
+
+  async approveC1(id: string): Promise<CoastalStationInmarsatResponse> {
+    return this.approveL1(id);
+  },
+
+  async approveC2(id: string): Promise<CoastalStationInmarsatResponse> {
+    return this.approveL2(id);
+  },
+
+  async approveLevel1(id: string): Promise<CoastalStationInmarsatResponse> {
+    return this.approveL1(id);
+  },
+
+  async approveLevel2(id: string): Promise<CoastalStationInmarsatResponse> {
+    return this.approveL2(id);
+  },
+
+  async approve(id: string): Promise<CoastalStationInmarsatResponse> {
+    return this.approveL2(id);
   },
 
   async reject(id: string, rejectionReason: string): Promise<CoastalStationInmarsatResponse> {

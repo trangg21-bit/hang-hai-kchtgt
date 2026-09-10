@@ -157,16 +157,18 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.updatedBy AS updatedBy,
                t.owningOrgId AS owningOrgId,
                t.operatingOrgId AS operatingOrgId,
-               op.name AS operatingOrgName,
+               COALESCE(op.name, oorg.name) AS operatingOrgName,
                t.portId AS portId,
                t.provinceId AS provinceId,
                t.operationStartDate AS operationStartDate
         FROM VtsSystem t
-        LEFT JOIN OperatingOrganization op ON op.id = t.operatingOrgId
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
+        LEFT JOIN OperatingOrganization op ON op.id = t.operatingOrgId
+        LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
         LEFT JOIN OrgUnit own ON own.id = t.owningOrgId
         LEFT JOIN Port p ON p.id = t.portId
         LEFT JOIN User u ON u.id = t.updatedBy
+        LEFT JOIN User uCreate ON uCreate.id = t.createdBy
         WHERE t.deletedAt IS NULL
           AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)

@@ -11,14 +11,17 @@ import {
   Row,
   Col,
   Modal,
-  Drawer,
   DatePicker,
 } from 'antd';
+import AppDrawer from '../../components/shared/AppDrawer';
 import {
   PlusOutlined,
   DeleteOutlined,
   CloseOutlined,
   EnvironmentOutlined,
+  BankOutlined,
+  SlidersOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
@@ -45,22 +48,35 @@ import {
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary, textAreaStyle,
   readonlyInputStyle, drawerCloseBtnStyle, inputStyle, selectStyle,
-  DRAWER_TABLE_SCROLL_Y, getDatePickerProps,
-  statusBadgeStyle, getConditionStatusColor, getConditionStatusLabel,
+  DRAWER_TABLE_SCROLL_Y, getDatePickerProps, surfaceCard, spaceMd, spaceSm, spaceXs,
 } from '../../themetokenchk';
-import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import { fmtInputNumber } from '../../utils/numFmt';
+import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
-import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import AisSystemDetailContent from './AisSystemDetailContent';
 import {
   parseWktToCoordinates,
   serializeCoordinatesToWkt,
-  adjustCoordinateListForGeometry,
+  GEOMETRY_POINT_COUNT,
+  validateDmsCoordinates,
+  dmsToDd,
 } from '../../utils/gisGeometry';
+
+const GEOMETRY_TYPE_OPTIONS = [
+  { value: 'POINT', label: 'Đối tượng điểm' },
+  { value: 'LINE', label: 'Đối tượng đường' },
+  { value: 'POLYGON', label: 'Đối tượng vùng' },
+];
+const COORD_SYS_OPTIONS = [
+  { value: 1, label: 'WGS-84' },
+  { value: 2, label: 'VN-2000' },
+];
 
 export interface AisSystemFormProps {
   open?: boolean;
@@ -77,29 +93,113 @@ export interface AisSystemFormProps {
   onSwitchToEdit?: () => void;
 }
 
-const renderConditionBadge = (status?: ConditionStatus | string | number) => {
-  if (!status && status !== 0) return '—';
-  const label = getConditionStatusLabel(status);
-  const color = getConditionStatusColor(status);
-  return (
-    <span style={statusBadgeStyle(color)}>
-      {label}
-    </span>
-  );
+const sectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '14px 18px 10px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
 };
 
-const ddToDms = (dd?: number | null) => {
-  if (dd === undefined || dd === null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-  const abs = Math.abs(dd);
+const sectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 12,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  color: sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd + 0.5,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+};
+
+function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
+  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
+  let abs = Math.abs(dd);
   let d = Math.floor(abs);
-  let minFloat = (abs - d) * 60;
-  if (minFloat > 59.999999999) { d += 1; minFloat = 0; }
-  let m = Math.floor(minFloat);
-  let sFloat = (minFloat - m) * 60;
+  let mFloat = (abs - d) * 60;
+  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
+  let m = Math.floor(mFloat);
+  let sFloat = (mFloat - m) * 60;
   if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
   let s = Math.round(sFloat * 100) / 100;
   if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d, m, s };
+  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
+}
+
+const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
+const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
+
+const renderDmsGroup = (
+  dVal: number | null | undefined,
+  mVal: number | null | undefined,
+  sVal: number | null | undefined,
+  maxDeg: number,
+  onChange: (d: number | null, m: number | null, s: number | null) => void,
+) => {
+  const started = dVal != null || mVal != null || sVal != null;
+  const inputs = [
+    {
+      key: 'd', base: 'Độ', value: dVal, max: maxDeg,
+      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1, formatter: undefined,
+      msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
+    },
+    {
+      key: 'm', base: 'Phút', value: mVal, max: 59,
+      radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1, formatter: undefined,
+      msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
+    },
+    {
+      key: 's', base: 'Giây', value: sVal, max: 59.99,
+      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
+      step: 0.01, formatter: fmtInputNumber,
+      msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
+      onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
+    },
+  ] as const;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+        {inputs.map((inp) => (
+          <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
+            <InputNumber
+              value={inp.value}
+              min={0}
+              max={inp.max}
+              step={inp.step}
+              placeholder={inp.base}
+              formatter={inp.formatter}
+              status={inp.msg ? 'error' : undefined}
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
+              style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+              controls={false}
+            />
+            <span style={inp.unitStyle}>{inp.unit}</span>
+          </div>
+        ))}
+      </div>
+      <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+        {inputs.map((inp) => (
+          <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+            {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 export const AisSystemForm: React.FC<AisSystemFormProps> = ({
@@ -121,9 +221,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     mode === 'view' ? 'detail' : (mode as 'create' | 'edit' | 'detail')
   );
   const [tabKey, setTabKey] = useState<string>('general');
-  const [detailTabKey, setDetailTabKey] = useState<string>('general');
   const [record, setRecord] = useState<AisSystemResponse | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(Boolean(editId));
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
@@ -133,12 +232,12 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
   const [radarStations, setRadarStations] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
   const [symbols, setSymbols] = useState<any[]>([]);
-  const [coordinateList, setCoordinateList] = useState<{ latitude: number | null; longitude: number | null }[]>([]);
+  const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
-  const [geometryTypeState, setGeometryTypeState] = useState<string>('POINT');
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
@@ -150,6 +249,13 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const isEditMode = currentMode === 'edit';
 
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const watchedGeometryType = Form.useWatch('geometryType', form);
+
+  const hasCoordinates = coordinateList.some((c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null);
+  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
+  const labelProps = (label: string) => ({
+    label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{label}</span>,
+  });
 
   const handleClose = () => {
     if (onCancel) onCancel();
@@ -256,12 +362,11 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
       setCoordinateList([]);
-      setGeometryTypeState('POINT');
+      setGpsError(null);
       return;
     }
 
     setTabKey('general');
-    setDetailTabKey('general');
 
     const targetId = editId || initialData?.id;
 
@@ -272,8 +377,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           setRecord(full);
           setAttachments(full.attachments || []);
           const initialLocId = full.vtsOperationCenterId ? `op_${full.vtsOperationCenterId}` : full.radarStationId ? `radar_${full.radarStationId}` : undefined;
-          const geom = full.geometryType || 'POINT';
-          setGeometryTypeState(geom);
+          const geom = full.geometryType || undefined;
           form.setFieldsValue({
             code: full.code,
             name: full.name,
@@ -293,11 +397,23 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             note: full.note,
             geometryType: geom,
             symbolId: full.symbolId || undefined,
-            coordinateSystem: full.geometryType ? 'WGS 84 / VN-2000' : undefined,
-            displayRule: full.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
+            coordinateSystem: geom ? 1 : undefined,
+            displayRule: geom ? 'Độ, phút, giây (DMS)' : undefined,
           });
           const parsedCoords = parseWktToCoordinates(full.coordinates);
-          setCoordinateList(adjustCoordinateListForGeometry(parsedCoords, geom));
+          if (parsedCoords.length > 0) {
+            setCoordinateList(parsedCoords.map((c) => {
+              const latDms = ddToDms(c.latitude);
+              const lngDms = ddToDms(c.longitude);
+              return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+            }));
+          } else if (geom) {
+            const count = GEOMETRY_POINT_COUNT[geom] ?? 1;
+            setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
+          } else {
+            setCoordinateList([]);
+          }
+          setGpsError(null);
         })
         .catch(() => {
           toast.error('Không thể tải thông tin hệ thống AIS');
@@ -306,20 +422,20 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     } else {
       // Create mode
       form.resetFields();
-      setGeometryTypeState('POINT');
       form.setFieldsValue({
         conditionStatus: ConditionStatus.OPERATIONAL,
         unitOfMeasure: UnitOfMeasure.SET,
         quantity: 1,
-        geometryType: 'POINT',
-        coordinateSystem: 'WGS 84 / VN-2000',
-        displayRule: 'Độ, phút, giây (DMS)',
+        geometryType: undefined,
+        coordinateSystem: undefined,
+        displayRule: undefined,
       });
       setRecord(null);
       setAttachments([]);
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
-      setCoordinateList([{ latitude: null, longitude: null }]);
+      setCoordinateList([]);
+      setGpsError(null);
 
       aisSystemService.generateCode().then((res) => {
         form.setFieldsValue({
@@ -327,13 +443,39 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           conditionStatus: ConditionStatus.OPERATIONAL,
           unitOfMeasure: UnitOfMeasure.SET,
           quantity: 1,
-          geometryType: 'POINT',
-          coordinateSystem: 'WGS 84 / VN-2000',
-          displayRule: 'Độ, phút, giây (DMS)',
+          geometryType: undefined,
+          coordinateSystem: undefined,
+          displayRule: undefined,
         });
       }).catch(() => {});
     }
   }, [open, editId, initialData, form]);
+
+  // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
+  useEffect(() => {
+    if (!watchedGeometryType) {
+      form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
+      setCoordinateList([]);
+      setGpsError(null);
+      return;
+    }
+    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    setCoordinateList((prev) => {
+      if (!prev || prev.length === 0) {
+        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      }
+      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+        return [prev[0]];
+      }
+      if (prev.length < count) {
+        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+        return [...prev, ...added];
+      }
+      return prev;
+    });
+    setGpsError(null);
+  }, [watchedGeometryType, form]);
 
   const effectiveOrgUnitId = watchedOrgUnitId || record?.orgUnitId;
 
@@ -385,6 +527,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
       uploadedDate: new Date().toISOString(),
       file,
+      originFileObj: file,
     };
     setPendingFiles((prev) => [...prev, file]);
     setAttachments((prev) => [...prev, newAttachment]);
@@ -426,73 +569,50 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     }
   };
 
-  const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
-    const d = dVal ?? 0;
-    const m = mVal ?? 0;
-    const s = sVal ?? 0;
-    const dMax = field === 'lat' ? 90 : 180;
-    const dClamped = Math.min(dMax, Math.max(0, d));
-    const mClamped = Math.min(59, Math.max(0, m));
-    const sClamped = Math.min(59.9999, Math.max(0, s));
-    const decimal = dClamped + mClamped / 60 + sClamped / 3600;
-    setCoordinateList((prev) => {
-      const next = [...prev];
-      next[i] = {
-        ...next[i],
-        [field === 'lat' ? 'latitude' : 'longitude']: decimal,
-      };
-      return next;
-    });
+  const removeCoordinate = (i: number) => {
+    setCoordinateList((p) => p.filter((_, idx) => idx !== i));
+    setGpsError(null);
   };
 
-  const renderDms = (i: number, field: 'lat' | 'lng', r: { latitude: number | null; longitude: number | null }) => {
-    const v = field === 'lat' ? (r.latitude ?? 0) : (r.longitude ?? 0);
-    const dms = ddToDms(v);
-    const maxD = field === 'lat' ? 90 : 180;
-    return (
-      <Space.Compact size="small" style={{ width: '100%', display: 'flex' }}>
-        <InputNumber
-          value={dms.d}
-          min={0}
-          max={maxD}
-          precision={0}
-          placeholder="Độ"
-          controls={false}
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(x) => updateGpsPoint(i, field, x, dms.m, dms.s)}
-          style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
-        />
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>°</span>
-        <InputNumber
-          value={dms.m}
-          min={0}
-          max={59}
-          precision={0}
-          placeholder="Phút"
-          controls={false}
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(x) => updateGpsPoint(i, field, dms.d, x, dms.s)}
-          style={{ flex: 1, minWidth: 0, textAlign: 'center' }}
-        />
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, fontSize: fontSizeSm, color: textTertiary }}>'</span>
-        <InputNumber
-          value={dms.s}
-          min={0}
-          max={59.9999}
-          step={0.01}
-          placeholder="Giây"
-          controls={false}
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(x) => updateGpsPoint(i, field, dms.d, dms.m, x)}
-          style={{ flex: 1.2, minWidth: 0, textAlign: 'center' }}
-        />
-        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0 6px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, fontSize: fontSizeSm, color: textTertiary }}>"</span>
-      </Space.Compact>
-    );
+  const addGpsPoint = () => {
+    setCoordinateList((p) => [...p, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
+    setGpsError(null);
+  };
+
+  const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
+    setCoordinateList((p) => {
+      const n = [...p];
+      n[i] = {
+        ...n[i],
+        [field === 'lat' ? 'latD' : 'lngD']: dVal,
+        [field === 'lat' ? 'latM' : 'lngM']: mVal,
+        [field === 'lat' ? 'latS' : 'lngS']: sVal,
+      };
+      return n;
+    });
+    setGpsError(null);
   };
 
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
+
+    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
+    const geomType = values.geometryType || undefined;
+    let wkt: string | undefined = undefined;
+
+    if (geomType) {
+      const coordResult = validateDmsCoordinates(coordinateList, geomType);
+      if (!coordResult.valid) {
+        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+        toast.error(errMsg);
+        setGpsError(errMsg);
+        setTabKey('gis');
+        return;
+      }
+      const validCoords = coordResult.validCoords;
+      wkt = validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
+    }
+
     setIsSubmitting(true);
     try {
       const locationVal = values.locationId;
@@ -510,10 +630,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           else vtsCenterId = locationVal;
         }
       }
-
-      const geomType = values.geometryType || 'POINT';
-      const validCoords = coordinateList.filter((c) => c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude));
-      const wkt = validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
 
       const payload: CreateAisSystemRequest = {
         code: values.code?.trim(),
@@ -592,335 +708,37 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     }
   };
 
-  // ── Render Detail View (100% Identical to VtsOperationCenterForm) ──────────
-  const renderDetailContent = () => {
-    if (!record) return null;
-
-    return (
-      <Tabs
-        activeKey={detailTabKey}
-        onChange={setDetailTabKey}
-        tabBarStyle={drawerTabBarStyle}
-        animated={false}
-        items={[
-          {
-            key: 'general',
-            label: 'Thông tin chung',
-            children: (
-              <div style={drawerFormScrollStyle}>
-                <div className="chk-detail-grid">
-                  <div className="chk-detail-row"><span className="chk-detail-label">Mã thiết bị</span><span className="chk-detail-value">{record.code || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Tên thiết bị</span><span className="chk-detail-value">{record.name || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị quản lý</span><span className="chk-detail-value">{record.orgUnitName || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Thuộc TTDH VTS / Trạm Radar</span><span className="chk-detail-value">{record.vtsOperationCenterName || record.radarStationName || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Đơn vị khai thác</span><span className="chk-detail-value">{record.operatingOrgName || operatingUnitOptions.find((o) => o.value === String(record.operatingOrgId))?.label || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span><span className="chk-detail-value">{record.provinceName || getProvinceNameById(record.provinceId) || '—'}</span></div>
-
-                  <div className="chk-detail-row"><span className="chk-detail-label">Địa điểm chi tiết</span><span className="chk-detail-value">{record.detailedLocation || '—'}</span></div>
-                  <div style={{ display: 'flex', gap: 24, padding: 0 }}>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', minHeight: 38, padding: '8px 0', borderBottom: `1px solid ${borderDefault}` }}>
-                      <span style={{ width: 95, flexShrink: 0, color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: 1.5 }}>
-                        Đơn vị tính:
-                      </span>
-                      <span className="chk-detail-value">
-                        {record.unitOfMeasure != null ? (UNIT_OF_MEASURE_MAP[record.unitOfMeasure] || record.unitOfMeasure) : '—'}
-                      </span>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', minHeight: 38, padding: '8px 0', borderBottom: `1px solid ${borderDefault}` }}>
-                      <span style={{ width: 75, flexShrink: 0, color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: 1.5 }}>
-                        Số lượng:
-                      </span>
-                      <span className="chk-detail-value">
-                        {record.quantity ?? '—'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="chk-detail-row"><span className="chk-detail-label">Năm đưa vào sử dụng</span><span className="chk-detail-value">{record.commissioningYear || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Tình trạng</span><span className="chk-detail-value">{renderConditionBadge(record.conditionStatus)}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Model</span><span className="chk-detail-value">{record.model || '—'}</span></div>
-                  <div className="chk-detail-row"><span className="chk-detail-label">Hãng sản xuất</span><span className="chk-detail-value">{record.manufacturer || '—'}</span></div>
-                  <div className="chk-detail-row chk-detail-row--full">
-                    <span className="chk-detail-label">Thông số kỹ thuật</span>
-                    <span className="chk-detail-value">{record.specifications || '—'}</span>
-                  </div>
-                  <div className="chk-detail-row chk-detail-row--full">
-                    <span className="chk-detail-label">Thông tin bảo trì</span>
-                    <span className="chk-detail-value">{record.maintenanceInfo || '—'}</span>
-                  </div>
-                  <div className="chk-detail-row chk-detail-row--full">
-                    <span className="chk-detail-label">Ghi chú</span>
-                    <span className="chk-detail-value">{record.note || '—'}</span>
-                  </div>
-                </div>
-              </div>
-            ),
-          },
-          {
-            key: 'gis',
-            label: 'Thông tin vị trí',
-            children: (
-              <DetailTable
-                scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
-                dataSource={coordinateList}
-                emptyText="Chưa có tọa độ GPS nào"
-                headerNode={
-                  <>
-                    <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Loại đối tượng</span><span className="chk-detail-value">{record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}</span></div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Biểu tượng</span>
-                        <span className="chk-detail-value">
-                          {(() => {
-                            const symId = record?.symbolId;
-                            const sym = symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId)));
-                            if (sym) {
-                              const imgSrc = sym.image
-                                ? (sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
-                                    ? sym.image
-                                    : `data:image/png;base64,${sym.image}`)
-                                : undefined;
-                              return (
-                                <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                  {imgSrc ? (
-                                    <img
-                                      src={imgSrc}
-                                      alt={sym.name || ''}
-                                      style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
-                                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                    />
-                                  ) : (
-                                    <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                                  )}
-                                  <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                                </Space>
-                              );
-                            }
-                            return (
-                              <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                                <span>{(record as any)?.symbolName || (record?.symbolId ? `Biểu tượng (${record.symbolId})` : 'Hệ thống AIS')}</span>
-                              </Space>
-                            );
-                          })()}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Hệ quy chiếu</span><span className="chk-detail-value">WGS 84 / VN-2000</span></div>
-                      <div className="chk-detail-row"><span className="chk-detail-label">Quy tắc hiển thị</span><span className="chk-detail-value">Độ, phút, giây (DMS)</span></div>
-                    </div>
-                    <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                      <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
-                        Tọa độ GPS
-                      </span>
-                      <Button
-                        type="primary"
-                        icon={<EnvironmentOutlined />}
-                        onClick={() => setMapModalOpen(true)}
-                        style={{
-                          ...primaryButtonStyle,
-                          height: 32,
-                          fontSize: fontSizeSm,
-                          padding: '0 14px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        Xem vị trí trên bản đồ
-                      </Button>
-                    </div>
-                  </>
-                }
-                columns={[
-                  {
-                    title: 'STT',
-                    dataIndex: 'stt',
-                    width: 60,
-                    align: 'center',
-                    render: (_v: any, _r: any, index: number) => index + 1,
-                  },
-                  {
-                    title: 'Vĩ độ (Latitude - N)',
-                    key: 'lat',
-                    render: (_v: any, r: any) => {
-                      const dms = ddToDms(r.latitude);
-                      return `${dms.d}° ${dms.m}' ${dms.s}" N`;
-                    },
-                  },
-                  {
-                    title: 'Kinh độ (Longitude - E)',
-                    key: 'lng',
-                    render: (_v: any, r: any) => {
-                      const dms = ddToDms(r.longitude);
-                      return `${dms.d}° ${dms.m}' ${dms.s}" E`;
-                    },
-                  },
-                ]}
-              />
-            ),
-          },
-          {
-            key: 'files',
-            label: 'File đính kèm',
-            children: (
-              <InfrastructureAttachmentTab
-                attachments={attachments}
-                readonly={true}
-                onDownload={handleDownloadAttachment}
-              />
-            ),
-          },
-          {
-            key: 'handlingAndTracking',
-            label: 'Xử lý & theo dõi',
-            children: (
-              <div style={drawerFormScrollStyle}>
-                <div className="chk-detail-grid">
-                  {/* Trạng thái phê duyệt */}
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Trạng thái phê duyệt</span>
-                    <span className="chk-detail-value"><ApprovalStatusBadge status={record.approvalStatus} /></span>
-                  </div>
-                  <div style={{ border: 'none' }} />
-
-                  {/* Ngày cập nhật & Cán bộ cập nhật */}
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Ngày cập nhật</span>
-                    <span className="chk-detail-value">
-                      {record.updatedAt
-                        ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss')
-                        : record.createdAt
-                        ? dayjs(record.createdAt).format('DD/MM/YYYY HH:mm:ss')
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Cán bộ cập nhật</span>
-                    <span className="chk-detail-value">{record.updatedByName || record.createdByName || '—'}</span>
-                  </div>
-
-                  {/* Ngày gửi phê duyệt & Cán bộ gửi phê duyệt */}
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Ngày gửi phê duyệt</span>
-                    <span className="chk-detail-value">
-                      {record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
-                    <span className="chk-detail-value">{record.submittedByName || record.submittedBy || '—'}</span>
-                  </div>
-
-                  {/* Cấp Cảng vụ/Chi cục */}
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                    <span className="chk-detail-value">
-                      {record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
-                    <span className="chk-detail-value">
-                      {record.approverLevel1Name || record.approverLevel1 || '—'}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row chk-detail-row--full">
-                    <span className="chk-detail-label">Nội dung phê duyệt</span>
-                    <span className="chk-detail-value">{record.approvalContentLevel1 || record.approvalReasonLevel1 || '—'}</span>
-                  </div>
-
-                  {/* Cấp Cục */}
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Ngày phê duyệt cấp Cục</span>
-                    <span className="chk-detail-value">
-                      {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row">
-                    <span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span>
-                    <span className="chk-detail-value">
-                      {record.approverLevel2Name || record.approverLevel2 || '—'}
-                    </span>
-                  </div>
-                  <div className="chk-detail-row chk-detail-row--full">
-                    <span className="chk-detail-label">Nội dung phê duyệt</span>
-                    <span className="chk-detail-value">{record.approvalContentLevel2 || record.approvalReasonLevel2 || '—'}</span>
-                  </div>
-
-                  {/* Lý do từ chối nếu có */}
-                  {record.rejectionReason && (
-                    <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label">Lý do từ chối</span>
-                      <span className="chk-detail-value" style={{ color: statusCritical }}>
-                        {record.rejectionReason}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ),
-          },
-        ]}
-      />
-    );
-  };
-
   return (
-    <Drawer
-      rootClassName="vtssystemchk-theme-scope"
-      width="50%"
+    <AppDrawer
+      rootClassName="ais-drawer-scope vts-drawer-scope berth-drawer-scope"
+      className="ais-drawer-scope vts-drawer-scope berth-drawer-scope"
+      style={{ maxWidth: '96vw' }}
+      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
       placement="right"
-      closable={false}
-      open={open}
+      open={Boolean(open)}
       onClose={handleClose}
-      styles={drawerStyles}
+      styles={{
+        header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+        body: { padding: '0 24px 12px 24px', overflow: isDetailMode ? 'hidden' : undefined },
+      }}
       title={
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={drawerTitleStyle}>
-            {isDetailMode
-              ? (record?.name ? `Xem chi tiết — ${record.name}` : 'Xem chi tiết Hệ thống trạm bờ AIS')
-              : isCreateMode
-                ? 'Thêm mới Hệ thống trạm bờ AIS'
-                : (record?.name ? `Chỉnh sửa — ${record.name}` : 'Chỉnh sửa Hệ thống trạm bờ AIS')}
-          </span>
-          <Space size={8}>
-            {isDetailMode && onSwitchToEdit && (
-              <Button
-                type="primary"
-                size="small"
-                onClick={onSwitchToEdit}
-                style={{ ...primaryButtonStyle, height: 28, fontSize: fontSizeSm, borderRadius: radiusPill }}
-              >
-                Chuyển sang sửa
-              </Button>
-            )}
-            <Button
-              type="text"
-              onClick={handleClose}
-              style={{
-                ...drawerCloseBtnStyle,
-                borderRadius: '50%',
-                width: 32,
-                height: 32,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
-            </Button>
-          </Space>
-        </div>
+        <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+          {isDetailMode
+            ? (record?.name ? `Chi tiết hệ thống trạm bờ AIS - ${record.name}` : 'Chi tiết hệ thống trạm bờ AIS')
+            : isCreateMode
+              ? 'Thêm mới hệ thống trạm bờ AIS'
+              : (record?.name ? `Chỉnh sửa thông tin — ${record.name}` : 'Chỉnh sửa thông tin')}
+        </span>
       }
       footer={
         isDetailMode ? null : (
-          <div style={drawerFooterStyle}>
+          <>
             {isCreateMode ? (
               <>
                 <Button
                   onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
                   loading={isSubmitting && actionType === 'draft'}
-                  style={outlineButtonStyle}
+                  style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
                 >
                   Lưu tạm
                 </Button>
@@ -928,30 +746,46 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                   type="primary"
                   onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
                   loading={isSubmitting && actionType === 'submit'}
-                  style={primaryButtonStyle}
+                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
                 >
                   Lưu và gửi phê duyệt
                 </Button>
-                {canSaveAndApprove && (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
+                <Button
+                  type="primary"
+                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                  loading={isSubmitting && actionType === 'approve'}
+                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
+                >
+                  Lưu và phê duyệt
+                </Button>
               </>
             ) : (
               <>
-                <Button onClick={handleClose} style={outlineButtonStyle}>Hủy</Button>
-                {record?.approvalStatus === ApprovalStatus.APPROVED && canSaveAndApprove ? (
+                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
+                  <>
+                    <Button
+                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'draft'}
+                      style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+                    >
+                      Lưu tạm
+                    </Button>
+                    <Button
+                      type="primary"
+                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'submit'}
+                      style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                    >
+                      Lưu và gửi phê duyệt
+                    </Button>
+                  </>
+                )}
+                {canSaveAndApprove ? (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
                     loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
                   >
                     Lưu và phê duyệt
                   </Button>
@@ -960,19 +794,32 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
                     loading={isSubmitting && actionType === 'update'}
-                    style={primaryButtonStyle}
+                    style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
                   >
                     Cập nhật
                   </Button>
                 )}
               </>
             )}
-          </div>
+          </>
         )
       }
     >
-      <Spin spinning={isLoading}>
-        {isDetailMode ? renderDetailContent() : (
+      {isDetailMode ? (
+        isLoading || (!record && !initialData) ? (
+          <div style={{ padding: '16px 0' }}>
+            <LoadingSkeleton rows={6} />
+          </div>
+        ) : (
+          <AisSystemDetailContent
+            selectedRecord={record || initialData!}
+            symbols={symbols}
+            detailFiles={attachments}
+            onClose={handleClose}
+          />
+        )
+      ) : (
+        <Spin spinning={isLoading}>
           <Form
             form={form}
             layout="vertical"
@@ -1003,285 +850,286 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                   label: 'Thông tin chung',
                   children: (
                     <div style={drawerFormScrollStyle}>
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="code"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã thiết bị</span>}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input
-                              disabled
-                              placeholder="Mã tự động sinh"
-                              style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="name"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên thiết bị</span>}
-                            rules={[
-                              { required: true, message: 'Vui lòng nhập tên thiết bị' },
-                              { max: 255, message: 'Tên tối đa 255 ký tự' },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input
-                              placeholder="Nhập tên thiết bị"
-                              maxLength={255}
-                              showCount
-                              style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                      {/* ── Section 1: Thông tin định danh & Quản lý ── */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <BankOutlined style={{ color: actionPrimary }} />
+                            <span>Thông tin định danh & Quản lý</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="code"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã hệ thống AIS</span>}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input
+                                disabled
+                                placeholder="Mã tự động sinh"
+                                style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="name"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên hệ thống AIS</span>}
+                              rules={[
+                                { required: true, message: 'Vui lòng nhập tên hệ thống AIS' },
+                                { max: 255, message: 'Tên tối đa 255 ký tự' },
+                              ]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input
+                                placeholder="Nhập tên hệ thống AIS"
+                                maxLength={255}
+                                showCount
+                                style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="orgUnitId"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <FormOrgUnitTreeSelect
+                                organizations={orgUnits}
+                                placeholder="Chọn đơn vị quản lý"
+                                disabled={isEditMode}
+                                allowClear
+                                treeDefaultExpandAll
+                                listHeight={256}
+                                onChange={() => form.setFieldValue('locationId', undefined)}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="locationId"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm Radar</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS hoặc Trạm Radar' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder="Chọn TTDH VTS hoặc Trạm Radar"
+                                allowClear
+                                showSearch
+                                filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                                options={combinedLocationOptions}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="operatingOrgId"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị khai thác</span>}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder="Chọn đơn vị khai thác"
+                                allowClear
+                                showSearch
+                                filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                                options={operatingUnitOptions}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
 
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="orgUnitId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị quản lý</span>}
-                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <FormOrgUnitTreeSelect
-                              organizations={orgUnits}
-                              placeholder="Chọn đơn vị quản lý"
-                              disabled={isEditMode}
-                              allowClear
-                              treeDefaultExpandAll
-                              listHeight={256}
-                              onChange={() => form.setFieldValue('locationId', undefined)}
-                              style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="locationId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm Radar</span>}
-                            rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS hoặc Trạm Radar' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn TTDH VTS hoặc Trạm Radar"
-                              allowClear
-                              showSearch
-                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                              options={combinedLocationOptions}
-                              style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                      {/* ── Section 2: Thông số kỹ thuật & Vận hành ── */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <SlidersOutlined style={{ color: actionPrimary }} />
+                            <span>Thông số kỹ thuật & Vận hành</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="provinceId"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder="Chọn Tỉnh/Thành phố"
+                                allowClear
+                                showSearch
+                                filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                                options={VIETNAM_PROVINCE_OPTIONS}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="detailedLocation"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
+                              rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={6}>
+                            <Form.Item
+                              name="unitOfMeasure"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị tính</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn đơn vị tính' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder="Chọn đơn vị tính"
+                                options={UNIT_OF_MEASURE_OPTIONS}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={6}>
+                            <Form.Item
+                              name="quantity"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số lượng</span>}
+                              rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <InputNumber min={1} precision={0} style={{ ...inputStyle, width: '100%', borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="commissioningYear"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Năm đưa vào sử dụng</span>}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <DatePicker
+                                {...getDatePickerProps({
+                                  picker: 'year',
+                                  format: 'YYYY',
+                                  placeholder: 'Chọn năm đưa vào sử dụng',
+                                  getPopupContainer: (trigger: HTMLElement) => trigger.parentElement || document.body,
+                                })}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="conditionStatus"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder="Chọn tình trạng"
+                                options={CONDITION_STATUS_OPTIONS}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="model"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Model</span>}
+                              rules={[{ max: 255, message: 'Model tối đa 255 ký tự' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập model" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="manufacturer"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Hãng sản xuất</span>}
+                              rules={[{ max: 255, message: 'Hãng sản xuất tối đa 255 ký tự' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập hãng sản xuất" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item
+                              name="specifications"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông số kỹ thuật</span>}
+                              rules={[{ max: 2000, message: 'Thông số kỹ thuật tối đa 2000 ký tự' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
 
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="operatingOrgId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị khai thác</span>}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn đơn vị khai thác"
-                              allowClear
-                              showSearch
-                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                              options={operatingUnitOptions}
-                              style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="provinceId"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
-                            rules={[{ required: true, message: 'Vui lòng chọn Tỉnh/Thành phố' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn Tỉnh/Thành phố"
-                              allowClear
-                              showSearch
-                              filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                              options={VIETNAM_PROVINCE_OPTIONS}
-                              style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="detailedLocation"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
-                            rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                          <Form.Item
-                            name="unitOfMeasure"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Đơn vị tính</span>}
-                            rules={[{ required: true, message: 'Vui lòng chọn đơn vị tính' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn đơn vị tính"
-                              options={UNIT_OF_MEASURE_OPTIONS}
-                              style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={6}>
-                          <Form.Item
-                            name="quantity"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số lượng</span>}
-                            rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <InputNumber min={1} precision={0} style={{ ...inputStyle, width: '100%', borderRadius: radiusPill, height: 40 }} />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="commissioningYear"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Năm đưa vào sử dụng</span>}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <DatePicker
-                              {...getDatePickerProps({
-                                picker: 'year',
-                                format: 'YYYY',
-                                placeholder: 'Chọn năm đưa vào sử dụng',
-                                getPopupContainer: (trigger: HTMLElement) => trigger.parentElement || document.body,
-                              })}
-                              style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="conditionStatus"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
-                            rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn tình trạng"
-                              options={CONDITION_STATUS_OPTIONS}
-                              style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="model"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Model</span>}
-                            rules={[{ max: 255, message: 'Model tối đa 255 ký tự' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input placeholder="Nhập model" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="manufacturer"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Hãng sản xuất</span>}
-                            rules={[{ max: 255, message: 'Hãng sản xuất tối đa 255 ký tự' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input placeholder="Nhập hãng sản xuất" maxLength={255} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Row gutter={[24, 0]}>
-                        <Col span={24}>
-                          <Form.Item
-                            name="specifications"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông số kỹ thuật</span>}
-                            rules={[{ max: 2000, message: 'Thông số kỹ thuật tối đa 2000 ký tự' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Row gutter={[24, 0]}>
-                        <Col span={24}>
-                          <Form.Item
-                            name="maintenanceInfo"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông tin bảo trì</span>}
-                            rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì, bảo dưỡng" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      <Row gutter={[24, 0]}>
-                        <Col span={24}>
-                          <Form.Item
-                            name="note"
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
-                            rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input.TextArea rows={3} placeholder="Nhập ghi chú (nếu có)" maxLength={2000} showCount style={{ ...textAreaStyle, padding: '10px 16px' }} />
-                          </Form.Item>
-                        </Col>
-                      </Row>
+                      {/* ── Section 3: Bảo trì & Ghi chú ── */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <FileTextOutlined style={{ color: actionPrimary }} />
+                            <span>Bảo trì & Ghi chú</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
+                          <Col span={24}>
+                            <Form.Item
+                              name="maintenanceInfo"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông tin bảo trì</span>}
+                              rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24}>
+                            <Form.Item
+                              name="note"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ghi chú</span>}
+                              rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Input placeholder="Nhập ghi chú" maxLength={2000} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </div>
                     </div>
                   ),
                 },
                 {
                   key: 'gis',
-                  label: 'Thông tin vị trí',
+                  label: `Thông tin vị trí (${coordinateList.length})`,
                   children: (
-                    <div>
-                      <div style={drawerGisControlBoxStyle}>
-                        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
+                    <div style={drawerFormScrollStyle}>
+                      {/* ── Section Card: Thông số đối tượng bản đồ ── */}
+                      <div style={sectionBoxStyle}>
+                        <div style={sectionHeaderStyle}>
+                          <div style={sectionTitleStyle}>
+                            <EnvironmentOutlined style={{ color: actionPrimary }} />
+                            <span>Thông số đối tượng bản đồ</span>
+                          </div>
+                        </div>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item
                               name="geometryType"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Loại đối tượng</span>}
-                              style={{ marginBottom: 0 }}
+                              {...labelProps('Loại đối tượng')}
+                              required={hasCoordinates}
+                              rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
+                              style={{ marginBottom: spaceFormField }}
                             >
                               <Select
                                 placeholder="Chọn loại đối tượng"
-                                options={[
-                                  { value: 'POINT', label: 'Đối tượng điểm' },
-                                  { value: 'LINE', label: 'Đối tượng đường' },
-                                  { value: 'POLYGON', label: 'Đối tượng vùng' },
-                                ]}
-                                style={{ ...selectStyle, height: 38 }}
-                                onChange={(val) => {
-                                  form.setFieldValue('geometryType', val);
-                                  setGeometryTypeState(val || 'POINT');
-                                  if (val) {
-                                    form.setFieldValue('coordinateSystem', 'WGS 84 / VN-2000');
-                                    form.setFieldValue('displayRule', 'Độ, phút, giây (DMS)');
-                                    setCoordinateList((prev) => adjustCoordinateListForGeometry(prev, val));
-                                  } else {
-                                    form.setFieldValue('coordinateSystem', undefined);
-                                    form.setFieldValue('displayRule', undefined);
-                                    form.setFieldValue('symbolId', undefined);
-                                    setCoordinateList([{ latitude: null, longitude: null }]);
-                                  }
-                                }}
+                                allowClear
+                                options={GEOMETRY_TYPE_OPTIONS}
+                                style={selectStyle}
                               />
                             </Form.Item>
                           </Col>
@@ -1289,162 +1137,192 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                           <Col span={12}>
                             <Form.Item
                               name="symbolId"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Biểu tượng</span>}
-                              style={{ marginBottom: 0 }}
+                              {...labelProps('Biểu tượng')}
+                              required={hasLocation}
+                              rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                              style={{ marginBottom: spaceFormField }}
                             >
                               <Select
                                 placeholder="Chọn biểu tượng bản đồ"
                                 allowClear
-                                disabled={!geometryTypeState}
-                                options={symbols.map((sym) => ({
-                                  value: sym.id,
-                                  label: (
-                                    <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                      {sym.image ? (
+                                showSearch
+                                optionFilterProp="label"
+                                disabled={!watchedGeometryType}
+                                style={selectStyle}
+                              >
+                                {symbols.map((sym) => (
+                                  <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                                    <Space>
+                                      {sym.image && (
                                         <img
                                           src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
                                           alt={sym.name}
-                                          style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: 'middle' }}
+                                          style={{ width: 20, height: 20, objectFit: 'contain' }}
                                         />
-                                      ) : (
-                                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: actionPrimary }} />
                                       )}
                                       <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
                                     </Space>
-                                  ),
-                                }))}
-                                style={{ ...selectStyle, height: 38 }}
-                              />
+                                  </Select.Option>
+                                ))}
+                              </Select>
                             </Form.Item>
                           </Col>
                         </Row>
-
-                        <Row gutter={[24, 0]} style={{ height: 68, marginBottom: 8 }}>
+                        <Row gutter={[24, 0]}>
                           <Col span={12}>
-                            <Form.Item
-                              name="coordinateSystem"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Hệ quy chiếu</span>}
-                              initialValue="WGS 84 / VN-2000"
-                              style={{ marginBottom: 0 }}
-                            >
+                            <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
                               <Select
                                 placeholder="Chọn hệ quy chiếu"
-                                allowClear
-                                options={[
-                                  { value: 'WGS 84 / VN-2000', label: 'WGS 84 / VN-2000' },
-                                  { value: 'WGS-84', label: 'WGS-84' },
-                                  { value: 'VN-2000', label: 'VN-2000' },
-                                ]}
-                                style={{ ...selectStyle, height: 38 }}
+                                disabled
+                                options={COORD_SYS_OPTIONS}
+                                style={selectStyle}
                               />
                             </Form.Item>
                           </Col>
 
                           <Col span={12}>
-                            <Form.Item
-                              name="displayRule"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>Quy tắc hiển thị</span>}
-                              initialValue="Độ, phút, giây (DMS)"
-                              style={{ marginBottom: 0 }}
-                            >
-                              <Input disabled style={{ ...readonlyInputStyle, borderRadius: radiusPill, height: 38 }} />
+                            <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
+                              <Input
+                                placeholder="Chọn quy tắc hiển thị"
+                                maxLength={255}
+                                disabled
+                                style={readonlyInputStyle}
+                              />
                             </Form.Item>
                           </Col>
                         </Row>
+                      </div>
 
-                        <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32, boxSizing: 'border-box' }}>
-                          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                            Tọa độ
+                      {/* ── Section Card: Tọa độ GPS ── */}
+                      <div style={sectionBoxStyle}>
+                        <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                          <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                            Tọa độ GPS ({coordinateList.length})
                           </span>
-                          <Space>
+                          <Space size={8}>
                             <Button
-                              icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                              icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
                               onClick={() => setMapModalOpen(true)}
-                              style={{
-                                borderRadius: radiusPill,
+                              disabled={!watchedGeometryType}
+                              style={!watchedGeometryType ? {
                                 height: 32,
+                                fontSize: fontSizeSm,
+                                padding: '0 14px',
+                                borderRadius: radiusPill,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                background: '#f5f5f5',
+                                borderColor: '#d9d9d9',
+                                color: 'rgba(0, 0, 0, 0.25)',
+                                cursor: 'not-allowed',
+                                boxShadow: 'none',
+                              } : {
+                                ...outlineButtonStyle,
+                                height: 32,
+                                fontSize: fontSizeSm,
                                 padding: '0 14px',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: 6,
-                                borderColor: actionPrimary,
-                                color: actionPrimary,
+                                gap: 4,
                               }}
+                              title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi chọn tọa độ trên bản đồ' : undefined}
                             >
-                              Chọn vị trí trên bản đồ
+                              Chọn tọa độ trên bản đồ
                             </Button>
-                            {geometryTypeState !== 'POINT' && (
-                              <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={() => setCoordinateList((p) => [...p, { latitude: null, longitude: null }])}
-                                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 32 }}
-                              >
-                                Thêm tọa độ
-                              </Button>
-                            )}
+                            <Button
+                              type="primary"
+                              icon={<PlusOutlined style={{ color: (!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? 'rgba(0, 0, 0, 0.25)' : undefined }} />}
+                              onClick={addGpsPoint}
+                              disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
+                              style={(!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? {
+                                height: 32,
+                                fontSize: fontSizeSm,
+                                padding: '0 14px',
+                                borderRadius: radiusPill,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                background: '#f5f5f5',
+                                borderColor: '#d9d9d9',
+                                color: 'rgba(0, 0, 0, 0.25)',
+                                cursor: 'not-allowed',
+                                boxShadow: 'none',
+                              } : {
+                                ...primaryButtonStyle,
+                                height: 32,
+                                fontSize: fontSizeSm,
+                                padding: '0 14px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                              title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi thêm tọa độ' : (watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined)}
+                            >
+                              Thêm tọa độ
+                            </Button>
                           </Space>
                         </div>
-                      </div>
-
-                      <DetailTable
-                        scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                        dataSource={(geometryTypeState === 'POINT' ? coordinateList.slice(0, 1) : coordinateList).map((c, i) => ({ ...c, _idx: i }))}
-                        emptyText="Chưa có tọa độ nào"
-                        rowKey="_idx"
-                        columns={[
-                          {
-                            title: 'STT',
-                            key: 'stt',
-                            width: 60,
-                            align: 'center',
-                            render: (_: any, __: any, i: number) => (
-                              <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
-                            ),
-                          },
-                          {
-                            title: 'Vĩ độ (N)',
-                            key: 'lat',
-                            render: (_: any, r: any) => renderDms(r._idx, 'lat', r),
-                          },
-                          {
-                            title: 'Kinh độ (E)',
-                            key: 'lng',
-                            render: (_: any, r: any) => renderDms(r._idx, 'lng', r),
-                          },
-                          {
-                            title: '',
-                            key: 'actions',
-                            width: 50,
-                            align: 'center' as const,
-                            render: (_: any, r: any) => {
-                              const geom = (geometryTypeState || 'POINT').toUpperCase();
-                              if (geom === 'POINT') return null;
-                              const minCount = geom.includes('LINE') ? 2 : (geom.includes('POLYGON') ? 3 : 1);
-                              const canDelete = coordinateList.length > minCount;
-                              if (!canDelete) return null;
-
-                              return (
+                        {gpsError && (
+                          <div style={{ marginBottom: spaceFormField, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
+                          </div>
+                        )}
+                        <DetailTable
+                          size="small"
+                          scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+                          dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+                          rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+                          emptyText="Chưa có tọa độ GPS nào"
+                          columns={[
+                            {
+                              title: 'STT',
+                              width: 60,
+                              align: 'center' as const,
+                              render: (_v: any, _r: any, idx: number) => idx + 1,
+                            },
+                            {
+                              title: 'Vĩ độ (Latitude - N)',
+                              key: 'lat',
+                              render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+                            },
+                            {
+                              title: 'Kinh độ (Longitude - E)',
+                              key: 'lng',
+                              render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+                            },
+                            {
+                              title: '',
+                              width: 50,
+                              align: 'center' as const,
+                              onCell: () => ({ style: { verticalAlign: 'top' } }),
+                              render: (_v: any, record: any) => (
                                 <Button
                                   type="text"
                                   danger
-                                  size="small"
                                   icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                  onClick={() => setCoordinateList((p) => p.filter((_, idx) => idx !== r._idx))}
+                                  onClick={() => removeCoordinate(record._idx)}
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    padding: 0,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
                                   title="Xóa tọa độ"
                                 />
-                              );
+                              ),
                             },
-                          },
-                        ]}
-                      />
+                          ]}
+                        />
+                      </div>
                     </div>
                   ),
                 },
                 {
                   key: 'files',
-                  label: 'File đính kèm',
+                  label: `File đính kèm (${attachments.length})`,
                   children: (
                     <InfrastructureAttachmentTab
                       attachments={attachments}
@@ -1458,8 +1336,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
               ]}
             />
           </Form>
-        )}
-      </Spin>
+        </Spin>
+      )}
 
       {/* Modal Chọn vị trí GIS trên bản đồ */}
       <Modal
@@ -1473,45 +1351,66 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnHidden
-        width="90vw"
+        destroyOnClose
+        width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
-        footer={
-          isDetailMode ? null : [
-            <Button
-              key="ok"
-              type="primary"
-              onClick={() => {
-                setMapModalOpen(false);
-                toast.success('Đã xác nhận vị trí từ bản đồ');
-              }}
-              style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
-            >
-              Xác nhận tọa độ
-            </Button>,
-          ]
-        }
+        footer={[
+          <Button key="cancel" onClick={() => setMapModalOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
+            Hủy
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setMapModalOpen(false)}
+            style={{ ...primaryButtonStyle, height: 36 }}
+          >
+            Xác nhận tọa độ
+          </Button>,
+        ]}
       >
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            height={560}
+            defaultGeometryType={watchedGeometryType || 'POINT'}
+            height={520}
             disabled={isDetailMode}
             value={{
-              geometryType: geometryTypeState || 'POINT',
-              coordinates: serializeCoordinatesToWkt(coordinateList, geometryTypeState || 'POINT'),
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+                  .map((c) => ({
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
               symbolId: form.getFieldValue('symbolId'),
             }}
-            defaultGeometryType={(geometryTypeState as any) || 'POINT'}
             onChange={(val) => {
               if (isDetailMode) return;
               if (val?.coordinates) {
-                const pts = parseWktToCoordinates(val.coordinates);
-                if (pts.length > 0) setCoordinateList(pts);
+                const points = parseWktToCoordinates(val.coordinates);
+                if (points.length > 0) {
+                  const geom = ((val?.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+                  const newPoints = points.map((p) => {
+                    const latDms = ddToDms(p.latitude);
+                    const lngDms = ddToDms(p.longitude);
+                    return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+                  });
+
+                  // Khi chọn tọa độ từ bản đồ, cập nhật trực tiếp danh sách điểm mới được chọn (không cộng dồn vào điểm cũ)
+                  if (geom === 'POINT') {
+                    setCoordinateList([newPoints[0]]);
+                  } else {
+                    setCoordinateList(newPoints);
+                  }
+                  setGpsError(null);
+                }
               }
               if (val?.geometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
-                setGeometryTypeState(val.geometryType);
               }
               if (val?.symbolId) {
                 form.setFieldValue('symbolId', val.symbolId);
@@ -1520,7 +1419,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           />
         </div>
       </Modal>
-    </Drawer>
+    </AppDrawer>
   );
 };
 

@@ -162,19 +162,21 @@ export const vtsSystemCRUD = {
   },
 
   async getById(id: string, options?: { includeZones?: boolean; includeAttachments?: boolean }): Promise<VtsSystemResponse> {
-    const key = `${id}-${options?.includeZones ?? true}-${options?.includeAttachments ?? true}`;
+    const includeZones = options?.includeZones ?? true;
+    const includeAttachments = options?.includeAttachments ?? true;
+    const key = `${id}-${includeZones}-${includeAttachments}`;
     const existing = inFlightGetByIdPromises.get(key);
     if (existing) {
       return existing;
     }
     const promise = (async () => {
       try {
-        const res = await api.get(`${VTS_BASE_PATH}/${id}`, options ? {
+        const res = await api.get(`${VTS_BASE_PATH}/${id}`, {
           params: {
-            includeZones: options.includeZones ?? true,
-            includeAttachments: options.includeAttachments ?? true,
+            includeZones,
+            includeAttachments,
           },
-        } : undefined);
+        });
         return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
       } finally {
         inFlightGetByIdPromises.delete(key);
@@ -230,11 +232,28 @@ export const vtsSystemCRUD = {
     const res = await api.get(`${VTS_BASE_PATH}/${id}/attachments/${attId}/download`, {
       responseType: 'blob',
     });
+    let resolvedName = fileName;
+    const disposition = res.headers?.['content-disposition'];
+    if (disposition && typeof disposition === 'string') {
+      const matchUtf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      if (matchUtf8 && matchUtf8[1]) {
+        try {
+          resolvedName = decodeURIComponent(matchUtf8[1].trim());
+        } catch {
+          resolvedName = matchUtf8[1].trim();
+        }
+      } else {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          resolvedName = match[1].trim();
+        }
+      }
+    }
     const blob = new Blob([res.data]);
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = fileName || 'attachment';
+    link.download = resolvedName || fileName || 'attachment';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

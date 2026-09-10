@@ -23,12 +23,30 @@ public class UserSchemaMigrator implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS address VARCHAR(255) NULL");
-            jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS department VARCHAR(100) NULL");
-            jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS position VARCHAR(100) NULL");
-            jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS note VARCHAR(500) NULL");
-            jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP NULL");
-            jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS permission_version INTEGER NOT NULL DEFAULT 0");
+            java.util.List<String> existingColumns = jdbcTemplate.queryForList(
+                    "SELECT LOWER(column_name) FROM information_schema.columns WHERE LOWER(table_name) = 'app_users'",
+                    String.class
+            );
+            java.util.Set<String> colSet = new java.util.HashSet<>(existingColumns);
+
+            if (!colSet.contains("address")) {
+                jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS address VARCHAR(255) NULL");
+            }
+            if (!colSet.contains("department")) {
+                jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS department VARCHAR(100) NULL");
+            }
+            if (!colSet.contains("position")) {
+                jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS position VARCHAR(100) NULL");
+            }
+            if (!colSet.contains("note")) {
+                jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS note VARCHAR(500) NULL");
+            }
+            if (!colSet.contains("last_login_at")) {
+                jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP NULL");
+            }
+            if (!colSet.contains("permission_version")) {
+                jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS permission_version INTEGER NOT NULL DEFAULT 0");
+            }
             log.info("Đã kiểm tra và đồng bộ cấu trúc bảng app_users thành công.");
         } catch (Exception exception) {
             log.error("Không thể cập nhật cấu trúc bảng app_users.", exception);

@@ -55,10 +55,21 @@ export const lritStationService = {
       size: params?.size || 20,
       sortBy: params?.sortBy,
       sortDir: params?.sortDir,
+      sort: params?.sortBy ? `${params.sortBy},${params.sortDir || 'asc'}` : (params as any)?.sort,
+    });
+    const countsSp = buildSearchParams({
+      keyword: params?.keyword,
+      name: params?.name,
+      code: params?.code,
+      orgUnitId: params?.orgUnitId,
+      provinceId: params?.provinceId,
+      conditionStatus: params?.conditionStatus,
+      updatedFrom: params?.updatedFrom,
+      updatedTo: params?.updatedTo,
     });
     const [res, countsRes] = await Promise.all([
       api.get(`${BASE_PATH}?${sp}`),
-      api.get(`${BASE_PATH}/counts?${sp}`),
+      api.get(`${BASE_PATH}/counts?${countsSp}`),
     ]);
     const data = res.data?.data || res.data || {};
     const items = data.content || (Array.isArray(data) ? data : []);
@@ -97,8 +108,9 @@ export const lritStationService = {
     return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
   },
 
-  async update(id: string, data: UpdateLritStationRequest): Promise<LritStationItem> {
-    const res = await api.put(`${BASE_PATH}/${id}`, data);
+  async update(id: string, data: UpdateLritStationRequest, action?: string): Promise<LritStationItem> {
+    const url = action ? `${BASE_PATH}/${id}?action=${action}` : `${BASE_PATH}/${id}`;
+    const res = await api.put(url, data);
     return toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
   },
 
@@ -135,6 +147,18 @@ export const lritStationService = {
   },
 
   async approveL2(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+    return this.approveC2(id, statusOrContent, maybeContent);
+  },
+
+  async approveLevel1(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+    return this.approveC1(id, statusOrContent, maybeContent);
+  },
+
+  async approveLevel2(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
+    return this.approveC2(id, statusOrContent, maybeContent);
+  },
+
+  async approve(id: string, statusOrContent?: string, maybeContent?: string): Promise<LritStationItem> {
     return this.approveC2(id, statusOrContent, maybeContent);
   },
 

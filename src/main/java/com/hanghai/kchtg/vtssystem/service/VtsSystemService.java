@@ -1,80 +1,61 @@
 package com.hanghai.kchtg.vtssystem.service;
 
-import jakarta.persistence.EntityNotFoundException;
-
-import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
-import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.entity.*;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.AttachmentFileType;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.common.util.EntityUpdateUtils;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.fieldvisibility.FieldVisibilityContext;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
+import com.hanghai.kchtg.port.repository.PortRepository;
+import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtssystem.dto.*;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.entity.VtsZone;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
-import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
-import com.hanghai.kchtg.common.enums.AttachmentFileType;
-import com.hanghai.kchtg.common.entity.OperatingOrganization;
-import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
-import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemListProjection;
+import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsZoneRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
-import java.text.Normalizer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Month;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
-import com.hanghai.kchtg.port.service.PortCacheService;
-import com.hanghai.kchtg.port.repository.PortRepository;
-import org.springframework.jdbc.core.JdbcTemplate;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -236,10 +217,24 @@ public class VtsSystemService {
                 .build();
 
         if (request.getZones() != null && !request.getZones().isEmpty()) {
+            Set<String> seenCodes = new HashSet<>();
+            for (VtsZoneDto dto : request.getZones()) {
+                if (dto == null) continue;
+                if (dto.getCode() == null || dto.getCode().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Mã vùng VTS không được để trống");
+                }
+                if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Tên vùng VTS không được để trống");
+                }
+                String normalized = dto.getCode().trim().toUpperCase(Locale.ROOT);
+                if (!seenCodes.add(normalized)) {
+                    throw new IllegalArgumentException("Mã vùng VTS không được trùng lặp: " + dto.getCode().trim());
+                }
+            }
             entity.setZones(request.getZones().stream().map(dto -> {
                 VtsZone z = new VtsZone();
-                z.setCode(dto.getCode());
-                z.setName(dto.getName());
+                z.setCode(dto.getCode().trim());
+                z.setName(dto.getName().trim());
                 z.setConditionStatus(
                         dto.getConditionStatus() != null ? dto.getConditionStatus() : ConditionStatus.OPERATIONAL);
                 z.setCreatedBy(userId);
@@ -520,6 +515,7 @@ public class VtsSystemService {
                     .approvalLevel(ApprovalLevel.LEVEL_2)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
+                    .approvedDate(LocalDateTime.now())
                     .reason("Thêm mới vùng VTS: " + saved.getName())
                     .changedField("Vùng VTS")
                     .previousValue(null)
@@ -586,6 +582,7 @@ public class VtsSystemService {
                     .approvalLevel(ApprovalLevel.LEVEL_2)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
+                    .approvedDate(LocalDateTime.now())
                     .reason("Cập nhật vùng VTS: " + saved.getName())
                     .changedField("Vùng VTS [" + saved.getCode() + "]")
                     .previousValue(oldDesc)
@@ -629,6 +626,7 @@ public class VtsSystemService {
                     .approvalLevel(ApprovalLevel.LEVEL_2)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
+                    .approvedDate(LocalDateTime.now())
                     .reason("Xóa vùng VTS: " + zoneName)
                     .changedField("Vùng VTS")
                     .previousValue(zoneDesc)
@@ -707,13 +705,13 @@ public class VtsSystemService {
             Map.entry("orgUnitId", "t.orgUnitId"),
             Map.entry("owningOrgName", "own.name"),
             Map.entry("owningOrgId", "t.owningOrgId"),
-            Map.entry("operatingOrgName", "op.name"),
+            Map.entry("operatingOrgName", "COALESCE(op.name, oorg.name)"),
             Map.entry("operatingOrgId", "t.operatingOrgId"),
             Map.entry("portName", "p.portName"),
             Map.entry("portId", "t.portId"),
             // Sắp theo họ tên cán bộ (join User) chứ không theo thời điểm cập nhật:
             // cột hiển thị là tên người, sắp theo ngày làm người dùng hiểu sai.
-            Map.entry("updatedByName", "u.fullName"),
+            Map.entry("updatedByName", "COALESCE(u.fullName, uCreate.fullName)"),
             Map.entry("updatedBy", "t.updatedBy"),
             Map.entry("updatedDate", "t.updatedAt"),
             Map.entry("updatedAt", "t.updatedAt"),
@@ -723,9 +721,11 @@ public class VtsSystemService {
      * Chuyển tham số {@code sort=<field>,<asc|desc>} thành {@link Sort}. Tên cột
      * không nằm trong danh sách cho phép sẽ rơi về mặc định (mới nhất trước) thay
      * vì ném lỗi, để một tham số lạ không làm hỏng cả màn danh sách.
+     * Dùng {@link JpaSort#unsafe} để hỗ trợ biểu thức COALESCE cho tên đơn vị
+     * vận hành và tên cán bộ cập nhật.
      */
     private static Sort resolveListSort(String sort) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, "t.createdAt");
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
         if (sort == null || sort.isBlank()) {
             return defaultSort;
         }
@@ -739,7 +739,7 @@ public class VtsSystemService {
                 : Sort.Direction.DESC;
         // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau,
         // tránh bản ghi nhảy giữa các trang.
-        return Sort.by(direction, property).and(defaultSort);
+        return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 
     public Page<VtsSystemResponse> findAllWithSearch(UUID orgUnitId, String keyword, ConditionStatus conditionStatus,
@@ -946,8 +946,23 @@ public class VtsSystemService {
                 VtsSystemUpdateRequest.Fields.geometryType);
 
         if (request.getZones() != null) {
-            List<VtsZone> oldZones = entity.getZones() != null ? new ArrayList<>(entity.getZones()) : new ArrayList<>();
             List<VtsZoneDto> newZoneDtos = request.getZones();
+            Set<String> seenCodes = new HashSet<>();
+            for (VtsZoneDto dto : newZoneDtos) {
+                if (dto == null) continue;
+                if (dto.getCode() == null || dto.getCode().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Mã vùng VTS không được để trống");
+                }
+                if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+                    throw new IllegalArgumentException("Tên vùng VTS không được để trống");
+                }
+                String normalized = dto.getCode().trim().toUpperCase(Locale.ROOT);
+                if (!seenCodes.add(normalized)) {
+                    throw new IllegalArgumentException("Mã vùng VTS không được trùng lặp: " + dto.getCode().trim());
+                }
+            }
+
+            List<VtsZone> oldZones = entity.getZones() != null ? new ArrayList<>(entity.getZones()) : new ArrayList<>();
 
             // 1. Identify added zones (in request but not in oldZones by code and ID)
             List<String> addedList = new ArrayList<>();
@@ -1034,31 +1049,48 @@ public class VtsSystemService {
                 customNewValues.put(VtsSystem.Fields.zones, newZonesStr);
             }
 
-            if (entity.getZones() != null) {
-                entity.getZones().clear();
-            } else {
-                entity.setZones(new ArrayList<>());
+            List<VtsZone> currentZones = entity.getZones() != null ? entity.getZones() : new ArrayList<>();
+            if (entity.getZones() == null) {
+                entity.setZones(currentZones);
             }
-            entity.getZones().addAll(newZoneDtos.stream().map(dto -> {
-                VtsZone z = new VtsZone();
-                if (dto.getId() != null) {
-                    z.setId(dto.getId());
+
+            // 1. Remove zones no longer in request (orphanRemoval will issue DELETE)
+            Set<UUID> remainingIds = newZoneDtos.stream()
+                    .map(VtsZoneDto::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            currentZones.removeIf(z -> z.getId() != null && !remainingIds.contains(z.getId()));
+
+            // 2. In-place update existing managed zones or add new ones
+            Map<UUID, VtsZone> managedMap = currentZones.stream()
+                    .filter(z -> z.getId() != null)
+                    .collect(Collectors.toMap(VtsZone::getId, z -> z, (a, b) -> a));
+
+            for (VtsZoneDto dto : newZoneDtos) {
+                if (dto == null) continue;
+                String code = dto.getCode().trim();
+                String name = dto.getName().trim();
+                ConditionStatus status = dto.getConditionStatus() != null ? dto.getConditionStatus() : ConditionStatus.OPERATIONAL;
+
+                if (dto.getId() != null && managedMap.containsKey(dto.getId())) {
+                    // In-place update on managed entity (Hibernate detects dirty fields and issues UPDATE)
+                    VtsZone existing = managedMap.get(dto.getId());
+                    existing.setCode(code);
+                    existing.setName(name);
+                    existing.setConditionStatus(status);
+                    existing.setUpdatedBy(effectiveUserId);
+                } else {
+                    // Newly added zone: do NOT set ID manually (Hibernate/DB will generate UUID on INSERT)
+                    VtsZone newZone = new VtsZone();
+                    newZone.setVtsSystem(entity);
+                    newZone.setCode(code);
+                    newZone.setName(name);
+                    newZone.setConditionStatus(status);
+                    newZone.setCreatedBy(effectiveUserId);
+                    newZone.setUpdatedBy(effectiveUserId);
+                    currentZones.add(newZone);
                 }
-                z.setCode(dto.getCode());
-                z.setName(dto.getName());
-                z.setConditionStatus(
-                        dto.getConditionStatus() != null ? dto.getConditionStatus() : ConditionStatus.OPERATIONAL);
-                UUID creator = oldZones.stream()
-                        .filter(oz -> oz != null && oz.getId() != null && oz.getId().equals(dto.getId())
-                                && oz.getCreatedBy() != null)
-                        .map(VtsZone::getCreatedBy)
-                        .findFirst()
-                        .orElse(effectiveUserId);
-                z.setCreatedBy(creator != null ? creator : effectiveUserId);
-                z.setUpdatedBy(effectiveUserId);
-                z.setVtsSystem(entity);
-                return z;
-            }).collect(Collectors.toList()));
+            }
         }
 
         // Attachment smart delta diff
@@ -1139,6 +1171,7 @@ public class VtsSystemService {
         boolean hasFieldChanges = !previousValues.isEmpty();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+        LocalDateTime now = LocalDateTime.now();
 
         if (wasApproved) {
             // Keep approved status when editing already approved records
@@ -1157,7 +1190,6 @@ public class VtsSystemService {
                             "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; "
                                     + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
                 }
-                LocalDateTime now = LocalDateTime.now();
                 if (entity.getApproverLevel1() == null) {
                     entity.setApproverLevel1(effectiveUserId);
                     entity.setApprovedDateLevel1(now);
@@ -1174,6 +1206,7 @@ public class VtsSystemService {
                         .approvalLevel(ApprovalLevel.LEVEL_2)
                         .status(InfrastructureHistoryStatus.APPROVED)
                         .approvedBy(effectiveUserId)
+                        .approvedDate(now)
                         .reason("Tạo mới và phê duyệt hệ thống VTS")
                         .changedField("Trạng thái phê duyệt")
                         .previousValue(previousApprovalStatus != null ? previousApprovalStatus.getLabel() : null)
@@ -1197,6 +1230,7 @@ public class VtsSystemService {
                     .approvalLevel(null)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
+                    .approvedDate(now)
                     .reason("Cập nhật sau phê duyệt")
                     .changedField(formatChangedFields(previousValues))
                     .previousValue(formatPreviousValues(previousValues))
@@ -1349,11 +1383,12 @@ public class VtsSystemService {
             throw new RuntimeException("Không thể lưu tài liệu đính kèm", ex);
         }
 
+        String relativeFilePath = "uploads/vts-attachments/" + vtsSystemId + "/" + safeName;
         InfrastructureAttachment saved = attachmentRepository.save(InfrastructureAttachment.builder()
                 .refId(vtsSystemId)
                 .refType(InfrastructureType.VTS_SYSTEM)
                 .fileName(originalName)
-                .filePath(target.toString())
+                .filePath(relativeFilePath)
                 .fileSize(file.getSize())
                 .fileType(AttachmentFileType.fromValue(file.getContentType()))
                 .uploadedBy(userId)
@@ -1393,9 +1428,20 @@ public class VtsSystemService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài liệu đính kèm"));
         String fileName = attachment.getFileName();
         try {
-            Files.deleteIfExists(Paths.get(attachment.getFilePath()));
-        } catch (IOException ex) {
-            throw new RuntimeException("Không thể xóa tài liệu đính kèm", ex);
+            if (attachment.getFilePath() != null) {
+                Path directPath = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+                if (Files.isRegularFile(directPath)) {
+                    Files.deleteIfExists(directPath);
+                } else {
+                    String norm = attachment.getFilePath().replace("\\", "/");
+                    int uIdx = norm.indexOf("uploads/");
+                    if (uIdx >= 0) {
+                        Path fromUploads = Paths.get(norm.substring(uIdx)).toAbsolutePath().normalize();
+                        Files.deleteIfExists(fromUploads);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
         }
         attachmentRepository.delete(attachment);
 
@@ -1818,6 +1864,14 @@ public class VtsSystemService {
     }
 
     private String formatPreviousValues(Map<String, String> previousValues) {
+        if (previousValues == null || previousValues.isEmpty()) {
+            return "—";
+        }
+        if (previousValues.size() == 1) {
+            Map.Entry<String, String> entry = previousValues.entrySet().iterator().next();
+            String val = formatDisplayValue(entry.getKey(), entry.getValue());
+            return (val != null && !val.trim().isEmpty()) ? val : "—";
+        }
         return previousValues.entrySet().stream()
                 .map(entry -> getFieldDisplayName(entry.getKey()) + "="
                         + formatDisplayValue(entry.getKey(), entry.getValue()))
@@ -1826,6 +1880,17 @@ public class VtsSystemService {
 
     private String formatNewValues(VtsSystem entity, Map<String, String> previousValues,
             Map<String, String> customNewValues) {
+        if (previousValues == null || previousValues.isEmpty()) {
+            return "—";
+        }
+        if (previousValues.size() == 1) {
+            String field = previousValues.keySet().iterator().next();
+            String raw = (customNewValues != null && customNewValues.containsKey(field))
+                    ? customNewValues.get(field)
+                    : currentFieldValue(entity, field);
+            String val = formatDisplayValue(field, raw);
+            return (val != null && !val.trim().isEmpty()) ? val : "—";
+        }
         return previousValues.keySet().stream()
                 .map(field -> {
                     String raw = (customNewValues != null && customNewValues.containsKey(field))

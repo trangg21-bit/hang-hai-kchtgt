@@ -7,12 +7,12 @@ status: approved
 classification: local
 priority: high
 created: 2026-08-26
-last-updated: 2026-09-01
+last-updated: 2026-09-09
 locked-fields: []
 consumed_by_modules: [M-007, M-019, M-021, M-022]
 ---
 
-> Implementation audit 2026-09-01: màn hình AIS dùng bộ lọc đã áp dụng để tránh gọi API theo từng lần gõ; form dùng attachments trong response chi tiết và nhận lại danh mục đã tải từ màn danh sách. BE batch-load tên đơn vị, người dùng và người tải file trong luồng danh sách/chi tiết; lịch sử dùng `infrastructure_history`. Lịch sử chỉ được ghi và hiển thị cho thay đổi phát sinh sau phê duyệt cấp cuối; tạo mới và thao tác file ở trạng thái nháp không tạo audit log.
+> Implementation audit 2026-09-09: Chuẩn hóa toàn diện giao diện màn hình AIS (Danh sách, Thêm mới, Chỉnh sửa, Xem chi tiết) đồng bộ 100% với màn hình chuẩn VTS: Dùng AppDrawer, tiêu đề fontSize: 16, loại bỏ viền ngăn footer (borderTop: none), màn Thêm mới hiển thị đủ 3 nút ("Lưu tạm", "Lưu và gửi phê duyệt", "Lưu và phê duyệt"), màn Xem chi tiết có nút "Đóng" pill bo tròn, căn bằng cao độ Y và vị trí thanh phân trang giữa Xem chi tiết và Thêm mới/Sửa. Toàn bộ các trường văn bản 2000 ký tự (Thông số kỹ thuật, Thông tin bảo trì, Ghi chú) chuyển thành Input 1 dòng pill (height: 40px, borderRadius: radiusPill, span 24). BE batch-load tên đơn vị, người dùng và người tải file; lịch sử dùng `infrastructure_history`.
 
 # Đặc tả nghiệp vụ: Quản lý Hệ thống AIS
 
@@ -50,10 +50,10 @@ Chức năng Quản lý Hệ thống AIS (Automatic Identification System) cho p
 | 11 | Tình trạng (bắt buộc) | SelectAppParams (ConditionStatus) | TRUE | TRUE | TRUE | TRUE | TRUE | Bắt buộc. Semantic badge (`OPERATIONAL`, `MAINTENANCE`...). |
 | | **Thông tin thiết bị** | | FALSE | FALSE | TRUE | FALSE | FALSE | Nhóm thông tin thiết bị chi tiết |
 | 12 | Model | Input | FALSE | FALSE | TRUE | TRUE | TRUE | Tối đa 100 ký tự. |
-| 13 | Thông số kỹ thuật | InputTextArea | FALSE | FALSE | TRUE | TRUE | TRUE | TextArea bo tròn 20px, tối đa 2000 ký tự. |
+| 13 | Thông số kỹ thuật | Input (Pill 1 dòng) | FALSE | FALSE | TRUE | TRUE | TRUE | Ô Input pill 1 dòng, height: 40px, span 24, showCount, tối đa 2000 ký tự. |
 | 14 | Hãng sản xuất | Input | FALSE | FALSE | TRUE | TRUE | TRUE | Tối đa 255 ký tự. |
-| 15 | Thông tin bảo trì | InputTextArea | FALSE | FALSE | TRUE | TRUE | TRUE | TextArea bo tròn 20px, tối đa 2000 ký tự. |
-| 16 | Ghi chú | InputTextArea | FALSE | FALSE | TRUE | TRUE | TRUE | TextArea bo tròn 20px, tối đa 2000 ký tự. |
+| 15 | Thông tin bảo trì | Input (Pill 1 dòng) | FALSE | FALSE | TRUE | TRUE | TRUE | Ô Input pill 1 dòng, height: 40px, span 24, showCount, tối đa 2000 ký tự. |
+| 16 | Ghi chú | Input (Pill 1 dòng) | FALSE | FALSE | TRUE | TRUE | TRUE | Ô Input pill 1 dòng, height: 40px, span 24, showCount, tối đa 2000 ký tự. |
 | | **Thông tin vị trí** | | FALSE | FALSE | TRUE | TRUE | TRUE | Tọa độ không gian bản đồ GIS |
 | 17 | Loại đối tượng | Select (Điểm/Đường/Vùng) | FALSE | FALSE | TRUE | TRUE | TRUE | POINT, POLYGON, LINESTRING. |
 | 18 | Biểu tượng | Select (Symbol) | FALSE | FALSE | TRUE | TRUE | TRUE | Icon hiển thị trên bản đồ. |
@@ -108,6 +108,25 @@ Sidebar bộ lọc của màn hình Quản lý Hệ thống AIS được cấu h
 7. **Năm đưa vào sử dụng** (`commissioningYear`): Ô `DatePicker` chọn năm (`picker="year"`).
 8. **Khoảng ngày cập nhật** (`updatedRange` -> `updatedFrom`, `updatedTo`): Ô `DatePicker.RangePicker` định dạng `DD/MM/YYYY`.
 9. **Địa điểm (Tỉnh/TP)** (`provinceId`): Dropdown `Select` chọn Tỉnh/Thành phố hỗ trợ tìm kiếm tiếng Việt không dấu.
+
+---
+
+### 2.3. Quy chuẩn sắp xếp danh sách (Sorting Standard)
+
+Mọi cột dữ liệu trên bảng danh sách AIS hỗ trợ sắp xếp Server-side 2 chiều (tăng dần / giảm dần) đồng bộ 100% chuẩn Hệ thống VTS:
+- `name`: Sắp xếp theo tên thiết bị (`t.name`).
+- `orgUnitName`: Sắp xếp theo tên đơn vị quản lý qua join (`o.name`).
+- `vtsOperationCenterName`: Sắp xếp theo TTDH VTS hoặc Trạm Radar trực thuộc (`COALESCE(voc.name, rs.stationName)`).
+- `operatingOrgName`: Sắp xếp theo đơn vị khai thác (`COALESCE(oo.name, oorg.name)`).
+- `provinceId`: Sắp xếp theo mã Tỉnh/Thành phố (`t.provinceId`).
+- `unitOfMeasure`: Sắp xếp theo đơn vị tính (`t.unitOfMeasure`).
+- `quantity`: Sắp xếp theo số lượng (`t.quantity`).
+- `commissioningYear`: Sắp xếp theo năm đưa vào sử dụng (`t.commissioningYear`).
+- `conditionStatus`: Sắp xếp theo tình trạng hoạt động (`t.conditionStatus`).
+- `approvalStatus`: Sắp xếp theo trạng thái phê duyệt (`t.approvalStatus`).
+- `rejectionReason`: Sắp xếp theo lý do từ chối trên tab Từ chối (`t.rejectionReason`).
+- `updatedByName`: Sắp xếp theo họ và tên cán bộ cập nhật qua join bảng User (`COALESCE(u.fullName, uCreate.fullName)`).
+- Backend hỗ trợ tương thích cả 2 định dạng tham số: `sort=fieldName,asc|desc` và `sortBy=fieldName&sortDir=ASC|DESC`.
 
 ---
 

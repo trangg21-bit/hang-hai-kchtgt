@@ -936,13 +936,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           width={isDetailMode ? 900 : 760}
           maskClosable={false}
           footer={
-            isDetailMode ? (
-              <Button type="primary" onClick={onCancel} style={outlineButtonStyle}>
-                Đóng
-              </Button>
-            ) : isEditMode ? (
+            isDetailMode ? null : isEditMode ? (
               <>
-                <Button onClick={onCancel} style={outlineButtonStyle}>Hủy</Button>
                 <Button type="primary" onClick={() => handleSubmit('save')} loading={isSubmitting} style={primaryButtonStyle}>
                   Cập nhật
                 </Button>
@@ -961,7 +956,6 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               </>
             ) : (
               <>
-                <Button onClick={onCancel} style={outlineButtonStyle}>Hủy</Button>
                 <Button onClick={() => handleSubmit('save')} loading={isSubmitting} style={outlineButtonStyle}>
                   Lưu tạm
                 </Button>

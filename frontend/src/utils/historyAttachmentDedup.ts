@@ -13,12 +13,12 @@ function normalizeHistoryText(value: unknown): string {
     .replace(/[đĐ]/g, 'd');
 }
 
-function isAttachmentField(field: string): boolean {
+export function isAttachmentField(field: string): boolean {
   const normalized = normalizeHistoryText(field);
   return normalized.includes('dinh kem') || normalized.includes('attachment');
 }
 
-function parseAttachmentValues(value: unknown): string[] {
+export function parseAttachmentValues(value: unknown): string[] {
   if (value === null || value === undefined) return [];
 
   if (Array.isArray(value)) {
@@ -47,8 +47,15 @@ function parseAttachmentValues(value: unknown): string[] {
     .filter((item) => item && !['—', '-', '(null)', 'null', '(trống)', 'undefined'].includes(item.toLowerCase()));
 }
 
-function normalizeAttachmentName(value: string): string {
-  return normalizeHistoryText(value).replace(/^(them|xoa|cu|moi)\s*:?\s+/, '').trim();
+export function normalizeAttachmentName(value: string): string {
+  const normalized = normalizeHistoryText(value)
+    .replace(/^(tai lieu dinh kem|attachments?)\s*[:=]\s*/, '')
+    .replace(/^(them|xoa|cu|moi)\s*:?\s+/, '')
+    .trim();
+  if (['—', '-', '(null)', 'null', '(trong)', 'undefined'].includes(normalized)) {
+    return '';
+  }
+  return normalized;
 }
 
 function attachmentDeltaKeys(change: HistoryAttachmentChange): string[] {

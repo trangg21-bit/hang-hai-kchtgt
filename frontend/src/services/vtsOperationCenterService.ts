@@ -198,11 +198,28 @@ export const vtsOperationCenterService = {
     const res = await api.get(`${BASE_PATH}/${id}/attachments/${attId}/download`, {
       responseType: 'blob',
     });
+    let resolvedName = fileName;
+    const disposition = res.headers?.['content-disposition'];
+    if (disposition && typeof disposition === 'string') {
+      const matchUtf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      if (matchUtf8 && matchUtf8[1]) {
+        try {
+          resolvedName = decodeURIComponent(matchUtf8[1].trim());
+        } catch {
+          resolvedName = matchUtf8[1].trim();
+        }
+      } else {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          resolvedName = match[1].trim();
+        }
+      }
+    }
     const blob = new Blob([res.data]);
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = fileName || 'attachment';
+    link.download = resolvedName || fileName || 'attachment';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -1,27 +1,29 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Modal, Input, Select, DatePicker } from 'antd';
-import { inmarsatStationService } from '../../../services/inmarsatStationService';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Modal, Input, DatePicker, Select } from 'antd';
+import DeleteConfirmModal from '../../../components/shared/DeleteConfirmModal';
+import { inmarsatStationService, type InmarsatListParams } from '../../../services/inmarsatStationService';
+import { symbolService } from '../../../services/symbolService';
 import { organizationService } from '../../../services/organizationService';
-
 import type { CoastalStationInmarsatResponse } from '../../../services/station/types';
-import { CONDITION_STATUS_OPTIONS, ApprovalStatus } from '../../../types/vtsSystem';
-import { useAuthStore } from '../../../store/authStore';
-import { usePermissionStore } from '../../../store/permissionStore';
+import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../../types/vtsSystem';
+import { useAuthStore, type AuthState } from '../../../store/authStore';
+import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../../components/list-view';
 import FilterTableLayout from '../../../components/list-view/FilterTableLayout';
 import Pagination from '../../../components/list-view/Pagination';
 import InmarsatStationForm, { getOperatingOrgName } from './InmarsatStationForm';
 import ApprovalModal from '../../../components/shared/ApprovalModal';
+import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../../components/shared/CommonHistoryDrawer';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
+import { useStandardApprovalStatusTabs } from '../../../components/shared/approvalStatusTabs';
 import toast from '../../../components/ToastNotification';
 import {
   actionPrimary, textSecondary,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeLg,
-  radiusPill, spaceMd, sidebarBg,
-  statusOperational, statusCritical, statusAttention, statusDraft,
-  selectStyle,
+  fontWeightBold,
+  spaceSm, spaceMd, spaceFormField,
+  statusOperational, statusCritical, statusAttention,
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  inputStyle,
+  textAreaStyle, colors, radiusPill,
   getRangePickerProps,
   getConditionStatusColor,
   getConditionStatusLabel,
@@ -30,11 +32,29 @@ import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
-import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../../components/org-unit';
-import SidebarFilterField from '../../../components/list-view/SidebarFilterField';
+import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
-import { CommonHistoryDrawer, type CommonHistoryEntry, type HistoryChangeItem } from '../../../components/shared/CommonHistoryDrawer';
-import LoadingSkeleton from '../../../components/LoadingSkeleton';
+import { useSearchParams } from 'react-router-dom';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+
+const fontSizeMd = 13.5;
+
+const filterLabelStyle: React.CSSProperties = {
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: fontSizeMd,
+  marginBottom: spaceSm,
+};
+
+/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
+const HISTORY_PAGE_SIZE = 20;
+
+const CONDITION_COLOR: Record<ConditionStatus, string> = {
+  [ConditionStatus.OPERATIONAL]: statusOperational,
+  [ConditionStatus.STOPPED]: statusCritical,
+  [ConditionStatus.MAINTENANCE]: statusAttention,
+  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+};
 
 const INMARSAT_FIELD_MAP: Record<string, string> = {
   code: 'Mã đài',
@@ -83,143 +103,206 @@ const INMARSAT_FIELD_MAP: Record<string, string> = {
   approvalLevel: 'Cấp phê duyệt',
 };
 
-const formatHistoryValue = (field: string, val: any): string => {
+const formatHistoryValue = (field: string, val: unknown): string => {
   if (val === null || val === undefined || val === '') return '—';
   if (field === 'provinceId' || field === 'Địa điểm (Tỉnh/TP)') {
-    return getProvinceNameById(val) || String(val);
+    return getProvinceNameById(val as number) || String(val);
   }
   if (field === 'conditionStatus' || field === 'Tình trạng') {
-    return getConditionStatusLabel(val);
+    return getConditionStatusLabel(val as string);
   }
   return String(val);
 };
 
-/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
-const HISTORY_PAGE_SIZE = 20;
+export default function InmarsatStationList() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isIframeModal = window.parent !== window.self;
+  const isMapLinkedView = isIframeModal && (linkedAction === 'edit' || linkedAction === 'detail');
+  const handledLinkedRecordRef = useRef<string | null>(null);
 
-export const InmarsatStationList = () => {
-  const [data, setData] = useState<CoastalStationInmarsatResponse[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const currentUser = useAuthStore((s: AuthState) => s.user);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+
+  const customTokens = useMemo(() => ({
+    ...themeTokenChk,
+    fontSizeMd: 13.5,
+  }), []);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-
-  // Filters
-  const [activeTab, setActiveTab] = useState<string>('ALL');
-  const [filterCollapsed, setFilterCollapsed] = useState<boolean>(false);
-
-  const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
-  // Tên đài (bộ lọc thường) và Mã đài (bộ lọc nâng cao) là hai điều kiện riêng,
-  // không dùng chung ô "từ khóa" tìm nhiều cột như trước.
-  const [filterName, setFilterName] = useState<string>('');
-  const [filterCode, setFilterCode] = useState<string>('');
-
-  const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>();
-  const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>();
-  const [filterDateRange, setFilterDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-
-  // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
-  // chỉ các dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [filterName, setFilterName] = useState('');
+  const [filterCode, setFilterCode] = useState('');
+  const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
+  const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>();
+  const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
+  const [filterOperatingOrgId, setFilterOperatingOrgId] = useState<string | undefined>();
+  const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>();
+  const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
+  const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
 
-  // Reference data
-  const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
+  const [symbols, setSymbols] = useState<Array<{ id: string; code?: string; name?: string; image?: string }>>([]);
+  const [filterValues, setFilterValues] = useState<Record<string, unknown>>({});
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
-  // Drawer / Form state
-  const [formOpen, setFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<'create' | 'edit' | 'detail'>('create');
+  const [dataSource, setDataSource] = useState<CoastalStationInmarsatResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<CoastalStationInmarsatResponse | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
 
-  // Approval modal state
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c2');
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [approvalLoading, setApprovalLoading] = useState(false);
-  const [targetRecord, setTargetRecord] = useState<CoastalStationInmarsatResponse | null>(null);
 
-  // History modal
-  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyList, setHistoryList] = useState<CommonHistoryEntry[]>([]);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+
+  // History drawer state
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<CommonHistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  // Số trang nhật ký đã tải. Không suy ra từ độ dài mảng vì backend có thể trả ít
-  // hơn pageSize khi lọc, làm lệch số trang → sót/lặp bản ghi.
   const [historyPage, setHistoryPage] = useState(0);
-  const [historyTargetId, setHistoryTargetId] = useState<string | null>(null);
-  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate: string; toDate: string }>(
-    { keyword: '', fromDate: '', toDate: '' },
-  );
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
 
-  // Permissions & user
-  const { user } = useAuthStore();
-  const { hasPermission } = usePermissionStore();
+  // Count tabs
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const statusCountFilterKey = useRef<string | null>(null);
+  const listRequestId = useRef(0);
 
-  const userOrgId = user?.orgUnitId ? String(user.orgUnitId) : undefined;
-  const userUnitType = user?.unitType || '';
-
-  const canCreate = hasPermission('coastalstationinmarsat:create') || hasPermission('specialstation:create') || hasPermission('data:create');
-  const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+  // User levels
+  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const userUnitType = currentUser?.unitType || '';
+  const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = (hasPermission('coastalstationinmarsat:approvec1') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approve')) && (isCangVuLevel || !isCucLevel);
-  const canApproveL2 = (hasPermission('coastalstationinmarsat:approvec2') || hasPermission('coastalstationinmarsat:approve') || hasPermission('specialstation:approvec2') || hasPermission('specialstation:approve')) && isCucLevel;
+  const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
+  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel);
 
-  // Load organizations
   useEffect(() => {
-    organizationService.getAll()
-      .then((res: any) => {
-        const list = Array.isArray(res) ? res : (res?.content || res?.data || []);
-        setOrgUnits(list);
+    if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
+
+    const requestKey = `${linkedAction}:${linkedRecordId}`;
+    if (handledLinkedRecordRef.current === requestKey) return;
+    handledLinkedRecordRef.current = requestKey;
+
+    let active = true;
+    void inmarsatStationService.getById(linkedRecordId)
+      .then((record) => {
+        if (!active) return;
+        if (linkedAction === 'edit') {
+          setEditingId(record.id);
+          setSelectedRecord(record);
+          setModalMode('edit');
+          setIsModalOpen(true);
+        } else {
+          setEditingId(record.id);
+          setSelectedRecord(record);
+          setModalMode('detail');
+          setIsModalOpen(true);
+        }
       })
-      .catch(() => setOrgUnits([]));
-  }, []);
-
-  // Filter org units based on data scope
-  const filteredOrgUnits = useMemo(() => {
-    if (!userOrgId || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CHUYEN_VIEN_CUC') {
-      return orgUnits;
-    }
-    const allowed = new Set(resolveOrgSubtreeIds(orgUnits, userOrgId));
-    return orgUnits.filter((u) => allowed.has(String(u.id)));
-  }, [orgUnits, userOrgId, userUnitType]);
-
-  // Fetch list
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const approvalStatusParam = (activeTab === 'ALL' || activeTab === 'all') ? undefined : activeTab;
-
-      const res = await inmarsatStationService.search({
-        name: filterName?.trim() || undefined,
-        code: filterCode?.trim() || undefined,
-        orgUnitId: filterOrgUnitId,
-        provinceId: filterProvinceId,
-        conditionStatus: filterConditionStatus,
-        approvalStatus: approvalStatusParam,
-        // Backend nhận LocalDateTime và BỎ QUA offset, nên `toISOString()` (giờ UTC)
-        // làm cửa sổ lọc lệch đúng bằng chênh lệch múi giờ (VN: -7h): hồ sơ cập nhật
-        // sau 17h bị đẩy nhầm sang ngày hôm sau. Gửi thẳng giờ địa phương.
-        updatedFrom: filterDateRange?.[0] ? filterDateRange[0].startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        updatedTo: filterDateRange?.[1] ? filterDateRange[1].endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        page,
-        size: pageSize,
-        sort: sortField ? `${sortField},${sortDirection}` : undefined,
+      .catch(() => {
+        if (!active) return;
+        handledLinkedRecordRef.current = null;
+        toast.error('Không thể tải hồ sơ Đài thông tin vệ tinh Inmarsat');
       });
 
-      setData(res.items);
-      setTotal(res.total);
-      setStatusCounts(res.statusCounts || {});
-    } catch {
-      setData([]);
-      setTotal(0);
-      toast.error('Không thể tải danh sách Đài vệ tinh Inmarsat');
+    return () => {
+      active = false;
+    };
+  }, [isMapLinkedView, linkedAction, linkedRecordId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [orgs, syms] = await Promise.all([
+          organizationService.getAll().catch(() => []),
+          symbolService.getOptions().catch(() => []),
+        ]);
+        const list = Array.isArray(orgs) ? orgs : ((orgs as any)?.content || (orgs as any)?.data || []);
+        setOrgUnitOptions((list || []).map((o: any) => ({
+          id: String(o.id),
+          name: o.name || o.unitName || o.tenDonVi || 'Đơn vị',
+          code: o.code || o.maDonVi,
+          parentId: o.parentId ? String(o.parentId) : undefined,
+        })));
+        setSymbols(Array.isArray(syms) ? syms : []);
+      } catch (e) {
+        console.error('Failed to fetch lookup options', e);
+      }
+    })();
+  }, []);
+
+  const fetchData = useCallback(async () => {
+    const requestId = ++listRequestId.current;
+    setLoading(true);
+    setIsError(false);
+    try {
+      const currentStatusCountFilterKey = JSON.stringify([
+        filterName, filterCode, filterConditionStatus, filterOrgUnitId, filterOperatingOrgId, filterProvinceId,
+        filterUpdatedFrom, filterUpdatedTo,
+      ]);
+      const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
+      const params: InmarsatListParams = {
+        page: page,
+        size: pageSize,
+        name: filterName || undefined,
+        code: filterCode || undefined,
+        conditionStatus: filterConditionStatus,
+        approvalStatus: filterApprovalStatus,
+        orgUnitId: filterOrgUnitId || undefined,
+        operatingOrgId: filterOperatingOrgId || undefined,
+        provinceId: filterProvinceId,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+        sort: sortField ? `${sortField},${sortDirection}` : undefined,
+      };
+
+      const res = await inmarsatStationService.search(params);
+      if (requestId !== listRequestId.current) return;
+      setDataSource(res.items || []);
+      setTotal(res.total || 0);
+
+      if (shouldIncludeCounts && res.statusCounts) {
+        setStatusCounts(res.statusCounts);
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      }
+    } catch (err: unknown) {
+      if (requestId !== listRequestId.current) return;
+      setIsError(true);
+      setErrorMessage(err instanceof Error ? err.message : 'Không thể tải danh sách Đài thông tin vệ tinh Inmarsat');
     } finally {
-      setLoading(false);
+      if (requestId === listRequestId.current) setLoading(false);
     }
-  }, [activeTab, filterName, filterCode, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterDateRange, page, pageSize, sortField, sortDirection]);
+  }, [
+    page, pageSize, filterName, filterCode, filterConditionStatus, filterApprovalStatus,
+    filterOrgUnitId, filterOperatingOrgId, filterProvinceId,
+    filterUpdatedFrom, filterUpdatedTo, sortField, sortDirection,
+  ]);
+
+  useEffect(() => {
+    let mounted = true;
+    queueMicrotask(() => {
+      if (mounted) {
+        void fetchData();
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [fetchData]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortField(field);
@@ -227,257 +310,219 @@ export const InmarsatStationList = () => {
     setPage(1);
   }, []);
 
-  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null =>
+    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
 
-  // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
-  // biểu tượng sắp xếp mà không tự sắp lại các dòng của trang hiện tại.
   const serverSideSorter = () => 0;
 
-  useEffect(() => {
-    fetchData();
+  const refreshList = useCallback(() => {
+    statusCountFilterKey.current = null;
+    void fetchData();
   }, [fetchData]);
 
-  // Handle open modals
-  const handleOpenCreate = () => {
-    setSelectedRecord(null);
-    setFormMode('create');
-    setFormOpen(true);
-  };
-
-  const handleOpenEdit = (rec: CoastalStationInmarsatResponse) => {
-    setSelectedRecord(rec);
-    setFormMode('edit');
-    setFormOpen(true);
-  };
-
-  const handleOpenDetail = (rec: CoastalStationInmarsatResponse) => {
-    setSelectedRecord(rec);
-    setFormMode('detail');
-    setFormOpen(true);
-  };
-
-  const handleDelete = (rec: CoastalStationInmarsatResponse) => {
-    Modal.confirm({
-      title: 'Xác nhận xóa',
-      content: `Bạn có chắc chắn muốn xóa Đài Inmarsat "${rec.name || rec.code}" không?`,
-      okText: 'Xóa',
-      cancelText: 'Hủy',
-      okButtonProps: { danger: true, style: { borderRadius: radiusPill, height: 36 } },
-      cancelButtonProps: { style: { borderRadius: radiusPill, height: 36 } },
-      onOk: async () => {
-        try {
-          await inmarsatStationService.delete(rec.id);
-          toast.success('Xóa đài Inmarsat thành công');
-          fetchData();
-        } catch (err: any) {
-          toast.error(err?.response?.data?.message || 'Không thể xóa đài Inmarsat');
-        }
-      },
-    });
-  };
-
-  const handleSubmit = async (rec: CoastalStationInmarsatResponse) => {
+  const handleDelete = useCallback(async (id: string) => {
     try {
-      await inmarsatStationService.submit(rec.id);
-      toast.success('Gửi phê duyệt thành công');
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Lỗi gửi phê duyệt');
+      await inmarsatStationService.delete(id);
+      toast.success('Xóa thành công');
+      refreshList();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Lỗi xóa');
     }
-  };
+  }, [refreshList]);
 
-  const handleOpenApprove = (rec: CoastalStationInmarsatResponse, level: 'c1' | 'c2') => {
-    setTargetRecord(rec);
+  // ── Delete confirmation modal (Chuẩn Bến cảng) ───────────────────
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingRecord, setDeletingRecord] = useState<CoastalStationInmarsatResponse | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const openDeleteModal = useCallback((record: CoastalStationInmarsatResponse) => {
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingRecord) return;
+    setDeleteLoading(true);
+    try {
+      await inmarsatStationService.delete(deletingRecord.id);
+      toast.success('Đã xóa đài thông tin vệ tinh Inmarsat');
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      refreshList();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, refreshList]);
+
+  const openApproveModal = (id: string, level: 'c1' | 'c2') => {
+    setApproveTargetId(id);
     setApproveLevel(level);
     setApproveModalOpen(true);
   };
 
-  const handleConfirmApprove = async () => {
-    if (!targetRecord) return;
+  const handleApprove = async () => {
+    if (!approveTargetId) return;
     try {
-      setApprovalLoading(true);
-      if (approveLevel === 'c2') {
-        await inmarsatStationService.approveL2(targetRecord.id);
+      if (approveLevel === 'c1') {
+        await inmarsatStationService.approveL1(approveTargetId);
+        toast.success('Phê duyệt cấp 1 thành công');
       } else {
-        await inmarsatStationService.approveL1(targetRecord.id);
+        await inmarsatStationService.approveL2(approveTargetId);
+        toast.success('Phê duyệt cấp 2 thành công');
       }
-      toast.success('Phê duyệt thành công');
       setApproveModalOpen(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Phê duyệt thất bại');
-    } finally {
-      setApprovalLoading(false);
+      refreshList();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Lỗi phê duyệt');
     }
   };
 
-  const handleOpenReject = (rec: CoastalStationInmarsatResponse) => {
-    setTargetRecord(rec);
+  const openRejectModal = (id: string) => {
+    setRejectTargetId(id);
     setRejectReason('');
     setRejectModalOpen(true);
   };
 
-  const handleConfirmReject = async () => {
-    if (!targetRecord) return;
-    // approval-2-level-spec §3.4 (quy tắc 5): tối thiểu 10 ký tự — backend cũng
-    // chặn đúng ngưỡng này, kiểm tra tại chỗ để người dùng không phải chờ lỗi server.
+  const handleReject = async () => {
     if (!rejectReason.trim() || rejectReason.trim().length < 10) {
       toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
+    if (!rejectTargetId) return;
     try {
-      setApprovalLoading(true);
-      await inmarsatStationService.reject(targetRecord.id, rejectReason.trim());
-      toast.success('Đã từ chối phê duyệt');
+      await inmarsatStationService.reject(rejectTargetId, rejectReason.trim());
+      toast.success('Đã từ chối');
       setRejectModalOpen(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Từ chối thất bại');
-    } finally {
-      setApprovalLoading(false);
+      refreshList();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Lỗi từ chối');
     }
   };
 
-  const handleOpenHistory = (rec: CoastalStationInmarsatResponse) => {
-    setSelectedRecord(rec);
-    setHistoryTargetId(rec.id);
-    setHistoryDrawerOpen(true);
-    setHistoryList([]);
-    setHistoryLoading(false);
+  const handleViewHistory = (record: CoastalStationInmarsatResponse) => {
+    setSelectedRecord(record);
+    setHistoryModalOpen(true);
+    setHistoryRecords([]);
+    setLoadingHistory(false);
     setLoadingMoreHistory(false);
     setHasMoreHistory(true);
+    setHistoryFilters({ keyword: '' });
     setHistoryPage(0);
-    setHistoryFilters({ keyword: '', fromDate: '', toDate: '' });
   };
 
-  // Backend đã loại các dòng của quy trình phê duyệt và lọc theo từ khóa/ngày, ở
-  // đây chỉ ánh xạ sang cấu trúc mà drawer dùng chung mong đợi.
-  const mapHistoryEntries = useCallback((logs: any[]): CommonHistoryEntry[] => {
-      return (logs || []).map((h: any) => {
-        let changes: HistoryChangeItem[] = [];
-        if (h.changes && Array.isArray(h.changes)) {
-          changes = h.changes;
-        } else if (h.previousValue || h.newValue || h.changedField) {
-          changes = [{
-            field: h.changedField || 'Thông tin',
-            oldValue: h.previousValue != null && h.previousValue !== '' ? String(h.previousValue) : '—',
-            newValue: h.newValue != null && h.newValue !== '' ? String(h.newValue) : '—',
-          }];
-        }
-
-        return {
-          id: h.id,
-          action: h.actionType || h.action || 'UPDATE',
-          changedBy: h.changedByName || h.changedBy || 'Hệ thống',
-          changedByName: h.changedByName || h.changedBy || 'Hệ thống',
-          changedAt: h.changedAt || h.createdAt || h.timestamp,
-          description: h.description || h.reason || h.note,
-          changes,
-        };
-      });
-  }, []);
-
-  // Nạp lại trang đầu mỗi khi mở drawer hoặc đổi điều kiện lọc.
   useEffect(() => {
-    if (!historyDrawerOpen || !historyTargetId) return;
+    if (!historyModalOpen || !selectedRecord) return;
     let cancelled = false;
     (async () => {
-      setHistoryLoading(true);
+      setLoadingHistory(true);
       setLoadingMoreHistory(false);
       setHasMoreHistory(true);
-      setHistoryList([]);
+      setHistoryRecords([]);
       setHistoryPage(0);
       try {
-        const logs = await inmarsatStationService.getHistory(historyTargetId, 0, HISTORY_PAGE_SIZE, {
+        const history = await inmarsatStationService.getHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
           keyword: historyFilters.keyword || undefined,
           fromDate: historyFilters.fromDate || undefined,
           toDate: historyFilters.toDate || undefined,
         });
         if (cancelled) return;
-        setHistoryList(mapHistoryEntries(logs));
-        setHasMoreHistory((logs || []).length === HISTORY_PAGE_SIZE);
+        const items = (history || []) as unknown as CommonHistoryEntry[];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
       } catch {
-        if (!cancelled) {
-          setHistoryList([]);
-          toast.error('Không thể tải lịch sử thay đổi');
-        }
+        if (!cancelled) toast.error('Không thể tải lịch sử thay đổi');
       } finally {
-        if (!cancelled) setHistoryLoading(false);
+        if (!cancelled) setLoadingHistory(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [historyDrawerOpen, historyTargetId, historyFilters, mapHistoryEntries]);
+  }, [historyModalOpen, selectedRecord, historyFilters]);
 
-  const loadMoreHistory = useCallback(async () => {
-    if (!historyTargetId || historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+  const loadMoreHistory = async () => {
+    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
     setLoadingMoreHistory(true);
     try {
       const nextPage = historyPage + 1;
-      const logs = await inmarsatStationService.getHistory(historyTargetId, nextPage, HISTORY_PAGE_SIZE, {
+      const history = await inmarsatStationService.getHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
         keyword: historyFilters.keyword || undefined,
         fromDate: historyFilters.fromDate || undefined,
         toDate: historyFilters.toDate || undefined,
       });
-      if (logs && logs.length > 0) {
-        setHistoryList((prev) => [...prev, ...mapHistoryEntries(logs)]);
+      if (history && history.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...(history as unknown as CommonHistoryEntry[])]);
       }
       setHistoryPage(nextPage);
-      setHasMoreHistory((logs || []).length === HISTORY_PAGE_SIZE);
-    } catch { /* giữ nguyên phần đã tải, người dùng cuộn lại sẽ thử tiếp */ }
+      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* ignore */ }
     finally { setLoadingMoreHistory(false); }
-  }, [historyTargetId, historyLoading, loadingMoreHistory, hasMoreHistory, historyPage, historyFilters, mapHistoryEntries]);
+  };
 
-  // Backend trả về số đếm theo ĐÚNG mã đang lưu trong CSDL, gồm cả mã cũ
-  // (PROPOSED, APPROVED_LEVEL2, REJECTED). Phải CỘNG các mã cùng nghĩa chứ không
-  // dùng `??`: `??` chỉ lấy khóa đầu tiên khác null nên khi cả hai mã cùng có dữ
-  // liệu thì tab đếm thiếu. Riêng "Từ chối" trước đây chỉ đọc mã cũ `REJECTED`
-  // trong khi luồng từ chối luôn ghi REJECTED_LEVEL1/LEVEL2, nên tab luôn bằng 0.
-  const countDraft = Number(statusCounts['DRAFT'] || statusCounts['draft'] || 0);
-  const countPendingApproval = Number(statusCounts['PENDING_APPROVAL'] || 0) + Number(statusCounts['PROPOSED'] || 0) + Number(statusCounts['pending'] || 0);
-  const countApprovedLevel1 = Number(statusCounts['APPROVED_LEVEL1'] || statusCounts['approved_level1'] || 0);
-  const countApproved = Number(statusCounts['APPROVED'] || statusCounts['APPROVED_LEVEL2'] || statusCounts['approved'] || 0);
-  const countRejectedLevel1 = Number(statusCounts['REJECTED_LEVEL1'] || statusCounts['REJECTED'] || 0);
-  const countRejectedLevel2 = Number(statusCounts['REJECTED_LEVEL2'] || 0);
-  const countAll = countDraft + countPendingApproval + countApprovedLevel1 + countApproved + countRejectedLevel1 + countRejectedLevel2;
+  const { statusTabs, handleTabChange } = useStandardApprovalStatusTabs(
+    statusCounts,
+    filterApprovalStatus,
+    (status) => {
+      setFilterApprovalStatus(status);
+      setPage(1);
+    }
+  );
 
-  const statusTabs = [
-    { key: 'ALL', label: 'Tất cả', count: countAll || total, color: actionPrimary, active: activeTab === 'ALL' || activeTab === 'all' },
-    { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: countDraft, color: statusDraft, active: activeTab === ApprovalStatus.DRAFT },
-    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: countPendingApproval, color: statusAttention, active: activeTab === ApprovalStatus.PENDING_APPROVAL },
-    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: countApprovedLevel1, color: '#0284C7', active: activeTab === ApprovalStatus.APPROVED_LEVEL1 },
-    { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: countApproved, color: statusOperational, active: activeTab === ApprovalStatus.APPROVED },
-    { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: countRejectedLevel1, color: statusCritical, active: activeTab === ApprovalStatus.REJECTED_LEVEL1 },
-    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: countRejectedLevel2, color: statusCritical, active: activeTab === ApprovalStatus.REJECTED_LEVEL2 },
-  ];
+  const handleFilterSearch = (vals: Record<string, unknown>) => {
+    setFilterName(typeof vals.name === 'string' ? vals.name.trim() : '');
+    setFilterCode(typeof vals.code === 'string' ? vals.code.trim() : '');
+    setFilterConditionStatus(vals.conditionStatus as ConditionStatus | undefined);
+    setFilterOrgUnitId(vals.orgUnitId as string | undefined);
+    setFilterOperatingOrgId(vals.operatingOrgId as string | undefined);
+    setFilterProvinceId(typeof vals.provinceId === 'number' ? vals.provinceId : undefined);
+    const dateRange = vals.updateDateRange as [dayjs.Dayjs | null, dayjs.Dayjs | null] | undefined;
+    setFilterUpdatedFrom(dateRange?.[0] ? dayjs(dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
+    setFilterUpdatedTo(dateRange?.[1] ? dayjs(dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
+    setPage(1);
+  };
 
-  // Table columns definition
-  const columns = [
+  const handleFilterReset = () => {
+    setFilterName('');
+    setFilterCode('');
+    setFilterConditionStatus(undefined);
+    setFilterOrgUnitId(undefined);
+    setFilterOperatingOrgId(undefined);
+    setFilterProvinceId(undefined);
+    setFilterUpdatedFrom(undefined);
+    setFilterUpdatedTo(undefined);
+    setPage(1);
+  };
+
+  const isRejectedTab = filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2;
+
+  // Table Columns
+  const columns = useMemo(() => [
     {
       key: 'stt',
       label: 'STT',
       width: 60,
       align: 'center' as const,
       fixed: 'left' as const,
-      render: (_: any, __: any, index: number) => (
-        <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>
-          {(page - 1) * pageSize + index + 1}
-        </span>
-      ),
+      render: (_: unknown, __: unknown, index: number) => (page - 1) * pageSize + index + 1,
     },
     {
       key: 'name',
-      label: 'Tên / Mã đài',
+      label: 'Tên / Mã đài thông tin vệ tinh Inmarsat',
       dataIndex: 'name',
-      width: 300,
+      width: 280,
       fixed: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('name'),
-      render: (_: any, record: CoastalStationInmarsatResponse) => (
+      render: (_: unknown, record: CoastalStationInmarsatResponse) => (
         <div
           style={{ cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          onClick={() => handleOpenDetail(record)}
+          onClick={() => {
+            setEditingId(record.id);
+            setSelectedRecord(record);
+            setModalMode('detail');
+            setIsModalOpen(true);
+          }}
         >
           <div style={cellTitleStyle} title={record.name || ''}>{record.name || '—'}</div>
           <div style={cellSubtitleStyle} title={record.code || ''}>{record.code || '—'}</div>
@@ -488,48 +533,39 @@ export const InmarsatStationList = () => {
       key: 'orgUnitName',
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
-      width: 240,
+      width: 220,
+      ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('orgUnitName'),
-      render: (val: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
-          {val || '—'}
-        </div>
-      ),
+      render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={v}>{v || '—'}</div>,
     },
     {
       key: 'operatingOrgName',
       label: 'Đơn vị khai thác',
       dataIndex: 'operatingOrgName',
-      width: 180,
+      width: 200,
+      ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('operatingOrgName'),
       render: (val: string, record: CoastalStationInmarsatResponse) => {
         const name = getOperatingOrgName(record.operatingOrgId, val);
-        return (
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>
-            {name}
-          </div>
-        );
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name || '—'}</div>;
       },
     },
     {
-      key: 'provinceId',
+      key: 'province',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
-      width: 160,
+      width: 180,
+      ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('provinceId'),
-      render: (pId: number) => {
-        const pName = getProvinceNameById(pId);
-        return (
-          <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={pName}>
-            {pName || '—'}
-          </span>
-        );
+      render: (_: unknown, r: CoastalStationInmarsatResponse) => {
+        const val = r.provinceName || (r.provinceId ? getProvinceNameById(r.provinceId) : undefined) || '—';
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
       },
     },
     {
@@ -537,13 +573,13 @@ export const InmarsatStationList = () => {
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
       width: 160,
-      align: 'left' as const,
+      ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
-      render: (st: string) => {
-        const label = getConditionStatusLabel(st);
-        const color = getConditionStatusColor(st);
+      render: (v: string) => {
+        const label = CONDITION_STATUS_MAP[v as ConditionStatus] || getConditionStatusLabel(v) || v;
+        const color = CONDITION_COLOR[v as ConditionStatus] || getConditionStatusColor(v) || textSecondary;
         return (
           <span style={statusBadgeStyle(color)}>
             {label}
@@ -556,24 +592,37 @@ export const InmarsatStationList = () => {
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
       width: 280,
-      align: 'left' as const,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('approvalStatus'),
-      render: (st: string) => <ApprovalStatusBadge status={st} />,
+      render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
+    },
+    {
+      key: 'rejectionReason',
+      label: 'Lý do từ chối',
+      dataIndex: 'rejectionReason',
+      width: 260,
+      hidden: !isRejectedTab,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('rejectionReason'),
+      render: (val: string) => (
+        <span title={val || ''} style={{ color: textSecondary }}>{val || '—'}</span>
+      ),
     },
     {
       key: 'updatedByName',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
       width: 220,
-      sorter: (a: any, b: any) => (a.updatedAt ? new Date(a.updatedAt).getTime() : 0) - (b.updatedAt ? new Date(b.updatedAt).getTime() : 0),
-      render: (val: string, record: CoastalStationInmarsatResponse) => {
-        const isUuid = (v?: string | null) => !!v && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(v);
-        const raw = val || (record as any).createdByName;
-        const name = isUuid(raw) ? '—' : (raw || '—');
-        const date = record.updatedAt || record.createdAt;
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedByName'),
+      render: (_: unknown, record: CoastalStationInmarsatResponse) => {
+        const name = record.updatedByName || (record as any).createdByName || '—';
+        const date = (record as any).updatedAt || (record as any).createdAt;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             <div
@@ -596,429 +645,491 @@ export const InmarsatStationList = () => {
         );
       },
     },
-    {
-      key: 'submittedByName',
-      label: 'Cán bộ gửi phê duyệt',
-      dataIndex: 'submittedByName',
-      width: 220,
-      sorter: (a: any, b: any) => (a.submittedDate || a.submittedAt ? new Date(a.submittedDate || a.submittedAt).getTime() : 0) - (b.submittedDate || b.submittedAt ? new Date(b.submittedDate || b.submittedAt).getTime() : 0),
-      render: (val: string, record: CoastalStationInmarsatResponse) => {
-        const raw = val || record.submittedBy;
-        const isUuid = !!raw && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(raw);
-        const name = isUuid ? null : raw;
-        const date = record.submittedDate || record.submittedAt;
-        if (!name && !date) return <span style={{ color: textSecondary }}>—</span>;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name || '—'}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name || '—'}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'approverNameLevel1',
-      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-      dataIndex: 'approverNameLevel1',
-      width: 240,
-      sorter: (a: any, b: any) => (a.approvedDateLevel1 ? new Date(a.approvedDateLevel1).getTime() : 0) - (b.approvedDateLevel1 ? new Date(b.approvedDateLevel1).getTime() : 0),
-      render: (val: string, record: CoastalStationInmarsatResponse) => {
-        const raw = val || record.approverLevel1Name || record.approverLevel1;
-        const isUuid = !!raw && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(raw);
-        const name = isUuid ? null : raw;
-        const date = record.approvedDateLevel1;
-        if (!name && !date) return <span style={{ color: textSecondary }}>—</span>;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name || '—'}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name || '—'}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'approverNameLevel2',
-      label: 'Phê duyệt cấp Cục',
-      dataIndex: 'approverNameLevel2',
-      width: 220,
-      sorter: (a: any, b: any) => (a.approvedDateLevel2 ? new Date(a.approvedDateLevel2).getTime() : 0) - (b.approvedDateLevel2 ? new Date(b.approvedDateLevel2).getTime() : 0),
-      render: (val: string, record: CoastalStationInmarsatResponse) => {
-        const raw = val || record.approverLevel2Name || record.approverLevel2;
-        const isUuid = !!raw && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(raw);
-        const name = isUuid ? null : raw;
-        const date = record.approvedDateLevel2;
-        if (!name && !date) return <span style={{ color: textSecondary }}>—</span>;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name || '—'}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name || '—'}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
+  ], [page, pageSize, sortOrderFor, isRejectedTab]);
 
-  ];
+  const rowActions = useCallback((record: CoastalStationInmarsatResponse) => {
+    const uid = currentUser?.userId || currentUser?.id;
+    const isCreator = Boolean(uid && (record as any).createdBy === uid);
+    const isApproverL1 = Boolean(uid && record.approverLevel1 === uid);
+
+    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [
+      {
+        key: 'detail',
+        label: 'Xem chi tiết',
+        icon: icons.view,
+        onClick: () => {
+          setEditingId(record.id);
+          setSelectedRecord(record);
+          setModalMode('detail');
+          setIsModalOpen(true);
+        },
+      },
+    ];
+
+    if (canEditApprovalRecord(record.approvalStatus, {
+      hasPerm,
+      resource: 'coastalstationinmarsat',
+      extraUpdatePerms: ['specialstation:update', 'data:update'],
+      extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve'],
+    })) {
+      actions.push({
+        key: 'edit',
+        label: 'Chỉnh sửa',
+        icon: icons.edit,
+        onClick: () => {
+          setEditingId(record.id);
+          setSelectedRecord(record);
+          setModalMode('edit');
+          setIsModalOpen(true);
+        },
+      });
+    }
+
+    if (hasPerm('coastalstationinmarsat:history') || hasPerm('specialstation:history') || hasPerm('data:read')) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: icons.history,
+        onClick: () => handleViewHistory(record),
+      });
+    }
+
+    if ((hasPerm('coastalstationinmarsat:update') || hasPerm('specialstation:update') || hasPerm('data:update')) &&
+      (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
+      actions.push({
+        key: 'submit',
+        label: 'Gửi duyệt',
+        icon: icons.submit,
+        onClick: async () => {
+          try {
+            await inmarsatStationService.submit(record.id);
+            toast.success('Gửi phê duyệt thành công');
+            refreshList();
+          } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'Lỗi gửi phê duyệt');
+          }
+        },
+      });
+    }
+
+    if ((record.approvalStatus === ApprovalStatus.PENDING_APPROVAL || (record.approvalStatus as any) === 'PROPOSED') && canApproveL1 && (!isCreator || isCucLevel || isAdmin)) {
+      actions.push(
+        {
+          key: 'approve_l1',
+          label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+          icon: icons.approve,
+          onClick: () => openApproveModal(record.id, 'c1'),
+        },
+        {
+          key: 'reject_l1',
+          label: 'Từ chối cấp Cảng vụ/Chi cục',
+          icon: icons.reject,
+          danger: true,
+          onClick: () => openRejectModal(record.id),
+        }
+      );
+    }
+
+    if (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && canApproveL2 && (!isApproverL1 || isCucLevel || isAdmin)) {
+      actions.push(
+        {
+          key: 'approve_l2',
+          label: 'Phê duyệt cấp Cục',
+          icon: icons.approve,
+          onClick: () => openApproveModal(record.id, 'c2'),
+        },
+        {
+          key: 'reject_l2',
+          label: 'Từ chối cấp Cục',
+          icon: icons.reject,
+          danger: true,
+          onClick: () => openRejectModal(record.id),
+        }
+      );
+    }
+
+    if (canDeleteApprovalRecord(record.approvalStatus, {
+      hasPerm,
+      resource: 'coastalstationinmarsat',
+      extraDeletePerms: ['specialstation:delete', 'data:delete'],
+    })) {
+      actions.push({
+        key: 'delete',
+        label: 'Xóa',
+        icon: icons.delete,
+        danger: true,
+        onClick: () => openDeleteModal(record),
+      });
+    }
+
+    return actions;
+  }, [currentUser, hasPerm, canApproveL1, canApproveL2, refreshList, openDeleteModal]);
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-        {/* Header */}
+    <ThemeTokenProvider tokens={customTokens}>
+      <div className="inmarsat-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <style>{`
+          /* ── Cỡ chữ 13.5px chuẩn toàn màn Inmarsat & các popup/drawer con (chuẩn VTS Operation Center / Bến cảng) ── */
+          .inmarsat-page-wrapper,
+          .inmarsat-page-wrapper .ant-table,
+          .inmarsat-page-wrapper .ant-table-cell,
+          .inmarsat-page-wrapper .ant-table-thead > tr > th,
+          .inmarsat-page-wrapper .ant-table-tbody > tr > td,
+          .inmarsat-page-wrapper .ant-input,
+          .inmarsat-page-wrapper .ant-select,
+          .inmarsat-page-wrapper .ant-select-selection-item,
+          .inmarsat-page-wrapper .ant-select-selection-placeholder,
+          .inmarsat-page-wrapper .ant-select-item-option-content,
+          .inmarsat-page-wrapper .ant-picker,
+          .inmarsat-page-wrapper .ant-picker-input > input,
+          .inmarsat-page-wrapper .ant-btn,
+          .inmarsat-page-wrapper .ant-pagination,
+          .inmarsat-page-wrapper .ant-pagination-item,
+          .inmarsat-page-wrapper .ant-pagination-total-text,
+          .inmarsat-page-wrapper .ant-breadcrumb,
+          .inmarsat-page-wrapper .filter-label,
+          .inmarsat-page-wrapper .ant-form-item-label > label,
+          .inmarsat-drawer-scope,
+          .inmarsat-drawer-scope .ant-drawer-content,
+          .inmarsat-drawer-scope .ant-tabs-tab,
+          .inmarsat-drawer-scope .chk-detail-label,
+          .inmarsat-drawer-scope .chk-detail-value,
+          .inmarsat-drawer-scope .ant-table,
+          .inmarsat-drawer-scope .ant-table-cell,
+          .inmarsat-drawer-scope .ant-table-thead > tr > th,
+          .inmarsat-drawer-scope .ant-btn,
+          .inmarsat-drawer-scope .ant-select,
+          .inmarsat-drawer-scope .ant-input,
+          .inmarsat-drawer-scope .ant-form-item-label > label,
+          .berth-drawer-scope,
+          .berth-drawer-scope .ant-drawer-content,
+          .berth-drawer-scope .ant-tabs-tab,
+          .berth-drawer-scope .chk-detail-label,
+          .berth-drawer-scope .chk-detail-value,
+          .berth-drawer-scope .ant-table,
+          .berth-drawer-scope .ant-table-cell,
+          .berth-drawer-scope .ant-table-thead > tr > th,
+          .berth-drawer-scope .ant-btn,
+          .berth-drawer-scope .ant-select,
+          .berth-drawer-scope .ant-input,
+          .berth-drawer-scope .ant-form-item-label > label {
+            font-size: 13.5px !important;
+          }
+
+          .inmarsat-page-wrapper .screen-header {
+            flex-wrap: wrap !important;
+            gap: 10px !important;
+          }
+
+          /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+          .inmarsat-page-wrapper div:has(> button[aria-pressed]) {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            justify-content: center !important;
+            justify-content: safe center !important;
+            align-items: center !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
+            scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 2px 16px 6px 16px !important;
+            gap: 20px !important;
+          }
+          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+            height: 6px !important;
+            display: block !important;
+          }
+          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 999px !important;
+          }
+          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 999px !important;
+          }
+          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+          }
+          .inmarsat-page-wrapper div:has(> button[aria-pressed]) > button {
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+          }
+
+          .inmarsat-page-wrapper .screen-header {
+            flex-wrap: wrap !important;
+            gap: 10px !important;
+          }
+
+          /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+          .inmarsat-drawer-scope .ant-drawer-content-wrapper {
+            max-width: 100vw !important;
+          }
+          @media (max-width: 1024px) {
+            .inmarsat-drawer-scope .chk-detail-grid {
+              grid-template-columns: 1fr !important;
+              column-gap: 0 !important;
+            }
+            .inmarsat-drawer-scope .chk-detail-row--full {
+              grid-column: 1 !important;
+            }
+          }
+          @media (max-width: 640px) {
+            .inmarsat-drawer-scope .chk-detail-row {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 4px !important;
+              padding: 8px 0 !important;
+            }
+            .inmarsat-drawer-scope .chk-detail-label {
+              width: 100% !important;
+            }
+            .inmarsat-drawer-scope .chk-detail-value {
+              width: 100% !important;
+            }
+          }
+        `}</style>
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
-            { label: 'Đài vệ tinh Inmarsat' },
+            { label: 'Đài thông tin vệ tinh Inmarsat' },
           ]}
           actions={
-            canCreate
+            (hasPerm('coastalstationinmarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create'))
               ? [{
                 key: 'create',
                 label: 'Thêm mới',
                 variant: 'primary' as const,
                 icon: icons.create,
-                onClick: handleOpenCreate,
+                onClick: () => {
+                  setEditingId(null);
+                  setSelectedRecord(null);
+                  setModalMode('create');
+                  setIsModalOpen(true);
+                },
               }]
               : []
           }
         />
 
-        {/* Main List Layout */}
         <FilterTableLayout
-          statusTabs={statusTabs}
-          onStatusTabChange={(k) => { setActiveTab(k); setPage(1); }}
-          onFilterReset={() => {
-            setFilterOrgUnitId(undefined);
-            setFilterName('');
-            setFilterCode('');
-            setFilterProvinceId(undefined);
-            setFilterConditionStatus(undefined);
-            setFilterDateRange(null);
-            setActiveTab('all');
-            setPage(1);
-          }}
-          onFilterApply={() => { setPage(1); fetchData(); }}
           filterCollapsed={filterCollapsed}
-          onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+          onToggleCollapse={() => setFilterCollapsed((value) => !value)}
+          onFilterApply={() => handleFilterSearch(filterValues)}
+          onFilterReset={() => {
+            setFilterValues({});
+            handleFilterReset();
+          }}
           loading={loading}
+          error={isError}
+          errorMessage={errorMessage}
+          onRetry={refreshList}
+          statusTabs={statusTabs}
+          onStatusTabChange={handleTabChange}
           filterContent={
             <>
-              <SidebarFilterField label="Đơn vị quản lý" style={{ marginTop: spaceMd }}>
+              {/* ── BỘ LỌC CƠ BẢN (LUÔN HIỂN THỊ) ── */}
+              <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+                <div style={filterLabelStyle}>Đơn vị quản lý</div>
                 <OrgUnitTreeSelect
-                  organizations={filteredOrgUnits}
-                  placeholder="Tất cả"
+                  organizations={orgUnitOptions}
+                  placeholder="Chọn đơn vị..."
                   allowClear
                   treeDefaultExpandAll={true}
                   listHeight={256}
-                  value={filterOrgUnitId}
-                  onChange={(val) => {
-                    setFilterOrgUnitId(val);
+                  value={filterValues.orgUnitId as string | undefined}
+                  onChange={(value) => {
+                    setFilterValues((prev) => ({ ...prev, orgUnitId: value }));
                   }}
-                  style={{ ...selectStyle, width: '100%' }}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                 />
-              </SidebarFilterField>
+              </div>
 
-              <SidebarFilterField label="Tên đài">
+              <div style={{ marginBottom: 12 }}>
+                <div style={filterLabelStyle}>Tên đài thông tin vệ tinh Inmarsat</div>
                 <Input
-                  placeholder="Nhập tên đài"
+                  placeholder="Tìm theo tên đài vệ tinh Inmarsat"
                   allowClear
-                  value={filterName}
-                  onChange={(e) => setFilterName(e.target.value)}
-                  onPressEnter={() => { setPage(1); fetchData(); }}
-                  prefix={icons.search}
-                  style={inputStyle}
+                  value={(filterValues.name as string) || ''}
+                  onChange={(event) => setFilterValues((prev) => ({ ...prev, name: event.target.value }))}
+                  onPressEnter={() => handleFilterSearch(filterValues)}
+                  style={{ borderRadius: radiusPill, height: 40 }}
                 />
-              </SidebarFilterField>
+              </div>
 
-              <SidebarFilterField label="Tình trạng">
+              <div style={{ marginBottom: 12 }}>
+                <div style={filterLabelStyle}>Tình trạng</div>
                 <Select
-                  placeholder="Tất cả tình trạng"
+                  placeholder="Chọn tình trạng"
                   allowClear
-                  value={filterConditionStatus}
-                  onChange={(val) => setFilterConditionStatus(val)}
+                  value={filterValues.conditionStatus as ConditionStatus | undefined}
+                  onChange={(value) => setFilterValues((prev) => ({ ...prev, conditionStatus: value }))}
                   options={CONDITION_STATUS_OPTIONS}
-                  style={{ ...selectStyle, width: '100%' }}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                 />
-              </SidebarFilterField>
+              </div>
 
-              {/* ── BỘ LỌC NÂNG CAO ── */}
+              {/* ── BỘ LỌC NÂNG CAO (ẨN / HIỆN THEO NÚT BỘ LỌC NÂNG CAO) ── */}
               {filterCollapsed && (
                 <>
-                  <SidebarFilterField label="Mã đài">
-                    <Input
-                      placeholder="Nhập mã đài"
-                      allowClear
-                      value={filterCode}
-                      onChange={(e) => setFilterCode(e.target.value)}
-                      onPressEnter={() => { setPage(1); fetchData(); }}
-                      prefix={icons.search}
-                      style={inputStyle}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Ngày cập nhật">
-                    <DatePicker.RangePicker
-                      {...getRangePickerProps({
-                        value: filterDateRange,
-                        onChange: (dates: any) => { setFilterDateRange(dates); setPage(1); },
-                      })}
-                    />
-                  </SidebarFilterField>
-
-                  <SidebarFilterField label="Địa điểm (Tỉnh/Thành phố)">
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Đơn vị khai thác</div>
                     <Select
-                      placeholder="Tất cả tỉnh thành"
+                      placeholder="Chọn đơn vị khai thác"
                       allowClear
                       showSearch
                       filterOption={(input, option) =>
-                        normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
                       }
-                      value={filterProvinceId}
-                      onChange={(val) => setFilterProvinceId(val)}
-                      options={VIETNAM_PROVINCE_OPTIONS}
-                      style={{ ...selectStyle, width: '100%' }}
+                      value={filterValues.operatingOrgId as string | undefined}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, operatingOrgId: value }))}
+                      options={DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({
+                        value: o.id,
+                        label: o.name,
+                      }))}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     />
-                  </SidebarFilterField>
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Mã đài thông tin vệ tinh Inmarsat</div>
+                    <Input
+                      placeholder="Tìm theo mã đài vệ tinh Inmarsat"
+                      allowClear
+                      value={(filterValues.code as string) || ''}
+                      onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
+                      onPressEnter={() => handleFilterSearch(filterValues)}
+                      style={{ borderRadius: radiusPill, height: 40 }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Địa điểm (Tỉnh/Thành Phố)</div>
+                    <Select
+                      placeholder="Chọn tỉnh/thành phố"
+                      allowClear
+                      showSearch
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                      }
+                      value={filterValues.provinceId as number | undefined}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
+                      options={VIETNAM_PROVINCE_OPTIONS}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Ngày cập nhật</div>
+                    <DatePicker.RangePicker
+                      format="DD/MM/YYYY"
+                      placeholder={['Từ ngày', 'Đến ngày']}
+                      allowClear
+                      {...getRangePickerProps()}
+                      value={filterValues.updateDateRange as [dayjs.Dayjs | null, dayjs.Dayjs | null] | undefined}
+                      onChange={(dates) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates }))}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                    />
+                  </div>
                 </>
               )}
             </>
           }
         >
-          {loading ? (
-            <LoadingSkeleton />
-          ) : (
-            <>
-              <DataTable
-                dataSource={data}
-                columns={columns}
-                rowKey="id"
-                onSort={handleSort}
-                scroll={{ x: 'max-content' }}
-                emptyText="Không có dữ liệu Đài Inmarsat"
-                rowActions={(rec) => {
-                  const currentUserId = user?.userId || user?.id;
-                  const isCreator = Boolean(currentUserId && rec.createdBy === currentUserId);
-                  const isApproverL1 = Boolean(currentUserId && rec.approverLevel1 === currentUserId);
-
-                  const isPendingL1 = rec.approvalStatus === 'PROPOSED' || rec.approvalStatus === 'PENDING' || rec.approvalStatus === 'PENDING_APPROVAL';
-                  const isPendingL2 = rec.approvalStatus === 'APPROVED_LEVEL1';
-                  const isDraftOrRejected = rec.approvalStatus === 'DRAFT' || rec.approvalStatus === 'REJECTED' || rec.approvalStatus === 'REJECTED_LEVEL1' || rec.approvalStatus === 'REJECTED_LEVEL2';
-
-                  const canEditThis = canEditApprovalRecord(rec.approvalStatus, {
-                    hasPerm: hasPermission,
-                    resource: 'coastalstationinmarsat',
-                    extraUpdatePerms: ['specialstation:update', 'data:update'],
-                    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve'],
-                  });
-
-                  const canDeleteThis = canDeleteApprovalRecord(rec.approvalStatus, {
-                    hasPerm: hasPermission,
-                    resource: 'coastalstationinmarsat',
-                    extraDeletePerms: ['specialstation:delete', 'data:delete'],
-                  });
-
-                  const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
-
-                  // 1. Xem chi tiết (chuẩn VTS)
-                  actions.push({
-                    key: 'view',
-                    label: 'Xem chi tiết',
-                    icon: icons.view,
-                    onClick: () => handleOpenDetail(rec),
-                  });
-
-                  // 2. Chỉnh sửa (đứng thứ 2, ngay sau Xem chi tiết — chuẩn VTS)
-                  if (canEditThis) {
-                    actions.push({
-                      key: 'edit',
-                      label: 'Chỉnh sửa',
-                      icon: icons.edit,
-                      onClick: () => handleOpenEdit(rec),
-                    });
-                  }
-
-                  // 3. Lịch sử (đứng thứ 3, ngay sau Chỉnh sửa — chuẩn VTS)
-                  actions.push({
-                    key: 'history',
-                    label: 'Lịch sử',
-                    icon: icons.history,
-                    onClick: () => handleOpenHistory(rec),
-                  });
-
-                  // 4. Gửi phê duyệt (chuẩn VTS)
-                  if (isDraftOrRejected && canCreate) {
-                    actions.push({
-                      key: 'submit',
-                      label: 'Gửi phê duyệt',
-                      icon: icons.submit,
-                      onClick: () => handleSubmit(rec),
-                    });
-                  }
-
-                  // 5 & 6. Phê duyệt & Từ chối cấp Cảng vụ/Chi cục (kèm chống tự duyệt — chuẩn VTS)
-                  if (isPendingL1 && canApproveL1 && !isCreator) {
-                    actions.push({
-                      key: 'approveL1',
-                      label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-                      icon: icons.approve,
-                      onClick: () => handleOpenApprove(rec, 'c1'),
-                    });
-                    actions.push({
-                      key: 'rejectL1',
-                      label: 'Từ chối cấp Cảng vụ/Chi cục',
-                      icon: icons.reject,
-                      danger: true,
-                      onClick: () => handleOpenReject(rec),
-                    });
-                  }
-
-                  // 7 & 8. Phê duyệt & Từ chối cấp Cục (kèm chống tự duyệt — chuẩn VTS)
-                  if (isPendingL2 && canApproveL2 && !isApproverL1) {
-                    actions.push({
-                      key: 'approveL2',
-                      label: 'Phê duyệt cấp Cục',
-                      icon: icons.approve,
-                      onClick: () => handleOpenApprove(rec, 'c2'),
-                    });
-                    actions.push({
-                      key: 'rejectL2',
-                      label: 'Từ chối cấp Cục',
-                      icon: icons.reject,
-                      danger: true,
-                      onClick: () => handleOpenReject(rec),
-                    });
-                  }
-
-                  // 9. Xóa (chuẩn VTS: label 'Xóa', danger: true)
-                  if (canDeleteThis) {
-                    actions.push({
-                      key: 'delete',
-                      label: 'Xóa',
-                      icon: icons.delete,
-                      danger: true,
-                      onClick: () => handleDelete(rec),
-                    });
-                  }
-
-                  return actions;
-                }}
-              />
-              <Pagination
-                total={total}
-                current={page}
-                pageSize={pageSize}
-                pageSizeOptions={[20, 50, 100]}
-                onChange={(p, sz) => { setPage(p); setPageSize(sz); }}
-              />
-            </>
-          )}
+          <DataTable
+            columns={columns}
+            dataSource={dataSource}
+            rowKey="id"
+            rowActions={rowActions}
+            loading={loading}
+            onSort={handleSort}
+            scroll={{ x: 'max-content' }}
+          />
+          <Pagination
+            total={total}
+            current={page}
+            pageSize={pageSize}
+            onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
+          />
         </FilterTableLayout>
 
-        {/* Unified Drawer Form */}
-        {formOpen && (
+        {isModalOpen && (
           <InmarsatStationForm
-            open={formOpen}
-            mode={formMode}
-            editId={selectedRecord?.id}
+            open={true}
+            editId={editingId}
             initialData={selectedRecord}
-            orgUnits={orgUnits}
-            onClose={() => setFormOpen(false)}
-            onSuccess={() => { setFormOpen(false); fetchData(); }}
+            mode={modalMode}
+            orgUnits={orgUnitOptions}
+            symbols={symbols}
+            onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
+            onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
           />
         )}
 
-        {/* Approval Modal */}
-        <ApprovalModal
-          visible={approveModalOpen}
-          level={approveLevel}
-          loading={approvalLoading}
-          onConfirm={handleConfirmApprove}
-          onCancel={() => setApproveModalOpen(false)}
-        />
-
-        {/* Reject Modal */}
-        <Modal
-          title={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
-          open={rejectModalOpen}
-          onCancel={() => setRejectModalOpen(false)}
-          onOk={handleConfirmReject}
-          okText="Xác nhận từ chối"
-          cancelText="Hủy"
-          okButtonProps={{ danger: true, style: { borderRadius: radiusPill, height: 38 }, loading: approvalLoading }}
-          cancelButtonProps={{ style: { borderRadius: radiusPill, height: 38 } }}
-          width={520}
-        >
-          <div style={{ padding: '12px 0' }}>
-            <div style={{ marginBottom: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: textSecondary }}>
-              Lý do từ chối <span style={{ color: statusCritical }}>*</span>
-            </div>
-            <Input.TextArea
-              rows={4}
-              placeholder="Nhập lý do từ chối"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              style={{ borderRadius: 8 }}
-            />
-          </div>
-        </Modal>
-
-        {/* History Drawer */}
+        {/* ── History drawer ────────────────────────────────────────── */}
         <CommonHistoryDrawer
-          open={historyDrawerOpen}
-          onClose={() => setHistoryDrawerOpen(false)}
+          open={historyModalOpen}
+          onClose={() => setHistoryModalOpen(false)}
           entityName={selectedRecord?.name || selectedRecord?.code}
-          records={historyList}
-          loading={historyLoading}
+          records={historyRecords}
+          loading={loadingHistory}
           fieldLabelMap={INMARSAT_FIELD_MAP}
           formatValue={formatHistoryValue}
           serverFiltered
           onFilterChange={setHistoryFilters}
           onLoadMore={loadMoreHistory}
           loadingMore={loadingMoreHistory}
+          variant="berth"
+        />
+
+        {/* Approval Modal */}
+        <ApprovalModal
+          visible={approveModalOpen}
+          level={approveLevel}
+          onConfirm={handleApprove}
+          onCancel={() => setApproveModalOpen(false)}
+        />
+
+        {/* Reject Modal */}
+        <Modal
+          title="Từ chối"
+          open={rejectModalOpen}
+          onOk={handleReject}
+          onCancel={() => setRejectModalOpen(false)}
+          okText="Từ chối"
+          cancelText="Hủy"
+          okButtonProps={{ danger: true }}
+        >
+          <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
+          <Input.TextArea
+            rows={3}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Nhập lý do từ chối"
+            maxLength={1000}
+            showCount
+            style={textAreaStyle}
+          />
+        </Modal>
+
+        {/* ── Delete Confirmation Modal (Chuẩn Bến cảng) ────────────── */}
+        <DeleteConfirmModal
+          open={deleteModalOpen}
+          onCancel={() => {
+            if (!deleteLoading) {
+              setDeleteModalOpen(false);
+              setDeletingRecord(null);
+            }
+          }}
+          onConfirm={handleConfirmDelete}
+          loading={deleteLoading}
+          itemType="đài thông tin vệ tinh Inmarsat"
+          itemName={deletingRecord?.stationName || deletingRecord?.stationCode}
+          itemCode={deletingRecord?.stationCode}
         />
       </div>
     </ThemeTokenProvider>
   );
-};
-
-export default InmarsatStationList;
+}

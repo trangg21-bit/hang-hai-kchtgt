@@ -3,6 +3,7 @@ import { Table } from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
 import dayjs from 'dayjs';
 import Pagination from '../list-view/Pagination';
+import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 
 export interface DetailTableProps<T = any> extends Omit<TableProps<T>, 'pagination'> {
   columns: ColumnsType<T>;
@@ -247,8 +248,7 @@ export const DetailTable = <T extends object = any>({
   const instanceId = useMemo(() => `chk-dt-${Math.random().toString(36).substring(2, 9)}`, []);
   const currentRowCount = Array.isArray(dataSource) ? dataSource.length : 0;
   const isAutoHeightForEmpty = currentRowCount === 0 && emptyHeightAuto;
-  const effectiveScrollY = isAutoHeightForEmpty ? 'auto' : (scrollY || 'calc(100vh - 330px)');
-
+  const effectiveScrollY = isAutoHeightForEmpty ? 'auto' : (scrollY || DRAWER_TABLE_SCROLL_Y.detailView);
   return (
     <div
       className={`chk-detail-table-card ${instanceId} ${className || ''}`}
@@ -304,8 +304,6 @@ export const DetailTable = <T extends object = any>({
           pointer-events: none !important;
         }
         .${instanceId} .ant-table-body {
-          height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
-          min-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
           max-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
           overflow-x: auto !important;
           ${pagedData.length === 0 ? 'overflow-y: hidden !important;' : 'overflow-y: auto !important;'}
@@ -324,42 +322,57 @@ export const DetailTable = <T extends object = any>({
           padding-left: 4px !important;
           padding-right: 4px !important;
         }
+        /* Pagination fixed tại bottom-right trong Drawer */
+        .ant-drawer .${instanceId} .chk-detail-table-pagination {
+          position: fixed !important;
+          bottom: 76px !important;
+          right: 24px !important;
+          z-index: 100 !important;
+          margin: 0 !important;
+          display: flex !important;
+          justify-content: flex-end !important;
+          align-items: center !important;
+        }
+        .ant-drawer:has(.ant-drawer-footer) .${instanceId} .chk-detail-table-pagination {
+          bottom: 68px !important;
+        }
       `}</style>
-      <div>
-        {headerNode}
-        <Table<any>
-          size={size}
-          tableLayout="fixed"
-          pagination={false}
-          showSorterTooltip={false}
-          dataSource={pagedData}
-          rowKey={resolveRowKey}
-          columns={enhancedColumns}
-          locale={{
-            emptyText: (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#7E6B3F', fontSize: 13 }}>
-                {emptyText}
-              </div>
-            ),
-          }}
-          loading={loading}
-          scroll={{
-            y: pagedData.length === 0 ? undefined : effectiveScrollY,
-            ...scroll,
-          }}
-          onRow={(record: any) => {
-            if (record && record.__isPlaceholder) {
-              return {
-                className: 'ant-table-row-placeholder',
-              };
-            }
-            return {};
-          }}
-          {...rest}
-        />
-      </div>
+      {headerNode}
+      <Table<any>
+        size={size}
+        tableLayout="fixed"
+        pagination={false}
+        showSorterTooltip={false}
+        dataSource={pagedData}
+        rowKey={resolveRowKey}
+        columns={enhancedColumns}
+        locale={{
+          emptyText: (
+            <div style={{ padding: '24px 0', textAlign: 'center', color: '#7E6B3F', fontSize: 13 }}>
+              {emptyText}
+            </div>
+          ),
+        }}
+        loading={loading}
+        scroll={{
+          y: isAutoHeightForEmpty ? undefined : effectiveScrollY,
+          ...scroll,
+        }}
+        onRow={(record: any) => {
+          if (record && record.__isPlaceholder) {
+            return {
+              className: 'ant-table-row-placeholder',
+            };
+          }
+          return {};
+        }}
+        {...rest}
+      />
       {effectiveTotal > 0 && (
-        <div style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+        <div
+          className="chk-detail-table-pagination"
+          style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}
+        >
           <Pagination
             total={effectiveTotal}
             current={activePage}
@@ -372,6 +385,4 @@ export const DetailTable = <T extends object = any>({
     </div>
   );
 };
-
 export default DetailTable;
-

@@ -83,9 +83,11 @@ public class AisSystemController {
             Map.entry("orgUnitId", "t.orgUnitId"),
             Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
             Map.entry("operatingOrgId", "t.operatingOrgId"),
-            Map.entry("vtsOperationCenterName", "voc.name"),
-            Map.entry("vtsOperationCenterId", "t.vtsOperationCenterId"),
-            Map.entry("updatedDate", "t.updatedAt"),
+            Map.entry("rejectionReason", "t.rejectionReason"),
+            Map.entry("vtsOperationCenterName", "COALESCE(voc.name, rs.stationName)"),
+            Map.entry("radarStationId", "t.radarStationId"),
+            Map.entry("updatedByName", "COALESCE(u.fullName, uCreate.fullName)"),
+            Map.entry("updatedBy", "t.updatedBy"),
             Map.entry("updatedAt", "t.updatedAt"),
             Map.entry("createdAt", "t.createdAt"));
 
@@ -95,8 +97,17 @@ public class AisSystemController {
      * An toàn vì giá trị luôn lấy từ danh sách trắng ở trên, không phải chuỗi thô
      * của client.
      */
-    private static Sort resolveListSort(String sortBy, String sortDir) {
+    private static Sort resolveListSort(String sortBy, String sortDir, String sort) {
         Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
+        if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",");
+            String property = SORTABLE_LIST_FIELDS.get(parts[0].trim());
+            if (property != null) {
+                Sort.Direction direction = parts.length > 1 && "ASC".equalsIgnoreCase(parts[1].trim())
+                        ? Sort.Direction.ASC : Sort.Direction.DESC;
+                return JpaSort.unsafe(direction, property).and(defaultSort);
+            }
+        }
         String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
         if (property == null) {
             return defaultSort;
@@ -160,6 +171,7 @@ public class AisSystemController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir,
             @RequestParam(defaultValue = "true") boolean includeCounts) {
@@ -167,7 +179,7 @@ public class AisSystemController {
         // Chặn trần số bản ghi mỗi trang:  đến từ client, không giới hạn thì một
         // request  kéo cả bảng ra khỏi CSDL.
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        PageRequest pageRequest = PageRequest.of(page, safeSize, resolveListSort(sortBy, sortDir));
+        PageRequest pageRequest = PageRequest.of(page, safeSize, resolveListSort(sortBy, sortDir, sort));
 
         Page<AisSystemListItem> resultPage = service.search(
                 keyword, name, code, orgUnitId, vtsOperationCenterId, radarStationId, operatingOrgId,

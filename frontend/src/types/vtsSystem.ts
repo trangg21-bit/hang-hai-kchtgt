@@ -22,7 +22,13 @@ export type ApprovalStatus = typeof ApprovalStatus[keyof typeof ApprovalStatus];
 export interface VtsSystemAttachment {
   id: string;
   fileName: string;
-  filePath: string;
+  filePath?: string;
+  fileSize?: number;
+  uploadedByName?: string;
+  uploadedDate?: string;
+  file?: File;
+  originFileObj?: File;
+  [key: string]: unknown;
 }
 
 export interface VtsSystemResponse {

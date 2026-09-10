@@ -3,6 +3,7 @@
 -- Description: Cấp quyền đọc đối tượng bản đồ GIS (lineobject:read, pointobject:read, polygonobject:read, data:read)
 --              cho tất cả tài khoản và đồng bộ đơn vị của tài khoản đại diện Cảng vụ Hải Phòng
 -- ============================================================================
+ALTER TABLE IF EXISTS app_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 DO $$
 DECLARE
