@@ -136,7 +136,7 @@ public class TransmissionController {
   }
 
   @PostMapping("/{id}/submit")
-  @PreAuthorize("@auth.check(authentication, 'transmission:update')")
+  @PreAuthorize("@auth.check(authentication, 'transmission:update') or @auth.check(authentication, 'transmission:create')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> submit(@PathVariable UUID id,
     @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting transmission for approval: id={}", id);
@@ -202,7 +202,7 @@ public class TransmissionController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'transmission:update')")
+  @PreAuthorize("@auth.check(authentication, 'transmission:update') or @auth.check(authentication, 'transmission:create')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -222,7 +222,7 @@ public class TransmissionController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'transmission:update')")
+  @PreAuthorize("@auth.check(authentication, 'transmission:update') or @auth.check(authentication, 'transmission:create') or @auth.check(authentication, 'transmission:delete')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

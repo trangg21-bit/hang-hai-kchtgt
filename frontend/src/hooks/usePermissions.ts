@@ -139,6 +139,9 @@ const HIDDEN_PERMISSIONS = new Set([
 
 function isHiddenPermission(key: string): boolean {
   if (HIDDEN_PERMISSIONS.has(key)) return true;
+  const lowerKey = key.toLowerCase();
+  // Tạm thời ẩn các quyền thuộc hệ thống thông tin liên lạc VHF do chưa hoàn thiện
+  if (lowerKey === 'vhf' || lowerKey.startsWith('vhf:')) return true;
   if (key.endsWith(':read:restricted') || key.endsWith(':read:confidential')) return true;
   if (key.endsWith(':restricted') || key.endsWith(':confidential')) return true;
   return false;
@@ -280,7 +283,12 @@ export function usePermissions(options?: { enabled?: boolean }) {
 
   const rawPerms = apiQuery.data || [];
   const perms = useMemo(
-    () => rawPerms.filter((p) => !isHiddenPermission(p.key)),
+    () =>
+      rawPerms.filter((p) => {
+        const res = (p.resource || p.key.split(':')[0] || '').toLowerCase();
+        if (res === 'vhf') return false;
+        return !isHiddenPermission(p.key);
+      }),
     [rawPerms],
   );
   

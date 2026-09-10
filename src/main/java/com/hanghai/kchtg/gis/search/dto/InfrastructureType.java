@@ -30,6 +30,7 @@ public enum InfrastructureType {
     VTS_OPERATION_CENTER,
     AIS_SYSTEM,
     CCTV,
+    VHF,
     SCADA,
     TRANSMISSION,
     VTS_ASSIST,

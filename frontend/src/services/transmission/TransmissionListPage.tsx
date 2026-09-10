@@ -284,11 +284,13 @@ const TransmissionListPage = () => {
   const [pageSize, setPageSize] = useState(20);
 
   // Filters
+  const [inputDeviceName, setInputDeviceName] = useState("");
+  const [inputDeviceCode, setInputDeviceCode] = useState("");
+  const [filterDeviceName, setFilterDeviceName] = useState("");
+  const [filterDeviceCode, setFilterDeviceCode] = useState("");
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState({
     orgUnitId: "" as string,
-    deviceName: "",
-    deviceCode: "",
     operationalStatus: undefined as number | undefined,
     approvalStatus: "" as string,
     province: "" as string,
@@ -320,6 +322,7 @@ const TransmissionListPage = () => {
           orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
+          deviceName: filterDeviceName.trim() || undefined,
           approvalStatus: s.status,
         })
       )
@@ -338,7 +341,7 @@ const TransmissionListPage = () => {
         counts.REJECTED_LEVEL1 +
         counts.REJECTED_LEVEL2
     );
-  }, [filterValues.orgUnitId]);
+  }, [filterValues.orgUnitId, filterDeviceName]);
 
   // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
   // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
@@ -480,6 +483,10 @@ const TransmissionListPage = () => {
   const editFormRef = useRef<TransmissionFormRef>(null);
 
   const handleOpenCreate = useCallback(() => {
+    if (!hasPerm?.("transmission:create")) {
+      toast.warning("Bạn không có quyền thêm mới hệ thống truyền dẫn");
+      return;
+    }
     createForm.resetFields();
     createForm.setFieldsValue({ operationalStatus: 1 });
     setCreateModalOpen(true);
@@ -490,7 +497,7 @@ const TransmissionListPage = () => {
         }
       })
       .catch(() => {});
-  }, [createForm]);
+  }, [createForm, hasPerm]);
 
   // Submit action & loading
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
@@ -547,6 +554,10 @@ const TransmissionListPage = () => {
   );
 
   const openHistory = useCallback(async (r: TransmissionResponse) => {
+    if (!hasPerm?.("transmission:history")) {
+      toast.warning("Bạn không có quyền xem lịch sử hệ thống truyền dẫn");
+      return;
+    }
     setHistoryTarget(r);
     setHistoryOpen(true);
     setHistoryLoading(true);
@@ -562,7 +573,7 @@ const TransmissionListPage = () => {
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [hasPerm]);
 
   const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
   const [detailApprovalOpen, setDetailApprovalOpen] = useState(true);
@@ -647,18 +658,28 @@ const TransmissionListPage = () => {
         ellipsis: false,
         render: (val: string, record: TransmissionResponse) => (
           <div style={{ minWidth: 0 }}>
-            <button
-              type="button"
-              className="kcht-cell-title"
-              onClick={() => {
-                setSelectedRecord(record);
-                setDetailDrawerOpen(true);
-              }}
-              style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-              title={val || null}
-            >
-              {val || null}
-            </button>
+            {hasPerm?.("transmission:read") ? (
+              <button
+                type="button"
+                className="kcht-cell-title"
+                onClick={() => {
+                  setSelectedRecord(record);
+                  setDetailDrawerOpen(true);
+                }}
+                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                title={val || null}
+              >
+                {val || null}
+              </button>
+            ) : (
+              <span
+                className="kcht-cell-title"
+                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                title={val || null}
+              >
+                {val || null}
+              </span>
+            )}
             <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
           </div>
         ),
@@ -793,7 +814,7 @@ const TransmissionListPage = () => {
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder]
+    [page, pageSize, sortField, sortOrder, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1199,9 +1220,13 @@ const TransmissionListPage = () => {
   };
 
   const openUpdateDrawer = useCallback((record: TransmissionResponse) => {
+    if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "transmission" })) {
+      toast.warning("Bạn không có quyền chỉnh sửa hệ thống truyền dẫn này");
+      return;
+    }
     setUpdateTarget(record);
     setUpdateModalOpen(true);
-  }, []);
+  }, [hasPerm]);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -1217,6 +1242,10 @@ const TransmissionListPage = () => {
         if (linkedAction === "edit") {
           openUpdateDrawer(record);
         } else {
+          if (!hasPerm?.("transmission:read")) {
+            toast.warning("Bạn không có quyền xem chi tiết hệ thống truyền dẫn");
+            return;
+          }
           setSelectedRecord(record);
           setDetailDrawerOpen(true);
         }
@@ -1235,8 +1264,10 @@ const TransmissionListPage = () => {
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: TransmissionResponse) => {
-      const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [
-        {
+      const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+
+      if (hasPerm?.("transmission:read")) {
+        actions.push({
           key: "view",
           label: "Xem chi tiết",
           icon: icons.view,
@@ -1244,8 +1275,8 @@ const TransmissionListPage = () => {
             setSelectedRecord(record);
             setDetailDrawerOpen(true);
           },
-        },
-      ];
+        });
+      }
 
       // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy): Lưu tạm / Bị trả về / Đã phê duyệt
       if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "transmission" })) {
@@ -1258,12 +1289,14 @@ const TransmissionListPage = () => {
       }
 
       // Lịch sử thay đổi (mở từ menu hành động dòng)
-      actions.push({
-        key: "history",
-        label: "Lịch sử",
-        icon: icons.history,
-        onClick: () => openHistory(record),
-      });
+      if (hasPerm?.("transmission:history")) {
+        actions.push({
+          key: "history",
+          label: "Lịch sử",
+          icon: icons.history,
+          onClick: () => openHistory(record),
+        });
+      }
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + transmission:update → Gửi phê duyệt (submitTransmission)
       if (
@@ -1374,9 +1407,8 @@ const TransmissionListPage = () => {
         orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
-        search: filterValues.deviceCode || filterValues.deviceName || undefined,
-        deviceCode: filterValues.deviceCode || undefined,
-        deviceName: filterValues.deviceName || undefined,
+        deviceCode: filterDeviceCode.trim() || undefined,
+        deviceName: filterDeviceName.trim() || undefined,
         operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
         approvalStatus: filterValues.approvalStatus || undefined,
         province: filterValues.province || undefined,
@@ -1398,7 +1430,7 @@ const TransmissionListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   const fetchOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
@@ -1445,15 +1477,18 @@ const TransmissionListPage = () => {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
+    setFilterDeviceName(inputDeviceName);
+    setFilterDeviceCode(inputDeviceCode);
     setPage(0);
-    fetchData();
-  }, [fetchData, filterValues.updatedFrom, filterValues.updatedTo]);
+  }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
   const handleFilterReset = useCallback(() => {
+    setInputDeviceName("");
+    setInputDeviceCode("");
+    setFilterDeviceName("");
+    setFilterDeviceCode("");
     setFilterValues({
       orgUnitId: "",
-      deviceName: "",
-      deviceCode: "",
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -1465,8 +1500,7 @@ const TransmissionListPage = () => {
       updatedTo: "",
     });
     setPage(0);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
@@ -1894,13 +1928,8 @@ const TransmissionListPage = () => {
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
               <Input placeholder="Tìm theo tên thiết bị..." allowClear
-                value={filterValues.deviceName || ""}
-                onChange={(e) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    deviceName: e.target.value,
-                  }))
-                }
+                value={inputDeviceName}
+                onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </SidebarFilterField>
@@ -1909,13 +1938,8 @@ const TransmissionListPage = () => {
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
                   <Input placeholder="Tìm theo mã thiết bị..." allowClear
-                    value={filterValues.deviceCode || ""}
-                    onChange={(e) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        deviceCode: e.target.value,
-                      }))
-                    }
+                    value={inputDeviceCode}
+                    onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </SidebarFilterField>

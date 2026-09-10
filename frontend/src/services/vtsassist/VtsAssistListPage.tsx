@@ -78,6 +78,7 @@ import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
 import { userService } from "../userService";
+import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
 import type { Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
@@ -310,6 +311,19 @@ const tableMetaStyle: React.CSSProperties = {
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 
+/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
+const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
+  const wkt = gisLocation?.coordinates;
+  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
+  try {
+    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
+    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
+    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+  } catch { /* ignore */ }
+  return [];
+};
+
 type GpsCoordRow = {
   latD: number | null;
   latM: number | null;
@@ -452,7 +466,13 @@ function VtsAssistGisTab({
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item label={gisLabel('Biểu tượng')} name="mapSymbolId" style={{ marginBottom: spaceFormField }}>
+            <Form.Item
+              label={gisLabel('Biểu tượng')}
+              name="mapSymbolId"
+              required={!!geometryType}
+              rules={geometryType ? [{ required: true, message: 'Vui lòng chọn biểu tượng' }] : []}
+              style={{ marginBottom: spaceFormField }}
+            >
               <Select
                 placeholder="Chọn biểu tượng bản đồ"
                 allowClear
@@ -656,11 +676,13 @@ const VtsAssistListPage = () => {
   const [pageSize, setPageSize] = useState(20);
 
   // Filters
+  const [inputDeviceName, setInputDeviceName] = useState("");
+  const [inputDeviceCode, setInputDeviceCode] = useState("");
+  const [filterDeviceName, setFilterDeviceName] = useState("");
+  const [filterDeviceCode, setFilterDeviceCode] = useState("");
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState({
     orgUnitId: "" as string,
-    deviceName: "",
-    deviceCode: "",
     operationalStatus: undefined as number | undefined,
     approvalStatus: "" as string,
     province: "" as string,
@@ -692,6 +714,7 @@ const VtsAssistListPage = () => {
           orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
+          deviceName: filterDeviceName.trim() || undefined,
           approvalStatus: s.status,
         })
       )
@@ -710,7 +733,7 @@ const VtsAssistListPage = () => {
         counts.REJECTED_LEVEL1 +
         counts.REJECTED_LEVEL2
     );
-  }, [filterValues.orgUnitId]);
+  }, [filterValues.orgUnitId, filterDeviceName]);
 
   // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
   // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
@@ -942,7 +965,8 @@ const VtsAssistListPage = () => {
   // của loại mới (POINT=1 / LINE=2 / POLYGON=3).
   useEffect(() => {
     if (!createGeometryType) {
-      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      createForm.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      createForm.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setGpsCoordList([]);
       setCreateGpsError(null);
       return;
@@ -968,7 +992,8 @@ const VtsAssistListPage = () => {
   // Effect Loại đối tượng trong Drawer Sửa: giữ nguyên các điểm đã nhập (chuẩn /cctv).
   useEffect(() => {
     if (!updateGeometryType) {
-      updateForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      updateForm.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      updateForm.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setUpdateGpsCoordList([]);
       setUpdateGpsError(null);
       return;
@@ -1089,42 +1114,90 @@ const VtsAssistListPage = () => {
   });
 
   // ── GIS map modal ──
-  const openGisMap = (mode: 'create' | 'edit' | 'detail') => setGisMapModal(mode);
+  const gisCoordSnapshotRef = useRef<{ coords: GpsCoordRow[]; symbolId?: string }>({ coords: [], symbolId: undefined });
+
+  const openGisMap = (mode: 'create' | 'edit' | 'detail') => {
+    if (mode === 'create') {
+      gisCoordSnapshotRef.current = {
+        coords: gpsCoordList.map((c) => ({ ...c })),
+        symbolId: createForm.getFieldValue('mapSymbolId'),
+      };
+    } else if (mode === 'edit') {
+      gisCoordSnapshotRef.current = {
+        coords: updateGpsCoordList.map((c) => ({ ...c })),
+        symbolId: updateForm.getFieldValue('mapSymbolId'),
+      };
+    }
+    setGisMapModal(mode);
+  };
+
+  const cancelGisMap = () => {
+    if (gisMapModal === 'create') {
+      setGpsCoordList(gisCoordSnapshotRef.current.coords);
+      createForm.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+    } else if (gisMapModal === 'edit') {
+      setUpdateGpsCoordList(gisCoordSnapshotRef.current.coords);
+      updateForm.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+    }
+    setGisMapModal(null);
+  };
 
   const applyGisMapResult = (val?: { geometryType?: string; coordinates?: string; symbolId?: string }) => {
     if (!gisMapModal || gisMapModal === 'detail') return;
-    const pts = parseWktToCoordinates(val?.coordinates);
-    const geom = normalizeGeometryType(val?.geometryType);
-    const rows: GpsCoordRow[] = pts.map((p) => {
-      const latDms = ddToDms(p.latitude);
-      const lngDms = ddToDms(p.longitude);
-      return {
-        latD: latDms.d,
-        latM: latDms.m,
-        latS: latDms.s,
-        lngD: lngDms.d,
-        lngM: lngDms.m,
-        lngS: lngDms.s,
-      };
-    });
+    const points = parseGisCoordinates(val);
+    if (points.length === 0) return;
+    const currentGeom = normalizeGeometryType(val?.geometryType || (gisMapModal === 'create' ? createGeometryType : updateGeometryType));
+    const targetForm = gisMapModal === 'create' ? createForm : updateForm;
+    const currentList = gisMapModal === 'create' ? gpsCoordList : updateGpsCoordList;
+    const setList = gisMapModal === 'create' ? setGpsCoordList : setUpdateGpsCoordList;
+    const clearError = gisMapModal === 'create' ? () => setCreateGpsError(null) : () => setUpdateGpsError(null);
+
+    if (val?.symbolId) {
+      targetForm.setFieldValue('mapSymbolId', val.symbolId);
+    }
+
     if (gisMapModal === 'create') {
-      setGpsCoordList(rows);
-      setCreateGpsError(null);
-      createForm.setFieldsValue({
-        geometryType: geom,
+      targetForm.setFieldsValue({
+        geometryType: currentGeom,
         coordinateSystem: 1,
         displayRule: 'Độ, phút, giây (DMS)',
       });
-      if (val?.symbolId) createForm.setFieldValue('mapSymbolId', val.symbolId);
     } else {
-      setUpdateGpsCoordList(rows);
-      setUpdateGpsError(null);
-      updateForm.setFieldsValue({ geometryType: geom, displayRule: 'Độ, phút, giây (DMS)' });
-      if (updateForm.getFieldValue('coordinateSystem') == null) {
-        updateForm.setFieldsValue({ coordinateSystem: 1 });
+      targetForm.setFieldsValue({ geometryType: currentGeom, displayRule: 'Độ, phút, giây (DMS)' });
+      if (targetForm.getFieldValue('coordinateSystem') == null) {
+        targetForm.setFieldsValue({ coordinateSystem: 1 });
       }
-      if (val?.symbolId) updateForm.setFieldValue('mapSymbolId', val.symbolId);
     }
+
+    if (currentGeom === 'POINT') {
+      const p = points[0];
+      const latDms = ddToDms(p.latitude);
+      const lngDms = ddToDms(p.longitude);
+      setList([{
+        latD: latDms.d, latM: latDms.m, latS: latDms.s,
+        lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+      }]);
+    } else {
+      const toDms = (p: { latitude: number; longitude: number }) => {
+        const lat = ddToDms(p.latitude);
+        const lng = ddToDms(p.longitude);
+        return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+      };
+      const newRows = points.map(toDms);
+      const merged = [...currentList];
+      let newIdx = 0;
+      const isFilled = (r: GpsCoordRow) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
+      for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
+        if (!isFilled(merged[i])) {
+          merged[i] = newRows[newIdx++];
+        }
+      }
+      while (newIdx < newRows.length) {
+        merged.push(newRows[newIdx++]);
+      }
+      setList(merged);
+    }
+    clearError();
   };
 
   const gisMapContext = useMemo(() => {
@@ -1247,18 +1320,28 @@ const VtsAssistListPage = () => {
         ellipsis: false,
         render: (val: string, record: VtsAssistResponse) => (
           <div style={{ minWidth: 0 }}>
-            <button
-              type="button"
-              className="kcht-cell-title"
-              onClick={() => {
-                setSelectedRecord(record);
-                setDetailDrawerOpen(true);
-              }}
-              style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-              title={val || undefined}
-            >
-              {val || null}
-            </button>
+            {hasPerm?.("vtsassist:read") ? (
+              <button
+                type="button"
+                className="kcht-cell-title"
+                onClick={() => {
+                  setSelectedRecord(record);
+                  setDetailDrawerOpen(true);
+                }}
+                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                title={val || undefined}
+              >
+                {val || null}
+              </button>
+            ) : (
+              <span
+                className="kcht-cell-title"
+                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                title={val || undefined}
+              >
+                {val || null}
+              </span>
+            )}
             <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
           </div>
         ),
@@ -1397,7 +1480,7 @@ const VtsAssistListPage = () => {
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder]
+    [page, pageSize, sortField, sortOrder, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1601,6 +1684,10 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
   };
 
   const openHistory = useCallback(async (r: VtsAssistResponse) => {
+    if (!hasPerm?.("vtsassist:history")) {
+      toast.warning("Bạn không có quyền xem lịch sử hệ thống phụ trợ VTS");
+      return;
+    }
     setHistoryTarget(r);
     setSelectedRecord(r);
     setHistoryEntityName(r.deviceName || '');
@@ -1618,7 +1705,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [hasPerm]);
 
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
@@ -1841,6 +1928,10 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
   };
 
   const openUpdateDrawer = useCallback((record: VtsAssistResponse) => {
+    if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "vtsassist" })) {
+      toast.warning("Bạn không có quyền chỉnh sửa hệ thống phụ trợ VTS này");
+      return;
+    }
     setUpdateTarget(record);
     setUploadFileList([]);
     void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
@@ -1890,7 +1981,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     setUpdateGpsError(null);
     setUpdateActiveTabKey('general');
     setUpdateModalOpen(true);
-  }, [updateForm, setUpdateModalOpen, setUpdateTarget, setUploadFileList, setUpdateGpsCoordList, setUpdateGpsError, setUpdateActiveTabKey]);
+  }, [updateForm, hasPerm, setUpdateModalOpen, setUpdateTarget, setUploadFileList, setUpdateGpsCoordList, setUpdateGpsError, setUpdateActiveTabKey]);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -1906,6 +1997,10 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
         if (linkedAction === "edit") {
           openUpdateDrawer(record);
         } else {
+          if (!hasPerm?.("vtsassist:read")) {
+            toast.warning("Bạn không có quyền xem chi tiết hệ thống phụ trợ VTS");
+            return;
+          }
           setSelectedRecord(record);
           setDetailDrawerOpen(true);
         }
@@ -1919,13 +2014,15 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     return () => {
       active = false;
     };
-  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
+  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer, hasPerm]);
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: VtsAssistResponse) => {
-      const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [
-        {
+      const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+
+      if (hasPerm?.("vtsassist:read")) {
+        actions.push({
           key: "view",
           label: "Xem chi tiết",
           icon: icons.view,
@@ -1936,13 +2033,11 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
               setDetailFiles((Array.isArray(list) ? list : []).map(normalizeAttachmentItem));
             }).catch(() => setDetailFiles([]));
           },
-        },
-      ];
+        });
+      }
 
-      // Chỉnh sửa: hồ sơ Lưu tạm (DRAFT) mở cho mọi quyền; hồ sơ Đã phê duyệt (APPROVED) chỉ
-      // người có quyền phê duyệt cấp Cục (vtsassist:approvec2) mới sửa được — chuẩn CHK.
-      // Các trạng thái PENDING / REJECTED không mở chỉnh sửa.
-      if (record.approvalStatus === "DRAFT" || (record.approvalStatus === "APPROVED" && canSaveAndApprove)) {
+      // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy)
+      if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "vtsassist" })) {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
@@ -1952,12 +2047,14 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
       }
 
       // Lịch sử thay đổi (mở từ menu dòng, không nằm trong drawer chi tiết)
-      actions.push({
-        key: "history",
-        label: "Lịch sử",
-        icon: icons.history,
-        onClick: () => openHistory(record),
-      });
+      if (hasPerm?.("vtsassist:history")) {
+        actions.push({
+          key: "history",
+          label: "Lịch sử",
+          icon: icons.history,
+          onClick: () => openHistory(record),
+        });
+      }
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + vtsassist:update → Gửi phê duyệt (submitVtsAssist)
       if (
@@ -2038,7 +2135,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
       }
 
       // Chỉ hồ sơ "Lưu tạm" mới được xóa (phê duyệt 2 cấp — như /vts-system)
-      if (hasPerm?.("vtsassist:delete") && record.approvalStatus === "DRAFT") {
+      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: "vtsassist" })) {
         actions.push({
           key: "delete",
           label: "Xóa",
@@ -2068,9 +2165,8 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
         orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
                           ? filterValues.orgUnitId
                           : undefined),
-        search: filterValues.deviceCode || filterValues.deviceName || undefined,
-        deviceCode: filterValues.deviceCode || undefined,
-        deviceName: filterValues.deviceName || undefined,
+        deviceCode: filterDeviceCode.trim() || undefined,
+        deviceName: filterDeviceName.trim() || undefined,
         operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
         approvalStatus: filterValues.approvalStatus || undefined,
         province: filterValues.province || undefined,
@@ -2092,7 +2188,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   const fetchOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
@@ -2139,15 +2235,18 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
+    setFilterDeviceName(inputDeviceName);
+    setFilterDeviceCode(inputDeviceCode);
     setPage(0);
-    fetchData();
-  }, [fetchData, filterValues.updatedFrom, filterValues.updatedTo]);
+  }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
   const handleFilterReset = useCallback(() => {
+    setInputDeviceName("");
+    setInputDeviceCode("");
+    setFilterDeviceName("");
+    setFilterDeviceCode("");
     setFilterValues({
       orgUnitId: "",
-      deviceName: "",
-      deviceCode: "",
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -2159,8 +2258,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
       updatedTo: "",
     });
     setPage(0);
-    fetchData();
-  }, [fetchData]);
+  }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
@@ -2656,6 +2754,10 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
                 icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
+                  if (!hasPerm?.("vtsassist:create")) {
+                    toast.warning("Bạn không có quyền thêm mới hệ thống phụ trợ VTS");
+                    return;
+                  }
                   setUploadFileList([]);
                   setCreateModalOpen(true);
                   // Mặc định Tình trạng = 'Đang khai thác/vận hành' (1) khi mở drawer Tạo mới — người dùng có thể đổi sau đó
@@ -2709,13 +2811,8 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
               <Input placeholder="Tìm theo tên thiết bị..." allowClear
-                value={filterValues.deviceName || ""}
-                onChange={(e) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    deviceName: e.target.value,
-                  }))
-                }
+                value={inputDeviceName}
+                onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </SidebarFilterField>
@@ -2724,13 +2821,8 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
                   <Input placeholder="Tìm theo mã thiết bị..." allowClear
-                    value={filterValues.deviceCode || ""}
-                    onChange={(e) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        deviceCode: e.target.value,
-                      }))
-                    }
+                    value={inputDeviceCode}
+                    onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </SidebarFilterField>
@@ -4705,7 +4797,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
             </div>
           }
           open
-          onCancel={() => setGisMapModal(null)}
+          onCancel={cancelGisMap}
           destroyOnHidden
           width="94vw"
           style={{ top: 20, maxWidth: '1400px' }}
@@ -4713,7 +4805,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
             gisMapModal === 'detail' ? null : [
               <Button
                 key="cancel"
-                onClick={() => setGisMapModal(null)}
+                onClick={cancelGisMap}
                 style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
               >
                 Hủy

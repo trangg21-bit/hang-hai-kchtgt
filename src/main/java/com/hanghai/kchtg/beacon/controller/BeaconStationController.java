@@ -155,38 +155,42 @@ public class BeaconStationController {
     @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec1') or @auth.check(authentication, 'beaconstation:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL1(
                     @PathVariable UUID id,
-                    @RequestParam java.util.UUID approverId,
+                    @RequestParam(required = false) java.util.UUID approverId,
                     @RequestParam(required = false) String note) {
+            UUID actualApproverId = approverId != null ? approverId : SecurityUtils.getCurrentUserId();
             return ResponseEntity.ok(ApiResponse.success(
                             "Phê duyệt L1 thành công",
-                            beaconStationService.approveL1(id, approverId, note)));
+                            beaconStationService.approveL1(id, actualApproverId, note)));
     }
 
     @PostMapping("/{id}/approve-l2")
     @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec2') or @auth.check(authentication, 'data:approvec2')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL2(
                     @PathVariable UUID id,
-                    @RequestParam java.util.UUID approverId,
+                    @RequestParam(required = false) java.util.UUID approverId,
                     @RequestParam(required = false) String note) {
+            UUID actualApproverId = approverId != null ? approverId : SecurityUtils.getCurrentUserId();
             return ResponseEntity.ok(ApiResponse.success(
                             "Phê duyệt L2 thành công",
-                            beaconStationService.approveL2(id, approverId, note)));
+                            beaconStationService.approveL2(id, actualApproverId, note)));
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec1') or @auth.check(authentication, 'beaconstation:approvec2') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvec2')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> reject(
             @PathVariable UUID id,
             @RequestParam String rejectReason,
-            @RequestParam java.util.UUID approverId) {
+            @RequestParam(required = false) java.util.UUID approverId) {
+        UUID actualApproverId = approverId != null ? approverId : SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.success(
                 "Đã từ chối",
-                beaconStationService.reject(id, rejectReason, approverId)));
+                beaconStationService.reject(id, rejectReason, actualApproverId)));
     }
 
     // ── Attachment endpoints ────────────────────────────────────────
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:history') or @auth.check(authentication, 'data:read')")
     public ResponseEntity<ApiResponse<List<BeaconHistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(required = false) Integer page,
@@ -199,6 +203,7 @@ public class BeaconStationController {
     }
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:create') or @auth.check(authentication, 'beaconstation:update') or @auth.check(authentication, 'data:create') or @auth.check(authentication, 'data:update')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files) {
@@ -208,6 +213,7 @@ public class BeaconStationController {
     }
 
     @GetMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Lấy danh sách file đính kèm thành công",
@@ -215,6 +221,7 @@ public class BeaconStationController {
     }
 
     @DeleteMapping("/{id}/attachments/{attachmentId}")
+    @PreAuthorize("@auth.check(authentication, 'beaconstation:delete') or @auth.check(authentication, 'beaconstation:update') or @auth.check(authentication, 'data:delete')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attachmentId) {

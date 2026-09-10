@@ -53,7 +53,10 @@ public class PermissionController {
             + "@auth.check(authentication, 'user:permission') or "
             + "@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<Permission>>> list() {
-        List<Permission> permissions = permissionRepository.findAll();
+        List<Permission> permissions = permissionRepository.findAll().stream()
+                .filter(p -> !"vhf".equalsIgnoreCase(p.getResource())
+                        && (p.getCode() == null || !p.getCode().toLowerCase().startsWith("vhf:")))
+                .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(permissions));
     }
 

@@ -8,6 +8,7 @@ import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemAttachmentResponse;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,7 @@ public class DikeRevetmentController {
         if (authentication != null && authentication.getPrincipal() instanceof User u) {
             return u.getId();
         }
-        return null;
+        return SecurityUtils.getCurrentUserId();
     }
 
     @GetMapping("/generate-code")
@@ -72,9 +73,10 @@ public class DikeRevetmentController {
     public ResponseEntity<ApiResponse<Map<String, Long>>> getTabCounts(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String dikeRevetmentName,
             @RequestParam(required = false) String conditionStatus) {
         try {
-            Map<String, Long> counts = service.getTabCounts(orgUnitId, keyword, conditionStatus);
+            Map<String, Long> counts = service.getTabCounts(orgUnitId, keyword, dikeRevetmentName, conditionStatus);
             return ResponseEntity.ok(ApiResponse.success("Thống kê số lượng đê kè theo trạng thái", counts));
         } catch (Exception e) {
             log.warn("Lỗi khi lấy tab counts đê kè: {}", e.getMessage());
@@ -109,6 +111,7 @@ public class DikeRevetmentController {
     public ResponseEntity<ApiResponse<Page<DikeRevetmentResponse>>> searchPaged(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String dikeRevetmentName,
             @RequestParam(required = false) UUID seaportId,
             @RequestParam(required = false) DikeRevetmentType dikeRevetmentType,
             @RequestParam(required = false) String conditionStatus,
@@ -130,7 +133,7 @@ public class DikeRevetmentController {
                     ? ApprovalStatus.fromString(approvalStatus)
                     : null;
             Page<DikeRevetmentResponse> responses = service.searchPaged(
-                    orgUnitId, keyword, seaportId, dikeRevetmentType, conditionStatus,
+                    orgUnitId, keyword, dikeRevetmentName, seaportId, dikeRevetmentType, conditionStatus,
                     statusEnum, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
                     code, location, commissioningYear, pageable);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm đê kè thành công", responses));
@@ -253,7 +256,7 @@ public class DikeRevetmentController {
     }
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@auth.check(authentication, 'dikerevetment:update')")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:update') or @auth.check(authentication, 'dikerevetment:create')")
     public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
@@ -269,7 +272,7 @@ public class DikeRevetmentController {
     }
 
     @DeleteMapping("/{id}/attachments/{attId}")
-    @PreAuthorize("@auth.check(authentication, 'dikerevetment:update')")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:update') or @auth.check(authentication, 'dikerevetment:create') or @auth.check(authentication, 'dikerevetment:delete')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,

@@ -405,6 +405,25 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "cctv", "history", "Lịch sử phê duyệt CCTV",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống CCTV");
 
+                // 8.7.1 Hệ thống thông tin liên lạc VHF (VHF System) - Tạm ẩn do chưa hoàn thiện
+                /*
+                seedPermission(definitions, "vhf", "read", "Xem hệ thống thông tin liên lạc VHF", "Tra cứu thông tin hệ thống VHF");
+                seedPermission(definitions, "vhf", "read:restricted", "Xem bản ghi hạn chế VHF",
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống VHF");
+                seedPermission(definitions, "vhf", "read:confidential", "Xem bản ghi mật VHF",
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống VHF");
+                seedPermission(definitions, "vhf", "create", "Thêm hệ thống thông tin liên lạc VHF", "Tạo mới hồ sơ hệ thống VHF");
+                seedPermission(definitions, "vhf", "update", "Cập nhật hệ thống thông tin liên lạc VHF", "Chỉnh sửa thông tin hệ thống VHF");
+                seedPermission(definitions, "vhf", "delete", "Xóa hệ thống thông tin liên lạc VHF", "Xóa hệ thống VHF khỏi hệ thống");
+                seedPermission(definitions, "vhf", "approve", "Phê duyệt hệ thống thông tin liên lạc VHF", "Phê duyệt dữ liệu hệ thống VHF");
+                seedPermission(definitions, "vhf", "approvec1", "Phê duyệt C1 hệ thống thông tin liên lạc VHF",
+                                "Phê duyệt cấp 1 hệ thống VHF");
+                seedPermission(definitions, "vhf", "approvec2", "Phê duyệt C2 hệ thống thông tin liên lạc VHF",
+                                "Phê duyệt cấp 2 hệ thống VHF");
+                seedPermission(definitions, "vhf", "history", "Lịch sử phê duyệt VHF",
+                                "Xem lịch sử thay đổi và phê duyệt hệ thống VHF");
+                */
+
                 // 8.8 Hệ thống SCADA (SCADA System)
                 seedPermission(definitions, "scada", "read", "Xem hệ thống SCADA", "Tra cứu thông tin hệ thống SCADA");
                 seedPermission(definitions, "scada", "read:restricted", "Xem bản ghi hạn chế SCADA",

@@ -336,6 +336,35 @@ export default function InfrastructureAttachmentTab({
     setPreviewLoading(false);
   };
 
+  const handleDownloadRecord = (record: InfrastructureAttachmentItem) => {
+    if (onDownload) {
+      onDownload(record.id, record.fileName);
+      return;
+    }
+    const rawFile = record.originFileObj || record.file;
+    if (rawFile) {
+      const url = window.URL.createObjectURL(rawFile);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = record.fileName || (rawFile as File).name || 'attachment';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      return;
+    }
+    if (record.url) {
+      const a = document.createElement('a');
+      a.href = record.url;
+      a.download = record.fileName || 'attachment';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+    toast.error('Không tìm thấy tệp để tải xuống');
+  };
+
   const effectiveScrollY = scrollY || (readonly ? DRAWER_TABLE_SCROLL_Y.detailView : DRAWER_TABLE_SCROLL_Y.withDragger);
 
   const isBerthReadonlyLayout = readonly && readonlyBerthLayout;
@@ -375,7 +404,7 @@ export default function InfrastructureAttachmentTab({
                 if (isImg) {
                   handlePreview(record);
                 } else {
-                  handleDownload(record);
+                  handleDownloadRecord({ ...record, fileName: name });
                 }
               }}
               title={isImg ? `${name} (Nhấp để xem chi tiết ảnh)` : `${name} (Nhấp để tải xuống)`}
@@ -508,7 +537,7 @@ export default function InfrastructureAttachmentTab({
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onClick={() => handleDownload(record)}
+                onClick={() => handleDownloadRecord(record)}
                 title="Tải xuống tệp đính kèm"
               />
             </div>
@@ -546,7 +575,7 @@ export default function InfrastructureAttachmentTab({
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              onClick={() => handleDownload(record)}
+              onClick={() => handleDownloadRecord(record)}
               title="Tải xuống tệp đính kèm"
             />
             <Button

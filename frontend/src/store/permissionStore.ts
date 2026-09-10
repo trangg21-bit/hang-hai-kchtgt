@@ -27,6 +27,10 @@ export function normalizePermissionKey(key: string): string {
   if (lower.startsWith('connection.')) return lower.replace('connection.view', 'connection:read').replace('connection.', 'connection:');
   if (lower.startsWith('org.')) return lower.replace('org.view', 'orgunit:read').replace('org.', 'orgunit:');
   if (lower.startsWith('symbol.')) return 'map:manage';
+  if (lower.startsWith('tramradar.')) return lower.replace('tramradar.', 'radarstation:');
+  if (lower.startsWith('tramradar:')) return lower.replace('tramradar:', 'radarstation:');
+  if (lower.startsWith('beaconlight.')) return lower.replace('beaconlight.', 'beaconstation:');
+  if (lower.startsWith('beaconlight:')) return lower.replace('beaconlight:', 'beaconstation:');
   if (lower.startsWith('gis.')) {
     if (lower.startsWith('gis.layer.')) return 'map:manage';
     if (lower.endsWith('.create')) return 'data:create';

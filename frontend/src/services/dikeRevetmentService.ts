@@ -22,6 +22,7 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
 export interface ListParams {
   keyword?: string;
   code?: string;
+  dikeRevetmentName?: string;
   location?: string;
   commissioningYear?: string;
   orgUnitId?: string;
@@ -58,8 +59,8 @@ export const dikeRevetmentCRUD = {
     return toArray<DikeRevetmentOptionResponse>(res.data);
   },
 
-  async getTabCounts(orgUnitId?: string, keyword?: string, conditionStatus?: string): Promise<Record<string, number>> {
-    const sp = buildSearchParams({ orgUnitId, keyword, conditionStatus });
+  async getTabCounts(orgUnitId?: string, keyword?: string, conditionStatus?: string, dikeRevetmentName?: string): Promise<Record<string, number>> {
+    const sp = buildSearchParams({ orgUnitId, keyword, conditionStatus, dikeRevetmentName });
     const res = await api.get(`${BASE_PATH}/tab-counts?${sp}`);
     return toSingle<Record<string, number>>(res.data) || {};
   },
@@ -72,6 +73,7 @@ export const dikeRevetmentCRUD = {
     const sp = buildSearchParams({
       keyword: params?.keyword,
       code: params?.code,
+      dikeRevetmentName: params?.dikeRevetmentName,
       location: params?.location,
       commissioningYear: params?.commissioningYear,
       orgUnitId: params?.orgUnitId,

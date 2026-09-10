@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Select } from 'antd';
+import { Form, Input, InputNumber, Select, type InputNumberProps } from 'antd';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -14,7 +14,36 @@ import {
   radiusPill,
   spaceFormField,
   spaceMd,
+  textSecondary,
+  fontSizeMd,
 } from '../../themetokenchk';
+
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
+
+const parseNumber5 = (value: unknown): any => {
+  if (!value) return '' as any;
+  const digits = String(value).replace(/\D/g, '');
+  return (digits.length > 5 ? digits.slice(0, 5) : digits) as any;
+};
+
+const getValueFromEvent5 = (val: unknown): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const str = String(val).replace(/\D/g, '');
+  return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
+};
 
 interface TransmissionFormProps {
   initialData?: TransmissionResponse;
@@ -140,9 +169,18 @@ const TransmissionFormContent = ({ initialData, onSuccess }: TransmissionFormPro
         name="quantity"
         label="Số lượng"
         style={{ marginBottom: spaceFormField }}
+        getValueFromEvent={getValueFromEvent5}
         rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
       >
-        <InputNumber min={1} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+        <NumberInputWithCount
+          min={1}
+          step={1}
+          precision={0}
+          placeholder="0"
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          maxLength={5}
+          parser={parseNumber5}
+        />
       </Form.Item>
 
       <Form.Item name="yearOfUse" label="Năm đưa vào sử dụng" style={{ marginBottom: spaceFormField }}>

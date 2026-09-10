@@ -53,6 +53,7 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "  CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.location)) AS string) LIKE CAST(:keyword AS string)) AND " +
+            "(:dikeRevetmentName IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
             "(:code IS NULL OR CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE :code) AND " +
             "(:location IS NULL OR d.location = :location) AND " +
             "(:commissioningFrom IS NULL OR d.commissioningDate >= :commissioningFrom) AND " +
@@ -62,6 +63,7 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
+            @Param("dikeRevetmentName") String dikeRevetmentName,
             @Param("seaportId") UUID seaportId,
             @Param("dikeRevetmentType") DikeRevetmentType dikeRevetmentType,
             @Param("conditionStatus") String conditionStatus,
@@ -79,6 +81,7 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "d.deletedAt IS NULL AND " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
             "(:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) AND " +
+            "(:dikeRevetmentName IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
             "(CAST(:keyword AS string) IS NULL OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE CAST(:keyword AS string) OR " +
@@ -90,6 +93,7 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
+            @Param("dikeRevetmentName") String dikeRevetmentName,
             @Param("conditionStatus") String conditionStatus);
 
     @Query("SELECT d FROM DikeRevetment d WHERE " +

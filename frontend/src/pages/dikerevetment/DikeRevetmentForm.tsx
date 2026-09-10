@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   InputNumber,
+  type InputNumberProps,
   Select,
   Tabs,
   TreeSelect,
@@ -34,7 +35,7 @@ import { useAuthStore } from '../../store/authStore';
 import { hasPermissionFromList } from '../../store/permissionStore';
 import { colors, sidebarBg, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../themetokenchk';
+import { fontWeightBold, fontSizeLg, fontSizeMd, textSecondary, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../themetokenchk';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -58,6 +59,42 @@ const STATUS_MAP: Record<string, string> = {
   '2': 'Đang khai thác/vận hành',
   '3': 'Dừng khai thác/vận hành',
 };
+
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
+
+const parseNumber20 = (value: unknown): any => {
+  if (!value) return '' as any;
+  const str = String(value).replace(/[^0-9.]/g, '');
+  const parts = str.split('.');
+  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
+  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
+};
+
+const getValueFromEvent20 = (val: unknown): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const str = String(val).replace(/[^0-9.]/g, '');
+  const parts = str.split('.');
+  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
+  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
+  if (sliced.endsWith('.')) return sliced as any;
+  const num = Number(sliced);
+  return isNaN(num) ? null : num;
+};
+
+const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 const OPERATING_ORG_OPTIONS = DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }));
 const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || '—';
@@ -686,6 +723,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         {...labelProps('Chiều dài (m)')}
         name="length"
         style={formFieldStyle}
+        getValueFromEvent={getValueFromEvent20}
         rules={[
           {
             validator: (_, value) => {
@@ -696,11 +734,14 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           },
         ]}
       >
-        <InputNumber
+        <NumberInputWithCount
           min={0}
           placeholder="0"
-          style={{ width: '100%', ...inputStyle }}
+          style={numberInputStyle}
           precision={2}
+          step={0.01}
+          maxLength={20}
+          parser={parseNumber20}
         />
       </Form.Item>
 
@@ -708,11 +749,15 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         {...labelProps('Cao trình đỉnh (m)')}
         name="crestElevation"
         style={formFieldStyle}
+        getValueFromEvent={getValueFromEvent20}
       >
-        <InputNumber
+        <NumberInputWithCount
           placeholder="0"
-          style={{ width: '100%', ...inputStyle }}
+          style={numberInputStyle}
           precision={2}
+          step={0.01}
+          maxLength={20}
+          parser={parseNumber20}
         />
       </Form.Item>
 
@@ -763,6 +808,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         {...labelProps('Chiều cao (m)')}
         name="height"
         style={formFieldStyle}
+        getValueFromEvent={getValueFromEvent20}
         rules={[
           {
             validator: (_, value) => {
@@ -773,11 +819,14 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           },
         ]}
       >
-        <InputNumber
+        <NumberInputWithCount
           min={0}
           placeholder="0"
-          style={{ width: '100%', ...inputStyle }}
+          style={numberInputStyle}
           precision={2}
+          step={0.01}
+          maxLength={20}
+          parser={parseNumber20}
         />
       </Form.Item>
 

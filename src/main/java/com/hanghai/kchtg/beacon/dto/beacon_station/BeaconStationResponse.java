@@ -54,6 +54,7 @@ public class BeaconStationResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private UUID updatedBy;
+    private String updatedByName;
 
     private String shape;
     private String structure;

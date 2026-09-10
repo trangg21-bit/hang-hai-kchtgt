@@ -46,14 +46,15 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
             CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.stationType)) AS string) LIKE CAST(:keyword AS string))
           AND (:code IS NULL OR CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
+          AND (:stationName IS NULL OR CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:stationName AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED))
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
-          AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
-          AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
+          AND (CAST(:updatedFrom AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) >= :updatedFrom)
+          AND (CAST(:updatedTo AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) <= :updatedTo)
         ORDER BY t.createdAt DESC
     """)
     Page<RadarStation> searchPaged(
@@ -61,6 +62,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
+        @Param("stationName") String stationName,
         @Param("code") String code,
         @Param("seaportId") UUID seaportId,
         @Param("vtsSystemId") UUID vtsSystemId,
@@ -86,6 +88,8 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
                 CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string)
               ))
+          AND (:stationName IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:stationName AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
         GROUP BY t.approvalStatus
     """)
@@ -94,6 +98,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
+        @Param("stationName") String stationName,
         @Param("conditionStatus") String conditionStatus
     );
 

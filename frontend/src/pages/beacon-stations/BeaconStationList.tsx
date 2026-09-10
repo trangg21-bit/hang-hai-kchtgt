@@ -308,6 +308,8 @@ export default function BeaconStationList() {
     || hasPerm('data:approvec2') || hasPerm('*');
 
   // ── Filter state ─────────────────────────────────────────────────
+  const [inputName, setInputName] = useState('');
+  const [inputCode, setInputCode] = useState('');
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterType, setFilterType] = useState<string | undefined>();
@@ -323,7 +325,7 @@ export default function BeaconStationList() {
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<number | undefined>();
   const [filterCommissionedFrom, setFilterCommissionedFrom] = useState('');
   const [filterCommissionedTo, setFilterCommissionedTo] = useState('');
-  const [filterUpdatedBy, setFilterUpdatedBy] = useState('');
+  const [filterUpdatedBy, setFilterUpdatedBy] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState('');
   const [filterUpdatedTo, setFilterUpdatedTo] = useState('');
   const [filterCollapsed, setFilterCollapsed] = useState(false);
@@ -383,6 +385,7 @@ export default function BeaconStationList() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejectLoading, setRejectLoading] = useState(false);
   const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
 
   // ── History state ────────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -500,13 +503,15 @@ export default function BeaconStationList() {
   }, []);
 
   // ── Fetch tab counts (each tab = a separate search) ──────────────
-  const fetchCounts = useCallback(async () => {
+  const fetchCounts = useCallback(async (unitId?: string) => {
     try {
+      const targetUnit = unitId !== undefined ? unitId : filterUnitId;
       const results = await Promise.allSettled(
         STATUS_TAB_LIST.map((tab) =>
           beaconStationCRUD.search({
             status: TAB_QUERY_MAP[tab.key],
-            unitId: (filterUnitId && filterUnitId !== '__all__') ? filterUnitId : undefined,
+            unitId: (targetUnit && targetUnit !== '__all__') ? targetUnit : undefined,
+            name: filterName.trim() || undefined,
             page: 1,
             pageSize: 1,
           }),
@@ -519,7 +524,7 @@ export default function BeaconStationList() {
       });
       setTabCounts(counts);
     } catch { /* silent */ }
-  }, [filterUnitId]);
+  }, [filterUnitId, filterName]);
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -557,17 +562,22 @@ export default function BeaconStationList() {
   }, [filterName, filterCode, filterLightModel, filterType, filterStatus, filterUnitId, filterSeaportId, filterOperator, filterProvinceId, filterOperationalStatus, filterCommissionedFrom, filterCommissionedTo, filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(filterUnitId); }, [filterUnitId, fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
-  const handleFilterApply = useCallback(() => { setPage(1); }, []);
+  const handleFilterApply = useCallback(() => {
+    setFilterName(inputName);
+    setFilterCode(inputCode);
+    setPage(1);
+  }, [inputName, inputCode]);
   const handleFilterReset = useCallback(() => {
+    setInputName(''); setInputCode('');
     setFilterName(''); setFilterCode(''); setFilterType(undefined);
     setFilterLightModel(''); setFilterStatus(undefined); setFilterSeaportId(undefined);
     const defaultOrg = defaultOrgUnitId.current;
     setFilterUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterOperator(''); setFilterProvinceId(undefined); setFilterOperationalStatus(undefined);
-    setFilterCommissionedFrom(''); setFilterCommissionedTo(''); setFilterUpdatedBy('');
+    setFilterCommissionedFrom(''); setFilterCommissionedTo(''); setFilterUpdatedBy(undefined);
     setFilterUpdatedFrom(''); setFilterUpdatedTo('');
     setActiveTab(''); setPage(1);
   }, []);
@@ -575,20 +585,32 @@ export default function BeaconStationList() {
 
   // ── Drawer handlers ─────────────────────────────────────────────
   const openCreateDrawer = useCallback(() => {
+    if (!hasPerm('beaconstation:create')) {
+      toast.error('Bạn không có quyền thêm mới đèn biển');
+      return;
+    }
     setEditingRecord(null);
     setIsDetailMode(false);
     setDetailRecord(null);
     createForm.resetFields();
     setCreateDrawerVisible(true);
-  }, [createForm]);
+  }, [createForm, hasPerm]);
 
   const openEditDrawer = useCallback((record: BeaconStation) => {
+    if (!canEditApprovalRecord(record.status || '', { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) {
+      toast.error('Bạn không có quyền chỉnh sửa bản ghi này');
+      return;
+    }
     setEditingRecord(record);
     setIsDetailMode(false);
     setDetailRecord(null);
-  }, []);
+  }, [hasPerm]);
 
   const openDetailDrawer = useCallback(async (record: BeaconStation) => {
+    if (!hasPerm('beaconstation:read') && !hasPerm('beaconstation:view')) {
+      toast.error('Bạn không có quyền xem chi tiết đèn biển');
+      return;
+    }
     setDetailRecord(record);
     setEditingRecord(null);
     setIsDetailMode(true);
@@ -607,7 +629,7 @@ export default function BeaconStationList() {
     } catch {
       setDetailFiles([]);
     }
-  }, []);
+  }, [hasPerm]);
 
   const closeDrawer = useCallback(() => {
     setDrawerVisible(false);
@@ -642,10 +664,14 @@ export default function BeaconStationList() {
 
   // ── History (chuẩn /vts-operation-center & /vts-system: Drawer + paging server) ──
   const openHistory = useCallback((r: BeaconStation) => {
+    if (!hasPerm('beaconstation:history')) {
+      toast.error('Bạn không có quyền xem lịch sử');
+      return;
+    }
     setHistoryTarget(r); setHistoryOpen(true);
     setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryRecords([]); setHistoryPage(0); setHasMoreHistory(false); setLoadingMoreHistory(false);
-  }, []);
+  }, [hasPerm]);
 
   // ── Delete handlers ─────────────────────────────────────────────
   const openDeleteConfirm = useCallback((record: BeaconStation) => {
@@ -681,31 +707,34 @@ export default function BeaconStationList() {
   }, [submittingRecord, fetchData, fetchCounts, closeDrawer]);
 
   // ── Approve L1 / L2 ─────────────────────────────────────────────
-  const openApproveModal = useCallback((record: BeaconStation) => {
-    const level: 'c1' | 'c2' = record.status === 'APPROVED_LEVEL1' ? 'c2' : 'c1';
-    setApproveLevel(level);
+  const openApproveModal = useCallback((record: BeaconStation, level?: 'c1' | 'c2') => {
+    const resolvedLevel: 'c1' | 'c2' = level ?? (record.status === 'APPROVED_LEVEL1' ? 'c2' : 'c1');
+    setApproveLevel(resolvedLevel);
     setApprovingRecord(record); setApproveModalOpen(true);
   }, []);
 
   const confirmApprove = useCallback(async (content?: string) => {
     if (!approvingRecord) return;
     const approverId = useAuthStore.getState().user?.userId || 'system';
-    const isL2 = approvingRecord.status === 'APPROVED_LEVEL1';
+    const isL2 = approveLevel === 'c2' || approvingRecord.status === 'APPROVED_LEVEL1';
     try {
       const note = (content && content !== 'Đã phê duyệt') ? content : undefined;
       if (isL2) {
         await approval.approveL2(approvingRecord.id, approverId, note);
+        toast.success('Đã phê duyệt cấp Cục');
       } else {
         await approval.approveL1(approvingRecord.id, approverId, note);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
       }
-      toast.success('Đã phê duyệt');
       setApproveModalOpen(false); setApprovingRecord(null);
       closeDrawer(); void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [approvingRecord, fetchData, fetchCounts, closeDrawer]);
+  }, [approvingRecord, approveLevel, fetchData, fetchCounts, closeDrawer]);
 
   // ── Reject ──────────────────────────────────────────────────────
-  const openRejectModal = useCallback((record: BeaconStation) => {
+  const openRejectModal = useCallback((record: BeaconStation, level?: 'c1' | 'c2') => {
+    const resolvedLevel: 'c1' | 'c2' = level ?? (record.status === 'APPROVED_LEVEL1' ? 'c2' : 'c1');
+    setRejectLevel(resolvedLevel);
     setRejectingRecord(record); setRejectReason(''); setRejectModalOpen(true);
   }, []);
 
@@ -718,7 +747,7 @@ export default function BeaconStationList() {
     setRejectLoading(true);
     try {
       await approval.reject(rejectingRecord.id, reason, useAuthStore.getState().user?.userId || 'system');
-      toast.success('Đã từ chối phê duyệt');
+      toast.success(rejectLevel === 'c2' ? 'Đã từ chối phê duyệt cấp Cục' : 'Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
       closeDrawer(); void fetchData(); void fetchCounts();
     } catch (err: unknown) {
@@ -726,31 +755,43 @@ export default function BeaconStationList() {
     } finally {
       setRejectLoading(false);
     }
-  }, [rejectingRecord, rejectReason, fetchData, fetchCounts, closeDrawer]);
-
-
+  }, [rejectingRecord, rejectReason, rejectLevel, fetchData, fetchCounts, closeDrawer]);
 
   // ── Row actions (popup chuẩn themetokenchk — thứ tự: Xem chi tiết, Chỉnh sửa, Lịch sử,
   //  rồi nhóm Phê duyệt/Từ chối, cuối cùng Xóa) ──
   const rowActions = useCallback((record: BeaconStation) => {
     const st = record.status || '';
-    const actions: any[] = [
-      { key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) },
-    ];
+    const currentUserId = useAuthStore.getState().user?.userId;
+    const creatorId = record.submittedBy || record.createdBy;
+    const isCreator = Boolean(creatorId && currentUserId && String(creatorId) === String(currentUserId));
+    const isApprover1 = Boolean(record.approverLevel1 && currentUserId && String(record.approverLevel1) === String(currentUserId));
+
+    const actions: any[] = [];
+    if (hasPerm('beaconstation:read') || hasPerm('beaconstation:view')) {
+      actions.push({ key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) });
+    }
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
     if (canEditApprovalRecord(st, { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: themeTokenChk.icons.edit, onClick: () => openEditDrawer(record) });
     }
-    actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
+    if (hasPerm('beaconstation:history')) {
+      actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
+    }
     // Nhóm phê duyệt / từ chối (đứng trước Xóa)
-    if (st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
+    if (['DRAFT', 'PROPOSED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('beaconstation:update') || hasPerm('beaconstation:create'))) {
       actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: themeTokenChk.icons.submit, onClick: () => openSubmitModal(record) });
     }
-    if (st === 'PENDING_APPROVAL' || st === 'APPROVED_LEVEL1') {
-      actions.push({ key: 'approve', label: 'Phê duyệt', icon: themeTokenChk.icons.approve, onClick: () => openApproveModal(record) });
-      actions.push({ key: 'reject', label: 'Từ chối', icon: themeTokenChk.icons.reject, danger: true, onClick: () => openRejectModal(record) });
+    // Cấp 1 (Cảng vụ/Chi cục) - chống tự duyệt (4-eyes)
+    if (hasPerm('beaconstation:approvec1') && (st === 'PENDING_APPROVAL' || st === 'PROPOSED') && !isCreator) {
+      actions.push({ key: 'approveC1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.approve, onClick: () => openApproveModal(record, 'c1') });
+      actions.push({ key: 'rejectC1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.reject, danger: true, onClick: () => openRejectModal(record, 'c1') });
     }
-    if (st === 'DRAFT') {
+    // Cấp 2 (Cục) - người duyệt C1 không tự duyệt C2
+    if (hasPerm('beaconstation:approvec2') && st === 'APPROVED_LEVEL1' && !isApprover1) {
+      actions.push({ key: 'approveC2', label: 'Phê duyệt cấp Cục', icon: themeTokenChk.icons.approve, onClick: () => openApproveModal(record, 'c2') });
+      actions.push({ key: 'rejectC2', label: 'Từ chối cấp Cục', icon: themeTokenChk.icons.reject, danger: true, onClick: () => openRejectModal(record, 'c2') });
+    }
+    if (st === 'DRAFT' && hasPerm('beaconstation:delete')) {
       actions.push({ key: 'delete', label: 'Xóa', icon: themeTokenChk.icons.delete, danger: true, onClick: () => openDeleteConfirm(record) });
     }
     return actions;
@@ -764,26 +805,45 @@ export default function BeaconStationList() {
     },
     {
       key: 'name', label: 'Tên / Mã đèn biển', dataIndex: 'name', width: 300, fixed: 'left' as const, ellipsis: false,
-      render: (name: string, record: BeaconStation) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <a
-            title={name}
-            onClick={() => openDetailDrawer(record)}
-            style={{
-              ...cellTitleStyle,
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {name || null}
-          </a>
-          <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {record.code || null}
-          </span>
-        </div>
-      ),
+      render: (name: string, record: BeaconStation) => {
+        const canView = hasPerm('beaconstation:read') || hasPerm('beaconstation:view');
+        return (
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {canView ? (
+              <a
+                title={name}
+                onClick={() => openDetailDrawer(record)}
+                style={{
+                  ...cellTitleStyle,
+                  display: 'block',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {name || null}
+              </a>
+            ) : (
+              <span
+                title={name}
+                style={{
+                  ...cellTitleStyle,
+                  display: 'block',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  cursor: 'default',
+                }}
+              >
+                {name || null}
+              </span>
+            )}
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {record.code || null}
+            </span>
+          </div>
+        );
+      },
     },
     {
       key: 'unitName', label: 'Đơn vị quản lý', dataIndex: 'unitName', width: 300,
@@ -820,7 +880,7 @@ export default function BeaconStationList() {
     {
       key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName', width: 220,
       render: (_: any, record: BeaconStation) => {
-        const name = record.updatedByName;
+        const name = record.updatedByName || userOptions.find((u) => u.value === record.updatedBy)?.label;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             <div
@@ -931,7 +991,7 @@ export default function BeaconStationList() {
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
     },
-  ], [page, pageSize, openDetailDrawer, seaports]);
+  ], [page, pageSize, openDetailDrawer, seaports, userOptions, hasPerm]);
 
   const tableData = useMemo(
     () => dataSource.map((item, idx) => ({ ...item, _rowIndex: (page - 1) * pageSize + idx + 1 })),
@@ -958,8 +1018,8 @@ export default function BeaconStationList() {
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên đèn biển</div>
-        <Input placeholder="Nhập tên đèn biển" allowClear value={filterName}
-          onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+        <Input placeholder="Nhập tên đèn biển" allowClear value={inputName}
+          onChange={(e) => setInputName(e.target.value)}
           onPressEnter={handleFilterApply} style={inputStyle} />
       </div>
 
@@ -994,8 +1054,8 @@ export default function BeaconStationList() {
 
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã đèn biển</div>
-            <Input placeholder="Nhập mã đèn biển" allowClear value={filterCode}
-              onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+            <Input placeholder="Nhập mã đèn biển" allowClear value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
               onPressEnter={handleFilterApply} style={inputStyle} />
           </div>
 
@@ -1025,8 +1085,8 @@ export default function BeaconStationList() {
 
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Cán bộ cập nhật</div>
-            <Select placeholder="Tất cả" allowClear showSearch optionFilterProp="label" value={filterUpdatedBy}
-              onChange={(v) => { setFilterUpdatedBy(v ?? ''); setPage(1); }}
+            <Select placeholder="Chọn cán bộ cập nhật" allowClear showSearch optionFilterProp="label" value={filterUpdatedBy || undefined}
+              onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
               options={userOptions} style={{ ...selectStyle, width: '100%' }} />
           </div>
 
@@ -1979,7 +2039,9 @@ export default function BeaconStationList() {
 
       <ScreenHeader
         breadcrumb={[{ label: 'Quản lý hàng hải' }, { label: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển' }]}
-        actions={[{ key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreateDrawer }]}
+        actions={hasPerm('beaconstation:create')
+          ? [{ key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreateDrawer }]
+          : []}
       />
 
       <FilterTableLayout
@@ -2368,7 +2430,7 @@ export default function BeaconStationList() {
 
       {/* ── Reject Reason Modal (chuẩn /berth) ────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{rejectLevel === 'c2' ? 'Từ chối cấp Cục' : 'Từ chối cấp Cảng vụ/Chi cục'}</span>}
         open={rejectModalOpen}
         onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
         footer={[

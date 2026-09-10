@@ -177,14 +177,14 @@ public class DikeRevetmentService {
         return repo.searchPaged(
                 !scope.unrestricted(), scope.orgUnitIds(),
                 null, null, null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 pageable)
                 .map(this::toResponse)
                 .getContent();
     }
 
     @Transactional(readOnly = true)
-    public Page<DikeRevetmentResponse> searchPaged(UUID orgUnitId, String keyword, UUID seaportId,
+    public Page<DikeRevetmentResponse> searchPaged(UUID orgUnitId, String keyword, String dikeRevetmentName, UUID seaportId,
                                                    DikeRevetmentType dikeRevetmentType, String conditionStatus,
                                                    ApprovalStatus approvalStatus, UUID updatedBy,
                                                    LocalDateTime updatedFrom, LocalDateTime updatedTo,
@@ -193,6 +193,9 @@ public class DikeRevetmentService {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(keyword) + "%"
+                : null;
+        String namePattern = (dikeRevetmentName != null && !dikeRevetmentName.trim().isEmpty())
+                ? "%" + normalizeSearchKeyword(dikeRevetmentName) + "%"
                 : null;
         String codePattern = (code != null && !code.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(code) + "%"
@@ -205,7 +208,7 @@ public class DikeRevetmentService {
             commissioningTo = LocalDate.of(commissioningYear, 12, 31);
         }
         return repo.searchPaged(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern,
+                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, namePattern,
                 seaportId, dikeRevetmentType, conditionStatus, approvalStatus,
                 updatedBy, updatedFrom, updatedTo,
                 codePattern, locationValue, commissioningFrom, commissioningTo, pageable)
@@ -213,13 +216,27 @@ public class DikeRevetmentService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Long> getTabCounts(UUID orgUnitId, String keyword, String conditionStatus) {
+    public Page<DikeRevetmentResponse> searchPaged(UUID orgUnitId, String keyword, UUID seaportId,
+                                                   DikeRevetmentType dikeRevetmentType, String conditionStatus,
+                                                   ApprovalStatus approvalStatus, UUID updatedBy,
+                                                   LocalDateTime updatedFrom, LocalDateTime updatedTo,
+                                                   String code, String location, Integer commissioningYear,
+                                                   Pageable pageable) {
+        return searchPaged(orgUnitId, keyword, null, seaportId, dikeRevetmentType, conditionStatus,
+                approvalStatus, updatedBy, updatedFrom, updatedTo, code, location, commissioningYear, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> getTabCounts(UUID orgUnitId, String keyword, String dikeRevetmentName, String conditionStatus) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(keyword) + "%"
                 : null;
+        String namePattern = (dikeRevetmentName != null && !dikeRevetmentName.trim().isEmpty())
+                ? "%" + normalizeSearchKeyword(dikeRevetmentName) + "%"
+                : null;
         List<Object[]> rows = repo.countByApprovalStatus(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, conditionStatus);
+                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, namePattern, conditionStatus);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("", 0L);
