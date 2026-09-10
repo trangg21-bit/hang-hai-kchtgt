@@ -3,7 +3,8 @@
 Thumbs.db
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/launch.json
 .idea/
 
 # Env
