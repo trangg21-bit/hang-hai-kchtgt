@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
-  Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, Drawer,
+  Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, Drawer, Tooltip,
   type InputNumberProps,
 } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
@@ -15,6 +15,7 @@ import {
   DownOutlined,
   RightOutlined,
   EditOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { anchorageCRUD, portCRUD, buoyBerthCRUD } from '../../services/portService';
@@ -27,14 +28,14 @@ import { useAuthStore } from '../../store/authStore';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textPrimary, textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
-  radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
+  radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, spaceMd,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
   getDatePickerProps, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
@@ -45,8 +46,12 @@ type UploadFile = { uid: string; name: string; size: number; type: string; statu
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const MAX_FILE_COUNT = 10;
 
-const labelProps = (text: string) => ({
-  label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
+const labelProps = (label: string) => ({
+  label: (
+    <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '18px' }}>
+      {label}
+    </span>
+  ),
 });
 
 const portFormFontSizeMd = 13.5;
@@ -94,16 +99,17 @@ const COORD_SYS_OPTIONS = [
   { value: 2, label: 'VN-2000' },
 ];
 
-type NumberInputWithCountProps = InputNumberProps<number> & { maxLength: number };
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
 
 function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
   const count = String(value ?? '').length;
   return (
     <InputNumber
+      stringMode
       {...inputProps}
       value={value}
       maxLength={maxLength}
-      suffix={<span aria-label={`${count} trên ${maxLength} ký tự`} style={{ color: textSecondary, fontSize: portFormFontSizeMd }}>{count}/{maxLength}</span>}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
     />
   );
 }
@@ -112,21 +118,22 @@ const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?:
   const wkt = gisLocation?.coordinates;
   if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
   try {
-    if (wkt.startsWith('LINESTRING(')) {
-      const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
+    const trimmed = wkt.trim();
+    if (trimmed.toUpperCase().startsWith('LINESTRING')) {
+      const m = trimmed.match(/LINESTRING\s*\(\s*([^)]+)\s*\)/i);
       if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
     }
-    if (wkt.startsWith('POLYGON((')) {
-      const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
+    if (trimmed.toUpperCase().startsWith('POLYGON')) {
+      const m = trimmed.match(/POLYGON\s*\(\s*\(\s*([^)]+)\s*\)\s*\)/i);
       if (m) {
         const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop();
+        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) pts.pop();
         return pts;
       }
     }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
+    const mm = trimmed.match(/MULTIPOINT\s*\(\s*((?:\([^)]*\),?)+)\s*\)/i);
     if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+    const pm = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
     if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
   } catch { /* ignore */ }
   return [];
@@ -143,11 +150,53 @@ function ddToDms(dd: number | null | undefined): { d: number | null; m: number |
   if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
   let s = Math.round(sFloat * 100) / 100;
   if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
+  return { d, m, s };
 }
+
+function renderDmsText(dd: number | null | undefined, isLat: boolean): string {
+  if (dd == null || isNaN(Number(dd))) return '';
+  const dms = ddToDms(Number(dd));
+  return `${dms.d}° ${dms.m}' ${dms.s}" ${isLat ? 'N' : 'E'}`;
+}
+
+function dmToDd(d: number | null | undefined, m: number | null | undefined, s: number | null | undefined): number {
+  if (d == null && m == null && s == null) return 0;
+  const deg = d ?? 0;
+  const min = (m ?? 0) / 60;
+  const sec = (s ?? 0) / 3600;
+  return Math.round((deg + min + sec) * 1e7) / 1e7;
+}
+
+const getFilterSearchTopY = (): number => {
+  if (typeof window === 'undefined') return 0;
+  const filterFooter = document.querySelector('.filter-action-footer');
+  if (filterFooter) {
+    const rect = filterFooter.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  const searchBtn = Array.from(document.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === 'Tìm kiếm' && !b.closest('.ant-drawer')
+  );
+  if (searchBtn && searchBtn.parentElement) {
+    const rect = searchBtn.parentElement.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  return Math.round(window.innerHeight - 89);
+};
 
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
+
+const dmsInputCss = `
+.dms-input-row .ant-input-number {
+  padding: 0 4px !important;
+}
+.dms-input-row .ant-input-number .ant-input-number-input {
+  padding: 0 2px !important;
+  font-size: 13px !important;
+  text-align: center !important;
+}
+`;
 
 const renderDmsGroup = (
   dVal: number | null | undefined,
@@ -160,56 +209,65 @@ const renderDmsGroup = (
   const inputs = [
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
-      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 66px', width: 66,
       step: 1,
-      msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
+      msg: started && dVal == null ? 'Bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
-      radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 72px', width: 72,
       step: 1,
-      msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
+      msg: started && mVal == null ? 'Bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
     {
       key: 's', base: 'Giây', value: sVal, max: 59.99,
-      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
+      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 82px', width: 82,
       step: 0.01, formatter: fmtInputNumber,
-      msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
+      msg: started && sVal == null ? 'Bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },
   ] as const;
 
+  const inputRow = (
+    <div className="dms-input-row" style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-start', maxWidth: '100%', minWidth: 0 }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
+          <InputNumber
+            value={inp.value}
+            min={0}
+            max={inp.max}
+            step={inp.step}
+            placeholder={inp.base}
+            formatter={inp.formatter}
+            status={inp.msg ? 'error' : undefined}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32, fontSize: 13 }}
+            controls={false}
+          />
+          <span style={inp.unitStyle}>{inp.unit}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const messageRow = (
+    <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: 2, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: 10, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
-        {inputs.map((inp) => (
-          <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
-            <InputNumber
-              value={inp.value}
-              min={0}
-              max={inp.max}
-              step={inp.step}
-              placeholder={inp.base}
-              formatter={inp.formatter}
-              status={inp.msg ? 'error' : undefined}
-              onFocus={(e) => e.currentTarget.select()}
-              onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
-              style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
-              controls={false}
-            />
-            <span style={inp.unitStyle}>{inp.unit}</span>
-          </div>
-        ))}
-      </div>
-      <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
-        {inputs.map((inp) => (
-          <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
-            {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
-          </div>
-        ))}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', width: '100%', minWidth: 0 }}>
+      <style>{dmsInputCss}</style>
+      {inputRow}
+      {messageRow}
     </div>
   );
 };
@@ -234,6 +292,27 @@ export interface MooringWaterAreaItem {
   anchorPoints?: Array<{ name?: string; latitude?: number; longitude?: number }>;
 }
 
+export interface AnchorPointFormItem {
+  name: string;
+  latD: number | null;
+  latM: number | null;
+  latS: number | null;
+  lngD: number | null;
+  lngM: number | null;
+  lngS: number | null;
+  _idx?: number;
+}
+
+export interface GpsCoordinateItem {
+  latD: number | null;
+  latM: number | null;
+  latS: number | null;
+  lngD: number | null;
+  lngM: number | null;
+  lngS: number | null;
+  _idx?: number;
+}
+
 const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   form,
   id,
@@ -244,10 +323,10 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   const currentUser = useAuthStore((s) => s.user);
   const [activeTabKey, setActiveTabKey] = useState('general');
 
-  // Accordion section collapse states
-  const [technicalOpen, setTechnicalOpen] = useState(false);
-  const [announcementOpen, setAnnouncementOpen] = useState(false);
-  const [waterAreaOpen, setWaterAreaOpen] = useState(false);
+  // Accordion section collapse states (mặc định mở sẵn đồng bộ PierForm)
+  const [technicalOpen, setTechnicalOpen] = useState(true);
+  const [announcementOpen, setAnnouncementOpen] = useState(true);
+  const [waterAreaOpen, setWaterAreaOpen] = useState(true);
 
   // Dropdown options & loading
   const [orgUnits, setOrgUnits] = useState<Organization[]>([]);
@@ -267,11 +346,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   const watchedGeometryType = Form.useWatch('geometryType', form);
 
   // GPS Coordinates (Tab 2)
-  const [coordinateList, setCoordinateList] = useState<Array<{
-    latD: number | null; latM: number | null; latS: number | null;
-    lngD: number | null; lngM: number | null; lngS: number | null;
-  }>>([]);
-  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [coordinateList, setCoordinateList] = useState<GpsCoordinateItem[]>([]);
   const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // Attachments (Tab 3)
@@ -280,6 +355,11 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   // Mooring Water Areas (Khu nước neo buộc tàu)
   const [waterAreaList, setWaterAreaList] = useState<MooringWaterAreaItem[]>([]);
   const [waterAreaDrawerOpen, setWaterAreaDrawerOpen] = useState(false);
+  const [viewingWaterArea, setViewingWaterArea] = useState<MooringWaterAreaItem | null>(null);
+  const [viewingMapParamsOpen, setViewingMapParamsOpen] = useState(true);
+  const [viewingAnchorPointsOpen, setViewingAnchorPointsOpen] = useState(true);
+  const [formMapParamsOpen, setFormMapParamsOpen] = useState(true);
+  const [formAnchorPointsOpen, setFormAnchorPointsOpen] = useState(true);
   const [editingWaterAreaIndex, setEditingWaterAreaIndex] = useState<number | null>(null);
   const [waterAreaDescription, setWaterAreaDescription] = useState('');
   const [waterAreaGeometryType, setWaterAreaGeometryType] = useState<string | undefined>('POINT');
@@ -292,22 +372,66 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
     lngD: number | null; lngM: number | null; lngS: number | null;
   }>>([]);
 
+  const anchorBoxRef = useRef<HTMLDivElement>(null);
+  const [anchorBoxHeight, setAnchorBoxHeight] = useState<number | undefined>();
+  const viewingAnchorBoxRef = useRef<HTMLDivElement>(null);
+  const [viewingAnchorBoxHeight, setViewingAnchorBoxHeight] = useState<number | undefined>();
+
+  const updateAnchorBoxHeight = useCallback(() => {
+    if (!waterAreaDrawerOpen || !formAnchorPointsOpen || !anchorBoxRef.current) return;
+    const targetY = getFilterSearchTopY();
+    const boxRect = anchorBoxRef.current.getBoundingClientRect();
+    if (boxRect.top > 0) {
+      const h = Math.round(targetY - boxRect.top);
+      setAnchorBoxHeight(Math.max(230, h));
+    }
+  }, [waterAreaDrawerOpen, formAnchorPointsOpen]);
+
+  useEffect(() => {
+    if (!waterAreaDrawerOpen || !formAnchorPointsOpen) return;
+    updateAnchorBoxHeight();
+    const t1 = setTimeout(updateAnchorBoxHeight, 60);
+    const t2 = setTimeout(updateAnchorBoxHeight, 180);
+    const t3 = setTimeout(updateAnchorBoxHeight, 350);
+    window.addEventListener('resize', updateAnchorBoxHeight);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', updateAnchorBoxHeight);
+    };
+  }, [waterAreaDrawerOpen, formAnchorPointsOpen, formMapParamsOpen, updateAnchorBoxHeight]);
+
+  const updateViewingAnchorBoxHeight = useCallback(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen || !viewingAnchorBoxRef.current) return;
+    const targetY = getFilterSearchTopY();
+    const boxRect = viewingAnchorBoxRef.current.getBoundingClientRect();
+    if (boxRect.top > 0) {
+      const h = Math.round(targetY - boxRect.top);
+      setViewingAnchorBoxHeight(Math.max(230, h));
+    }
+  }, [viewingWaterArea, viewingAnchorPointsOpen]);
+
+  useEffect(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen) return;
+    updateViewingAnchorBoxHeight();
+    const t1 = setTimeout(updateViewingAnchorBoxHeight, 60);
+    const t2 = setTimeout(updateViewingAnchorBoxHeight, 180);
+    const t3 = setTimeout(updateViewingAnchorBoxHeight, 350);
+    window.addEventListener('resize', updateViewingAnchorBoxHeight);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', updateViewingAnchorBoxHeight);
+    };
+  }, [viewingWaterArea, viewingAnchorPointsOpen, viewingMapParamsOpen, updateViewingAnchorBoxHeight]);
+
+  const anchorTableScrollY = anchorBoxHeight ? Math.max(70, anchorBoxHeight - 160) : 'calc(100vh - 540px)';
+  const viewingAnchorTableScrollY = viewingAnchorBoxHeight ? Math.max(70, viewingAnchorBoxHeight - 148) : 'calc(100vh - 500px)';
+
   const editPortIdRef = useRef<string | undefined>(undefined);
 
-  // Character limit warning helper (matching PierForm)
-  const useMaxReached = (fieldName: string, maxLen: number) => {
-    const val = Form.useWatch(fieldName, form);
-    return Boolean(val && String(val).length >= maxLen);
-  };
-
-  const atMax = {
-    anchorageName: useMaxReached('anchorageName', 255),
-    detailedLocation: useMaxReached('detailedLocation', 500),
-    shapeDescription: useMaxReached('shapeDescription', 255),
-    remarks: useMaxReached('remarks', 2000),
-    publicDecision: useMaxReached('publicDecision', 2000),
-    investmentAgreement: useMaxReached('investmentAgreement', 2000),
-  };
 
   // Load organizations
   useEffect(() => {
@@ -392,7 +516,8 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   // Sync geometryType to coordinateList
   useEffect(() => {
     if (!watchedGeometryType) {
-      form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
+      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setCoordinateList([]);
       return;
     }
@@ -403,8 +528,10 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
     } else {
       if (form.getFieldValue('coordinateSystem') == null) form.setFieldsValue({ coordinateSystem: 1 });
+      // Chỉnh sửa: giữ tọa độ đã nhập, tự thêm dòng trống cho đủ số lượng theo loại đối tượng (điểm → 1, đường → 2, vùng → 3)
       const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
       setCoordinateList((prev) => {
+        if (watchedGeometryType === 'POINT' && prev.length > 1) return prev.slice(0, 1);
         if (prev.length >= count) return prev;
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
         return [...prev, ...added];
@@ -430,11 +557,11 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
           detailedLocation: d.detailedLocation,
           operationalStatus: d.operationalStatus || undefined,
           shapeDescription: d.shapeDescription,
-          area: d.area,
-          designWaterDepth: d.designWaterDepth,
-          currentWaterDepth: d.currentWaterDepth,
-          bottomElevationDesign: d.bottomElevationDesign,
-          maxVesselDWT: d.maxVesselDWT,
+          area: normalizeSafeNumber(d.area),
+          designWaterDepth: normalizeSafeNumber(d.designWaterDepth),
+          currentWaterDepth: normalizeSafeNumber(d.currentWaterDepth),
+          bottomElevationDesign: normalizeSafeNumber(d.bottomElevationDesign),
+          maxVesselDWT: normalizeSafeNumber(d.maxVesselDWT),
           activeAnchorageCount: d.activeAnchorageCount,
           publishedAnchorageCount: d.publishedAnchorageCount,
           underInvestmentAnchorageCount: d.underInvestmentAnchorageCount,
@@ -445,7 +572,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
           geometryType: d.geometryType || undefined,
           mapSymbolId: d.mapSymbolId,
           coordinateSystem: d.coordinateSystem ?? 1,
-          displayRule: d.displayRule || 'Độ, phút, giây (DMS)',
+          displayRule: (d.displayRule != null || d.geometryType) ? 'Độ, phút, giây (DMS)' : undefined,
         });
 
         // Parse coordinates
@@ -505,7 +632,6 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
 
   const handleOrgUnitChange = () => {
     form.setFieldsValue({ portId: undefined, anchorageCode: undefined });
-    setCoordinateList([]);
   };
 
   const handlePortChange = () => {
@@ -582,11 +708,9 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   // GPS points
   const addGpsPoint = () => {
     setCoordinateList([...coordinateList, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
-    setGpsError(null);
   };
   const removeCoordinate = (i: number) => {
     setCoordinateList(coordinateList.filter((_, idx) => idx !== i));
-    setGpsError(null);
   };
   const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
     setCoordinateList(p => {
@@ -599,7 +723,6 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       };
       return n;
     });
-    setGpsError(null);
   };
 
   // Mooring water area drawer helpers
@@ -611,6 +734,8 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
     setWaterAreaCoordinateSystem(1);
     setWaterAreaDisplayRule('Độ, phút, giây (DMS)');
     setWaterAreaAnchorPoints([]);
+    setFormMapParamsOpen(true);
+    setFormAnchorPointsOpen(true);
     setWaterAreaDrawerOpen(true);
   };
 
@@ -627,6 +752,8 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       const lngDms = ddToDms(p.longitude);
       return { name: p.name || '', latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
     }) : []);
+    setFormMapParamsOpen(true);
+    setFormAnchorPointsOpen(true);
     setWaterAreaDrawerOpen(true);
   };
 
@@ -640,6 +767,9 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   };
 
   const addAnchorPoint = () => {
+    if (!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1)) {
+      return;
+    }
     setWaterAreaAnchorPoints(p => [...p, { name: '', latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
   };
   const removeAnchorPoint = (i: number) => {
@@ -662,10 +792,87 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   };
 
   const saveWaterArea = () => {
-    if (!waterAreaDescription.trim()) {
-      toast.error('Phạm vi khu nước neo buộc tàu không được để trống');
+    // 1. Phạm vi khu nước neo buộc tàu không bắt buộc (không required)
+
+    // 2. Kiểm tra loại đối tượng và biểu tượng (giống logic tab Thông tin vị trí)
+    if (waterAreaGeometryType) {
+      if (!waterAreaMapSymbolId) {
+        toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
+        return;
+      }
+
+      const validPoints = waterAreaAnchorPoints.filter(
+        (p) => p.latD != null && p.latM != null && p.latS != null && p.lngD != null && p.lngM != null && p.lngS != null
+      );
+      const minCount = GEOMETRY_POINT_COUNT[waterAreaGeometryType] ?? 1;
+
+      if (validPoints.length < minCount) {
+        const msg =
+          waterAreaGeometryType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : waterAreaGeometryType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+        toast.error(msg);
+        return;
+      }
+
+      if (waterAreaGeometryType === 'POINT' && validPoints.length > 1) {
+        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+        return;
+      }
+    }
+
+    // 3. Tọa độ điểm neo: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo
+    const partial = waterAreaAnchorPoints.find((p) => {
+      const latSet = p.latD != null || p.latM != null || p.latS != null;
+      const lngSet = p.lngD != null || p.lngM != null || p.lngS != null;
+      const latFull = p.latD != null && p.latM != null && p.latS != null;
+      const lngFull = p.lngD != null && p.lngM != null && p.lngS != null;
+      return (latSet && !latFull) || (lngSet && !lngFull) || (latFull && !lngFull) || (!latFull && lngFull);
+    });
+    if (partial) {
+      toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ điểm neo');
       return;
     }
+
+    // 4. Kiểm tra dải giá trị hợp lệ của tọa độ điểm neo
+    const invalidRange = waterAreaAnchorPoints.find((p) => {
+      if (p.latD != null && (p.latD < 0 || p.latD > 90)) return true;
+      if (p.latM != null && (p.latM < 0 || p.latM > 59)) return true;
+      if (p.latS != null && (p.latS < 0 || p.latS >= 60)) return true;
+      if (p.lngD != null && (p.lngD < 0 || p.lngD > 180)) return true;
+      if (p.lngM != null && (p.lngM < 0 || p.lngM > 59)) return true;
+      if (p.lngS != null && (p.lngS < 0 || p.lngS >= 60)) return true;
+      return false;
+    });
+    if (invalidRange) {
+      toast.error('Tọa độ điểm neo nằm ngoài dải hợp lệ (Vĩ độ: 0-90°, Kinh độ: 0-180°, Phút/Giây: 0-59.99)');
+      return;
+    }
+
+    // 5. Kiểm tra điểm neo có tên nhưng chưa nhập tọa độ
+    const namedWithoutCoords = waterAreaAnchorPoints.find((p) => {
+      const hasName = !!p.name?.trim();
+      const hasCoord = p.latD != null || p.latM != null || p.latS != null || p.lngD != null || p.lngM != null || p.lngS != null;
+      return hasName && !hasCoord;
+    });
+    if (namedWithoutCoords) {
+      toast.error(`Vui lòng nhập tọa độ cho điểm neo "${namedWithoutCoords.name.trim()}"`);
+      return;
+    }
+
+    // 6. Kiểm tra nếu có hàng điểm neo hoàn toàn trống
+    const emptyRow = waterAreaAnchorPoints.find((p) => {
+      const noName = !p.name?.trim();
+      const noCoord = p.latD == null && p.latM == null && p.latS == null && p.lngD == null && p.lngM == null && p.lngS == null;
+      return noName && noCoord;
+    });
+    if (emptyRow) {
+      toast.error('Vui lòng nhập đầy đủ thông tin điểm neo hoặc xóa hàng trống');
+      return;
+    }
+
     const item: MooringWaterAreaItem = {
       description: waterAreaDescription.trim(),
       geometryType: waterAreaGeometryType,
@@ -676,8 +883,8 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         .filter(p => p.name.trim() || p.latD != null || p.lngD != null)
         .map(p => ({
           name: p.name.trim(),
-          latitude: (p.latD ?? 0) + (p.latM ?? 0) / 60 + (p.latS ?? 0) / 3600,
-          longitude: (p.lngD ?? 0) + (p.lngM ?? 0) / 60 + (p.lngS ?? 0) / 3600,
+          latitude: (p.latD != null || p.latM != null || p.latS != null) ? dmToDd(p.latD, p.latM, p.latS) : undefined,
+          longitude: (p.lngD != null || p.lngM != null || p.lngS != null) ? dmToDd(p.lngD, p.lngM, p.lngS) : undefined,
         })),
     };
     setWaterAreaList(prev => {
@@ -717,17 +924,81 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       return false;
     }
 
-    // Validate coordinates
-    const coordResult = validateDmsCoordinates(coordinateList, vals.geometryType);
-    if (!coordResult.valid) {
-      const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
-      toast.error(errMsg);
-      setGpsError(errMsg);
-      setActiveTabKey('location');
-      return false;
+    if (vals.geometryType) {
+      if (!vals.mapSymbolId) {
+        setActiveTabKey('location');
+        form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
+        toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
+        return false;
+      }
+
+      const minCount = GEOMETRY_POINT_COUNT[vals.geometryType as string] ?? 1;
+      const validCoords = coordinateList.filter(
+        (c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null
+      );
+
+      if (validCoords.length < minCount) {
+        setActiveTabKey('location');
+        const msg =
+          vals.geometryType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : vals.geometryType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+        toast.error(msg);
+        return false;
+      }
+
+      // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
+      if (vals.geometryType === 'POINT' && validCoords.length > 1) {
+        setActiveTabKey('location');
+        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+        return false;
+      }
+
+      // Tọa độ GPS: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo khi ấn Lưu
+      const partial = coordinateList.find((c) => {
+        const latSet = c.latD != null || c.latM != null || c.latS != null;
+        const lngSet = c.lngD != null || c.lngM != null || c.lngS != null;
+        const latFull = c.latD != null && c.latM != null && c.latS != null;
+        const lngFull = c.lngD != null && c.lngM != null && c.lngS != null;
+        return (latSet && !latFull) || (lngSet && !lngFull);
+      });
+      if (partial) {
+        setActiveTabKey('location');
+        toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ GPS trong tab Thông tin vị trí');
+        return false;
+      }
+
+      // Kiểm tra dải giá trị hợp lệ của tọa độ GPS
+      const invalidRange = coordinateList.find((c) => {
+        if (c.latD != null && (c.latD < 0 || c.latD > 90)) return true;
+        if (c.latM != null && (c.latM < 0 || c.latM > 59)) return true;
+        if (c.latS != null && (c.latS < 0 || c.latS >= 60)) return true;
+        if (c.lngD != null && (c.lngD < 0 || c.lngD > 180)) return true;
+        if (c.lngM != null && (c.lngM < 0 || c.lngM > 59)) return true;
+        if (c.lngS != null && (c.lngS < 0 || c.lngS >= 60)) return true;
+        return false;
+      });
+      if (invalidRange) {
+        setActiveTabKey('location');
+        toast.error('Tọa độ GPS nằm ngoài dải hợp lệ (Vĩ độ: 0-90°, Kinh độ: 0-180°, Phút/Giây: 0-59.99)');
+        return false;
+      }
     }
-    const validCoords = coordResult.validCoords;
-    const wktCoordinates = serializeCoordinatesToWkt(validCoords, vals.geometryType || 'POINT');
+
+    const validCoords = vals.geometryType
+      ? coordinateList.filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+      : [];
+    const wktCoordinates = vals.geometryType && validCoords.length > 0
+      ? serializeCoordinatesToWkt(
+          validCoords.map((c) => ({
+            latitude: dmToDd(c.latD, c.latM, c.latS),
+            longitude: dmToDd(c.lngD, c.lngM, c.lngS),
+          })),
+          vals.geometryType || 'POINT'
+        )
+      : undefined;
 
     onSubmittingChange?.(true);
     try {
@@ -735,9 +1006,8 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       const provinceNumber = provinceIndex >= 0 ? provinceIndex + 1 : undefined;
 
       const mooringPayload = waterAreaList
-        .filter(w => w.description && w.description.trim())
         .map(w => ({
-          description: w.description.trim(),
+          description: w.description?.trim() || undefined,
           geometryType: w.geometryType || undefined,
           mapSymbolId: w.mapSymbolId || undefined,
           coordinateSystem: w.coordinateSystem != null ? Number(w.coordinateSystem) : undefined,
@@ -762,11 +1032,11 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         detailedLocation: vals.detailedLocation?.trim() || undefined,
         operationalStatus: vals.operationalStatus || undefined,
         shapeDescription: vals.shapeDescription?.trim() || undefined,
-        area: vals.area != null && !isNaN(Number(vals.area)) ? Number(vals.area) : undefined,
-        designWaterDepth: vals.designWaterDepth != null && !isNaN(Number(vals.designWaterDepth)) ? Number(vals.designWaterDepth) : undefined,
-        currentWaterDepth: vals.currentWaterDepth != null && !isNaN(Number(vals.currentWaterDepth)) ? Number(vals.currentWaterDepth) : undefined,
-        bottomElevationDesign: vals.bottomElevationDesign != null && !isNaN(Number(vals.bottomElevationDesign)) ? Number(vals.bottomElevationDesign) : undefined,
-        maxVesselDWT: vals.maxVesselDWT != null && !isNaN(Number(vals.maxVesselDWT)) ? Number(vals.maxVesselDWT) : undefined,
+        area: (vals.area === 0 || vals.area === '0') ? 0 : (vals.area != null && String(vals.area).trim() !== '' && !isNaN(Number(vals.area)) ? String(vals.area).trim() : undefined),
+        designWaterDepth: (vals.designWaterDepth === 0 || vals.designWaterDepth === '0') ? '0' : (vals.designWaterDepth || undefined),
+        currentWaterDepth: (vals.currentWaterDepth === 0 || vals.currentWaterDepth === '0') ? '0' : (vals.currentWaterDepth || undefined),
+        bottomElevationDesign: (vals.bottomElevationDesign === 0 || vals.bottomElevationDesign === '0') ? '0' : (vals.bottomElevationDesign || undefined),
+        maxVesselDWT: (vals.maxVesselDWT === 0 || vals.maxVesselDWT === '0') ? '0' : (vals.maxVesselDWT || undefined),
         activeAnchorageCount: vals.activeAnchorageCount != null && !isNaN(Number(vals.activeAnchorageCount)) ? Number(vals.activeAnchorageCount) : undefined,
         publishedAnchorageCount: vals.publishedAnchorageCount != null && !isNaN(Number(vals.publishedAnchorageCount)) ? Number(vals.publishedAnchorageCount) : undefined,
         underInvestmentAnchorageCount: vals.underInvestmentAnchorageCount != null && !isNaN(Number(vals.underInvestmentAnchorageCount)) ? Number(vals.underInvestmentAnchorageCount) : undefined,
@@ -777,9 +1047,9 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         geometryType: vals.geometryType || undefined,
         mapSymbolId: vals.mapSymbolId || undefined,
         coordinateSystem: vals.coordinateSystem != null ? Number(vals.coordinateSystem) : undefined,
-        displayRule: vals.displayRule || undefined,
-        latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
-        longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
+        displayRule: vals.geometryType ? 1 : undefined,
+        latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
+        longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
         coordinates: wktCoordinates || undefined,
         mooringWaterAreas: mooringPayload.length > 0 ? mooringPayload : undefined,
       };
@@ -800,20 +1070,19 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
 
       // Upload newly added files
       if (createdId && uploadedFiles.length > 0) {
-        let uploaded = 0;
-        for (const fi of uploadedFiles) {
-          const of = fi.originFileObj as File;
-          if (!of) continue;
+        const newFiles = uploadedFiles.filter((fi: any) => fi.originFileObj);
+        if (newFiles.length > 0) {
           try {
             const fd = new FormData();
-            fd.append('files', of);
+            newFiles.forEach((fi: any) => {
+              fd.append('files', fi.originFileObj as File);
+            });
             await api.post(`/v1/anchorage/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-            uploaded++;
+            toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
           } catch {
-            toast.error(`Tải lên tệp "${fi.name}" thất bại`);
+            toast.error('Tải lên tệp đính kèm thất bại');
           }
         }
-        if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
       }
 
       toast.success(
@@ -844,6 +1113,19 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       label: 'Thông tin chung',
       children: (
         <div style={drawerFormScrollStyle}>
+          <style>{`
+            .cn-op-2line-label .ant-form-item-label {
+              height: auto !important;
+              min-height: 44px !important;
+              align-items: flex-start !important;
+            }
+            .cn-op-2line-label .ant-form-item-label > label {
+              height: auto !important;
+              white-space: normal !important;
+              line-height: 1.45 !important;
+              overflow-wrap: break-word;
+            }
+          `}</style>
           {/* Card 1: Thông tin cơ bản & Quản lý vận hành */}
           <div style={sectionBoxStyle}>
             <div style={sectionHeaderStyle}>
@@ -907,8 +1189,6 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                   required
                   style={{ marginBottom: spaceFormField }}
                   rules={[{ required: true, message: 'Tên khu neo đậu không được để trống' }, { max: 255 }]}
-                  validateStatus={atMax.anchorageName ? 'error' : undefined}
-                  help={atMax.anchorageName ? 'Đã đạt tối đa 255 ký tự' : undefined}
                 >
                   <Input placeholder="Nhập tên khu neo đậu" maxLength={255} showCount style={inputStyle} />
                 </Form.Item>
@@ -927,21 +1207,19 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item
-                  name="detailedLocation"
-                  {...labelProps('Địa điểm chi tiết')}
-                  style={{ marginBottom: spaceFormField }}
-                  validateStatus={atMax.detailedLocation ? 'error' : undefined}
-                  help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}
-                >
-                  <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
+                <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
+                  <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
-                  <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
+              <Col span={24}>
+                <Form.Item
+                  name="detailedLocation"
+                  {...labelProps('Địa điểm chi tiết')}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -976,8 +1254,6 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                       name="shapeDescription"
                       {...labelProps('Hình dạng')}
                       style={{ marginBottom: spaceFormField }}
-                      validateStatus={atMax.shapeDescription ? 'error' : undefined}
-                      help={atMax.shapeDescription ? 'Đã đạt tối đa 255 ký tự' : undefined}
                     >
                       <Input placeholder="Nhập hình dạng" maxLength={255} showCount style={inputStyle} />
                     </Form.Item>
@@ -991,43 +1267,43 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="designWaterDepth" {...labelProps('Độ sâu khu nước theo thiết kế (m)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} max={100} step={0.1} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} max={100} step={0.1} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} max={100} step={0.1} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} max={999999} maxLength={20} placeholder="0" style={numberStyle} />
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={20} placeholder="0" style={numberStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="activeAnchorageCount" {...labelProps('Số lượng khu neo đậu đang khai thác')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} />
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="publishedAnchorageCount" {...labelProps('Số lượng khu neo đậu đã công bố')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} />
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
-                    <Form.Item name="underInvestmentAnchorageCount" {...labelProps('Số lượng khu neo đậu đang được thỏa thuận đầu tư XD')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} max={99999} maxLength={5} placeholder="0" style={numberStyle} />
+                    <Form.Item name="underInvestmentAnchorageCount" className="cn-op-2line-label" {...labelProps('Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -1037,8 +1313,6 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                       name="remarks"
                       {...labelProps('Ghi chú')}
                       style={{ marginBottom: spaceFormField }}
-                      validateStatus={atMax.remarks ? 'error' : undefined}
-                      help={atMax.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                     >
                       <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                     </Form.Item>
@@ -1084,8 +1358,6 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                       name="publicDecision"
                       {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')}
                       style={{ marginBottom: spaceFormField }}
-                      validateStatus={atMax.publicDecision ? 'error' : undefined}
-                      help={atMax.publicDecision ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                     >
                       <Input.TextArea rows={3} placeholder="Nhập quyết định" maxLength={2000} showCount style={textAreaStyle} />
                     </Form.Item>
@@ -1097,8 +1369,6 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                       name="investmentAgreement"
                       {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')}
                       style={{ marginBottom: spaceFormField }}
-                      validateStatus={atMax.investmentAgreement ? 'error' : undefined}
-                      help={atMax.investmentAgreement ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                     >
                       <Input.TextArea rows={3} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={textAreaStyle} />
                     </Form.Item>
@@ -1139,7 +1409,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={openAddWaterArea}
-                    style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px' }}
+                    style={{ ...primaryButtonStyle, height: 32, fontSize: portFormFontSizeMd, padding: '0 14px' }}
                   >
                     Thêm khu nước neo buộc
                   </Button>
@@ -1151,44 +1421,60 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                 ) : (
                   <DetailTable
                     size="small"
+                    scrollY={130}
+                    pageSize={5}
+                    pageSizeOptions={[5, 10, 20]}
                     dataSource={waterAreaList.map((w, i) => ({ ...w, key: i }))}
-                    rowKey={(r: any) => r.key}
+                    rowKey={(r: MooringWaterAreaItem & { key: number }) => String(r.key)}
                     emptyText="Chưa có dữ liệu"
                     columns={[
                       {
                         title: 'STT',
                         width: 60,
                         align: 'center' as const,
-                        render: (_: any, __: any, idx: number) => idx + 1,
+                        render: (_: unknown, __: unknown, idx: number) => idx + 1,
                       },
                       {
                         title: 'Phạm vi khu nước neo buộc tàu',
                         key: 'description',
-                        render: (_: any, record: any) => (
+                        render: (_: unknown, record: MooringWaterAreaItem & { key: number }) => (
                           <a
                             style={{ color: actionPrimary, fontWeight: fontWeightBold, cursor: 'pointer' }}
                             onClick={() => openEditWaterArea(record.key)}
                           >
-                            {record.description || ''}
+                            {record.description?.trim() || `Khu nước ${record.key + 1}`}
                           </a>
                         ),
                       },
                       {
-                        title: 'Điểm neo',
-                        key: 'anchorPointsCount',
-                        width: 140,
-                        align: 'center' as const,
-                        render: (_: any, record: any) => `${record.anchorPoints?.length || 0} điểm`,
-                      },
-                      {
                         title: 'Thao tác',
                         key: 'actions',
-                        width: 100,
+                        width: 120,
                         align: 'center' as const,
-                        render: (_: any, record: any) => (
+                        render: (_: unknown, record: MooringWaterAreaItem & { key: number }) => (
                           <Space size={4}>
-                            <Button type="text" icon={<EditOutlined style={{ color: actionPrimary }} />} onClick={() => openEditWaterArea(record.key)} title="Chỉnh sửa" />
-                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeWaterArea(record.key)} title="Xóa" />
+                            <Tooltip title="Xem chi tiết điểm neo">
+                              <Button
+                                type="text"
+                                icon={<EyeOutlined style={{ color: actionPrimary }} />}
+                                onClick={() => setViewingWaterArea(record)}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Chỉnh sửa">
+                              <Button
+                                type="text"
+                                icon={<EditOutlined style={{ color: actionPrimary }} />}
+                                onClick={() => openEditWaterArea(record.key)}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Xóa">
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => removeWaterArea(record.key)}
+                              />
+                            </Tooltip>
                           </Space>
                         ),
                       },
@@ -1218,11 +1504,37 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                  <Select
+                    placeholder="Chọn loại đối tượng"
+                    allowClear
+                    options={GEOMETRY_TYPE_OPTIONS}
+                    style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({
+                          mapSymbolId: undefined,
+                          coordinateSystem: undefined,
+                          displayRule: undefined,
+                        });
+                        form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+                        setCoordinateList([]);
+                      }
+                    }}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="mapSymbolId"
+                  {...labelProps('Biểu tượng')}
+                  required={!!watchedGeometryType}
+                  rules={
+                    watchedGeometryType
+                      ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
+                      : []
+                  }
+                  style={{ marginBottom: spaceFormField }}
+                >
                   <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} loading={loadingSymbols} style={selectStyle}>
                     {symbols.map((sym) => (
                       <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
@@ -1261,10 +1573,10 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                   onClick={() => setGisModalOpen(true)}
                   disabled={!watchedGeometryType}
                   style={!watchedGeometryType ? {
-                    height: 32, fontSize: fontSizeSm, padding: '0 14px', borderRadius: radiusPill,
+                    height: 32, fontSize: portFormFontSizeMd, padding: '0 14px', borderRadius: radiusPill,
                     display: 'inline-flex', alignItems: 'center', gap: spaceXs, opacity: 0.6, cursor: 'not-allowed',
                   } : {
-                    ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px',
+                    ...outlineButtonStyle, height: 32, fontSize: portFormFontSizeMd, padding: '0 14px',
                     display: 'inline-flex', alignItems: 'center', gap: spaceXs,
                   }}
                 >
@@ -1274,15 +1586,29 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                   type="primary"
                   icon={<PlusOutlined />}
                   onClick={addGpsPoint}
-                  disabled={!watchedGeometryType}
-                  style={!watchedGeometryType ? {
-                    height: 32, fontSize: fontSizeSm, padding: '0 14px', borderRadius: radiusPill,
-                    display: 'inline-flex', alignItems: 'center', gap: spaceXs,
-                    background: '#f5f5f5', borderColor: '#d9d9d9', color: 'rgba(0, 0, 0, 0.25)', cursor: 'not-allowed',
+                  disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
+                  style={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1) ? {
+                    height: 32,
+                    fontSize: portFormFontSizeMd,
+                    padding: '0 14px',
+                    borderRadius: radiusPill,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: spaceXs,
+                    background: '#f5f5f5',
+                    borderColor: '#d9d9d9',
+                    color: 'rgba(0, 0, 0, 0.25)',
+                    cursor: 'not-allowed',
                   } : {
-                    ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px',
-                    display: 'inline-flex', alignItems: 'center', gap: spaceXs,
+                    ...primaryButtonStyle,
+                    height: 32,
+                    fontSize: portFormFontSizeMd,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: spaceXs,
                   }}
+                  title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
                 >
                   Thêm tọa độ
                 </Button>
@@ -1293,54 +1619,55 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                 <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
               </div>
             ) : (
-              <>
-                {gpsError && (
-                  <div style={{ marginBottom: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
-                  </div>
-                )}
-                <DetailTable
-                  size="small"
-                  scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                  dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-                  rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
-                  emptyText="Chưa có tọa độ GPS nào"
-                  columns={[
-                    {
-                      title: 'STT',
-                      width: 60,
-                      align: 'center' as const,
-                      render: (_v: any, _r: any, idx: number) => idx + 1,
-                    },
-                    {
-                      title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
-                      key: 'lat',
-                      render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
-                    },
-                    {
-                      title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
-                      key: 'lng',
-                      render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
-                    },
-                    {
-                      title: '',
-                      width: 50,
-                      align: 'center' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top' } }),
-                      render: (_v: any, record: any) => (
-                        <Button
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                          onClick={() => removeCoordinate(record._idx)}
-                          style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Xóa tọa độ"
-                        />
-                      ),
-                    },
-                  ]}
-                />
-              </>
+              <DetailTable
+                size="small"
+                scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+                scroll={{ x: 590 }}
+                dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+                rowKey={(r: GpsCoordinateItem) => String(r._idx)}
+                emptyText="Chưa có tọa độ GPS nào"
+                columns={[
+                  {
+                    title: 'STT',
+                    width: 60,
+                    align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
+                    render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
+                  },
+                  {
+                    title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                    key: 'lat',
+                    width: 240,
+                    align: 'left' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                    render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lat', d, m, s)),
+                  },
+                  {
+                    title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                    key: 'lng',
+                    width: 240,
+                    align: 'left' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                    render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lng', d, m, s)),
+                  },
+                  {
+                    title: '',
+                    width: 50,
+                    align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top' } }),
+                    render: (_v: unknown, record: GpsCoordinateItem) => (
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                        onClick={() => removeCoordinate(record._idx ?? 0)}
+                        style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Xóa tọa độ"
+                      />
+                    ),
+                  },
+                ]}
+              />
             )}
           </div>
         </div>
@@ -1378,16 +1705,17 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       {/* Drawer thêm/sửa Khu nước neo buộc tàu */}
       <Drawer
         {...drawerProps}
-        width={900}
+        rootClassName="anchorage-drawer-scope"
+        className="anchorage-drawer-scope"
+        size={1000}
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
         open={waterAreaDrawerOpen}
         onClose={closeWaterAreaDrawer}
-        destroyOnHidden
+        destroyOnClose
         push={false}
         extra={<Button type="text" onClick={closeWaterAreaDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
           <div style={drawerFooterStyle}>
-            <Button onClick={closeWaterAreaDrawer} style={outlineButtonStyle}>Hủy</Button>
             <Button type="primary" onClick={saveWaterArea} style={primaryButtonStyle}>Lưu</Button>
           </div>
         }
@@ -1397,93 +1725,531 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         }}
       >
         <Form layout="vertical">
-          <Form.Item {...labelProps('Phạm vi khu nước neo buộc tàu')} required style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="Nhập phạm vi khu nước neo buộc tàu" value={waterAreaDescription} onChange={(e) => setWaterAreaDescription(e.target.value)} style={inputStyle} />
-          </Form.Item>
+          <div style={{ ...sectionBoxStyle, padding: formMapParamsOpen ? sectionBoxStyle.padding : '12px 18px' }}>
+            <div
+              onClick={() => setFormMapParamsOpen(!formMapParamsOpen)}
+              style={{
+                ...sectionHeaderStyle,
+                marginBottom: formMapParamsOpen ? 10 : 0,
+                paddingBottom: formMapParamsOpen ? 8 : 0,
+                borderBottom: formMapParamsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <div style={sectionTitleStyle}>
+                <EnvironmentOutlined style={{ color: actionPrimary }} />
+                <span>Thông số đối tượng bản đồ</span>
+              </div>
+              {formMapParamsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+            </div>
+            {formMapParamsOpen && (
+              <>
+                <Form.Item {...labelProps('Phạm vi khu nước neo buộc tàu')} style={{ marginBottom: spaceFormField }}>
+                  <Input.TextArea
+                    rows={3}
+                    placeholder="Nhập phạm vi khu nước neo buộc tàu"
+                    maxLength={2000}
+                    showCount
+                    value={waterAreaDescription}
+                    onChange={(e) => setWaterAreaDescription(e.target.value)}
+                    style={textAreaStyle}
+                  />
+                </Form.Item>
 
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} value={waterAreaGeometryType} onChange={(v) => setWaterAreaGeometryType(v)} style={selectStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn biểu tượng..." allowClear showSearch optionFilterProp="label" disabled={!waterAreaGeometryType} value={waterAreaMapSymbolId} onChange={(v) => setWaterAreaMapSymbolId(v)} style={selectStyle}>
-                  {symbols.map(sym => (
-                    <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                      <Space>
-                        {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
-                        <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
+                <Row gutter={[24, 0]}>
+                  <Col span={12}>
+                    <Form.Item {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+                      <Select
+                        placeholder="Chọn loại đối tượng"
+                        allowClear
+                        options={GEOMETRY_TYPE_OPTIONS}
+                        value={waterAreaGeometryType}
+                        onChange={(v) => {
+                          setWaterAreaGeometryType(v);
+                          if (!v) {
+                            setWaterAreaMapSymbolId(undefined);
+                          }
+                        }}
+                        style={selectStyle}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      {...labelProps('Biểu tượng')}
+                      required={!!waterAreaGeometryType}
+                      rules={
+                        waterAreaGeometryType
+                          ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
+                          : []
+                      }
+                      style={{ marginBottom: spaceFormField }}
+                    >
+                      <Select
+                        placeholder="Chọn biểu tượng..."
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        disabled={!waterAreaGeometryType}
+                        value={waterAreaMapSymbolId}
+                        onChange={(v) => setWaterAreaMapSymbolId(v)}
+                        style={selectStyle}
+                      >
+                        {symbols.map(sym => (
+                          <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                            <Space>
+                              {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
+                              <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                            </Space>
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
 
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} value={waterAreaCoordinateSystem} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled value={waterAreaDisplayRule} style={readonlyInputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: portFormFontSizeMd }}>Tọa độ điểm neo ({waterAreaAnchorPoints.length})</span>
-            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={addAnchorPoint} style={{ ...primaryButtonStyle, height: 30, fontSize: fontSizeSm, padding: '0 12px' }}>Thêm điểm neo</Button>
+                <Row gutter={[24, 0]}>
+                  <Col span={12}>
+                    <Form.Item {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
+                      <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} value={waterAreaCoordinateSystem} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
+                      <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled value={waterAreaDisplayRule} style={readonlyInputStyle} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </>
+            )}
           </div>
 
-          {waterAreaAnchorPoints.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-              <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có điểm neo nào.</span>
+          <div
+            ref={anchorBoxRef}
+            style={{
+              ...sectionBoxStyle,
+              padding: formAnchorPointsOpen ? sectionBoxStyle.padding : '12px 18px',
+              height: formAnchorPointsOpen ? (anchorBoxHeight ? `${anchorBoxHeight}px` : undefined) : 'auto',
+              minHeight: formAnchorPointsOpen ? 230 : undefined,
+              display: 'flex',
+              flexDirection: 'column',
+              boxSizing: 'border-box',
+              marginBottom: 0,
+            }}
+          >
+            <div
+              style={{
+                ...sectionHeaderStyle,
+                marginBottom: formAnchorPointsOpen ? spaceFormField : 0,
+                paddingBottom: formAnchorPointsOpen ? 8 : 0,
+                borderBottom: formAnchorPointsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                userSelect: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <div
+                onClick={() => setFormAnchorPointsOpen(!formAnchorPointsOpen)}
+                style={{ display: 'flex', alignItems: 'center', gap: spaceXs, cursor: 'pointer' }}
+              >
+                <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: portFormFontSizeMd }}>
+                  Tọa độ điểm neo ({waterAreaAnchorPoints.length})
+                </span>
+                {formAnchorPointsOpen ? <DownOutlined style={{ color: actionPrimary, marginLeft: 4 }} /> : <RightOutlined style={{ color: actionPrimary, marginLeft: 4 }} />}
+              </div>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={addAnchorPoint}
+                disabled={!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1)}
+                style={!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1) ? {
+                  height: 32,
+                  fontSize: portFormFontSizeMd,
+                  padding: '0 14px',
+                  borderRadius: radiusPill,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spaceXs,
+                  background: '#f5f5f5',
+                  borderColor: '#d9d9d9',
+                  color: 'rgba(0, 0, 0, 0.25)',
+                  cursor: 'not-allowed',
+                } : {
+                  ...primaryButtonStyle,
+                  height: 32,
+                  fontSize: portFormFontSizeMd,
+                  padding: '0 14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spaceXs,
+                }}
+                title={waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 điểm neo' : (!waterAreaGeometryType ? 'Vui lòng chọn loại đối tượng' : undefined)}
+              >
+                Thêm điểm neo
+              </Button>
             </div>
-          ) : (
-            <div style={{ width: '100%', overflowX: 'hidden' }}>
-              <DetailTable
-                size="small"
-                tableLayout="fixed"
-                dataSource={waterAreaAnchorPoints.map((p, i) => ({ ...p, _idx: i }))}
-                rowKey={(r: any) => r._idx}
-                emptyText="Chưa có điểm neo"
-                columns={[
-                  {
-                    title: 'Tên điểm neo',
-                    key: 'name',
-                    width: 180,
-                    render: (_: any, record: any) => (
-                      <Input placeholder="Nhập tên điểm neo" value={record.name} onChange={(e) => updateAnchorPointName(record._idx, e.target.value)} style={inputStyle} />
-                    ),
-                  },
-                  {
-                    title: 'Vĩ độ (N)',
-                    key: 'lat',
-                    render: (_: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateAnchorPointCoord(record._idx, 'lat', d, m, s)),
-                  },
-                  {
-                    title: 'Kinh độ (E)',
-                    key: 'lng',
-                    render: (_: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateAnchorPointCoord(record._idx, 'lng', d, m, s)),
-                  },
-                  {
-                    title: '',
-                    key: 'actions',
-                    width: 50,
-                    align: 'center' as const,
-                    render: (_: any, record: any) => <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeAnchorPoint(record._idx)} />,
-                  },
-                ]}
-              />
-            </div>
-          )}
+
+            {formAnchorPointsOpen && (
+              waterAreaAnchorPoints.length === 0 ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+                  <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có điểm neo nào.</span>
+                </div>
+              ) : (
+                <DetailTable
+                  size="small"
+                  scroll={{ x: 780 }}
+                  scrollY={anchorTableScrollY}
+                  pageSize={10}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  dataSource={waterAreaAnchorPoints.map((p, i) => ({ ...p, _idx: i }))}
+                  rowKey={(r: AnchorPointFormItem) => String(r._idx)}
+                  emptyText="Chưa có điểm neo"
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                  columns={[
+                    {
+                      title: 'STT',
+                      width: 50,
+                      align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
+                      render: (_: unknown, _r: unknown, idx: number) => idx + 1,
+                    },
+                    {
+                      title: 'Tên điểm neo',
+                      key: 'name',
+                      width: 200,
+                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => (
+                        <Input
+                          placeholder="Nhập tên điểm neo"
+                          value={record.name}
+                          onChange={(e) => updateAnchorPointName(record._idx ?? 0, e.target.value)}
+                          style={{ ...inputStyle, height: 32, borderRadius: radiusPill, fontSize: 13.5 }}
+                        />
+                      ),
+                    },
+                    {
+                      title: <span>Vĩ độ (N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                      key: 'lat',
+                      width: 240,
+                      align: 'left' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateAnchorPointCoord(record._idx ?? 0, 'lat', d, m, s)),
+                    },
+                    {
+                      title: <span>Kinh độ (E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                      key: 'lng',
+                      width: 240,
+                      align: 'left' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateAnchorPointCoord(record._idx ?? 0, 'lng', d, m, s)),
+                    },
+                    {
+                      title: '',
+                      key: 'actions',
+                      width: 50,
+                      align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => (
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                          onClick={() => removeAnchorPoint(record._idx ?? 0)}
+                          style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Xóa điểm neo"
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              )
+            )}
+          </div>
         </Form>
+      </Drawer>
+
+      {/* Drawer xem chi tiết khu nước neo buộc tàu (không đẩy Drawer cha) */}
+      <Drawer
+        {...drawerProps}
+        rootClassName="anchorage-drawer-scope"
+        className="anchorage-drawer-scope"
+        size={1000}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
+        open={!!viewingWaterArea}
+        onClose={() => setViewingWaterArea(null)}
+        destroyOnClose
+        push={false}
+        extra={<Button type="text" onClick={() => setViewingWaterArea(null)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {viewingWaterArea && (
+          <div className="anchorage-detail-content-wrapper">
+            <style>{`
+              .anchorage-detail-content-wrapper,
+              .anchorage-detail-content-wrapper .chk-detail-label,
+              .anchorage-detail-content-wrapper .chk-detail-value {
+                font-size: 13.5px !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-grid {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                column-gap: 28px !important;
+                row-gap: 0 !important;
+                align-items: stretch !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-row {
+                display: flex !important;
+                align-items: flex-start !important;
+                min-height: 36px !important;
+                padding: 7px 0 !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                line-height: 1.5 !important;
+                gap: 10px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-row:last-child {
+                border-bottom: none !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-row--full {
+                grid-column: 1 / -1 !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-label,
+              .anchorage-detail-content-wrapper .sec-col1-label,
+              .anchorage-detail-content-wrapper .chk-detail-row .sec-col1-label,
+              .anchorage-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+                width: 215px !important;
+                min-width: 215px !important;
+                max-width: 215px !important;
+                flex-shrink: 0 !important;
+                color: ${sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: normal !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+                width: auto !important;
+                min-width: 220px !important;
+                max-width: 320px !important;
+                white-space: nowrap !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-row .sec-col2-label {
+                width: 250px !important;
+                min-width: 250px !important;
+                max-width: 250px !important;
+                flex-shrink: 0 !important;
+                color: ${sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: normal !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-label::after {
+                content: ':' !important;
+                margin-left: 1px !important;
+                margin-right: 4px !important;
+              }
+              .anchorage-detail-content-wrapper .chk-detail-value {
+                flex: 1 1 auto !important;
+                color: #1e293b !important;
+                font-size: 13.5px !important;
+                font-weight: 500 !important;
+                line-height: 1.5 !important;
+                min-width: 0 !important;
+                word-break: break-word !important;
+              }
+            `}</style>
+
+            <div style={{ maxHeight: 'calc(100vh - 72px)', paddingTop: 10, paddingRight: 4, overflowY: 'auto', overflowX: 'hidden' }}>
+              {/* Box 1: Thông số đối tượng bản đồ */}
+              <div style={{ ...sectionBoxStyle, padding: viewingMapParamsOpen ? sectionBoxStyle.padding : '12px 18px' }}>
+                <div
+                  onClick={() => setViewingMapParamsOpen(!viewingMapParamsOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: viewingMapParamsOpen ? 10 : 0,
+                    paddingBottom: viewingMapParamsOpen ? 8 : 0,
+                    borderBottom: viewingMapParamsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <EnvironmentOutlined style={{ color: actionPrimary }} />
+                    <span>Thông số đối tượng bản đồ</span>
+                  </div>
+                  {viewingMapParamsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                </div>
+                {viewingMapParamsOpen && (
+                  <div className="chk-detail-grid">
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Phạm vi khu nước neo buộc tàu</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 110, overflowY: 'auto' }}>
+                        {viewingWaterArea.description || ''}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
+                      <span className="chk-detail-value">
+                        {(() => {
+                          const m: Record<string, string> = {
+                            POINT: 'Đối tượng điểm',
+                            LINE: 'Đối tượng đường',
+                            POLYGON: 'Đối tượng vùng',
+                          };
+                          return viewingWaterArea.geometryType ? m[viewingWaterArea.geometryType] || viewingWaterArea.geometryType : '';
+                        })()}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
+                      <span className="chk-detail-value">
+                        {(() => {
+                          const sym = symbols.find((s) => s.id === viewingWaterArea.mapSymbolId);
+                          const symName = sym?.name || viewingWaterArea.mapSymbolId || '';
+                          const symImg = sym?.image;
+                          const symImgSrc = symImg ? (symImg.startsWith('data:') ? symImg : `data:image/png;base64,${symImg}`) : undefined;
+                          return symName ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                              {symImgSrc ? (
+                                <img
+                                  src={symImgSrc}
+                                  alt=""
+                                  style={{ width: 22, height: 22, objectFit: 'contain' }}
+                                />
+                              ) : null}
+                              {symName}
+                            </span>
+                          ) : '';
+                        })()}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
+                      <span className="chk-detail-value">
+                        {viewingWaterArea.coordinateSystem === 1
+                          ? 'WGS-84'
+                          : viewingWaterArea.coordinateSystem === 2
+                          ? 'VN-2000'
+                          : (viewingWaterArea.coordinateSystem || '')}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
+                      <span className="chk-detail-value">
+                        {viewingWaterArea.displayRule || 'Độ, phút, giây (DMS)'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Box 2: Tọa độ điểm neo */}
+              <div
+                ref={viewingAnchorBoxRef}
+                style={{
+                  ...sectionBoxStyle,
+                  padding: viewingAnchorPointsOpen ? sectionBoxStyle.padding : '12px 18px',
+                  height: viewingAnchorPointsOpen ? (viewingAnchorBoxHeight ? `${viewingAnchorBoxHeight}px` : undefined) : 'auto',
+                  minHeight: viewingAnchorPointsOpen ? 230 : undefined,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxSizing: 'border-box',
+                  marginBottom: 0,
+                }}
+              >
+                <div
+                  onClick={() => setViewingAnchorPointsOpen(!viewingAnchorPointsOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: viewingAnchorPointsOpen ? 10 : 0,
+                    paddingBottom: viewingAnchorPointsOpen ? 8 : 0,
+                    borderBottom: viewingAnchorPointsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <EnvironmentOutlined style={{ color: actionPrimary }} />
+                    <span>Tọa độ điểm neo ({(viewingWaterArea.anchorPoints || []).length})</span>
+                  </div>
+                  {viewingAnchorPointsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                </div>
+                {viewingAnchorPointsOpen && (
+                  <DetailTable
+                    size="small"
+                    scroll={{ x: 590 }}
+                    pageSize={10}
+                    pageSizeOptions={[5, 10, 20, 50]}
+                    dataSource={(Array.isArray(viewingWaterArea.anchorPoints) ? viewingWaterArea.anchorPoints : []).map((p, i) => ({ ...p, key: i }))}
+                    emptyText="Chưa có dữ liệu tọa độ điểm neo"
+                    rowKey={(rec: any) => rec.key}
+                    scrollY={viewingAnchorTableScrollY}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                    columns={[
+                      {
+                        title: 'STT',
+                        width: 50,
+                        align: 'center' as const,
+                        render: (_: unknown, __: unknown, idx: number) => idx + 1,
+                      },
+                      {
+                        title: 'Tên điểm neo',
+                        dataIndex: 'name',
+                        key: 'name',
+                        width: 180,
+                        render: (name?: string) => (
+                          <span
+                            style={{
+                              fontSize: fontSizeMd,
+                              color: textPrimary,
+                              fontWeight: fontWeightBold,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block',
+                            }}
+                            title={name || ''}
+                          >
+                            {name || ''}
+                          </span>
+                        ),
+                      },
+                      {
+                        title: 'Vĩ độ (Latitude - N)',
+                        key: 'lat',
+                        width: 180,
+                        align: 'center' as const,
+                        render: (_v: unknown, rec: any) => renderDmsText(rec.latitude, true),
+                      },
+                      {
+                        title: 'Kinh độ (Longitude - E)',
+                        key: 'lng',
+                        width: 180,
+                        align: 'center' as const,
+                        render: (_v: unknown, rec: any) => renderDmsText(rec.longitude, false),
+                      },
+                    ]}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </Drawer>
 
       {/* GIS Location Selector Modal */}
@@ -1518,27 +2284,40 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType="POINT"
+            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
             onChange={(val) => {
               if (val?.coordinates) {
+                // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ
                 const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
                 if (points.length > 0) {
                   setCoordinateList((prev) => {
-                    const existing = prev || [];
+                    const current = Array.isArray(prev) ? prev : [];
+                    const isFilled = (c: { latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }) =>
+                      c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null;
                     const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(existing
-                      .filter(c => c.latD != null && c.lngD != null)
+                    const existingKeys = new Set(current
+                      .filter(isFilled)
                       .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
-                    const toAdd = points.filter(p => !existingKeys.has(key(p))).map(p => {
+                    const fresh = points.filter(p => !existingKeys.has(key(p)));
+                    const toDmsRows = (ps: Array<{ latitude: number; longitude: number }>) => ps.map(p => {
                       const latDms = ddToDms(p.latitude);
                       const lngDms = ddToDms(p.longitude);
                       return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
                     });
-                    if (toAdd.length === 0) return existing;
-                    return [...existing, ...toAdd];
+                    // 1) Điền điểm vào các hàng còn TRỐNG ở đầu/cuối (giữ nguyên vị trí), số điểm thừa mới thêm xuống dưới.
+                    let fi = 0;
+                    const merged = current.map((row) => {
+                      if (isFilled(row)) return row;
+                      if (fi >= fresh.length) return row;
+                      const p = fresh[fi];
+                      fi += 1;
+                      const rows = toDmsRows([p]);
+                      return rows[0];
+                    });
+                    merged.push(...toDmsRows(fresh.slice(fi)));
+                    return merged;
                   });
-                  setGpsError(null);
                 }
               }
             }}

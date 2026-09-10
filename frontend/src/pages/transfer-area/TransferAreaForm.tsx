@@ -1,47 +1,50 @@
-import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
-import dayjs from 'dayjs';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs,
-  Button, Space, DatePicker, Table, Drawer, Modal,
+  Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, Drawer,
   type InputNumberProps,
 } from 'antd';
+import DetailTable from '../../components/shared/DetailTable';
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {
   PlusOutlined,
   DeleteOutlined,
-  EditOutlined,
   EnvironmentOutlined,
   BankOutlined,
   SlidersOutlined,
   FileTextOutlined,
   CalendarOutlined,
-  CompassOutlined,
   DownOutlined,
   RightOutlined,
+  EyeOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
-import { DRAWER_TABLE_SCROLL_Y, getDatePickerProps } from '../../themetokenchk';
-import DetailTable from '../../components/shared/DetailTable';
-import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import dayjs from 'dayjs';
+import { transferAreaCRUD, portCRUD } from '../../services/portService';
+import { organizationService, type Organization } from '../../services/organizationService';
+import { symbolService, type Symbol as IconSymbol } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import api from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
+import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import toast from '../../components/ToastNotification';
+import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textSecondary, textTertiary, textPrimary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
+  getDatePickerProps, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
 } from '../../themetokenchk';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import type { SaveAction } from '../../types/port';
-import toast from '../../components/ToastNotification';
-import { fmtInputNumber } from '../../utils/numFmt';
-import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
-import { transferAreaCRUD, portCRUD } from '../../services/portService';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol as IconSymbol } from '../../services/symbolService';
-import { userService } from '../../services/userService';
-import { useAuthStore } from '../../store/authStore';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+
+type SaveAction = 'DRAFT' | 'SUBMIT' | 'SAVE_AND_APPROVE' | 'APPROVED' | 'UPDATE';
+type UploadFile = { uid: string; name: string; size: number; type: string; status: string; originFileObj?: File };
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const MAX_FILE_COUNT = 10;
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -76,20 +79,6 @@ const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 }
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
-type NumberInputWithCountProps = InputNumberProps<number> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span aria-label={`${count} trên ${maxLength} ký tự`} style={{ color: textSecondary, fontSize: portFormFontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
-
 const OPERATIONAL_STATUS_OPTIONS = [
   { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
   { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/vận hành' },
@@ -110,14 +99,25 @@ const GEOMETRY_TYPE_OPTIONS = [
   { value: 'LINE', label: 'Đối tượng đường' },
   { value: 'POLYGON', label: 'Đối tượng vùng' },
 ];
-const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
+const COORD_SYS_OPTIONS = [
+  { value: 1, label: 'WGS-84' },
+  { value: 2, label: 'VN-2000' },
+];
 
-interface DmsPoint {
-  latD: number | null; latM: number | null; latS: number | null;
-  lngD: number | null; lngM: number | null; lngS: number | null;
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
 }
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
-const emptyDmsPoint = (): DmsPoint => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null });
 
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
@@ -139,13 +139,13 @@ const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?:
     if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
     const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
     if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch {}
+  } catch { /* ignore */ }
   return [];
 };
 
 function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  let abs = Math.abs(dd);
+  const abs = Math.abs(dd);
   let d = Math.floor(abs);
   let mFloat = (abs - d) * 60;
   if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
@@ -154,72 +154,88 @@ function ddToDms(dd: number | null | undefined): { d: number | null; m: number |
   if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
   let s = Math.round(sFloat * 100) / 100;
   if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
+  return { d, m, s };
 }
 
-const decimalToDmsPoint = (latitude: number | null | undefined, longitude: number | null | undefined): DmsPoint => {
-  const la = ddToDms(latitude ?? null);
-  const lo = ddToDms(longitude ?? null);
-  return { latD: la.d, latM: la.m, latS: la.s, lngD: lo.d, lngM: lo.m, lngS: lo.s };
-};
+function renderDmsText(dd: number | null | undefined, isLat: boolean): string {
+  if (dd == null || isNaN(Number(dd))) return '';
+  const dms = ddToDms(Number(dd));
+  return `${dms.d}° ${dms.m}' ${dms.s}" ${isLat ? 'N' : 'E'}`;
+}
 
-const dmsPointToDecimal = (c: DmsPoint): { latitude: number; longitude: number } => ({
-  latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-  longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-});
+function dmToDd(d: number | null | undefined, m: number | null | undefined, s: number | null | undefined): number {
+  if (d == null && m == null && s == null) return 0;
+  const deg = d ?? 0;
+  const min = (m ?? 0) / 60;
+  const sec = (s ?? 0) / 3600;
+  return Math.round((deg + min + sec) * 1e7) / 1e7;
+}
+
+const getFilterSearchTopY = (): number => {
+  if (typeof window === 'undefined') return 0;
+  const filterFooter = document.querySelector('.filter-action-footer');
+  if (filterFooter) {
+    const rect = filterFooter.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  const searchBtn = Array.from(document.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === 'Tìm kiếm' && !b.closest('.ant-drawer')
+  );
+  if (searchBtn && searchBtn.parentElement) {
+    const rect = searchBtn.parentElement.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  return Math.round(window.innerHeight - 89);
+};
 
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
+
+const dmsInputCss = `
+.dms-input-row .ant-input-number {
+  padding: 0 4px !important;
+}
+.dms-input-row .ant-input-number .ant-input-number-input {
+  padding: 0 2px !important;
+  font-size: 13px !important;
+  text-align: center !important;
+}
+`;
 
 const renderDmsGroup = (
   dVal: number | null | undefined,
   mVal: number | null | undefined,
   sVal: number | null | undefined,
   maxDeg: number,
-  onChange: (d: number | null | undefined, m: number | null | undefined, s: number | null | undefined) => void,
+  onChange: (d: number | null, m: number | null, s: number | null) => void,
 ) => {
   const started = dVal != null || mVal != null || sVal != null;
-
-  const inputs: Array<{
-    key: 'd' | 'm' | 's';
-    base: string;
-    value: number | null | undefined;
-    max: number;
-    radius: string;
-    unit: string;
-    unitStyle: React.CSSProperties;
-    basis: string;
-    width: number;
-    step: number;
-    formatter?: (value: any) => string;
-    msg?: string;
-    onEdit: (v: number | null) => void;
-  }> = [
+  const inputs = [
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
-      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 66px', width: 66,
       step: 1,
-      msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
+      msg: started && dVal == null ? 'Bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
-      radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 72px', width: 72,
       step: 1,
-      msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
+      msg: started && mVal == null ? 'Bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
     {
       key: 's', base: 'Giây', value: sVal, max: 59.99,
-      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
+      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 82px', width: 82,
       step: 0.01, formatter: fmtInputNumber,
-      msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
+      msg: started && sVal == null ? 'Bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },
-  ];
+  ] as const;
 
   const inputRow = (
-    <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+    <div className="dms-input-row" style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-start', maxWidth: '100%', minWidth: 0 }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
           <InputNumber
@@ -232,7 +248,7 @@ const renderDmsGroup = (
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
-            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32, fontSize: 13 }}
             controls={false}
           />
           <span style={inp.unitStyle}>{inp.unit}</span>
@@ -241,113 +257,198 @@ const renderDmsGroup = (
     </div>
   );
 
-  const errorRow = (
-    <div style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, minHeight: 14, marginTop: 2 }}>
+  const messageRow = (
+    <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: 2, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
-        <div key={`err-${inp.key}`} style={{ flex: inp.basis, minWidth: 0, width: inp.width, paddingLeft: 2 }}>
-          {inp.msg ? <span style={{ color: statusCritical, fontSize: 11, lineHeight: '12px', display: 'block' }}>{inp.msg}</span> : null}
+        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: 10, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
         </div>
       ))}
     </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', width: '100%', minWidth: 0 }}>
+      <style>{dmsInputCss}</style>
       {inputRow}
-      {errorRow}
+      {messageRow}
     </div>
   );
 };
 
-export interface AnchorPointField {
-  name: string;
-  latitude: number | null;
-  longitude: number | null;
-}
-
-export interface MooringWaterAreaField {
-  description: string;
-  geometryType?: string;
-  mapSymbolId?: string;
-  coordinateSystem?: number;
-  displayRule?: string;
-  anchorPoints?: AnchorPointField[];
+export interface TransferAreaFormHandle {
+  submit: (saveAction: SaveAction) => Promise<boolean | void>;
 }
 
 export interface TransferAreaFormProps {
   form: any;
   id?: string;
-  onFinish: (saved: boolean) => void;
-  onSubmittingChange?: (submitting: boolean) => void;
+  onFinish: (success?: boolean) => void;
+  onSubmittingChange?: (val: boolean) => void;
 }
 
-export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubmittingChange }: TransferAreaFormProps, ref) {
-  const isEdit = !!id;
-  const [activeTabKey, setActiveTabKey] = useState('general');
-  const [transferAreaCodeLoading, setTransferAreaCodeLoading] = useState(false);
+export interface MooringWaterAreaItem {
+  description: string;
+  geometryType?: string;
+  mapSymbolId?: string;
+  coordinateSystem?: number;
+  displayRule?: string;
+  anchorPoints?: Array<{ name?: string; latitude?: number; longitude?: number }>;
+}
+
+export interface AnchorPointFormItem {
+  name: string;
+  latD: number | null;
+  latM: number | null;
+  latS: number | null;
+  lngD: number | null;
+  lngM: number | null;
+  lngS: number | null;
+  _idx?: number;
+}
+
+export interface GpsCoordinateItem {
+  latD: number | null;
+  latM: number | null;
+  latS: number | null;
+  lngD: number | null;
+  lngM: number | null;
+  lngS: number | null;
+  _idx?: number;
+}
+
+const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProps>(({
+  form,
+  id,
+  onFinish,
+  onSubmittingChange,
+}, ref) => {
+  const isEdit = Boolean(id);
   const currentUser = useAuthStore((s) => s.user);
-  const editPortIdRef = useRef<string | undefined>(undefined);
+  const [activeTabKey, setActiveTabKey] = useState('general');
 
-  const watchedGeometryType = Form.useWatch('geometryType', form);
-  const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
-  const watchedPortId = Form.useWatch('portId', form);
-
-  const useMaxReached = (name: string, max: number): boolean => {
-    const raw = Form.useWatch(name, form) ?? '';
-    const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
-    return len >= max;
-  };
-
-  const atMax = {
-    transferAreaName: useMaxReached('transferAreaName', 255),
-    detailedLocation: useMaxReached('detailedLocation', 500),
-    shapeDescription: useMaxReached('shapeDescription', 255),
-    area: useMaxReached('area', 20),
-    designWaterDepth: useMaxReached('designWaterDepth', 20),
-    currentWaterDepth: useMaxReached('currentWaterDepth', 20),
-    bottomElevationDesign: useMaxReached('bottomElevationDesign', 20),
-    maxVesselDWT: useMaxReached('maxVesselDWT', 20),
-    activeTransferCount: useMaxReached('activeTransferCount', 5),
-    publishedTransferCount: useMaxReached('publishedTransferCount', 5),
-    underInvestmentTransferCount: useMaxReached('underInvestmentTransferCount', 5),
-    publicDecision: useMaxReached('publicDecision', 2000),
-    investmentAgreement: useMaxReached('investmentAgreement', 2000),
-  };
-
-  const [organizations, setOrganizations] = useState<any[]>([]);
-  const [portOptions, setPortOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [symbols, setSymbols] = useState<IconSymbol[]>([]);
-  const [coordinateList, setCoordinateList] = useState<DmsPoint[]>([]);
-  const [gpsError, setGpsError] = useState<string | null>(null);
-  const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [indicatorOpen, setIndicatorOpen] = useState(true);
+  // Accordion section collapse states
+  const [technicalOpen, setTechnicalOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
-  const [mooringScopeOpen, setMooringScopeOpen] = useState(true);
-  const [waterAreaList, setWaterAreaList] = useState<MooringWaterAreaField[]>([]);
-  const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [waterAreaOpen, setWaterAreaOpen] = useState(true);
+
+  // Dropdown options & loading
+  const [orgUnits, setOrgUnits] = useState<Organization[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingPorts, setLoadingPorts] = useState(false);
+  const [symbols, setSymbols] = useState<IconSymbol[]>([]);
+  const [loadingSymbols, setLoadingSymbols] = useState(false);
+  const [transferAreaCodeLoading, setTransferAreaCodeLoading] = useState(false);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
-  // ── Drawer "Thông tin khu nước neo buộc tàu" ──
+  // Watched fields
+  const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const watchedPortId = Form.useWatch('portId', form);
+  const watchedGeometryType = Form.useWatch('geometryType', form);
+
+  // GPS Coordinates (Tab 2)
+  const [coordinateList, setCoordinateList] = useState<GpsCoordinateItem[]>([]);
+  const [gisModalOpen, setGisModalOpen] = useState(false);
+
+  // Attachments (Tab 3)
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+
+  // Mooring Water Areas (Khu nước neo buộc tàu)
+  const [waterAreaList, setWaterAreaList] = useState<MooringWaterAreaItem[]>([]);
   const [waterAreaDrawerOpen, setWaterAreaDrawerOpen] = useState(false);
+  const [viewingWaterArea, setViewingWaterArea] = useState<MooringWaterAreaItem | null>(null);
+  const [viewingMapParamsOpen, setViewingMapParamsOpen] = useState(true);
+  const [viewingAnchorPointsOpen, setViewingAnchorPointsOpen] = useState(true);
+  const [formMapParamsOpen, setFormMapParamsOpen] = useState(true);
+  const [formAnchorPointsOpen, setFormAnchorPointsOpen] = useState(true);
   const [editingWaterAreaIndex, setEditingWaterAreaIndex] = useState<number | null>(null);
   const [waterAreaDescription, setWaterAreaDescription] = useState('');
-  const [waterAreaGeometryType, setWaterAreaGeometryType] = useState<string | undefined>(undefined);
-  const [waterAreaMapSymbolId, setWaterAreaMapSymbolId] = useState<string | undefined>(undefined);
-  const [waterAreaCoordinateSystem, setWaterAreaCoordinateSystem] = useState<number | undefined>(undefined);
-  const [waterAreaDisplayRule, setWaterAreaDisplayRule] = useState<string | undefined>(undefined);
-  const [waterAreaAnchorPoints, setWaterAreaAnchorPoints] = useState<Array<{ name: string } & DmsPoint>>([]);
-  const [waterAreaSaving, setWaterAreaSaving] = useState(false);
-  const waterAreaSymbolSelectRef = useRef<any>(null);
+  const [waterAreaGeometryType, setWaterAreaGeometryType] = useState<string | undefined>('POINT');
+  const [waterAreaMapSymbolId, setWaterAreaMapSymbolId] = useState<string | undefined>();
+  const [waterAreaCoordinateSystem, setWaterAreaCoordinateSystem] = useState<number | undefined>(1);
+  const [waterAreaDisplayRule, setWaterAreaDisplayRule] = useState<string | undefined>('Độ, phút, giây (DMS)');
+  const [waterAreaAnchorPoints, setWaterAreaAnchorPoints] = useState<Array<{
+    name: string;
+    latD: number | null; latM: number | null; latS: number | null;
+    lngD: number | null; lngM: number | null; lngS: number | null;
+  }>>([]);
+
+  const anchorBoxRef = useRef<HTMLDivElement>(null);
+  const [anchorBoxHeight, setAnchorBoxHeight] = useState<number | undefined>();
+  const viewingAnchorBoxRef = useRef<HTMLDivElement>(null);
+  const [viewingAnchorBoxHeight, setViewingAnchorBoxHeight] = useState<number | undefined>();
+
+  const updateAnchorBoxHeight = useCallback(() => {
+    if (!waterAreaDrawerOpen || !formAnchorPointsOpen || !anchorBoxRef.current) return;
+    const targetY = getFilterSearchTopY();
+    const boxRect = anchorBoxRef.current.getBoundingClientRect();
+    if (boxRect.top > 0) {
+      const h = Math.round(targetY - boxRect.top);
+      setAnchorBoxHeight(Math.max(230, h));
+    }
+  }, [waterAreaDrawerOpen, formAnchorPointsOpen]);
 
   useEffect(() => {
-    symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
-      .then(r => setSymbols(r.data || []))
-      .catch(() => {});
-    organizationService.list({ pageSize: 1000 })
-      .then(r => setOrganizations(r.data || []))
-      .catch(() => {});
+    if (!waterAreaDrawerOpen || !formAnchorPointsOpen) return;
+    updateAnchorBoxHeight();
+    const t1 = setTimeout(updateAnchorBoxHeight, 60);
+    const t2 = setTimeout(updateAnchorBoxHeight, 180);
+    const t3 = setTimeout(updateAnchorBoxHeight, 350);
+    window.addEventListener('resize', updateAnchorBoxHeight);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', updateAnchorBoxHeight);
+    };
+  }, [waterAreaDrawerOpen, formAnchorPointsOpen, formMapParamsOpen, updateAnchorBoxHeight]);
+
+  const updateViewingAnchorBoxHeight = useCallback(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen || !viewingAnchorBoxRef.current) return;
+    const targetY = getFilterSearchTopY();
+    const boxRect = viewingAnchorBoxRef.current.getBoundingClientRect();
+    if (boxRect.top > 0) {
+      const h = Math.round(targetY - boxRect.top);
+      setViewingAnchorBoxHeight(Math.max(230, h));
+    }
+  }, [viewingWaterArea, viewingAnchorPointsOpen]);
+
+  useEffect(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen) return;
+    updateViewingAnchorBoxHeight();
+    const t1 = setTimeout(updateViewingAnchorBoxHeight, 60);
+    const t2 = setTimeout(updateViewingAnchorBoxHeight, 180);
+    const t3 = setTimeout(updateViewingAnchorBoxHeight, 350);
+    window.addEventListener('resize', updateViewingAnchorBoxHeight);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', updateViewingAnchorBoxHeight);
+    };
+  }, [viewingWaterArea, viewingAnchorPointsOpen, viewingMapParamsOpen, updateViewingAnchorBoxHeight]);
+
+  const anchorTableScrollY = anchorBoxHeight ? Math.max(70, anchorBoxHeight - 160) : 'calc(100vh - 540px)';
+  const viewingAnchorTableScrollY = viewingAnchorBoxHeight ? Math.max(70, viewingAnchorBoxHeight - 148) : 'calc(100vh - 500px)';
+
+  const editPortIdRef = useRef<string | undefined>(undefined);
+
+  // Load organizations
+  useEffect(() => {
+    (async () => {
+      setLoadingOrgs(true);
+      try {
+        const r = await organizationService.list({ pageSize: 1000 });
+        setOrgUnits(r.data || []);
+      } catch { /* silent */ }
+      finally { setLoadingOrgs(false); }
+    })();
+  }, []);
+
+  // Load users for attachment display
+  useEffect(() => {
     (async () => {
       try {
         const resp = await userService.list({ pageSize: 1000 });
@@ -359,180 +460,288 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
     })();
   }, []);
 
-  const loadPortOptions = async (orgUnitId: string) => {
-    try {
-      const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
-      if (orgUnitId) params.orgUnitId = orgUnitId;
-      const r = await portCRUD.search(params);
-      const ports = (r.data || []).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
-      setPortOptions(ports);
-      if (ports.length === 0) toast.warning('Đơn vị quản lý chưa có cảng biển được phê duyệt');
-    } catch {
-      setPortOptions([]);
-    }
-  };
-
+  // Load symbols
   useEffect(() => {
-    if (watchedOrgUnitId) {
-      if (!isEdit || !form.getFieldValue('portId')) {
-        form.setFieldsValue({ portId: undefined, transferAreaCode: undefined });
-      }
-      loadPortOptions(watchedOrgUnitId);
+    (async () => {
+      setLoadingSymbols(true);
+      try {
+        const r = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+        setSymbols(r.data || (r as any).content || []);
+      } catch { /* silent */ }
+      finally { setLoadingSymbols(false); }
+    })();
+  }, []);
+
+  // Filter ports when orgUnit changes
+  useEffect(() => {
+    if (!watchedOrgUnitId) {
+      setPortOptions([]);
+      return;
     }
+    (async () => {
+      setLoadingPorts(true);
+      try {
+        const r = await portCRUD.findAll({ orgUnitId: watchedOrgUnitId, approvalStatus: 'APPROVED', page: 1, size: 1000 });
+        setPortOptions((r.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
+      } catch { /* silent */ }
+      finally { setLoadingPorts(false); }
+    })();
   }, [watchedOrgUnitId]);
 
+  // Auto-generate code when portId selected (for create mode)
   useEffect(() => {
     if (!watchedPortId || (isEdit && editPortIdRef.current === watchedPortId)) return;
     setTransferAreaCodeLoading(true);
     transferAreaCRUD.generateCode(watchedPortId)
       .then((res: any) => {
-        if (res?.transferAreaCode) form.setFieldsValue({ transferAreaCode: res.transferAreaCode });
+        const code = res?.transferAreaCode ?? res?.data?.transferAreaCode;
+        if (code) form.setFieldsValue({ transferAreaCode: code });
       })
       .catch(() => {})
       .finally(() => setTransferAreaCodeLoading(false));
-  }, [watchedPortId]);
+  }, [watchedPortId, isEdit, form]);
 
-  // Đơn vị quản lý KHÔNG tự điền sẵn — để người dùng chủ động chọn từ cây đơn vị (không mặc định 1 giá trị).
-
+  // Sync geometryType to coordinateList
   useEffect(() => {
-    if (!watchedGeometryType) return;
-    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    if (!watchedGeometryType) {
+      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+      setCoordinateList([]);
+      return;
+    }
+    form.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
     if (!isEdit) {
-      setCoordinateList(Array.from({ length: count }, () => emptyDmsPoint()));
+      form.setFieldsValue({ coordinateSystem: 1 });
+      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 0;
+      setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
     } else {
+      if (form.getFieldValue('coordinateSystem') == null) form.setFieldsValue({ coordinateSystem: 1 });
+      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
       setCoordinateList((prev) => {
+        if (watchedGeometryType === 'POINT' && prev.length > 1) return prev.slice(0, 1);
         if (prev.length >= count) return prev;
-        const added = Array.from({ length: count - prev.length }, () => emptyDmsPoint());
+        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
         return [...prev, ...added];
       });
     }
-  }, [watchedGeometryType]);
+  }, [watchedGeometryType, isEdit, form]);
 
-  useEffect(() => {
-    if (!waterAreaGeometryType) return;
-    setWaterAreaCoordinateSystem(1);
-    setWaterAreaDisplayRule('Độ, phút, giây (DMS)');
-    const count = GEOMETRY_POINT_COUNT[waterAreaGeometryType] ?? 1;
-    setWaterAreaAnchorPoints((prev) => {
-      if (prev.length >= count) return prev;
-      const added = Array.from({ length: count - prev.length }, () => ({ name: '', ...emptyDmsPoint() }));
-      return [...prev, ...added];
-    });
-  }, [waterAreaGeometryType]);
-
-  // Edit mode: load existing
+  // Load initial data for Edit mode
   useEffect(() => {
     if (!isEdit || !id) return;
     (async () => {
       try {
-        const data: any = await transferAreaCRUD.findById(id);
-        const ec = data.coordinates ? parseGisCoordinates({ geometryType: data.geometryType, coordinates: data.coordinates }) : [];
-        setCoordinateList(ec.length > 0 ? ec.map(c => decimalToDmsPoint(c.latitude, c.longitude)) : data.latitude != null ? [decimalToDmsPoint(data.latitude, data.longitude)] : []);
-        setWaterAreaList(Array.isArray(data.mooringWaterAreas) && data.mooringWaterAreas.length > 0
-          ? data.mooringWaterAreas.map((w: any) => ({
-              description: w.description ?? w,
-              geometryType: w.geometryType,
-              mapSymbolId: w.mapSymbolId,
-              coordinateSystem: w.coordinateSystem,
-              displayRule: w.displayRule,
-              anchorPoints: Array.isArray(w.anchorPoints)
-                ? w.anchorPoints.map((p: any) => ({ name: p.name, latitude: p.latitude, longitude: p.longitude }))
-                : [],
-            }))
-          : []);
-        if (data.orgUnitId) await loadPortOptions(data.orgUnitId);
-        try {
-          const files = await transferAreaCRUD.listAttachments(id);
-          setAttachments(
-            (files || []).map((a: any) => ({
-              id: a.id,
-              fileName: a.fileName || a.name,
-              fileSize: a.fileSize,
-              uploadedBy: a.uploadedBy,
-              uploadedAt: a.uploadedAt,
-            }))
-          );
-        } catch {
-          setAttachments([]);
-        }
-        editPortIdRef.current = data.portId;
+        const d: any = await transferAreaCRUD.findById(id);
+        editPortIdRef.current = d.portId;
         form.setFieldsValue({
-          orgUnitId: data.orgUnitId,
-          portId: data.portId,
-          transferAreaCode: data.transferAreaCode,
-          transferAreaName: data.transferAreaName,
-          provinceId: data.provinceId ? VIETNAM_PROVINCES[data.provinceId - 1] ?? undefined : undefined,
-          detailedLocation: data.detailedLocation,
-          shapeDescription: data.shapeDescription,
-          area: data.area,
-          designWaterDepth: data.designWaterDepth,
-          currentWaterDepth: data.currentWaterDepth,
-          bottomElevationDesign: data.bottomElevationDesign,
-          maxVesselDWT: data.maxVesselDWT,
-          activeTransferCount: data.activeTransferCount,
-          publishedTransferCount: data.publishedTransferCount,
-          underInvestmentTransferCount: data.underInvestmentTransferCount,
-          operationalFunctions: data.operationalFunctions ? data.operationalFunctions.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined,
-          operationalStatus: data.operationalStatus || undefined,
-          remarks: data.remarks,
-          openingAnnouncementDate: data.openingAnnouncementDate ? dayjs(data.openingAnnouncementDate) : undefined,
-          activityStartDate: data.activityStartDate ? dayjs(data.activityStartDate) : undefined,
-          activityEndDate: data.activityEndDate ? dayjs(data.activityEndDate) : undefined,
-          publicDecision: data.publicDecision,
-          investmentAgreement: data.investmentAgreement,
-          geometryType: data.geometryType || undefined,
-          mapSymbolId: data.mapSymbolId,
-          coordinateSystem: data.coordinateSystem,
-          displayRule: data.displayRule,
+          orgUnitId: d.orgUnitId,
+          portId: d.portId,
+          transferAreaCode: d.transferAreaCode,
+          transferAreaName: d.transferAreaName,
+          provinceId: d.provinceId ? VIETNAM_PROVINCES[d.provinceId - 1] ?? undefined : undefined,
+          detailedLocation: d.detailedLocation,
+          operationalFunctions: d.operationalFunctions ? d.operationalFunctions.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined,
+          operationalStatus: d.operationalStatus || undefined,
+          shapeDescription: d.shapeDescription,
+          area: normalizeSafeNumber(d.area),
+          designWaterDepth: normalizeSafeNumber(d.designWaterDepth),
+          currentWaterDepth: normalizeSafeNumber(d.currentWaterDepth),
+          bottomElevationDesign: normalizeSafeNumber(d.bottomElevationDesign),
+          maxVesselDWT: normalizeSafeNumber(d.maxVesselDWT),
+          activeTransferCount: d.activeTransferCount,
+          publishedTransferCount: d.publishedTransferCount,
+          underInvestmentTransferCount: d.underInvestmentTransferCount,
+          remarks: d.remarks,
+          openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined,
+          publicDecision: d.publicDecision,
+          investmentAgreement: d.investmentAgreement,
+          activityStartDate: d.activityStartDate ? dayjs(d.activityStartDate) : undefined,
+          activityEndDate: d.activityEndDate ? dayjs(d.activityEndDate) : undefined,
+          geometryType: d.geometryType || undefined,
+          mapSymbolId: d.mapSymbolId,
+          coordinateSystem: d.coordinateSystem ?? 1,
+          displayRule: (d.displayRule != null || d.geometryType) ? 'Độ, phút, giây (DMS)' : undefined,
         });
+
+        // Parse coordinates
+        const ec = d.coordinates ? parseGisCoordinates({ geometryType: d.geometryType, coordinates: d.coordinates }) : [];
+        if (ec.length > 0) {
+          setCoordinateList(ec.map(c => {
+            const latDms = ddToDms(c.latitude);
+            const lngDms = ddToDms(c.longitude);
+            return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+          }));
+        } else if (d.latitude != null && d.longitude != null) {
+          const latDms = ddToDms(Number(d.latitude));
+          const lngDms = ddToDms(Number(d.longitude));
+          setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
+        }
+
+        // Mooring water areas
+        if (Array.isArray(d.mooringWaterAreas) && d.mooringWaterAreas.length > 0) {
+          setWaterAreaList(d.mooringWaterAreas.map((w: any) => ({
+            description: w.description ?? '',
+            geometryType: w.geometryType,
+            mapSymbolId: w.mapSymbolId,
+            coordinateSystem: w.coordinateSystem,
+            displayRule: w.displayRule,
+            anchorPoints: Array.isArray(w.anchorPoints)
+              ? w.anchorPoints.map((p: any) => ({ name: p.name, latitude: p.latitude, longitude: p.longitude }))
+              : [],
+          })));
+        }
+
+        // Attachments
+        try {
+          const fr = await api.get(`/v1/transfer-area/${id}/attachments`);
+          const files = fr.data?.data || [];
+          setUploadedFiles(files.map((a: any) => ({
+            ...a,
+            uid: a.id ?? a.uid,
+            name: a.fileName ?? a.name,
+            fileName: a.fileName ?? a.name,
+            size: a.fileSize ?? a.size ?? 0,
+            fileSize: a.fileSize ?? a.size ?? 0,
+            type: a.fileType ?? a.contentType ?? '',
+            fileType: a.fileType ?? a.contentType ?? '',
+            uploadedByName: a.uploadedByName || a.uploaderName || a.uploadedBy,
+            uploadedBy: a.uploadedBy,
+            uploadedDate: a.uploadedDate || a.uploadedAt || a.createdAt,
+            uploadedAt: a.uploadedAt || a.uploadedDate || a.createdAt,
+            createdAt: a.createdAt || a.uploadedAt || a.uploadedDate,
+            status: 'done' as const,
+          })));
+        } catch { setUploadedFiles([]); }
       } catch {
         toast.error('Không thể tải thông tin khu chuyển tải');
       }
     })();
-  }, [isEdit, id]);
+  }, [isEdit, id, form]);
 
-  const removeCoordinate = (i: number) => { setCoordinateList(p => p.filter((_, idx) => idx !== i)); setGpsError(null); };
-  const addGpsPoint = () => { setCoordinateList(p => [...p, emptyDmsPoint()]); setGpsError(null); };
-  const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null | undefined, mVal: number | null | undefined, sVal: number | null | undefined) => {
+  const handleOrgUnitChange = () => {
+    form.setFieldsValue({ portId: undefined, transferAreaCode: undefined });
+  };
+
+  const handlePortChange = () => {
+    form.setFieldsValue({ transferAreaCode: undefined });
+  };
+
+  // Attachment upload/download helpers
+  const triggerBlobDownload = (data: BlobPart | undefined, downloadName: string) => {
+    if (!data) return false;
+    const url = window.URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = downloadName || 'attachment';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    return true;
+  };
+
+  const handleDownloadAttachment = (uid: string, name?: string) => {
+    const attachment = uploadedFiles.find((file: any) => file.uid === uid || file.id === uid);
+    if (attachment?.originFileObj) {
+      triggerBlobDownload(attachment.originFileObj, name || attachment.originFileObj.name);
+      return;
+    }
+    if (!id) {
+      toast.info(`Đang tải xuống tệp: ${name}`);
+      return;
+    }
+    api.get(`/v1/transfer-area/${id}/attachments/${uid}/download`, { responseType: 'blob' })
+      .then((response) => {
+        if (!triggerBlobDownload(response.data, name || 'attachment')) toast.error('Không thể tải xuống tệp đính kèm');
+      })
+      .catch(() => toast.error('Không thể tải xuống tệp đính kèm'));
+  };
+
+  const handleBeforeUpload = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) { toast.error('Kích thước file tối đa 20MB'); return false; }
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) {
+      toast.error('Định dạng không hỗ trợ');
+      return false;
+    }
+    if (uploadedFiles.length >= MAX_FILE_COUNT) { toast.error('Tối đa 10 file'); return false; }
+    const nowIso = dayjs().toISOString();
+    const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+    setUploadedFiles((prev) => [
+      ...prev,
+      {
+        uid: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        name: file.name,
+        fileName: file.name,
+        size: file.size,
+        fileSize: file.size,
+        type: file.type,
+        fileType: file.type,
+        uploadedByName: uploaderName,
+        uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+        uploadedDate: nowIso,
+        uploadedAt: nowIso,
+        createdAt: nowIso,
+        status: 'done',
+        originFileObj: file,
+      },
+    ]);
+    return false;
+  };
+
+  const handleRemoveFile = (file: UploadFile) => {
+    setUploadedFiles(prev => prev.filter(x => x.uid !== file.uid));
+  };
+
+  // GPS points
+  const addGpsPoint = () => {
+    setCoordinateList([...coordinateList, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
+  };
+  const removeCoordinate = (i: number) => {
+    setCoordinateList(coordinateList.filter((_, idx) => idx !== i));
+  };
+  const updateGpsPoint = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
     setCoordinateList(p => {
       const n = [...p];
       n[i] = {
         ...n[i],
-        [field === 'lat' ? 'latD' : 'lngD']: dVal ?? null,
-        [field === 'lat' ? 'latM' : 'lngM']: mVal ?? null,
-        [field === 'lat' ? 'latS' : 'lngS']: sVal ?? null,
+        [field === 'lat' ? 'latD' : 'lngD']: dVal,
+        [field === 'lat' ? 'latM' : 'lngM']: mVal,
+        [field === 'lat' ? 'latS' : 'lngS']: sVal,
       };
       return n;
     });
-    setGpsError(null);
   };
 
-  // ── Handlers khu nước neo buộc tàu ──
-  const openCreateWaterAreaDrawer = () => {
+  // Mooring water area drawer helpers
+  const openAddWaterArea = () => {
     setEditingWaterAreaIndex(null);
     setWaterAreaDescription('');
-    setWaterAreaGeometryType(undefined);
+    setWaterAreaGeometryType('POINT');
     setWaterAreaMapSymbolId(undefined);
-    setWaterAreaCoordinateSystem(undefined);
-    setWaterAreaDisplayRule(undefined);
+    setWaterAreaCoordinateSystem(1);
+    setWaterAreaDisplayRule('Độ, phút, giây (DMS)');
     setWaterAreaAnchorPoints([]);
+    setFormMapParamsOpen(true);
+    setFormAnchorPointsOpen(true);
     setWaterAreaDrawerOpen(true);
   };
 
-  const openEditWaterAreaDrawer = (index: number) => {
-    const item = waterAreaList[index];
-    if (!item) return;
-    setEditingWaterAreaIndex(index);
+  const openEditWaterArea = (i: number) => {
+    const item = waterAreaList[i];
+    setEditingWaterAreaIndex(i);
     setWaterAreaDescription(item.description || '');
-    setWaterAreaGeometryType(item.geometryType);
+    setWaterAreaGeometryType(item.geometryType || 'POINT');
     setWaterAreaMapSymbolId(item.mapSymbolId);
     setWaterAreaCoordinateSystem(item.coordinateSystem ?? 1);
-    setWaterAreaDisplayRule(item.displayRule ?? 'Độ, phút, giây (DMS)');
-    setWaterAreaAnchorPoints((item.anchorPoints || []).map(p => ({
-      name: p.name || '',
-      ...decimalToDmsPoint(p.latitude, p.longitude),
-    })));
+    setWaterAreaDisplayRule(item.displayRule || 'Độ, phút, giây (DMS)');
+    setWaterAreaAnchorPoints(item.anchorPoints ? item.anchorPoints.map(p => {
+      const latDms = ddToDms(p.latitude);
+      const lngDms = ddToDms(p.longitude);
+      return { name: p.name || '', latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+    }) : []);
+    setFormMapParamsOpen(true);
+    setFormAnchorPointsOpen(true);
     setWaterAreaDrawerOpen(true);
   };
 
@@ -541,119 +750,138 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
     setEditingWaterAreaIndex(null);
   };
 
+  const removeWaterArea = (i: number) => {
+    setWaterAreaList(p => p.filter((_, idx) => idx !== i));
+  };
+
   const addAnchorPoint = () => {
-    setWaterAreaAnchorPoints(prev => [...prev, { name: '', ...emptyDmsPoint() }]);
+    if (!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1)) {
+      return;
+    }
+    setWaterAreaAnchorPoints(p => [...p, { name: '', latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
   };
-
-  const removeAnchorPoint = (idx: number) => {
-    setWaterAreaAnchorPoints(prev => prev.filter((_, i) => i !== idx));
+  const removeAnchorPoint = (i: number) => {
+    setWaterAreaAnchorPoints(p => p.filter((_, idx) => idx !== i));
   };
-
-  const updateAnchorPointName = (idx: number, name: string) => {
-    setWaterAreaAnchorPoints(prev => {
-      const n = [...prev];
-      n[idx] = { ...n[idx], name };
-      return n;
-    });
+  const updateAnchorPointName = (i: number, name: string) => {
+    setWaterAreaAnchorPoints(p => { const n = [...p]; n[i] = { ...n[i], name }; return n; });
   };
-
-  const updateAnchorPointCoord = (idx: number, field: 'lat' | 'lng', d: number | null | undefined, m: number | null | undefined, s: number | null | undefined) => {
-    setWaterAreaAnchorPoints(prev => {
-      const n = [...prev];
-      n[idx] = {
-        ...n[idx],
-        [field === 'lat' ? 'latD' : 'lngD']: d ?? null,
-        [field === 'lat' ? 'latM' : 'lngM']: m ?? null,
-        [field === 'lat' ? 'latS' : 'lngS']: s ?? null,
+  const updateAnchorPointCoord = (i: number, field: 'lat' | 'lng', dVal: number | null, mVal: number | null, sVal: number | null) => {
+    setWaterAreaAnchorPoints(p => {
+      const n = [...p];
+      n[i] = {
+        ...n[i],
+        [field === 'lat' ? 'latD' : 'lngD']: dVal,
+        [field === 'lat' ? 'latM' : 'lngM']: mVal,
+        [field === 'lat' ? 'latS' : 'lngS']: sVal,
       };
       return n;
     });
   };
 
   const saveWaterArea = () => {
-    const desc = waterAreaDescription.trim();
-    if (!desc) {
-      toast.error('Vui lòng nhập phạm vi khu nước neo buộc tàu');
-      return;
-    }
-    setWaterAreaSaving(true);
-    try {
-      const anchorPoints: AnchorPointField[] = waterAreaAnchorPoints.map(p => {
-        const dec = dmsPointToDecimal(p);
-        return {
-          name: p.name.trim(),
-          latitude: p.latD != null && p.latM != null && p.latS != null ? dec.latitude : null,
-          longitude: p.lngD != null && p.lngM != null && p.lngS != null ? dec.longitude : null,
-        };
-      });
-
-      const newArea: MooringWaterAreaField = {
-        description: desc,
-        geometryType: waterAreaGeometryType,
-        mapSymbolId: waterAreaMapSymbolId,
-        coordinateSystem: waterAreaCoordinateSystem,
-        displayRule: waterAreaDisplayRule,
-        anchorPoints,
-      };
-
-      if (editingWaterAreaIndex == null) {
-        setWaterAreaList(prev => [...prev, newArea]);
-        toast.success('Đã thêm khu nước neo buộc tàu');
-      } else {
-        setWaterAreaList(prev => {
-          const n = [...prev];
-          n[editingWaterAreaIndex] = newArea;
-          return n;
-        });
-        toast.success('Đã cập nhật khu nước neo buộc tàu');
+    if (waterAreaGeometryType) {
+      if (!waterAreaMapSymbolId) {
+        toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
+        return;
       }
-      closeWaterAreaDrawer();
-    } finally {
-      setWaterAreaSaving(false);
+
+      const validPoints = waterAreaAnchorPoints.filter(
+        (p) => p.latD != null && p.latM != null && p.latS != null && p.lngD != null && p.lngM != null && p.lngS != null
+      );
+      const minCount = GEOMETRY_POINT_COUNT[waterAreaGeometryType] ?? 1;
+
+      if (validPoints.length < minCount) {
+        const msg =
+          waterAreaGeometryType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : waterAreaGeometryType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+        toast.error(msg);
+        return;
+      }
+
+      if (waterAreaGeometryType === 'POINT' && validPoints.length > 1) {
+        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+        return;
+      }
     }
-  };
 
-  const removeWaterArea = (index: number) => {
-    setWaterAreaList(prev => prev.filter((_, i) => i !== index));
-    toast.success('Đã xóa khu nước neo buộc tàu');
-  };
-
-  const triggerBlobDownload = (data: BlobPart | undefined, downloadName: string) => {
-    if (!data) return false;
-    const blob = data instanceof Blob ? data : new Blob([data]);
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = downloadName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    return true;
-  };
-
-  const handleDownloadAttachment = async (uid: string, name?: string) => {
-    const pending = pendingFiles.find((_, i) => `pending-${i}` === uid);
-    if (pending) {
-      triggerBlobDownload(pending, name || pending.name);
+    const partial = waterAreaAnchorPoints.find((p) => {
+      const latSet = p.latD != null || p.latM != null || p.latS != null;
+      const lngSet = p.lngD != null || p.lngM != null || p.lngS != null;
+      const latFull = p.latD != null && p.latM != null && p.latS != null;
+      const lngFull = p.lngD != null && p.lngM != null && p.lngS != null;
+      return (latSet && !latFull) || (lngSet && !lngFull) || (latFull && !lngFull) || (!latFull && lngFull);
+    });
+    if (partial) {
+      toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ điểm neo');
       return;
     }
-    if (!id) {
-      toast.info(`Đang tải xuống tệp: ${name}`);
+
+    const invalidRange = waterAreaAnchorPoints.find((p) => {
+      if (p.latD != null && (p.latD < 0 || p.latD > 90)) return true;
+      if (p.latM != null && (p.latM < 0 || p.latM > 59)) return true;
+      if (p.latS != null && (p.latS < 0 || p.latS >= 60)) return true;
+      if (p.lngD != null && (p.lngD < 0 || p.lngD > 180)) return true;
+      if (p.lngM != null && (p.lngM < 0 || p.lngM > 59)) return true;
+      if (p.lngS != null && (p.lngS < 0 || p.lngS >= 60)) return true;
+      return false;
+    });
+    if (invalidRange) {
+      toast.error('Tọa độ điểm neo nằm ngoài dải hợp lệ (Vĩ độ: 0-90°, Kinh độ: 0-180°, Phút/Giây: 0-59.99)');
       return;
     }
-    try {
-      await transferAreaCRUD.downloadAttachment(id, uid, name);
-    } catch {
-      toast.error('Không thể tải xuống tệp đính kèm');
+
+    const namedWithoutCoords = waterAreaAnchorPoints.find((p) => {
+      const hasName = !!p.name?.trim();
+      const hasCoord = p.latD != null || p.latM != null || p.latS != null || p.lngD != null || p.lngM != null || p.lngS != null;
+      return hasName && !hasCoord;
+    });
+    if (namedWithoutCoords) {
+      toast.error(`Vui lòng nhập tọa độ cho điểm neo "${namedWithoutCoords.name.trim()}"`);
+      return;
     }
+
+    const emptyRow = waterAreaAnchorPoints.find((p) => {
+      const noName = !p.name?.trim();
+      const noCoord = p.latD == null && p.latM == null && p.latS == null && p.lngD == null && p.lngM == null && p.lngS == null;
+      return noName && noCoord;
+    });
+    if (emptyRow) {
+      toast.error('Vui lòng nhập đầy đủ thông tin điểm neo hoặc xóa hàng trống');
+      return;
+    }
+
+    const item: MooringWaterAreaItem = {
+      description: waterAreaDescription.trim(),
+      geometryType: waterAreaGeometryType,
+      mapSymbolId: waterAreaMapSymbolId,
+      coordinateSystem: waterAreaCoordinateSystem,
+      displayRule: waterAreaDisplayRule,
+      anchorPoints: waterAreaAnchorPoints
+        .filter(p => p.name.trim() || p.latD != null || p.lngD != null)
+        .map(p => ({
+          name: p.name.trim(),
+          latitude: (p.latD != null || p.latM != null || p.latS != null) ? dmToDd(p.latD, p.latM, p.latS) : undefined,
+          longitude: (p.lngD != null || p.lngM != null || p.lngS != null) ? dmToDd(p.lngD, p.lngM, p.lngS) : undefined,
+        })),
+    };
+    setWaterAreaList(prev => {
+      if (editingWaterAreaIndex == null) return [...prev, item];
+      const n = [...prev];
+      n[editingWaterAreaIndex] = item;
+      return n;
+    });
+    closeWaterAreaDrawer();
   };
 
-  // ── Form Save Handler ──
+  // Main Save logic
   const handleSave = useCallback(async (saveAction: SaveAction) => {
-    let values: any;
+    const vals = form.getFieldsValue();
     try {
-      values = await form.validateFields();
+      await form.validateFields();
     } catch (e: any) {
       const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
       const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
@@ -663,130 +891,229 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
       } else {
         setActiveTabKey('general');
       }
-      return;
+      return false;
     }
 
-    if (!values.provinceId) {
+    if (!vals.provinceId) {
+      toast.error('Địa điểm (Tỉnh/Thành Phố) là bắt buộc');
       setActiveTabKey('general');
-      toast.error('Địa điểm (Tỉnh/Thành phố) là bắt buộc');
-      return;
+      return false;
+    }
+    if (!vals.operationalStatus) {
+      toast.error('Tình trạng là bắt buộc');
+      setActiveTabKey('general');
+      return false;
+    }
+    if (!vals.operationalFunctions || (Array.isArray(vals.operationalFunctions) && vals.operationalFunctions.length === 0)) {
+      toast.error('Công năng khai thác là bắt buộc');
+      setActiveTabKey('general');
+      return false;
     }
 
-    // Validate GIS coordinates
-    const geomType = values.geometryType;
-    let validCoords: Array<{ latitude: number; longitude: number }> = [];
-    if (geomType) {
-      const res = validateDmsCoordinates(coordinateList, geomType);
-      if (!res.valid) {
-        const errMsg = res.errorMessage || 'Tọa độ GPS chưa hợp lệ';
-        setGpsError(errMsg);
+    if (vals.geometryType) {
+      if (!vals.mapSymbolId) {
         setActiveTabKey('location');
-        toast.error(errMsg);
-        return;
+        form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
+        toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
+        return false;
       }
-      validCoords = res.validCoords;
+
+      const minCount = GEOMETRY_POINT_COUNT[vals.geometryType as string] ?? 1;
+      const validCoords = coordinateList.filter(
+        (c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null
+      );
+
+      if (validCoords.length < minCount) {
+        setActiveTabKey('location');
+        const msg =
+          vals.geometryType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : vals.geometryType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+        toast.error(msg);
+        return false;
+      }
+
+      if (vals.geometryType === 'POINT' && validCoords.length > 1) {
+        setActiveTabKey('location');
+        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+        return false;
+      }
+
+      const partial = coordinateList.find((c) => {
+        const latSet = c.latD != null || c.latM != null || c.latS != null;
+        const lngSet = c.lngD != null || c.lngM != null || c.lngS != null;
+        const latFull = c.latD != null && c.latM != null && c.latS != null;
+        const lngFull = c.lngD != null && c.lngM != null && c.lngS != null;
+        return (latSet && !latFull) || (lngSet && !lngFull);
+      });
+      if (partial) {
+        setActiveTabKey('location');
+        toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ GPS trong tab Thông tin vị trí');
+        return false;
+      }
+
+      const invalidRange = coordinateList.find((c) => {
+        if (c.latD != null && (c.latD < 0 || c.latD > 90)) return true;
+        if (c.latM != null && (c.latM < 0 || c.latM > 59)) return true;
+        if (c.latS != null && (c.latS < 0 || c.latS >= 60)) return true;
+        if (c.lngD != null && (c.lngD < 0 || c.lngD > 180)) return true;
+        if (c.lngM != null && (c.lngM < 0 || c.lngM > 59)) return true;
+        if (c.lngS != null && (c.lngS < 0 || c.lngS >= 60)) return true;
+        return false;
+      });
+      if (invalidRange) {
+        setActiveTabKey('location');
+        toast.error('Tọa độ GPS nằm ngoài dải hợp lệ (Vĩ độ: 0-90°, Kinh độ: 0-180°, Phút/Giây: 0-59.99)');
+        return false;
+      }
     }
+
+    const validCoords = vals.geometryType
+      ? coordinateList.filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+      : [];
+    const wktCoordinates = vals.geometryType && validCoords.length > 0
+      ? serializeCoordinatesToWkt(
+          validCoords.map((c) => ({
+            latitude: dmToDd(c.latD, c.latM, c.latS),
+            longitude: dmToDd(c.lngD, c.lngM, c.lngS),
+          })),
+          vals.geometryType || 'POINT'
+        )
+      : undefined;
 
     onSubmittingChange?.(true);
     try {
-      const decimals = validCoords.length > 0 ? validCoords : coordinateList
-        .filter(c => c.latD != null && c.lngD != null)
-        .map(dmsPointToDecimal);
+      const provinceIndex = VIETNAM_PROVINCES.indexOf(vals.provinceId);
+      const provinceNumber = provinceIndex >= 0 ? provinceIndex + 1 : undefined;
 
-      const wkt = geomType && decimals.length > 0
-        ? serializeCoordinatesToWkt(decimals, geomType || 'POINT')
-        : undefined;
+      const mooringPayload = waterAreaList
+        .map(w => ({
+          description: w.description?.trim() || undefined,
+          geometryType: w.geometryType || undefined,
+          mapSymbolId: w.mapSymbolId || undefined,
+          coordinateSystem: w.coordinateSystem != null ? Number(w.coordinateSystem) : undefined,
+          displayRule: w.displayRule || undefined,
+          anchorPoints: (w.anchorPoints || [])
+            .filter(p => p.name?.trim() || (p.latitude != null && p.longitude != null))
+            .map(p => ({
+              name: p.name?.trim() || undefined,
+              latitude: p.latitude != null && !isNaN(Number(p.latitude)) ? Number(p.latitude) : undefined,
+              longitude: p.longitude != null && !isNaN(Number(p.longitude)) ? Number(p.longitude) : undefined,
+            })),
+        }));
 
-      const firstCoord = decimals[0];
+      const opFunctions = Array.isArray(vals.operationalFunctions)
+        ? vals.operationalFunctions.join(',')
+        : (vals.operationalFunctions || undefined);
 
-      const payload: any = {
-        transferAreaCode: values.transferAreaCode,
-        transferAreaName: values.transferAreaName,
-        portId: values.portId,
-        orgUnitId: values.orgUnitId,
-        provinceId: values.provinceId ? VIETNAM_PROVINCES.indexOf(values.provinceId) + 1 : undefined,
-        detailedLocation: values.detailedLocation,
-        shapeDescription: values.shapeDescription,
-        area: values.area,
-        designWaterDepth: values.designWaterDepth,
-        currentWaterDepth: values.currentWaterDepth,
-        bottomElevationDesign: values.bottomElevationDesign,
-        maxVesselDWT: values.maxVesselDWT,
-        activeTransferCount: values.activeTransferCount,
-        publishedTransferCount: values.publishedTransferCount,
-        underInvestmentTransferCount: values.underInvestmentTransferCount,
-        operationalFunctions: Array.isArray(values.operationalFunctions) ? values.operationalFunctions.join(',') : values.operationalFunctions,
-        operationalStatus: values.operationalStatus,
-        remarks: values.remarks,
-        openingAnnouncementDate: values.openingAnnouncementDate ? values.openingAnnouncementDate.format('YYYY-MM-DD') : undefined,
-        activityStartDate: values.activityStartDate ? values.activityStartDate.format('YYYY-MM-DD') : undefined,
-        activityEndDate: values.activityEndDate ? values.activityEndDate.format('YYYY-MM-DD') : undefined,
-        publicDecision: values.publicDecision,
-        investmentAgreement: values.investmentAgreement,
-        geometryType: geomType,
-        mapSymbolId: values.mapSymbolId,
-        coordinateSystem: values.coordinateSystem,
-        displayRule: values.displayRule,
-        coordinates: wkt,
-        latitude: firstCoord?.latitude,
-        longitude: firstCoord?.longitude,
-        mooringWaterAreas: waterAreaList,
-        saveAction,
+      const payload: Record<string, unknown> = {
+        orgUnitId: vals.orgUnitId,
+        portId: vals.portId,
+        transferAreaCode: vals.transferAreaCode?.trim() || undefined,
+        transferAreaName: vals.transferAreaName?.trim(),
+        provinceId: provinceNumber,
+        detailedLocation: vals.detailedLocation?.trim() || undefined,
+        operationalFunctions: opFunctions,
+        operationalStatus: vals.operationalStatus || undefined,
+        shapeDescription: vals.shapeDescription?.trim() || undefined,
+        area: (vals.area === 0 || vals.area === '0') ? 0 : (vals.area != null && String(vals.area).trim() !== '' && !isNaN(Number(vals.area)) ? String(vals.area).trim() : undefined),
+        designWaterDepth: (vals.designWaterDepth === 0 || vals.designWaterDepth === '0') ? '0' : (vals.designWaterDepth || undefined),
+        currentWaterDepth: (vals.currentWaterDepth === 0 || vals.currentWaterDepth === '0') ? '0' : (vals.currentWaterDepth || undefined),
+        bottomElevationDesign: (vals.bottomElevationDesign === 0 || vals.bottomElevationDesign === '0') ? '0' : (vals.bottomElevationDesign || undefined),
+        maxVesselDWT: (vals.maxVesselDWT === 0 || vals.maxVesselDWT === '0') ? '0' : (vals.maxVesselDWT || undefined),
+        activeTransferCount: vals.activeTransferCount != null && !isNaN(Number(vals.activeTransferCount)) ? Number(vals.activeTransferCount) : undefined,
+        publishedTransferCount: vals.publishedTransferCount != null && !isNaN(Number(vals.publishedTransferCount)) ? Number(vals.publishedTransferCount) : undefined,
+        underInvestmentTransferCount: vals.underInvestmentTransferCount != null && !isNaN(Number(vals.underInvestmentTransferCount)) ? Number(vals.underInvestmentTransferCount) : undefined,
+        remarks: vals.remarks?.trim() || undefined,
+        openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
+        publicDecision: vals.publicDecision?.trim() || undefined,
+        investmentAgreement: vals.investmentAgreement?.trim() || undefined,
+        activityStartDate: vals.activityStartDate ? dayjs(vals.activityStartDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
+        activityEndDate: vals.activityEndDate ? dayjs(vals.activityEndDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
+        geometryType: vals.geometryType || undefined,
+        mapSymbolId: vals.mapSymbolId || undefined,
+        coordinateSystem: vals.coordinateSystem != null ? Number(vals.coordinateSystem) : undefined,
+        displayRule: vals.geometryType ? 1 : undefined,
+        latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
+        longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
+        coordinates: wktCoordinates || undefined,
+        mooringWaterAreas: mooringPayload.length > 0 ? mooringPayload : undefined,
       };
 
-      let savedRecord: any;
-      if (isEdit) {
-        payload.id = id;
-        savedRecord = await transferAreaCRUD.update(payload);
-        toast.success(
-          saveAction === 'APPROVED'
-            ? 'Đã lưu và phê duyệt khu chuyển tải'
-            : saveAction === 'SUBMIT'
-            ? 'Đã gửi phê duyệt khu chuyển tải'
-            : saveAction === 'DRAFT'
-            ? 'Đã lưu tạm khu chuyển tải'
-            : 'Đã cập nhật khu chuyển tải'
-        );
+      if (saveAction !== 'UPDATE') {
+        payload.saveAction = saveAction;
+      }
+      Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+
+      let createdId: string | undefined;
+      if (isEdit && id) {
+        await transferAreaCRUD.update({ ...payload, id } as any);
+        createdId = id;
       } else {
-        savedRecord = await transferAreaCRUD.create(payload);
-        toast.success(
-          saveAction === 'APPROVED'
-            ? 'Đã lưu và phê duyệt khu chuyển tải'
-            : saveAction === 'SUBMIT'
-            ? 'Đã tạo và gửi phê duyệt khu chuyển tải'
-            : saveAction === 'DRAFT'
-            ? 'Đã lưu tạm khu chuyển tải'
-            : 'Đã tạo mới khu chuyển tải'
-        );
+        const res: any = await transferAreaCRUD.create(payload as any);
+        createdId = res?.id ?? res?.data?.id;
       }
 
-      // Upload pending files if any
-      if (pendingFiles.length > 0 && savedRecord?.id) {
-        try {
-          await transferAreaCRUD.uploadAttachments(savedRecord.id, pendingFiles);
-        } catch {
-          toast.warning('Khu chuyển tải đã lưu nhưng không thể tải lên một số file đính kèm');
+      // Upload newly added files
+      if (createdId && uploadedFiles.length > 0) {
+        const newFiles = uploadedFiles.filter((fi: any) => fi.originFileObj);
+        if (newFiles.length > 0) {
+          try {
+            const fd = new FormData();
+            newFiles.forEach((fi: any) => {
+              fd.append('files', fi.originFileObj as File);
+            });
+            await api.post(`/v1/transfer-area/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
+          } catch {
+            toast.error('Tải lên tệp đính kèm thất bại');
+          }
         }
       }
 
+      toast.success(
+        saveAction === 'DRAFT'
+          ? 'Lưu tạm thành công'
+          : saveAction === 'APPROVED'
+            ? 'Phê duyệt thành công'
+            : saveAction === 'UPDATE'
+              ? 'Cập nhật thành công'
+              : 'Gửi phê duyệt thành công'
+      );
       onFinish(true);
+      return true;
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Lưu thất bại');
+      toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra');
+      return false;
     } finally {
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, waterAreaList, isEdit, id, pendingFiles, onFinish, onSubmittingChange]);
+  }, [form, isEdit, id, uploadedFiles, waterAreaList, coordinateList, onFinish, onSubmittingChange]);
 
-  useImperativeHandle(ref, () => ({
-    submit: (saveAction: SaveAction) => handleSave(saveAction),
-  }), [handleSave]);
+  useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
 
   const tabItems = [
+    // Tab 1: Thông tin chung
     {
       key: 'general',
       label: 'Thông tin chung',
       children: (
         <div style={drawerFormScrollStyle}>
+          <style>{`
+            .cn-op-2line-label .ant-form-item-label {
+              height: auto !important;
+              min-height: 44px !important;
+              align-items: flex-start !important;
+            }
+            .cn-op-2line-label .ant-form-item-label > label {
+              height: auto !important;
+              white-space: normal !important;
+              line-height: 1.45 !important;
+              overflow-wrap: break-word;
+            }
+          `}</style>
           {/* Card 1: Thông tin cơ bản & Quản lý vận hành */}
           <div style={sectionBoxStyle}>
             <div style={sectionHeaderStyle}>
@@ -797,52 +1124,78 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}>
-                  <OrgUnitTreeSelect organizations={organizations} placeholder="Chọn đơn vị..." allowClear showPath allLabel="Tất cả" treeDefaultExpandAll={false} />
+                <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
+                  <OrgUnitTreeSelect
+                    organizations={orgUnits}
+                    placeholder="Chọn đơn vị quản lý"
+                    loading={loadingOrgs}
+                    disabled={isEdit}
+                    showPath
+                    treeDefaultExpandAll={false}
+                    onChange={handleOrgUnitChange}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]}>
-                  <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label" options={portOptions} style={selectStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item name="transferAreaCode" {...labelProps('Mã khu chuyển tải')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder={transferAreaCodeLoading ? 'Đang tạo mã...' : 'Mã tự động sinh'} disabled style={readonlyInputStyle} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="transferAreaName" {...labelProps('Tên khu chuyển tải')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên khu chuyển tải là bắt buộc' }]}>
-                  <Input placeholder="Nhập tên khu chuyển tải" maxLength={255} count={{ show: true, max: 255 }} status={atMax.transferAreaName ? 'error' : undefined} style={{ ...inputStyle, borderColor: atMax.transferAreaName ? statusCritical : undefined }} />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}>
-                  <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
-                  <Input.TextArea placeholder="Nhập địa điểm chi tiết" maxLength={500} count={{ show: true, max: 500 }} rows={1} status={atMax.detailedLocation ? 'error' : undefined} style={{ ...textAreaStyle, borderRadius: 8, borderColor: atMax.detailedLocation ? statusCritical : undefined }} />
+                <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]} style={{ marginBottom: spaceFormField }}>
+                  <Select
+                    placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'}
+                    loading={loadingPorts}
+                    disabled={isEdit || !watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)}
+                    options={portOptions}
+                    showSearch
+                    optionFilterProp="label"
+                    notFoundContent="Không có cảng biển thuộc đơn vị quản lý"
+                    onChange={handlePortChange}
+                    style={selectStyle}
+                  />
                 </Form.Item>
               </Col>
             </Row>
-
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="operationalFunctions" {...labelProps('Công năng khai thác')} style={{ marginBottom: spaceFormField }}>
-                  <Select mode="multiple" placeholder="Chọn công năng khai thác" allowClear showSearch maxTagCount="responsive" options={OPERATIONAL_FUNCTIONS_OPTIONS} style={{ width: '100%', borderRadius: radiusPill }} />
+                <Form.Item name="transferAreaCode" {...labelProps('Mã khu chuyển tải')} style={{ marginBottom: spaceFormField }} tooltip="Mã được sinh tự động">
+                  <Input disabled placeholder={transferAreaCodeLoading ? 'Đang sinh mã...' : watchedPortId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'} style={readonlyInputStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
-                  <Select placeholder="Chọn tình trạng" allowClear options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
+                <Form.Item
+                  name="transferAreaName"
+                  {...labelProps('Tên khu chuyển tải')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Tên khu chuyển tải không được để trống' }, { max: 255 }]}
+                >
+                  <Input placeholder="Nhập tên khu chuyển tải" maxLength={255} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}>
+                  <Select
+                    showSearch
+                    placeholder="Chọn địa điểm"
+                    filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+                    options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+                    style={selectStyle}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}>
+                  <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={24}>
+                <Form.Item
+                  name="detailedLocation"
+                  {...labelProps('Địa điểm chi tiết')}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -851,14 +1204,14 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
           {/* Card 2: Thông số kỹ thuật & Năng lực khai thác */}
           <div style={sectionBoxStyle}>
             <div
-              onClick={() => setIndicatorOpen(!indicatorOpen)}
+              onClick={() => setTechnicalOpen(!technicalOpen)}
               style={{
                 ...sectionHeaderStyle,
                 cursor: 'pointer',
                 userSelect: 'none',
-                marginBottom: indicatorOpen ? spaceSm : 0,
-                paddingBottom: indicatorOpen ? spaceSm : 0,
-                borderBottom: indicatorOpen ? sectionHeaderStyle.borderBottom : 'none',
+                marginBottom: technicalOpen ? spaceSm : 0,
+                paddingBottom: technicalOpen ? spaceSm : 0,
+                borderBottom: technicalOpen ? sectionHeaderStyle.borderBottom : 'none',
               }}
             >
               <div style={sectionTitleStyle}>
@@ -866,72 +1219,96 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
                 <span>Thông số kỹ thuật & Năng lực khai thác</span>
               </div>
               <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>
-                {indicatorOpen ? <DownOutlined /> : <RightOutlined />}
+                {technicalOpen ? <DownOutlined /> : <RightOutlined />}
               </span>
             </div>
-            {indicatorOpen && (
+            {technicalOpen && (
               <div>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
-                    <Form.Item name="shapeDescription" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }}>
-                      <Input placeholder="Nhập hình dạng" maxLength={255} count={{ show: true, max: 255 }} status={atMax.shapeDescription ? 'error' : undefined} style={{ ...inputStyle, borderColor: atMax.shapeDescription ? statusCritical : undefined }} />
+                    <Form.Item
+                      name="shapeDescription"
+                      {...labelProps('Hình dạng')}
+                      style={{ marginBottom: spaceFormField }}
+                    >
+                      <Input placeholder="Nhập hình dạng" maxLength={255} showCount style={inputStyle} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="area" {...labelProps('Diện tích (ha)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập diện tích" min={0} maxLength={20} style={{ ...numberStyle, borderColor: atMax.area ? statusCritical : undefined }} />
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
-
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
-                    <Form.Item name="designWaterDepth" {...labelProps('Độ sâu thiết kế (m)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập độ sâu thiết kế" min={0} maxLength={20} style={{ ...numberStyle, borderColor: atMax.designWaterDepth ? statusCritical : undefined }} />
+                    <Form.Item name="designWaterDepth" {...labelProps('Độ sâu khu nước theo thiết kế (m)')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu hiện tại (m)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập độ sâu hiện tại" min={0} maxLength={20} style={{ ...numberStyle, borderColor: atMax.currentWaterDepth ? statusCritical : undefined }} />
+                    <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
-
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
-                    <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy thiết kế (m)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập cao độ đáy thiết kế" maxLength={20} style={{ ...numberStyle, borderColor: atMax.bottomElevationDesign ? statusCritical : undefined }} />
+                    <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác tối đa (DWT)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập cỡ tàu khai thác tối đa" min={0} maxLength={20} style={{ ...numberStyle, borderColor: atMax.maxVesselDWT ? statusCritical : undefined }} />
+                    <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={20} placeholder="0" style={numberStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
-
                 <Row gutter={[24, 0]}>
-                  <Col span={8}>
-                    <Form.Item name="activeTransferCount" className="cn-op-2line-label" {...labelProps('Số lượng khu chuyển tải đang khai thác')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập số lượng" min={0} maxLength={5} style={{ ...numberStyle, borderColor: atMax.activeTransferCount ? statusCritical : undefined }} />
+                  <Col span={12}>
+                    <Form.Item name="activeTransferCount" {...labelProps('Số lượng khu chuyển tải đang khai thác')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} />
                     </Form.Item>
                   </Col>
-                  <Col span={8}>
-                    <Form.Item name="publishedTransferCount" className="cn-op-2line-label" {...labelProps('Số lượng khu chuyển tải đã công bố')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập số lượng" min={0} maxLength={5} style={{ ...numberStyle, borderColor: atMax.publishedTransferCount ? statusCritical : undefined }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="underInvestmentTransferCount" className="cn-op-2line-label" {...labelProps('Số lượng khu chuyển tải đang thỏa thuận đầu tư')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount placeholder="Nhập số lượng" min={0} maxLength={5} style={{ ...numberStyle, borderColor: atMax.underInvestmentTransferCount ? statusCritical : undefined }} />
+                  <Col span={12}>
+                    <Form.Item name="publishedTransferCount" {...labelProps('Số lượng khu chuyển tải đã công bố')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
-
+                <Row gutter={[24, 0]}>
+                  <Col span={12}>
+                    <Form.Item
+                      name="operationalFunctions"
+                      className="cn-op-2line-label"
+                      {...labelProps('Công năng khai thác')}
+                      required
+                      style={{ marginBottom: spaceFormField }}
+                      rules={[{ required: true, message: 'Công năng khai thác không được để trống' }]}
+                    >
+                      <Select
+                        mode="multiple"
+                        maxTagCount="responsive"
+                        placeholder="Chọn công năng khai thác"
+                        options={OPERATIONAL_FUNCTIONS_OPTIONS}
+                        style={selectStyle}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="underInvestmentTransferCount" className="cn-op-2line-label" {...labelProps('Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}>
+                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} />
+                    </Form.Item>
+                  </Col>
+                </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={24}>
-                    <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                      <Input.TextArea placeholder="Nhập ghi chú" maxLength={2000} count={{ show: true, max: 2000 }} rows={2} style={{ ...textAreaStyle, borderRadius: 8 }} />
+                    <Form.Item
+                      name="remarks"
+                      {...labelProps('Ghi chú')}
+                      style={{ marginBottom: spaceFormField }}
+                    >
+                      <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -963,23 +1340,31 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
             {announcementOpen && (
               <div>
                 <Row gutter={[24, 0]}>
-                  <Col span={24}>
-                    <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở')} style={{ marginBottom: spaceFormField }}>
-                      <DatePicker placeholder="Chọn ngày" {...getDatePickerProps()} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                  <Col span={12}>
+                    <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa ra sử dụng')} style={{ marginBottom: spaceFormField }}>
+                      <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm' })} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={24}>
-                    <Form.Item name="publicDecision" {...labelProps('Quyết định công bố/văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}>
-                      <Input.TextArea placeholder="Nhập quyết định công bố / văn bản cho phép khai thác" maxLength={2000} count={{ show: true, max: 2000 }} rows={2} status={atMax.publicDecision ? 'error' : undefined} style={{ ...textAreaStyle, borderRadius: 8, borderColor: atMax.publicDecision ? statusCritical : undefined }} />
+                    <Form.Item
+                      name="publicDecision"
+                      {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')}
+                      style={{ marginBottom: spaceFormField }}
+                    >
+                      <Input.TextArea rows={3} placeholder="Nhập quyết định" maxLength={2000} showCount style={textAreaStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={24}>
-                    <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư')} style={{ marginBottom: spaceFormField }}>
-                      <Input.TextArea placeholder="Nhập văn bản thỏa thuận đầu tư" maxLength={2000} count={{ show: true, max: 2000 }} rows={2} status={atMax.investmentAgreement ? 'error' : undefined} style={{ ...textAreaStyle, borderRadius: 8, borderColor: atMax.investmentAgreement ? statusCritical : undefined }} />
+                    <Form.Item
+                      name="investmentAgreement"
+                      {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')}
+                      style={{ marginBottom: spaceFormField }}
+                    >
+                      <Input.TextArea rows={3} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={textAreaStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -1012,13 +1397,13 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
               <div>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
-                    <Form.Item name="activityStartDate" {...labelProps('Từ ngày')} style={{ marginBottom: spaceFormField }}>
-                      <DatePicker placeholder="Chọn ngày bắt đầu" {...getDatePickerProps()} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                    <Form.Item name="activityStartDate" {...labelProps('Thời gian bắt đầu hoạt động')} style={{ marginBottom: spaceFormField }}>
+                      <DatePicker {...getDatePickerProps({ placeholder: 'Chọn ngày bắt đầu' })} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="activityEndDate" {...labelProps('Đến ngày')} style={{ marginBottom: spaceFormField }}>
-                      <DatePicker placeholder="Chọn ngày kết thúc" {...getDatePickerProps()} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                    <Form.Item name="activityEndDate" {...labelProps('Thời gian kết thúc hoạt động')} style={{ marginBottom: spaceFormField }}>
+                      <DatePicker {...getDatePickerProps({ placeholder: 'Chọn ngày kết thúc' })} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -1026,67 +1411,100 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
             )}
           </div>
 
-          {/* Card 5: Phạm vi khu nước neo buộc tàu */}
+          {/* Card 5: Thông tin khu nước neo buộc tàu */}
           <div style={sectionBoxStyle}>
             <div
-              onClick={() => setMooringScopeOpen(!mooringScopeOpen)}
+              onClick={() => setWaterAreaOpen(!waterAreaOpen)}
               style={{
                 ...sectionHeaderStyle,
                 cursor: 'pointer',
                 userSelect: 'none',
-                marginBottom: mooringScopeOpen ? spaceSm : 0,
-                paddingBottom: mooringScopeOpen ? spaceSm : 0,
-                borderBottom: mooringScopeOpen ? sectionHeaderStyle.borderBottom : 'none',
+                marginBottom: waterAreaOpen ? spaceSm : 0,
+                paddingBottom: waterAreaOpen ? spaceSm : 0,
+                borderBottom: waterAreaOpen ? sectionHeaderStyle.borderBottom : 'none',
               }}
             >
               <div style={sectionTitleStyle}>
-                <CompassOutlined style={{ color: actionPrimary }} />
-                <span>Phạm vi khu nước neo buộc tàu ({waterAreaList.length})</span>
+                <FileTextOutlined style={{ color: actionPrimary }} />
+                <span>Thông tin khu nước neo buộc tàu ({waterAreaList.length})</span>
               </div>
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openCreateWaterAreaDrawer();
-                  }}
-                  style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px' }}
-                >
-                  Thêm khu nước neo buộc tàu
-                </Button>
-                <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>
-                  {mooringScopeOpen ? <DownOutlined /> : <RightOutlined />}
-                </span>
-              </Space>
+              <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>
+                {waterAreaOpen ? <DownOutlined /> : <RightOutlined />}
+              </span>
             </div>
-            {mooringScopeOpen && (
+            {waterAreaOpen && (
               <div>
+                <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: portFormFontSizeMd }}>
+                    Danh sách khu nước neo buộc tàu ({waterAreaList.length})
+                  </span>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={openAddWaterArea}
+                    style={{ ...primaryButtonStyle, height: 32, fontSize: portFormFontSizeMd, padding: '0 14px' }}
+                  >
+                    Thêm khu nước neo buộc
+                  </Button>
+                </div>
                 {waterAreaList.length === 0 ? (
-                  <div style={{ padding: '24px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                    <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có khu nước neo buộc tàu nào.</span>
-                    <Button type="dashed" icon={<PlusOutlined />} onClick={openCreateWaterAreaDrawer} style={{ borderRadius: radiusPill }}>Thêm khu nước neo buộc tàu</Button>
+                  <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+                    <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có khu nước neo buộc tàu nào.</span>
                   </div>
                 ) : (
                   <DetailTable
                     size="small"
-                    scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
-                    dataSource={waterAreaList.map((w, i) => ({ ...w, _idx: i }))}
-                    rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
-                    emptyText="Chưa có khu nước neo buộc tàu nào"
+                    scrollY={130}
+                    pageSize={5}
+                    pageSizeOptions={[5, 10, 20]}
+                    dataSource={waterAreaList.map((w, i) => ({ ...w, key: i }))}
+                    rowKey={(r: MooringWaterAreaItem & { key: number }) => String(r.key)}
+                    emptyText="Chưa có dữ liệu"
                     columns={[
-                      { title: 'STT', width: 60, align: 'center' as const, render: (_v: any, _r: any, idx: number) => idx + 1 },
-                      { title: 'Phạm vi khu nước', key: 'description', dataIndex: 'description', ellipsis: true },
-                      { title: 'Số điểm neo', key: 'anchorCount', width: 120, align: 'center' as const, render: (_v: any, record: any) => record.anchorPoints?.length || 0 },
+                      {
+                        title: 'STT',
+                        width: 60,
+                        align: 'center' as const,
+                        render: (_: unknown, __: unknown, idx: number) => idx + 1,
+                      },
+                      {
+                        title: 'Phạm vi khu nước neo buộc tàu',
+                        key: 'description',
+                        render: (_: unknown, record: MooringWaterAreaItem & { key: number }) => (
+                          <a
+                            style={{ color: actionPrimary, fontWeight: fontWeightBold, cursor: 'pointer' }}
+                            onClick={() => openEditWaterArea(record.key)}
+                          >
+                            {record.description?.trim() || `Khu nước ${record.key + 1}`}
+                          </a>
+                        ),
+                      },
                       {
                         title: 'Thao tác',
                         key: 'actions',
-                        width: 100,
+                        width: 120,
                         align: 'center' as const,
-                        render: (_v: any, record: any) => (
+                        render: (_: unknown, record: MooringWaterAreaItem & { key: number }) => (
                           <Space size={4}>
-                            <Button type="text" icon={<EditOutlined style={{ color: actionPrimary }} />} onClick={() => openEditWaterAreaDrawer(record._idx)} />
-                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeWaterArea(record._idx)} />
+                            <Button
+                              type="text"
+                              icon={<EyeOutlined style={{ color: actionPrimary }} />}
+                              onClick={() => setViewingWaterArea(record)}
+                              title="Xem chi tiết điểm neo"
+                            />
+                            <Button
+                              type="text"
+                              icon={<EditOutlined style={{ color: actionPrimary }} />}
+                              onClick={() => openEditWaterArea(record.key)}
+                              title="Chỉnh sửa"
+                            />
+                            <Button
+                              type="text"
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => removeWaterArea(record.key)}
+                              title="Xóa"
+                            />
                           </Space>
                         ),
                       },
@@ -1100,7 +1518,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
       ),
     },
 
-    // Tab 2: Thông tin vị trí (đồng bộ 2 section box như Pier)
+    // Tab 2: Thông tin vị trí
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
@@ -1116,13 +1534,39 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                  <Select
+                    placeholder="Chọn loại đối tượng"
+                    allowClear
+                    options={GEOMETRY_TYPE_OPTIONS}
+                    style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({
+                          mapSymbolId: undefined,
+                          coordinateSystem: undefined,
+                          displayRule: undefined,
+                        });
+                        form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+                        setCoordinateList([]);
+                      }
+                    }}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="mapSymbolId" {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn biểu tượng" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
-                    {symbols.map(sym => (
+                <Form.Item
+                  name="mapSymbolId"
+                  {...labelProps('Biểu tượng')}
+                  required={!!watchedGeometryType}
+                  rules={
+                    watchedGeometryType
+                      ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
+                      : []
+                  }
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} loading={loadingSymbols} style={selectStyle}>
+                    {symbols.map((sym) => (
                       <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
                         <Space>
                           {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
@@ -1134,7 +1578,6 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
                 </Form.Item>
               </Col>
             </Row>
-
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
@@ -1160,23 +1603,11 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
                   onClick={() => setGisModalOpen(true)}
                   disabled={!watchedGeometryType}
                   style={!watchedGeometryType ? {
-                    height: 32,
-                    fontSize: fontSizeSm,
-                    padding: '0 14px',
-                    borderRadius: radiusPill,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: spaceXs,
-                    opacity: 0.6,
-                    cursor: 'not-allowed',
+                    height: 32, fontSize: portFormFontSizeMd, padding: '0 14px', borderRadius: radiusPill,
+                    display: 'inline-flex', alignItems: 'center', gap: spaceXs, opacity: 0.6, cursor: 'not-allowed',
                   } : {
-                    ...outlineButtonStyle,
-                    height: 32,
-                    fontSize: fontSizeSm,
-                    padding: '0 14px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: spaceXs,
+                    ...outlineButtonStyle, height: 32, fontSize: portFormFontSizeMd, padding: '0 14px',
+                    display: 'inline-flex', alignItems: 'center', gap: spaceXs,
                   }}
                 >
                   Chọn tọa độ trên bản đồ
@@ -1188,7 +1619,7 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
                   disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
                   style={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1) ? {
                     height: 32,
-                    fontSize: fontSizeSm,
+                    fontSize: portFormFontSizeMd,
                     padding: '0 14px',
                     borderRadius: radiusPill,
                     display: 'inline-flex',
@@ -1201,44 +1632,72 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
                   } : {
                     ...primaryButtonStyle,
                     height: 32,
-                    fontSize: fontSizeSm,
+                    fontSize: portFormFontSizeMd,
                     padding: '0 14px',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: spaceXs,
                   }}
+                  title={watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
                 >
                   Thêm tọa độ
                 </Button>
               </Space>
             </div>
-
             {coordinateList.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có tọa độ nào.</span>
-                <Button type="dashed" icon={<PlusOutlined />} onClick={addGpsPoint} disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)} style={{ borderRadius: radiusPill }}>Thêm tọa độ</Button>
+                <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
               </div>
             ) : (
-              <>
-                {gpsError && (
-                  <div style={{ marginBottom: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
-                  </div>
-                )}
-                <DetailTable
-                  size="small"
-                  scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                  dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-                  rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
-                  emptyText="Chưa có tọa độ GPS nào"
-                  columns={[
-                    { title: 'STT', width: 60, align: 'center' as const, render: (_v: any, _r: any, idx: number) => idx + 1 },
-                    { title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>, key: 'lat', render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)) },
-                    { title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>, key: 'lng', render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)) },
-                    { title: '', width: 50, align: 'center' as const, render: (_v: any, record: any) => (<Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />) },
-                  ]}
-                />
-              </>
+              <DetailTable
+                size="small"
+                scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+                scroll={{ x: 590 }}
+                dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
+                rowKey={(r: GpsCoordinateItem) => String(r._idx)}
+                emptyText="Chưa có tọa độ GPS nào"
+                columns={[
+                  {
+                    title: 'STT',
+                    width: 60,
+                    align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
+                    render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
+                  },
+                  {
+                    title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                    key: 'lat',
+                    width: 240,
+                    align: 'left' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                    render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lat', d, m, s)),
+                  },
+                  {
+                    title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                    key: 'lng',
+                    width: 240,
+                    align: 'left' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                    render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lng', d, m, s)),
+                  },
+                  {
+                    title: '',
+                    width: 50,
+                    align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top' } }),
+                    render: (_v: unknown, record: GpsCoordinateItem) => (
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                        onClick={() => removeCoordinate(record._idx ?? 0)}
+                        style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Xóa tọa độ"
+                      />
+                    ),
+                  },
+                ]}
+              />
             )}
           </div>
         </div>
@@ -1248,51 +1707,22 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
     // Tab 3: File đính kèm
     {
       key: 'files',
-      label: `File đính kèm (${attachments.length + pendingFiles.length})`,
+      label: `File đính kèm (${uploadedFiles.length})`,
       children: (
         <InfrastructureAttachmentTab
-          attachments={[
-            ...attachments,
-            ...pendingFiles.map((f, i) => ({
-              id: `pending-${i}`,
-              fileName: f.name,
-              fileSize: f.size,
-              uploadedBy: currentUser?.fullName || currentUser?.username || 'Bạn',
-              uploadedAt: new Date().toISOString(),
-            })),
-          ]}
-          userMap={userMap}
+          attachments={uploadedFiles.map((f: any) => ({
+            ...f,
+            id: f.uid || f.id,
+            fileName: f.name || f.fileName,
+            fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
+            uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap.get(f.uploadedBy) || f.uploadedBy) : '') || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+            uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
+          })) as InfrastructureAttachmentItem[]}
           readonly={false}
-          onUpload={(file) => {
-            if (file.size > 20 * 1024 * 1024) {
-              toast.error('File vượt quá 20MB');
-              return false;
-            }
-            if (attachments.length + pendingFiles.length >= 10) {
-              toast.error('Tối đa 10 file');
-              return false;
-            }
-            setPendingFiles(prev => [...prev, file]);
-            toast.success(`Đã thêm tệp ${file.name}`);
-            return false;
-          }}
-          onDelete={(uid) => {
-            if (uid.startsWith('pending-')) {
-              const idx = parseInt(uid.replace('pending-', ''), 10);
-              setPendingFiles(prev => prev.filter((_, i) => i !== idx));
-              toast.success('Đã xóa tệp đính kèm');
-            } else if (id) {
-              transferAreaCRUD.deleteAttachment(id, uid)
-                .then(() => {
-                  setAttachments(prev => prev.filter(a => a.id !== uid));
-                  toast.success('Đã xóa tệp đính kèm');
-                })
-                .catch(() => toast.error('Xóa tệp thất bại'));
-            }
-          }}
-          onDownload={(uid, name) => {
-            void handleDownloadAttachment(uid, name);
-          }}
+          userMap={userMap}
+          onUpload={(file) => { handleBeforeUpload(file); return false; }}
+          onDelete={(uid) => { handleRemoveFile({ uid } as UploadFile); }}
+          onDownload={(uid, name) => { handleDownloadAttachment(uid, name); }}
         />
       ),
     },
@@ -1301,6 +1731,556 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
   return (
     <>
       <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+
+      {/* Drawer thêm/sửa Khu nước neo buộc tàu */}
+      <Drawer
+        {...drawerProps}
+        rootClassName="transfer-area-drawer-scope"
+        className="transfer-area-drawer-scope"
+        size={1000}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
+        open={waterAreaDrawerOpen}
+        onClose={closeWaterAreaDrawer}
+        destroyOnClose
+        push={false}
+        extra={<Button type="text" onClick={closeWaterAreaDrawer} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button type="primary" onClick={saveWaterArea} style={primaryButtonStyle}>Lưu</Button>
+          </div>
+        }
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '16px 24px' },
+        }}
+      >
+        <Form layout="vertical">
+          <div style={{ ...sectionBoxStyle, padding: formMapParamsOpen ? sectionBoxStyle.padding : '12px 18px' }}>
+            <div
+              onClick={() => setFormMapParamsOpen(!formMapParamsOpen)}
+              style={{
+                ...sectionHeaderStyle,
+                marginBottom: formMapParamsOpen ? 10 : 0,
+                paddingBottom: formMapParamsOpen ? 8 : 0,
+                borderBottom: formMapParamsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <div style={sectionTitleStyle}>
+                <EnvironmentOutlined style={{ color: actionPrimary }} />
+                <span>Thông số đối tượng bản đồ</span>
+              </div>
+              {formMapParamsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+            </div>
+            {formMapParamsOpen && (
+              <>
+                <Form.Item {...labelProps('Phạm vi khu nước neo buộc tàu')} style={{ marginBottom: spaceFormField }}>
+                  <Input.TextArea
+                    rows={3}
+                    placeholder="Nhập phạm vi khu nước neo buộc tàu"
+                    maxLength={2000}
+                    showCount
+                    value={waterAreaDescription}
+                    onChange={(e) => setWaterAreaDescription(e.target.value)}
+                    style={textAreaStyle}
+                  />
+                </Form.Item>
+
+                <Row gutter={[24, 0]}>
+                  <Col span={12}>
+                    <Form.Item {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
+                      <Select
+                        placeholder="Chọn loại đối tượng"
+                        allowClear
+                        options={GEOMETRY_TYPE_OPTIONS}
+                        value={waterAreaGeometryType}
+                        onChange={(v) => {
+                          setWaterAreaGeometryType(v);
+                          if (!v) {
+                            setWaterAreaMapSymbolId(undefined);
+                          }
+                        }}
+                        style={selectStyle}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      {...labelProps('Biểu tượng')}
+                      required={!!waterAreaGeometryType}
+                      rules={
+                        waterAreaGeometryType
+                          ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
+                          : []
+                      }
+                      style={{ marginBottom: spaceFormField }}
+                    >
+                      <Select
+                        placeholder="Chọn biểu tượng..."
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        disabled={!waterAreaGeometryType}
+                        value={waterAreaMapSymbolId}
+                        onChange={(v) => setWaterAreaMapSymbolId(v)}
+                        style={selectStyle}
+                      >
+                        {symbols.map(sym => (
+                          <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
+                            <Space>
+                              {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
+                              <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                            </Space>
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={[24, 0]}>
+                  <Col span={12}>
+                    <Form.Item {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
+                      <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} value={waterAreaCoordinateSystem} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
+                      <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled value={waterAreaDisplayRule} style={readonlyInputStyle} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </>
+            )}
+          </div>
+
+          <div
+            ref={anchorBoxRef}
+            style={{
+              ...sectionBoxStyle,
+              padding: formAnchorPointsOpen ? sectionBoxStyle.padding : '12px 18px',
+              height: formAnchorPointsOpen ? (anchorBoxHeight ? `${anchorBoxHeight}px` : undefined) : 'auto',
+              minHeight: formAnchorPointsOpen ? 230 : undefined,
+              display: 'flex',
+              flexDirection: 'column',
+              boxSizing: 'border-box',
+              marginBottom: 0,
+            }}
+          >
+            <div
+              style={{
+                ...sectionHeaderStyle,
+                marginBottom: formAnchorPointsOpen ? spaceFormField : 0,
+                paddingBottom: formAnchorPointsOpen ? 8 : 0,
+                borderBottom: formAnchorPointsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                userSelect: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <div
+                onClick={() => setFormAnchorPointsOpen(!formAnchorPointsOpen)}
+                style={{ display: 'flex', alignItems: 'center', gap: spaceXs, cursor: 'pointer' }}
+              >
+                <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: portFormFontSizeMd }}>
+                  Tọa độ điểm neo ({waterAreaAnchorPoints.length})
+                </span>
+                {formAnchorPointsOpen ? <DownOutlined style={{ color: actionPrimary, marginLeft: 4 }} /> : <RightOutlined style={{ color: actionPrimary, marginLeft: 4 }} />}
+              </div>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={addAnchorPoint}
+                disabled={!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1)}
+                style={!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1) ? {
+                  height: 32,
+                  fontSize: portFormFontSizeMd,
+                  padding: '0 14px',
+                  borderRadius: radiusPill,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spaceXs,
+                  background: '#f5f5f5',
+                  borderColor: '#d9d9d9',
+                  color: 'rgba(0, 0, 0, 0.25)',
+                  cursor: 'not-allowed',
+                } : {
+                  ...primaryButtonStyle,
+                  height: 32,
+                  fontSize: portFormFontSizeMd,
+                  padding: '0 14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: spaceXs,
+                }}
+                title={waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 điểm neo' : (!waterAreaGeometryType ? 'Vui lòng chọn loại đối tượng' : undefined)}
+              >
+                Thêm điểm neo
+              </Button>
+            </div>
+
+            {formAnchorPointsOpen && (
+              waterAreaAnchorPoints.length === 0 ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+                  <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có điểm neo nào.</span>
+                </div>
+              ) : (
+                <DetailTable
+                  size="small"
+                  scroll={{ x: 780 }}
+                  scrollY={anchorTableScrollY}
+                  pageSize={10}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  dataSource={waterAreaAnchorPoints.map((p, i) => ({ ...p, _idx: i }))}
+                  rowKey={(r: AnchorPointFormItem) => String(r._idx)}
+                  emptyText="Chưa có điểm neo"
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                  columns={[
+                    {
+                      title: 'STT',
+                      width: 50,
+                      align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
+                      render: (_: unknown, _r: unknown, idx: number) => idx + 1,
+                    },
+                    {
+                      title: 'Tên điểm neo',
+                      key: 'name',
+                      width: 200,
+                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => (
+                        <Input
+                          placeholder="Nhập tên điểm neo"
+                          value={record.name}
+                          onChange={(e) => updateAnchorPointName(record._idx ?? 0, e.target.value)}
+                          style={{ ...inputStyle, height: 32, borderRadius: radiusPill, fontSize: 13.5 }}
+                        />
+                      ),
+                    },
+                    {
+                      title: <span>Vĩ độ (N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                      key: 'lat',
+                      width: 240,
+                      align: 'left' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateAnchorPointCoord(record._idx ?? 0, 'lat', d, m, s)),
+                    },
+                    {
+                      title: <span>Kinh độ (E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                      key: 'lng',
+                      width: 240,
+                      align: 'left' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateAnchorPointCoord(record._idx ?? 0, 'lng', d, m, s)),
+                    },
+                    {
+                      title: '',
+                      key: 'actions',
+                      width: 50,
+                      align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      render: (_: unknown, record: AnchorPointFormItem) => (
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                          onClick={() => removeAnchorPoint(record._idx ?? 0)}
+                          style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Xóa điểm neo"
+                        />
+                      ),
+                    },
+                  ]}
+                />
+              )
+            )}
+          </div>
+        </Form>
+      </Drawer>
+
+      {/* Drawer xem chi tiết khu nước neo buộc tàu */}
+      <Drawer
+        {...drawerProps}
+        rootClassName="transfer-area-drawer-scope"
+        className="transfer-area-drawer-scope"
+        size={1000}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
+        open={!!viewingWaterArea}
+        onClose={() => setViewingWaterArea(null)}
+        destroyOnClose
+        push={false}
+        extra={<Button type="text" onClick={() => setViewingWaterArea(null)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {viewingWaterArea && (
+          <div className="transfer-area-detail-content-wrapper">
+            <style>{`
+              .transfer-area-detail-content-wrapper,
+              .transfer-area-detail-content-wrapper .chk-detail-label,
+              .transfer-area-detail-content-wrapper .chk-detail-value {
+                font-size: 13.5px !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-grid {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                column-gap: 28px !important;
+                row-gap: 0 !important;
+                align-items: stretch !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row {
+                display: flex !important;
+                align-items: flex-start !important;
+                min-height: 36px !important;
+                padding: 7px 0 !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                line-height: 1.5 !important;
+                gap: 10px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row:last-child {
+                border-bottom: none !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row--full {
+                grid-column: 1 / -1 !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-label,
+              .transfer-area-detail-content-wrapper .sec-col1-label,
+              .transfer-area-detail-content-wrapper .chk-detail-row .sec-col1-label,
+              .transfer-area-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+                width: 215px !important;
+                min-width: 215px !important;
+                max-width: 215px !important;
+                flex-shrink: 0 !important;
+                color: ${sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: normal !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+                width: auto !important;
+                min-width: 220px !important;
+                max-width: 320px !important;
+                white-space: nowrap !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row .sec-col2-label {
+                width: 250px !important;
+                min-width: 250px !important;
+                max-width: 250px !important;
+                flex-shrink: 0 !important;
+                color: ${sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: normal !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-label::after {
+                content: ':' !important;
+                margin-left: 1px !important;
+                margin-right: 4px !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-value {
+                flex: 1 1 auto !important;
+                color: #1e293b !important;
+                font-size: 13.5px !important;
+                font-weight: 500 !important;
+                line-height: 1.5 !important;
+                min-width: 0 !important;
+                word-break: break-word !important;
+              }
+            `}</style>
+
+            <div style={{ maxHeight: 'calc(100vh - 72px)', paddingTop: 10, paddingRight: 4, overflowY: 'auto', overflowX: 'hidden' }}>
+              {/* Box 1: Thông số đối tượng bản đồ */}
+              <div style={{ ...sectionBoxStyle, padding: viewingMapParamsOpen ? sectionBoxStyle.padding : '12px 18px' }}>
+                <div
+                  onClick={() => setViewingMapParamsOpen(!viewingMapParamsOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: viewingMapParamsOpen ? 10 : 0,
+                    paddingBottom: viewingMapParamsOpen ? 8 : 0,
+                    borderBottom: viewingMapParamsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <EnvironmentOutlined style={{ color: actionPrimary }} />
+                    <span>Thông số đối tượng bản đồ</span>
+                  </div>
+                  {viewingMapParamsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                </div>
+                {viewingMapParamsOpen && (
+                  <div className="chk-detail-grid">
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Phạm vi khu nước neo buộc tàu</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 110, overflowY: 'auto' }}>
+                        {viewingWaterArea.description || ''}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
+                      <span className="chk-detail-value">
+                        {(() => {
+                          const m: Record<string, string> = {
+                            POINT: 'Đối tượng điểm',
+                            LINE: 'Đối tượng đường',
+                            POLYGON: 'Đối tượng vùng',
+                          };
+                          return viewingWaterArea.geometryType ? m[viewingWaterArea.geometryType] || viewingWaterArea.geometryType : '';
+                        })()}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
+                      <span className="chk-detail-value">
+                        {(() => {
+                          const sym = symbols.find((s) => s.id === viewingWaterArea.mapSymbolId);
+                          const symName = sym?.name || viewingWaterArea.mapSymbolId || '';
+                          const symImg = sym?.image;
+                          const symImgSrc = symImg ? (symImg.startsWith('data:') ? symImg : `data:image/png;base64,${symImg}`) : undefined;
+                          return symName ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                              {symImgSrc ? (
+                                <img
+                                  src={symImgSrc}
+                                  alt=""
+                                  style={{ width: 22, height: 22, objectFit: 'contain' }}
+                                />
+                              ) : null}
+                              {symName}
+                            </span>
+                          ) : '';
+                        })()}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
+                      <span className="chk-detail-value">
+                        {viewingWaterArea.coordinateSystem === 1
+                          ? 'WGS-84'
+                          : viewingWaterArea.coordinateSystem === 2
+                          ? 'VN-2000'
+                          : (viewingWaterArea.coordinateSystem || '')}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
+                      <span className="chk-detail-value">
+                        {viewingWaterArea.displayRule || 'Độ, phút, giây (DMS)'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Box 2: Tọa độ điểm neo */}
+              <div
+                ref={viewingAnchorBoxRef}
+                style={{
+                  ...sectionBoxStyle,
+                  padding: viewingAnchorPointsOpen ? sectionBoxStyle.padding : '12px 18px',
+                  height: viewingAnchorPointsOpen ? (viewingAnchorBoxHeight ? `${viewingAnchorBoxHeight}px` : undefined) : 'auto',
+                  minHeight: viewingAnchorPointsOpen ? 230 : undefined,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxSizing: 'border-box',
+                  marginBottom: 0,
+                }}
+              >
+                <div
+                  onClick={() => setViewingAnchorPointsOpen(!viewingAnchorPointsOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: viewingAnchorPointsOpen ? 10 : 0,
+                    paddingBottom: viewingAnchorPointsOpen ? 8 : 0,
+                    borderBottom: viewingAnchorPointsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <EnvironmentOutlined style={{ color: actionPrimary }} />
+                    <span>Tọa độ điểm neo ({(viewingWaterArea.anchorPoints || []).length})</span>
+                  </div>
+                  {viewingAnchorPointsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                </div>
+                {viewingAnchorPointsOpen && (
+                  <DetailTable
+                    size="small"
+                    scroll={{ x: 590 }}
+                    pageSize={10}
+                    pageSizeOptions={[5, 10, 20, 50]}
+                    dataSource={(Array.isArray(viewingWaterArea.anchorPoints) ? viewingWaterArea.anchorPoints : []).map((p, i) => ({ ...p, key: i }))}
+                    emptyText="Chưa có dữ liệu tọa độ điểm neo"
+                    rowKey={(rec: any) => rec.key}
+                    scrollY={viewingAnchorTableScrollY}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                    columns={[
+                      {
+                        title: 'STT',
+                        width: 50,
+                        align: 'center' as const,
+                        render: (_: unknown, __: unknown, idx: number) => idx + 1,
+                      },
+                      {
+                        title: 'Tên điểm neo',
+                        dataIndex: 'name',
+                        key: 'name',
+                        width: 180,
+                        render: (name?: string) => (
+                          <span
+                            style={{
+                              fontSize: fontSizeMd,
+                              color: textPrimary,
+                              fontWeight: fontWeightBold,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block',
+                            }}
+                            title={name || ''}
+                          >
+                            {name || ''}
+                          </span>
+                        ),
+                      },
+                      {
+                        title: 'Vĩ độ (Latitude - N)',
+                        key: 'lat',
+                        width: 180,
+                        align: 'center' as const,
+                        render: (_v: unknown, rec: any) => renderDmsText(rec.latitude, true),
+                      },
+                      {
+                        title: 'Kinh độ (Longitude - E)',
+                        key: 'lng',
+                        width: 180,
+                        align: 'center' as const,
+                        render: (_v: unknown, rec: any) => renderDmsText(rec.longitude, false),
+                      },
+                    ]}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Drawer>
 
       {/* GIS Location Selector Modal */}
       <Modal
@@ -1334,147 +2314,47 @@ export default forwardRef(function TransferAreaForm({ form, id, onFinish, onSubm
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType="POINT"
+            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
             onChange={(val) => {
               if (val?.coordinates) {
                 const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
                 if (points.length > 0) {
-                  setCoordinateList(prev => {
-                    const existing = prev || [];
+                  setCoordinateList((prev) => {
+                    const current = Array.isArray(prev) ? prev : [];
+                    const isFilled = (c: { latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }) =>
+                      c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null;
                     const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(existing
-                      .filter(c => c.latD != null && c.lngD != null)
-                      .map(c => key(dmsPointToDecimal(c))));
-                    const toAdd = points.filter(p => !existingKeys.has(key(p))).map(p => decimalToDmsPoint(p.latitude, p.longitude));
-                    if (toAdd.length === 0) return existing;
-                    return [...existing, ...toAdd];
+                    const existingKeys = new Set(current
+                      .filter(isFilled)
+                      .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
+                    const fresh = points.filter(p => !existingKeys.has(key(p)));
+                    const toDmsRows = (ps: Array<{ latitude: number; longitude: number }>) => ps.map(p => {
+                      const latDms = ddToDms(p.latitude);
+                      const lngDms = ddToDms(p.longitude);
+                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+                    });
+                    let fi = 0;
+                    const merged = current.map((row) => {
+                      if (isFilled(row)) return row;
+                      if (fi >= fresh.length) return row;
+                      const p = fresh[fi];
+                      fi += 1;
+                      const rows = toDmsRows([p]);
+                      return rows[0];
+                    });
+                    merged.push(...toDmsRows(fresh.slice(fi)));
+                    return merged;
                   });
-                  setGpsError(null);
                 }
               }
             }}
           />
         </div>
       </Modal>
-
-      {/* Drawer Thông tin khu nước neo buộc tàu */}
-      <Drawer
-        {...drawerProps}
-        width={900}
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
-        open={waterAreaDrawerOpen}
-        onClose={closeWaterAreaDrawer}
-        destroyOnHidden
-        push={false}
-        extra={<Button type="text" onClick={closeWaterAreaDrawer} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={
-          <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={saveWaterArea} loading={waterAreaSaving} style={primaryButtonStyle}>Lưu</Button>
-          </div>
-        }
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '4px 24px 12px 24px' },
-        }}
-      >
-        <Form layout="vertical">
-          <Form.Item {...labelProps('Phạm vi khu nước neo buộc tàu')} required style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="Nhập phạm vi khu nước neo buộc tàu" value={waterAreaDescription} onChange={(e) => setWaterAreaDescription(e.target.value)} style={inputStyle} />
-          </Form.Item>
-
-          <div style={{ marginBottom: spaceFormField, marginTop: 2 }}>
-            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>Vị trí cụ thể điểm neo</span>
-          </div>
-
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} value={waterAreaGeometryType} onChange={(v) => setWaterAreaGeometryType(v)} style={selectStyle} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item {...labelProps('Biểu tượng')} style={{ marginBottom: spaceFormField }}>
-                <Select ref={waterAreaSymbolSelectRef} placeholder="Tìm biểu tượng..." allowClear showSearch optionFilterProp="label" disabled={!waterAreaGeometryType} value={waterAreaMapSymbolId} onChange={(v) => { setWaterAreaMapSymbolId(v); waterAreaSymbolSelectRef.current?.blur(); }} style={selectStyle}>
-                  {symbols.map(sym => (
-                    <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                      <Space>
-                        {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
-                        <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={[24, 0]}>
-            <Col span={12}>
-              <Form.Item {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn hệ quy chiếu" disabled style={selectStyle} options={COORD_SYS_OPTIONS} value={waterAreaCoordinateSystem} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Chọn quy tắc hiển thị" maxLength={255} disabled value={waterAreaDisplayRule} style={readonlyInputStyle} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tọa độ điểm neo</span>
-            {waterAreaAnchorPoints.length > 0 && (
-              <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addAnchorPoint} style={{ borderRadius: radiusPill }}>Thêm điểm neo</Button>
-            )}
-          </div>
-
-          {waterAreaAnchorPoints.length === 0 ? (
-            <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-              <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block', marginBottom: spaceSm }}>Chưa có điểm neo nào.</span>
-              <Button type="dashed" icon={<PlusOutlined />} onClick={addAnchorPoint} style={{ borderRadius: radiusPill }}>Thêm điểm neo</Button>
-            </div>
-          ) : (
-            <Table
-              size="small"
-              tableLayout="fixed"
-              pagination={false}
-              dataSource={waterAreaAnchorPoints.map((p, i) => ({ ...p, _idx: i }))}
-              rowKey={(r, idx) => r._idx ?? String(idx)}
-              locale={{ emptyText: 'Chưa có điểm neo nào' }}
-              columns={[
-                {
-                  title: 'Tên điểm neo',
-                  key: 'name',
-                  width: 200,
-                  render: (_v, record: any) => (
-                    <Input placeholder="Nhập tên điểm neo" value={record.name} onChange={(e) => updateAnchorPointName(record._idx, e.target.value)} style={inputStyle} />
-                  ),
-                },
-                {
-                  title: 'Vĩ độ (N)',
-                  key: 'lat',
-                  width: 200,
-                  render: (_v, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateAnchorPointCoord(record._idx, 'lat', d, m, s)),
-                },
-                {
-                  title: 'Kinh độ (E)',
-                  key: 'lng',
-                  width: 200,
-                  render: (_v, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateAnchorPointCoord(record._idx, 'lng', d, m, s)),
-                },
-                {
-                  title: 'Thao tác',
-                  key: 'actions',
-                  width: 80,
-                  align: 'center' as const,
-                  render: (_v, record: any) => <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => removeAnchorPoint(record._idx)} />,
-                },
-              ]}
-            />
-          )}
-        </Form>
-      </Drawer>
     </>
   );
 });
+
+TransferAreaForm.displayName = 'TransferAreaForm';
+export default TransferAreaForm;

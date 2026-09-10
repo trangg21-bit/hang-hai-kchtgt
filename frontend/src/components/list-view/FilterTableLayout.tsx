@@ -82,7 +82,7 @@ export default function FilterTableLayout({
         </div>
 
         {/* Action Buttons — fixed bottom */}
-        <div style={{ borderTop: `1px solid ${borderDefault}`, padding: '12px 16px', display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+        <div className="filter-action-footer" style={{ borderTop: `1px solid ${borderDefault}`, padding: '12px 16px', display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
           <Button
             icon={<ReloadOutlined />}
             onClick={handleReset}

@@ -110,9 +110,14 @@ public class GisSpatialObjectService {
 
         GisSpatialObject entity;
         if (id != null) {
-            entity = repository.findById(id).orElse(new GisSpatialObject());
+            entity = repository.findById(id).orElseGet(() ->
+                    code != null && !code.trim().isEmpty() ? repository.findByCode(code.trim()).orElse(new GisSpatialObject()) : new GisSpatialObject());
+        } else if (code != null && !code.trim().isEmpty()) {
+            entity = repository.findByCode(code.trim()).orElse(new GisSpatialObject());
         } else {
             entity = new GisSpatialObject();
+        }
+        if (entity.getId() == null) {
             entity.setId(UUID.randomUUID());
         }
 

@@ -41,10 +41,10 @@ public class TransferAreaResponse {
     // ── Technical fields ───────────────────────────────────────────────
     private String shapeDescription;
     private BigDecimal area;
-    private BigDecimal designWaterDepth;
-    private BigDecimal currentWaterDepth;
-    private BigDecimal bottomElevationDesign;
-    private BigDecimal maxVesselDWT;
+    private String designWaterDepth;
+    private String currentWaterDepth;
+    private String bottomElevationDesign;
+    private String maxVesselDWT;
     private Integer activeTransferCount;
     private Integer publishedTransferCount;
     private Integer underInvestmentTransferCount;

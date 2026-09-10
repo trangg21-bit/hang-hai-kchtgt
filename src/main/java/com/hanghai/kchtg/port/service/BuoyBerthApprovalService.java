@@ -55,7 +55,9 @@ public class BuoyBerthApprovalService {
     public void submit(UUID id, UUID userId) {
         BuoyBerth entity = loadForApproval(id);
         infrastructureApprovalService.submit(entity, InfrastructureType.BUOY_BERTH, userId);
-        buoyBerthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        buoyBerthRepository.saveAndFlush(entity);
         log.info("BuoyBerth [{}] submitted for approval by {}", id, userId);
     }
 
@@ -65,7 +67,9 @@ public class BuoyBerthApprovalService {
         BuoyBerth entity = loadForApproval(id);
         infrastructureApprovalService.approveC1(entity, InfrastructureType.BUOY_BERTH,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        buoyBerthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        buoyBerthRepository.saveAndFlush(entity);
         log.info("BuoyBerth [{}] approved C1 by {}", id, userId);
     }
 
@@ -75,7 +79,9 @@ public class BuoyBerthApprovalService {
         BuoyBerth entity = loadForApproval(id);
         infrastructureApprovalService.approveC2(entity, InfrastructureType.BUOY_BERTH,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        buoyBerthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        buoyBerthRepository.saveAndFlush(entity);
         log.info("BuoyBerth [{}] approved C2 by {}", id, userId);
     }
 
@@ -91,7 +97,9 @@ public class BuoyBerthApprovalService {
             infrastructureApprovalService.approveC1(entity, InfrastructureType.BUOY_BERTH,
                     ApprovalStatus.REJECTED.name(), reason, userId);
         }
-        buoyBerthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        buoyBerthRepository.saveAndFlush(entity);
         log.info("BuoyBerth [{}] rejected by {}: {}", id, userId, reason);
     }
 

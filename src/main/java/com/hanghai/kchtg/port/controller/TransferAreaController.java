@@ -107,6 +107,26 @@ public class TransferAreaController {
         return ResponseEntity.ok(ApiResponse.success("Xóa khu chuyển tải thành công", null));
     }
 
+    @PostMapping("/{id}/approve/c1")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Approving TransferArea C1: id={}, user={}", id, authentication.getName());
+        transferAreaApprovalService.approve(id, authentication.getName(), "CANG_VU", reason);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Approving TransferArea C2: id={}, user={}", id, authentication.getName());
+        transferAreaApprovalService.approve(id, authentication.getName(), "CUC", reason);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
     @PostMapping("/{id}/approve")
     // @PreAuthorize("@auth.check(authentication, 'transferarea:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
     public ResponseEntity<ApiResponse<Void>> approve(
@@ -122,10 +142,13 @@ public class TransferAreaController {
     // @PreAuthorize("@auth.check(authentication, 'transferarea:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @Valid @RequestBody RejectRequest request,
+            @RequestBody(required = false) RejectRequest request,
+            @RequestParam(required = false) String reason,
             Authentication authentication) {
-        log.info("Rejecting TransferArea: id={}, cap={}", id, request.getCap());
-        transferAreaApprovalService.reject(id, authentication.getName(), request.getCap(), request.getLyDo());
+        String cap = request != null ? request.getCap() : null;
+        String lyDo = request != null && request.getLyDo() != null ? request.getLyDo() : reason;
+        log.info("Rejecting TransferArea: id={}, cap={}, reason={}", id, cap, lyDo);
+        transferAreaApprovalService.reject(id, authentication.getName(), cap, lyDo);
         return ResponseEntity.ok(ApiResponse.success("Từ chối khu chuyển tải thành công", null));
     }
 

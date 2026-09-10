@@ -198,6 +198,20 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("Mã hoặc dữ liệu định danh đã tồn tại trong hệ thống. Vui lòng kiểm tra lại."));
         }
 
+        if (detail != null && detail.contains("numeric field overflow")) {
+            log.warn("Data integrity violation (numeric overflow): {}", detail);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Giá trị số nhập vào vượt quá độ dài tối đa cho phép của hệ thống. Vui lòng kiểm tra lại."));
+        }
+
+        if (detail != null && detail.contains("value too long for type")) {
+            log.warn("Data integrity violation (string length overflow): {}", detail);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Dữ liệu văn bản nhập vào vượt quá độ dài tối đa cho phép của hệ thống. Vui lòng kiểm tra lại."));
+        }
+
         log.warn("Data integrity violation: {}", detail);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)

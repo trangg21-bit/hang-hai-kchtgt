@@ -581,10 +581,10 @@ export interface Anchorage {
   // Technical fields
   shapeDescription?: string;
   area?: number;
-  designWaterDepth?: number;
-  currentWaterDepth?: number;
-  bottomElevationDesign?: number;
-  maxVesselDWT?: number;
+  designWaterDepth?: string;
+  currentWaterDepth?: string;
+  bottomElevationDesign?: string;
+  maxVesselDWT?: string;
   activeAnchorageCount?: number;
   publishedAnchorageCount?: number;
   underInvestmentAnchorageCount?: number;
@@ -851,12 +851,14 @@ export interface StormShelterArea {
   // Technical fields
   shapeDescription?: string;
   area?: number;
-  designWaterDepth?: number;
-  currentWaterDepth?: number;
-  bottomElevationDesign?: number;
+  designWaterDepth?: string | number;
+  currentWaterDepth?: string | number;
+  bottomElevationDesign?: string | number;
+  maxVesselDWT?: string | number;
   activeStormShelterCount?: number;
   publishedStormShelterCount?: number;
   underInvestmentStormShelterCount?: number;
+  remarks?: string;
   openingAnnouncementDate?: string;
   publicDecision?: string;
   investmentAgreement?: string;
@@ -891,12 +893,14 @@ export interface CreateStormShelterRequest {
   operationalStatus?: string;
   shapeDescription?: string;
   area?: number;
-  designWaterDepth?: number;
-  currentWaterDepth?: number;
-  bottomElevationDesign?: number;
+  designWaterDepth?: string | number;
+  currentWaterDepth?: string | number;
+  bottomElevationDesign?: string | number;
+  maxVesselDWT?: string | number;
   activeStormShelterCount?: number;
   publishedStormShelterCount?: number;
   underInvestmentStormShelterCount?: number;
+  remarks?: string;
   openingAnnouncementDate?: string;
   publicDecision?: string;
   investmentAgreement?: string;
@@ -925,12 +929,14 @@ export interface UpdateStormShelterRequest {
   operationalStatus?: string;
   shapeDescription?: string;
   area?: number;
-  designWaterDepth?: number;
-  currentWaterDepth?: number;
-  bottomElevationDesign?: number;
+  designWaterDepth?: string | number;
+  currentWaterDepth?: string | number;
+  bottomElevationDesign?: string | number;
+  maxVesselDWT?: string | number;
   activeStormShelterCount?: number;
   publishedStormShelterCount?: number;
   underInvestmentStormShelterCount?: number;
+  remarks?: string;
   openingAnnouncementDate?: string;
   publicDecision?: string;
   investmentAgreement?: string;

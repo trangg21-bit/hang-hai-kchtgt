@@ -604,7 +604,7 @@ export default function PortListPage() {
   const [orgUnitReady, setOrgUnitReady] = useState(false);
   const [debouncedName, setDebouncedName] = useState('');
   const [debouncedCode, setDebouncedCode] = useState('');
-  const [sortField, setSortField] = useState('updatedAt');
+  const [sortField, setSortField] = useState('updatedByName');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [activeStatusTab, setActiveStatusTab] = useState('');
@@ -1049,15 +1049,18 @@ export default function PortListPage() {
   }, []);
 
   useEffect(() => {
-    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
-    const parentSymbols = (window.parent as any)?.kchtSymbols;
+    const isIframe = window.self !== window.top;
+    const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+    const parentSymbols = isIframe ? (window.parent as any)?.kchtSymbols : undefined;
 
     if (parentOrgUnits && parentOrgUnits.length > 0) {
       setOrgUnits(parentOrgUnits);
       if (!filterOrgUnitId) {
+        defaultOrgUnitId.current = parentOrgUnits[0].id;
         setFilterValues(prev => ({ ...prev, orgUnitId: parentOrgUnits[0].id }));
         setFilterOrgUnitId(parentOrgUnits[0].id);
       }
+      setOrgUnitReady(true);
     }
     if (parentSymbols && parentSymbols.length > 0) {
       setSymbols(parentSymbols);
@@ -1332,6 +1335,9 @@ export default function PortListPage() {
         } catch { /* non-blocking */ }
       }
 
+      setSortField('updatedByName');
+      setSortOrder('descend');
+      setPage(1);
       fetchData();
       fetchTabCounts();
     } catch (err: unknown) {
@@ -1474,6 +1480,9 @@ export default function PortListPage() {
       }
       closeUpdateModal();
       if (!isIframeModal) {
+        setSortField('updatedByName');
+        setSortOrder('descend');
+        setPage(1);
         fetchData();
         fetchTabCounts();
       }
@@ -1542,6 +1551,7 @@ export default function PortListPage() {
       await deleteCangBien(deleteTarget.id);
       toast.success('Đã xóa cảng biển');
       setDeleteTarget(null);
+      setPage(1);
       fetchData();
       fetchTabCounts();
     } catch (e) {
@@ -1580,6 +1590,7 @@ export default function PortListPage() {
       }
       setApproveModalOpen(false);
       setApprovingRecord(null);
+      setPage(1);
       fetchData();
       fetchTabCounts();
     } catch (err: unknown) {
@@ -1608,6 +1619,7 @@ export default function PortListPage() {
       setRejectTarget(null);
       setRejectReason('');
       setRejectError('');
+      setPage(1);
       fetchData();
       fetchTabCounts();
     } catch (err: unknown) {

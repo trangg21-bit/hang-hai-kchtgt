@@ -6,6 +6,7 @@ import {
 import {
   HistoryOutlined,
   SearchOutlined,
+  FileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { stormShelterCRUD, stormShelterApproval, portCRUD, buoyBerthCRUD } from '../../services/portService';
@@ -59,10 +60,10 @@ import {
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle, icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle,
+  cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
-import { fmtNum } from '../../utils/numFmt';
+import { formatHistoryNumber } from '../../utils/numFmt';
 
 // Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK toàn bộ cell/table/input/button
 const fontSizeMd = 13.5;
@@ -74,7 +75,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL2: { color: statusOperational, label: 'Đã phê duyệt' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
@@ -87,6 +88,11 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
   OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
   NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
   SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
+  TAM_NGUNG: { color: statusCritical, label: 'Tạm ngừng' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
 };
 
 const TAB_STATUS_LIST = [
@@ -114,6 +120,63 @@ function formatDate(d: string | null | undefined): string {
   try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
 }
 
+const EXCLUDED_CHANGE_FIELDS = new Set([
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'updatedBy',
+  'submittedForApprovalAt',
+  'submittedForApprovalBy',
+  'portAuthorityApprovedAt',
+  'portAuthorityApprovedBy',
+  'departmentApprovedAt',
+  'departmentApprovedBy',
+  'portAuthorityApprovalContent',
+  'departmentApprovalContent',
+  'rejectionReason',
+  'attachments',
+  'spatialId',
+  'infrastructureList',
+  'Danh sách hạ tầng',
+  'Thời điểm gửi phê duyệt',
+  'Người gửi phê duyệt',
+  'Thời điểm Cảng vụ phê duyệt',
+  'Cán bộ Cảng vụ phê duyệt',
+  'Thời điểm Cục phê duyệt',
+  'Cán bộ Cục phê duyệt',
+  'Nội dung Cảng vụ phê duyệt',
+  'Nội dung Cục phê duyệt',
+  'Lý do từ chối',
+  'Vị trí không gian',
+]);
+
+const NUMERIC_HISTORY_FIELDS = new Set([
+  'area',
+  'designWaterDepth',
+  'currentWaterDepth',
+  'bottomElevationDesign',
+  'maxVesselDWT',
+  'activeStormShelterCount',
+  'publishedStormShelterCount',
+  'underInvestmentStormShelterCount',
+  'Diện tích (ha)',
+  'Độ sâu khu nước theo thiết kế (m)',
+  'Độ sâu khu nước hiện tại (m)',
+  'Cao độ đáy bến thiết kế',
+  'Cỡ tàu lớn nhất (DWT)',
+  'Số lượng khu đang khai thác',
+  'Số lượng khu đã công bố',
+  'Số lượng khu đang thỏa thuận đầu tư',
+  // Backward compatibility aliases:
+  'Độ sâu theo thiết kế (m)',
+  'Độ sâu hiện tại (m)',
+  'Cỡ tàu khai thác (DWT)',
+  'Số khu đang khai thác',
+  'Số khu đã công bố',
+  'Số khu thỏa thuận đầu tư',
+]);
+
 const histLabels: Record<string, string> = {
   stormShelterCode: 'Mã khu tránh, trú bão',
   stormShelterName: 'Tên khu tránh, trú bão',
@@ -122,10 +185,11 @@ const histLabels: Record<string, string> = {
   navigationChannelId: 'Thuộc luồng hàng hải',
   buoyStationId: 'Thuộc bến phao',
   classification: 'Phân loại',
-  provinceId: 'Địa điểm (Tỉnh/Thành phố)',
-  province: 'Địa điểm (Tỉnh/Thành phố)',
+  provinceId: 'Địa điểm (Tỉnh/Thành Phố)',
+  province: 'Địa điểm (Tỉnh/Thành Phố)',
   detailedLocation: 'Địa điểm chi tiết',
   operationalStatus: 'Tình trạng',
+  approvalStatus: 'Trạng thái',
   shapeDescription: 'Hình dạng',
   area: 'Diện tích (ha)',
   designWaterDepth: 'Độ sâu khu nước theo thiết kế (m)',
@@ -139,20 +203,37 @@ const histLabels: Record<string, string> = {
   openingAnnouncementDate: 'Thời điểm công bố mở',
   publicDecision: 'Quyết định công bố',
   investmentAgreement: 'Thỏa thuận đầu tư xây dựng',
-  mapSymbolId: 'Biểu tượng bản đồ',
+  mapSymbolId: 'Biểu tượng',
   coordinateSystem: 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
   spatialId: 'Vị trí không gian',
-  approvalStatus: 'Trạng thái',
   'Trạng thái': 'Hành động',
-  'Trạng thái phê duyệt': 'Trạng thái phê duyệt',
-  'Tọa độ GIS': 'Tọa độ GIS',
-  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Trạng thái phê duyệt': 'Hành động',
+  'Tọa độ GIS': 'Tọa độ GPS',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  'Loại đối tượng GIS': 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
   'Phạm vi khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
-  'Danh sách khu nước neo buộc tàu': 'Danh sách khu nước neo buộc tàu',
+  'Danh sách khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
   attachments: 'Tài liệu đính kèm',
   infrastructureList: 'Danh sách hạ tầng',
+  submittedForApprovalAt: 'Thời điểm gửi phê duyệt',
+  submittedForApprovalBy: 'Người gửi phê duyệt',
+  portAuthorityApprovedAt: 'Thời điểm Cảng vụ phê duyệt',
+  portAuthorityApprovedBy: 'Cán bộ Cảng vụ phê duyệt',
+  departmentApprovedAt: 'Thời điểm Cục phê duyệt',
+  departmentApprovedBy: 'Cán bộ Cục phê duyệt',
+  portAuthorityApprovalContent: 'Nội dung Cảng vụ phê duyệt',
+  departmentApprovalContent: 'Nội dung Cục phê duyệt',
+  rejectionReason: 'Lý do từ chối',
+  // Backward compatibility aliases:
+  'Cảng biển': 'Thuộc cảng biển',
+  'Luồng hàng hải': 'Thuộc luồng hàng hải',
+  'Bến phao': 'Thuộc bến phao',
+  'Tỉnh/Thành phố': 'Địa điểm (Tỉnh/Thành Phố)',
+  'Địa điểm (Tỉnh/Thành phố)': 'Địa điểm (Tỉnh/Thành Phố)',
+  'Biểu tượng bản đồ': 'Biểu tượng',
 };
 
 function histField(fn: string): string { return histLabels[fn] || fn; }
@@ -167,12 +248,16 @@ function histVal(
   waterwayMap?: Map<string, string>,
 ): string {
   if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
-  if (fn === 'orgUnitId' && orgMap) { const f = orgMap.get(val); return f ? f.split(' - ').pop() || f : val; }
-  if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'buoyStationId' && buoyStationMap) return buoyStationMap.get(val) || val;
-  if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
-  if (fn === 'approvalStatus' || fn === 'Trạng thái phê duyệt' || fn === 'Trạng thái') {
+  const v = val.trim();
+  if ((fn === 'orgUnitId' || fn === 'Đơn vị quản lý') && orgMap) {
+    const f = orgMap.get(v);
+    return f ? f.split(' - ').pop() || f : v;
+  }
+  if ((fn === 'portId' || fn === 'Thuộc cảng biển' || fn === 'Cảng biển') && portMap) return portMap.get(v) || v;
+  if ((fn === 'buoyStationId' || fn === 'Thuộc bến phao' || fn === 'Bến phao') && buoyStationMap) return buoyStationMap.get(v) || v;
+  if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'Biểu tượng bản đồ') && symbolMap) return symbolMap.get(v) || v;
+  if ((fn === 'navigationChannelId' || fn === 'Thuộc luồng hàng hải' || fn === 'Luồng hàng hải') && waterwayMap) return waterwayMap.get(v) || v;
+  if (fn === 'approvalStatus' || fn === 'Trạng thái' || fn === 'Trạng thái phê duyệt') {
     const m: Record<string, string> = {
       DRAFT: 'Lưu tạm',
       NHAP: 'Lưu tạm',
@@ -180,17 +265,17 @@ function histVal(
       PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
-      APPROVED_LEVEL2: 'Chờ phê duyệt cấp cục',
+      APPROVED_LEVEL2: 'Đã phê duyệt',
       APPROVED: 'Đã phê duyệt',
       DA_PHE_DUYET: 'Đã phê duyệt',
       REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
-      TU_CHOI: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL2: 'Từ chối cấp cục',
+      TU_CHOI: 'Từ chối cấp Cảng vụ/Chi cục',
     };
-    return m[val.toUpperCase()] || val;
+    return m[v.toUpperCase()] || v;
   }
-  if (fn === 'operationalStatus') {
+  if (fn === 'operationalStatus' || fn === 'Tình trạng' || fn === 'Tình trạng hoạt động') {
     const m: Record<string, string> = {
       OPERATIONAL: 'Đang khai thác/vận hành',
       NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
@@ -201,86 +286,84 @@ function histVal(
       CHUA_KHAI_THAC: 'Chưa khai thác/vận hành',
       DUNG_KHAI_THAC: 'Dừng khai thác/vận hành',
     };
-    return m[val.toUpperCase()] || val;
+    return m[v.toUpperCase()] || v;
   }
-  if (fn === 'province' || fn === 'provinceId') {
-    const idx = Number(val) - 1;
-    return VIETNAM_PROVINCES[idx] || val;
-  }
-  if (fn === 'coordinateSystem') {
-    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
-    return m[val] || val;
-  }
-  if (fn.endsWith('At') || fn.endsWith('Date')) {
-    try {
-      let d = dayjs(val);
-      if (!d.isValid()) d = dayjs((val || '').replace(/\.\d+$/, ''));
-      return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : val;
-    } catch {
-      return val;
+  if (fn === 'provinceId' || fn === 'province' || fn === 'Địa điểm (Tỉnh/Thành Phố)' || fn === 'Địa điểm (Tỉnh/Thành phố)' || fn === 'Tỉnh/Thành phố') {
+    const num = Number(v);
+    if (!isNaN(num) && num >= 1 && num <= VIETNAM_PROVINCES.length) {
+      return VIETNAM_PROVINCES[num - 1];
     }
+    return v;
   }
-  return val;
+  if (fn === 'geometryType' || fn === 'Loại đối tượng' || fn === 'Loại đối tượng GIS') {
+    const m: Record<string, string> = {
+      POINT: 'Điểm',
+      LINE: 'Đường',
+      POLYGON: 'Vùng',
+    };
+    return m[v.toUpperCase()] || v;
+  }
+  if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[v] || v;
+  }
+  if (fn.endsWith('At') || fn.endsWith('Date') || fn.includes('Thời điểm') || fn.includes('Ngày')) {
+    try {
+      let d = dayjs(v);
+      if (!d.isValid()) { d = dayjs(v.replace(/\.\d+$/, '')); }
+      return d.isValid() ? (fn.includes('openingAnnouncementDate') || fn.includes('Thời điểm công bố') || fn.includes('Ngày') ? d.format('DD/MM/YYYY') : d.format('DD/MM/YYYY HH:mm')) : v;
+    } catch { return v; }
+  }
+  return v;
 }
 
 function historyTimestamp(item: any): string {
-  return item?.approvedDate || item?.changedAt || item?.decidedAt || item?.createdAt || '';
-}
-
-function historyFieldFn(item: any): string {
-  return item?.changedField || item?.fieldName || '';
-}
-
-function historyOldVal(item: any): string | null {
-  return item?.previousValue ?? item?.oldValue ?? null;
-}
-
-function historyNewVal(item: any): string | null {
-  return item?.newValue ?? null;
+  return item.approvedDate || item.changedAt || item.createdAt || '';
 }
 
 function historyActor(item: any): string {
-  return item?.approvedByName || item?.approvedBy || item?.changedByName || item?.changedBy || item?.decidedBy || '';
+  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
+  return raw || '—';
 }
 
-function normalizeKey(value: string): string {
-  return String(value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+function normalizeHistoryKey(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 }
 
-function normalizedFields(value: string): string[] {
-  const fields = value.split(/[,;]+/).map((f) => f.trim()).filter(Boolean);
-  const hasApp = fields.some((f) => {
-    const k = normalizeKey(f);
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
+function normalizedHistoryFields(value: string): string[] {
+  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
+  const hasApprovalStatus = fields.some((field) => {
+    const key = normalizeHistoryKey(field);
+    return key === 'approvalstatus' || key === 'trang thai phe duyet';
   });
-  if (hasApp) {
-    return fields.filter((f) => {
-      const k = normalizeKey(f);
-      return k !== 'approvedlevel1' && k !== 'approvedlevel2' && k !== 'da phe duyet cap 1' && k !== 'da phe duyet cap 2';
+  if (hasApprovalStatus) {
+    return fields.filter((field) => {
+      const key = normalizeHistoryKey(field);
+      return key !== 'approvedlevel1' && key !== 'approvedlevel2' && key !== 'da phe duyet cap 1' && key !== 'da phe duyet cap 2';
     });
   }
   return fields;
 }
 
-function parseAssignments(value: string | null): Map<string, string> {
-  const res = new Map<string, string>();
-  if (!value) return res;
-  value.split(';').forEach((p) => {
-    const sep = p.indexOf('=');
-    if (sep < 0) return;
-    res.set(normalizeKey(p.slice(0, sep)), p.slice(sep + 1).trim());
+function parseHistoryAssignments(value: string | null): Map<string, string> {
+  const result = new Map<string, string>();
+  if (!value) return result;
+  value.split(';').forEach((part) => {
+    const separator = part.indexOf('=');
+    if (separator < 0) return;
+    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
   });
-  return res;
+  return result;
 }
 
 function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
-  const fields = normalizedFields(historyFieldFn(item));
-  const oldValue = historyOldVal(item);
-  const newValue = historyNewVal(item);
-  const oldMap = parseAssignments(oldValue);
-  const newMap = parseAssignments(newValue);
+  const fields = normalizedHistoryFields(String(item.changedField || item.fieldName || '').trim());
+  const oldValue = item.previousValue ?? item.oldValue ?? null;
+  const newValue = item.newValue ?? null;
+  const oldAssignments = parseHistoryAssignments(oldValue);
+  const newAssignments = parseHistoryAssignments(newValue);
 
-  if (fields.length > 1 && oldMap.size === 0 && newMap.size === 0) {
+  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
     return [{ field: fields.join(', '), oldValue, newValue }];
   }
   if (fields.length === 0) {
@@ -288,10 +371,10 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
   }
   return fields.map((field, index) => {
     const displayField = histField(field);
-    const oldAssigned = oldMap.get(normalizeKey(field)) ?? oldMap.get(normalizeKey(displayField));
-    const newAssigned = newMap.get(normalizeKey(field)) ?? newMap.get(normalizeKey(displayField));
-    const oldParts = oldValue?.split(';').map((p) => p.trim()).filter(Boolean) || [];
-    const newParts = newValue?.split(';').map((p) => p.trim()).filter(Boolean) || [];
+    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field)) ?? oldAssignments.get(normalizeHistoryKey(displayField));
+    const newAssigned = newAssignments.get(normalizeHistoryKey(field)) ?? newAssignments.get(normalizeHistoryKey(displayField));
+    const oldParts = oldValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
+    const newParts = newValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
     return {
       field,
       oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
@@ -300,103 +383,129 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
   });
 }
 
-function parseWkt(value: string): { typeName: string; points: Array<{ x: string; y: string }> } | null {
-  const str = (value || '').trim();
-  const match = /^(POINT|MULTIPOINT|LINESTRING|LINE|POLYGON)\s*\(/i.exec(str);
-  if (!match) return null;
-  const type = match[1].toUpperCase();
-  const typeName = type === 'POINT' ? 'Điểm' : (type.includes('LINE') ? 'Đường' : (type === 'POLYGON' ? 'Vùng' : 'Tập hợp điểm'));
-  let inner = str.slice(str.indexOf('(') + 1);
-  if (inner.endsWith(')')) inner = inner.slice(0, -1);
-  if (type === 'POLYGON' && inner.startsWith('(') && inner.endsWith(')')) {
-    inner = inner.slice(1, -1);
+function splitHistoryFileNames(value: string | null | undefined): string[] {
+  const text = String(value || '').trim();
+  if (!text || ['—', '-', '(null)', 'null', '(trống)', 'undefined', '[]', 'chưa có', 'chua co'].includes(text.toLowerCase())) return [];
+  const stripPrefix = (name: string): string => name.trim().replace(/^(thêm|xóa|cũ|mới|them|xoa|cu|moi)\s*:?\s+/i, '').trim();
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed.map((it: any) => {
+          if (it === null || it === undefined) return '';
+          if (typeof it === 'string') return stripPrefix(it);
+          if (typeof it === 'object' && it.fileName) return stripPrefix(it.fileName);
+          if (typeof it === 'object' && it.name) return stripPrefix(it.name);
+          return stripPrefix(String(it));
+        }).filter(Boolean);
+      }
+    } catch {
+      // Fallback
+    }
   }
-  const points = inner
-    .split(',')
-    .map((s) => s.replace(/[()]/g, '').trim().split(/\s+/).filter(Boolean))
-    .filter((p) => p.length >= 2)
-    .map((p) => ({ x: p[0], y: p[1] }));
-  if (points.length === 0) return null;
-  return { typeName, points };
+  return text
+    .split(/[,\n;]/)
+    .map((item) => stripPrefix(item))
+    .filter((item) => item && !['—', '-', '(null)', 'null', '(trống)', 'undefined'].includes(item.toLowerCase()));
 }
 
-function formatDms(xStr: string, yStr: string): string {
-  const x = Number(xStr);
-  const y = Number(yStr);
-  const toDms = (val: number, isLat: boolean): string => {
-    if (!Number.isFinite(val)) return '';
-    const abs = Math.abs(val);
-    const d = Math.floor(abs);
-    const mFloat = (abs - d) * 60;
-    const m = Math.floor(mFloat);
-    const s = Math.round((mFloat - m) * 600) / 10;
-    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
-    return `${d}°${String(m).padStart(2, '0')}'${s.toFixed(1).padStart(4, '0')}"${dir}`;
-  };
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return `${xStr}, ${yStr}`;
-  let lat = y;
-  let lng = x;
-  if (Math.abs(x) <= 90 && Math.abs(y) > 90) { lat = x; lng = y; }
-  return `${toDms(lat, true)}, ${toDms(lng, false)}`;
+function consolidateHistoryChanges(changes: Array<{ field: string; oldValue: string | null; newValue: string | null }>): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
+  if (!Array.isArray(changes) || changes.length <= 1) return changes || [];
+  const result: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+  const attachmentChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+
+  for (const c of changes) {
+    const norm = normalizeHistoryKey(c.field);
+    if (norm.includes('dinh kem') || norm.includes('attachment') || norm.includes('tep tin') || norm.includes('file')) {
+      attachmentChanges.push(c);
+    } else {
+      const existing = result.find(r => normalizeHistoryKey(r.field) === norm);
+      if (existing) {
+        existing.newValue = c.newValue;
+      } else {
+        result.push({ ...c });
+      }
+    }
+  }
+
+  if (attachmentChanges.length > 0) {
+    if (attachmentChanges.length === 1) {
+      result.push(attachmentChanges[0]);
+    } else {
+      const allOldFiles: string[] = [];
+      const allNewFiles: string[] = [];
+      for (const ac of attachmentChanges) {
+        splitHistoryFileNames(ac.oldValue).forEach(f => {
+          if (!allOldFiles.includes(f)) allOldFiles.push(f);
+        });
+        splitHistoryFileNames(ac.newValue).forEach(f => {
+          if (!allNewFiles.includes(f)) allNewFiles.push(f);
+        });
+      }
+      const netOld = allOldFiles.filter(f => !allNewFiles.includes(f));
+      const netNew = allNewFiles.filter(f => !allOldFiles.includes(f));
+      if (netOld.length > 0 || netNew.length > 0) {
+        result.push({
+          field: 'Tài liệu đính kèm',
+          oldValue: netOld.length > 0 ? netOld.join(', ') : '—',
+          newValue: netNew.length > 0 ? netNew.join(', ') : '—',
+        });
+      }
+    }
+  }
+
+  return result;
 }
 
 function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—' || val === '' || val === '-') {
-    return '';
+  if (val === null || val === undefined || val === '—' || val === '' || val === '-' || val === '–') {
+    return <span style={{ color: textTertiary }}>—</span>;
   }
-  const normKey = normalizeKey(field);
-  const normVal = normalizeKey(val);
+  const normKey = normalizeHistoryKey(field);
+  const normVal = normalizeHistoryKey(val);
+  const rawValue = String(val ?? '').trim();
 
-  const raw = String(val ?? '').trim();
-  const gis = parseWkt(raw);
-  if (gis) {
+  // ── Tài liệu đính kèm: hiển thị từng tên tệp kèm icon FileOutlined ──
+  if (normKey.includes('dinh kem') || normKey.includes('attachment') || normKey.includes('tep tin') || normKey.includes('file')) {
+    const fileNames = splitHistoryFileNames(rawValue);
+    if (fileNames.length === 0) return <span style={{ color: textTertiary }}>—</span>;
+    if (fileNames.length === 1) {
+      return (
+        <span title={fileNames[0]} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+          <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+          <span>{fileNames[0]}</span>
+        </span>
+      );
+    }
     return (
       <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
-        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary, whiteSpace: 'nowrap' }}>
-          {gis.typeName} ({gis.points.length} điểm)
-        </span>
-        {gis.points.map((pt, pi) => (
-          <span key={pi} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-            {gis.points.length > 1 ? <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pi + 1}:</span> : null}
-            {formatDms(pt.x, pt.y)}
+        {fileNames.map((fileName, fi) => (
+          <span key={fi} title={fileName} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+            <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+            <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fileName}</span>
           </span>
         ))}
       </span>
     );
   }
-  if ((normKey.includes('toa do') || normKey.includes('gis')) && /^-?\d+(\.\d+)?\s+-?\d+(\.\d+)?$/.test(raw)) {
-    const pair = raw.split(/\s+/);
-    return <span style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word' }}>{formatDms(pair[0], pair[1])}</span>;
+
+  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
+    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
+      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
+    }
+    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
+      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
+    }
+    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
+      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
+    }
+    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
+      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
+    }
+    return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
   }
 
-  if (normKey === 'approvalstatus' || normKey.includes('trang thai')) {
-    if (normVal.includes('da duyet') || normVal.includes('da phe duyet') || normVal.includes('approved')) {
-      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
-    }
-    if (normVal.includes('cuc duyet') || normVal.includes('cap cuc') || normVal.includes('approved_level1')) {
-      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
-    }
-    if (normVal.includes('cang vu') || normVal.includes('cho phe duyet') || normVal.includes('pending')) {
-      return <span style={statusBadgeStyle(actionPrimary)}>{val}</span>;
-    }
-    if (normVal.includes('tu choi') || normVal.includes('rejected')) {
-      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
-    }
-    return <span style={statusBadgeStyle(statusDraft)}>{val}</span>;
-  }
-
-  if (normKey.includes('tinh trang') || normKey === 'operationalstatus') {
-    if (normVal.includes('dang khai thac') || normVal.includes('operational')) {
-      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
-    }
-    if (normVal.includes('chua khai thac') || normVal.includes('not_yet')) {
-      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
-    }
-    if (normVal.includes('dung khai thac') || normVal.includes('suspended')) {
-      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
-    }
-  }
-
+  // Tình trạng (operationalStatus) không dùng badge — hiển thị text bình thường theo yêu cầu người dùng
   return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
 }
 
@@ -406,72 +515,80 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
   const level = Number(item.approvalLevel || 0);
 
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới')) {
+  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
   }
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || item.changedField?.includes('đính kèm')) {
+  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
     return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
   }
-  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp')) {
+  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
     return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
   }
   if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
     return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
   }
-  if (rawReason.includes('phê duyệt cấp cảng vụ')) {
+  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (rawReason.includes('phê duyệt cấp cục')) {
+  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
     return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
   }
-  if (rawReason.includes('từ chối cấp cảng vụ')) {
+  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
     return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
   }
-  if (rawReason.includes('từ chối cấp cục')) {
+  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
     return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
   }
 
   const approvalChange = changes.find((c: any) => {
-    const k = normalizeKey(c.field);
+    const k = normalizeHistoryKey(c.field);
     return k === 'approvalstatus' || k === 'trang thai phe duyet';
   });
+
   if (approvalChange) {
-    const nv = normalizeKey(approvalChange.newValue || '');
-    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1')) {
+    const nv = normalizeHistoryKey(approvalChange.newValue || '');
+    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
       return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
     }
-    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2')) {
+    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
-    if (nv === 'cho cuc duyet' || nv.includes('approved_level1')) {
+    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
       return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
     }
-    if (nv === 'da duyet' || nv.includes('approved')) {
+    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
       return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
     }
-    if (nv.includes('tu choi') || nv.includes('rejected')) {
+    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
       return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
     }
-    if (nv.includes('cho cang vu') || nv.includes('pending') || nv.includes('proposed')) {
+    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
       return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
     }
   }
 
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1')) {
-    if (rawStatus === 'REJECTED' || rawReason.includes('từ chối')) {
+  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2')) {
-    if (rawStatus === 'REJECTED' || rawReason.includes('từ chối')) {
+  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
     return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
   }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawReason.includes('xóa')) {
+  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
+    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
+  }
+  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
+    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
+  }
+  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
     return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
   }
+
   return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
 }
 
@@ -515,7 +632,9 @@ export default function StormShelterListPage() {
     return m;
   }, [organizations]);
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+  const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
+  const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
 
   const portMap = useMemo(() => {
@@ -614,12 +733,25 @@ export default function StormShelterListPage() {
     }
   }, [orgUnit, initialLoadDone]);
 
-  // Luồng hàng hải
+  // Luồng hàng hải (bộ lọc: chỉ lấy đã phê duyệt)
   useEffect(() => {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then((r) => {
+        const items = r.items || [];
+        setWaterwayOptions(items.map(n => ({
+          value: n.id,
+          label: n.channelName || n.channelCode || '',
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
+  // Luồng hàng hải (map hiển thị tên bảng & lịch sử)
+  useEffect(() => {
+    navigationChannelCRUD.search({ page: 0, size: 1000 })
+      .then((r) => {
         const m = new Map<string, string>();
-        r.items.forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
         setWaterwayMap(m);
       })
       .catch(() => {});
@@ -637,15 +769,32 @@ export default function StormShelterListPage() {
     })();
   }, [orgUnit]);
 
-  // Bến phao
+  // Bến phao (bộ lọc: chỉ lấy đã phê duyệt, lọc theo orgUnit và portId)
   useEffect(() => {
-    buoyBerthCRUD.search({ page: 1, pageSize: 1000, approvalStatus: 'APPROVED' })
-      .then((res) => {
+    (async () => {
+      try {
+        const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
+        if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit;
+        if (filterPortId) params.portId = filterPortId;
+        const r = await buoyBerthCRUD.search(params);
+        setBuoyStationOptions((r.data || []).map((b: any) => ({
+          value: b.id,
+          label: b.buoyBerthName || b.buoyBerthCode || b.id,
+        })));
+      } catch {}
+    })();
+  }, [orgUnit, filterPortId]);
+
+  // Bến phao (map hiển thị tên bảng & lịch sử)
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await buoyBerthCRUD.search({ page: 1, pageSize: 1000 });
         const m = new Map<string, string>();
-        (res.data || []).forEach((b: any) => { m.set(b.id, b.buoyBerthName || b.name || ''); });
+        (r.data || []).forEach((b: any) => { m.set(b.id, b.buoyBerthName || b.buoyBerthCode || ''); });
         setBuoyStationMap(m);
-      })
-      .catch(() => {});
+      } catch {}
+    })();
   }, []);
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
@@ -658,7 +807,14 @@ export default function StormShelterListPage() {
         )
       );
       const c: Record<string, number> = {};
-      rs.forEach((r, i) => { c[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0; });
+      let childSum = 0;
+      rs.forEach((r, i) => {
+        const k = TAB_STATUS_LIST[i]?.key || 'all';
+        const count = r.status === 'fulfilled' ? r.value.total : 0;
+        c[k] = count;
+        if (k !== 'all') childSum += count;
+      });
+      c['all'] = childSum;
       setTabCounts(c);
     } catch {}
   }, []);
@@ -698,7 +854,8 @@ export default function StormShelterListPage() {
 
   const handleFilterApply = useCallback(() => {
     setPage(1);
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
@@ -729,6 +886,11 @@ export default function StormShelterListPage() {
       const fresh = await stormShelterCRUD.findById(record.id);
       setDetailRecord(fresh);
     } catch {}
+  }, []);
+
+  const closeDetailDrawer = useCallback(() => {
+    setDetailDrawerVisible(false);
+    setDetailRecord(null);
   }, []);
 
   const dd2dms = (dd: number) => {
@@ -785,9 +947,13 @@ export default function StormShelterListPage() {
   const confirmSubmitApproval = useCallback(async () => {
     if (!submittingRecord) return;
     try {
-      await stormShelterApproval.submit(submittingRecord.id);
+      await stormShelterCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' } as any);
       toast.success('Đã gửi phê duyệt');
-      setSubmitModalOpen(false); setSubmittingRecord(null); void fetchData(); void fetchCounts(orgUnit);
+      setSubmitModalOpen(false);
+      setSubmittingRecord(null);
+      setPage(1);
+      void fetchData();
+      void fetchCounts(orgUnit);
     } catch (ex: unknown) {
       toast.error(ex instanceof Error ? ex.message : 'Gửi thất bại');
     }
@@ -831,8 +997,9 @@ export default function StormShelterListPage() {
     const from = historyFilters.fromDate || '';
     const to = historyFilters.toDate || '';
     return (Array.isArray(historyRecords) ? historyRecords : []).filter((r: any) => {
+      const fn = String(r?.fieldName || r?.changedField || '').trim();
+      if (EXCLUDED_CHANGE_FIELDS.has(fn)) return false;
       if (q) {
-        const fn = String(r?.fieldName || r?.changedField || '').toLowerCase();
         const label = histField(fn) || fn;
         const rawHits = [fn, label, r?.oldValue, r?.newValue, r?.previousValue, r?.value, r?.reason, r?.ghiChu, r?.note]
           .filter((v) => v !== null && v !== undefined)
@@ -858,26 +1025,46 @@ export default function StormShelterListPage() {
 
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'portId', 'stormShelterCode', 'stormShelterName', 'navigationChannelId',
-    'buoyStationId', 'classification', 'provinceId', 'province', 'detailedLocation', 'mapSymbolId',
-    'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT',
-    'activeStormShelterCount', 'publishedStormShelterCount', 'underInvestmentStormShelterCount',
+    'buoyStationId', 'classification', 'provinceId', 'province', 'detailedLocation', 'operationalStatus', 'approvalStatus',
+    'shapeDescription', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign',
+    'maxVesselDWT', 'activeStormShelterCount', 'publishedStormShelterCount', 'underInvestmentStormShelterCount',
     'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
-    'coordinateSystem', 'displayRule', 'spatialId', 'Tọa độ GIS', 'Loại đối tượng GIS',
-    'Phạm vi khu nước neo buộc tàu', 'Danh sách khu nước neo buộc tàu', 'Tài liệu đính kèm',
-    'attachments', 'infrastructureList', 'Trạng thái phê duyệt', 'Trạng thái',
+    'coordinateSystem', 'displayRule', 'mapSymbolId', 'spatialId',
+    'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Danh sách khu nước neo buộc tàu', 'Tài liệu đính kèm',
+    // Vietnamese label aliases:
+    'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu tránh, trú bão', 'Tên khu tránh, trú bão',
+    'Thuộc luồng hàng hải', 'Luồng hàng hải', 'Thuộc bến phao', 'Bến phao', 'Phân loại',
+    'Địa điểm (Tỉnh/Thành Phố)', 'Địa điểm (Tỉnh/Thành phố)', 'Tỉnh/Thành phố', 'Địa điểm chi tiết',
+    'Tình trạng', 'Trạng thái', 'Hình dạng', 'Diện tích (ha)',
+    'Độ sâu khu nước theo thiết kế (m)', 'Độ sâu theo thiết kế (m)',
+    'Độ sâu khu nước hiện tại (m)', 'Độ sâu hiện tại (m)',
+    'Cao độ đáy bến thiết kế', 'Cỡ tàu lớn nhất (DWT)', 'Cỡ tàu khai thác (DWT)',
+    'Số lượng khu đang khai thác', 'Số khu đang khai thác',
+    'Số lượng khu đã công bố', 'Số khu đã công bố',
+    'Số lượng khu đang thỏa thuận đầu tư', 'Số khu thỏa thuận đầu tư',
+    'Ghi chú', 'Thời điểm công bố mở', 'Quyết định công bố', 'Thỏa thuận đầu tư xây dựng',
+    'Hệ quy chiếu', 'Quy tắc hiển thị', 'Biểu tượng', 'Biểu tượng bản đồ',
   ];
 
   const renderStormShelterHistoryTimeline = (records: any[]) => {
     const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const isUpdateAction = (status: string, reason?: string) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
     const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 2 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      if (isSameGroup) {
         prev.items.push(r);
       } else {
         groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
@@ -889,44 +1076,50 @@ export default function StormShelterListPage() {
         <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
       </div>
     );
-    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || ''; } };
+    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || '—'; } };
     return (
       <div>{groups.map((g, gi) => {
         const rec0 = g.items[0] || {};
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
-        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '';
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
+        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
+        const rawChanges = g.items.flatMap((item: any) => historyChangeRows(item));
+        const changes = consolidateHistoryChanges(rawChanges).sort((a: any, b: any) => {
           const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        }).filter((c: any) => c.field !== 'attachments' && c.field !== 'spatialId' && c.field !== 'infrastructureList');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+        }).filter((c: any) => c.field && !EXCLUDED_CHANGE_FIELDS.has(c.field));
         const actionMeta = resolveHistoryActionMeta(g, changes);
+        const isCreate = actionMeta.label === 'Thêm mới' || changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const barColor = actionMeta.color;
         const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
+          if (raw === null || raw === undefined || raw === '(null)' || raw === 'null' || raw === '') return null;
+          const t = String(raw).trim();
+          if (!t || t === '(null)' || t === 'null') return null;
           if (t.startsWith('[') && t.endsWith(']')) {
             if (t === '[]') return 'Không có';
             const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
             return `${parts.length} hạng mục`;
           }
-          const val = histVal(fn, raw, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
-          if (!val || val === '(null)' || val === 'null' || val === '—' || val === '-' || val === '–') return null;
-          if (/^-?\d+(\.\d+)?$/.test(val)) {
-            const n = Number(val);
-            return Number.isInteger(n) ? n.toLocaleString('vi-VN') : val;
+          const resolved = histVal(fn, t, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
+          if (resolved !== t) {
+            return resolved;
           }
-          return val;
+          if (NUMERIC_HISTORY_FIELDS.has(fn)) {
+            if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
+              return formatHistoryNumber(t);
+            }
+          }
+          return resolved;
         };
         const validChanges = changes.filter((c: any) => {
-          if (!c.field) return false;
+          if (!c.field || EXCLUDED_CHANGE_FIELDS.has(c.field)) return false;
           const ov = formatHistoryValue(c.field, c.oldValue);
           const nv = formatHistoryValue(c.field, c.newValue);
           if (ov == null && nv == null) return false;
           if (ov === nv) return false;
+          if (typeof ov === 'string' && typeof nv === 'string' && ov.trim() === nv.trim()) return false;
           return true;
         });
         const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
@@ -936,7 +1129,7 @@ export default function StormShelterListPage() {
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                 <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : ''}
+                  {g.ts ? fmtTime(g.ts) : '—'}
                 </Typography.Text>
                 <span style={{ flexShrink: 0 }}>
                   <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
@@ -944,7 +1137,7 @@ export default function StormShelterListPage() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
                 <Typography.Text style={historyMetaRowStyle}>
-                  Người cập nhật: {g.actor || ''}
+                  Người cập nhật: {g.actor || '—'}
                 </Typography.Text>
                 <Typography.Text style={historyMetaRowStyle}>
                   Đơn vị: {unitName}
@@ -957,36 +1150,38 @@ export default function StormShelterListPage() {
                 {informationTitle}
               </Typography.Text>
               {validChanges.length > 0 ? (
-                <div>{validChanges.map((change, ri: number) => {
-                  const fn = change.field;
-                  const ov = formatHistoryValue(fn, change.oldValue);
-                  const nv = formatHistoryValue(fn, change.newValue);
-                  const renderCell = (rawVal: string | null) => {
-                    if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
-                      const img = symbolImageMap.get(rawVal);
-                      const name = symbolMap.get(rawVal) || rawVal;
-                      return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
-                    }
-                    return null;
-                  };
-                  const renderVal = (rawVal: string | null, fmtVal: string | null) => {
-                    if (!fmtVal || fmtVal === '—' || fmtVal === '-' || fmtVal === '–' || fmtVal === '(null)' || fmtVal === 'null') return '';
-                    return renderCell(rawVal) ?? renderHistoryValueTag(fn, fmtVal);
-                  };
-                  return isCreate ? (
-                    <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                      <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                    </div>
-                  ) : (
-                    <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                      <span title={ov ?? ''} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
-                      <span style={historyArrowStyle}>→</span>
-                      <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                    </div>
-                  );
-                })}</div>
+                <div>
+                  {validChanges.map((change, ri: number) => {
+                    const fn = change.field;
+                    const ov = formatHistoryValue(fn, change.oldValue);
+                    const nv = formatHistoryValue(fn, change.newValue);
+                    const renderCell = (rawVal: string | null) => {
+                      if ((fn === 'mapSymbolId' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && rawVal && rawVal !== '(null)') {
+                        const img = symbolImageMap.get(rawVal);
+                        const name = symbolMap.get(rawVal) || rawVal;
+                        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
+                      }
+                      return null;
+                    };
+                    const renderVal = (rawVal: string | null, fmtVal: string | null) => {
+                      if (!fmtVal || fmtVal === '—' || fmtVal === '-' || fmtVal === '–' || fmtVal === '(null)' || fmtVal === 'null') return '';
+                      return renderCell(rawVal) ?? renderHistoryValueTag(fn, fmtVal);
+                    };
+                    return isCreate ? (
+                      <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                        <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
+                        <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
+                      </div>
+                    ) : (
+                      <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                        <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
+                        <span title={ov ?? ''} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
+                        <span style={historyArrowStyle}>→</span>
+                        <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
                   {reasons.map((r: string, ri: number) => (
@@ -1055,21 +1250,11 @@ export default function StormShelterListPage() {
               allowClear
               showSearch
               value={filterPortId}
-              onChange={v => setFilterPortId(v)}
+              onChange={v => {
+                setFilterPortId(v);
+                setFilterBuoyStationId(undefined);
+              }}
               options={portOptions}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-            />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến phao</div>
-            <Select
-              style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
-              placeholder="Chọn bến phao"
-              allowClear
-              showSearch
-              value={filterBuoyStationId}
-              onChange={v => setFilterBuoyStationId(v)}
-              options={Array.from(buoyStationMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
               filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
             />
           </div>
@@ -1082,7 +1267,20 @@ export default function StormShelterListPage() {
               showSearch
               value={filterNavigationChannelId}
               onChange={v => setFilterNavigationChannelId(v)}
-              options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              options={waterwayOptions}
+              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến phao</div>
+            <Select
+              style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+              placeholder="Chọn bến phao"
+              allowClear
+              showSearch
+              value={filterBuoyStationId}
+              onChange={v => setFilterBuoyStationId(v)}
+              options={buoyStationOptions}
               filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
             />
           </div>
@@ -1127,15 +1325,14 @@ export default function StormShelterListPage() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
-              format="DD/MM/YYYY"
-              placeholder={['Từ ngày', 'Đến ngày']}
+              {...getRangePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })}
               allowClear
               value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
               onChange={(dates) => {
-                setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
-                setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
+                setFilterUpdatedFrom(dates?.[0] ? dates[0].startOf('day').format('YYYY-MM-DD 00:00:00') : undefined);
+                setFilterUpdatedTo(dates?.[1] ? dates[1].endOf('day').format('YYYY-MM-DD 23:59:59') : undefined);
+                setPage(1);
               }}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
         </>
@@ -1162,17 +1359,15 @@ export default function StormShelterListPage() {
     if (hasPerm('stormshelter:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     }
-    const canApproveC1 = hasPerm('stormshelter:approvec1') || hasPerm('stormshelter:approve');
-    const canApproveC2 = hasPerm('stormshelter:approvec2') || hasPerm('stormshelter:approve');
-    if (canApproveC1 && (st === 'PENDING_APPROVAL' || st === 'PROPOSED' || st === 'CHO_PHE_DUYET')) {
+    if (hasPerm('stormshelter:approvec1') && st === 'PENDING_APPROVAL') {
       actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (canApproveC2 && (st === 'APPROVED_LEVEL1' || st === 'APPROVED_LEVEL2')) {
+    if (hasPerm('stormshelter:approvec2') && st === 'APPROVED_LEVEL1') {
       actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'stormshelter' })) {
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'stormshelter', extraDeletePerms: ['pier:delete', 'port:delete'] })) {
       actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
     }
     return actions;
@@ -1230,22 +1425,36 @@ export default function StormShelterListPage() {
   }, [isAuditViewer, userMap]);
 
   const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'portId') return portMap.get(r.portId) ?? r.portId ?? '';
-    if (field === 'buoyStationId') return buoyStationMap.get(r.buoyStationId) ?? r.buoyStationId ?? '';
-    if (field === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] ?? '') : '';
+    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
+    if (field === 'stormShelterName') return r.stormShelterName ?? '';
+    if (field === 'stormShelterCode') return r.stormShelterCode ?? '';
+    if (field === 'portId') return r.portName || portMap.get(r.portId) || r.portId || '';
+    if (field === 'navigationChannelId') return (r as any).navigationChannelName || waterwayMap.get(r.navigationChannelId) || r.navigationChannelId || '';
+    if (field === 'buoyStationId') return r.buoyStationName || buoyStationMap.get(r.buoyStationId) || r.buoyStationId || '';
+    if (field === 'provinceId' || field === 'province') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : ((r as any).province || '');
     if (field === 'classification') return r.classification ?? '';
     if (field === 'operationalStatus') {
-      const m: Record<string, string> = {
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-        SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[r.operationalStatus] || r.operationalStatus || '';
+      return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
-    if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
+    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    if (field === 'updatedAt' || field === 'updatedByName') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'submittedForApprovalAt') {
+      const t = r.submittedForApprovalAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'portAuthorityApprovedAt') {
+      const t = r.portAuthorityApprovedAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'departmentApprovedAt') {
+      const t = r.departmentApprovedAt;
+      return t ? new Date(t).getTime() : 0;
+    }
     return r[field] ?? '';
-  }, [portMap, buoyStationMap, waterwayMap]);
+  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1271,35 +1480,23 @@ export default function StormShelterListPage() {
         render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span>,
       },
       {
-        label: 'Phân loại', dataIndex: 'classification', key: 'classification', width: 160, sortable: true,
-        render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span>,
+        label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
+        render: (v?: string, r?: StormShelterArea) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{(r as any)?.navigationChannelName || (v ? (waterwayMap.get(v) || v) : '')}</span>,
       },
       {
         label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
-        render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? buoyStationMap.get(v) || v : ''}</span>,
-      },
-      {
-        label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
-        render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : ''}</span>,
+        render: (v: string, r: StormShelterArea) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{r.buoyStationName || (v ? buoyStationMap.get(v) || v : '')}</span>,
       },
       {
         label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230, sortable: true,
         render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (VIETNAM_PROVINCES[Number(v) - 1] || String(v)) : ''}</span>,
       },
       {
-        label: 'Diện tích (ha)', dataIndex: 'area', key: 'area', width: 150, sortable: true,
-        render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? fmtNum(v) : ''}</span>,
-      },
-      {
-        label: 'Độ sâu hiện tại (m)', dataIndex: 'currentWaterDepth', key: 'currentWaterDepth', width: 160, sortable: true,
-        render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? fmtNum(v) : ''}</span>,
-      },
-      {
-        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 200, sortable: true,
+        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
         render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; },
       },
       {
-        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, sortable: true,
+        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
         render: (v: string) => {
           const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
@@ -1448,6 +1645,17 @@ export default function StormShelterListPage() {
               width: 100% !important;
             }
           }
+          .storm-shelter-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label {
+            height: auto !important;
+            min-height: 44px !important;
+            align-items: flex-start !important;
+          }
+          .storm-shelter-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label > label {
+            height: auto !important;
+            white-space: normal !important;
+            line-height: 1.45 !important;
+            overflow-wrap: break-word;
+          }
         `}</style>
         <ScreenHeader
           breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu tránh, trú bão' }]}
@@ -1564,8 +1772,9 @@ export default function StormShelterListPage() {
           size={1000}
           title={<span style={drawerTitleStyle}>Chi tiết khu tránh, trú bão{detailRecord ? ` - ${detailRecord.stormShelterName}` : ''}</span>}
           open={detailDrawerVisible}
-          onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-          extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
+          destroyOnClose
+          onClose={closeDetailDrawer}
+          extra={<Button type="text" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}
           footer={null}
         >
@@ -1577,12 +1786,15 @@ export default function StormShelterListPage() {
               symbolMap={symbolMap}
               symbolImageMap={symbolImageMap}
               portOptions={portOptions}
-              waterwayOptions={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-              buoyStationOptions={Array.from(buoyStationMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              portMap={portMap}
+              buoyStationMap={buoyStationMap}
+              waterwayOptions={waterwayOptions.length > 0 ? waterwayOptions : Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              buoyStationOptions={buoyStationOptions.length > 0 ? buoyStationOptions : Array.from(buoyStationMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
               userMap={userMap}
               detailFiles={detailFiles}
               ddToDms={dd2dms}
               approvalStyleMap={APPROVAL_STYLE_MAP}
+              operationalStyleMap={OPERATIONAL_STYLE_MAP}
               operationPlanList={(detailRecord as any)?.operationPlanList}
               maintenancePlanList={(detailRecord as any)?.maintenancePlanList}
               incidentList={(detailRecord as any)?.incidentList}

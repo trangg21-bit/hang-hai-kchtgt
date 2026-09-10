@@ -46,17 +46,17 @@ public class UpdateStormShelterAreaRequest {
     @DecimalMin("0")
     private BigDecimal area;
 
-    @DecimalMin("0")
-    private BigDecimal designWaterDepth;
+    @Size(max = 20, message = "Độ sâu khu nước theo thiết kế không vượt quá 20 ký tự")
+    private String designWaterDepth;
 
-    @DecimalMin("0")
-    private BigDecimal currentWaterDepth;
+    @Size(max = 20, message = "Độ sâu khu nước hiện tại không vượt quá 20 ký tự")
+    private String currentWaterDepth;
 
-    @DecimalMin("0")
-    private BigDecimal bottomElevationDesign;
+    @Size(max = 20, message = "Cao độ đáy bến thiết kế không vượt quá 20 ký tự")
+    private String bottomElevationDesign;
 
-    @DecimalMin("0")
-    private BigDecimal maxVesselDWT;
+    @Size(max = 20, message = "Cỡ tàu khai thác không vượt quá 20 ký tự")
+    private String maxVesselDWT;
 
     private Integer activeStormShelterCount;
 

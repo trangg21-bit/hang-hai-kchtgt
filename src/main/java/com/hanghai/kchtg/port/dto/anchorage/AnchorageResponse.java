@@ -43,10 +43,10 @@ public class AnchorageResponse {
     // ── Technical fields ───────────────────────────────────────────────
     private String shapeDescription;
     private BigDecimal area;
-    private BigDecimal designWaterDepth;
-    private BigDecimal currentWaterDepth;
-    private BigDecimal bottomElevationDesign;
-    private BigDecimal maxVesselDWT;
+    private String designWaterDepth;
+    private String currentWaterDepth;
+    private String bottomElevationDesign;
+    private String maxVesselDWT;
     private Integer activeAnchorageCount;
     private Integer publishedAnchorageCount;
     private Integer underInvestmentAnchorageCount;

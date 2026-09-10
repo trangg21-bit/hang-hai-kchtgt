@@ -52,11 +52,12 @@ public class StormShelterAreaApprovalService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu tránh, trú bão với id: " + id));
 
         if ("CANG_VU".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1
-                    && entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL) {
-                throw new IllegalStateException("Không thể phê duyệt cấp Chi cục: trạng thái hiện tại không hợp lệ");
+            if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
+                    && entity.getApprovalStatus() != ApprovalStatus.PROPOSED
+                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+                throw new IllegalStateException("Không thể phê duyệt cấp Chi cục: trạng thái hiện tại không hợp lệ (" + entity.getApprovalStatus() + ")");
             }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
             entity.setPortAuthorityApprovedBy(userId);
             entity.setRejectionReason(null);
@@ -64,13 +65,14 @@ public class StormShelterAreaApprovalService {
                 entity.setPortAuthorityApprovalContent(content.trim());
             }
         } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2
-                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
-                throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Chi cục trước");
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1
+                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
+                throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Chi cục trước (trạng thái hiện tại: " + entity.getApprovalStatus() + ")");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setDepartmentApprovedAt(LocalDateTime.now());
             entity.setDepartmentApprovedBy(userId);
+            entity.setRejectionReason(null);
             if (content != null && !content.isBlank()) {
                 entity.setDepartmentApprovalContent(content.trim());
             }
@@ -101,8 +103,11 @@ public class StormShelterAreaApprovalService {
         StormShelterArea entity = stormShelterAreaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu tránh, trú bão với id: " + id));
 
-        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
-                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        boolean isCuc = "CUC".equalsIgnoreCase(cap)
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        entity.setApprovalStatus(isCuc ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
         stormShelterAreaRepository.save(entity);
@@ -148,6 +153,7 @@ public class StormShelterAreaApprovalService {
                                 (a, b) -> a));
 
         List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
                 .map(h -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", h.getId());

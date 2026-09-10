@@ -109,8 +109,27 @@ public class AnchorageController {
         return ResponseEntity.ok(ApiResponse.success("Xóa khu neo đậu thành công", null));
     }
 
+    @PostMapping("/{id}/approve/c1")
+    public ResponseEntity<ApiResponse<Void>> approveC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Approving Anchorage C1: id={}, user={}", id, authentication.getName());
+        anchorageApprovalService.approve(id, authentication.getName(), "CANG_VU", reason);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", null));
+    }
+
+    @PostMapping("/{id}/approve/c2")
+    public ResponseEntity<ApiResponse<Void>> approveC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Approving Anchorage C2: id={}, user={}", id, authentication.getName());
+        anchorageApprovalService.approve(id, authentication.getName(), "CUC", reason);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
+    }
+
     @PostMapping("/{id}/approve")
-    // @PreAuthorize("@auth.check(authentication, 'anchorage:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN ANCHORAGE
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             @Valid @RequestBody ApproveRequest request,
@@ -121,13 +140,15 @@ public class AnchorageController {
     }
 
     @PostMapping("/{id}/reject")
-    // @PreAuthorize("@auth.check(authentication, 'anchorage:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN ANCHORAGE
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
-            @Valid @RequestBody RejectRequest request,
+            @RequestBody(required = false) RejectRequest request,
+            @RequestParam(required = false) String reason,
             Authentication authentication) {
-        log.info("Rejecting Anchorage: id={}, cap={}", id, request.getCap());
-        anchorageApprovalService.reject(id, authentication.getName(), request.getCap(), request.getLyDo());
+        String cap = request != null ? request.getCap() : null;
+        String lyDo = request != null && request.getLyDo() != null ? request.getLyDo() : reason;
+        log.info("Rejecting Anchorage: id={}, cap={}, reason={}", id, cap, lyDo);
+        anchorageApprovalService.reject(id, authentication.getName(), cap, lyDo);
         return ResponseEntity.ok(ApiResponse.success("Từ chối khu neo đậu thành công", null));
     }
 

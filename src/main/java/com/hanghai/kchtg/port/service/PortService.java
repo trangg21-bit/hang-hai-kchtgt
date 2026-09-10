@@ -25,6 +25,7 @@ import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
@@ -292,7 +293,8 @@ public class PortService {
                                           String updatedFrom, String updatedTo,
                                           String search) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
+        Pageable pageable = PageRequest.of(page, pageSize,
+                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
 
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
@@ -521,12 +523,16 @@ public class PortService {
             }
         }
 
-        Port saved = portRepository.save(entity);
-
         // Actor thật từ SecurityContext — nếu truyền "system", ChangeTrackingService
         // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
         UUID operatorId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
+
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+        Port saved = portRepository.saveAndFlush(entity);
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
             // Lấy tọa độ + loại hình cũ (WKT) trước khi createOrUpdate ghi đè spatial object
@@ -555,7 +561,8 @@ public class PortService {
                     com.hanghai.kchtg.gis.search.dto.InfrastructureType.SEAPORT
             );
             saved.setSpatialId(spatialObj.getId());
-            saved = portRepository.save(saved);
+            saved.setUpdatedAt(LocalDateTime.now());
+            saved = portRepository.saveAndFlush(saved);
 
             // Lịch sử vị trí theo chuẩn Trung tâm điều hành VTS: 2 dòng riêng
             // "Tọa độ GIS" + "Loại đối tượng GIS", kèm approvedBy = user thật.

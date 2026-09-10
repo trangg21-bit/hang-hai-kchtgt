@@ -199,7 +199,7 @@ public class DaiTtdhService {
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
-        LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
+        LocalDateTime updatedToDt = parseUpdatedTo(updatedTo);
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả đài TTDH của toàn bộ đơn vị con (hậu duệ)
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
@@ -534,7 +534,44 @@ public class DaiTtdhService {
 
     private LocalDateTime parseLocalDateTime(String dt) {
         if (dt == null || dt.isBlank()) return null;
-        try { return LocalDateTime.parse(dt); }
-        catch (Exception e) { return null; }
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atStartOfDay();
+            }
+            if (s.contains(" ")) {
+                s = s.replace(" ", "T");
+            }
+            if (s.endsWith("Z")) {
+                return java.time.Instant.parse(s).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+            }
+            if (s.contains("+") || (s.length() > 19 && s.indexOf('-', 10) > 0)) {
+                return java.time.OffsetDateTime.parse(s).toLocalDateTime();
+            }
+            return LocalDateTime.parse(s);
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(dt.trim(), java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            } catch (Exception ex) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseUpdatedTo(String dt) {
+        if (dt == null || dt.isBlank()) return null;
+        String s = dt.trim();
+        try {
+            if (s.length() == 10) {
+                return java.time.LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
+            }
+            LocalDateTime ldt = parseLocalDateTime(s);
+            if (ldt != null && ldt.getNano() == 0) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

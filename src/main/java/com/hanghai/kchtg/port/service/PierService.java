@@ -207,7 +207,7 @@ public class PierService {
             String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         LocalDateTime updatedFromDt = null;
@@ -487,12 +487,14 @@ public class PierService {
             applySaveAction(entity, request.getSaveAction());
         }
 
-        Pier saved = pierRepository.save(entity);
-
-        // Actor thật từ SecurityContext — nếu truyền "system", ChangeHistoryService
-        // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
+
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (operatorId != null) {
+            entity.setUpdatedBy(operatorId);
+        }
+        Pier saved = pierRepository.saveAndFlush(entity);
 
         if (wasApproved) {
             // Lịch sử vị trí theo chuẩn Cảng biển (PortService.update): 2 dòng riêng

@@ -30,7 +30,7 @@ public class StormShelterMooringWaterArea extends BaseEntity {
     @Column(name = "storm_shelter_area_id", nullable = false)
     private UUID stormShelterAreaId;
 
-    @Column(name = "description", length = 1000)
+    @Column(name = "description", length = 2000)
     private String description;
 
     @Column(name = "geometry_type", length = 20)

@@ -52,7 +52,7 @@ Chức năng cho phép người dùng có `anchorage:create` tạo mới hồ s�
 | 15 | Cỡ tàu khai thác theo công bố (DWT) | Không | Input | `maxVesselDWT` |
 | 16 | Số lượng khu neo đậu đang khai thác | Không | Input | `activeAnchorageCount` |
 | 17 | Số lượng khu neo đậu đã công bố | Không | Input | `publishedAnchorageCount` |
-| 18 | Số lượng khu neo đậu đang được thỏa thuận đầu tư XD | Không | Input | `underInvestmentAnchorageCount` |
+| 18 | Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng | Không | Input | `underInvestmentAnchorageCount` |
 | 19 | Ghi chú | Không | InputTextArea | `remarks` |
 
 ### 2.3. Thông tin công bố mở

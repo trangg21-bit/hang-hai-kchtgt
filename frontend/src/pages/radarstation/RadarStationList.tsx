@@ -960,7 +960,8 @@ export default function RadarStationList() {
   // ── Load organizations + self-chọn đơn vị mặc định theo user (giống /berth) ──
   useEffect(() => {
     const loadOrgDefault = async () => {
-      const data = (window.parent as any)?.kchtOrgUnits;
+      const isIframe = window.self !== window.top;
+      const data = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
       const orgs: any[] = data && data.length > 0
         ? data
         : ((await organizationService.getTree()) || []);

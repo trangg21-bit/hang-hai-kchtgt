@@ -56,6 +56,7 @@ public class ChangeHistoryService {
             case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
             case "DAITTDH", "DAI_TTDH" -> InfrastructureType.DAI_TTDH;
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
+            case "TRANSFERAREA", "TRANSFER_AREA", "TRANSSHIPMENT_AREA", "KHU_CHUYEN_TAI" -> InfrastructureType.TRANSSHIPMENT_AREA;
             case "ANCHORAGE", "KHU_NEO_DAU", "ANCHORAGE_AREA" -> InfrastructureType.ANCHORAGE_AREA;
             default -> InfrastructureType.SEAPORT;
         };

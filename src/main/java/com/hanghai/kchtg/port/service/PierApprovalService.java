@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,7 +44,9 @@ public class PierApprovalService {
     public void submit(UUID id, UUID userId) {
         Pier entity = loadForApproval(id);
         infrastructureApprovalService.submit(entity, InfrastructureType.PIER, userId);
-        pierRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        pierRepository.saveAndFlush(entity);
     }
 
     /** T06: Cang vu / Chi cuc duyet vong 1. */
@@ -52,7 +55,9 @@ public class PierApprovalService {
         Pier entity = loadForApproval(id);
         infrastructureApprovalService.approveC1(entity, InfrastructureType.PIER,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        pierRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        pierRepository.saveAndFlush(entity);
     }
 
     /** T08: Cuc duyet vong 2 -- ho so tro thanh "Da duyet". */
@@ -61,7 +66,9 @@ public class PierApprovalService {
         Pier entity = loadForApproval(id);
         infrastructureApprovalService.approveC2(entity, InfrastructureType.PIER,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        pierRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        pierRepository.saveAndFlush(entity);
         notificationService.sendApprovalNotification("Pier", id.toString(), String.valueOf(userId), null);
     }
 
@@ -79,7 +86,9 @@ public class PierApprovalService {
             infrastructureApprovalService.approveC1(entity, InfrastructureType.PIER,
                     ApprovalStatus.REJECTED.name(), reason, userId);
         }
-        pierRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        pierRepository.saveAndFlush(entity);
     }
 
     /**

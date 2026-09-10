@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,7 +42,9 @@ public class BerthApprovalService {
     public void submit(UUID id, UUID userId) {
         Berth entity = loadForApproval(id);
         infrastructureApprovalService.submit(entity, InfrastructureType.PORT_TERMINAL, userId);
-        berthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        berthRepository.saveAndFlush(entity);
     }
 
     /** T06: Cang vu / Chi cuc duyet vong 1. */
@@ -50,7 +53,9 @@ public class BerthApprovalService {
         Berth entity = loadForApproval(id);
         infrastructureApprovalService.approveC1(entity, InfrastructureType.PORT_TERMINAL,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        berthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        berthRepository.saveAndFlush(entity);
     }
 
     /** T08: Cuc duyet vong 2 -- ho so tro thanh "Da duyet". */
@@ -59,7 +64,9 @@ public class BerthApprovalService {
         Berth entity = loadForApproval(id);
         infrastructureApprovalService.approveC2(entity, InfrastructureType.PORT_TERMINAL,
                 ApprovalStatus.APPROVED.name(), reason, userId);
-        berthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        berthRepository.saveAndFlush(entity);
     }
 
     /**
@@ -72,7 +79,9 @@ public class BerthApprovalService {
         entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
                 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
-        berthRepository.save(entity);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) entity.setUpdatedBy(userId);
+        berthRepository.saveAndFlush(entity);
     }
 
     /**

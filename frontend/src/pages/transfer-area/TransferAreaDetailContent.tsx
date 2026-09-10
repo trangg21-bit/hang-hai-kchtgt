@@ -1,8 +1,27 @@
-import { useState } from 'react';
-import { Tabs, Tooltip, Button, Modal, Table } from 'antd';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Tabs, Tooltip, Button, Modal, Drawer } from 'antd';
+
+const getFilterSearchTopY = (): number => {
+  if (typeof window === 'undefined') return 0;
+  const filterFooter = document.querySelector('.filter-action-footer');
+  if (filterFooter) {
+    const rect = filterFooter.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  const searchBtn = Array.from(document.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === 'Tìm kiếm' && !b.closest('.ant-drawer')
+  );
+  if (searchBtn && searchBtn.parentElement) {
+    const rect = searchBtn.parentElement.getBoundingClientRect();
+    if (rect.top > 0) return Math.round(rect.top);
+  }
+  return Math.round(window.innerHeight - 89);
+};
+
 import {
   AuditOutlined,
   BankOutlined,
+  CalendarOutlined,
   DownloadOutlined,
   DownOutlined,
   EnvironmentOutlined,
@@ -12,8 +31,6 @@ import {
   FileTextOutlined,
   RightOutlined,
   SlidersOutlined,
-  CalendarOutlined,
-  CompassOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../../services/api';
@@ -32,16 +49,21 @@ import {
   actionPrimary,
   surfaceCard,
   textTertiary,
+  textPrimary,
+  borderDefault,
   fontSizeSm,
   fontSizeLg,
   fontWeightBold,
+  fontWeightMedium,
   spaceSm,
   spaceMd,
   spaceFormField,
-  radiusPill,
   outlineButtonStyle,
   primaryButtonStyle,
   statusBadgeStyle,
+  drawerTitleStyle,
+  drawerProps,
+  drawerCloseBtnStyle,
 } from '../../themetokenchk';
 import type { TransferArea } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -49,18 +71,18 @@ import { fmtNum } from '../../utils/numFmt';
 
 const fontSizeMd = 13.5;
 
-const isImageFile = (fileName?: string): boolean => {
-  if (!fileName) return false;
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tif', 'tiff'].includes(ext || '');
-};
-
 interface AttachmentFile {
   id: string;
   fileName?: string;
+  name?: string;
   fileSize?: number;
+  size?: number;
   uploadedBy?: string;
+  uploadedByName?: string;
   uploadedAt?: string;
+  uploadedDate?: string;
+  createdAt?: string;
+  url?: string;
 }
 
 interface DetailTableRow {
@@ -93,6 +115,7 @@ export interface TransferAreaDetailContentProps {
   symbolMap: Map<string, string>;
   symbolImageMap: Map<string, string>;
   portOptions: Array<{ value: string; label: string }>;
+  portMap?: Map<string, string>;
   userMap: Map<string, string>;
   detailFiles: AttachmentFile[];
   ddToDms: (dd: number) => { d: number; m: number; s: number };
@@ -114,49 +137,96 @@ const OPERATIONAL_FUNCTIONS_LABEL_MAP: Record<string, string> = {
 
 const formatOperationalFunctions = (v?: string | null): string => {
   if (!v) return '';
-  const parts = v.split(',').map((s) => s.trim()).filter(Boolean);
-  if (parts.length === 0) return '';
-  return parts.map((code) => OPERATIONAL_FUNCTIONS_LABEL_MAP[code] || code).join(', ');
+  const tokens = v.split(',').map(s => s.trim()).filter(Boolean);
+  return tokens.map(t => OPERATIONAL_FUNCTIONS_LABEL_MAP[t] || t).join(', ');
 };
 
-const formatDateOnly = (d: string | null | undefined): string => {
+function formatDateOnly(d: string | null | undefined): string {
   if (!d) return '';
-  try { return dayjs(d).format('DD/MM/YYYY'); } catch { return d; }
-};
+  try { return dayjs(d).format('DD/MM/YYYY'); } catch { return String(d); }
+}
 
-const fmtDateTime = (d: string | null | undefined): string => {
+function fmtDateTime(d: string | null | undefined): string {
   if (!d) return '';
-  try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
-};
+  try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return String(d); }
+}
 
 const formatNumericDisplay = (value: number | string | null | undefined): string => {
   if (value === null || value === undefined || value === '') return '';
   return fmtNum(value) || String(value);
 };
 
-const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
-  const wkt = record?.coordinates;
+const isImageFile = (fileName?: string): boolean => {
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext || '');
+};
+
+const parseGisCoordinates = (record?: any): Array<{ lat: number; lng: number }> => {
   const out: Array<{ lat: number; lng: number }> = [];
-  if (wkt && typeof wkt === 'string' && wkt.trim()) {
+  const raw = record?.coordinates || record?.gisCoordinates;
+  if (typeof raw === 'string' && raw.trim().length > 0) {
     try {
-      if (wkt.startsWith('LINESTRING(')) {
-        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
-        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item: any) => {
+          if (Array.isArray(item) && item.length >= 2) {
+            out.push({ lng: Number(item[0]), lat: Number(item[1]) });
+          } else if (item && typeof item === 'object') {
+            const lat = item.lat ?? item.latitude;
+            const lng = item.lng ?? item.longitude;
+            if (lat != null && lng != null) out.push({ lat: Number(lat), lng: Number(lng) });
+          }
+        });
       }
-      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
-        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
-        if (m) {
-          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
-          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
-          pts.forEach(p => { out.push(p); });
+    } catch {
+      const match = raw.match(/\(\((.*?)\)\)/) || raw.match(/\((.*?)\)/);
+      const coordStr = match ? match[1] : raw;
+      const pairs = coordStr.split(',');
+      pairs.forEach((p: string) => {
+        const parts = p.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          const lng = parseFloat(parts[0]);
+          const lat = parseFloat(parts[1]);
+          if (!isNaN(lat) && !isNaN(lng)) out.push({ lat, lng });
+        }
+      });
+    }
+  }
+  if (out.length === 0 && Array.isArray(record?.anchorPoints)) {
+    try {
+      for (const ap of record.anchorPoints) {
+        if (ap.latitude != null && ap.longitude != null) {
+          out.push({ lat: Number(ap.latitude), lng: Number(ap.longitude) });
         }
       }
-      if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
+    } catch {}
+  }
+  if (out.length === 0 && Array.isArray(record?.mooringWaterAreas)) {
+    try {
+      for (const wa of record.mooringWaterAreas) {
+        if (Array.isArray(wa.anchorPoints)) {
+          for (const ap of wa.anchorPoints) {
+            if (ap.latitude != null && ap.longitude != null) {
+              out.push({ lat: Number(ap.latitude), lng: Number(ap.longitude) });
+            }
+          }
+        }
       }
-      if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+    } catch {}
+  }
+  if (out.length === 0 && record?.pointGeom) {
+    try {
+      const m = String(record.pointGeom).match(/POINT\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)/i);
+      if (m) out.push({ lng: Number(m[1]), lat: Number(m[2]) });
+    } catch {}
+  }
+  if (out.length === 0 && record?.polygonGeom) {
+    try {
+      const str = String(record.polygonGeom);
+      const pairRegex = /([0-9.]+)\s+([0-9.]+)/g;
+      let pm;
+      while ((pm = pairRegex.exec(str)) !== null) {
         if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
       }
     } catch {}
@@ -173,6 +243,7 @@ export default function TransferAreaDetailContent({
   symbolMap,
   symbolImageMap,
   portOptions,
+  portMap = new Map(),
   userMap,
   detailFiles,
   ddToDms,
@@ -183,19 +254,61 @@ export default function TransferAreaDetailContent({
   incidentList = [],
 }: TransferAreaDetailContentProps) {
   const r = selectedRecord;
+
+  const renderDmsText = (dd: number | null | undefined, isLat: boolean): string => {
+    if (dd == null || isNaN(Number(dd))) return '';
+    const dms = ddToDms(Number(dd));
+    return `${dms.d}° ${dms.m}' ${dms.s}" ${isLat ? 'N' : 'E'}`;
+  };
+
   const [indicatorOpen, setIndicatorOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [activityOpen, setActivityOpen] = useState(true);
+  const [waterAreaOpen, setWaterAreaOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
+
+  const [viewingWaterArea, setViewingWaterArea] = useState<any | null>(null);
+  const [viewingMapParamsOpen, setViewingMapParamsOpen] = useState(true);
+  const [viewingAnchorPointsOpen, setViewingAnchorPointsOpen] = useState(true);
+
+  const viewingAnchorBoxRef = useRef<HTMLDivElement>(null);
+  const [viewingAnchorBoxHeight, setViewingAnchorBoxHeight] = useState<number | undefined>();
+
+  const updateViewingAnchorBoxHeight = useCallback(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen || !viewingAnchorBoxRef.current) return;
+    const targetY = getFilterSearchTopY();
+    const boxRect = viewingAnchorBoxRef.current.getBoundingClientRect();
+    if (boxRect.top > 0) {
+      const h = Math.round(targetY - boxRect.top);
+      setViewingAnchorBoxHeight(Math.max(230, h));
+    }
+  }, [viewingWaterArea, viewingAnchorPointsOpen]);
+
+  useEffect(() => {
+    if (!viewingWaterArea || !viewingAnchorPointsOpen) return;
+    updateViewingAnchorBoxHeight();
+    const t1 = setTimeout(updateViewingAnchorBoxHeight, 60);
+    const t2 = setTimeout(updateViewingAnchorBoxHeight, 180);
+    const t3 = setTimeout(updateViewingAnchorBoxHeight, 350);
+    window.addEventListener('resize', updateViewingAnchorBoxHeight);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('resize', updateViewingAnchorBoxHeight);
+    };
+  }, [viewingWaterArea, viewingAnchorPointsOpen, viewingMapParamsOpen, updateViewingAnchorBoxHeight]);
+
+  const viewingAnchorTableScrollY = viewingAnchorBoxHeight ? Math.max(70, viewingAnchorBoxHeight - 148) : 'calc(100vh - 500px)';
+
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewImageFile, setPreviewImageFile] = useState<any>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [viewingWaterArea, setViewingWaterArea] = useState<any | null>(null);
 
   const handleDownloadFile = async (fileId: string, fileName: string) => {
     try {
@@ -234,9 +347,8 @@ export default function TransferAreaDetailContent({
   };
 
   const coords = parseGisCoordinates(r);
-  const portLabel = portOptions.find(o => o.value === r.portId)?.label || r.portId || '';
+  const portLabel = r.portId ? (portMap.get(r.portId) || portOptions.find(o => o.value === r.portId)?.label || r.portId) : '';
   const provinceLabel = r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : '';
-  const waterAreaList: any[] = (r as any)?.mooringWaterAreas || [];
 
   return (
     <>
@@ -263,6 +375,12 @@ export default function TransferAreaDetailContent({
           border-bottom: 1px solid #f1f5f9 !important;
           line-height: 1.5 !important;
           gap: 10px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          overflow: visible !important;
+        }
+        .transfer-area-detail-content-wrapper .chk-detail-row:last-child {
+          border-bottom: none !important;
         }
         .transfer-area-detail-content-wrapper .chk-detail-row--full { grid-column: 1 / -1 !important; }
         .transfer-area-detail-content-wrapper .chk-detail-label,
@@ -273,7 +391,7 @@ export default function TransferAreaDetailContent({
           min-width: 215px !important;
           max-width: 215px !important;
           flex-shrink: 0 !important;
-          color: #12468c !important;
+          color: ${colors.sidebarBg} !important;
           font-weight: 600 !important;
           font-size: 13.5px !important;
           text-align: left !important;
@@ -281,11 +399,22 @@ export default function TransferAreaDetailContent({
           align-self: flex-start !important;
           white-space: normal !important;
         }
+        .transfer-area-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+          width: auto !important;
+          min-width: 220px !important;
+          max-width: 320px !important;
+          white-space: nowrap !important;
+        }
         .transfer-area-detail-content-wrapper .chk-detail-row .sec-col2-label {
           width: 250px !important;
           min-width: 250px !important;
           max-width: 250px !important;
           flex-shrink: 0 !important;
+          color: ${colors.sidebarBg} !important;
+          font-weight: 600 !important;
+          font-size: 13.5px !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
           align-self: flex-start !important;
           white-space: normal !important;
         }
@@ -293,6 +422,18 @@ export default function TransferAreaDetailContent({
           content: ':' !important;
           margin-left: 1px !important;
           margin-right: 4px !important;
+        }
+        .transfer-area-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label {
+          width: auto !important;
+          min-width: auto !important;
+          max-width: none !important;
+          flex-shrink: 0 !important;
+        }
+        .transfer-area-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          justify-content: flex-start !important;
+          white-space: nowrap !important;
         }
         .transfer-area-detail-content-wrapper .chk-detail-value {
           color: #1e293b !important;
@@ -358,6 +499,7 @@ export default function TransferAreaDetailContent({
           defaultActiveKey="general"
           tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
           items={[
+            // Tab 1: Thông tin chung
             {
               key: 'general',
               label: 'Thông tin chung',
@@ -374,11 +516,10 @@ export default function TransferAreaDetailContent({
                     <div className="chk-detail-grid">
                       {[
                         ['Mã khu chuyển tải', <span key="transferAreaCode" style={{ ...statusBadgeStyle(actionPrimary), whiteSpace: 'nowrap' }}>{r.transferAreaCode || ''}</span>],
-                        ['Tên khu chuyển tải', <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>{r.transferAreaName || ''}</span>],
-                        ['Đơn vị quản lý', <span style={{ fontWeight: fontWeightBold }}>{orgMap.get(r.orgUnitId || '') || r.orgUnitId || ''}</span>],
-                        ['Thuộc cảng biển', <span style={{ fontWeight: fontWeightBold }}>{portLabel}</span>],
+                        ['Tên khu chuyển tải', <span key="name" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>{r.transferAreaName || ''}</span>],
+                        ['Đơn vị quản lý', <span key="org" style={{ fontWeight: fontWeightBold }}>{orgMap.get(r.orgUnitId || '') || r.orgUnitId || ''}</span>],
+                        ['Thuộc cảng biển', <span key="port" style={{ fontWeight: fontWeightBold }}>{portLabel}</span>],
                         ['Địa điểm (Tỉnh/Thành phố)', provinceLabel],
-                        ['Công năng khai thác', formatOperationalFunctions(r.operationalFunctions)],
                         ['Tình trạng', (() => {
                           const s = r.operationalStatus;
                           const b = s && operationalStyleMap[s];
@@ -402,35 +543,37 @@ export default function TransferAreaDetailContent({
                   </div>
 
                   {/* Card 2: Thông số kỹ thuật & Năng lực khai thác */}
-                  <div style={sectionBoxStyle}>
+                  <div style={{ ...sectionBoxStyle, padding: indicatorOpen ? sectionBoxStyle.padding : spaceMd }}>
                     <div
                       onClick={() => setIndicatorOpen(!indicatorOpen)}
                       style={{
                         ...sectionHeaderStyle,
                         cursor: 'pointer',
                         userSelect: 'none',
-                        marginBottom: indicatorOpen ? spaceFormField : 0,
-                        borderBottom: indicatorOpen ? '1px solid #f1f5f9' : 'none',
+                        marginBottom: indicatorOpen ? spaceMd : 0,
+                        paddingBottom: indicatorOpen ? spaceSm : 0,
+                        borderBottom: indicatorOpen ? sectionHeaderStyle.borderBottom : 'none',
                       }}
                     >
                       <div style={sectionTitleStyle}>
                         <SlidersOutlined style={{ color: actionPrimary }} />
                         <span>Thông số kỹ thuật & Năng lực khai thác</span>
                       </div>
-                      <Button type="text" size="small" icon={indicatorOpen ? <DownOutlined /> : <RightOutlined />} />
+                      {indicatorOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                     </div>
                     {indicatorOpen && (
                       <div className="chk-detail-grid">
                         {[
                           ['Hình dạng', r.shapeDescription || ''],
                           ['Diện tích (ha)', formatNumericDisplay(r.area)],
-                          ['Độ sâu thiết kế (m)', formatNumericDisplay(r.designWaterDepth)],
-                          ['Độ sâu hiện tại (m)', formatNumericDisplay(r.currentWaterDepth)],
-                          ['Cao độ đáy thiết kế (m)', formatNumericDisplay(r.bottomElevationDesign)],
-                          ['Cỡ tàu khai thác tối đa (DWT)', formatNumericDisplay(r.maxVesselDWT)],
+                          ['Độ sâu khu nước theo thiết kế (m)', formatNumericDisplay(r.designWaterDepth)],
+                          ['Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', formatNumericDisplay(r.currentWaterDepth)],
+                          ['Cao độ đáy bến thiết kế', formatNumericDisplay(r.bottomElevationDesign)],
+                          ['Cỡ tàu khai thác theo công bố (DWT)', formatNumericDisplay(r.maxVesselDWT)],
                           ['Số lượng khu chuyển tải đang khai thác', formatNumericDisplay(r.activeTransferCount)],
                           ['Số lượng khu chuyển tải đã công bố', formatNumericDisplay(r.publishedTransferCount)],
-                          ['Số lượng khu chuyển tải đang thỏa thuận đầu tư', formatNumericDisplay(r.underInvestmentTransferCount)],
+                          ['Công năng khai thác', formatOperationalFunctions(r.operationalFunctions)],
+                          ['Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng', formatNumericDisplay(r.underInvestmentTransferCount)],
                         ].map(([label, value], index) => (
                           <div key={label as string} className="chk-detail-row">
                             <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
@@ -446,58 +589,60 @@ export default function TransferAreaDetailContent({
                   </div>
 
                   {/* Card 3: Thông tin công bố mở, đưa vào sử dụng */}
-                  <div style={sectionBoxStyle}>
+                  <div style={{ ...sectionBoxStyle, padding: announcementOpen ? sectionBoxStyle.padding : spaceMd }}>
                     <div
                       onClick={() => setAnnouncementOpen(!announcementOpen)}
                       style={{
                         ...sectionHeaderStyle,
                         cursor: 'pointer',
                         userSelect: 'none',
-                        marginBottom: announcementOpen ? spaceFormField : 0,
-                        borderBottom: announcementOpen ? '1px solid #f1f5f9' : 'none',
+                        marginBottom: announcementOpen ? spaceMd : 0,
+                        paddingBottom: announcementOpen ? spaceSm : 0,
+                        borderBottom: announcementOpen ? sectionHeaderStyle.borderBottom : 'none',
                       }}
                     >
                       <div style={sectionTitleStyle}>
                         <FileTextOutlined style={{ color: actionPrimary }} />
                         <span>Thông tin công bố mở, đưa vào sử dụng</span>
                       </div>
-                      <Button type="text" size="small" icon={announcementOpen ? <DownOutlined /> : <RightOutlined />} />
+                      {announcementOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                     </div>
                     {announcementOpen && (
                       <div className="chk-detail-grid">
                         <div className="chk-detail-row chk-detail-row--full">
-                          <span className="chk-detail-label sec-col1-label">Thời điểm công bố mở</span>
+                          <span className="chk-detail-label sec-col1-label">Thời điểm công bố mở, đưa vào sử dụng</span>
                           <span className="chk-detail-value">{formatDateOnly(r.openingAnnouncementDate)}</span>
                         </div>
                         <div className="chk-detail-row chk-detail-row--full">
-                          <span className="chk-detail-label sec-col1-label">Quyết định công bố/văn bản cho phép khai thác</span>
-                          <span className="chk-detail-value">{r.publicDecision || ''}</span>
+                          <span className="chk-detail-label sec-col1-label">Quyết định công bố/ Văn bản cho phép khai thác</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.publicDecision || ''}</span>
                         </div>
                         <div className="chk-detail-row chk-detail-row--full">
-                          <span className="chk-detail-label sec-col1-label">Văn bản thỏa thuận đầu tư</span>
-                          <span className="chk-detail-value">{r.investmentAgreement || ''}</span>
+                          <span className="chk-detail-label sec-col1-label">Văn bản thỏa thuận đầu tư xây dựng</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.investmentAgreement || ''}</span>
                         </div>
                       </div>
                     )}
                   </div>
 
                   {/* Card 4: Thông tin thời gian hoạt động */}
-                  <div style={sectionBoxStyle}>
+                  <div style={{ ...sectionBoxStyle, padding: activityOpen ? sectionBoxStyle.padding : spaceMd }}>
                     <div
                       onClick={() => setActivityOpen(!activityOpen)}
                       style={{
                         ...sectionHeaderStyle,
                         cursor: 'pointer',
                         userSelect: 'none',
-                        marginBottom: activityOpen ? spaceFormField : 0,
-                        borderBottom: activityOpen ? '1px solid #f1f5f9' : 'none',
+                        marginBottom: activityOpen ? spaceMd : 0,
+                        paddingBottom: activityOpen ? spaceSm : 0,
+                        borderBottom: activityOpen ? sectionHeaderStyle.borderBottom : 'none',
                       }}
                     >
                       <div style={sectionTitleStyle}>
                         <CalendarOutlined style={{ color: actionPrimary }} />
                         <span>Thông tin thời gian hoạt động</span>
                       </div>
-                      <Button type="text" size="small" icon={activityOpen ? <DownOutlined /> : <RightOutlined />} />
+                      {activityOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                     </div>
                     {activityOpen && (
                       <div className="chk-detail-grid">
@@ -513,24 +658,109 @@ export default function TransferAreaDetailContent({
                     )}
                   </div>
 
-                  {/* Card 5: Section toggle Thông tin phê duyệt (Chuẩn Pier/Port nằm trong Tab Thông tin chung) */}
-                  <div style={sectionBoxStyle}>
+                  {/* Section 4: Thông tin khu nước neo buộc tàu (Đồng bộ chuẩn Khu neo đậu) */}
+                  <div style={{ ...sectionBoxStyle, padding: waterAreaOpen ? sectionBoxStyle.padding : spaceMd }}>
                     <div
-                      style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', borderBottom: approvalOpen ? '1px solid #f1f5f9' : 'none', marginBottom: approvalOpen ? spaceFormField : 0 }}
+                      onClick={() => setWaterAreaOpen(!waterAreaOpen)}
+                      style={{
+                        ...sectionHeaderStyle,
+                        marginBottom: waterAreaOpen ? spaceMd : 0,
+                        paddingBottom: waterAreaOpen ? spaceSm : 0,
+                        borderBottom: waterAreaOpen ? sectionHeaderStyle.borderBottom : 'none',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <div style={sectionTitleStyle}>
+                        <FileTextOutlined style={{ color: actionPrimary }} />
+                        <span>Thông tin khu nước neo buộc tàu</span>
+                      </div>
+                      {waterAreaOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                    </div>
+                    {waterAreaOpen && (
+                      <>
+                        {(r as any).waterAreaNeutralScope && (
+                          <div className="chk-detail-grid" style={{ marginBottom: (Array.isArray(r.mooringWaterAreas) && r.mooringWaterAreas.length > 0) ? spaceSm : 0 }}>
+                            <div className="chk-detail-row chk-detail-row--full">
+                              <span className="chk-detail-label sec-col1-label">Phạm vi khu nước neo buộc tàu</span>
+                              <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{(r as any).waterAreaNeutralScope}</span>
+                            </div>
+                          </div>
+                        )}
+                        <DetailTable
+                          size="small"
+                          dataSource={(Array.isArray(r.mooringWaterAreas) ? r.mooringWaterAreas : []).map((wa, i) => ({ ...wa, key: i }))}
+                          emptyText="Chưa có dữ liệu"
+                          rowKey={(rec: any) => rec.key}
+                          scrollY={130}
+                          pageSize={5}
+                          pageSizeOptions={[5, 10, 20]}
+                          columns={[
+                            { title: 'STT', width: 50, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => idx + 1 },
+                            {
+                              title: 'Phạm vi khu nước neo buộc tàu',
+                              dataIndex: 'description',
+                              key: 'description',
+                              render: (d?: string, rec?: any) => (
+                                <a
+                                  style={{
+                                    fontSize: fontSizeMd,
+                                    color: actionPrimary,
+                                    fontWeight: fontWeightBold,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    display: 'block',
+                                    cursor: 'pointer',
+                                  }}
+                                  title={d || ''}
+                                  onClick={() => setViewingWaterArea(rec)}
+                                >
+                                  {d || ''}
+                                </a>
+                              ),
+                            },
+                            {
+                              title: 'Thao tác',
+                              key: 'actions',
+                              width: 100,
+                              align: 'center' as const,
+                              render: (_v: any, rec: any) => (
+                                <Tooltip title="Xem chi tiết điểm neo">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EyeOutlined />}
+                                    style={{ color: actionPrimary, fontSize: fontSizeMd }}
+                                    onClick={() => setViewingWaterArea(rec)}
+                                  />
+                                </Tooltip>
+                              ),
+                            },
+                          ]}
+                        />
+                      </>
+                    )}
+                  </div>
+
+                  {/* Section 5: Thông tin phê duyệt (Chuẩn Pier/Port nằm trong Tab Thông tin chung) */}
+                  <div style={{ ...sectionBoxStyle, padding: approvalOpen ? sectionBoxStyle.padding : spaceMd }}>
+                    <div
                       onClick={() => setApprovalOpen(!approvalOpen)}
+                      style={{
+                        ...sectionHeaderStyle,
+                        marginBottom: approvalOpen ? spaceMd : 0,
+                        paddingBottom: approvalOpen ? spaceSm : 0,
+                        borderBottom: approvalOpen ? sectionHeaderStyle.borderBottom : 'none',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}
                     >
                       <div style={sectionTitleStyle}>
                         <AuditOutlined style={{ color: actionPrimary }} />
                         <span>Thông tin phê duyệt</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
-                        {r.approvalStatus && approvalStyleMap[r.approvalStatus] && (
-                          <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
-                            {approvalStyleMap[r.approvalStatus].label}
-                          </span>
-                        )}
-                        <Button type="text" size="small" icon={approvalOpen ? <DownOutlined /> : <RightOutlined />} />
-                      </div>
+                      {approvalOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                     </div>
                     {approvalOpen && (
                       <div className="chk-detail-grid">
@@ -666,18 +896,12 @@ export default function TransferAreaDetailContent({
                         {
                           title: 'Vĩ độ (Latitude - N)',
                           key: 'lat',
-                          render: (_value, record) => {
-                            const dms = ddToDms(record.lat);
-                            return `${dms.d}° ${dms.m}' ${dms.s}" N`;
-                          },
+                          render: (_value, record) => renderDmsText(record.lat, true),
                         },
                         {
                           title: 'Kinh độ (Longitude - E)',
                           key: 'lng',
-                          render: (_value, record) => {
-                            const dms = ddToDms(record.lng);
-                            return `${dms.d}° ${dms.m}' ${dms.s}" E`;
-                          },
+                          render: (_value, record) => renderDmsText(record.lng, false),
                         },
                       ]}
                     />
@@ -706,40 +930,93 @@ export default function TransferAreaDetailContent({
                         dataIndex: 'fileName',
                         key: 'fileName',
                         render: (v: string, rec: any) => {
-                          const isImg = isImageFile(v);
+                          const fname = v || rec.name || '';
+                          const isImg = isImageFile(fname);
                           return (
                             <span
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', color: actionPrimary, fontWeight: fontWeightBold }}
-                              title={isImg ? `${v} (Nhấp để xem chi tiết ảnh)` : `${v} (Nhấp để tải xuống)`}
-                              onClick={() => { if (isImg) handlePreviewImage(rec); else handleDownloadFile(rec.id, v); }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: spaceSm,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer',
+                                color: actionPrimary,
+                                fontWeight: fontWeightBold,
+                              }}
+                              title={isImg ? `${fname} (Nhấp để xem chi tiết ảnh)` : `${fname} (Nhấp để tải xuống)`}
+                              onClick={() => {
+                                if (isImg) handlePreviewImage(rec);
+                                else handleDownloadFile(rec.id, fname);
+                              }}
                             >
                               {isImg ? <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} /> : <FileOutlined style={{ color: textTertiary, flexShrink: 0 }} />}
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v || ''}</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fname}</span>
                             </span>
                           );
                         },
                       },
-                      { title: 'Dung lượng', dataIndex: 'fileSize', key: 'fileSize', width: 120, align: 'right' as const, render: (v: number) => v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '' },
-                      { title: 'Người tải lên', dataIndex: 'uploadedBy', key: 'uploadedBy', width: 180, render: (v: string) => userMap.get(v) || v || '' },
-                      { title: 'Ngày tải lên', dataIndex: 'uploadedAt', key: 'uploadedAt', width: 135, align: 'center' as const, render: (v: string) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '' },
+                      {
+                        title: 'Dung lượng',
+                        dataIndex: 'fileSize',
+                        key: 'fileSize',
+                        width: 120,
+                        align: 'left' as const,
+                        render: (v: number, rec: any) => {
+                          const sz = v || rec.size || 0;
+                          return sz ? (sz > 1024 * 1024 ? `${(sz / (1024 * 1024)).toFixed(2)} MB` : `${(sz / 1024).toFixed(1)} KB`) : '';
+                        },
+                      },
+                      {
+                        title: 'Người tải lên',
+                        dataIndex: 'uploadedBy',
+                        key: 'uploadedBy',
+                        width: 180,
+                        render: (v: string, rec: any) => userMap.get(v) || rec.uploadedByName || v || '',
+                      },
+                      {
+                        title: 'Ngày tải lên',
+                        dataIndex: 'uploadedAt',
+                        key: 'uploadedAt',
+                        width: 150,
+                        align: 'left' as const,
+                        render: (v: string, rec: any) => {
+                          const dt = v || rec.uploadedDate || rec.createdAt;
+                          return dt ? dayjs(dt).format('DD/MM/YYYY HH:mm') : '';
+                        },
+                      },
                       {
                         title: 'Thao tác',
                         key: 'actions',
                         width: 90,
                         align: 'center' as const,
                         render: (_: any, rec: any) => {
-                          const isImg = isImageFile(rec.fileName);
+                          const fname = rec.fileName || rec.name || 'attachment';
+                          const isImg = isImageFile(fname);
                           return (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                               {isImg ? (
                                 <Tooltip title="Xem chi tiết ảnh">
-                                  <Button type="text" size="small" icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 16 }} />} onClick={() => handlePreviewImage(rec)} style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
+                                    onClick={() => handlePreviewImage(rec)}
+                                    style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  />
                                 </Tooltip>
                               ) : (
                                 <span style={{ width: 28, height: 28, display: 'inline-block' }} />
                               )}
                               <Tooltip title="Tải xuống tệp">
-                                <Button type="text" size="small" icon={<DownloadOutlined style={{ color: actionPrimary, fontSize: 16 }} />} onClick={() => handleDownloadFile(rec.id, rec.fileName)} style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} />
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  icon={<DownloadOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
+                                  onClick={() => handleDownloadFile(rec.id, fname)}
+                                  style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                />
                               </Tooltip>
                             </div>
                           );
@@ -747,18 +1024,36 @@ export default function TransferAreaDetailContent({
                       },
                     ]}
                   />
+
+                  {/* Modal Xem chi tiết hình ảnh */}
                   <Modal
                     title={
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <FileImageOutlined style={{ color: actionPrimary, fontSize: 18 }} />
-                        <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>{previewImageFile?.fileName || 'Xem chi tiết hình ảnh'}</span>
+                        <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+                          {previewImageFile?.fileName || previewImageFile?.name || 'Xem chi tiết hình ảnh'}
+                        </span>
                       </div>
                     }
                     open={previewModalOpen}
                     onCancel={() => setPreviewModalOpen(false)}
                     footer={[
-                      <Button key="download" icon={<DownloadOutlined />} onClick={() => previewImageFile && handleDownloadFile(previewImageFile.id, previewImageFile.fileName)} style={{ borderRadius: 999 }}>Tải xuống</Button>,
-                      <Button key="close" type="primary" onClick={() => setPreviewModalOpen(false)} style={{ borderRadius: 999, background: actionPrimary, borderColor: actionPrimary }}>Đóng</Button>,
+                      <Button
+                        key="download"
+                        icon={<DownloadOutlined />}
+                        onClick={() => previewImageFile && handleDownloadFile(previewImageFile.id, previewImageFile.fileName || previewImageFile.name)}
+                        style={{ borderRadius: 999 }}
+                      >
+                        Tải xuống
+                      </Button>,
+                      <Button
+                        key="close"
+                        type="primary"
+                        onClick={() => setPreviewModalOpen(false)}
+                        style={{ borderRadius: 999, background: actionPrimary, borderColor: actionPrimary }}
+                      >
+                        Đóng
+                      </Button>,
                     ]}
                     width="min(800px, 90vw)"
                     centered
@@ -768,7 +1063,11 @@ export default function TransferAreaDetailContent({
                       {previewLoading ? (
                         <div style={{ color: textTertiary }}>Đang tải hình ảnh...</div>
                       ) : previewImageUrl ? (
-                        <img src={previewImageUrl} alt={previewImageFile?.fileName || 'Ảnh đính kèm'} style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }} />
+                        <img
+                          src={previewImageUrl}
+                          alt={previewImageFile?.fileName || 'Ảnh đính kèm'}
+                          style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
+                        />
                       ) : null}
                     </div>
                   </Modal>
@@ -776,49 +1075,7 @@ export default function TransferAreaDetailContent({
               ),
             },
 
-            // Tab 4: Khu nước neo buộc tàu
-            {
-              key: 'mooringWaterAreas',
-              label: `Khu nước neo buộc tàu (${waterAreaList.length})`,
-              children: (
-                <div style={{ paddingTop: 6 }}>
-                  <div style={{ marginBottom: spaceSm }}>
-                    <span style={detailLabelStyle}>Khu nước neo buộc tàu</span>
-                  </div>
-                  <DetailTable
-                    dataSource={waterAreaList.map((w, i) => ({ ...w, _idx: i }))}
-                    emptyText="Chưa có khu nước neo buộc tàu nào"
-                    scrollY={waterAreaList.length === 0 ? undefined : DRAWER_TABLE_SCROLL_Y.detailView}
-                    columns={[
-                      { title: 'STT', width: 50, align: 'center' as const, render: (_v, _r, idx) => idx + 1 },
-                      { title: 'Phạm vi khu nước neo buộc tàu', key: 'description', dataIndex: 'description', ellipsis: true },
-                      { title: 'Loại đối tượng', key: 'geometryType', width: 150, render: (gt) => gt === 'POINT' ? 'Đối tượng điểm' : gt === 'LINE' ? 'Đối tượng đường' : gt === 'POLYGON' ? 'Đối tượng vùng' : '' },
-                      { title: 'Số điểm neo', key: 'anchorCount', width: 120, align: 'center' as const, render: (_v, record: any) => record.anchorPoints?.length || 0 },
-                      {
-                        title: 'Thao tác',
-                        key: 'actions',
-                        width: 100,
-                        align: 'center' as const,
-                        render: (_v, record: any) => (
-                          <Tooltip title="Xem điểm neo">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<EyeOutlined style={{ color: actionPrimary }} />}
-                              onClick={() => setViewingWaterArea(record)}
-                            >
-                              Xem điểm neo
-                            </Button>
-                          </Tooltip>
-                        ),
-                      },
-                    ]}
-                  />
-                </div>
-              ),
-            },
-
-            // Tab 5: Vận hành & bảo trì (kết hợp kế hoạch vận hành, bảo trì, và sự cố như Cầu cảng)
+            // Tab 4: Vận hành & bảo trì (kết hợp kế hoạch vận hành, bảo trì, và sự cố như Cầu cảng)
             {
               key: 'operationMaintenance',
               label: 'Vận hành & bảo trì',
@@ -873,7 +1130,7 @@ export default function TransferAreaDetailContent({
                     >
                       <div style={sectionTitleStyle}>
                         <SlidersOutlined style={{ color: actionPrimary }} />
-                        <span>Thông tin bảo trì</span>
+                        <span>Thông tin bảo trì bảo dưỡng</span>
                       </div>
                       {maintenanceOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                     </div>
@@ -987,59 +1244,285 @@ export default function TransferAreaDetailContent({
         </div>
       </Modal>
 
-
-
-      {/* Modal Xem chi tiết điểm neo trong khu nước */}
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CompassOutlined style={{ color: actionPrimary }} />
-            <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
-              Điểm neo — {viewingWaterArea?.description || 'Khu nước neo buộc tàu'}
-            </span>
-          </div>
-        }
+      {/* ── Drawer chi tiết khu nước neo buộc tàu (Đồng bộ chuẩn Khu neo đậu) ── */}
+      <Drawer
+        {...drawerProps}
+        rootClassName="transfer-area-drawer-scope"
+        className="transfer-area-drawer-scope"
+        size={1000}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
         open={!!viewingWaterArea}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setViewingWaterArea(null)} style={{ ...primaryButtonStyle, borderRadius: radiusPill }}>
-            Đóng
-          </Button>,
-        ]}
-        onCancel={() => setViewingWaterArea(null)}
-        width={680}
+        onClose={() => setViewingWaterArea(null)}
+        destroyOnClose
+        push={false}
+        extra={<Button type="text" onClick={() => setViewingWaterArea(null)} style={drawerCloseBtnStyle}>✕</Button>}
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
       >
-        <div style={{ padding: '8px 0' }}>
-          <Table
-            size="small"
-            pagination={false}
-            dataSource={(viewingWaterArea?.anchorPoints || []).map((p: any, i: number) => ({ ...p, _idx: i }))}
-            rowKey="_idx"
-            locale={{ emptyText: 'Chưa có điểm neo nào' }}
-            columns={[
-              { title: 'STT', width: 50, align: 'center' as const, render: (_v, _r, idx) => idx + 1 },
-              { title: 'Tên điểm neo', dataIndex: 'name', key: 'name' },
-              {
-                title: 'Vĩ độ (N)',
-                key: 'latitude',
-                render: (_v, record: any) => {
-                  if (record.latitude == null) return '';
-                  const d = ddToDms(record.latitude);
-                  return `${d.d}° ${d.m}' ${d.s}" N`;
-                },
-              },
-              {
-                title: 'Kinh độ (E)',
-                key: 'longitude',
-                render: (_v, record: any) => {
-                  if (record.longitude == null) return '';
-                  const d = ddToDms(record.longitude);
-                  return `${d.d}° ${d.m}' ${d.s}" E`;
-                },
-              },
-            ]}
-          />
-        </div>
-      </Modal>
+        {viewingWaterArea && (
+          <div className="transfer-area-detail-content-wrapper">
+            <style>{`
+              .transfer-area-detail-content-wrapper,
+              .transfer-area-detail-content-wrapper .chk-detail-label,
+              .transfer-area-detail-content-wrapper .chk-detail-value {
+                font-size: 13.5px !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-grid {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                column-gap: 28px !important;
+                row-gap: 0 !important;
+                align-items: stretch !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row {
+                display: flex !important;
+                align-items: flex-start !important;
+                min-height: 36px !important;
+                padding: 7px 0 !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                line-height: 1.5 !important;
+                gap: 10px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row:last-child {
+                border-bottom: none !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row--full {
+                grid-column: 1 / -1 !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-label,
+              .transfer-area-detail-content-wrapper .sec-col1-label,
+              .transfer-area-detail-content-wrapper .chk-detail-row .sec-col1-label,
+              .transfer-area-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+                width: 215px !important;
+                min-width: 215px !important;
+                max-width: 215px !important;
+                flex-shrink: 0 !important;
+                color: ${colors.sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: normal !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+                width: auto !important;
+                min-width: 220px !important;
+                max-width: 320px !important;
+                white-space: nowrap !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-row .sec-col2-label {
+                width: 250px !important;
+                min-width: 250px !important;
+                max-width: 250px !important;
+                flex-shrink: 0 !important;
+                color: ${colors.sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: normal !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-label::after {
+                content: ':' !important;
+                margin-left: 1px !important;
+                margin-right: 4px !important;
+              }
+              .transfer-area-detail-content-wrapper .chk-detail-value {
+                flex: 1 1 auto !important;
+                color: #1e293b !important;
+                font-size: 13.5px !important;
+                font-weight: 500 !important;
+                line-height: 1.5 !important;
+                min-width: 0 !important;
+                word-break: break-word !important;
+              }
+            `}</style>
+
+            <div style={{ ...generalScrollerStyle, maxHeight: 'calc(100vh - 72px)', paddingTop: 10, paddingRight: 4, overflowY: 'auto', overflowX: 'hidden' }}>
+              {/* Box 1: Thông số đối tượng bản đồ */}
+              <div style={{ ...sectionBoxStyle, padding: viewingMapParamsOpen ? sectionBoxStyle.padding : '12px 18px' }}>
+                <div
+                  onClick={() => setViewingMapParamsOpen(!viewingMapParamsOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: viewingMapParamsOpen ? 10 : 0,
+                    paddingBottom: viewingMapParamsOpen ? 8 : 0,
+                    borderBottom: viewingMapParamsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <EnvironmentOutlined style={{ color: actionPrimary }} />
+                    <span>Thông số đối tượng bản đồ</span>
+                  </div>
+                  {viewingMapParamsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                </div>
+                {viewingMapParamsOpen && (
+                  <div className="chk-detail-grid">
+                    <div className="chk-detail-row chk-detail-row--full">
+                      <span className="chk-detail-label sec-col1-label">Phạm vi khu nước neo buộc tàu</span>
+                      <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 110, overflowY: 'auto' }}>
+                        {viewingWaterArea.description || ''}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
+                      <span className="chk-detail-value">
+                        {(() => {
+                          const m: Record<string, string> = {
+                            POINT: 'Đối tượng điểm',
+                            LINE: 'Đối tượng đường',
+                            POLYGON: 'Đối tượng vùng',
+                          };
+                          return viewingWaterArea.geometryType ? m[viewingWaterArea.geometryType] || viewingWaterArea.geometryType : '';
+                        })()}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
+                      <span className="chk-detail-value">
+                        {(() => {
+                          const symName = symbolMap.get(viewingWaterArea.mapSymbolId || '') || viewingWaterArea.mapSymbolId || '';
+                          const symImg = symbolImageMap.get(viewingWaterArea.mapSymbolId || '');
+                          const symImgSrc = symImg ? (symImg.startsWith('data:') ? symImg : `data:image/png;base64,${symImg}`) : undefined;
+                          return symName ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                              {symImgSrc ? (
+                                <img
+                                  src={symImgSrc}
+                                  alt=""
+                                  style={{ width: 22, height: 22, objectFit: 'contain' }}
+                                />
+                              ) : null}
+                              {symName}
+                            </span>
+                          ) : '';
+                        })()}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
+                      <span className="chk-detail-value">
+                        {viewingWaterArea.coordinateSystem === 1
+                          ? 'WGS-84'
+                          : viewingWaterArea.coordinateSystem === 2
+                          ? 'VN-2000'
+                          : (viewingWaterArea.coordinateSystem || '')}
+                      </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
+                      <span className="chk-detail-value">
+                        {viewingWaterArea.displayRule || 'Độ, phút, giây (DMS)'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Box 2: Tọa độ điểm neo */}
+              <div
+                ref={viewingAnchorBoxRef}
+                style={{
+                  ...sectionBoxStyle,
+                  padding: viewingAnchorPointsOpen ? sectionBoxStyle.padding : '12px 18px',
+                  height: viewingAnchorPointsOpen ? (viewingAnchorBoxHeight ? `${viewingAnchorBoxHeight}px` : undefined) : 'auto',
+                  minHeight: viewingAnchorPointsOpen ? 230 : undefined,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxSizing: 'border-box',
+                  marginBottom: 0,
+                }}
+              >
+                <div
+                  onClick={() => setViewingAnchorPointsOpen(!viewingAnchorPointsOpen)}
+                  style={{
+                    ...sectionHeaderStyle,
+                    marginBottom: viewingAnchorPointsOpen ? 10 : 0,
+                    paddingBottom: viewingAnchorPointsOpen ? 8 : 0,
+                    borderBottom: viewingAnchorPointsOpen ? sectionHeaderStyle.borderBottom : 'none',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={sectionTitleStyle}>
+                    <EnvironmentOutlined style={{ color: actionPrimary }} />
+                    <span>Tọa độ điểm neo ({(viewingWaterArea.anchorPoints || []).length})</span>
+                  </div>
+                  {viewingAnchorPointsOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                </div>
+                {viewingAnchorPointsOpen && (
+                  <DetailTable
+                    size="small"
+                    scroll={{ x: 590 }}
+                    pageSize={10}
+                    pageSizeOptions={[5, 10, 20, 50]}
+                    dataSource={(Array.isArray(viewingWaterArea.anchorPoints) ? viewingWaterArea.anchorPoints : []).map((p: any, i: number) => ({ ...p, key: i }))}
+                    emptyText="Chưa có dữ liệu tọa độ điểm neo"
+                    rowKey={(rec: any) => rec.key}
+                    scrollY={viewingAnchorTableScrollY}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                    columns={[
+                      {
+                        title: 'STT',
+                        width: 50,
+                        align: 'center' as const,
+                        render: (_: unknown, __: unknown, idx: number) => idx + 1,
+                      },
+                      {
+                        title: 'Tên điểm neo',
+                        dataIndex: 'name',
+                        key: 'name',
+                        width: 180,
+                        render: (name?: string) => (
+                          <span
+                            style={{
+                              fontSize: fontSizeMd,
+                              color: textPrimary,
+                              fontWeight: fontWeightBold,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block',
+                            }}
+                            title={name || ''}
+                          >
+                            {name || ''}
+                          </span>
+                        ),
+                      },
+                      {
+                        title: 'Vĩ độ (Latitude - N)',
+                        key: 'lat',
+                        width: 180,
+                        align: 'center' as const,
+                        render: (_v: unknown, rec: any) => renderDmsText(rec.latitude, true),
+                      },
+                      {
+                        title: 'Kinh độ (Longitude - E)',
+                        key: 'lng',
+                        width: 180,
+                        align: 'center' as const,
+                        render: (_v: unknown, rec: any) => renderDmsText(rec.longitude, false),
+                      },
+                    ]}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </>
   );
 }

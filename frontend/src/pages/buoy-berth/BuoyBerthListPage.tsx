@@ -772,7 +772,8 @@ export default function BuoyBerthList() {
 
   // ── Load organizations ──────────────────────────────────────────
   useEffect(() => {
-    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
+    const isIframe = window.self !== window.top;
+    const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
     if (parentOrgUnits && parentOrgUnits.length > 0) {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
@@ -974,6 +975,7 @@ export default function BuoyBerthList() {
       toast.success('Đã xóa bến phao');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
     } catch (err: unknown) {
@@ -994,6 +996,7 @@ export default function BuoyBerthList() {
       }
       toast.success(st === 'PENDING_APPROVAL' ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
       setApproveModalOpen(false); setApprovingRecord(null); setApprovalContent('');
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
   }, [fetchData, fetchCounts, managingUnitId]);
@@ -1004,6 +1007,7 @@ export default function BuoyBerthList() {
       await buoyBerthCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
       toast.success('Đã gửi phê duyệt bến phao');
       setSubmitModalOpen(false); setSubmittingRecord(null);
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
   }, [submittingRecord, fetchData, fetchCounts, managingUnitId]);
@@ -1022,6 +1026,7 @@ export default function BuoyBerthList() {
       await buoyBerthApproval.rejectStage(rejectingRecord.id, reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); setRejectError('');
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, managingUnitId]);
@@ -1772,6 +1777,9 @@ export default function BuoyBerthList() {
             id={editBuoyBerthId}
             onFinish={() => {
               setCreateDrawerVisible(false);
+              setSortField('updatedAt');
+              setSortOrder('descend');
+              setPage(1);
               void fetchData();
               void fetchCounts(managingUnitId);
             }}

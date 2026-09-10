@@ -7,6 +7,7 @@ import {
 import {
   HistoryOutlined,
   SearchOutlined,
+  FileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { anchorageCRUD, anchorageApproval, buoyBerthCRUD, portCRUD } from '../../services/portService';
@@ -20,7 +21,6 @@ import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -60,10 +60,10 @@ import {
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
   historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
   historyOldValueStyle, historyNewValueStyle, historyArrowStyle, icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle,
+  cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
-import { fmtNum } from '../../utils/numFmt';
+import { formatHistoryNumber } from '../../utils/numFmt';
 
 // Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK toàn bộ cell/table/input/button
 const fontSizeMd = 13.5;
@@ -86,6 +86,11 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
   OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
   NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
   SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
+  TAM_NGUNG: { color: statusCritical, label: 'Tạm ngừng' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
 };
 
 const TAB_STATUS_LIST = [
@@ -107,10 +112,46 @@ function formatDate(d: string | null | undefined): string {
   if (!d) return ''; try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
 }
 
-const formatNumericDisplay = (value: number | string | null | undefined): string => {
-  if (value === null || value === undefined || value === '') return '';
-  return fmtNum(value) || String(value);
-};
+const EXCLUDED_CHANGE_FIELDS = new Set([
+  'attachments', 'spatialId', 'Vị trí không gian',
+  'id', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy',
+  'submittedForApprovalAt', 'submittedForApprovalBy',
+  'portAuthorityApprovedAt', 'portAuthorityApprovedBy',
+  'departmentApprovedAt', 'departmentApprovedBy',
+  'portAuthorityApprovalContent', 'departmentApprovalContent',
+  'rejectionReason', 'activityStatus',
+  'Thời điểm gửi phê duyệt', 'Người gửi phê duyệt',
+  'Thời điểm Cảng vụ phê duyệt', 'Cán bộ Cảng vụ phê duyệt',
+  'Thời điểm Cục phê duyệt', 'Cán bộ Cục phê duyệt',
+  'Nội dung Cảng vụ phê duyệt', 'Nội dung Cục phê duyệt',
+  'Lý do từ chối',
+]);
+
+const NUMERIC_HISTORY_FIELDS = new Set([
+  'area',
+  'designWaterDepth',
+  'currentWaterDepth',
+  'bottomElevationDesign',
+  'maxVesselDWT',
+  'activeAnchorageCount',
+  'publishedAnchorageCount',
+  'underInvestmentAnchorageCount',
+  'Diện tích (ha)',
+  'Độ sâu khu nước theo thiết kế (m)',
+  'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)',
+  'Cao độ đáy bến thiết kế',
+  'Cỡ tàu khai thác theo công bố (DWT)',
+  'Số lượng khu neo đậu đang khai thác',
+  'Số lượng khu neo đậu đã công bố',
+  'Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng',
+  // Backward compatibility with legacy field labels
+  'Độ sâu theo thiết kế (m)',
+  'Độ sâu hiện tại (m)',
+  'Cỡ tàu khai thác (DWT)',
+  'Số khu neo đang khai thác',
+  'Số khu neo đã công bố',
+  'Số khu neo thỏa thuận ĐTXD',
+]);
 
 const histLabels: Record<string, string> = {
   anchorageCode: 'Mã khu neo đậu',
@@ -119,33 +160,61 @@ const histLabels: Record<string, string> = {
   buoyStationId: 'Thuộc bến phao',
   navigationChannelId: 'Thuộc luồng hàng hải',
   orgUnitId: 'Đơn vị quản lý',
-  provinceId: 'Tỉnh/Thành phố',
-  province: 'Tỉnh/Thành phố',
+  provinceId: 'Địa điểm (Tỉnh/Thành Phố)',
+  province: 'Địa điểm (Tỉnh/Thành Phố)',
   detailedLocation: 'Địa điểm chi tiết',
   operationalStatus: 'Tình trạng',
   approvalStatus: 'Trạng thái',
   shapeDescription: 'Hình dạng',
   area: 'Diện tích (ha)',
-  designWaterDepth: 'Độ sâu theo thiết kế (m)',
-  currentWaterDepth: 'Độ sâu hiện tại (m)',
+  designWaterDepth: 'Độ sâu khu nước theo thiết kế (m)',
+  currentWaterDepth: 'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)',
   bottomElevationDesign: 'Cao độ đáy bến thiết kế',
-  maxVesselDWT: 'Cỡ tàu khai thác (DWT)',
-  activeAnchorageCount: 'Số khu neo đang khai thác',
-  publishedAnchorageCount: 'Số khu neo đã công bố',
-  underInvestmentAnchorageCount: 'Số khu neo thỏa thuận ĐTXD',
+  maxVesselDWT: 'Cỡ tàu khai thác theo công bố (DWT)',
+  activeAnchorageCount: 'Số lượng khu neo đậu đang khai thác',
+  publishedAnchorageCount: 'Số lượng khu neo đậu đã công bố',
+  underInvestmentAnchorageCount: 'Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng',
   remarks: 'Ghi chú',
-  openingAnnouncementDate: 'Thời điểm công bố mở',
-  publicDecision: 'Quyết định công bố/Văn bản',
-  investmentAgreement: 'Văn bản thỏa thuận ĐTXD',
-  mapSymbolId: 'Biểu tượng bản đồ',
+  openingAnnouncementDate: 'Thời điểm công bố mở, đưa ra sử dụng',
+  publicDecision: 'Quyết định công bố/ Văn bản cho phép khai thác',
+  investmentAgreement: 'Văn bản thỏa thuận đầu tư xây dựng',
+  geometryType: 'Loại đối tượng',
+  mapSymbolId: 'Biểu tượng',
   coordinateSystem: 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
   spatialId: 'Vị trí không gian',
   'Trạng thái': 'Hành động',
-  'Tọa độ GIS': 'Tọa độ GIS',
-  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Tọa độ GIS': 'Tọa độ GPS',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  'Loại đối tượng GIS': 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
-  'Khu nước neo buộc tàu': 'Khu nước neo buộc tàu',
+  'Khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
+  'Phạm vi khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
+  // Backward compatibility: map legacy field labels to exact AnchorageForm labels
+  'Cảng biển': 'Thuộc cảng biển',
+  'Bến phao': 'Thuộc bến phao',
+  'Luồng hàng hải': 'Thuộc luồng hàng hải',
+  'Tỉnh/Thành phố': 'Địa điểm (Tỉnh/Thành Phố)',
+  'Độ sâu theo thiết kế (m)': 'Độ sâu khu nước theo thiết kế (m)',
+  'Độ sâu hiện tại (m)': 'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)',
+  'Cỡ tàu khai thác (DWT)': 'Cỡ tàu khai thác theo công bố (DWT)',
+  'Số khu neo đang khai thác': 'Số lượng khu neo đậu đang khai thác',
+  'Số khu neo đã công bố': 'Số lượng khu neo đậu đã công bố',
+  'Số khu neo thỏa thuận ĐTXD': 'Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng',
+  'Ngày công bố mở': 'Thời điểm công bố mở, đưa ra sử dụng',
+  'Quyết định mở': 'Quyết định công bố/ Văn bản cho phép khai thác',
+  'Thỏa thuận đầu tư': 'Văn bản thỏa thuận đầu tư xây dựng',
+  'Biểu tượng bản đồ': 'Biểu tượng',
+  submittedForApprovalAt: 'Thời điểm gửi phê duyệt',
+  submittedForApprovalBy: 'Người gửi phê duyệt',
+  portAuthorityApprovedAt: 'Thời điểm Cảng vụ phê duyệt',
+  portAuthorityApprovedBy: 'Cán bộ Cảng vụ phê duyệt',
+  departmentApprovedAt: 'Thời điểm Cục phê duyệt',
+  departmentApprovedBy: 'Cán bộ Cục phê duyệt',
+  portAuthorityApprovalContent: 'Nội dung Cảng vụ phê duyệt',
+  departmentApprovalContent: 'Nội dung Cục phê duyệt',
+  rejectionReason: 'Lý do từ chối',
 };
 
 function histField(fn: string): string { return histLabels[fn] || fn; }
@@ -160,26 +229,33 @@ function histVal(
   waterwayMap?: Map<string, string>
 ): string {
   if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
-  if (fn === 'orgUnitId' && orgMap) { const f = orgMap.get(val); return f ? f.split(' - ').pop() || f : val; }
-  if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'buoyStationId' && buoyStationMap) return buoyStationMap.get(val) || val;
-  if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'navigationChannelId' && waterwayMap) return waterwayMap.get(val) || val;
-  if (fn === 'approvalStatus') {
+  const v = val.trim();
+  if ((fn === 'orgUnitId' || fn === 'Đơn vị quản lý') && orgMap) {
+    const f = orgMap.get(v);
+    return f ? f.split(' - ').pop() || f : v;
+  }
+  if ((fn === 'portId' || fn === 'Thuộc cảng biển' || fn === 'Cảng biển') && portMap) return portMap.get(v) || v;
+  if ((fn === 'buoyStationId' || fn === 'Thuộc bến phao' || fn === 'Bến phao') && buoyStationMap) return buoyStationMap.get(v) || v;
+  if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'Biểu tượng bản đồ') && symbolMap) return symbolMap.get(v) || v;
+  if ((fn === 'navigationChannelId' || fn === 'Thuộc luồng hàng hải' || fn === 'Luồng hàng hải') && waterwayMap) return waterwayMap.get(v) || v;
+  if (fn === 'approvalStatus' || fn === 'Trạng thái' || fn === 'Trạng thái phê duyệt') {
     const m: Record<string, string> = {
       DRAFT: 'Lưu tạm',
       PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
       APPROVED: 'Đã phê duyệt',
-      APPROVED_LEVEL2: 'Đã duyệt (lịch sử)',
+      DA_PHE_DUYET: 'Đã phê duyệt',
+      APPROVED_LEVEL2: 'Đã phê duyệt',
       REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL2: 'Từ chối cấp cục',
+      TU_CHOI: 'Từ chối cấp Cảng vụ/Chi cục',
     };
-    return m[val?.toUpperCase()] || val;
+    return m[v.toUpperCase()] || v;
   }
-  if (fn === 'operationalStatus') {
+  if (fn === 'operationalStatus' || fn === 'Tình trạng' || fn === 'Tình trạng hoạt động') {
     const m: Record<string, string> = {
       OPERATIONAL: 'Đang khai thác/vận hành',
       NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
@@ -190,18 +266,35 @@ function histVal(
       CHUA_KHAI_THAC: 'Chưa khai thác/vận hành',
       DUNG_KHAI_THAC: 'Dừng khai thác/vận hành',
     };
-    return m[val?.toUpperCase()] || val;
+    return m[v.toUpperCase()] || v;
   }
-  if (fn === 'provinceId' || fn === 'province') return VIETNAM_PROVINCES[Number(val) - 1] || val;
-  if (fn === 'coordinateSystem') { const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' }; return m[val] || val; }
-  if (fn.endsWith('At') || fn.endsWith('Date')) {
+  if (fn === 'provinceId' || fn === 'province' || fn === 'Địa điểm (Tỉnh/Thành Phố)' || fn === 'Địa điểm (Tỉnh/Thành phố)' || fn === 'Tỉnh/Thành phố') {
+    const num = Number(v);
+    if (!isNaN(num) && num >= 1 && num <= VIETNAM_PROVINCES.length) {
+      return VIETNAM_PROVINCES[num - 1];
+    }
+    return v;
+  }
+  if (fn === 'geometryType' || fn === 'Loại đối tượng' || fn === 'Loại đối tượng GIS') {
+    const m: Record<string, string> = {
+      POINT: 'Điểm',
+      LINE: 'Đường',
+      POLYGON: 'Vùng',
+    };
+    return m[v.toUpperCase()] || v;
+  }
+  if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[v] || v;
+  }
+  if (fn.endsWith('At') || fn.endsWith('Date') || fn.includes('Thời điểm') || fn.includes('Ngày')) {
     try {
-      let d = dayjs(val);
-      if (!d.isValid()) { d = dayjs((val || '').replace(/\.\d+$/, '')); }
-      return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : val;
-    } catch { return val; }
+      let d = dayjs(v);
+      if (!d.isValid()) { d = dayjs(v.replace(/\.\d+$/, '')); }
+      return d.isValid() ? (fn.includes('openingAnnouncementDate') || fn.includes('Thời điểm công bố') || fn.includes('Ngày công bố') ? d.format('DD/MM/YYYY') : d.format('DD/MM/YYYY HH:mm')) : v;
+    } catch { return v; }
   }
-  return val;
+  return v;
 }
 
 // History helpers
@@ -211,7 +304,7 @@ function historyTimestamp(item: any): string {
 
 function historyActor(item: any): string {
   const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '';
+  return raw || '—';
 }
 
 function normalizeHistoryKey(value: string): string {
@@ -271,12 +364,111 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
   });
 }
 
+function splitHistoryFileNames(value: string | null | undefined): string[] {
+  const text = String(value || '').trim();
+  if (!text || ['—', '-', '(null)', 'null', '(trống)', 'undefined', '[]', 'chưa có', 'chua co'].includes(text.toLowerCase())) return [];
+  const stripPrefix = (name: string): string => name.trim().replace(/^(thêm|xóa|cũ|mới|them|xoa|cu|moi)\s*:?\s+/i, '').trim();
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed.map((it: any) => {
+          if (it === null || it === undefined) return '';
+          if (typeof it === 'string') return stripPrefix(it);
+          if (typeof it === 'object' && it.fileName) return stripPrefix(it.fileName);
+          if (typeof it === 'object' && it.name) return stripPrefix(it.name);
+          return stripPrefix(String(it));
+        }).filter(Boolean);
+      }
+    } catch {
+      // Fallback
+    }
+  }
+  return text
+    .split(/[,\n;]/)
+    .map((item) => stripPrefix(item))
+    .filter((item) => item && !['—', '-', '(null)', 'null', '(trống)', 'undefined'].includes(item.toLowerCase()));
+}
+
+function consolidateHistoryChanges(changes: Array<{ field: string; oldValue: string | null; newValue: string | null }>): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
+  if (!Array.isArray(changes) || changes.length <= 1) return changes || [];
+  const result: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+  const attachmentChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+
+  for (const c of changes) {
+    const norm = normalizeHistoryKey(c.field);
+    if (norm.includes('dinh kem') || norm.includes('attachment') || norm.includes('tep tin') || norm.includes('file')) {
+      attachmentChanges.push(c);
+    } else {
+      const existing = result.find(r => normalizeHistoryKey(r.field) === norm);
+      if (existing) {
+        existing.newValue = c.newValue;
+      } else {
+        result.push({ ...c });
+      }
+    }
+  }
+
+  if (attachmentChanges.length > 0) {
+    if (attachmentChanges.length === 1) {
+      result.push(attachmentChanges[0]);
+    } else {
+      const allOldFiles: string[] = [];
+      const allNewFiles: string[] = [];
+      for (const ac of attachmentChanges) {
+        splitHistoryFileNames(ac.oldValue).forEach(f => {
+          if (!allOldFiles.includes(f)) allOldFiles.push(f);
+        });
+        splitHistoryFileNames(ac.newValue).forEach(f => {
+          if (!allNewFiles.includes(f)) allNewFiles.push(f);
+        });
+      }
+      const netOld = allOldFiles.filter(f => !allNewFiles.includes(f));
+      const netNew = allNewFiles.filter(f => !allOldFiles.includes(f));
+      if (netOld.length > 0 || netNew.length > 0) {
+        result.push({
+          field: 'Tài liệu đính kèm',
+          oldValue: netOld.length > 0 ? netOld.join(', ') : '—',
+          newValue: netNew.length > 0 ? netNew.join(', ') : '—',
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
 function renderHistoryValueTag(field: string, val: string | null) {
   if (val === null || val === undefined || val === '—' || val === '' || val === '-' || val === '–') {
-    return null;
+    return <span style={{ color: textTertiary }}>—</span>;
   }
   const normKey = normalizeHistoryKey(field);
   const normVal = normalizeHistoryKey(val);
+  const rawValue = String(val ?? '').trim();
+
+  // ── Tài liệu đính kèm: hiển thị từng tên tệp kèm icon FileOutlined ──
+  if (normKey.includes('dinh kem') || normKey.includes('attachment') || normKey.includes('tep tin') || normKey.includes('file')) {
+    const fileNames = splitHistoryFileNames(rawValue);
+    if (fileNames.length === 0) return <span style={{ color: textTertiary }}>—</span>;
+    if (fileNames.length === 1) {
+      return (
+        <span title={fileNames[0]} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+          <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+          <span>{fileNames[0]}</span>
+        </span>
+      );
+    }
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+        {fileNames.map((fileName, fi) => (
+          <span key={fi} title={fileName} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
+            <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+            <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fileName}</span>
+          </span>
+        ))}
+      </span>
+    );
+  }
 
   if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
     if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
@@ -294,18 +486,7 @@ function renderHistoryValueTag(field: string, val: string | null) {
     return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
   }
 
-  if (normKey === 'operationalstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('dang khai thac')) {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal.includes('chua khai thac') || normVal.includes('not_yet')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal.includes('dung khai thac') || normVal.includes('suspended') || normVal.includes('ngung')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-  }
-
+  // Tình trạng (operationalStatus) không dùng badge — hiển thị text bình thường theo yêu cầu người dùng
   return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
 }
 
@@ -393,9 +574,13 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
 }
 
 export default function AnchorageListPage() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
-  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
 
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
@@ -431,7 +616,9 @@ export default function AnchorageListPage() {
     return m;
   }, [organizations]);
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+  const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
+  const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
 
   const portMap = useMemo(() => {
@@ -474,7 +661,221 @@ export default function AnchorageListPage() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
 
+  const filteredHistory = useMemo(() => {
+    const q = (historyFilters.keyword || '').trim().toLowerCase();
+    const from = historyFilters.fromDate || '';
+    const to = historyFilters.toDate || '';
+    return (Array.isArray(historyRecords) ? historyRecords : []).filter((r: any) => {
+      const fn = String(r?.fieldName || r?.changedField || '').trim();
+      if (EXCLUDED_CHANGE_FIELDS.has(fn)) return false;
+      if (q) {
+        const label = histField(fn) || fn;
+        const rawHits = [fn, label, r?.oldValue, r?.newValue, r?.previousValue, r?.value, r?.reason, r?.ghiChu, r?.note]
+          .filter((v) => v !== null && v !== undefined)
+          .map((v) => String(v).toLowerCase());
+        const resolvedOld = histVal(fn, r?.oldValue, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
+        const resolvedNew = histVal(fn, r?.newValue, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
+        if (resolvedOld) rawHits.push(String(resolvedOld).toLowerCase());
+        if (resolvedNew) rawHits.push(String(resolvedNew).toLowerCase());
+        if (!rawHits.some((text) => text.includes(q))) return false;
+      }
+      if (from || to) {
+        const ts = r?.changedAt || r?.createdAt || r?.approvedDate || '';
+        const day = ts ? dayjs(ts).format('YYYY-MM-DD') : '';
+        if (!day) return false;
+        if (from && day < from) return false;
+        if (to && day > to) return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historyFilters, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap]);
+  const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
+
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  const openHistory = useCallback(async (r: Anchorage) => {
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistoryFilters({ keyword: '' });
+    try {
+      const res = await api.get(`/v1/anchorage/${r.id}/history`);
+      const d = res.data?.data;
+      setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory.filter((it: any) => it.fieldName !== 'CREATE') : []);
+    } catch {
+      toast.error('Không thể tải lịch sử');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const HISTORY_FIELD_ORDER = [
+    'orgUnitId', 'portId', 'navigationChannelId', 'buoyStationId', 'anchorageCode', 'anchorageName',
+    'provinceId', 'province', 'detailedLocation', 'operationalStatus', 'approvalStatus',
+    'shapeDescription', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign',
+    'maxVesselDWT', 'activeAnchorageCount', 'publishedAnchorageCount', 'underInvestmentAnchorageCount',
+    'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
+    'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+    'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tài liệu đính kèm',
+    // Vietnamese label aliases:
+    'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Thuộc luồng hàng hải', 'Luồng hàng hải', 'Thuộc bến phao', 'Bến phao',
+    'Mã khu neo đậu', 'Tên khu neo đậu', 'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố',
+    'Tình trạng', 'Trạng thái', 'Hình dạng', 'Diện tích (ha)',
+    'Độ sâu khu nước theo thiết kế (m)', 'Độ sâu theo thiết kế (m)',
+    'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', 'Độ sâu hiện tại (m)',
+    'Cao độ đáy bến thiết kế', 'Cỡ tàu khai thác theo công bố (DWT)', 'Cỡ tàu khai thác (DWT)',
+    'Số lượng khu neo đậu đang khai thác', 'Số khu neo đang khai thác',
+    'Số lượng khu neo đậu đã công bố', 'Số khu neo đã công bố',
+    'Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng', 'Số khu neo thỏa thuận ĐTXD',
+    'Ghi chú', 'Thời điểm công bố mở, đưa ra sử dụng', 'Ngày công bố mở',
+    'Quyết định công bố/ Văn bản cho phép khai thác', 'Quyết định mở',
+    'Văn bản thỏa thuận đầu tư xây dựng', 'Thỏa thuận đầu tư',
+    'Biểu tượng', 'Biểu tượng bản đồ', 'Hệ quy chiếu', 'Quy tắc hiển thị',
+  ];
+
+  const renderAnchorageHistoryTimeline = (records: any[]) => {
+    const safeRecords = Array.isArray(records) ? records : [];
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const isUpdateAction = (status: string, reason?: string) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const actor = historyActor(r);
+      const prev = groups[groups.length - 1];
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 2 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      if (isSameGroup) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
+    }
+    if (groups.length === 0) return (
+      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
+      </div>
+    );
+    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || '—'; } };
+    return (
+      <div>{groups.map((g, gi) => {
+        const rec0 = g.items[0] || {};
+        const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
+        const rawChanges = g.items.flatMap((item: any) => historyChangeRows(item));
+        const changes = consolidateHistoryChanges(rawChanges).sort((a: any, b: any) => {
+          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        }).filter((c: any) => c.field && !EXCLUDED_CHANGE_FIELDS.has(c.field));
+        const actionMeta = resolveHistoryActionMeta(g, changes);
+        const isCreate = actionMeta.label === 'Thêm mới' || changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
+        const barColor = actionMeta.color;
+        const formatHistoryValue = (fn: string, raw: string | null) => {
+          if (raw === null || raw === undefined || raw === '(null)' || raw === 'null' || raw === '') return null;
+          const t = String(raw).trim();
+          if (!t || t === '(null)' || t === 'null') return null;
+          if (t.startsWith('[') && t.endsWith(']')) {
+            if (t === '[]') return 'Không có';
+            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+            return `${parts.length} hạng mục`;
+          }
+          const resolved = histVal(fn, t, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
+          if (resolved !== t) {
+            return resolved;
+          }
+          if (NUMERIC_HISTORY_FIELDS.has(fn)) {
+            if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
+              return formatHistoryNumber(t);
+            }
+          }
+          return resolved;
+        };
+        const validChanges = changes.filter((c: any) => {
+          if (!c.field || EXCLUDED_CHANGE_FIELDS.has(c.field)) return false;
+          const ov = formatHistoryValue(c.field, c.oldValue);
+          const nv = formatHistoryValue(c.field, c.newValue);
+          if (ov == null && nv == null) return false;
+          if (ov === nv) return false;
+          if (typeof ov === 'string' && typeof nv === 'string' && ov.trim() === nv.trim()) return false;
+          return true;
+        });
+        const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
+        if (validChanges.length === 0 && reasons.length === 0) return null;
+        return (
+          <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
+                <Typography.Text style={historyTimeStyle}>
+                  {g.ts ? fmtTime(g.ts) : '—'}
+                </Typography.Text>
+                <span style={{ flexShrink: 0 }}>
+                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
+                <Typography.Text style={historyMetaRowStyle}>
+                  Người cập nhật: {g.actor || '—'}
+                </Typography.Text>
+                <Typography.Text style={historyMetaRowStyle}>
+                  Đơn vị: {unitName}
+                </Typography.Text>
+              </div>
+            </div>
+            <div style={historyInfoCardStyle}>
+              <div style={historyAccentBarStyle(barColor)} />
+              <Typography.Text style={historyInfoTitleStyle}>
+                {informationTitle}
+              </Typography.Text>
+              {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
+                const fn = change.field;
+                const ov = formatHistoryValue(fn, change.oldValue);
+                const nv = formatHistoryValue(fn, change.newValue);
+                const renderCell = (rawVal: string | null) => {
+                  if ((fn === 'mapSymbolId' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && rawVal && rawVal !== '(null)') {
+                    const img = symbolImageMap.get(rawVal);
+                    const name = symbolMap.get(rawVal) || rawVal;
+                    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
+                  }
+                  return null;
+                };
+                const renderVal = (rawVal: string | null, fmtVal: string | null) => {
+                  if (!fmtVal || fmtVal === '—' || fmtVal === '-' || fmtVal === '–' || fmtVal === '(null)' || fmtVal === 'null') return '';
+                  return renderCell(rawVal) ?? renderHistoryValueTag(fn, fmtVal);
+                };
+                return isCreate ? (
+                  <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
+                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
+                  </div>
+                ) : (
+                  <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
+                    <span title={ov ?? ''} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
+                    <span style={historyArrowStyle}>→</span>
+                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
+                  </div>
+                );
+              })}</div> : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
+                  {reasons.map((r: string, ri: number) => (
+                    <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}</div>
+    );
+  };
 
   // Load master data
   useEffect(() => {
@@ -515,8 +916,17 @@ export default function AnchorageListPage() {
         const m = new Map<string, string>();
         const imgMap = new Map<string, string>();
         s.forEach((x: any) => {
-          m.set(x.id, x.name);
-          if (x.image) imgMap.set(x.id, x.image);
+          const imgUrl = x.image
+            ? (x.image.startsWith('data:') || x.image.startsWith('http') ? x.image : `data:image/png;base64,${x.image}`)
+            : '';
+          if (x.id) {
+            m.set(x.id, x.name);
+            if (imgUrl) imgMap.set(x.id, imgUrl);
+          }
+          if (x.code) {
+            m.set(x.code, x.name);
+            if (imgUrl) imgMap.set(x.code, imgUrl);
+          }
         });
         setSymbolMap(m);
         setSymbolImageMap(imgMap);
@@ -530,12 +940,25 @@ export default function AnchorageListPage() {
     }
   }, [orgUnit, initialLoadDone]);
 
-  // Luồng hàng hải
+  // Luồng hàng hải (bộ lọc: chỉ lấy đã phê duyệt)
   useEffect(() => {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then((r) => {
+        const items = r.items || [];
+        setWaterwayOptions(items.map(n => ({
+          value: n.id,
+          label: n.channelName || n.channelCode || '',
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
+  // Luồng hàng hải (map hiển thị tên bảng & lịch sử)
+  useEffect(() => {
+    navigationChannelCRUD.search({ page: 0, size: 1000 })
+      .then((r) => {
         const m = new Map<string, string>();
-        r.items.forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
         setWaterwayMap(m);
       })
       .catch(() => {});
@@ -553,15 +976,32 @@ export default function AnchorageListPage() {
     })();
   }, [orgUnit]);
 
-  // Bến phao
+  // Bến phao (bộ lọc: chỉ lấy đã phê duyệt, lọc theo orgUnit và portId)
   useEffect(() => {
-    buoyBerthCRUD.search({ page: 1, pageSize: 1000, approvalStatus: 'APPROVED' })
-      .then((res) => {
+    (async () => {
+      try {
+        const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
+        if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit;
+        if (filterPortId) params.portId = filterPortId;
+        const r = await buoyBerthCRUD.search(params);
+        setBuoyStationOptions((r.data || []).map((b: any) => ({
+          value: b.id,
+          label: b.buoyBerthName || b.buoyBerthCode || b.id,
+        })));
+      } catch {}
+    })();
+  }, [orgUnit, filterPortId]);
+
+  // Bến phao (map hiển thị tên bảng & lịch sử)
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await buoyBerthCRUD.search({ page: 1, pageSize: 1000 });
         const m = new Map<string, string>();
-        (res.data || []).forEach((b: any) => { m.set(b.id, b.buoyBerthName || b.name || ''); });
+        (r.data || []).forEach((b: any) => { m.set(b.id, b.buoyBerthName || b.buoyBerthCode || ''); });
         setBuoyStationMap(m);
-      })
-      .catch(() => {});
+      } catch {}
+    })();
   }, []);
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
@@ -613,7 +1053,8 @@ export default function AnchorageListPage() {
 
   const handleFilterApply = useCallback(() => {
     setPage(1);
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
@@ -645,6 +1086,31 @@ export default function AnchorageListPage() {
     } catch {}
   }, []);
 
+  useEffect(() => {
+    if (!isEmbeddedAction || !linkedRecordId) return;
+    let cancelled = false;
+    anchorageCRUD.findById(linkedRecordId)
+      .then((record) => {
+        if (cancelled) return;
+        if (linkedAction === 'detail') {
+          void openDetailDrawer(record);
+        } else {
+          setEditAnchorageId(linkedRecordId);
+          setCreateDrawerVisible(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết khu neo đậu');
+      });
+    return () => { cancelled = true; };
+  }, [isEmbeddedAction, linkedAction, linkedRecordId, openDetailDrawer]);
+
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (isEmbeddedAction) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, [isEmbeddedAction]);
+
   const dd2dms = (dd: number) => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
     const a = Math.abs(dd);
@@ -668,6 +1134,7 @@ export default function AnchorageListPage() {
       toast.success('Đã xóa khu neo đậu');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (ex: unknown) {
@@ -685,7 +1152,7 @@ export default function AnchorageListPage() {
         await anchorageApproval.approveC2(record.id, content);
       }
       toast.success(record.approvalStatus === 'PENDING_APPROVAL' ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
-      setApproveModalOpen(false); setApprovingRecord(null); void fetchData(); void fetchCounts(orgUnit);
+      setApproveModalOpen(false); setApprovingRecord(null); setPage(1); void fetchData(); void fetchCounts(orgUnit);
     } catch (ex: unknown) {
       toast.error(ex instanceof Error ? ex.message : 'Phê duyệt thất bại');
     }
@@ -703,6 +1170,7 @@ export default function AnchorageListPage() {
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (ex: unknown) {
@@ -724,202 +1192,19 @@ export default function AnchorageListPage() {
       return;
     }
     try {
-      await anchorageApproval.rejectStage(rejectingRecord.id, rejectReason.trim());
+      await anchorageApproval.rejectStage(rejectingRecord.id, rejectReason.trim(), rejectingRecord.approvalStatus);
       toast.success('Từ chối thành công');
       setRejectModalOpen(false);
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
+      setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
     }
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, orgUnit]);
-
-  const openHistory = useCallback(async (r: Anchorage) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistoryFilters({ keyword: '' });
-    try {
-      const res = await api.get(`/v1/anchorage/${r.id}/history`);
-      const d = res.data?.data;
-      setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory.filter((it: any) => it.fieldName !== 'CREATE') : []);
-    } catch {
-      toast.error('Không thể tải lịch sử');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, []);
-
-  const filteredHistory = useMemo(() => {
-    const q = (historyFilters.keyword || '').trim().toLowerCase();
-    const from = historyFilters.fromDate || '';
-    const to = historyFilters.toDate || '';
-    return (Array.isArray(historyRecords) ? historyRecords : []).filter((r: any) => {
-      if (q) {
-        const fn = String(r?.fieldName || r?.changedField || '').toLowerCase();
-        const label = histField(fn) || fn;
-        const rawHits = [fn, label, r?.oldValue, r?.newValue, r?.previousValue, r?.value, r?.reason, r?.ghiChu, r?.note]
-          .filter((v) => v !== null && v !== undefined)
-          .map((v) => String(v).toLowerCase());
-        const resolvedOld = histVal(fn, r?.oldValue, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
-        const resolvedNew = histVal(fn, r?.newValue, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
-        if (resolvedOld) rawHits.push(String(resolvedOld).toLowerCase());
-        if (resolvedNew) rawHits.push(String(resolvedNew).toLowerCase());
-        if (!rawHits.some((text) => text.includes(q))) return false;
-      }
-      if (from || to) {
-        const ts = r?.changedAt || r?.createdAt || r?.approvedDate || '';
-        const day = ts ? dayjs(ts).format('YYYY-MM-DD') : '';
-        if (!day) return false;
-        if (from && day < from) return false;
-        if (to && day > to) return false;
-      }
-      return true;
-    });
-  }, [historyRecords, historyFilters, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap]);
-  const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
-
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'portId', 'buoyStationId', 'navigationChannelId', 'anchorageCode', 'anchorageName',
-    'provinceId', 'detailedLocation', 'operationalStatus', 'approvalStatus',
-    'shapeDescription', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign',
-    'maxVesselDWT', 'activeAnchorageCount', 'publishedAnchorageCount', 'underInvestmentAnchorageCount',
-    'openingAnnouncementDate', 'publicDecision', 'investmentAgreement', 'remarks',
-    'coordinateSystem', 'displayRule', 'mapSymbolId', 'Khu nước neo buộc tàu',
-  ];
-
-  const renderAnchorageHistoryTimeline = (records: any[]) => {
-    const safeRecords = Array.isArray(records) ? records : [];
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
-      }
-    }
-    if (groups.length === 0) return (
-      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-      </div>
-    );
-    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || ''; } };
-    return (
-      <div>{groups.map((g, gi) => {
-        const rec0 = g.items[0] || {};
-        const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
-        const orgName = orgId ? orgMap.get(orgId) : undefined;
-        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '';
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        }).filter((c: any) => c.field !== 'attachments' && c.field !== 'spatialId');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-        const actionMeta = resolveHistoryActionMeta(g, changes);
-        const barColor = actionMeta.color;
-        const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
-          if (t.startsWith('[') && t.endsWith(']')) {
-            if (t === '[]') return 'Không có';
-            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-            return `${parts.length} hạng mục`;
-          }
-          const val = histVal(fn, raw, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
-          if (!val || val === '(null)' || val === 'null' || val === '—' || val === '-' || val === '–') return null;
-          if (/^-?\d+(\.\d+)?$/.test(val)) {
-            const n = Number(val);
-            return Number.isInteger(n) ? n.toLocaleString('vi-VN') : val;
-          }
-          return val;
-        };
-        const validChanges = changes.filter((c: any) => {
-          if (!c.field) return false;
-          const ov = formatHistoryValue(c.field, c.oldValue);
-          const nv = formatHistoryValue(c.field, c.newValue);
-          if (ov == null && nv == null) return false;
-          if (ov === nv) return false;
-          return true;
-        });
-        const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-        if (validChanges.length === 0 && reasons.length === 0) return null;
-        return (
-          <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : ''}
-                </Typography.Text>
-                <span style={{ flexShrink: 0 }}>
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Người cập nhật: {g.actor || ''}
-                </Typography.Text>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Đơn vị: {unitName}
-                </Typography.Text>
-              </div>
-            </div>
-            <div style={historyInfoCardStyle}>
-              <div style={historyAccentBarStyle(barColor)} />
-              <Typography.Text style={historyInfoTitleStyle}>
-                {informationTitle}
-              </Typography.Text>
-              {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
-                const fn = change.field;
-                const ov = formatHistoryValue(fn, change.oldValue);
-                const nv = formatHistoryValue(fn, change.newValue);
-                const renderCell = (rawVal: string | null) => {
-                  if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
-                    const img = symbolImageMap.get(rawVal);
-                    const name = symbolMap.get(rawVal) || rawVal;
-                    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
-                  }
-                  return null;
-                };
-                const renderVal = (rawVal: string | null, fmtVal: string | null) => {
-                  if (!fmtVal || fmtVal === '—' || fmtVal === '-' || fmtVal === '–' || fmtVal === '(null)' || fmtVal === 'null') return '';
-                  return renderCell(rawVal) ?? renderHistoryValueTag(fn, fmtVal);
-                };
-                return isCreate ? (
-                  <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                  </div>
-                ) : (
-                  <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                    <span title={ov ?? ''} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
-                    <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                  </div>
-                );
-              })}</div> : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                  {reasons.map((r: string, ri: number) => (
-                    <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}</div>
-    );
-  };
 
   const filterContent = (
     <>
@@ -974,22 +1259,12 @@ export default function AnchorageListPage() {
               placeholder="Chọn cảng biển"
               allowClear
               value={filterPortId}
-              onChange={v => setFilterPortId(v)}
+              onChange={v => {
+                setFilterPortId(v);
+                setFilterBuoyStationId(undefined);
+              }}
               options={portOptions}
               showSearch
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
-            />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến phao</div>
-            <Select
-              style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
-              placeholder="Chọn bến phao"
-              allowClear
-              showSearch
-              value={filterBuoyStationId}
-              onChange={v => setFilterBuoyStationId(v)}
-              options={Array.from(buoyStationMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
               filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
             />
           </div>
@@ -1002,7 +1277,20 @@ export default function AnchorageListPage() {
               showSearch
               value={filterNavigationChannelId}
               onChange={v => setFilterNavigationChannelId(v)}
-              options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              options={waterwayOptions}
+              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến phao</div>
+            <Select
+              style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+              placeholder="Chọn bến phao"
+              allowClear
+              showSearch
+              value={filterBuoyStationId}
+              onChange={v => setFilterBuoyStationId(v)}
+              options={buoyStationOptions}
               filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
             />
           </div>
@@ -1034,15 +1322,14 @@ export default function AnchorageListPage() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
-              format="DD/MM/YYYY"
-              placeholder={['Từ ngày', 'Đến ngày']}
+              {...getRangePickerProps({ width: '100%', borderRadius: radiusPill, height: 40 })}
               allowClear
               value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
               onChange={(dates) => {
-                setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
-                setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
+                setFilterUpdatedFrom(dates?.[0] ? dates[0].startOf('day').format('YYYY-MM-DD 00:00:00') : undefined);
+                setFilterUpdatedTo(dates?.[1] ? dates[1].endOf('day').format('YYYY-MM-DD 23:59:59') : undefined);
+                setPage(1);
               }}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>
         </>
@@ -1077,14 +1364,13 @@ export default function AnchorageListPage() {
       actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'anchorage' })) {
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'anchorage', extraDeletePerms: ['pier:delete', 'port:delete'] })) {
       actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
     }
     return actions;
   }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
 
   const auditColumns = useMemo(() => {
-    if (!isAuditViewer) return [];
     return [
       {
         label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230, sortable: true,
@@ -1132,24 +1418,38 @@ export default function AnchorageListPage() {
         },
       },
     ];
-  }, [isAuditViewer, userMap]);
+  }, [userMap]);
 
   const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'portId') return portMap.get(r.portId) ?? r.portId ?? '';
-    if (field === 'buoyStationId') return r.buoyStationName ?? buoyStationMap.get(r.buoyStationId) ?? r.buoyStationId ?? '';
-    if (field === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] ?? '') : '';
+    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
+    if (field === 'anchorageName') return r.anchorageName ?? '';
+    if (field === 'anchorageCode') return r.anchorageCode ?? '';
+    if (field === 'portId') return r.portName || portMap.get(r.portId) || r.portId || '';
+    if (field === 'navigationChannelId') return (r as any).navigationChannelName || waterwayMap.get(r.navigationChannelId) || r.navigationChannelId || '';
+    if (field === 'buoyStationId') return r.buoyStationName || buoyStationMap.get(r.buoyStationId) || r.buoyStationId || '';
+    if (field === 'provinceId' || field === 'province') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : ((r as any).province || '');
     if (field === 'operationalStatus') {
-      const m: Record<string, string> = {
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-        SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[r.operationalStatus] || r.operationalStatus || '';
+      return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
-    if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
+    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    if (field === 'updatedAt' || field === 'updatedByName') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'submittedForApprovalAt') {
+      const t = r.submittedForApprovalAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'portAuthorityApprovedAt') {
+      const t = r.portAuthorityApprovedAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'departmentApprovedAt') {
+      const t = r.departmentApprovedAt;
+      return t ? new Date(t).getTime() : 0;
+    }
     return r[field] ?? '';
-  }, [portMap, buoyStationMap, waterwayMap]);
+  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1175,35 +1475,23 @@ export default function AnchorageListPage() {
         render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span>,
       },
       {
-        label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
-        render: (v: string, r: Anchorage) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{r.buoyStationName || (v ? buoyStationMap.get(v) || v : '')}</span>,
-      },
-      {
         label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
         render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : ''}</span>,
+      },
+      {
+        label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
+        render: (v: string, r: Anchorage) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{r.buoyStationName || (v ? buoyStationMap.get(v) || v : '')}</span>,
       },
       {
         label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230, sortable: true,
         render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (VIETNAM_PROVINCES[Number(v) - 1] || String(v)) : ''}</span>,
       },
       {
-        label: 'Cỡ tàu khai thác (DWT)', dataIndex: 'maxVesselDWT', key: 'maxVesselDWT', width: 190, sortable: true,
-        render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatNumericDisplay(v)}</span>,
-      },
-      {
-        label: 'Diện tích (ha)', dataIndex: 'area', key: 'area', width: 150, sortable: true,
-        render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatNumericDisplay(v)}</span>,
-      },
-      {
-        label: 'Độ sâu hiện tại (m)', dataIndex: 'currentWaterDepth', key: 'currentWaterDepth', width: 160, sortable: true,
-        render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatNumericDisplay(v)}</span>,
-      },
-      {
-        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 200, sortable: true,
+        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
         render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; },
       },
       {
-        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, sortable: true,
+        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
         render: (v: string) => {
           const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
@@ -1221,7 +1509,10 @@ export default function AnchorageListPage() {
     ];
     const tailColumns: any[] = [];
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
-    return allColumns.map(col => ({ ...col, sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined }));
+    return allColumns.map(col => ({
+      ...col,
+      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+    }));
   }, [page, pageSize, organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
@@ -1231,6 +1522,21 @@ export default function AnchorageListPage() {
     }
     return actions;
   }, [hasPerm]);
+
+  const sortedDataSource = useMemo(() => {
+    if (!sortField) return dataSource;
+    if (sortField === 'stt') {
+      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
+    }
+    return [...dataSource].sort((a, b) => {
+      const av = getSortValue(a, sortField);
+      const bv = getSortValue(b, sortField);
+      const c = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi', { numeric: true, sensitivity: 'base' });
+      return sortOrder === 'ascend' ? c : -c;
+    });
+  }, [dataSource, sortField, sortOrder, getSortValue]);
 
   return (
     <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd } as unknown as ThemeToken}>
@@ -1369,17 +1675,7 @@ export default function AnchorageListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => {
-              if (!sortField) return 0;
-              if (sortField === 'stt') {
-                const arr = [...dataSource];
-                return sortOrder === 'descend' ? (arr.reverse(), 0) : 0;
-              }
-              const av = getSortValue(a, sortField);
-              const bv = getSortValue(b, sortField);
-              const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi');
-              return sortOrder === 'ascend' ? c : -c;
-            })}
+            dataSource={sortedDataSource}
             rowKey="id"
             rowActions={rowActions}
             loading={false}
@@ -1394,13 +1690,13 @@ export default function AnchorageListPage() {
           {...drawerProps}
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
-          width="min(920px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editAnchorageId ? 'Chỉnh sửa thông tin Khu neo đậu' : 'Thêm mới Khu neo đậu'}</span>}
           open={createDrawerVisible}
-          destroyOnHidden
-          onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+          destroyOnClose
+          onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); notifyEmbeddedActionClosed(); }}
           afterOpenChange={(open) => { if (!open) { setEditAnchorageId(undefined); setEditBaseStatus(undefined); } }}
-          extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+          extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); notifyEmbeddedActionClosed(); }} style={drawerCloseBtnStyle}>✕</Button>}
           footer={<div style={drawerFooterStyle}>{(() => {
             const st = !editAnchorageId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
             if (st === 'APPROVED') {
@@ -1434,8 +1730,22 @@ export default function AnchorageListPage() {
           styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}
         >
           <Form form={createForm} layout="vertical">
-            <style>{requiredMarkStyle}</style>
-            <AnchorageForm ref={anchorageFormRef} form={createForm} id={editAnchorageId} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
+            <AnchorageForm
+              ref={anchorageFormRef}
+              form={createForm}
+              id={editAnchorageId}
+              onFinish={() => {
+                setCreateDrawerVisible(false);
+                createForm.resetFields();
+                setSortField('updatedAt');
+                setSortOrder('descend');
+                setPage(1);
+                void fetchData();
+                void fetchCounts(orgUnit);
+                notifyEmbeddedActionClosed();
+              }}
+              onSubmittingChange={setSubmitting}
+            />
           </Form>
         </Drawer>
 
@@ -1447,8 +1757,8 @@ export default function AnchorageListPage() {
           size={1000}
           title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
           open={detailDrawerVisible}
-          onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
-          extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); }} style={drawerCloseBtnStyle}>✕</Button>}
+          onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); notifyEmbeddedActionClosed(); }}
+          extra={<Button type="text" onClick={() => { setDetailDrawerVisible(false); setDetailRecord(null); notifyEmbeddedActionClosed(); }} style={drawerCloseBtnStyle}>✕</Button>}
           styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}
           footer={null}
         >
