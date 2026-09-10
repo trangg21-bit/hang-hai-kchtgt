@@ -186,9 +186,15 @@ export interface PortPlanningCategoryItem {
   exploitationFunction?: string;
   classification?: string;
   berthCount?: number;
+  /** Sau quy hoạch — Số cầu cảng KB cao (Excel row 30). Cặp low-high với berthCount. */
+  berthCountHigh?: number;
   length?: number;
+  /** Sau quy hoạch — Chiều dài KB cao (Excel row 31). Cặp low-high với length. */
+  lengthHigh?: number;
   shipSize?: string;
   capacity?: number;
+  /** Sau quy hoạch — Dự kiến công suất KB cao (Excel row 33). Cặp low-high với capacity. */
+  capacityHigh?: number;
   landArea?: number;
   waterArea?: number;
   note?: string;
@@ -204,6 +210,7 @@ export interface PlanningFileItem {
 }
 
 export interface QuyHoachBenCangCreateRequest {
+  projectName?: string;
   orgUnitId: string;
   decisionNumber: string;
   decisionDate?: string;
