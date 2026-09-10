@@ -47,6 +47,39 @@ public class PortPlanningController {
         return ResponseEntity.ok(ApiResponse.success("Tạo quy hoạch bến cảng thành công", response));
     }
 
+    @PostMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'portplanning:update') or @auth.check(authentication, 'document:update')")
+    public ResponseEntity<ApiResponse<com.hanghai.kchtg.document.dto.PlanningFileResponse>> uploadFile(
+            @PathVariable UUID id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        com.hanghai.kchtg.document.dto.PlanningFileResponse attached = portPlanningService.uploadAttachment(id, file);
+        return ResponseEntity.ok(ApiResponse.success("Tải lên thành công", attached));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attachmentId}")
+    @PreAuthorize("@auth.check(authentication, 'portplanning:update') or @auth.check(authentication, 'document:update')")
+    public ResponseEntity<ApiResponse<Void>> deleteFile(
+            @PathVariable UUID id,
+            @PathVariable UUID attachmentId) {
+        portPlanningService.deleteAttachment(id, attachmentId);
+        return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attachmentId}/download")
+    @PreAuthorize("@auth.check(authentication, 'portplanning:read') or @auth.check(authentication, 'document:read')")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadFile(
+            @PathVariable UUID id,
+            @PathVariable UUID attachmentId) {
+        com.hanghai.kchtg.document.dto.PlanningFileResponse attachment = portPlanningService.getById(id).getPlanningFiles().stream()
+                .filter(f -> f.getId().equals(attachmentId)).findFirst().orElseThrow(() -> new IllegalArgumentException("File not found"));
+        org.springframework.core.io.Resource resource = portPlanningService.downloadAttachment(id, attachmentId);
+        return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        org.springframework.http.ContentDisposition.attachment().filename(attachment.getFileName()).build().toString())
+                .body(resource);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'portplanning:read') or @auth.check(authentication, 'document:read')")
     public ResponseEntity<ApiResponse<PortPlanningResponse>> getPlan(@PathVariable UUID id) {

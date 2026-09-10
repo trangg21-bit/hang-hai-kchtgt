@@ -13,6 +13,19 @@ import type {
 // ==========================================
 // 1. Văn bản pháp lý
 // ==========================================
+export async function uploadPortPlanningAttachment(id: string, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post(`/v1/port-planning/${id}/attachments`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data.data;
+}
+
+export async function deletePortPlanningAttachment(id: string, attachmentId: string): Promise<void> {
+  await api.delete(`/v1/port-planning/${id}/attachments/${attachmentId}`);
+}
+
 export async function fetchLegalDocumentList(params: {
   page?: number;
   size?: number;

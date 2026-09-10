@@ -35,9 +35,15 @@ public class PlanningCategoryResponse {
     private String exploitationFunction;
     private String classification;
     private Integer berthCount;
+    /** Sau quy hoạch — Số cầu cảng KB cao (Excel row 30). Cặp low-high với berthCount. */
+    private Integer berthCountHigh;
     private BigDecimal lengthM;
+    /** Sau quy hoạch — Chiều dài KB cao (Excel row 31). Cặp low-high với lengthM. */
+    private BigDecimal lengthHigh;
     private String shipSize;
     private BigDecimal capacity;
+    /** Sau quy hoạch — Dự kiến công suất KB cao (Excel row 33). Cặp low-high với capacity. */
+    private BigDecimal capacityHigh;
     private BigDecimal landArea;
     private BigDecimal waterArea;
     private String note;
