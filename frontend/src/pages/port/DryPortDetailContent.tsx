@@ -6,10 +6,9 @@ import {
   DownOutlined, RightOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import {
-  textTertiary, surfaceCard,
+  surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold, spaceSm, spaceMd, spaceFormField,
   actionPrimary, statusBadgeStyle,
   outlineButtonStyle, primaryButtonStyle,
@@ -23,6 +22,16 @@ import InfrastructureAttachmentTab from '../../components/shared/InfrastructureA
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { parseWktToCoordinates } from '../../utils/gisGeometry';
 import { fmtNum } from '../../utils/numFmt';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+
+function formatDateOnly(d: string | null | undefined): string {
+  if (!d) return '';
+  try {
+    return dayjs(d).format('DD/MM/YYYY');
+  } catch {
+    return d;
+  }
+}
 
 export interface DryPortDetailContentProps {
   selectedRecord: DryPort;
@@ -33,7 +42,6 @@ export interface DryPortDetailContentProps {
   detailFiles: any[];
   ddToDms: (dd: number | null | undefined) => { d: number | null; m: number | null; s: number | null };
   provinceName: (provinceId: number | null | undefined) => string;
-  approvalStyleMap?: Record<string, { color: string; label: string }>;
 }
 
 const COORD_SYS_LABELS: Record<number, string> = { 1: 'WGS-84', 2: 'VN-2000' };
@@ -76,29 +84,6 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
   return out;
 };
 
-// Bảng tham chiếu (Thông tin quy hoạch / Vận hành khai thác / Bảo trì / Sự cố) — DetailTable chuẩn VTS CHK
-const TAB_PAGE_SIZE = 10;
-function DryPortRefTable({ title, emptyText, columns, dataSource = [] }: { title: string; emptyText: string; columns: Array<{ title: string; dataIndex?: string; width?: number }>; dataSource?: any[] }) {
-  return (
-    <div style={{ paddingTop: 3 }}>
-      <div style={{ marginBottom: spaceSm, padding: '10px 12px 0 12px' }}>
-        <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>
-      </div>
-      <DetailTable
-        dataSource={(Array.isArray(dataSource) ? dataSource : []).map((row, idx) => ({ ...row, key: row?.key ?? idx }))}
-        emptyText={emptyText}
-        pageSize={TAB_PAGE_SIZE}
-        showTotal={(total) => `Tổng cộng ${total}`}
-        scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-        columns={[
-          { title: 'STT', width: 50 },
-          ...columns.map((c) => ({ title: c.title, dataIndex: c.dataIndex, width: c.width })),
-        ]}
-      />
-    </div>
-  );
-}
-
 export default function DryPortDetailContent({
   selectedRecord: r,
   organizations,
@@ -108,7 +93,6 @@ export default function DryPortDetailContent({
   detailFiles,
   ddToDms,
   provinceName,
-  approvalStyleMap,
 }: DryPortDetailContentProps) {
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [operationOpen, setOperationOpen] = useState(true);
@@ -117,6 +101,7 @@ export default function DryPortDetailContent({
   // Toggle cụm 'Thông tin công bố' và 'Thông tin phê duyệt'
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
+  const [planOpen, setPlanOpen] = useState(true);
 
   // Bản đồ orgUnitId → tên đơn vị
   const orgMap = useMemo(() => {
@@ -124,6 +109,12 @@ export default function DryPortDetailContent({
     (Array.isArray(organizations) ? organizations : []).forEach((o: any) => { if (o?.id) map.set(o.id, o.name || o.id); });
     return map;
   }, [organizations]);
+
+  const operatingOrgName = (r as any)?.operatingOrgName
+    || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === (r as any)?.operatingOrgId || o.id === r.operatingUnit)?.name
+    || r.operatingUnit
+    || (r as any)?.operatingOrgId
+    || '';
 
   return (
     <div className="dry-port-detail-content-wrapper">
@@ -152,15 +143,17 @@ export default function DryPortDetailContent({
           display: grid !important;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
           column-gap: 28px !important;
-          row-gap: 6px !important;
-          padding: 4px 0 !important;
+          row-gap: 0 !important;
         }
 
         .dry-port-detail-content-wrapper .chk-detail-row {
           display: flex !important;
-          align-items: baseline !important;
-          min-height: 28px !important;
+          align-items: center !important;
+          min-height: 36px !important;
+          padding: 7px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
           line-height: 1.5 !important;
+          gap: 10px !important;
         }
 
         .dry-port-detail-content-wrapper .chk-detail-row--full {
@@ -272,7 +265,7 @@ export default function DryPortDetailContent({
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Đơn vị khai thác</span>
-                      <span className="chk-detail-value">{r.operatingUnit || ''}</span>
+                      <span className="chk-detail-value">{operatingOrgName}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Khu vực</span>
@@ -323,7 +316,7 @@ export default function DryPortDetailContent({
                   <div className="chk-detail-grid">
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Công suất khai thác</span>
-                      <span className="chk-detail-value">{r.teuCapacity != null && r.teuCapacity !== '' ? `${fmtNum(r.teuCapacity)} TEU/năm` : ''}</span>
+                      <span className="chk-detail-value">{r.teuCapacity != null && r.teuCapacity !== '' ? fmtNum(r.teuCapacity) : ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Tổng diện tích cảng (m²)</span>
@@ -340,15 +333,15 @@ export default function DryPortDetailContent({
                   </div>
                 </div>
 
-                {/* ── Section 3: Thông tin công bố mở, đưa vào sử dụng ── */}
-                <div style={{ ...sectionBoxStyle, padding: announcementOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                {/* ── Section 3: Thông tin công bố mở, đưa vào sử dụng (đồng bộ chuẩn Cầu cảng - Pier) ── */}
+                <div style={{ ...sectionBoxStyle, padding: announcementOpen ? sectionBoxStyle.padding : spaceMd }}>
                   <div
                     onClick={() => setAnnouncementOpen(!announcementOpen)}
                     style={{
                       ...sectionHeaderStyle,
-                      marginBottom: announcementOpen ? 10 : 0,
-                      paddingBottom: announcementOpen ? 8 : 0,
-                      borderBottom: announcementOpen ? '1px solid #f1f5f9' : 'none',
+                      marginBottom: announcementOpen ? spaceMd : 0,
+                      paddingBottom: announcementOpen ? spaceSm : 0,
+                      borderBottom: announcementOpen ? sectionHeaderStyle.borderBottom : 'none',
                       cursor: 'pointer',
                       userSelect: 'none',
                     }}
@@ -357,33 +350,27 @@ export default function DryPortDetailContent({
                       <FileTextOutlined style={{ color: actionPrimary }} />
                       <span>Thông tin công bố mở, đưa vào sử dụng</span>
                     </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {announcementOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
+                    {announcementOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                   </div>
                   {announcementOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Quyết định công bố số</span>
-                        <span className="chk-detail-value">{r.announcementDecisionNumber || ''}</span>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Thời điểm công bố mở, đưa vào sử dụng</span>
+                        <span className="chk-detail-value">{formatDateOnly(r.openingAnnouncementDate || r.announcementDecisionDate || r.announcementTime)}</span>
                       </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày ra quyết định công bố</span>
-                        <span className="chk-detail-value">{r.announcementDecisionDate ? dayjs(r.announcementDecisionDate).format('DD/MM/YYYY') : ''}</span>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Quyết định công bố/ Văn bản cho phép khai thác</span>
+                        <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.openingDecision || r.announcementDecisionNumber || ''}</span>
                       </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Đơn vị ra quyết định công bố</span>
-                        <span className="chk-detail-value">{r.announcementOrg || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Thời điểm công bố mở</span>
-                        <span className="chk-detail-value">{r.announcementTime ? dayjs(r.announcementTime).format('DD/MM/YYYY') : ''}</span>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Văn bản thỏa thuận đầu tư xây dựng</span>
+                        <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.investmentAgreementDoc || ''}</span>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* ── Section 4: Thông tin phê duyệt (Toggle chuẩn AGENTS.md) ── */}
+                {/* ── Section 4: Thông tin phê duyệt (Toggle chuẩn AGENTS.md & Cảng biển) ── */}
                 <div style={{ ...sectionBoxStyle, padding: approvalOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
                   <div
                     onClick={() => setApprovalOpen(!approvalOpen)}
@@ -406,65 +393,39 @@ export default function DryPortDetailContent({
                   </div>
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
-                        <span className="chk-detail-value">
-                          {(() => {
+                      {[
+                        {
+                          label: 'Trạng thái',
+                          value: (() => {
                             const badge = trangThaiPheDuyetBadge(r.approvalStatus);
-                            return <span style={badge.style}>{badge.label}</span>;
-                          })()}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
-                        <span className="chk-detail-value">
-                          <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.updatedBy, (r as any).updatedByName, userMap, r.createdBy, (r as any).createdByName)}</span>
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày cập nhật</span>
-                        <span className="chk-detail-value">{r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Người tạo</span>
-                        <span className="chk-detail-value">
-                          <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.createdBy, (r as any).createdByName, userMap)}</span>
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày tạo</span>
-                        <span className="chk-detail-value">{r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ gửi phê duyệt</span>
-                        <span className="chk-detail-value">
-                          <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName((r as any).submittedForApprovalBy, (r as any).submittedForApprovalByName, userMap)}</span>
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày gửi phê duyệt</span>
-                        <span className="chk-detail-value">{(r as any).submittedForApprovalAt ? dayjs((r as any).submittedForApprovalAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ duyệt Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">
-                          <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName((r as any).portAuthorityApprovedBy, (r as any).portAuthorityApprovedByName, userMap)}</span>
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày duyệt Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{(r as any).portAuthorityApprovedAt ? dayjs((r as any).portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ duyệt cấp Cục</span>
-                        <span className="chk-detail-value">
-                          <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName((r as any).departmentApprovedBy, (r as any).departmentApprovedByName, userMap)}</span>
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{(r as any).departmentApprovedAt ? dayjs((r as any).departmentApprovedAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
-                      </div>
+                            return badge.label ? <span style={badge.style}>{badge.label}</span> : '';
+                          })(),
+                          fullWidth: true,
+                        },
+                        {
+                          label: 'Cán bộ cập nhật',
+                          value: formatUserDisplayName(r.updatedBy, (r as any).updatedByName, userMap, r.createdBy, (r as any).createdByName),
+                          isCol1: true,
+                          bold: true,
+                        },
+                        {
+                          label: 'Ngày cập nhật',
+                          value: r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '',
+                          isCol1: false,
+                        },
+                      ].map((row, i) => (
+                        <div
+                          key={i}
+                          className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`}
+                        >
+                          <span className={`chk-detail-label ${row.fullWidth ? 'sec-full-label' : (row.isCol1 ? 'sec-col1-label' : 'sec-col2-label')}`}>
+                            {row.label}
+                          </span>
+                          <span className="chk-detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
+                            {row.value}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -571,87 +532,123 @@ export default function DryPortDetailContent({
             key: 'plan',
             label: 'Thông tin quy hoạch',
             children: (
-              <DryPortRefTable
-                title="Danh sách thông tin quy hoạch"
-                emptyText="Chưa có thông tin quy hoạch"
-                columns={[
-                  { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', width: 200 },
-                  { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', width: 180 },
-                ]}
-              />
+              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+                {/* Box: Thông tin quy hoạch (chuẩn toggle Vận hành & bảo trì) */}
+                <div style={{ ...sectionBoxStyle, padding: planOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div onClick={() => setPlanOpen(!planOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: planOpen ? 12 : 0, paddingBottom: planOpen ? 8 : 0, borderBottom: planOpen ? '1px solid #f1f5f9' : 'none' }}>
+                    <div style={sectionTitleStyle}>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin quy hoạch</span>
+                    </div>
+                    <span style={{ color: actionPrimary, fontSize: 12 }}>
+                      {planOpen ? <DownOutlined /> : <RightOutlined />}
+                    </span>
+                  </div>
+                  {planOpen && (
+                    <DetailTable
+                      scrollY={160}
+                      dataSource={(r as any)?.planList || []}
+                      emptyText="Chưa có dữ liệu"
+                      rowKey={(rec: any) => rec?.id || rec?.planDecisionNo || rec?.planNo || 'row'}
+                      columns={[
+                        { title: 'STT', width: 50, align: 'center' as const },
+                        { title: 'Số quyết định quy hoạch', dataIndex: 'planDecisionNo', key: 'planNo', render: (v: string, rec: any) => v || rec?.decisionNo || rec?.planNo || '' },
+                        { title: 'Ngày quyết định quy hoạch', dataIndex: 'planDecisionDate', key: 'planDate', width: 320, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.decisionDate || rec?.planDate).isValid() ? dayjs(v || rec?.decisionDate || rec?.planDate).format('DD/MM/YYYY') : '' },
+                      ]}
+                    />
+                  )}
+                </div>
+              </div>
             ),
           },
           {
             key: 'operation',
             label: 'Vận hành & bảo trì',
             children: (
-              <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
-                <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
-                  <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
-                </button>
-                {operationOpen && (
-                  <div>
-                    <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
+              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+                {/* ── Section Vận hành ── */}
+                <div style={{ ...sectionBoxStyle, padding: operationOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div onClick={() => setOperationOpen(!operationOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: operationOpen ? 12 : 0, paddingBottom: operationOpen ? 8 : 0, borderBottom: operationOpen ? '1px solid #f1f5f9' : 'none' }}>
+                    <div style={sectionTitleStyle}>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin vận hành khai thác</span>
+                    </div>
+                    <span style={{ color: actionPrimary, fontSize: 12 }}>
+                      {operationOpen ? <DownOutlined /> : <RightOutlined />}
+                    </span>
+                  </div>
+                  {operationOpen && (
                     <DetailTable
-                      dataSource={(Array.isArray((r as any)?.operationPlanList) ? (r as any).operationPlanList : [])}
+                      scrollY={160}
+                      dataSource={(r as any)?.operationPlanList || []}
                       emptyText="Chưa có dữ liệu"
-                      showTotal={(total) => `Tổng cộng ${total}`}
-                      scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-                      rowKey={(rec: any, idx?: number) => rec?.id || rec?.opPlanCode || String(idx)}
+                      rowKey={(rec: any) => rec?.id || rec?.opPlanCode || rec?.planCode || 'row'}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'opPlanCode', render: (v: string, rec: any) => v || rec.code || '' },
-                        { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'opPlanName', render: (v: string, rec: any) => v || rec.name || '' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'opStartDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startDate ? dayjs(rec.startDate).format('DD/MM/YYYY HH:mm') : '') },
-                        { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'opEndDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endDate ? dayjs(rec.endDate).format('DD/MM/YYYY HH:mm') : '') },
+                        { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'code', render: (v: string, rec: any) => v || rec?.planCode || (rec?.code ?? '') },
+                        { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'name', render: (v: string, rec: any) => v || rec?.planName || (rec?.name ?? '') },
+                        { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.planStartDate || rec?.startDate).isValid() ? dayjs(v || rec?.planStartDate || rec?.startDate).format('DD/MM/YYYY') : '' },
+                        { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.planEndDate || rec?.endDate).isValid() ? dayjs(v || rec?.planEndDate || rec?.endDate).format('DD/MM/YYYY') : '' },
                       ]}
                     />
+                  )}
+                </div>
+
+                {/* ── Section Bảo trì ── */}
+                <div style={{ ...sectionBoxStyle, padding: maintenanceOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div onClick={() => setMaintenanceOpen(!maintenanceOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: maintenanceOpen ? 12 : 0, paddingBottom: maintenanceOpen ? 8 : 0, borderBottom: maintenanceOpen ? '1px solid #f1f5f9' : 'none' }}>
+                    <div style={sectionTitleStyle}>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin bảo trì</span>
+                    </div>
+                    <span style={{ color: actionPrimary, fontSize: 12 }}>
+                      {maintenanceOpen ? <DownOutlined /> : <RightOutlined />}
+                    </span>
                   </div>
-                )}
-                <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
-                  <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
-                </button>
-                {maintenanceOpen && (
-                  <div>
-                    <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
+                  {maintenanceOpen && (
                     <DetailTable
-                      dataSource={(Array.isArray((r as any)?.maintenancePlanList) ? (r as any).maintenancePlanList : [])}
+                      scrollY={160}
+                      dataSource={(r as any)?.maintenancePlanList || []}
                       emptyText="Chưa có dữ liệu"
-                      showTotal={(total) => `Tổng cộng ${total}`}
-                      scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-                      rowKey={(rec: any, idx?: number) => rec?.id || rec?.maintCode || String(idx)}
+                      rowKey={(rec: any) => rec?.id || rec?.maintCode || rec?.planCode || 'row'}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'maintCode', render: (v: string, rec: any) => v || rec.code || '' },
-                        { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'maintName', render: (v: string, rec: any) => v || rec.name || '' },
-                        { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'maintStart', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startTime || rec.start || '') },
-                        { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'maintEnd', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endTime || rec.end || '') },
+                        { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'code', render: (v: string, rec: any) => v || rec?.planCode || (rec?.code ?? '') },
+                        { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'name', render: (v: string, rec: any) => v || rec?.planName || (rec?.name ?? '') },
+                        { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.startTime || rec?.startDate).isValid() ? dayjs(v || rec?.startTime || rec?.startDate).format('DD/MM/YYYY') : '' },
+                        { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.endTime || rec?.endDate).isValid() ? dayjs(v || rec?.endTime || rec?.endDate).format('DD/MM/YYYY') : '' },
                       ]}
                     />
+                  )}
+                </div>
+
+                {/* ── Section Sự cố ── */}
+                <div style={{ ...sectionBoxStyle, padding: incidentOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div onClick={() => setIncidentOpen(!incidentOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: incidentOpen ? 12 : 0, paddingBottom: incidentOpen ? 8 : 0, borderBottom: incidentOpen ? '1px solid #f1f5f9' : 'none' }}>
+                    <div style={sectionTitleStyle}>
+                      <SlidersOutlined style={{ color: actionPrimary }} />
+                      <span>Thông tin sự cố</span>
+                    </div>
+                    <span style={{ color: actionPrimary, fontSize: 12 }}>
+                      {incidentOpen ? <DownOutlined /> : <RightOutlined />}
+                    </span>
                   </div>
-                )}
-                <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
-                  <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
-                </button>
-                {incidentOpen && (
-                  <div>
-                    <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
+                  {incidentOpen && (
                     <DetailTable
-                      dataSource={(Array.isArray((r as any)?.incidentList) ? (r as any).incidentList : [])}
+                      scrollY={160}
+                      dataSource={(r as any)?.incidentList || []}
                       emptyText="Chưa có dữ liệu"
-                      showTotal={(total) => `Tổng cộng ${total}`}
-                      scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-                      rowKey={(rec: any, idx?: number) => rec?.id || rec?.incidentCode || String(idx)}
+                      rowKey={(rec: any) => rec?.id || rec?.incidentCode || 'row'}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string, rec: any) => v || rec.code || '' },
-                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string, rec: any) => v || rec.type || '' },
-                        { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '' },
-                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.time ? dayjs(rec.time).format('DD/MM/YYYY HH:mm') : '') },
+                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec?.code || '' },
+                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec?.type || '' },
+                        { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'location', render: (v: string, rec: any) => v || rec?.location || '' },
+                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v: string, rec: any) => dayjs(v || rec?.time).isValid() ? dayjs(v || rec?.time).format('DD/MM/YYYY') : '' },
                       ]}
                     />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ),
           },

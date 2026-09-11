@@ -3,7 +3,7 @@
 // tại đây (Form + List + Detail + Lịch sử import chung, không khai báo trùng).
 
 import { z } from 'zod';
-import { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP } from '../../types/beacon';
+import { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP } from '../../types/buoy';
 import {
   statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary, textTertiary,
 } from '../../tokens';

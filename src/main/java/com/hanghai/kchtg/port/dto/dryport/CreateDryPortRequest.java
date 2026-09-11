@@ -51,6 +51,7 @@ public class CreateDryPortRequest {
 
     // ── Extended fields (V113 — from F-026 feature brief) ──────────────
     private UUID orgUnitId;
+    private UUID operatingOrgId;
     private String operatingUnit;
     private String region;
     private String detailedLocation;
@@ -64,6 +65,10 @@ public class CreateDryPortRequest {
     private String announcementDecisionNumber;
     private LocalDate announcementDecisionDate;
     private String announcementOrg;
+    // Opening Announcement (đồng bộ chuẩn Cầu cảng - Pier)
+    private LocalDate openingAnnouncementDate;
+    private String openingDecision;
+    private String investmentAgreementDoc;
     private Integer coordinateSystem;
     private Integer displayRule;
 

@@ -33,6 +33,7 @@ import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
   actionPrimary, textTertiary, textPrimary, surfaceCard, borderDefault,
+  statusOperational, statusAttention, statusCritical, statusDraft,
   fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
   spaceSm, spaceMd, spaceFormField,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
@@ -79,20 +80,47 @@ interface DetailTableRow {
   type?: string;
 }
 
+export const DEFAULT_APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  NHAP: { color: statusDraft, label: 'Lưu tạm' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
+  PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+};
+
+export const DEFAULT_OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
+  TAM_NGUNG: { color: statusCritical, label: 'Tạm ngừng' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+};
+
 export interface AnchorageDetailContentProps {
   selectedRecord: Anchorage;
-  orgMap: Map<string, string>;
+  orgMap?: Map<string, string>;
   organizations?: Array<{ id: string; name: string; parentId?: string }>;
-  symbolMap: Map<string, string>;
-  symbolImageMap: Map<string, string>;
-  portOptions: Array<{ value: string; label: string }>;
+  symbolMap?: Map<string, string>;
+  symbolImageMap?: Map<string, string>;
+  portOptions?: Array<{ value: string; label: string }>;
   portMap?: Map<string, string>;
   buoyStationMap?: Map<string, string>;
-  userMap: Map<string, string>;
-  detailFiles: AttachmentFile[];
+  userMap?: Map<string, string>;
+  detailFiles?: AttachmentFile[];
   ddToDms: (dd: number) => { d: number; m: number; s: number };
-  approvalStyleMap: Record<string, { color: string; label: string }>;
-  operationalStyleMap: Record<string, { color: string; label: string }>;
+  approvalStyleMap?: Record<string, { color: string; label: string }>;
+  operationalStyleMap?: Record<string, { color: string; label: string }>;
   waterwayMap?: Map<string, string>;
   operationPlanList?: DetailTableRow[];
   maintenancePlanList?: DetailTableRow[];
@@ -157,23 +185,25 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 
 export default function AnchorageDetailContent({
   selectedRecord,
-  orgMap,
-  symbolMap,
-  symbolImageMap,
-  portOptions,
+  orgMap = new Map(),
+  symbolMap = new Map(),
+  symbolImageMap = new Map(),
+  portOptions = [],
   portMap = new Map(),
   buoyStationMap = new Map(),
-  userMap,
-  detailFiles,
+  userMap = new Map(),
+  detailFiles = [],
   ddToDms,
-  approvalStyleMap,
-  operationalStyleMap,
+  approvalStyleMap = DEFAULT_APPROVAL_STYLE_MAP,
+  operationalStyleMap = DEFAULT_OPERATIONAL_STYLE_MAP,
   waterwayMap = new Map<string, string>(),
   operationPlanList = [],
   maintenancePlanList = [],
   incidentList = [],
 }: AnchorageDetailContentProps) {
   const r = selectedRecord;
+  const safeApprovalStyleMap = approvalStyleMap || DEFAULT_APPROVAL_STYLE_MAP;
+  const safeOperationalStyleMap = operationalStyleMap || DEFAULT_OPERATIONAL_STYLE_MAP;
 
   const renderDmsText = (dd: number | null | undefined, isLat: boolean): string => {
     if (dd == null || isNaN(Number(dd))) return '';
@@ -429,7 +459,7 @@ export default function AnchorageDetailContent({
                     ['Địa điểm (Tỉnh/Thành Phố)', provinceLabel],
                     ['Tình trạng', (() => {
                       const s = r.operationalStatus;
-                      const b = s && operationalStyleMap[s];
+                      const b = s && safeOperationalStyleMap[s];
                       return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '';
                     })()],
                   ].map(([label, value], index) => {
@@ -583,14 +613,14 @@ export default function AnchorageDetailContent({
                 {approvalOpen && (
                   <div className="chk-detail-grid">
                     {(() => {
-                      const isPendingPortAuthority = r.approvalStatus === 'PENDING_APPROVAL' || r.approvalStatus === 'CHO_PHE_DUYET' || approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục';
+                      const isPendingPortAuthority = r.approvalStatus === 'PENDING_APPROVAL' || r.approvalStatus === 'CHO_PHE_DUYET' || safeApprovalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục';
                       return (
                         <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                           <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                           <span className="chk-detail-value">
-                            {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
-                              <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
-                                {approvalStyleMap[r.approvalStatus].label}
+                            {r.approvalStatus && safeApprovalStyleMap[r.approvalStatus] ? (
+                              <span style={statusBadgeStyle(safeApprovalStyleMap[r.approvalStatus].color)}>
+                                {safeApprovalStyleMap[r.approvalStatus].label}
                               </span>
                             ) : ''}
                           </span>

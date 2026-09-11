@@ -699,6 +699,8 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
         fn = 'coordinates';
       } else if (fn === 'Loại đối tượng GIS') {
         fn = 'geometryType';
+      } else if (fn === 'waterway') {
+        fn = 'waterwayId';
       }
 
       const oldV = norm(it.oldValue ?? it.previousValue);

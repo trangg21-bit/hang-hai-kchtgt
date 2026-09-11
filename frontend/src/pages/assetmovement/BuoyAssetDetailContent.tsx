@@ -8,7 +8,7 @@ import {
   MinusCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { Buoy } from '../../types/beacon';
+import type { Buoy } from '../../types/buoy';
 import type { BuoyStationResponse } from '../../services/buoy-station/types';
 import type {
   BuoyAsset,

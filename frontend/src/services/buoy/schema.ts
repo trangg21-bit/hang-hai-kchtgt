@@ -11,12 +11,12 @@ import {
   actionPrimary,
   textTertiary,
 } from '../../tokens';
-import type { BeaconStatus } from '../../types/beacon';
-import { BEACON_STATUS_MAP } from '../../types/beacon';
+import type { BuoyStatus } from '../../types/buoy';
+import { BUOY_STATUS_MAP } from '../../types/buoy';
 
-// ── Re-exports from types/beacon.ts (import-then-export; Vite dev bug) ─
+// ── Re-exports from types/buoy.ts (import-then-export; Vite dev bug) ─
 
-import { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP } from '../../types/beacon';
+import { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP } from '../../types/buoy';
 export { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP };
 
 // ── Status badge (moved from BuoyList.tsx APPROVAL_STYLE_MAP) ────────
@@ -38,7 +38,7 @@ export function buoyStatusBadge(status: string | null | undefined): { color: str
   if (!status) return { color: textTertiary, label: '' };
   return APPROVAL_STYLE_MAP[status] || {
     color: textTertiary,
-    label: BEACON_STATUS_MAP[status as BeaconStatus]?.label || status,
+    label: BUOY_STATUS_MAP[status as BuoyStatus]?.label || status,
   };
 }
 
@@ -54,9 +54,9 @@ export const TAB_STATUS_LIST = [
   { key: 'REJECTED_L2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 
-/** Status filter options (from BEACON_STATUS_MAP, §2.2). */
+/** Status filter options (from BUOY_STATUS_MAP, §2.2). */
 export const BUOY_STATUS_OPTIONS: Array<{ value: string; label: string }> =
-  Object.entries(BEACON_STATUS_MAP).map(([value, { label }]) => ({ value, label }));
+  Object.entries(BUOY_STATUS_MAP).map(([value, { label }]) => ({ value, label }));
 
 // ── Label maps (moved verbatim from BuoyList.tsx) ────────────────────
 
@@ -165,13 +165,16 @@ export const CONDITION_OPTIONS = [
   { value: 'Dừng khai thác/vận hành', label: 'Dừng khai thác/vận hành' },
 ];
 
-export const BEACON_LIGHT_OPTIONS = [
+export const BUOY_LIGHT_OPTIONS = [
   { value: 'Đèn LED', label: 'Đèn LED' },
   { value: 'Đèn sợi đốt', label: 'Đèn sợi đốt' },
   { value: 'Đèn chớp', label: 'Đèn chớp' },
   { value: 'Đèn phản quang', label: 'Đèn phản quang' },
   { value: 'Không có đèn', label: 'Không có đèn' },
 ];
+
+/** Alias for backward compatibility */
+export const BEACON_LIGHT_OPTIONS = BUOY_LIGHT_OPTIONS;
 
 // ── Zod schemas (messages identical to current UI strings) ───────────
 

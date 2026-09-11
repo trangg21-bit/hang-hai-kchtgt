@@ -1018,7 +1018,7 @@ export default function PierListPage() {
             options={OPERATIONAL_FUNCTION_OPTIONS} value={filterOperationalFunction} onChange={v => setFilterOperationalFunction(v)} />
         </div>
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm</div>
+          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tỉnh/thành phố" allowClear showSearch
             value={filterProvince} onChange={v => setFilterProvince(v)}
             filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
@@ -1026,10 +1026,20 @@ export default function PierListPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-          <DatePicker.RangePicker format="DD/MM/YYYY" placeholder={['Từ ngày', 'Đến ngày']} allowClear
+          <DatePicker.RangePicker
+            format="DD/MM/YYYY"
+            placeholder={['Từ ngày', 'Đến ngày']}
+            allowClear
+            popupClassName="chk-range-datepicker-popup"
+            classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
             value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-            onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); }}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            onChange={(dates) => {
+              setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
+              setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
+              setPage(1);
+            }}
+            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          />
         </div>
       </>)}
     </>
@@ -1184,6 +1194,8 @@ export default function PierListPage() {
     <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd } as unknown as ThemeToken}>
     <div className="pier-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       <style>{`
+        .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
+
         .pier-page-wrapper,
         .pier-page-wrapper .ant-table,
         .pier-page-wrapper .ant-table-cell,

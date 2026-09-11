@@ -7,13 +7,10 @@ import {
   Button,
   Modal,
   Input,
-  Alert,
   Space,
   Form,
   DatePicker,
   Select,
-  Radio,
-  Typography,
 } from 'antd';
 import type { UploadFile } from 'antd';
 import {
@@ -27,15 +24,15 @@ import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
 import { userService } from '../../services/userService';
 import { portCRUD } from '../../services/portService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import api from '../../services/api';
 import {
-  fetchBuoyStationList, fetchBuoyStationById, fetchBuoyStationHistory, fetchBuoyStationAllHistory,
-  deleteBuoyStation, rejectBuoyStation, submitBuoyStationForApproval,
-  approveBuoyStationL1, approveBuoyStationL2, fetchStationBuoys,
+  fetchBuoyStationList, fetchBuoyStationById, fetchBuoyStationHistory,
+  deleteBuoyStation, rejectBuoyStation,
 } from './api';
 import { documentApi } from '../../app/document/api';
 import { fetchBuoyById } from '../buoy/api';
@@ -70,7 +67,6 @@ import {
   textSecondary,
   textTertiary,
   borderDefault,
-  fontSizeMd,
   fontSizeLg,
   fontSizeSm,
   fontWeightMedium,
@@ -91,10 +87,12 @@ import {
   cellTitleStyle,
   cellSubtitleStyle,
   colors,
-  getRangePickerProps,
   formatUserDisplayName,
   isUuidString,
 } from '../../themetokenchk';
+
+// Đồng bộ cỡ chữ 13.5px toàn màn hình theo chuẩn VTS CHK / Cầu cảng
+const fontSizeMd = 13.5;
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
@@ -298,23 +296,12 @@ export default function BuoyStationListPage() {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [submittingRecord, setSubmittingRecord] = useState<BuoyStationResponse | null>(null);
 
-  // ── History Drawer ────────────────────────────────────────────────
+  // ── History Drawer (chuẩn Cầu cảng / VTS CHK) ──────────────────────
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [historyRecord, setHistoryRecord] = useState<BuoyStationResponse | null>(null);
   const [historyData, setHistoryData] = useState<ChangeHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historySearchInput, setHistorySearchInput] = useState('');
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyFrom, setHistoryFrom] = useState('');
-  const [historyTo, setHistoryTo] = useState('');
-  const [historyMode, setHistoryMode] = useState<'current' | 'all'>('current');
-  const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
-  const [historyEntityFilter, setHistoryEntityFilter] = useState('');
-  const HISTORY_PAGE_SIZE = 10;
-  const [historyPage, setHistoryPage] = useState(0);
-  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
-
-  const historyFieldCount = useMemo(() => historyData.length, [historyData]);
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
 
   // ── Create / Edit Drawer (Hợp nhất 1 Drawer chuẩn VTS CHK) ─────────
   const [createOpen, setCreateOpen] = useState(false);
@@ -377,8 +364,14 @@ export default function BuoyStationListPage() {
     symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
       .then((r) => setSymbols(r.data || []))
       .catch(() => {});
-    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
-      .then((r) => { const m = new Map<string, string>(); (r.data || []).forEach((l) => { m.set(l.id, l.name || l.code); }); setWaterwayMap(m); })
+    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
+      .then((r) => {
+        const m = new Map<string, string>();
+        (r.items || []).forEach((n: any) => {
+          m.set(n.id, n.channelName || n.channelCode || '');
+        });
+        setWaterwayMap(m);
+      })
       .catch(() => {});
     lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.SHIPPING_ROUTE, pageSize: 1000 })
       .then((r) => { const m = new Map<string, string>(); (r.data || []).forEach((l) => { m.set(l.id, l.name || l.code); }); setRouteMap(m); })
@@ -582,35 +575,22 @@ export default function BuoyStationListPage() {
     } catch { setViewBuoyRecord(null); }
   }, []);
 
-  // ── History ───────────────────────────────────────────────────────
-  const loadHistoryMode = useCallback(async (mode: 'current' | 'all', rec?: BuoyStationResponse | null) => {
-    setHistoryLoading(true);
-    const target = rec ?? historyRecord;
-    try {
-      if (mode === 'all') {
-        const payload = await fetchBuoyStationAllHistory();
-        setHistoryData(payload?.changeHistory || []);
-        setHistoryEntityNames(payload?.entityNames || {});
-      } else if (target) {
-        const payload = await fetchBuoyStationHistory(target.id);
-        setHistoryData(payload?.changeHistory || []);
-      } else {
-        setHistoryData([]);
-      }
-      setHistoryMode(mode);
-      setHistoryPage(0);
-      setLoadingMoreHistory(false);
-    } catch { setHistoryData([]); }
-    finally { setHistoryLoading(false); }
-  }, [historyRecord]);
-
+  // ── History (chuẩn Cầu cảng / VTS CHK) ──────────────────────────
   const openHistoryDrawer = useCallback(async (r: BuoyStationResponse) => {
-    setHistoryDrawerOpen(true);
     setHistoryRecord(r);
-    setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo(''); setHistoryEntityFilter('');
-    setHistoryPage(0); setLoadingMoreHistory(false);
-    await loadHistoryMode('current', r);
-  }, [loadHistoryMode]);
+    setHistoryDrawerOpen(true);
+    setHistoryLoading(true);
+    setHistoryData([]);
+    setHistoryFilters({ keyword: '' });
+    try {
+      const res = await fetchBuoyStationHistory(r.id);
+      setHistoryData(Array.isArray(res?.changeHistory) ? res.changeHistory.filter((item: any) => item.fieldName !== 'CREATE') : []);
+    } catch {
+      toast.error('Không thể tải lịch sử');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
 
   // ── Translate giá trị lịch sử ────────────────────────────────────
   const translateStationVal = useCallback((fn: string, val: string | null | undefined) => {
@@ -648,41 +628,36 @@ export default function BuoyStationListPage() {
     return formatUserDisplayName(actor, null, userMap);
   }, [userMap]);
 
-  // ── Lịch sử: lọc client-side + cuộn vô hạn 10/trang (giữ NGUYÊN API fetchBuoyStationHistory — chỉ đổi render) ──
+  // ── Lịch sử: lọc client-side theo keyword và khoảng ngày (chuẩn Cầu cảng / VTS CHK) ──
+  const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
+
   const filteredHistory = useMemo(() => {
-    const q = historySearch.toLowerCase().trim();
-    return (Array.isArray(historyData) ? historyData : []).filter((r) => {
+    const q = (historyFilters.keyword || '').trim().toLowerCase();
+    const from = historyFilters.fromDate || '';
+    const to = historyFilters.toDate || '';
+    return (Array.isArray(historyData) ? historyData : []).filter((r: any) => {
       if (q) {
-        const fieldRaw = historyField(r);
-        const fn = fieldRaw.toLowerCase();
-        const ov = (historyOldValue(r) || '').toLowerCase();
-        const nv = (historyNewValue(r) || '').toLowerCase();
-        const label = stationFieldLabel(fieldRaw).toLowerCase();
-        const tv = translateStationVal(fieldRaw, historyNewValue(r) || '').toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !label.includes(q) && !tv.includes(q)) return false;
+        const fn = String(r?.fieldName || r?.changedField || '').toLowerCase();
+        const label = stationFieldLabel(fn).toLowerCase();
+        const rawHits = [fn, label, r?.oldValue, r?.newValue, r?.previousValue, r?.value, r?.reason, r?.ghiChu, r?.note]
+          .filter((v) => v !== null && v !== undefined)
+          .map((v) => String(v).toLowerCase());
+        const resolvedOld = translateStationVal(fn, r?.oldValue ?? r?.previousValue);
+        const resolvedNew = translateStationVal(fn, r?.newValue ?? r?.value);
+        if (resolvedOld) rawHits.push(String(resolvedOld).toLowerCase());
+        if (resolvedNew) rawHits.push(String(resolvedNew).toLowerCase());
+        if (!rawHits.some((text) => text.includes(q))) return false;
       }
-      if (historyMode === 'all' && historyEntityFilter && r.entityId !== historyEntityFilter) return false;
-      if (historyFrom || historyTo) {
-        const cd = historyTimestamp(r).substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) return false;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') return false;
+      if (from || to) {
+        const ts = r?.changedAt || r?.createdAt || r?.approvedDate || '';
+        const day = ts ? dayjs(ts).format('YYYY-MM-DD') : '';
+        if (!day) return false;
+        if (from && day < from) return false;
+        if (to && day > to) return false;
       }
       return true;
     });
-  }, [historyData, historySearch, historyFrom, historyTo, historyMode, historyEntityFilter, translateStationVal]);
-
-  const visibleHistory = filteredHistory.slice(0, (historyPage + 1) * HISTORY_PAGE_SIZE);
-  const canLoadMoreHistory = visibleHistory.length < filteredHistory.length;
-
-  const loadMoreHistory = () => {    if (loadingMoreHistory || !canLoadMoreHistory) return;
-    setLoadingMoreHistory(true);
-    window.setTimeout(() => { setHistoryPage((p) => p + 1); setLoadingMoreHistory(false); }, 150);
-  };
-
-  const handleHistoryScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) loadMoreHistory();
-  };
+  }, [historyData, historyFilters, translateStationVal]);
 
   const renderHistoryTimeline = (records: ChangeHistory[]) => {
     return renderStandardHistoryCards({
@@ -714,7 +689,7 @@ export default function BuoyStationListPage() {
         const orgName = uId ? orgMap.get(uId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
       },
-      emptyMessage: historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
+      emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
 
@@ -1092,7 +1067,6 @@ export default function BuoyStationListPage() {
       <FilterTableLayout
         filterCollapsed={filterCollapsed}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
-        hideFilterToggle={true}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
         loading={isLoading}
@@ -1118,71 +1092,6 @@ export default function BuoyStationListPage() {
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-            <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
-              value={filterValues.portId || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
-              options={Array.from(portMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-            <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
-              value={filterValues.waterwayId || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, waterwayId: val }))}
-              options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhà trạm</div>
-            <Input placeholder="Tìm theo mã nhà trạm..." allowClear
-              value={filterValues.code || ''}
-              onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
-              onPressEnter={handleFilterApply}
-              style={{ borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
-            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại..." allowClear showSearch
-              maxTagCount={2}
-              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-              value={filterValues.classification || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, classification: val }))}
-              options={CLASSIFICATION_OPTIONS}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại phao</div>
-            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại phao..." allowClear showSearch
-              maxTagCount={2}
-              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-              value={filterValues.classificationBuoy || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
-              options={CLASSIFICATION_BUOY_OPTIONS}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
-            <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              value={filterValues.province || undefined}
-              onChange={(val) => setFilterValues((prev) => ({ ...prev, province: val }))}
-              options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-            <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
-              placeholder={['Từ ngày', 'Đến ngày']} allowClear
-              value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
-              onChange={(dates) => setFilterValues((prev) => ({
-                ...prev,
-                updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined,
-                updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined,
-              }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
             <Select placeholder="Tất cả" allowClear
               value={filterValues.condition || undefined}
@@ -1190,6 +1099,73 @@ export default function BuoyStationListPage() {
               options={CONDITION_OPTIONS}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
+          {filterCollapsed && (<>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+              <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
+                value={filterValues.portId || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
+                options={Array.from(portMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
+              <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
+                value={filterValues.waterwayId || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, waterwayId: val }))}
+                options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhà trạm</div>
+              <Input placeholder="Tìm theo mã nhà trạm..." allowClear
+                value={filterValues.code || ''}
+                onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
+                onPressEnter={handleFilterApply}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
+              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại..." allowClear showSearch
+                maxTagCount={2}
+                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+                value={filterValues.classification || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, classification: val }))}
+                options={CLASSIFICATION_OPTIONS}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại phao</div>
+              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại phao..." allowClear showSearch
+                maxTagCount={2}
+                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+                value={filterValues.classificationBuoy || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
+                options={CLASSIFICATION_BUOY_OPTIONS}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
+              <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                value={filterValues.province || undefined}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, province: val }))}
+                options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+              <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
+                placeholder={['Từ ngày', 'Đến ngày']} allowClear
+                value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
+                onChange={(dates) => setFilterValues((prev) => ({
+                  ...prev,
+                  updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined,
+                  updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined,
+                }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+          </>)}
         </>}
         statusTabs={TAB_STATUS_LIST.map((tab) => ({
           key: tab.key,
@@ -1281,9 +1257,11 @@ export default function BuoyStationListPage() {
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
               <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
               <span style={drawerTitleStyle}>
-                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Nhà trạm Phao, tiêu' : (historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi')}
+                Lịch sử thay đổi — {historyRecord?.name || historyRecord?.code || ''}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+              </span>
             </Space>
           </div>
         }
@@ -1292,77 +1270,65 @@ export default function BuoyStationListPage() {
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
         }}
       >
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
-        {!historyLoading && (
-          <div style={{ display: 'none' }}>
-            <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}`, marginBottom: spaceMd }}
-              onChange={(e) => void loadHistoryMode(e.target.value)}>
-              <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại</Radio.Button>
-              <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi</Radio.Button>
-            </Radio.Group>
-          </div>
-        )}
-        {!historyLoading && (
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input
-              placeholder="Tìm kiếm nội dung thay đổi..."
-              allowClear
-              value={historySearchInput}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHistorySearchInput(val);
-                if (!val) setHistorySearch('');
-              }}
-              onPressEnter={() => setHistorySearch(historySearchInput.trim())}
-              style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
-            />
-            {historyMode === 'all' && (
-              <Select placeholder="Chọn nhà trạm" allowClear showSearch value={historyEntityFilter || undefined}
-                onChange={(v) => { setHistoryEntityFilter(v || ''); setHistoryPage(0); }}
-                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                style={{ width: 200, borderRadius: radiusPill, height: 40 }}
-                options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />
-            )}
-            <DatePicker.RangePicker
-              {...getRangePickerProps({
-                value: (historyFrom && historyTo)
-                  ? [dayjs(historyFrom), dayjs(historyTo)]
-                  : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
-                onChange: (dates: any) => {
-                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                    setHistoryFrom('');
-                    setHistoryTo('');
-                  } else {
-                    setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
-                    setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
-                  }
-                },
-                style: { width: 280, borderRadius: radiusPill, height: 40 },
-              })}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={() => setHistorySearch(historySearchInput.trim())}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
-            >
-              Tìm kiếm
-            </Button>
-          </div>
-        )}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
-          {historyLoading ? <LoadingSkeleton rows={5} /> : visibleHistory.length === 0 ? (
+        <div style={{ flexShrink: 0 }}>
+          {!historyLoading && (
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historyFilters.keyword || ''}
+                onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+              />
+              <DatePicker
+                placeholder="Từ ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFilters.fromDate ? dayjs(historyFilters.fromDate) : null}
+                onChange={(d) => setHistoryFilters((p) => ({ ...p, fromDate: d ? d.format('YYYY-MM-DD') : '' }))}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                format="DD/MM/YYYY"
+              />
+              <DatePicker
+                placeholder="Đến ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFilters.toDate ? dayjs(historyFilters.toDate) : null}
+                onChange={(d) => setHistoryFilters((p) => ({ ...p, toDate: d ? d.format('YYYY-MM-DD') : '' }))}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                format="DD/MM/YYYY"
+              />
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+                onClick={() => { /* Lọc real-time theo từng thao tác nhập/chọn — giống Cầu cảng */ }}
+              >
+                Tìm kiếm
+              </Button>
+            </div>
+          )}
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          {historyLoading ? (
+            <div style={{ padding: `${spaceMd}px 0` }}>
+              <LoadingSkeleton rows={5} />
+            </div>
+          ) : historyData.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
             </div>
-          ) : (<>
-            {renderHistoryTimeline(visibleHistory)}
-            {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
-          </>)}
+          ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>
+            </div>
+          ) : (
+            renderHistoryTimeline(filteredHistory)
+          )}
         </div>
       </AppDrawer>
 

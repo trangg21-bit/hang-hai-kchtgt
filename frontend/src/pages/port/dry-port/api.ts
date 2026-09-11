@@ -20,6 +20,7 @@ export async function fetchDryPortList(params: DryPortFilterParams): Promise<Dry
     page: (params.page ?? 1) - 1,
     size: params.size ?? 20,
     search: params.search || undefined,
+    name: params.name || undefined,
     code: params.code || undefined,
     orgUnitId: params.orgUnitId && params.orgUnitId !== '__all__' ? params.orgUnitId : undefined,
     provinceId: params.provinceId,

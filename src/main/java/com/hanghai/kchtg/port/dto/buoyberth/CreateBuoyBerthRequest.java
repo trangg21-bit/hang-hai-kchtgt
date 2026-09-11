@@ -73,7 +73,6 @@ public class CreateBuoyBerthRequest {
 
     private Integer underInvestmentBuoyBerthCount;
 
-    @NotNull(message = "Sản lượng hàng thông qua không được để trống")
     @DecimalMin("0")
     private BigDecimal cargoThroughput;
 

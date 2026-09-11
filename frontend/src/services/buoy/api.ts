@@ -7,7 +7,7 @@ import type {
   Buoy,
   CreateBuoyRequest,
   UpdateBuoyRequest,
-} from '../../types/beacon';
+} from '../../types/buoy';
 import type { BuoyHistoryPayload } from './types';
 
 export const BASE = '/buoys';

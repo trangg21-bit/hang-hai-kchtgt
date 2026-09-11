@@ -105,7 +105,7 @@ public class ChangeHistoryService {
         log.info("ChangeHistory: comparing {} fields for {} [{}]", fields.length, entityName, entityId);
 
         for (java.lang.reflect.Field field : fields) {
-            if (isSkippedField(field)) {
+            if (isSkippedField(field, oldEntity, newEntity)) {
                 continue;
             }
 
@@ -146,10 +146,15 @@ public class ChangeHistoryService {
         return changedFields;
     }
 
-    private boolean isSkippedField(java.lang.reflect.Field field) {
+    private boolean isSkippedField(java.lang.reflect.Field field, Object oldEntity, Object newEntity) {
         String name = field.getName();
         // Skip collections (handled explicitly or not field-tracked)
         if (java.util.Collection.class.isAssignableFrom(field.getType())) {
+            return true;
+        }
+        // DryPort has both operatingOrgId (UUID) and operatingUnit (String name).
+        // Skip operatingOrgId to avoid duplicate history cards since operatingUnit is recorded.
+        if ("operatingOrgId".equals(name) && (oldEntity instanceof com.hanghai.kchtg.port.entity.DryPort || newEntity instanceof com.hanghai.kchtg.port.entity.DryPort)) {
             return true;
         }
         return name.equals(EntityFields.ID)

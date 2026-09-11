@@ -547,7 +547,7 @@ export default function BerthList() {
   }, []);
 
   const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'portId', 'berthCode', 'berthName', 'waterway', 'berthType', 'length', 'width', 'channelDepth',
+    'orgUnitId', 'portId', 'berthCode', 'berthName', 'waterway', 'waterwayId', 'berthType', 'length', 'width', 'channelDepth',
     'operationalFunction', 'operationalStatus', 'provinceId', 'detailedLocation', 'coordinateSystem', 'displayRule',
     'mapSymbolId', 'operator', 'operatingOrgId', 'totalArea', 'designThroughput', 'currentThroughput', 'maxVesselSize',
     'plannedThroughput', 'latestCargoVolume', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreement',
@@ -947,10 +947,7 @@ export default function BerthList() {
 
   const handleConfirmReject = useCallback(async () => {
     if (!rejectingRecord) return;
-    const reason = rejectReason.trim();
-    if (!reason) { toast.error('Vui lòng nhập lý do từ chối'); return; }
-    if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
-    if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     try {
       const cap = (rejectingRecord.approvalStatus === 'APPROVED_LEVEL1' || rejectingRecord.approvalStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
       await berthApproval.reject(rejectingRecord.id, cap, reason);
@@ -1670,14 +1667,14 @@ export default function BerthList() {
         ]}
         width={480}>
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho bến:</p>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho bến cảng (không bắt buộc):</p>
           {rejectingRecord && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              <strong style={{ color: textPrimary }}>{rejectingRecord.berthName}</strong>
+              <strong style={{ color: textPrimary }}>{rejectingRecord.berthCode} — {rejectingRecord.berthName}</strong>
             </p>
           )}
-          <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500} showCount
+          <Input.TextArea placeholder="Nhập lý do từ chối (nếu có)..." value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)} rows={3}
             style={{ borderRadius: 8, fontSize: fontSizeMd }} />
         </div>
       </Modal>

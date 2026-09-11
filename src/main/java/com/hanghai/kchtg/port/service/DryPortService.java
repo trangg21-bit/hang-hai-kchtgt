@@ -47,6 +47,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.common.entity.OperatingUnit;
+import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
@@ -79,6 +81,7 @@ public class DryPortService {
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final AttachmentRepository attachmentRepository;
+    private final OperatingUnitRepository operatingUnitRepository;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadPath;
@@ -143,13 +146,28 @@ public class DryPortService {
             throw new IllegalArgumentException("Mã " + dryPortCode + " đã tồn tại");
         }
 
+        UUID opOrgId = request.getOperatingOrgId();
+        String opUnit = request.getOperatingUnit();
+        if (opOrgId != null && (opUnit == null || opUnit.trim().isEmpty())) {
+            opUnit = resolveOperatingOrgName(opOrgId);
+        } else if (opOrgId == null && opUnit != null && !opUnit.trim().isEmpty()) {
+            try {
+                UUID parsed = UUID.fromString(opUnit.trim());
+                opOrgId = parsed;
+                opUnit = resolveOperatingOrgName(parsed);
+            } catch (IllegalArgumentException ignored) {
+                // opUnit is plain text
+            }
+        }
+
         DryPort entity = DryPort.builder()
                 .dryPortCode(dryPortCode)
                 .dryPortName(request.getDryPortName())
                 .provinceId(request.getProvinceId())
                 .orgUnitId(request.getOrgUnitId())
                 // General info
-                .operatingUnit(request.getOperatingUnit())
+                .operatingOrgId(opOrgId)
+                .operatingUnit(opUnit)
                 .region(request.getRegion())
                 .detailedLocation(request.getDetailedLocation())
                 .transportCorridor(request.getTransportCorridor())
@@ -173,6 +191,14 @@ public class DryPortService {
                 .announcementDecisionNumber(request.getAnnouncementDecisionNumber())
                 .announcementDecisionDate(request.getAnnouncementDecisionDate())
                 .announcementOrg(request.getAnnouncementOrg())
+                // Opening Announcement (đồng bộ chuẩn Cầu cảng - Pier)
+                .openingAnnouncementDate(request.getOpeningAnnouncementDate() != null
+                        ? request.getOpeningAnnouncementDate()
+                        : (request.getAnnouncementDecisionDate() != null ? request.getAnnouncementDecisionDate()
+                                : (request.getAnnouncementTime() != null ? request.getAnnouncementTime().toLocalDate() : null)))
+                .openingDecision(request.getOpeningDecision() != null
+                        ? request.getOpeningDecision() : request.getAnnouncementDecisionNumber())
+                .investmentAgreementDoc(request.getInvestmentAgreementDoc())
                 .build();
 
         DryPort saved = dryPortRepository.save(entity);
@@ -243,6 +269,14 @@ public class DryPortService {
     public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
             String search, String status, String approvalStatus, String region, Integer portStatus,
             String updatedFrom, String updatedTo, String code, String transportCorridor) {
+        return findAll(page, size, orgUnitId, provinceId, search, null, status, approvalStatus,
+                region, portStatus, updatedFrom, updatedTo, code, transportCorridor);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
+            String search, String name, String status, String approvalStatus, String region, Integer portStatus,
+            String updatedFrom, String updatedTo, String code, String transportCorridor) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
                 Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
@@ -267,8 +301,14 @@ public class DryPortService {
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả cảng cạn của toàn bộ đơn vị con (hậu duệ) — giống bến cảng
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
-        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(includeAll, orgUnitIds, provinceId, search, statusEnum,
-                approvalEnum, code, transportCorridor, region, portStatus, updatedFromDt, updatedToDt, pageable);
+        String trimmedSearch = search != null && !search.trim().isEmpty() ? search.trim() : null;
+        String trimmedName = name != null && !name.trim().isEmpty() ? name.trim() : null;
+        String trimmedCode = code != null && !code.trim().isEmpty() ? code.trim() : null;
+        String trimmedCorridor = transportCorridor != null && !transportCorridor.trim().isEmpty() ? transportCorridor.trim() : null;
+        String trimmedRegion = region != null && !region.trim().isEmpty() ? region.trim() : null;
+        Page<DryPort> pageResult = dryPortRepository.searchDryPorts(includeAll, orgUnitIds, provinceId, trimmedSearch,
+                trimmedName, statusEnum, approvalEnum, trimmedCode, trimmedCorridor, trimmedRegion, portStatus,
+                updatedFromDt, updatedToDt, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         pageResult.getContent().forEach(e -> {
@@ -339,8 +379,23 @@ public class DryPortService {
         if (request.getOrgUnitId() != null)
             entity.setOrgUnitId(request.getOrgUnitId());
         // General info
-        if (request.getOperatingUnit() != null)
-            entity.setOperatingUnit(request.getOperatingUnit());
+        UUID opOrgId = request.getOperatingOrgId();
+        String opUnit = request.getOperatingUnit();
+        if (opOrgId != null && (opUnit == null || opUnit.trim().isEmpty())) {
+            opUnit = resolveOperatingOrgName(opOrgId);
+        } else if (opOrgId == null && opUnit != null && !opUnit.trim().isEmpty()) {
+            try {
+                UUID parsed = UUID.fromString(opUnit.trim());
+                opOrgId = parsed;
+                opUnit = resolveOperatingOrgName(parsed);
+            } catch (IllegalArgumentException ignored) {
+                // opUnit is plain text
+            }
+        }
+        if (opOrgId != null)
+            entity.setOperatingOrgId(opOrgId);
+        if (opUnit != null)
+            entity.setOperatingUnit(opUnit);
         if (request.getRegion() != null)
             entity.setRegion(request.getRegion());
         if (request.getDetailedLocation() != null)
@@ -372,6 +427,17 @@ public class DryPortService {
             entity.setAnnouncementDecisionDate(request.getAnnouncementDecisionDate());
         if (request.getAnnouncementOrg() != null)
             entity.setAnnouncementOrg(request.getAnnouncementOrg());
+        // Opening Announcement (đồng bộ chuẩn Cầu cảng - Pier)
+        if (request.getOpeningAnnouncementDate() != null)
+            entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
+        else if (request.getAnnouncementDecisionDate() != null)
+            entity.setOpeningAnnouncementDate(request.getAnnouncementDecisionDate());
+        if (request.getOpeningDecision() != null)
+            entity.setOpeningDecision(request.getOpeningDecision());
+        else if (request.getAnnouncementDecisionNumber() != null)
+            entity.setOpeningDecision(request.getAnnouncementDecisionNumber());
+        if (request.getInvestmentAgreementDoc() != null)
+            entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
         // GIS
         entity.setMapSymbolId(request.getMapSymbolId());
         if (request.getCoordinateSystem() != null)
@@ -581,6 +647,7 @@ public class DryPortService {
         return DryPort.builder()
                 .dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
                 .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
+                .operatingOrgId(e.getOperatingOrgId())
                 .operatingUnit(e.getOperatingUnit()).region(e.getRegion())
                 .detailedLocation(e.getDetailedLocation()).transportCorridor(e.getTransportCorridor())
                 .area(e.getArea()).warehouseArea(e.getWarehouseArea()).yardArea(e.getYardArea())
@@ -589,6 +656,9 @@ public class DryPortService {
                 .remarks(e.getRemarks())
                 .announcementTime(e.getAnnouncementTime()).announcementDecisionNumber(e.getAnnouncementDecisionNumber())
                 .announcementDecisionDate(e.getAnnouncementDecisionDate()).announcementOrg(e.getAnnouncementOrg())
+                .openingAnnouncementDate(e.getOpeningAnnouncementDate())
+                .openingDecision(e.getOpeningDecision())
+                .investmentAgreementDoc(e.getInvestmentAgreementDoc())
                 .mapSymbolId(e.getMapSymbolId())
                 .coordinateSystem(e.getCoordinateSystem()).displayRule(e.getDisplayRule())
                 .approvalStatus(e.getApprovalStatus()).spatialId(e.getSpatialId())
@@ -607,13 +677,20 @@ public class DryPortService {
         String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
                 : userResolverService.resolveName(e.getUpdatedBy());
 
+        String opUnitName = e.getOperatingUnit();
+        String resolvedOpName = resolveOperatingOrgName(e.getOperatingOrgId());
+        String displayOpUnit = resolvedOpName != null ? resolvedOpName : opUnitName;
+
         DryPortResponse.DryPortResponseBuilder builder = DryPortResponse.builder()
                 .id(e.getId())
                 .dryPortCode(e.getDryPortCode()).dryPortName(e.getDryPortName())
                 .provinceId(e.getProvinceId()).orgUnitId(e.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 // General info
-                .operatingUnit(e.getOperatingUnit()).region(e.getRegion())
+                .operatingOrgId(e.getOperatingOrgId())
+                .operatingOrgName(resolvedOpName != null ? resolvedOpName : (opUnitName != null ? opUnitName : ""))
+                .operatingUnit(displayOpUnit)
+                .region(e.getRegion())
                 .detailedLocation(e.getDetailedLocation()).transportCorridor(e.getTransportCorridor())
                 .area(e.getArea()).warehouseArea(e.getWarehouseArea()).yardArea(e.getYardArea())
                 .teuCapacity(e.getTeuCapacity()).connectionMode(e.getConnectionMode())
@@ -622,6 +699,13 @@ public class DryPortService {
                 // Announcement
                 .announcementTime(e.getAnnouncementTime()).announcementDecisionNumber(e.getAnnouncementDecisionNumber())
                 .announcementDecisionDate(e.getAnnouncementDecisionDate()).announcementOrg(e.getAnnouncementOrg())
+                // Opening Announcement (đồng bộ chuẩn Cầu cảng - Pier)
+                .openingAnnouncementDate(e.getOpeningAnnouncementDate() != null
+                        ? e.getOpeningAnnouncementDate()
+                        : (e.getAnnouncementDecisionDate() != null ? e.getAnnouncementDecisionDate()
+                                : (e.getAnnouncementTime() != null ? e.getAnnouncementTime().toLocalDate() : null)))
+                .openingDecision(e.getOpeningDecision() != null ? e.getOpeningDecision() : e.getAnnouncementDecisionNumber())
+                .investmentAgreementDoc(e.getInvestmentAgreementDoc())
                 // GIS
                 .coordinateSystem(e.getCoordinateSystem()).displayRule(e.getDisplayRule())
                 .mapSymbolId(e.getMapSymbolId())
@@ -838,6 +922,13 @@ public class DryPortService {
             case LINE -> "Đối tượng đường";
             case POLYGON -> "Đối tượng vùng";
         };
+    }
+
+    private String resolveOperatingOrgName(UUID operatingOrgId) {
+        if (operatingOrgId == null) return null;
+        return operatingUnitRepository.findById(operatingOrgId)
+                .map(OperatingUnit::getName)
+                .orElse(null);
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
