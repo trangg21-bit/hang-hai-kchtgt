@@ -1403,13 +1403,15 @@ textarea.ant-input {
   background: transparent !important;
   box-shadow: none !important;
 }
-.ant-select-tree-switcher_open .ant-select-tree-switcher-icon {
-  transform: rotate(0deg) !important;
+.ant-select-tree-switcher_open .ant-select-tree-switcher-icon,
+.ant-select-tree-switcher_open .ant-select-tree-switcher-icon svg {
+  transform: none !important;
   display: inline-flex !important;
   align-items: center !important;
 }
-.ant-select-tree-switcher_close .ant-select-tree-switcher-icon {
-  transform: rotate(-90deg) !important;
+.ant-select-tree-switcher_close .ant-select-tree-switcher-icon,
+.ant-select-tree-switcher_close .ant-select-tree-switcher-icon svg {
+  transform: none !important;
   display: inline-flex !important;
   align-items: center !important;
 }

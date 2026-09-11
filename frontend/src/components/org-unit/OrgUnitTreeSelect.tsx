@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { TreeSelect } from 'antd';
 import type { TreeSelectProps } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { useThemeToken } from '../../context/ThemeTokenContext';
 
 /** Dữ liệu tối thiểu để hiển thị một đơn vị trong cây. */
@@ -285,7 +285,11 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
       }}
       switcherIcon={(nodeProps: any) => {
         if (nodeProps.isLeaf) return null;
-        return <DownOutlined style={{ fontSize: 10, color: '#7e8299' }} />;
+        return nodeProps.expanded ? (
+          <DownOutlined style={{ fontSize: 10, color: '#7e8299' }} />
+        ) : (
+          <RightOutlined style={{ fontSize: 10, color: '#7e8299' }} />
+        );
       }}
       style={{ ...baseControlStyle, ...style }}
     />
