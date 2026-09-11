@@ -385,12 +385,6 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
   return {
     format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
     getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || document.body),
-    popupClassName: [
-      'chk-form-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
