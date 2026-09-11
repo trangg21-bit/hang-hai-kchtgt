@@ -572,7 +572,7 @@ export default function HistoryDrawer({
       }
       extra={<Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={onClose} style={drawerCloseBtnStyle}>✕</Button>}
       styles={{ header: drawerTitleStyle }}
-      destroyOnClose
+      destroyOnHidden
     >
       <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: spaceMd }}>

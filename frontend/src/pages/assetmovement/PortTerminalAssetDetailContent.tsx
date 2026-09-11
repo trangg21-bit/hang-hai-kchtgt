@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import {
   BankOutlined,
   SlidersOutlined,
@@ -14,16 +14,13 @@ import type {
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from "../../services/assetmovement/types";
-import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
 import {
   PORT_TERMINAL_ASSET_SCREEN,
   type InfrastructureAssetScreenConfig,
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
 import { fmtNum } from "../../utils/numFmt";
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from "../../components/shared/InfrastructureAttachmentTab";
+import InfrastructureAttachmentTab from "../../components/shared/InfrastructureAttachmentTab";
 import {
   colors,
   actionPrimary,
@@ -40,6 +37,7 @@ import {
   ViewFieldType,
   type ViewTabConfig,
 } from "../../components/shared/dynamic-view-sidebar";
+import { useInfraAssetDetailAttachments } from "./useInfraAssetDetailAttachments";
 
 export interface PortTerminalAssetDetailContentProps {
   open: boolean;
@@ -47,7 +45,12 @@ export interface PortTerminalAssetDetailContentProps {
   onClose: () => void;
   orgName: Map<string, string>;
   relatedInfrastructureMap?: Map<string, InfrastructureReferenceOption>;
-  berthMap?: Map<string, any>;
+  berthMap?: Map<string, {
+    code?: string;
+    name?: string;
+    berthCode?: string;
+    berthName?: string;
+  }>;
   screenConfig?: InfrastructureAssetScreenConfig;
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
@@ -110,15 +113,6 @@ const fmtDateTime = (v?: string | null): string =>
 const fmtDate = (v?: string | null): string =>
   v ? dayjs(v).format("DD/MM/YYYY") : "—";
 
-const parseStoredDetails = (value?: string): Record<string, unknown> => {
-  if (!value) return {};
-  try {
-    return JSON.parse(value) as Record<string, unknown>;
-  } catch {
-    return { notes: value };
-  }
-};
-
 export default function PortTerminalAssetDetailContent({
   open,
   selectedRecord: r,
@@ -131,7 +125,10 @@ export default function PortTerminalAssetDetailContent({
   increaseRows,
   decreaseRows,
 }: PortTerminalAssetDetailContentProps) {
-  const infraMap = relatedInfrastructureMap || berthMap || new Map();
+  const infraMap = useMemo(
+    () => relatedInfrastructureMap || berthMap || new Map(),
+    [relatedInfrastructureMap, berthMap],
+  );
   const combinedAdjustments = useMemo(() => {
     return [
       ...increaseRows.map((row) => ({
@@ -147,63 +144,7 @@ export default function PortTerminalAssetDetailContent({
     ];
   }, [increaseRows, decreaseRows]);
 
-  const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
-
-  useEffect(() => {
-    if (!r?.id) {
-      setDetailAttachments([]);
-      return;
-    }
-    let isMounted = true;
-    fetchInfraAssetAttachments(r.id)
-      .then((realAtts) => {
-        if (!isMounted) return;
-        if (realAtts && realAtts.length > 0) {
-          setDetailAttachments(
-            realAtts.map((att) => ({
-              id: att.id,
-              fileName: att.fileName,
-              fileSize: att.fileSize,
-              fileType: att.contentType,
-              uploadedByName: att.uploadedByName || r.updatedByName || "—",
-              uploadedDate: att.uploadedAt || (r.updatedAt ? dayjs(r.updatedAt).toISOString() : dayjs().toISOString()),
-              filePath: `/v1/asset/infra-assets/${r.id}/attachments/${att.id}/download`,
-            }))
-          );
-        } else if (r.attachmentName) {
-          setDetailAttachments(
-            r.attachmentName.split(",").map((name, i) => ({
-              id: `detail-att-${i}`,
-              fileName: name.trim(),
-              fileSize: 1024 * 1024,
-              uploadedByName: r.updatedByName || "—",
-              uploadedDate: r.updatedAt ? dayjs(r.updatedAt).toISOString() : dayjs().toISOString(),
-            }))
-          );
-        } else {
-          setDetailAttachments([]);
-        }
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        if (r.attachmentName) {
-          setDetailAttachments(
-            r.attachmentName.split(",").map((name, i) => ({
-              id: `detail-att-${i}`,
-              fileName: name.trim(),
-              fileSize: 1024 * 1024,
-              uploadedByName: r.updatedByName || "—",
-              uploadedDate: r.updatedAt ? dayjs(r.updatedAt).toISOString() : dayjs().toISOString(),
-            }))
-          );
-        } else {
-          setDetailAttachments([]);
-        }
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, [r]);
+  const detailAttachments = useInfraAssetDetailAttachments(r);
 
   const viewTabs = useMemo<ViewTabConfig<PortTerminalAsset>[]>(() => {
     if (!r) return [];
@@ -267,14 +208,14 @@ export default function PortTerminalAssetDetailContent({
               {
                 label: screenConfig.relationCodeLabel,
                 value: (rec) => {
-                  const target: any = infraMap.get(rec[screenConfig.relationField] || "");
+                  const target = infraMap.get(rec[screenConfig.relationField] || "");
                   return target?.code || target?.berthCode || "—";
                 },
               },
               {
                 label: screenConfig.relationNameLabel,
                 value: (rec) => {
-                  const target: any = infraMap.get(rec[screenConfig.relationField] || "");
+                  const target = infraMap.get(rec[screenConfig.relationField] || "");
                   return target?.name || target?.berthName || "—";
                 },
               },
@@ -835,7 +776,7 @@ export default function PortTerminalAssetDetailContent({
   }, [
     r,
     orgName,
-    relatedInfrastructureMap,
+    infraMap,
     screenConfig,
     detailAttachments,
     exploitationRows,

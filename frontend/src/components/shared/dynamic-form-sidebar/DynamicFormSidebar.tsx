@@ -421,7 +421,7 @@ export function DynamicFormSidebar<
       return renderActionButtons(resolvedActions);
     }
     return null;
-  }, [footer, footerActions, renderActionButtons]);
+  }, [actions, footer, footerActions, renderActionButtons]);
 
   const effectiveTabs = useMemo<FormTabConfig<T>[] | undefined>(() => {
     if (tabs && tabs.length > 0) return tabs;
@@ -468,7 +468,12 @@ export function DynamicFormSidebar<
               tab.customContent
             )
           ) : (
-            <div style={drawerFormScrollStyle}>
+            <div
+              style={{
+                ...drawerFormScrollStyle,
+                maxHeight: "calc(100vh - 170px)",
+              }}
+            >
               {tab.sections &&
                 tab.sections.map((section) =>
                   renderSection(section, form, formValues),

@@ -54,11 +54,10 @@ import type {
 } from '../../services/assetmovement/types';
 import {
   type InfrastructureAttachmentItem,
-  triggerBlobDownload,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold } from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import PierAssetForm, { type FormValues } from './PierAssetForm';
 import PierAssetDetailContent from './PierAssetDetailContent';
@@ -258,7 +257,7 @@ export default function PierAssetList() {
       deleteInfraAssetAttachment(selected.id, id).catch(() => {});
     }
     setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, [selected?.id]);
+  }, [selected]);
 
   const handleDownloadAttachment = useCallback(async (id: string, fileName: string) => {
     const att = attachments.find((a) => a.id === id);
@@ -415,7 +414,7 @@ export default function PierAssetList() {
         await createKhaiThac({
           assetId: selected.id,
           assetName: selected.assetName,
-          exploitationYear: dayjs(values.exploitationDeadline).year(),
+          exploitationYear: values.exploitationDeadline ? dayjs(values.exploitationDeadline).year() : dayjs().year(),
           doanhThu: values.totalRevenue || 0,
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
@@ -453,6 +452,7 @@ export default function PierAssetList() {
       toast.success('Đã lưu thông tin.');
       setOperationMode(undefined);
       operationForm.resetFields();
+      await loadData();
     } catch (cause: unknown) {
       if (!isValidationError(cause)) toast.error(getErrorMessage(cause, 'Không thể lưu thông tin.'));
     } finally {

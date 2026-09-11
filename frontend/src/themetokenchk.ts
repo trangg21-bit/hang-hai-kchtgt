@@ -2225,10 +2225,10 @@ textarea.ant-input {
 /**
  * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
  * Đảm bảo kích thước đồng nhất:
- * - DatePicker đơn trong form: popupClassName="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
- * - DatePicker đơn trên Sidebar: popupClassName="chk-sidebar-datepicker-popup", khóa chuẩn 280px theo Sidebar.
- * - DatePicker.RangePicker: popupClassName="chk-range-datepicker-popup", kích thước 1 panel gọn gàng 280px, ô ngày 26px đồng bộ.
- * - DatePicker.RangePicker (Sidebar): popupClassName="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
+ * - DatePicker đơn trong form: classNames.popup.root="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
+ * - DatePicker đơn trên Sidebar: classNames.popup.root="chk-sidebar-datepicker-popup", khóa chuẩn 280px theo Sidebar.
+ * - DatePicker.RangePicker: classNames.popup.root="chk-range-datepicker-popup", kích thước 1 panel gọn gàng 280px, ô ngày 26px đồng bộ.
+ * - DatePicker.RangePicker (Sidebar): classNames.popup.root="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
  */
 export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
   const {
@@ -2249,12 +2249,6 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
   return {
     format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
     getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
-    popupClassName: [
-      'chk-form-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2282,12 +2276,6 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) 
   };
   return {
     format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
-    popupClassName: [
-      'chk-sidebar-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2316,12 +2304,6 @@ export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
   return {
     format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
-    popupClassName: [
-      'chk-range-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2350,12 +2332,6 @@ export const getSidebarRangePickerProps = (extraProps?: Record<string, unknown>)
   return {
     format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
-    popupClassName: [
-      'chk-sidebar-range-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {

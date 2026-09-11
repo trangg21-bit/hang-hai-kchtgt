@@ -124,6 +124,9 @@ export default function PortTerminalAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: PortTerminalAssetFormProps) {
+  const effectiveDrawerMode = drawerMode || (selected ? "edit" : "create");
+  const effectiveSelected = selected;
+
   const relationOptions = useMemo(
     () =>
       relatedInfrastructure.map((item) => ({
@@ -908,10 +911,10 @@ export default function PortTerminalAssetForm({
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === "edit") {
+    if (effectiveDrawerMode === "edit") {
       const isDraft =
-        !selected?.approvalStatus ||
-        ["DRAFT", "NHAP"].includes(selected.approvalStatus.toUpperCase());
+        !effectiveSelected?.approvalStatus ||
+        ["DRAFT", "NHAP"].includes(effectiveSelected.approvalStatus.toUpperCase());
       const actions: FormSidebarAction[] = [];
 
       if (isDraft) {
@@ -958,14 +961,14 @@ export default function PortTerminalAssetForm({
         onClick: () => void onSave("APPROVED"),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
 
   const title = useMemo(() => {
-    if (drawerMode === "edit") {
-      return `Chỉnh sửa thông tin — ${selected?.assetName || screenConfig.title}`;
+    if (effectiveDrawerMode === "edit") {
+      return `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || screenConfig.title}`;
     }
     return `Thêm mới ${screenConfig.subjectLabel}`;
-  }, [drawerMode, screenConfig, selected]);
+  }, [effectiveDrawerMode, screenConfig, effectiveSelected]);
 
   return (
     <DynamicFormSidebar<FormValues>

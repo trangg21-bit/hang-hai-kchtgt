@@ -115,6 +115,9 @@ export default function PierAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: PierAssetFormProps) {
+  const effectiveDrawerMode = drawerMode || (selected ? 'edit' : 'create');
+  const effectiveSelected = selected;
+
   const pierOptions = useMemo(
     () =>
       piers.map((item) => ({
@@ -738,17 +741,18 @@ export default function PierAssetForm({
     exploitationRows,
     combinedAdjustments,
     orgName,
+    selected,
   ]);
 
   const actions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'detail') {
+    if (effectiveDrawerMode === 'detail') {
       return [{ key: 'close', label: 'Đóng', onClick: onClose }];
     }
 
-    if (drawerMode === 'edit') {
+    if (effectiveDrawerMode === 'edit') {
       const isDraft =
-        !selected?.approvalStatus ||
-        ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase());
+        !effectiveSelected?.approvalStatus ||
+        ['DRAFT', 'NHAP'].includes(effectiveSelected.approvalStatus.toUpperCase());
       const res: FormSidebarAction[] = [];
 
       if (isDraft) {
@@ -795,13 +799,13 @@ export default function PierAssetForm({
         onClick: () => void onSave('APPROVED'),
       },
     ];
-  }, [drawerMode, selected, onClose, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, onClose, saving, saveAction, onSave]);
 
   const title = useMemo(() => {
-    if (drawerMode === 'create') return 'Thêm mới tài sản cầu cảng';
-    if (drawerMode === 'edit') return `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản cầu cảng'}`;
+    if (effectiveDrawerMode === 'create') return 'Thêm mới tài sản cầu cảng';
+    if (effectiveDrawerMode === 'edit') return `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || 'Tài sản cầu cảng'}`;
     return 'Xem chi tiết tài sản cầu cảng';
-  }, [drawerMode, selected]);
+  }, [effectiveDrawerMode, effectiveSelected]);
 
   return (
     <DynamicFormSidebar<FormValues>

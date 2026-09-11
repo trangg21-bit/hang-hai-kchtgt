@@ -57,8 +57,8 @@ import type {
 } from "../../services/assetmovement/types";
 import {
   type InfrastructureAttachmentItem,
-  triggerBlobDownload,
 } from "../../components/shared/InfrastructureAttachmentTab";
+import { triggerBlobDownload } from "../../components/shared/infrastructureAttachmentUtils";
 import { useAuthStore } from "../../store/authStore";
 import * as themeTokenChk from "../../themetokenchk";
 import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
@@ -396,7 +396,7 @@ function PortTerminalAssetList({
       deleteInfraAssetAttachment(selected.id, id).catch(() => {});
     }
     setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, [selected?.id]);
+  }, [selected]);
 
   const handleDownloadAttachment = useCallback(
     async (id: string, fileName: string) => {

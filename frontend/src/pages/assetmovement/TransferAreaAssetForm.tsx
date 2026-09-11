@@ -120,6 +120,9 @@ export default function TransferAreaAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: TransferAreaAssetFormProps) {
+  const effectiveDrawerMode = drawerMode || (selected ? 'edit' : 'create');
+  const effectiveSelected = selected;
+
   const currentUser = useAuthStore((s) => s.user);
   const transferAreaOptions = useMemo(
     () =>
@@ -728,11 +731,11 @@ export default function TransferAreaAssetForm({
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'edit') {
+    if (effectiveDrawerMode === 'edit') {
       const isDraft =
-        !selected?.approvalStatus ||
+        !effectiveSelected?.approvalStatus ||
         ['DRAFT', 'NHAP'].includes(
-          String(selected.approvalStatus).toUpperCase(),
+          String(effectiveSelected.approvalStatus).toUpperCase(),
         );
 
       const actions: FormSidebarAction[] = [];
@@ -778,11 +781,11 @@ export default function TransferAreaAssetForm({
         onClick: () => void onSave('APPROVED'),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
 
   const title =
-    drawerMode === 'edit'
-      ? `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản khu chuyển tải'}`
+    effectiveDrawerMode === 'edit'
+      ? `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || 'Tài sản khu chuyển tải'}`
       : 'Thêm mới Tài sản khu chuyển tải';
 
   return (
