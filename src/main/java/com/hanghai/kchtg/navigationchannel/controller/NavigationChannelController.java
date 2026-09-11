@@ -40,7 +40,7 @@ public class NavigationChannelController {
 
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
-    public ResponseEntity<ApiResponse<NavigationChannelResponse>> getById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<NavigationChannelResponse>> getById(@PathVariable(name = "id") UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getById(id)));
     }
 
@@ -55,7 +55,7 @@ public class NavigationChannelController {
     @PutMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:update')")
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> update(
-            @PathVariable UUID id,
+            @PathVariable(name = "id") UUID id,
             @RequestBody @Valid NavigationChannelUpdateRequest req,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
@@ -65,7 +65,7 @@ public class NavigationChannelController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:delete')")
-    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id, Authentication authentication) {
+    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable(name = "id") UUID id, Authentication authentication) {
         UUID userId = currentUserId(authentication);
         service.softDelete(id, userId);
         return ResponseEntity.ok(ApiResponse.success("Xóa mềm luồng hàng hải thành công", null));
@@ -75,7 +75,7 @@ public class NavigationChannelController {
     @PostMapping("/{id}/submit-approval")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:update')")
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> submitApproval(
-            @PathVariable UUID id,
+            @PathVariable(name = "id") UUID id,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
         return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", service.submit(id, userId)));
@@ -84,7 +84,7 @@ public class NavigationChannelController {
     @PostMapping("/{id}/approve/c1")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec1')")
     public ResponseEntity<ApiResponse<ApprovalResponse>> approveC1(
-            @PathVariable UUID id,
+            @PathVariable(name = "id") UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
@@ -94,7 +94,7 @@ public class NavigationChannelController {
     @PostMapping("/{id}/approve/c2")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec2')")
     public ResponseEntity<ApiResponse<ApprovalResponse>> approveC2(
-            @PathVariable UUID id,
+            @PathVariable(name = "id") UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
@@ -105,7 +105,7 @@ public class NavigationChannelController {
     @PostMapping("/{id}/reject-level-1")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec1')")
     public ResponseEntity<ApiResponse<ApprovalResponse>> rejectLevel1(
-            @PathVariable UUID id,
+            @PathVariable(name = "id") UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
@@ -116,7 +116,7 @@ public class NavigationChannelController {
     @PostMapping("/{id}/reject-level-2")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec2')")
     public ResponseEntity<ApiResponse<ApprovalResponse>> rejectLevel2(
-            @PathVariable UUID id,
+            @PathVariable(name = "id") UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
@@ -125,13 +125,13 @@ public class NavigationChannelController {
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:history')")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable(name = "id") UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getApprovalHistory(id)));
     }
 
     @GetMapping("/approval-status/{status}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
-    public ResponseEntity<ApiResponse<List<NavigationChannelResponse>>> filterByStatus(@PathVariable String status) {
+    public ResponseEntity<ApiResponse<List<NavigationChannelResponse>>> filterByStatus(@PathVariable(name = "status") String status) {
         return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(ApprovalStatus.valueOf(status))));
     }
 

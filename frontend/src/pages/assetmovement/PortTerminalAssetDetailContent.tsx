@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   BankOutlined,
   SlidersOutlined,
@@ -20,7 +20,10 @@ import {
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
 import { fmtNum } from "../../utils/numFmt";
-import InfrastructureAttachmentTab from "../../components/shared/InfrastructureAttachmentTab";
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from "../../components/shared/InfrastructureAttachmentTab";
+import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
 import {
   colors,
   actionPrimary,
@@ -37,7 +40,6 @@ import {
   ViewFieldType,
   type ViewTabConfig,
 } from "../../components/shared/dynamic-view-sidebar";
-import { useInfraAssetDetailAttachments } from "./useInfraAssetDetailAttachments";
 
 export interface PortTerminalAssetDetailContentProps {
   open: boolean;
@@ -45,12 +47,7 @@ export interface PortTerminalAssetDetailContentProps {
   onClose: () => void;
   orgName: Map<string, string>;
   relatedInfrastructureMap?: Map<string, InfrastructureReferenceOption>;
-  berthMap?: Map<string, {
-    code?: string;
-    name?: string;
-    berthCode?: string;
-    berthName?: string;
-  }>;
+  berthMap?: Map<string, InfrastructureReferenceOption>;
   screenConfig?: InfrastructureAssetScreenConfig;
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
@@ -144,7 +141,73 @@ export default function PortTerminalAssetDetailContent({
     ];
   }, [increaseRows, decreaseRows]);
 
-  const detailAttachments = useInfraAssetDetailAttachments(r);
+  const [detailAttachments, setDetailAttachments] = useState<
+    InfrastructureAttachmentItem[]
+  >([]);
+
+  useEffect(() => {
+    if (!r?.id) {
+      setDetailAttachments([]);
+      return;
+    }
+    let isMounted = true;
+    fetchInfraAssetAttachments(r.id)
+      .then((realAtts) => {
+        if (!isMounted) return;
+        if (realAtts && realAtts.length > 0) {
+          setDetailAttachments(
+            realAtts.map((att) => ({
+              id: att.id,
+              fileName: att.fileName,
+              fileSize: att.fileSize,
+              fileType: att.contentType,
+              uploadedByName: att.uploadedByName || r.updatedByName || "—",
+              uploadedDate:
+                att.uploadedAt ||
+                (r.updatedAt
+                  ? dayjs(r.updatedAt).toISOString()
+                  : dayjs().toISOString()),
+              filePath: `/v1/asset/infra-assets/${r.id}/attachments/${att.id}/download`,
+            })),
+          );
+        } else if (r.attachmentName) {
+          setDetailAttachments(
+            r.attachmentName.split(",").map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: r.updatedByName || "—",
+              uploadedDate: r.updatedAt
+                ? dayjs(r.updatedAt).toISOString()
+                : dayjs().toISOString(),
+            })),
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        if (r.attachmentName) {
+          setDetailAttachments(
+            r.attachmentName.split(",").map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: r.updatedByName || "—",
+              uploadedDate: r.updatedAt
+                ? dayjs(r.updatedAt).toISOString()
+                : dayjs().toISOString(),
+            })),
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [r]);
 
   const viewTabs = useMemo<ViewTabConfig<PortTerminalAsset>[]>(() => {
     if (!r) return [];
@@ -206,16 +269,20 @@ export default function PortTerminalAssetDetailContent({
               },
               {
                 label: screenConfig.relationCodeLabel,
-                render: (_v, rec) => {
-                  const item = infraMap.get((rec[screenConfig.relationField] as string) || "");
-                  return <>{item?.code || ""}</>;
+                value: (rec) => {
+                  const target: any = infraMap.get(
+                    rec[screenConfig.relationField] || "",
+                  );
+                  return target?.code || target?.berthCode || "—";
                 },
               },
               {
                 label: screenConfig.relationNameLabel,
-                render: (_v, rec) => {
-                  const item = infraMap.get((rec[screenConfig.relationField] as string) || "");
-                  return <>{item?.name || ""}</>;
+                value: (rec) => {
+                  const target: any = infraMap.get(
+                    rec[screenConfig.relationField] || "",
+                  );
+                  return target?.name || target?.berthName || "—";
                 },
               },
               {
@@ -555,7 +622,9 @@ export default function PortTerminalAssetDetailContent({
                         Thời hạn khai thác
                       </span>
                       <span className="chk-detail-value">
-                        {row.exploitationDeadline ? fmtDate(row.exploitationDeadline) : "—"}
+                        {row.exploitationDeadline
+                          ? fmtDate(row.exploitationDeadline)
+                          : "—"}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -675,7 +744,9 @@ export default function PortTerminalAssetDetailContent({
                           Ngày ra quyết định
                         </span>
                         <span className="chk-detail-value">
-                          {details?.decisionDate ? fmtDate(details.decisionDate) : "—"}
+                          {details?.decisionDate
+                            ? fmtDate(details.decisionDate)
+                            : "—"}
                         </span>
                       </div>
                       <div className="chk-detail-row">
@@ -683,7 +754,9 @@ export default function PortTerminalAssetDetailContent({
                           Ngày thay đổi nguyên giá
                         </span>
                         <span className="chk-detail-value">
-                          {details?.adjustmentDate ? fmtDate(details.adjustmentDate) : "—"}
+                          {details?.adjustmentDate
+                            ? fmtDate(details.adjustmentDate)
+                            : "—"}
                         </span>
                       </div>
                       <div className="chk-detail-row">
@@ -854,6 +927,7 @@ export default function PortTerminalAssetDetailContent({
     r,
     orgName,
     infraMap,
+    screenConfig,
     detailAttachments,
     exploitationRows,
     combinedAdjustments,

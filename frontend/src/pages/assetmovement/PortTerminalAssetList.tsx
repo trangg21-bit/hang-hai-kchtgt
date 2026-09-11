@@ -160,7 +160,10 @@ function PortTerminalAssetList({
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [filters, setFilters] = useState<PortTerminalAssetFilters>({});
+  const [filters, setFilters] = useState<PortTerminalAssetFilters>({
+    sortBy: "updatedAt",
+    sortDir: "DESC",
+  });
   const [draftFilters, setDraftFilters] = useState<PortTerminalAssetFilters>(
     {},
   );
@@ -535,6 +538,12 @@ function PortTerminalAssetList({
             : `Đã lưu và phê duyệt ${screenConfig.subjectLabel}.`,
       );
       setDrawerMode(undefined);
+      setFilters((current) => ({
+        ...current,
+        sortBy: "updatedAt",
+        sortDir: "DESC",
+      }));
+      setPage(1);
       await loadData();
     } catch (cause: unknown) {
       if (!isValidationError(cause)) {
@@ -727,13 +736,20 @@ function PortTerminalAssetList({
 
   const handleFilterReset = useCallback(() => {
     setDraftFilters({});
-    setFilters({});
+    setFilters({
+      sortBy: "updatedAt",
+      sortDir: "DESC",
+    });
     setPage(1);
   }, []);
 
   const tableOptions = useMemo<TableOption<PortTerminalAsset>>(
     () => ({
       dataKey: "id",
+      defaultSort: {
+        field: "updatedAt",
+        order: "descend",
+      },
       mainColumns: [
         {
           title: "TÊN/MÃ TÀI SẢN",
@@ -833,6 +849,7 @@ function PortTerminalAssetList({
           dataIndex: "portAuthorityApprovalContent",
           type: TableColumnType.Text,
           width: 280,
+          sortField: "portAuthorityApprovalContent",
         },
         {
           title: "CÁN BỘ PHÊ DUYỆT CẤP CỤC",
@@ -840,12 +857,15 @@ function PortTerminalAssetList({
           type: TableColumnType.TwoLine,
           subField: "departmentApprovedAt",
           width: 260,
+          allowSort: true,
+          sortField: "departmentApprovedAt",
         },
         {
           title: "NỘI DUNG PHÊ DUYỆT CẤP CỤC",
           dataIndex: "departmentApprovalContent",
           type: TableColumnType.Text,
           width: 260,
+          sortField: "departmentApprovalContent",
         },
       ],
       actions: (record: PortTerminalAsset) => [

@@ -61,9 +61,9 @@ public class InfraAssetController {
     );
 
     private static Sort resolveSort(String sortBy, String sortDir) {
-        String field = (sortBy != null && SORTABLE_DB_FIELDS.contains(sortBy.trim()))
+        String field = (sortBy != null && !sortBy.isBlank() && SORTABLE_DB_FIELDS.contains(sortBy.trim()))
                 ? sortBy.trim()
-                : "createdAt";
+                : "updatedAt";
         return "ASC".equalsIgnoreCase(sortDir)
                 ? Sort.by(field).ascending()
                 : Sort.by(field).descending();
@@ -80,7 +80,7 @@ public class InfraAssetController {
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> getById(
-            @PathVariable UUID id) {
+            @PathVariable("id") UUID id) {
         InfraAssetResponse response = infraAssetService.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -88,31 +88,31 @@ public class InfraAssetController {
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<Page<InfraAssetResponse>>> findAll(
-            @RequestParam(required = false) String assetCode,
-            @RequestParam(required = false) String assetName,
-            @RequestParam(required = false) UUID parentOrgUnitId,
-            @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) UUID usingOrgUnitId,
-            @RequestParam(required = false) UUID berthId,
-            @RequestParam(required = false) UUID transferAreaId,
-            @RequestParam(required = false) UUID stormShelterId,
-            @RequestParam(required = false) UUID buoyBerthId,
-            @RequestParam(required = false) UUID pierId,
-            @RequestParam(required = false) UUID anchorageId,
-            @RequestParam(required = false) UUID beaconStationId,
-            @RequestParam(required = false) UUID dikeRevetmentId,
-            @RequestParam(required = false) UUID buoyId,
-            @RequestParam(required = false) UUID buoyStationId,
-            @RequestParam(required = false) UUID navigationChannelId,
-            @RequestParam(required = false) InfraAssetType assetType,
-            @RequestParam(required = false) String assetCondition,
-            @RequestParam(required = false) String approvalStatus,
-            @RequestParam(required = false) LocalDate updatedFrom,
-            @RequestParam(required = false) LocalDate updatedTo,
-            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
-            @RequestParam(required = false, defaultValue = "DESC") String sortDir,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(name = "assetCode", required = false) String assetCode,
+            @RequestParam(name = "assetName", required = false) String assetName,
+            @RequestParam(name = "parentOrgUnitId", required = false) UUID parentOrgUnitId,
+            @RequestParam(name = "orgUnitId", required = false) UUID orgUnitId,
+            @RequestParam(name = "usingOrgUnitId", required = false) UUID usingOrgUnitId,
+            @RequestParam(name = "berthId", required = false) UUID berthId,
+            @RequestParam(name = "transferAreaId", required = false) UUID transferAreaId,
+            @RequestParam(name = "stormShelterId", required = false) UUID stormShelterId,
+            @RequestParam(name = "buoyBerthId", required = false) UUID buoyBerthId,
+            @RequestParam(name = "pierId", required = false) UUID pierId,
+            @RequestParam(name = "anchorageId", required = false) UUID anchorageId,
+            @RequestParam(name = "beaconStationId", required = false) UUID beaconStationId,
+            @RequestParam(name = "dikeRevetmentId", required = false) UUID dikeRevetmentId,
+            @RequestParam(name = "buoyId", required = false) UUID buoyId,
+            @RequestParam(name = "buoyStationId", required = false) UUID buoyStationId,
+            @RequestParam(name = "navigationChannelId", required = false) UUID navigationChannelId,
+            @RequestParam(name = "assetType", required = false) InfraAssetType assetType,
+            @RequestParam(name = "assetCondition", required = false) String assetCondition,
+            @RequestParam(name = "approvalStatus", required = false) String approvalStatus,
+            @RequestParam(name = "updatedFrom", required = false) LocalDate updatedFrom,
+            @RequestParam(name = "updatedTo", required = false) LocalDate updatedTo,
+            @RequestParam(name = "sortBy", required = false, defaultValue = "updatedAt") String sortBy,
+            @RequestParam(name = "sortDir", required = false, defaultValue = "DESC") String sortDir,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, resolveSort(sortBy, sortDir));
         Page<InfraAssetResponse> result = infraAssetService.findAll(assetCode, assetName, parentOrgUnitId, orgUnitId,
                 usingOrgUnitId, berthId, transferAreaId, stormShelterId, buoyBerthId, pierId, anchorageId, beaconStationId, dikeRevetmentId, buoyId, buoyStationId, navigationChannelId,
@@ -124,7 +124,7 @@ public class InfraAssetController {
     @PutMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> update(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody InfraAssetRequest request) {
         InfraAssetResponse response = infraAssetService.update(id, request);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được cập nhật", response));
@@ -134,7 +134,7 @@ public class InfraAssetController {
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
-            @PathVariable UUID id) {
+            @PathVariable("id") UUID id) {
         infraAssetService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được xóa", null));
     }
