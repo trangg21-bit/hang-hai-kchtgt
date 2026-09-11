@@ -1,29 +1,22 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import { Form, Select, InputNumber } from "antd";
 import type { FormInstance } from "antd";
 import type { Dayjs } from "dayjs";
-import dayjs from "dayjs";
 import {
   BankOutlined,
   SlidersOutlined,
-  RocketOutlined,
-  HistoryOutlined,
-  AuditOutlined,
 } from "@ant-design/icons";
 import type { Organization } from "../../services/organizationService";
 import type {
   PortTerminalAsset,
   PortTerminalAssetPayload,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
 } from "../../services/assetmovement/types";
 import {
   PORT_TERMINAL_ASSET_SCREEN,
   type InfrastructureAssetScreenConfig,
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
-import { fmtInputNumber, fmtNum } from "../../utils/numFmt";
+import { fmtInputNumber } from "../../utils/numFmt";
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from "../../components/shared/InfrastructureAttachmentTab";
@@ -34,10 +27,6 @@ import {
   radiusPill,
   spaceSm,
   spaceFormField,
-  textSecondary,
-  statusOperational,
-  statusCritical,
-  statusDraft,
 } from "../../themetokenchk";
 import {
   DynamicFormSidebar,
@@ -90,10 +79,6 @@ export interface PortTerminalAssetFormProps {
   relatedInfrastructure: InfrastructureReferenceOption[];
   screenConfig?: InfrastructureAssetScreenConfig;
   attachments: InfrastructureAttachmentItem[];
-  exploitationRows?: AssetExploitationResponse[];
-  increaseRows?: AssetIncreaseResponse[];
-  decreaseRows?: AssetDecreaseResponse[];
-  orgName?: (id?: string) => string;
   saving: boolean;
   saveAction: string;
   onClose: () => void;
@@ -112,10 +97,6 @@ export default function PortTerminalAssetForm({
   relatedInfrastructure = [],
   screenConfig = PORT_TERMINAL_ASSET_SCREEN,
   attachments,
-  exploitationRows = [],
-  increaseRows = [],
-  decreaseRows = [],
-  orgName,
   saving,
   saveAction,
   onClose,
@@ -136,18 +117,7 @@ export default function PortTerminalAssetForm({
     [relatedInfrastructure],
   );
 
-  const combinedAdjustments = useMemo(() => {
-    return [
-      ...increaseRows.map((row) => ({
-        ...row,
-        changeType: "Tăng nguyên giá",
-      })),
-      ...decreaseRows.map((row) => ({
-        ...row,
-        changeType: "Giảm nguyên giá",
-      })),
-    ];
-  }, [increaseRows, decreaseRows]);
+
 
   const formTabs = useMemo<FormTabConfig<FormValues>[]>(() => {
     return [
@@ -537,387 +507,19 @@ export default function PortTerminalAssetForm({
           },
         ],
       },
-      {
-        key: "exploitation",
-        label: `Khai thác tài sản (${exploitationRows.length})`,
-        customContent: (
-          <div style={{ paddingTop: 8 }}>
-            <div
-              style={{
-                background: "#F0FDF4",
-                border: "1px solid #BBF7D0",
-                borderRadius: 8,
-                padding: "10px 14px",
-                marginBottom: 12,
-                fontSize: 13,
-                color: "#166534",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <RocketOutlined style={{ fontSize: 16 }} />
-              <span>
-                Quản lý các đợt khai thác tài sản bến cảng. Nghiệp vụ thêm mới
-                đợt khai thác được kích hoạt từ menu hành động dòng trên bảng
-                danh sách.
-              </span>
-            </div>
-            {exploitationRows.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "36px 0",
-                  color: textSecondary,
-                  background: "#F8FAFC",
-                  borderRadius: 8,
-                  border: "1px dashed #E2E8F0",
-                }}
-              >
-                Chưa có thông tin khai thác cho tài sản này.
-              </div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: 13,
-                  }}
-                >
-                  <thead>
-                    <tr
-                      style={{
-                        background: "#F5F8FA",
-                        borderBottom: "1px solid #E2E8F0",
-                      }}
-                    >
-                      <th
-                        style={{
-                          padding: "8px 10px",
-                          textAlign: "center",
-                          width: 45,
-                        }}
-                      >
-                        STT
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Đơn vị khai thác
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Thời hạn
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "right" }}>
-                        Tổng thu (VNĐ)
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "right" }}>
-                        Chi phí (VNĐ)
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "right" }}>
-                        Nộp NSNN (VNĐ)
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Ghi chú
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exploitationRows.map((row, idx) => (
-                      <tr
-                        key={row.id || idx}
-                        style={{ borderBottom: "1px solid #F1F5F9" }}
-                      >
-                        <td
-                          style={{ padding: "8px 10px", textAlign: "center" }}
-                        >
-                          {idx + 1}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {orgName
-                            ? orgName(row.exploitationOrgUnitId)
-                            : row.exploitationOrgUnitId}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {row.exploitationTerm
-                            ? dayjs(row.exploitationTerm).format("DD/MM/YYYY")
-                            : "—"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 10px",
-                            textAlign: "right",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {fmtNum(row.totalRevenue)}
-                        </td>
-                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          {fmtNum(row.relatedCosts)}
-                        </td>
-                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          {fmtNum(row.stateBudgetPayment)}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {row.notes || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: "adjustments",
-        label: `Thay đổi nguyên giá (${combinedAdjustments.length})`,
-        customContent: (
-          <div style={{ paddingTop: 8 }}>
-            <div
-              style={{
-                background: "#EFF6FF",
-                border: "1px solid #BFDBFE",
-                borderRadius: 8,
-                padding: "10px 14px",
-                marginBottom: 12,
-                fontSize: 13,
-                color: "#1D4ED8",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <HistoryOutlined style={{ fontSize: 16 }} />
-              <span>
-                Theo dõi biến động tăng/giảm nguyên giá tài sản theo quyết định.
-                Để tạo biến động mới, sử dụng thao tác Tăng nguyên giá / Giảm
-                nguyên giá ở menu hành động dòng.
-              </span>
-            </div>
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "36px 0",
-                  color: textSecondary,
-                  background: "#F8FAFC",
-                  borderRadius: 8,
-                  border: "1px dashed #E2E8F0",
-                }}
-              >
-                Chưa có biến động nguyên giá cho tài sản này.
-              </div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    fontSize: 13,
-                  }}
-                >
-                  <thead>
-                    <tr
-                      style={{
-                        background: "#F5F8FA",
-                        borderBottom: "1px solid #E2E8F0",
-                      }}
-                    >
-                      <th
-                        style={{
-                          padding: "8px 10px",
-                          textAlign: "center",
-                          width: 45,
-                        }}
-                      >
-                        STT
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Loại thay đổi
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Số quyết định
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Ngày quyết định
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "right" }}>
-                        Giá trị điều chỉnh (VNĐ)
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Lý do
-                      </th>
-                      <th style={{ padding: "8px 10px", textAlign: "left" }}>
-                        Ghi chú
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combinedAdjustments.map((row, idx) => (
-                      <tr
-                        key={row.id || idx}
-                        style={{ borderBottom: "1px solid #F1F5F9" }}
-                      >
-                        <td
-                          style={{ padding: "8px 10px", textAlign: "center" }}
-                        >
-                          {idx + 1}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "2px 8px",
-                              borderRadius: radiusPill,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              background:
-                                row.changeType === "Tăng nguyên giá"
-                                  ? "#ECFDF5"
-                                  : "#FEF2F2",
-                              color:
-                                row.changeType === "Tăng nguyên giá"
-                                  ? statusOperational
-                                  : statusCritical,
-                            }}
-                          >
-                            {row.changeType}
-                          </span>
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {row.decisionNumber || "—"}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {row.decisionDate
-                            ? dayjs(row.decisionDate).format("DD/MM/YYYY")
-                            : "—"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 10px",
-                            textAlign: "right",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {row.changeType === "Tăng nguyên giá"
-                            ? `+${fmtNum((row as AssetIncreaseResponse).increaseAmount)}`
-                            : `-${fmtNum((row as AssetDecreaseResponse).decreaseAmount)}`}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {row.reason || "—"}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {row.notes || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: "tracking",
-        label: "Xử lý & theo dõi",
-        sections: [
-          {
-            key: "audit_info",
-            title: "Xử lý & theo dõi",
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                name: "approvalStatusCustom",
-                label: "Trạng thái",
-                type: FormFieldType.Custom,
-                colSpan: 12,
-                customRender: () => (
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "2px 10px",
-                      borderRadius: radiusPill,
-                      fontSize: fontSizeMd,
-                      fontWeight: 500,
-                      background: `${selected?.approvalStatus === "APPROVED" ? statusOperational : statusDraft}15`,
-                      border: `1px solid ${selected?.approvalStatus === "APPROVED" ? statusOperational : statusDraft}40`,
-                      color:
-                        selected?.approvalStatus === "APPROVED"
-                          ? statusOperational
-                          : statusDraft,
-                    }}
-                  >
-                    {selected?.approvalStatus || "Lưu tạm"}
-                  </span>
-                ),
-              },
-              {
-                name: "updatedByName",
-                label: "Cán bộ cập nhật",
-                type: FormFieldType.Readonly,
-                initialValue: selected?.updatedByName || "—",
-              },
-              {
-                name: "submittedByName",
-                label: "Cán bộ gửi phê duyệt",
-                type: FormFieldType.Readonly,
-                initialValue: selected?.submittedByName || "—",
-              },
-              {
-                name: "portAuthorityApprovedByName",
-                label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
-                type: FormFieldType.Readonly,
-                initialValue: selected?.portAuthorityApprovedByName || "—",
-              },
-              {
-                name: "portAuthorityApprovalContent",
-                label: "Nội dung phê duyệt cấp Cảng vụ/Chi cục",
-                type: FormFieldType.Readonly,
-                colSpan: 24,
-                initialValue: selected?.portAuthorityApprovalContent || "—",
-              },
-              {
-                name: "departmentApprovedByName",
-                label: "Cán bộ phê duyệt cấp Cục",
-                type: FormFieldType.Readonly,
-                initialValue: selected?.departmentApprovedByName || "—",
-              },
-              {
-                name: "departmentApprovalContent",
-                label: "Nội dung phê duyệt cấp Cục",
-                type: FormFieldType.Readonly,
-                colSpan: 24,
-                initialValue: selected?.departmentApprovalContent || "—",
-              },
-            ],
-          },
-        ],
-      },
     ];
   }, [
     organizations,
     relationOptions,
     screenConfig,
     attachments,
-    exploitationRows,
-    combinedAdjustments,
-    orgName,
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
-    selected,
   ]);
 
-  const lastDrawerModeRef = useRef<"create" | "edit" | undefined>(drawerMode);
-  if (drawerMode) {
-    lastDrawerModeRef.current = drawerMode;
-  }
-  const effectiveMode = drawerMode || lastDrawerModeRef.current;
-
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (effectiveMode === "edit") {
+    if (effectiveDrawerMode === "edit") {
       const isDraft =
         !effectiveSelected?.approvalStatus ||
         ["DRAFT", "NHAP"].includes(effectiveSelected.approvalStatus.toUpperCase());
@@ -967,14 +569,14 @@ export default function PortTerminalAssetForm({
         onClick: () => void onSave("APPROVED"),
       },
     ];
-  }, [effectiveMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
 
   const title = useMemo(() => {
-    if (effectiveMode === "edit") {
-      return `Chỉnh sửa thông tin — ${selected?.assetName || "Tài sản bến cảng"}`;
+    if (effectiveDrawerMode === "edit") {
+      return `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || screenConfig.title}`;
     }
-    return "Thêm mới tài sản bến cảng";
-  }, [effectiveMode, selected]);
+    return `Thêm mới ${screenConfig.subjectLabel}`;
+  }, [effectiveDrawerMode, effectiveSelected, screenConfig]);
 
   return (
     <DynamicFormSidebar<FormValues>

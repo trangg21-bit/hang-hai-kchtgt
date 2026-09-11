@@ -1,38 +1,20 @@
 import React, { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import dayjs from 'dayjs';
 import {
   BankOutlined,
   SlidersOutlined,
-  RocketOutlined,
-  HistoryOutlined,
-  AuditOutlined,
 } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { Pier } from '../../types/port';
 import type {
   PierAsset,
   PierAssetPayload,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
-import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  colors,
-  fontWeightBold,
-  fontSizeMd,
-  radiusPill,
-  spaceSm,
-  textSecondary,
-  statusOperational,
-  statusCritical,
-  statusDraft,
-} from '../../themetokenchk';
+
 import {
   DynamicFormSidebar,
   FormFieldType,
@@ -82,10 +64,6 @@ export interface PierAssetFormProps {
   organizations: Organization[];
   piers: Pier[];
   attachments: InfrastructureAttachmentItem[];
-  exploitationRows?: AssetExploitationResponse[];
-  increaseRows?: AssetIncreaseResponse[];
-  decreaseRows?: AssetDecreaseResponse[];
-  orgName?: (id?: string) => string;
   saving: boolean;
   saveAction: string;
   onClose: () => void;
@@ -103,10 +81,6 @@ export default function PierAssetForm({
   organizations,
   piers,
   attachments,
-  exploitationRows = [],
-  increaseRows = [],
-  decreaseRows = [],
-  orgName,
   saving,
   saveAction,
   onClose,
@@ -126,19 +100,6 @@ export default function PierAssetForm({
       })),
     [piers],
   );
-
-  const combinedAdjustments = useMemo(() => {
-    return [
-      ...increaseRows.map((row) => ({
-        ...row,
-        changeType: 'Tăng nguyên giá',
-      })),
-      ...decreaseRows.map((row) => ({
-        ...row,
-        changeType: 'Giảm nguyên giá',
-      })),
-    ];
-  }, [increaseRows, decreaseRows]);
 
   const formTabs = useMemo<FormTabConfig<FormValues>[]>(() => {
     return [
@@ -450,285 +411,6 @@ export default function PierAssetForm({
           },
         ],
       },
-      {
-        key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
-        customContent: (
-          <div style={{ padding: spaceSm }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                color: colors.primary,
-                fontWeight: fontWeightBold,
-                fontSize: fontSizeMd,
-              }}
-            >
-              <RocketOutlined />
-              <span>Danh sách các lần khai thác tài sản</span>
-            </div>
-            {exploitationRows.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '32px 0',
-                  color: textSecondary,
-                }}
-              >
-                Chưa có dữ liệu khai thác cho tài sản này
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {exploitationRows.map((row, idx) => (
-                  <div
-                    key={row.id || idx}
-                    style={{
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: 8,
-                      padding: 12,
-                      background: colors.white,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: fontWeightBold,
-                        marginBottom: 6,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <span>
-                        Năm khai thác: <b>{row.exploitationYear}</b>
-                      </span>
-                      <span style={{ color: statusOperational }}>
-                        Thu được: {fmtNum(row.totalRevenue || row.doanhThu)} VNĐ
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        gap: 6,
-                        fontSize: 12,
-                        color: textSecondary,
-                      }}
-                    >
-                      <div>
-                        Đơn vị khai thác:{' '}
-                        <b>{orgName ? orgName(row.operatorOrgUnitId) : '-'}</b>
-                      </div>
-                      <div>
-                        Chi phí:{' '}
-                        <b>{fmtNum(row.relatedCosts || row.depreciation)} VNĐ</b>
-                      </div>
-                      <div>
-                        Nộp NSNN: <b>{fmtNum(row.stateBudgetPayment)} VNĐ</b>
-                      </div>
-                      <div>
-                        Thực hiện dự án: <b>{fmtNum(row.projectAmount)} VNĐ</b>
-                      </div>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        Ghi chú: {row.description || '-'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'price_history',
-        label: `Thay đổi nguyên giá (${combinedAdjustments.length})`,
-        customContent: (
-          <div style={{ padding: spaceSm }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 12,
-                color: colors.primary,
-                fontWeight: fontWeightBold,
-                fontSize: fontSizeMd,
-              }}
-            >
-              <HistoryOutlined />
-              <span>Lịch sử các lần điều chỉnh, tăng giảm nguyên giá</span>
-            </div>
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '32px 0',
-                  color: textSecondary,
-                }}
-              >
-                Chưa có lịch sử thay đổi nguyên giá cho tài sản này
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {combinedAdjustments.map((row, idx) => (
-                  <div
-                    key={row.id || idx}
-                    style={{
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: 8,
-                      padding: 12,
-                      background: colors.white,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: fontWeightBold,
-                        marginBottom: 6,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <span
-                        style={{
-                          color:
-                            row.changeType === 'Tăng nguyên giá'
-                              ? statusOperational
-                              : statusCritical,
-                        }}
-                      >
-                        {row.changeType}: +{fmtNum(row.adjustmentAmount || 0)}{' '}
-                        VNĐ
-                      </span>
-                      <span>
-                        Số QĐ: <b>{row.decisionNumber || '-'}</b>
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        gap: 6,
-                        fontSize: 12,
-                        color: textSecondary,
-                      }}
-                    >
-                      <div>
-                        Ngày QĐ:{' '}
-                        <b>
-                          {row.decisionDate
-                            ? dayjs(row.decisionDate).format('DD/MM/YYYY')
-                            : '-'}
-                        </b>
-                      </div>
-                      <div>
-                        Ngày áp dụng:{' '}
-                        <b>
-                          {row.adjustmentDate
-                            ? dayjs(row.adjustmentDate).format('DD/MM/YYYY')
-                            : '-'}
-                        </b>
-                      </div>
-                      <div>
-                        Nguyên giá trước:{' '}
-                        <b>{fmtNum(row.originalValueBefore)} VNĐ</b>
-                      </div>
-                      <div>
-                        Nguyên giá sau:{' '}
-                        <b>{fmtNum(row.originalValueAfter)} VNĐ</b>
-                      </div>
-                      <div>
-                        Còn lại trước:{' '}
-                        <b>{fmtNum(row.remainingValueBefore)} VNĐ</b>
-                      </div>
-                      <div>
-                        Còn lại sau:{' '}
-                        <b>{fmtNum(row.remainingValueAfter)} VNĐ</b>
-                      </div>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        Lý do: {row.reason || row.adjustmentReason || '-'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'tracking',
-        label: 'Xử lý & theo dõi',
-        sections: [
-          {
-            key: 'audit_info',
-            title: 'Xử lý & theo dõi',
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                name: 'approvalStatusCustom',
-                label: 'Trạng thái',
-                type: FormFieldType.Custom,
-                colSpan: 12,
-                customRender: () => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 10px',
-                      borderRadius: radiusPill,
-                      fontSize: fontSizeMd,
-                      fontWeight: 500,
-                      background: `${selected?.approvalStatus === 'APPROVED' ? statusOperational : statusDraft}15`,
-                      border: `1px solid ${selected?.approvalStatus === 'APPROVED' ? statusOperational : statusDraft}40`,
-                      color: selected?.approvalStatus === 'APPROVED' ? statusOperational : statusDraft,
-                    }}
-                  >
-                    {selected?.approvalStatus || 'Lưu tạm'}
-                  </span>
-                ),
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.updatedByName || '—',
-              },
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.submittedByName || '—',
-              },
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.portAuthorityApprovedByName || '—',
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
-                type: FormFieldType.Readonly,
-                colSpan: 24,
-                initialValue: selected?.portAuthorityApprovalContent || '—',
-              },
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.departmentApprovedByName || '—',
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cục',
-                type: FormFieldType.Readonly,
-                colSpan: 24,
-                initialValue: selected?.departmentApprovalContent || '—',
-              },
-            ],
-          },
-        ],
-      },
     ];
   }, [
     organizations,
@@ -738,10 +420,6 @@ export default function PierAssetForm({
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
-    exploitationRows,
-    combinedAdjustments,
-    orgName,
-    selected,
   ]);
 
   const actions = useMemo<FormSidebarAction[]>(() => {

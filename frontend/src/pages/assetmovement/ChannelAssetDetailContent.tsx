@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -15,6 +15,7 @@ import type {
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
+import { fetchInfraAssetAttachments } from '../../services/assetmovement/api';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
@@ -108,20 +109,63 @@ export default function ChannelAssetDetailContent({
   increaseRows,
   decreaseRows,
 }: ChannelAssetDetailContentProps) {
-  const attachments = useMemo<InfrastructureAttachmentItem[]>(() => {
-    if (!rec?.attachmentName) return [];
-    return rec.attachmentName.split(',').map((name, i) => ({
-      id: `att-${i}`,
-      fileName: name.trim(),
-      fileSize: 1024 * 512,
-      uploadedByName:
-        rec.updatedByName ||
-        rec.submittedByName ||
-        'Cán bộ quản lý',
-      uploadedDate: rec.updatedAt
-        ? dayjs(rec.updatedAt).toISOString()
-        : dayjs().toISOString(),
-    }));
+  const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+
+  useEffect(() => {
+    if (!rec?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDetailAttachments([]);
+      return;
+    }
+    let isMounted = true;
+    fetchInfraAssetAttachments(rec.id)
+      .then((realAtts) => {
+        if (!isMounted) return;
+        if (realAtts && realAtts.length > 0) {
+          setDetailAttachments(
+            realAtts.map((att) => ({
+              id: att.id,
+              fileName: att.fileName,
+              fileSize: att.fileSize,
+              fileType: att.contentType,
+              uploadedByName: att.uploadedByName || rec.updatedByName || rec.submittedByName || '—',
+              uploadedDate: att.uploadedAt || (rec.updatedAt ? dayjs(rec.updatedAt).toISOString() : dayjs().toISOString()),
+              filePath: `/v1/asset/infra-assets/${rec.id}/attachments/${att.id}/download`,
+            }))
+          );
+        } else if (rec.attachmentName) {
+          setDetailAttachments(
+            rec.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 512,
+              uploadedByName: rec.updatedByName || rec.submittedByName || '—',
+              uploadedDate: rec.updatedAt ? dayjs(rec.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        if (rec.attachmentName) {
+          setDetailAttachments(
+            rec.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 512,
+              uploadedByName: rec.updatedByName || rec.submittedByName || '—',
+              uploadedDate: rec.updatedAt ? dayjs(rec.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
   }, [rec]);
 
   const viewTabs = useMemo<ViewTabConfig[]>(() => {
@@ -312,17 +356,12 @@ export default function ChannelAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${attachments.length})`,
+        label: `Hồ sơ tài sản (${detailAttachments.length})`,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
-              attachments={attachments}
+              attachments={detailAttachments}
               readonly={true}
-              onUpload={() => {}}
-              onDelete={() => {}}
-              onDownload={(_id, fileName) => {
-                alert(`Tải tệp tin: ${fileName}`);
-              }}
             />
           </div>
         ),
@@ -818,7 +857,7 @@ export default function ChannelAssetDetailContent({
     rec,
     channelMap,
     orgName,
-    attachments,
+    detailAttachments,
     exploitationRows,
     increaseRows,
     decreaseRows,

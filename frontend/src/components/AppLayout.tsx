@@ -44,6 +44,8 @@ import {
   ApartmentOutlined,
   BuildOutlined,
   ToolOutlined,
+  RadarChartOutlined,
+  GlobalOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
@@ -76,6 +78,7 @@ const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
 export { MENU_PERMISSION_MAP };
+
 
 const canAccessMenu = (path: string): boolean => {
   let required = MENU_PERMISSION_MAP[path];
@@ -252,6 +255,11 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       label: 'Quản lý tài sản KCHT hàng hải',
       children: [
         canAccessMenu('/asset/berth') ? { key: '/asset/berth', icon: <BankOutlined />, label: 'Tài sản bến cảng' } : null,
+        canAccessMenu('/asset/transmission') ? { key: '/asset/transmission', icon: <DeploymentUnitOutlined />, label: 'Tài sản HT truyền dẫn' } : null,
+        canAccessMenu('/asset/vts-assist') ? { key: '/asset/vts-assist', icon: <ToolOutlined />, label: 'Tài sản hệ thống phụ trợ VTS' } : null,
+        canAccessMenu('/asset/vhf') ? { key: '/asset/vhf', icon: <ApiOutlined />, label: 'Tài sản HTTT liên lạc VHF' } : null,
+        canAccessMenu('/asset/dai-ttdh') ? { key: '/asset/dai-ttdh', icon: <RadarChartOutlined />, label: 'Tài sản đài TTDH' } : null,
+        canAccessMenu('/asset/inmarsat') ? { key: '/asset/inmarsat', icon: <GlobalOutlined />, label: 'Tài sản đài Inmarsat' } : null,
         canAccessMenu('/asset/transfer-area') ? { key: '/asset/transfer-area', icon: <SwapOutlined />, label: 'Tài sản khu chuyển tải' } : null,
         canAccessMenu('/asset/storm-shelter') ? { key: '/asset/storm-shelter', icon: <SafetyCertificateOutlined />, label: 'Tài sản khu tránh, trú bão' } : null,
         canAccessMenu('/asset/anchorage') ? { key: '/asset/anchorage', icon: <EnvironmentOutlined />, label: 'Tài sản khu neo đậu' } : null,

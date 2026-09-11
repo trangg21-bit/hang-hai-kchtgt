@@ -89,9 +89,9 @@ export interface ChannelAssetFormProps {
   saveAction: string;
   onClose: () => void;
   onSave: (status: string) => void | Promise<void>;
-  onUploadAttachment: (files: File[]) => void;
+  onUploadAttachment: (file: File) => void;
   onDeleteAttachment: (id: string) => void;
-  onDownloadAttachment?: (att: InfrastructureAttachmentItem) => void;
+  onDownloadAttachment?: (id: string, fileName: string) => void;
 }
 
 export default function ChannelAssetForm({

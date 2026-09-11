@@ -456,9 +456,6 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     expect(html).toContain('Thông tin chung');
     expect(html).toContain('Hồ sơ tài sản (0)');
     expect(html).toContain('Thông tin chi tiết');
-    expect(html).toContain('Khai thác tài sản (0)');
-    expect(html).toContain('Thay đổi nguyên giá (0)');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
 
     // 3 nút lưu chuẩn bến cảng
     expect(html).toContain('Lưu tạm');

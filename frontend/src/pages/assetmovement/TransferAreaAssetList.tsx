@@ -286,6 +286,7 @@ export default function TransferAreaAssetList() {
   const openDetail = useCallback(async (record: TransferAreaAsset) => {
     setSelected(record);
     setDrawerMode('detail');
+    setAttachments([]);
     // Load attachments từ backend
     void documentApi.listByEntity('transfer-area', record.id).then((res) => {
       setAttachments(
@@ -885,6 +886,8 @@ export default function TransferAreaAssetList() {
           exploitationRows={exploitationRows}
           increaseRows={increaseRows}
           decreaseRows={decreaseRows}
+          attachments={attachments}
+          onDownloadAttachment={handleDownloadAttachment}
         />
 
         <TransferAreaAssetOperationForm

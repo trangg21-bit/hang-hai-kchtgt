@@ -320,7 +320,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
             showSearch={showSearch}
             optionFilterProp="label"
             disabled={disabled}
-            options={filter.options}
+            options={filter.options as any}
             style={{
               width: '100%',
               borderRadius: radiusPill,

@@ -38,7 +38,11 @@ import {
   fetchKhaiThacList,
   fetchChannelAssets,
   updateChannelAsset,
+  uploadInfraAssetAttachments,
+  fetchInfraAssetAttachments,
+  deleteInfraAssetAttachment,
 } from '../../services/assetmovement/api';
+import api from '../../services/api';
 import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
@@ -47,7 +51,10 @@ import type {
   ChannelAssetFilters,
   ChannelAssetPayload,
 } from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import {
+  type InfrastructureAttachmentItem,
+  triggerBlobDownload,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import { fontWeightBold } from '../../themetokenchk';
@@ -116,7 +123,7 @@ export default function ChannelAssetList() {
       setData(response.content);
       setTotal(response.totalElements);
 
-      const baseFilters = { ...filters, approvalStatus: undefined, page: 0, size: 1 };
+      const baseFilters = { ...filters, approvalStatus: undefined, sortBy: undefined, sortDir: undefined, page: 0, size: 1 };
       const [all, ...statusPages] = await Promise.all([
         fetchChannelAssets(baseFilters),
         ...STATUS_COUNT_KEYS.map((approvalStatus) => fetchChannelAssets({ ...baseFilters, approvalStatus })),
@@ -170,23 +177,75 @@ export default function ChannelAssetList() {
       depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
       attachmentName: record.attachmentName,
     });
-    if (record.attachmentName) {
-      setAttachments(record.attachmentName.split(',').map((name, i) => ({
-        id: `att-${i}-${Date.now()}`,
-        fileName: name.trim(),
-        fileSize: 1024 * 512,
-        uploadedByName: record.updatedByName || record.submittedByName || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-        uploadedDate: record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString(),
-      })));
-    } else {
-      setAttachments([]);
-    }
+    fetchInfraAssetAttachments(record.id)
+      .then((realAtts) => {
+        if (realAtts && realAtts.length > 0) {
+          setAttachments(
+            realAtts.map((att) => ({
+              id: att.id,
+              fileName: att.fileName,
+              fileSize: att.fileSize,
+              fileType: att.contentType,
+              uploadedByName:
+                att.uploadedByName ||
+                record.updatedByName ||
+                record.submittedByName ||
+                currentUser?.fullName ||
+                currentUser?.username ||
+                'Cán bộ quản lý',
+              uploadedDate: att.uploadedAt || (record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString()),
+              filePath: `/v1/asset/infra-assets/${record.id}/attachments/${att.id}/download`,
+            })),
+          );
+        } else if (record.attachmentName) {
+          setAttachments(
+            record.attachmentName.split(',').map((name, i) => ({
+              id: `att-${i}-${Date.now()}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 512,
+              uploadedByName:
+                record.updatedByName ||
+                record.submittedByName ||
+                currentUser?.fullName ||
+                currentUser?.username ||
+                'Cán bộ quản lý',
+              uploadedDate: record.updatedAt
+                ? dayjs(record.updatedAt).toISOString()
+                : dayjs().toISOString(),
+            })),
+          );
+        } else {
+          setAttachments([]);
+        }
+      })
+      .catch(() => {
+        if (record.attachmentName) {
+          setAttachments(
+            record.attachmentName.split(',').map((name, i) => ({
+              id: `att-${i}-${Date.now()}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 512,
+              uploadedByName:
+                record.updatedByName ||
+                record.submittedByName ||
+                currentUser?.fullName ||
+                currentUser?.username ||
+                'Cán bộ quản lý',
+              uploadedDate: record.updatedAt
+                ? dayjs(record.updatedAt).toISOString()
+                : dayjs().toISOString(),
+            })),
+          );
+        } else {
+          setAttachments([]);
+        }
+      });
   }, [currentUser, form]);
 
-  const handleUploadAttachment = useCallback((files: File[]) => {
+  const handleUploadAttachment = useCallback((file: File) => {
     const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
     const nowIso = dayjs().toISOString();
-    const newItems: InfrastructureAttachmentItem[] = files.map((file) => ({
+    const newAtt: InfrastructureAttachmentItem = {
       id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       fileName: file.name,
       fileSize: file.size,
@@ -194,26 +253,62 @@ export default function ChannelAssetList() {
       uploadedByName: uploaderName,
       uploadedDate: nowIso,
       originFileObj: file,
-    }));
-    setAttachments((prev) => [...prev, ...newItems]);
+    };
+    setAttachments((prev) => [...prev, newAtt]);
   }, [currentUser]);
 
   const handleDeleteAttachment = useCallback((id: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
-
-  const handleDownloadAttachment = useCallback((att: InfrastructureAttachmentItem) => {
-    if (att.originFileObj) {
-      const url = URL.createObjectURL(att.originFileObj);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = att.fileName;
-      a.click();
-      URL.revokeObjectURL(url);
-    } else {
-      toast.info(`Tải tệp: ${att.fileName}`);
+    if (selected?.id && id.includes('-')) {
+      deleteInfraAssetAttachment(selected.id, id).catch(() => {});
     }
-  }, []);
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  }, [selected]);
+
+  const handleDownloadAttachment = useCallback(
+    async (id: string, fileName: string) => {
+      const att = attachments.find((a) => a.id === id);
+      if (att?.originFileObj) {
+        triggerBlobDownload(
+          att.originFileObj,
+          fileName || att.originFileObj.name,
+        );
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (
+        att?.url &&
+        (att.url.startsWith('blob:') || att.url.startsWith('data:'))
+      ) {
+        triggerBlobDownload(att.url, fileName || 'tai-lieu');
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (att?.filePath) {
+        try {
+          let cleanPath = att.filePath;
+          if (cleanPath.startsWith('/api/')) {
+            cleanPath = cleanPath.replace(/^\/api/, '');
+          } else if (!cleanPath.startsWith('/')) {
+            cleanPath = `/${cleanPath}`;
+          }
+          const res = await api.get(cleanPath, { responseType: 'blob' });
+          const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+          const blob = new Blob([res.data], { type: contentType });
+          triggerBlobDownload(blob, fileName || 'tai-lieu');
+          toast.success(`Đã tải xuống tệp: ${fileName}`);
+          return;
+        } catch (err) {
+          console.error('Download error:', err);
+          toast.error(`Không thể tải xuống tệp tin "${fileName}": Lỗi máy chủ hoặc tệp không tồn tại.`);
+          return;
+        }
+      }
+      toast.error(
+        `Không tìm thấy đường dẫn tệp tin đính kèm "${fileName || 'tài liệu'}" trên máy chủ để tải xuống.`,
+      );
+    },
+    [attachments],
+  );
 
   const openDetail = useCallback(async (record: ChannelAsset) => {
     setSelected(record);
@@ -311,12 +406,25 @@ export default function ChannelAssetList() {
         approvalStatus: status,
       };
 
+      let savedAsset: ChannelAsset;
       if (drawerMode === 'edit' && selected) {
-        await updateChannelAsset(selected.id, payload);
+        savedAsset = await updateChannelAsset(selected.id, payload);
         toast.success('Cập nhật tài sản luồng hàng hải thành công.');
       } else {
-        await createChannelAsset(payload);
+        savedAsset = await createChannelAsset(payload);
         toast.success('Thêm mới tài sản luồng hàng hải thành công.');
+      }
+
+      const targetAssetId = savedAsset?.id || selected?.id;
+      const filesToUpload = attachments
+        .map((a) => a.originFileObj)
+        .filter((f): f is File => f instanceof File);
+      if (filesToUpload.length > 0 && targetAssetId) {
+        try {
+          await uploadInfraAssetAttachments(targetAssetId, filesToUpload);
+        } catch (uploadErr) {
+          console.error('Upload attachments error:', uploadErr);
+        }
       }
 
       setDrawerMode(undefined);
@@ -435,11 +543,13 @@ export default function ChannelAssetList() {
     setPage(1);
     const range = draftFilters.updatedRange;
 
-    setFilters({
+    setFilters((current) => ({
       ...draftFilters,
+      sortBy: current.sortBy,
+      sortDir: current.sortDir,
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),
-    });
+    }));
   }, [draftFilters]);
 
   const handleFilterReset = useCallback(() => {
@@ -511,6 +621,7 @@ export default function ChannelAssetList() {
         subField: 'assetCode',
         width: 250,
         fixed: 'left',
+        allowSort: true,
         onClick: (record) => void openDetail(record),
       },
       {
@@ -519,6 +630,7 @@ export default function ChannelAssetList() {
         type: TableColumnType.Text,
         width: 250,
         bold: true,
+        allowSort: true,
         render: (v) => <span style={{ fontWeight: fontWeightBold }}>{orgName.get(v as string) || '—'}</span>,
       },
       {
@@ -526,6 +638,7 @@ export default function ChannelAssetList() {
         dataIndex: 'usingOrgUnitId',
         type: TableColumnType.Text,
         width: 250,
+        allowSort: true,
         render: (v) => orgName.get(v as string) || '—',
       },
       {
@@ -533,6 +646,7 @@ export default function ChannelAssetList() {
         dataIndex: 'navigationChannelId',
         type: TableColumnType.Text,
         width: 230,
+        allowSort: true,
         render: (v) => {
           if (v && channelMap.has(v as string)) {
             const c = channelMap.get(v as string)!;
@@ -546,6 +660,7 @@ export default function ChannelAssetList() {
         dataIndex: 'assetType',
         type: TableColumnType.Text,
         width: 200,
+        allowSort: true,
         render: () => 'Tài sản luồng hàng hải',
       },
       {
@@ -553,6 +668,7 @@ export default function ChannelAssetList() {
         dataIndex: 'assetCondition',
         type: TableColumnType.Status,
         width: 190,
+        allowSort: true,
         statusMapping: {
           'Tốt': { label: 'Tốt', color: themeTokenChk.statusOperational },
           'Hư hỏng cần sửa chữa': { label: 'Hư hỏng cần sửa chữa', color: themeTokenChk.statusAttention },
@@ -564,6 +680,7 @@ export default function ChannelAssetList() {
         dataIndex: 'usageStatus',
         type: TableColumnType.Status,
         width: 190,
+        allowSort: true,
         statusMapping: {
           'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
           'Đang bảo trì/sửa chữa': { label: 'Đang bảo trì/sửa chữa', color: themeTokenChk.statusAttention },
@@ -576,54 +693,95 @@ export default function ChannelAssetList() {
         dataIndex: 'assetGroup',
         type: TableColumnType.Text,
         width: 210,
+        allowSort: true,
       },
       {
         title: 'NGÀY SỬ DỤNG TÀI SẢN',
         dataIndex: 'useDate',
         type: TableColumnType.Date,
         width: 190,
+        allowSort: true,
       },
       {
         title: 'TRẠNG THÁI',
         dataIndex: 'approvalStatus',
         type: TableColumnType.Status,
-        width: 260,
+        width: 180,
+        allowSort: true,
       },
       {
         title: 'CÁN BỘ CẬP NHẬT',
         dataIndex: 'updatedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'updatedAt',
-        width: 210,
+        type: TableColumnType.Text,
+        width: 180,
         allowSort: true,
         sortField: 'updatedBy',
       },
       {
+        title: 'NGÀY CẬP NHẬT',
+        dataIndex: 'updatedAt',
+        type: TableColumnType.DateTime,
+        width: 180,
+        allowSort: true,
+      },
+      {
+        title: 'NGÀY GỬI PHÊ DUYỆT',
+        dataIndex: 'submittedAt',
+        type: TableColumnType.DateTime,
+        width: 190,
+        allowSort: true,
+      },
+      {
         title: 'CÁN BỘ GỬI PHÊ DUYỆT',
         dataIndex: 'submittedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'submittedAt',
-        width: 240,
+        type: TableColumnType.Text,
+        width: 190,
         allowSort: true,
         sortField: 'submittedBy',
       },
       {
-        title: 'CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
+        title: 'NGÀY DUYỆT CẢNG VỤ/CHI CỤC',
+        dataIndex: 'portAuthorityApprovedAt',
+        type: TableColumnType.DateTime,
+        width: 220,
+        allowSort: true,
+      },
+      {
+        title: 'CÁN BỘ DUYỆT CẢNG VỤ/CHI CỤC',
         dataIndex: 'portAuthorityApprovedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'portAuthorityApprovedAt',
-        width: 320,
+        type: TableColumnType.Text,
+        width: 230,
         allowSort: true,
         sortField: 'portAuthorityApprovedBy',
       },
       {
-        title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
-        dataIndex: 'departmentApprovedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'departmentApprovedAt',
+        title: 'NỘI DUNG DUYỆT CẢNG VỤ/CHI CỤC',
+        dataIndex: 'portAuthorityApprovalContent',
+        type: TableColumnType.Text,
         width: 240,
         allowSort: true,
+      },
+      {
+        title: 'NGÀY DUYỆT CỤC',
+        dataIndex: 'departmentApprovedAt',
+        type: TableColumnType.DateTime,
+        width: 180,
+        allowSort: true,
+      },
+      {
+        title: 'CÁN BỘ DUYỆT CỤC',
+        dataIndex: 'departmentApprovedByName',
+        type: TableColumnType.Text,
+        width: 180,
+        allowSort: true,
         sortField: 'departmentApprovedBy',
+      },
+      {
+        title: 'NỘI DUNG DUYỆT CỤC',
+        dataIndex: 'departmentApprovalContent',
+        type: TableColumnType.Text,
+        width: 240,
+        allowSort: true,
       },
     ],
     actions: [
@@ -725,9 +883,18 @@ export default function ChannelAssetList() {
             total={total}
             page={page}
             pageSize={pageSize}
+            filters={filters}
             onPageChange={(nextPage, nextSize) => {
               setPage(nextPage);
               setPageSize(nextSize);
+            }}
+            onSortChange={(field, order) => {
+              setPage(1);
+              setFilters((current) => ({
+                ...current,
+                sortBy: order ? field : undefined,
+                sortDir: order === 'ascend' ? 'ASC' : order === 'descend' ? 'DESC' : undefined,
+              }));
             }}
           />
         </FilterTableLayout>

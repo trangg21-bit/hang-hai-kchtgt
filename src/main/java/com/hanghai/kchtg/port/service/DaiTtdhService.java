@@ -279,6 +279,21 @@ public class DaiTtdhService {
         return result.map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> getOptions() {
+        return daiTtdhRepository.findByDeletedAtIsNullOrderByDaiTtdhNameAsc().stream()
+                .map(d -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", d.getId());
+                    map.put("code", d.getDaiTtdhCode());
+                    map.put("name", d.getDaiTtdhName());
+                    map.put("daiTtdhCode", d.getDaiTtdhCode());
+                    map.put("daiTtdhName", d.getDaiTtdhName());
+                    return map;
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     @Transactional
     public void softDelete(UUID id) {
         DaiTtdh entity = daiTtdhRepository.findById(id)
