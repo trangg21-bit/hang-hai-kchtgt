@@ -132,8 +132,8 @@ const validateAttachmentFile = (
 /**
  * Định dạng dung lượng tệp chuẩn (KB / MB)
  */
-const formatAttachmentFileSize = (bytes?: number): string => {
-  if (bytes === undefined || bytes === null || isNaN(Number(bytes))) return '—';
+export const formatAttachmentFileSize = (bytes?: number): string => {
+  if (bytes === undefined || bytes === null || isNaN(Number(bytes))) return '';
   const num = Number(bytes);
   if (num >= 1024 * 1024) {
     return `${(num / (1024 * 1024)).toFixed(2)} MB`;

@@ -85,18 +85,6 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyCreateRowStyle,
-  historyChangeRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
   drawerFooterStyle,
   icons,
   statusBadgeStyle,
@@ -114,6 +102,8 @@ import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
+import { formatHistoryNumber } from '../../utils/numFmt';
+import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -148,7 +138,7 @@ function collectOrgSubtreeIds(organizations: Organization[], orgUnitId: string):
 // ── Helpers ───────────────────────────────────────────────────────────
 
 function fmt(d?: string) {
-  if (!d) return '—';
+  if (!d) return '';
   try { return dayjs(d).format('DD/MM/YYYY HH:mm:ss'); } catch { return d; }
 }
 
@@ -172,12 +162,14 @@ const HISTORY_FIELD_ORDER = [
 ];
 
 const STATION_FIELD_LABEL_OVERRIDES: Record<string, string> = {
-  // Backend InfrastructureHistory writes GIS/child/attachment rows with these literal
-  // Vietnamese changedField values (FIELD-NAME CONTRACT) — pin the display label.
-  'Tọa độ GIS': 'Tọa độ GIS',
-  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Tọa độ GIS': 'Tọa độ GPS',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  'Loại đối tượng GIS': 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
   'Phao tiêu trực thuộc': 'Phao tiêu trực thuộc',
-  'Tài liệu đính kèm': 'Tài liệu đính kèm',
+  'Tài liệu đính kèm': 'File đính kèm',
+  'File đính kèm': 'File đính kèm',
+  attachments: 'File đính kèm',
   objectType: 'Loại đối tượng',
   displayFormat: 'Quy tắc hiển thị',
   operatingOrgId: 'Đơn vị khai thác',
@@ -186,7 +178,16 @@ const STATION_FIELD_LABEL_OVERRIDES: Record<string, string> = {
   lastMaintenanceYear: 'Năm bảo trì gần nhất',
   lastInspectionDate: 'Kiểm tra gần nhất',
   nextInspectionDate: 'Kiểm tra kế tiếp',
+  status: 'Trạng thái',
+  approvalStatus: 'Trạng thái',
+  'Trạng thái': 'Trạng thái',
+  'Trạng thái phê duyệt': 'Trạng thái',
 };
+
+const NUMERIC_HISTORY_FIELDS = new Set([
+  'totalArea', 'usableArea', 'staffCount', 'lastMaintenanceYear', 'range',
+  'Tổng diện tích', 'Diện tích SD', 'Diện tích sử dụng (m²)', 'Nhân sự', 'Năm BT gần nhất', 'Năm bảo trì gần nhất', 'Tầm xa',
+]);
 
 function stationFieldLabel(fn: string): string {
   return STATION_FIELD_LABEL_OVERRIDES[fn] || STATION_FIELD_MAP[fn] || fn;
@@ -199,7 +200,7 @@ function historyTimestamp(item: any): string {
 
 function historyActor(item: any): string {
   const raw = item?.approvedBy || item?.changedBy || item?.performedBy || item?.actorName || '';
-  return raw || '—';
+  return raw || '';
 }
 
 function historyField(item: any): string {
@@ -214,154 +215,16 @@ function historyNewValue(item: any): string | null {
   return item?.newValue ?? null;
 }
 
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-}
-
-function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
-  return [{ field: historyField(item), oldValue: historyOldValue(item), newValue: historyNewValue(item) }];
-}
-
-/** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
-function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
-  const item = group.items?.[0] || {};
-  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
-
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
-    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-
-  // Tải lên / xóa tệp đính kèm
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
-    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
-  }
-  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
-    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
-  }
-
-  // Cập nhật thông tin
-  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
-    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-  }
-
-  // Ưu tiên lý do ghi sẵn cho hành động duyệt/từ chối (chuẩn VTS CHK)
-  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
-    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
-    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-  }
-
-  const approvalChange = changes.find((c: any) => {
-    const k = normalizeHistoryKey(c.field);
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
-  });
-
-  if (approvalChange) {
-    const nv = normalizeHistoryKey(approvalChange.newValue || '');
-    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
-      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    }
-    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
-      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    }
-    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
-      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-    }
-  }
-
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
-
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
-
-function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—') {
-    return <span style={{ color: textTertiary }}>—</span>;
-  }
-  const normKey = normalizeHistoryKey(field);
-  const normVal = normalizeHistoryKey(val);
-
-  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
-    }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-    return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
-  }
-
-  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
-      return (<span style={statusBadgeStyle(actionPrimary)}>{val}</span>);
-    }
-  }
-
-  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
-}
-
 export default function BuoyStationListPage() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
 
-  // ── Filters ───────────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
-  const [orgUnitReady, setOrgUnitReady] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const organizationsRef = useRef<Organization[]>([]);
+  const stationBuoysRef = useRef<Record<string, { classifications: string[]; classificationBuoys: string[]; classificationMarks: string[] }>>({});
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
@@ -453,18 +316,13 @@ export default function BuoyStationListPage() {
 
   const historyFieldCount = useMemo(() => historyData.length, [historyData]);
 
-  // ── Create / Edit Drawers ─────────────────────────────────────────
+  // ── Create / Edit Drawer (Hợp nhất 1 Drawer chuẩn VTS CHK) ─────────
   const [createOpen, setCreateOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [editRecord, setEditRecord] = useState<BuoyStationResponse | null>(null);
   const [createForm] = Form.useForm();
-  const [editForm] = Form.useForm();
   const [createUploaded, setCreateUploaded] = useState<UploadFile[]>([]);
-  const [editUploaded, setEditUploaded] = useState<UploadFile[]>([]);
   const [createExisting, setCreateExisting] = useState<ExistingFile[]>([]);
-  const [editExisting, setEditExisting] = useState<ExistingFile[]>([]);
   const createFormRef = useRef<BuoyStationFormContentHandle>(null);
-  const editFormRef = useRef<BuoyStationFormContentHandle>(null);
 
   // ── Load master data ──────────────────────────────────────────────
   useEffect(() => {
@@ -473,6 +331,7 @@ export default function BuoyStationListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
+        organizationsRef.current = data;
         // Đơn vị quản lý mặc định = đơn vị của user đang đăng nhập (giống BuoyListPage),
         // nếu không khớp hoặc user không có đơn vị thì lấy đơn vị đầu tiên
         if (data.length > 0 && !defaultOrgApplied.current) {
@@ -492,8 +351,7 @@ export default function BuoyStationListPage() {
             setFilterValues((prev) => ({ ...prev, managingUnitId: data[0].id }));
           }
         }
-        setOrgUnitReady(true);
-      } catch { setOrgUnitReady(true); }
+      } catch { /* */ }
     })();
     (async () => {
       try {
@@ -541,10 +399,17 @@ export default function BuoyStationListPage() {
           if (b.classificationBuoy && !e.classificationBuoys.includes(b.classificationBuoy)) e.classificationBuoys.push(b.classificationBuoy);
           if (b.classificationMark && !e.classificationMarks.includes(b.classificationMark)) e.classificationMarks.push(b.classificationMark);
         });
+        stationBuoysRef.current = m;
         setStationBuoys(m);
       } catch { /* */ }
     })();
   }, []);
+
+  useEffect(() => {
+    if (managingUnitId !== undefined && !initialLoadDone) {
+      setInitialLoadDone(true);
+    }
+  }, [managingUnitId, initialLoadDone]);
 
   const symbolMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -571,7 +436,8 @@ export default function BuoyStationListPage() {
       });
       const all = res.content || [];
       // Lọc theo đơn vị quản lý (subtree — đơn vị cha thấy cả đơn vị con, chuẩn Cảng biển)
-      const unitSubtree = managingUnitId ? collectOrgSubtreeIds(organizations, managingUnitId) : null;
+      const orgList = organizationsRef.current.length > 0 ? organizationsRef.current : organizations;
+      const unitSubtree = managingUnitId ? collectOrgSubtreeIds(orgList, managingUnitId) : null;
       const scoped = unitSubtree ? all.filter((d) => d.unitId && unitSubtree.has(d.unitId)) : all;
       const counts: Record<string, number> = { all: scoped.length };
       TAB_STATUS_LIST.slice(1).forEach((t) => { counts[t.key] = scoped.filter((d) => d.status === t.key).length; });
@@ -580,15 +446,16 @@ export default function BuoyStationListPage() {
       let filtered = sf ? scoped.filter((d) => d.status === sf) : scoped;
       if (filterWaterwayId) filtered = filtered.filter((d) => d.waterwayId === filterWaterwayId);
       if (filterCondition) filtered = filtered.filter((d) => d.condition === filterCondition);
-      if (filterClassification && filterClassification.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classifications?.some((c) => filterClassification.includes(c)));
-      if (filterClassificationBuoy && filterClassificationBuoy.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classificationBuoys?.some((c) => filterClassificationBuoy.includes(c)));
-      if (filterClassificationMark && filterClassificationMark.length) filtered = filtered.filter((d) => stationBuoys[d.id]?.classificationMarks?.some((c) => filterClassificationMark.includes(c)));
+      const sBuoys = Object.keys(stationBuoysRef.current).length > 0 ? stationBuoysRef.current : stationBuoys;
+      if (filterClassification && filterClassification.length) filtered = filtered.filter((d) => sBuoys[d.id]?.classifications?.some((c) => filterClassification.includes(c)));
+      if (filterClassificationBuoy && filterClassificationBuoy.length) filtered = filtered.filter((d) => sBuoys[d.id]?.classificationBuoys?.some((c) => filterClassificationBuoy.includes(c)));
+      if (filterClassificationMark && filterClassificationMark.length) filtered = filtered.filter((d) => sBuoys[d.id]?.classificationMarks?.some((c) => filterClassificationMark.includes(c)));
       setAllData(filtered); setTotal(filtered.length);
     } catch { setIsError(true); }
     finally { setIsLoading(false); }
-  }, [filterName, filterCode, managingUnitId, organizations, filterProvince, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterClassificationMark, filterUpdatedFrom, filterUpdatedTo, activeTab, stationBuoys]);
+  }, [filterName, filterCode, managingUnitId, filterProvince, filterPortId, filterWaterwayId, filterCondition, filterClassification, filterClassificationBuoy, filterClassificationMark, filterUpdatedFrom, filterUpdatedTo, activeTab]);
 
-  useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
+  useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
 
   // ── Client-side sort (tham khảo cơ chế sort của BuoyListPage) ─────
   const sortedAll = useMemo(() => {
@@ -623,6 +490,20 @@ export default function BuoyStationListPage() {
       } else if (sortField === 'status') {
         aVal = APPROVAL_STYLE_MAP[a.status || '']?.label ?? a.status ?? '';
         bVal = APPROVAL_STYLE_MAP[b.status || '']?.label ?? b.status ?? '';
+      } else if (sortField === 'updatedAt' || sortField === 'updatedBy' || sortField === 'updatedByName') {
+        const at = a.updatedAt || a.createdAt;
+        const bt = b.updatedAt || b.createdAt;
+        aVal = at ? new Date(at).getTime() : 0;
+        bVal = bt ? new Date(bt).getTime() : 0;
+      } else if (sortField === 'sentApprovedDate') {
+        aVal = a.sentApprovedDate ? new Date(a.sentApprovedDate).getTime() : 0;
+        bVal = b.sentApprovedDate ? new Date(b.sentApprovedDate).getTime() : 0;
+      } else if (sortField === 'level1ApprovedDate') {
+        aVal = a.level1ApprovedDate ? new Date(a.level1ApprovedDate).getTime() : 0;
+        bVal = b.level1ApprovedDate ? new Date(b.level1ApprovedDate).getTime() : 0;
+      } else if (sortField === 'level2ApprovedDate') {
+        aVal = a.level2ApprovedDate ? new Date(a.level2ApprovedDate).getTime() : 0;
+        bVal = b.level2ApprovedDate ? new Date(b.level2ApprovedDate).getTime() : 0;
       } else {
         aVal = a[sortField] ?? '';
         bVal = b[sortField] ?? '';
@@ -650,11 +531,11 @@ export default function BuoyStationListPage() {
     setFilterCondition(filterValues.condition || undefined);
     setFilterClassification(Array.isArray(filterValues.classification) && filterValues.classification.length > 0 ? filterValues.classification : undefined);
     setFilterClassificationBuoy(Array.isArray(filterValues.classificationBuoy) && filterValues.classificationBuoy.length > 0 ? filterValues.classificationBuoy : undefined);
-    setFilterClassificationMark(Array.isArray(filterValues.classificationMark) && filterValues.classificationMark.length > 0 ? filterValues.classificationMark : undefined);
     setFilterUpdatedFrom(filterValues.updatedFrom || undefined);
     setFilterUpdatedTo(filterValues.updatedTo || undefined);
     setPage(1);
-  }, [filterValues]);
+    void fetchData();
+  }, [filterValues, fetchData]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current === '__all__' ? undefined : defaultOrgUnitId.current;
@@ -732,8 +613,8 @@ export default function BuoyStationListPage() {
   }, [loadHistoryMode]);
 
   // ── Translate giá trị lịch sử ────────────────────────────────────
-  const translateStationVal = useCallback((fn: string, val: string) => {
-    if (!val || val === 'null' || val === '(null)') return '—';
+  const translateStationVal = useCallback((fn: string, val: string | null | undefined) => {
+    if (!val || val === 'null' || val === '(null)') return '';
     if (fn === 'color') return COLOR_MAP[val] || val;
     if (fn === 'shape') return SHAPE_MAP[val] || val;
     if (fn === 'lightCharacteristic') return LIGHT_MAP[val] || val;
@@ -763,7 +644,7 @@ export default function BuoyStationListPage() {
   }, [orgMap, portMap, waterwayMap, routeMap, symbolMap, userMap]);
 
   const actorName = useCallback((actor: string | undefined) => {
-    if (!actor) return '—';
+    if (!actor) return '';
     return formatUserDisplayName(actor, null, userMap);
   }, [userMap]);
 
@@ -804,136 +685,37 @@ export default function BuoyStationListPage() {
   };
 
   const renderHistoryTimeline = (records: ChangeHistory[]) => {
-    const safeRecords = Array.isArray(records) ? records : [];
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...safeRecords].sort((a: any, b: any) =>
-      new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === (r as any).status && prev.approvalLevel === (r as any).approvalLevel) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: (r as any).status, approvalLevel: (r as any).approvalLevel, items: [r] });
-      }
-    }
-    if (groups.length === 0) return (
-      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-          {q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
-        </div>
-      </div>
-    );
-    const fmtTime = (ts: string) => {
-      const d = new Date(ts);
-      return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
-    };
-    return (
-      <div>
-        {groups.map((g, gi) => {
-          const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-            const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-            const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-          }).filter((c: any) => c.field !== 'spatialId');
-          const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-          const actionMeta = resolveHistoryActionMeta(g, changes);
-          const barColor = actionMeta.color;
-          const formatHistoryValue = (fn: string, raw: string | null) => {
-            if (raw === null || raw === '(null)' || raw === '') return null;
-            const t = raw.trim();
-            if (t.startsWith('[') && t.endsWith(']')) {
-              if (t === '[]') return 'Không có';
-              const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-              return `${parts.length} phần tử`;
-            }
-            if (/^-?\d+(\.\d+)?$/.test(t)) {
-              const n = Number(t);
-              return Number.isInteger(n) ? String(n) : t;
-            }
-            return translateStationVal(fn, raw);
-          };
-          const validChanges = changes.filter((c: any) => {
-            if (!c.field) return false;
-            const ov = formatHistoryValue(c.field, c.oldValue);
-            const nv = formatHistoryValue(c.field, c.newValue);
-            if (ov == null && nv == null) return false;
-            if (ov === nv) return false;
-            return true;
-          });
-          const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-          if (validChanges.length === 0 && reasons.length === 0) return null;
+    return renderStandardHistoryCards({
+      records,
+      fieldLabels: STATION_FIELD_LABEL_OVERRIDES,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'icon' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
           return (
-            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-              <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                  <Typography.Text style={historyTimeStyle}>
-                    {g.ts ? fmtTime(g.ts) : '—'}
-                  </Typography.Text>
-                  <span style={{ flexShrink: 0 }}>
-                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                  <Typography.Text style={historyMetaRowStyle}>
-                    Người cập nhật: {actorName(g.actor)}
-                  </Typography.Text>
-                  <Typography.Text style={historyMetaRowStyle}>
-                    {historyMode === 'all' && g.items[0]?.entityId
-                      ? `Nhà trạm: ${historyEntityNames[g.items[0].entityId] || g.items[0].entityId}`
-                      : `Đơn vị: ${historyRecord && historyRecord.unitId ? (orgMap.get(historyRecord.unitId) || '—') : '—'}`}
-                  </Typography.Text>
-                </div>
-              </div>
-              <div style={historyInfoCardStyle}>
-                <div style={historyAccentBarStyle(barColor)} />
-                <Typography.Text style={historyInfoTitleStyle}>
-                  {isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:'}
-                </Typography.Text>
-                {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
-                  const fn = change.field;
-                  const ov = formatHistoryValue(fn, change.oldValue);
-                  const nv = formatHistoryValue(fn, change.newValue);
-                  const renderCell = (rawVal: string | null) => {
-                    if ((fn === 'mapSymbolId' || fn === 'icon') && rawVal && rawVal !== '(null)') {
-                      const img = symbolImageMap.get(rawVal);
-                      const name = symbolMap.get(rawVal) || rawVal;
-                      return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
-                    }
-                    return null;
-                  };
-                  const renderVal = (rawVal: string | null, fmtVal: string | null) => renderCell(rawVal) ?? (fmtVal != null ? renderHistoryValueTag(fn, fmtVal) : <span style={{ color: textTertiary }}>—</span>);
-                  return isCreate ? (
-                    <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${stationFieldLabel(fn)}:` : '—'}</div>
-                      <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                    </div>
-                  ) : (
-                    <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                      <div style={historyFieldLabelStyle}>{fn ? `${stationFieldLabel(fn)}:` : '—'}</div>
-                      <span title={ov ?? '—'} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
-                      <span style={historyArrowStyle}>→</span>
-                      <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                    </div>
-                  );
-                })}</div> : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                    {reasons.map((r: string, ri: number) => (
-                      <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
           );
-        })}
-      </div>
-    );
+        }
+        const resolved = translateStationVal(fn, raw);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const uId = historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId;
+        const orgName = uId ? orgMap.get(uId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
+      },
+      emptyMessage: historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
+    });
   };
 
   // ── Delete / Approve / Reject handlers ────────────────────────────
@@ -950,6 +732,9 @@ export default function BuoyStationListPage() {
       toast.success('Đã xóa nhà trạm phao tiêu');
       setDeleteOpen(false);
       setDeletingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Xóa thất bại');
@@ -967,7 +752,11 @@ export default function BuoyStationListPage() {
     try {
       await submitBuoyStationForApproval(submittingRecord.id);
       toast.success('Đã gửi phê duyệt');
-      setSubmitOpen(false); setSubmittingRecord(null);
+      setSubmitOpen(false);
+      setSubmittingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData();
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Gửi thất bại'); }
   }, [submittingRecord, fetchData]);
@@ -985,7 +774,12 @@ export default function BuoyStationListPage() {
       if (approveLevel === 'L1') await approveBuoyStationL1(approvingRecord.id, aid, content);
       else await approveBuoyStationL2(approvingRecord.id, aid, content);
       toast.success(approveLevel === 'L1' ? 'Đã phê duyệt cấp 1' : 'Đã phê duyệt cấp 2 - Công bố');
-      setApproveOpen(false); setApprovingRecord(null); setApprovalContent('');
+      setApproveOpen(false);
+      setApprovingRecord(null);
+      setApprovalContent('');
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData();
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Thất bại'); }
   }, [approvingRecord, approveLevel, approvalContent, fetchData, currentUser]);
@@ -1005,25 +799,40 @@ export default function BuoyStationListPage() {
     try {
       await rejectBuoyStation(rejectingRecord.id, rr, aid);
       toast.success('Đã từ chối phê duyệt');
-      setRejectOpen(false); setRejectingRecord(null); setRejectReason('');
+      setRejectOpen(false);
+      setRejectingRecord(null);
+      setRejectReason('');
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData();
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Thất bại'); }
   }, [rejectingRecord, rejectReason, fetchData, currentUser]);
 
   // ── Create / Edit ─────────────────────────────────────────────────
-  const openCreate = useCallback(() => { setCreateOpen(true); }, []);
+  const openCreate = useCallback(() => {
+    setEditRecord(null);
+    setCreateUploaded([]);
+    setCreateExisting([]);
+    createForm.resetFields();
+    setCreateOpen(true);
+  }, [createForm]);
 
   const openEdit = useCallback(async (r: BuoyStationResponse) => {
-    setEditRecord(r); setEditOpen(true); setEditUploaded([]);
+    setEditRecord(r);
+    setCreateUploaded([]);
+    setCreateExisting([]);
+    createForm.resetFields();
+    setCreateOpen(true);
     try {
       const f = await fetchBuoyStationById(r.id);
       setEditRecord(f);
       try {
         const fr = await api.get(`/v1/documents/entity/buoy-station/${r.id}`, { params: { page: 0, size: 50 } });
-        setEditExisting(fr.data?.data?.content || fr.data?.data || []);
-      } catch { setEditExisting([]); }
+        setCreateExisting(fr.data?.data?.content || fr.data?.data || []);
+      } catch { setCreateExisting([]); }
     } catch { toast.error('Không thể tải thông tin'); }
-  }, []);
+  }, [createForm]);
 
   // ── Columns ───────────────────────────────────────────────────────
   const columns = useMemo<DataTableColumn[]>(() => [
@@ -1038,7 +847,7 @@ export default function BuoyStationListPage() {
       render: (name: string, record: BuoyStationResponse) => (
         <div>
           <a title={name} onClick={() => void openDetail(record)} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</a>
-          <span title={record.code} style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.code || '—'}</span>
+          <span title={record.code} style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.code || ''}</span>
         </div>
       ),
     },
@@ -1046,64 +855,70 @@ export default function BuoyStationListPage() {
       key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true, sortable: true,
       render: (v: string) => {
         const level2 = v ? orgLevel2Map.get(v) : undefined;
-        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || '—'}</span>;
+        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || ''}</span>;
       },
     },
     {
       key: 'classifications', label: 'Phân loại', width: 140, ellipsis: true, sortable: true,
       render: (_: unknown, record: BuoyStationResponse) => {
         const arr = stationBuoys[record.id]?.classifications || [];
-        return arr.length ? arr.join(', ') : '—';
+        return arr.length ? arr.join(', ') : '';
       },
     },
     {
       key: 'classificationBuoys', label: 'Phân loại phao', width: 170, ellipsis: true, sortable: true,
       render: (_: unknown, record: BuoyStationResponse) => {
         const arr = stationBuoys[record.id]?.classificationBuoys || [];
-        return arr.length ? arr.join(', ') : '—';
+        return arr.length ? arr.join(', ') : '';
       },
     },
     {
       key: 'classificationMarks', label: 'Phân loại tiêu', width: 170, ellipsis: true, sortable: true,
       render: (_: unknown, record: BuoyStationResponse) => {
         const arr = stationBuoys[record.id]?.classificationMarks || [];
-        return arr.length ? arr.join(', ') : '—';
+        return arr.length ? arr.join(', ') : '';
       },
     },
     {
       key: 'operatingOrgId', label: 'Đơn vị khai thác', dataIndex: 'operatingOrgId', width: 220, ellipsis: true, sortable: true,
-      render: (v: string) => (v ? (DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === v)?.name || v) : '—'),
+      render: (v: string) => (v ? (DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === v)?.name || v) : ''),
     },
     {
       key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 220, ellipsis: true, sortable: true,
-      render: (v: string) => (v ? (portMap.get(v) || v) : '—'),
+      render: (v: string) => (v ? (portMap.get(v) || v) : ''),
     },
     {
       key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true,
-      render: (v: string) => (v ? (waterwayMap.get(v) || v) : '—'),
+      render: (v: string) => (v ? (waterwayMap.get(v) || v) : ''),
     },
     {
       key: 'province', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', width: 250, sortable: true,
-      render: (v: string) => (v || '—'),
+      render: (v: string) => (v || ''),
     },
     {
       key: 'condition', label: 'Tình trạng', dataIndex: 'condition', width: 230, sortable: true,
-      render: (v: string) => { const s = CONDITION_STYLE[v || ''] || { color: textTertiary, label: v || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; },
+      render: (v: string) => { const s = v && CONDITION_STYLE[v]; return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null; },
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 260, sortable: true,
       render: (s: string) => {
-        if (!s) return <span style={{ color: textTertiary }}>—</span>;
-        const m = APPROVAL_STYLE_MAP[s] || { color: textTertiary, label: s };
-        return <span style={statusBadgeStyle(m.color)}>{m.label}</span>;
+        if (!s) return null;
+        const m = APPROVAL_STYLE_MAP[s];
+        return m ? <span style={statusBadgeStyle(m.color)}>{m.label}</span> : null;
       },
     },
     {
       key: 'updatedAt', label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', width: 200, ellipsis: true, sortable: true,
       render: (v: string, record: BuoyStationResponse) => {
-        const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, record.createdByName);
+        const name = formatUserDisplayName((record as any).updatedBy, (record as any).updatedByName, userMap, (record as any).createdBy, (record as any).createdByName);
+        const date = fmt(v);
+        if (!name && !date) return '';
         return (
-          <div><span style={{ fontWeight: fontWeightBold }}>{name}</span><br /><span style={{ opacity: 0.85 }}>{fmt(v)}</span></div>
+          <div>
+            {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+            {name && date && <br />}
+            {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+          </div>
         );
       },
     },
@@ -1111,9 +926,9 @@ export default function BuoyStationListPage() {
       key: 'sentApprovedDate', label: 'Cán bộ gửi phê duyệt', dataIndex: 'sentApprovedDate', width: 210, ellipsis: true, sortable: true,
       render: (v: string, record: BuoyStationResponse) => {
         const name = record.sentApprovedBy != null ? actorName(record.sentApprovedBy) : '';
-        const cleanName = name === '—' ? '' : name;
+        const cleanName = (name === '—' || name === '-') ? '' : name;
         const date = v ? fmt(v) : '';
-        const cleanDate = date === '—' ? '' : date;
+        const cleanDate = (date === '—' || date === '-') ? '' : date;
         if (!cleanName && !cleanDate) return '';
         return (
           <div>
@@ -1128,9 +943,9 @@ export default function BuoyStationListPage() {
       key: 'level1ApprovedDate', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'level1ApprovedDate', width: 340, ellipsis: true, sortable: true,
       render: (v: string, record: BuoyStationResponse) => {
         const name = record.level1ApprovedBy != null ? actorName(record.level1ApprovedBy) : '';
-        const cleanName = name === '—' ? '' : name;
+        const cleanName = (name === '—' || name === '-') ? '' : name;
         const date = v ? fmt(v) : '';
-        const cleanDate = date === '—' ? '' : date;
+        const cleanDate = (date === '—' || date === '-') ? '' : date;
         if (!cleanName && !cleanDate) return '';
         return (
           <div>
@@ -1145,9 +960,9 @@ export default function BuoyStationListPage() {
       key: 'level2ApprovedDate', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'level2ApprovedDate', width: 240, ellipsis: true, sortable: true,
       render: (v: string, record: BuoyStationResponse) => {
         const name = record.level2ApprovedBy != null ? actorName(record.level2ApprovedBy) : '';
-        const cleanName = name === '—' ? '' : name;
+        const cleanName = (name === '—' || name === '-') ? '' : name;
         const date = v ? fmt(v) : '';
-        const cleanDate = date === '—' ? '' : date;
+        const cleanDate = (date === '—' || date === '-') ? '' : date;
         if (!cleanName && !cleanDate) return '';
         return (
           <div>
@@ -1160,7 +975,7 @@ export default function BuoyStationListPage() {
     },
   ].map((col) => ({
     ...col,
-    sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
+    sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
   })), [page, pageSize, orgMap, orgLevel2Map, portMap, waterwayMap, actorName, openDetail, stationBuoys, sortField, sortOrder]);
 
   // ── rowActions callback (Port pattern) ──────────────────────────
@@ -1174,7 +989,8 @@ export default function BuoyStationListPage() {
     // Lịch sử — luôn hiển thị khi có quyền
     a.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => void openHistoryDrawer(r) });
     // Phê duyệt / Từ chối — theo trạng thái
-    if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => openSubmit(r) });
+    if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'NHAP')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => openSubmit(r) });
+    if ((hasPerm('buoystation:create') || hasPerm('buoystation:update') || hasPerm('data:create') || hasPerm('data:update') || hasPerm('admin:manage')) && (r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => openSubmit(r) });
     const canApproveL1 = hasPerm('buoystation:approvec1') || hasPerm('buoystation:approvel1') || hasPerm('data:approvec1') || hasPerm('data:approvel1') || hasPerm('admin:manage');
     const canApproveL2 = hasPerm('buoystation:approvec2') || hasPerm('buoystation:approvel2') || hasPerm('data:approvec2') || hasPerm('data:approvel2') || hasPerm('admin:manage');
     if (canApproveL1 && r.status === 'PENDING_APPROVAL') {
@@ -1185,8 +1001,8 @@ export default function BuoyStationListPage() {
       a.push({ key: 'appL2', label: 'Cục phê duyệt', icon: icons.approve, onClick: () => openApprove(r, 'L2') });
       a.push({ key: 'rej', label: 'Từ chối', icon: icons.reject, onClick: () => openReject(r), danger: true });
     }
-    // Xóa — luôn ở cuối cùng
-    if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'del', label: 'Xóa', icon: icons.delete, onClick: () => openDelete(r), danger: true });
+    // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
+    if ((hasPerm('buoystation:delete') || hasPerm('data:delete') || hasPerm('admin:manage')) && (r.status === 'DRAFT' || r.status === 'NHAP')) a.push({ key: 'del', label: 'Xóa', icon: icons.delete, onClick: () => openDelete(r), danger: true });
     return a;
   }, [hasPerm, openEdit, openDetail, openHistoryDrawer, openSubmit, openApprove, openReject, openDelete]);
 
@@ -1276,6 +1092,7 @@ export default function BuoyStationListPage() {
       <FilterTableLayout
         filterCollapsed={filterCollapsed}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        hideFilterToggle={true}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
         loading={isLoading}
@@ -1303,81 +1120,79 @@ export default function BuoyStationListPage() {
               onPressEnter={handleFilterApply}
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
-          {filterCollapsed && (<>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-              <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
-                value={filterValues.portId || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
-                options={Array.from(portMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-              <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
-                value={filterValues.waterwayId || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, waterwayId: val }))}
-                options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhà trạm</div>
-              <Input placeholder="Tìm theo mã nhà trạm..." allowClear
-                value={filterValues.code || ''}
-                onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
-                onPressEnter={handleFilterApply}
-                style={{ borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
-              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại..." allowClear showSearch
-                maxTagCount={2}
-                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-                value={filterValues.classification || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, classification: val }))}
-                options={CLASSIFICATION_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại phao</div>
-              <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại phao..." allowClear showSearch
-                maxTagCount={2}
-                maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
-                value={filterValues.classificationBuoy || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
-                options={CLASSIFICATION_BUOY_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
-              <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                value={filterValues.province || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, province: val }))}
-                options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-              <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
-                placeholder={['Từ ngày', 'Đến ngày']} allowClear
-                value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
-                onChange={(dates) => setFilterValues((prev) => ({
-                  ...prev,
-                  updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined,
-                  updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined,
-                }))}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-              <Select placeholder="Tất cả" allowClear
-                value={filterValues.condition || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, condition: val }))}
-                options={CONDITION_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-          </>)}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+            <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
+              value={filterValues.portId || undefined}
+              onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
+              options={Array.from(portMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
+            <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
+              value={filterValues.waterwayId || undefined}
+              onChange={(val) => setFilterValues((prev) => ({ ...prev, waterwayId: val }))}
+              options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã nhà trạm</div>
+            <Input placeholder="Tìm theo mã nhà trạm..." allowClear
+              value={filterValues.code || ''}
+              onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
+              onPressEnter={handleFilterApply}
+              style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
+            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại..." allowClear showSearch
+              maxTagCount={2}
+              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+              value={filterValues.classification || undefined}
+              onChange={(val) => setFilterValues((prev) => ({ ...prev, classification: val }))}
+              options={CLASSIFICATION_OPTIONS}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại phao</div>
+            <Select mode="multiple" className="buoy-station-filter" placeholder="Tìm kiếm phân loại phao..." allowClear showSearch
+              maxTagCount={2}
+              maxTagPlaceholder={(omittedValues) => `+${omittedValues.length}`}
+              value={filterValues.classificationBuoy || undefined}
+              onChange={(val) => setFilterValues((prev) => ({ ...prev, classificationBuoy: val }))}
+              options={CLASSIFICATION_BUOY_OPTIONS}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
+            <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              value={filterValues.province || undefined}
+              onChange={(val) => setFilterValues((prev) => ({ ...prev, province: val }))}
+              options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+            <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
+              placeholder={['Từ ngày', 'Đến ngày']} allowClear
+              value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
+              onChange={(dates) => setFilterValues((prev) => ({
+                ...prev,
+                updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined,
+                updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined,
+              }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
+            <Select placeholder="Tất cả" allowClear
+              value={filterValues.condition || undefined}
+              onChange={(val) => setFilterValues((prev) => ({ ...prev, condition: val }))}
+              options={CONDITION_OPTIONS}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          </div>
         </>}
         statusTabs={TAB_STATUS_LIST.map((tab) => ({
           key: tab.key,
@@ -1616,45 +1431,102 @@ export default function BuoyStationListPage() {
         </div>
       </Modal>
 
-      {/* ── Create Drawer ──────────────────────────────────────────── */}
+      {/* ── Create / Edit Drawer (Hợp nhất 1 Drawer chuẩn Cầu cảng / VTS CHK) ── */}
       <AppDrawer
         width="min(920px, 96vw)"
         rootClassName="buoy-station-drawer-scope"
         className="buoy-station-drawer-scope"
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới thông tin nhà trạm quản lý vận hành phao, tiêu</span>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editRecord ? `Chỉnh sửa thông tin nhà trạm quản lý vận hành phao, tiêu — ${editRecord.name || ''}` : 'Thêm mới thông tin nhà trạm quản lý vận hành phao, tiêu'}</span>}
         open={createOpen}
+        destroyOnHidden
         onClose={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); }}
+        afterOpenChange={(open) => { if (!open) { setEditRecord(null); } }}
         footer={
-          <>
-            <Button onClick={() => createFormRef.current?.submit('DRAFT')} style={outlineButtonStyle}>Lưu tạm</Button>
-            <Button type="primary" onClick={() => createFormRef.current?.submit('SUBMIT')} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-            <Button type="primary" onClick={() => createFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
-          </>
+          <div style={drawerFooterStyle}>
+            {(() => {
+              const st = !editRecord ? 'DRAFT' : (editRecord.status ? String(editRecord.status).toUpperCase() : 'DRAFT');
+              if (st === 'PUBLISHED' || st === 'APPROVED' || st === 'APPROVED_L2') {
+                return (
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => createFormRef.current?.submit('APPROVED')}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                );
+              }
+              if (st === 'REJECTED' || st === 'REJECTED_L1' || st === 'REJECTED_L2') {
+                return (
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => createFormRef.current?.submit('SUBMIT')}
+                    style={primaryButtonStyle}
+                  >
+                    Lưu và gửi phê duyệt
+                  </Button>
+                );
+              }
+              return (
+                <>
+                  <Button
+                    htmlType="button"
+                    onClick={() => createFormRef.current?.submit('DRAFT')}
+                    style={outlineButtonStyle}
+                  >
+                    Lưu tạm
+                  </Button>
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => createFormRef.current?.submit('SUBMIT')}
+                    style={primaryButtonStyle}
+                  >
+                    Lưu và gửi phê duyệt
+                  </Button>
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => createFormRef.current?.submit('APPROVED')}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                </>
+              );
+            })()}
+          </div>
         }
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" scrollToFirstError>
-          <BuoyStationFormContent ref={createFormRef} form={createForm} isEdit={false} uploadedFiles={createUploaded} setUploadedFiles={setCreateUploaded} existingFiles={createExisting} organizations={organizations} userMap={userMap} onFinish={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); void fetchData(); }} />
-        </Form>
-      </AppDrawer>
-
-      {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <AppDrawer
-        width="min(920px, 96vw)"
-        rootClassName="buoy-station-drawer-scope"
-        className="buoy-station-drawer-scope"
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin nhà trạm quản lý vận hành phao, tiêu — {editRecord ? editRecord.name : 'Nhà trạm quản lý vận hành phao, tiêu'}</span>}
-        open={editOpen}
-        onClose={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); }}
-        footer={
-          <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => editFormRef.current?.submit('APPROVED')} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
-          </div>
-        }
-      >
-        <style>{requiredMarkStyle}</style>
-        <Form form={editForm} layout="vertical" scrollToFirstError>
-          <BuoyStationFormContent ref={editFormRef} form={editForm} isEdit entityData={editRecord} uploadedFiles={editUploaded} setUploadedFiles={setEditUploaded} existingFiles={editExisting} organizations={organizations} userMap={userMap} onFinish={() => { setEditOpen(false); setEditRecord(null); setEditUploaded([]); setEditExisting([]); editForm.resetFields(); void fetchData(); }} />
+          <BuoyStationFormContent
+            ref={createFormRef}
+            form={createForm}
+            isEdit={!!editRecord}
+            entityData={editRecord || undefined}
+            uploadedFiles={createUploaded}
+            setUploadedFiles={setCreateUploaded}
+            existingFiles={createExisting}
+            organizations={organizations}
+            userMap={userMap}
+            onFinish={() => {
+              setCreateOpen(false);
+              setCreateUploaded([]);
+              setCreateExisting([]);
+              createForm.resetFields();
+              setSortField('updatedAt');
+              setSortOrder('descend');
+              setPage(1);
+              void fetchData();
+            }}
+          />
         </Form>
       </AppDrawer>
     </div>

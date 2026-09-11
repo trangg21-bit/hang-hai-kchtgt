@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import {
-  FileOutlined, EnvironmentOutlined,
+  EnvironmentOutlined,
   BankOutlined, SlidersOutlined, FileTextOutlined, AuditOutlined,
   DownOutlined, RightOutlined,
 } from '@ant-design/icons';
@@ -10,19 +10,19 @@ import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import {
   textTertiary, surfaceCard,
-  fontSizeSm, fontSizeLg, fontWeightBold, spaceSm, spaceMd, spaceFormField,
-  statusOperational, statusAttention, statusCritical, actionPrimary, statusBadgeStyle,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold, spaceSm, spaceMd, spaceFormField,
+  actionPrimary, statusBadgeStyle,
   outlineButtonStyle, primaryButtonStyle,
   formatUserDisplayName, isUuidString,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
-import type { DryPort } from '../../types/port';
+import type { DryPort } from './dry-port';
+import { downloadDryPortAttachment, trangThaiPheDuyetBadge, trangThaiHoatDongBadge } from './dry-port';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { parseWktToCoordinates } from '../../utils/gisGeometry';
-import toast from '../../components/ToastNotification';
-
-const fontSizeMd = 13.5;
+import { fmtNum } from '../../utils/numFmt';
 
 export interface DryPortDetailContentProps {
   selectedRecord: DryPort;
@@ -33,7 +33,7 @@ export interface DryPortDetailContentProps {
   detailFiles: any[];
   ddToDms: (dd: number | null | undefined) => { d: number | null; m: number | null; s: number | null };
   provinceName: (provinceId: number | null | undefined) => string;
-  approvalStyleMap: Record<string, { color: string; label: string }>;
+  approvalStyleMap?: Record<string, { color: string; label: string }>;
 }
 
 const COORD_SYS_LABELS: Record<number, string> = { 1: 'WGS-84', 2: 'VN-2000' };
@@ -89,6 +89,7 @@ function DryPortRefTable({ title, emptyText, columns, dataSource = [] }: { title
         emptyText={emptyText}
         pageSize={TAB_PAGE_SIZE}
         showTotal={(total) => `Tổng cộng ${total}`}
+        scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
         columns={[
           { title: 'STT', width: 50 },
           ...columns.map((c) => ({ title: c.title, dataIndex: c.dataIndex, width: c.width })),
@@ -251,68 +252,61 @@ export default function DryPortDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Mã cảng cạn</span>
                       <span className="chk-detail-value">
-                        {r.dryPortCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.dryPortCode}</span> : '—'}
+                        {r.dryPortCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.dryPortCode}</span> : ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Tên cảng cạn</span>
                       <span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>
-                        {r.dryPortName || '—'}
+                        {r.dryPortName || ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Đơn vị quản lý</span>
                       <span className="chk-detail-value">
                         {(() => {
-                          const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                          const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '';
                           return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                         })()}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Đơn vị khai thác</span>
-                      <span className="chk-detail-value">{r.operatingUnit || '—'}</span>
+                      <span className="chk-detail-value">{r.operatingUnit || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Khu vực</span>
-                      <span className="chk-detail-value">{r.region || '—'}</span>
+                      <span className="chk-detail-value">{r.region || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Địa điểm (Tỉnh/Thành Phố)</span>
-                      <span className="chk-detail-value">{provinceName(r.provinceId) || '—'}</span>
+                      <span className="chk-detail-value">{provinceName(r.provinceId) || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Hành lang vận tải</span>
-                      <span className="chk-detail-value">{r.transportCorridor || '—'}</span>
+                      <span className="chk-detail-value">{r.transportCorridor || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Phương thức kết nối giao thông</span>
-                      <span className="chk-detail-value">{r.connectionMode || '—'}</span>
+                      <span className="chk-detail-value">{r.connectionMode || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Tình trạng</span>
                       <span className="chk-detail-value">
                         {(() => {
-                          const opMap: Record<string, { color: string; label: string }> = {
-                            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/Vận hành' },
-                            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/Vận hành' },
-                            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
-                          };
-                          const b = (r as any).operationalStatus && opMap[(r as any).operationalStatus]
-                            ? opMap[(r as any).operationalStatus]
-                            : (r.portStatus === 1 ? opMap.OPERATIONAL : opMap.NOT_YET_OPERATIONAL);
-                          return <span style={statusBadgeStyle(b.color)}>{b.label}</span>;
+                          const b = trangThaiHoatDongBadge(r.portStatus, (r as any).operationalStatus);
+                          return <span style={b.style}>{b.label}</span>;
                         })()}
                       </span>
                     </div>
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-full-label">Địa điểm chi tiết</span>
-                      <span className="chk-detail-value">{r.detailedLocation || '—'}</span>
+                      <span className="chk-detail-value">{r.detailedLocation || ''}</span>
                     </div>
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-full-label">Ghi chú</span>
                       <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {r.remarks || '—'}
+                        {r.remarks || ''}
                       </span>
                     </div>
                   </div>
@@ -329,19 +323,19 @@ export default function DryPortDetailContent({
                   <div className="chk-detail-grid">
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Công suất khai thác</span>
-                      <span className="chk-detail-value">{r.teuCapacity ? `${r.teuCapacity.toLocaleString('vi-VN')} TEU/năm` : '—'}</span>
+                      <span className="chk-detail-value">{r.teuCapacity != null && r.teuCapacity !== '' ? `${fmtNum(r.teuCapacity)} TEU/năm` : ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Tổng diện tích cảng (m²)</span>
-                      <span className="chk-detail-value">{r.area ? `${r.area.toLocaleString('vi-VN')} m²` : '—'}</span>
+                      <span className="chk-detail-value">{r.area != null && r.area !== '' ? `${fmtNum(r.area)} m²` : ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Diện tích kho (m²)</span>
-                      <span className="chk-detail-value">{r.warehouseArea ? `${r.warehouseArea.toLocaleString('vi-VN')} m²` : '—'}</span>
+                      <span className="chk-detail-value">{r.warehouseArea != null && r.warehouseArea !== '' ? `${fmtNum(r.warehouseArea)} m²` : ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Diện tích bãi (m²)</span>
-                      <span className="chk-detail-value">{r.yardArea ? `${r.yardArea.toLocaleString('vi-VN')} m²` : '—'}</span>
+                      <span className="chk-detail-value">{r.yardArea != null && r.yardArea !== '' ? `${fmtNum(r.yardArea)} m²` : ''}</span>
                     </div>
                   </div>
                 </div>
@@ -371,19 +365,19 @@ export default function DryPortDetailContent({
                     <div className="chk-detail-grid">
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Quyết định công bố số</span>
-                        <span className="chk-detail-value">{r.announcementDecisionNumber || '—'}</span>
+                        <span className="chk-detail-value">{r.announcementDecisionNumber || ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày ra quyết định công bố</span>
-                        <span className="chk-detail-value">{r.announcementDecisionDate ? dayjs(r.announcementDecisionDate).format('DD/MM/YYYY') : '—'}</span>
+                        <span className="chk-detail-value">{r.announcementDecisionDate ? dayjs(r.announcementDecisionDate).format('DD/MM/YYYY') : ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Đơn vị ra quyết định công bố</span>
-                        <span className="chk-detail-value">{r.announcementOrg || '—'}</span>
+                        <span className="chk-detail-value">{r.announcementOrg || ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Thời điểm công bố mở</span>
-                        <span className="chk-detail-value">{r.announcementTime ? dayjs(r.announcementTime).format('DD/MM/YYYY') : '—'}</span>
+                        <span className="chk-detail-value">{r.announcementTime ? dayjs(r.announcementTime).format('DD/MM/YYYY') : ''}</span>
                       </div>
                     </div>
                   )}
@@ -415,11 +409,10 @@ export default function DryPortDetailContent({
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
                         <span className="chk-detail-value">
-                          {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
-                            <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
-                              {approvalStyleMap[r.approvalStatus].label}
-                            </span>
-                          ) : (r.approvalStatus || '—')}
+                          {(() => {
+                            const badge = trangThaiPheDuyetBadge(r.approvalStatus);
+                            return <span style={badge.style}>{badge.label}</span>;
+                          })()}
                         </span>
                       </div>
                       <div className="chk-detail-row">
@@ -430,7 +423,7 @@ export default function DryPortDetailContent({
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Ngày cập nhật</span>
-                        <span className="chk-detail-value">{r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
+                        <span className="chk-detail-value">{r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Người tạo</span>
@@ -440,7 +433,7 @@ export default function DryPortDetailContent({
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Ngày tạo</span>
-                        <span className="chk-detail-value">{r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
+                        <span className="chk-detail-value">{r.createdAt ? dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Cán bộ gửi phê duyệt</span>
@@ -450,7 +443,7 @@ export default function DryPortDetailContent({
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Ngày gửi phê duyệt</span>
-                        <span className="chk-detail-value">{(r as any).submittedForApprovalAt ? dayjs((r as any).submittedForApprovalAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
+                        <span className="chk-detail-value">{(r as any).submittedForApprovalAt ? dayjs((r as any).submittedForApprovalAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Cán bộ duyệt Cảng vụ/Chi cục</span>
@@ -460,7 +453,7 @@ export default function DryPortDetailContent({
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Ngày duyệt Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{(r as any).portAuthorityApprovedAt ? dayjs((r as any).portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
+                        <span className="chk-detail-value">{(r as any).portAuthorityApprovedAt ? dayjs((r as any).portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Cán bộ duyệt cấp Cục</span>
@@ -470,7 +463,7 @@ export default function DryPortDetailContent({
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Ngày duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{(r as any).departmentApprovedAt ? dayjs((r as any).departmentApprovedAt).format('DD/MM/YYYY HH:mm') : '—'}</span>
+                        <span className="chk-detail-value">{(r as any).departmentApprovedAt ? dayjs((r as any).departmentApprovedAt).format('DD/MM/YYYY HH:mm:ss') : ''}</span>
                       </div>
                     </div>
                   )}
@@ -487,7 +480,7 @@ export default function DryPortDetailContent({
                   <div className="chk-detail-row">
                     <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
                     <span className="chk-detail-value">
-                      {r.geometryType === 'POINT' ? 'Đối tượng điểm' : r.geometryType === 'LINE' ? 'Đối tượng đường' : r.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'}
+                      {r.geometryType === 'POINT' ? 'Đối tượng điểm' : r.geometryType === 'LINE' ? 'Đối tượng đường' : r.geometryType === 'POLYGON' ? 'Đối tượng vùng' : ''}
                     </span>
                   </div>
                   <div className="chk-detail-row">
@@ -495,8 +488,9 @@ export default function DryPortDetailContent({
                     <span className="chk-detail-value">
                       {(() => {
                         const symId = r.mapSymbolId || '';
-                        const symName = symbolMap.get(symId) || symId || '—';
+                        const symName = symbolMap.get(symId) || symId || '';
                         const symImg = symbolImageMap.get(symId);
+                        if (!symName && !symImg) return '';
                         return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             {symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}
@@ -508,12 +502,12 @@ export default function DryPortDetailContent({
                   </div>
                   <div className="chk-detail-row">
                     <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
-                    <span className="chk-detail-value">{COORD_SYS_LABELS[r.coordinateSystem || 0] || r.coordinateSystem || '—'}</span>
+                    <span className="chk-detail-value">{COORD_SYS_LABELS[r.coordinateSystem || 0] || (r.coordinateSystem ? String(r.coordinateSystem) : '')}</span>
                   </div>
                   <div className="chk-detail-row">
                     <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
                     <span className="chk-detail-value">
-                      {(r.geometryType || r.coordinates || r.latitude != null || r.longitude != null) ? 'Độ, phút, giây (DMS)' : '—'}
+                      {(r.geometryType || r.coordinates || r.latitude != null || r.longitude != null) ? 'Độ, phút, giây (DMS)' : ''}
                     </span>
                   </div>
                 </div>
@@ -537,6 +531,7 @@ export default function DryPortDetailContent({
                         dataSource={pts.map((p) => ({ ...p }))}
                         emptyText="Chưa có tọa độ GPS nào"
                         showTotal={(total) => `Tổng cộng ${total}`}
+                        scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                         columns={[
                           { title: 'STT', width: 50 },
                           { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
@@ -565,8 +560,8 @@ export default function DryPortDetailContent({
                   }))}
                   readonly={true}
                   userMap={userMap}
-                  onDownload={(_id, name) => {
-                    toast.info(`Đang tải xuống tệp: ${name}`);
+                  onDownload={(id, name) => {
+                    void downloadDryPortAttachment(r.id, id, name);
                   }}
                 />
               </div>
@@ -601,13 +596,14 @@ export default function DryPortDetailContent({
                       dataSource={(Array.isArray((r as any)?.operationPlanList) ? (r as any).operationPlanList : [])}
                       emptyText="Chưa có dữ liệu"
                       showTotal={(total) => `Tổng cộng ${total}`}
+                      scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                       rowKey={(rec: any, idx?: number) => rec?.id || rec?.opPlanCode || String(idx)}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'opPlanCode', render: (v: string, rec: any) => v || rec.code || '—' },
-                        { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'opPlanName', render: (v: string, rec: any) => v || rec.name || '—' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'opStartDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startDate ? dayjs(rec.startDate).format('DD/MM/YYYY HH:mm') : '—') },
-                        { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'opEndDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endDate ? dayjs(rec.endDate).format('DD/MM/YYYY HH:mm') : '—') },
+                        { title: 'Mã kế hoạch', dataIndex: 'opPlanCode', key: 'opPlanCode', render: (v: string, rec: any) => v || rec.code || '' },
+                        { title: 'Tên kế hoạch', dataIndex: 'opPlanName', key: 'opPlanName', render: (v: string, rec: any) => v || rec.name || '' },
+                        { title: 'Ngày bắt đầu', dataIndex: 'opStartDate', key: 'opStartDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startDate ? dayjs(rec.startDate).format('DD/MM/YYYY HH:mm') : '') },
+                        { title: 'Ngày kết thúc', dataIndex: 'opEndDate', key: 'opEndDate', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endDate ? dayjs(rec.endDate).format('DD/MM/YYYY HH:mm') : '') },
                       ]}
                     />
                   </div>
@@ -622,13 +618,14 @@ export default function DryPortDetailContent({
                       dataSource={(Array.isArray((r as any)?.maintenancePlanList) ? (r as any).maintenancePlanList : [])}
                       emptyText="Chưa có dữ liệu"
                       showTotal={(total) => `Tổng cộng ${total}`}
+                      scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                       rowKey={(rec: any, idx?: number) => rec?.id || rec?.maintCode || String(idx)}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'maintCode', render: (v: string, rec: any) => v || rec.code || '—' },
-                        { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'maintName', render: (v: string, rec: any) => v || rec.name || '—' },
-                        { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'maintStart', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startTime || rec.start || '—') },
-                        { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'maintEnd', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endTime || rec.end || '—') },
+                        { title: 'Mã kế hoạch', dataIndex: 'maintCode', key: 'maintCode', render: (v: string, rec: any) => v || rec.code || '' },
+                        { title: 'Tên kế hoạch', dataIndex: 'maintName', key: 'maintName', render: (v: string, rec: any) => v || rec.name || '' },
+                        { title: 'Thời gian bắt đầu', dataIndex: 'maintStart', key: 'maintStart', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.startTime || rec.start || '') },
+                        { title: 'Thời gian kết thúc', dataIndex: 'maintEnd', key: 'maintEnd', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.endTime || rec.end || '') },
                       ]}
                     />
                   </div>
@@ -643,13 +640,14 @@ export default function DryPortDetailContent({
                       dataSource={(Array.isArray((r as any)?.incidentList) ? (r as any).incidentList : [])}
                       emptyText="Chưa có dữ liệu"
                       showTotal={(total) => `Tổng cộng ${total}`}
+                      scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                       rowKey={(rec: any, idx?: number) => rec?.id || rec?.incidentCode || String(idx)}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string, rec: any) => v || rec.code || '—' },
-                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string, rec: any) => v || rec.type || '—' },
-                        { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '—' },
-                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.time ? dayjs(rec.time).format('DD/MM/YYYY HH:mm') : '—') },
+                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string, rec: any) => v || rec.code || '' },
+                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string, rec: any) => v || rec.type || '' },
+                        { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '' },
+                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'left' as const, render: (v: string, rec: any) => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : (rec.time ? dayjs(rec.time).format('DD/MM/YYYY HH:mm') : '') },
                       ]}
                     />
                   </div>

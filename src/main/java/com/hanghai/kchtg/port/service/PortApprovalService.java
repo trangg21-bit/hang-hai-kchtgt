@@ -105,7 +105,6 @@ public class PortApprovalService {
         if (userId != null) entity.setUpdatedBy(userId);
         portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
-        changeHistoryService.insertChangeRecord("Port", id, "Lý do từ chối", null, reason, String.valueOf(userId));
     }
 
     private Port loadPort(UUID id) {
@@ -158,12 +157,7 @@ public class PortApprovalService {
         }
         entity.setUpdatedAt(LocalDateTime.now());
         Port saved = portRepository.saveAndFlush(entity);
-        changeHistoryService.recordChanges("Port", saved.getId().toString(), "system", snapshot, saved);
         portCacheService.evictAfterCommit();
-
-        if (reason != null && !reason.isBlank()) {
-            changeHistoryService.insertChangeRecord("Port", saved.getId(), "Lý do từ chối", null, reason, userId);
-        }
 
         if (reason == null || reason.isBlank()) {
             log.info("Port [{}] approved by {}", id, userId);

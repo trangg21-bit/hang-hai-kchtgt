@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Button, Modal, Input, Select, DatePicker,
-  Drawer, Space, Typography, Form,
+  Space, Typography, Form,
 } from 'antd';
 import {
   HistoryOutlined,
@@ -24,6 +24,7 @@ import { usePermissionStore } from '../../store/permissionStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { OPERATIONAL_FUNCTION_OPTIONS, formatOperationalFunction } from '../../constants/operationalFunction';
 import { formatHistoryNumber } from '../../utils/numFmt';
+import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
@@ -56,7 +57,7 @@ import {
   spaceXs,
   spaceXl,
   spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
+  drawerTitleStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
   historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
@@ -365,7 +366,7 @@ function historyTimestamp(item: any): string {
 }
 function historyActor(item: any): string {
   const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '—';
+  return raw || '';
 }
 function normalizedHistoryFields(value: string): string[] {
   const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
@@ -419,8 +420,8 @@ function historyChangeRows(item: any): Array<{ field: string; oldValue: string |
 }
 
 function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—') {
-    return <span style={{ color: textTertiary }}>—</span>;
+  if (val === null || val === undefined || val === '—' || val === '-') {
+    return '';
   }
   const normKey = normalizeHistoryKey(field);
   const normVal = normalizeHistoryKey(val);
@@ -675,121 +676,52 @@ export default function PierListPage() {
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'berthId', 'pierCode', 'pierName', 'pierType', 'length', 'width', 'designLoad', 'operationalFunction', 'operationalStatus', 'province', 'detailedLocation', 'coordinateSystem', 'displayRule', 'mapSymbolId', 'constructionGrade', 'structureType', 'conditionStatus', 'currentWaterDepth', 'designBedElevation', 'publishedVesselDWT', 'maintenanceApprovalDate', 'safetyAssessmentDate', 'lastInspectionDate', 'operatingPierCount', 'publishedPierCount', 'investmentAgreementPierCount', 'cargoThroughput', 'receivesLargeVessel', 'documentNumber', 'documentDate', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'waterAreaNeutralScope', 'navigationChannelId'];
 
   const renderPierHistoryTimeline = (records: any[]) => {
-    const safeRecords = Array.isArray(records) ? records : [];
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+    const q = (historyFilters.keyword || '').trim().toLowerCase();
+    const from = historyFilters.fromDate || '';
+    const to = historyFilters.toDate || '';
+    const filtered = (Array.isArray(records) ? records : []).filter((r: any) => {
+      if (q) {
+        const fn = String(r?.changedField ?? r?.fieldName ?? '').toLowerCase();
+        const rawOld = String(r?.previousValue ?? r?.oldValue ?? '').toLowerCase();
+        const rawNew = String(r?.newValue ?? r?.value ?? '').toLowerCase();
+        const label = histField(fn).toLowerCase();
+        const resolvedOld = String(histVal(fn, r?.previousValue ?? r?.oldValue, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap) || '').toLowerCase();
+        const resolvedNew = String(histVal(fn, r?.newValue ?? r?.value, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap) || '').toLowerCase();
+        if (!fn.includes(q) && !rawOld.includes(q) && !rawNew.includes(q) && !label.includes(q) && !resolvedOld.includes(q) && !resolvedNew.includes(q)) return false;
       }
-    }
-    if (groups.length === 0) return (
-      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-      </div>
-    );
-    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || '—'; } };
-    return (
-      <div>{groups.map((g, gi) => {
-        const rec0 = g.items[0] || {};
-        const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
+      if (from || to) {
+        const ts = String(r?.changedAt ?? r?.createdAt ?? r?.approvedDate ?? '');
+        if (from && ts.substring(0, 10) < from) return false;
+        if (to && ts.substring(0, 10) > to) return false;
+      }
+      return true;
+    });
+
+    return renderStandardHistoryCards({
+      records: filtered,
+      fieldLabels: histLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'mapSymbolId' && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const formatted = formatPierHistoryValue(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
-        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-        const actionMeta = resolveHistoryActionMeta(g, changes);
-        const barColor = actionMeta.color;
-        const formatHistoryValue = (fn: string, raw: string | null) =>
-          formatPierHistoryValue(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
-        const validChanges = changes.filter((c: any) => {
-          if (!c.field) return false;
-          const ov = formatHistoryValue(c.field, c.oldValue);
-          const nv = formatHistoryValue(c.field, c.newValue);
-          if (ov == null && nv == null) return false;
-          if (ov === nv) return false;
-          return true;
-        });
-        const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-        if (validChanges.length === 0 && reasons.length === 0) return null;
-        return (
-          <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : '—'}
-                </Typography.Text>
-                <span style={{ flexShrink: 0 }}>
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Người cập nhật: {g.actor || '—'}
-                </Typography.Text>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Đơn vị: {unitName}
-                </Typography.Text>
-              </div>
-            </div>
-            <div style={historyInfoCardStyle}>
-              <div style={historyAccentBarStyle(barColor)} />
-              <Typography.Text style={historyInfoTitleStyle}>
-                {informationTitle}
-              </Typography.Text>
-              {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
-                const fn = change.field;
-                const ov = formatHistoryValue(fn, change.oldValue);
-                const nv = formatHistoryValue(fn, change.newValue);
-                const renderCell = (rawVal: string | null) => {
-                  if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
-                    const img = symbolImageMap.get(rawVal);
-                    const name = symbolMap.get(rawVal) || rawVal;
-                    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
-                  }
-                  return null;
-                };
-                const renderVal = (rawVal: string | null, fmtVal: string | null) => {
-                  if (!fmtVal || fmtVal === '—' || fmtVal === '-' || fmtVal === '–' || fmtVal === '(null)' || fmtVal === 'null') return '';
-                  return renderCell(rawVal) ?? renderHistoryValueTag(fn, fmtVal);
-                };
-                return isCreate ? (
-                  <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                  </div>
-                ) : (
-                  <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                    <span title={ov ?? ''} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
-                    <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                  </div>
-                );
-              })}</div> : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                  {reasons.map((r: string, ri: number) => (
-                    <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}</div>
-    );
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+      emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
+    });
   };
 
   useEffect(() => {
@@ -884,7 +816,7 @@ export default function PierListPage() {
     // ── Danh sách kết cấu hạ tầng thuộc cầu cảng: Cơ sở sửa chữa, đóng tàu (pierId) ──
     try {
       const r = await shipRepairYardCRUD.search({ page: 1, pageSize: 1000, pierId: record.id });
-      setInfrastructureList((r.data || []).map((x: any) => ({ id: x.id, infraName: x.shipRepairYardName || x.name || '—', infraType: 'COSO_SUACHUA' })));
+      setInfrastructureList((r.data || []).map((x: any) => ({ id: x.id, infraName: x.shipRepairYardName || x.name || '', infraType: 'COSO_SUACHUA' })));
     } catch { setInfrastructureList([]); }
   }, []);
 
@@ -915,7 +847,6 @@ export default function PierListPage() {
 
   const closeFormDrawer = useCallback(() => {
     setCreateDrawerVisible(false);
-    setEditPierId(undefined);
     createForm.resetFields();
     notifyEmbeddedActionClosed();
   }, [createForm, notifyEmbeddedActionClosed]);
@@ -1208,20 +1139,20 @@ export default function PierListPage() {
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatOperationalFunction(v, '')}</span> },
     { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
       render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; } },
-    { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
-      render: (v: string) => {
-        const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
-        return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
-      } },
-    { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 200, sortable: true,
-      render: (v: string, record: Pier) => (
-        <div>
-          <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || ''}</span><br />
-          <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-        </div>
-      ) },
     ];
     const tailColumns: any[] = [
+      { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, ellipsis: false, sortable: true,
+        render: (v: string) => {
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
+          return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
+        } },
+      { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 190, sortable: true,
+        render: (v: string, record: Pier) => (
+          <div>
+            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || ''}</span><br />
+            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
+          </div>
+        ) },
     ];
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
     return allColumns.map(col => ({
@@ -1375,10 +1306,9 @@ export default function PierListPage() {
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>
 
-      <Drawer {...drawerProps} rootClassName="pier-drawer-scope" className="pier-drawer-scope" width="min(920px, 96vw)" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa thông tin Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
+      <AppDrawer rootClassName="pier-drawer-scope" className="pier-drawer-scope" width="min(920px, 96vw)" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa thông tin Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
         onClose={closeFormDrawer}
         afterOpenChange={(open) => { if (!open) { setEditPierId(undefined); setEditBaseStatus(undefined); } }}
-        extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={<div style={drawerFooterStyle}>{(() => {
           const st = !editPierId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
           if (st === 'APPROVED') {
@@ -1395,14 +1325,13 @@ export default function PierListPage() {
           <style>{requiredMarkStyle}</style>
           <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); createForm.resetFields(); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
         </Form>
-      </Drawer>
+      </AppDrawer>
 
-      <Drawer {...drawerProps} rootClassName="pier-drawer-scope" className="pier-drawer-scope" size={1000} width="min(1000px, 96vw)" title={<span style={drawerTitleStyle}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
+      <AppDrawer rootClassName="pier-drawer-scope" className="pier-drawer-scope" size={1000} width="min(1000px, 96vw)" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết cầu cảng{detailRecord ? ` - ${detailRecord.pierName}` : ''}</span>} open={detailDrawerVisible}
         onClose={closeDetailDrawer}
-        extra={<Button type="text" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }} footer={null}>
         {detailRecord && <PierDetailContent selectedRecord={detailRecord} orgMap={orgMap} portMap={portMap} berthOptions={berthOptions} symbolMap={symbolMap} symbolImageMap={symbolImageMap} detailFiles={detailFiles} ddToDms={dd2dms} approvalStyleMap={APPROVAL_STYLE_MAP} operationalStyleMap={OPERATIONAL_STYLE_MAP} userMap={userMap} waterwayMap={waterwayMap} berthDetail={berthDetail} organizations={organizations} infrastructureList={infrastructureList} onViewInfraDetail={openInfraDetail} operationPlanList={(detailRecord as any)?.operationPlanList} maintenancePlanList={(detailRecord as any)?.maintenancePlanList} incidentList={(detailRecord as any)?.incidentList} />}
-      </Drawer>
+      </AppDrawer>
 
       {/* ── Chi tiết kết cấu hạ tầng (Cơ sở sửa chữa, đóng tàu) — kích thước đồng bộ bằng Drawer cha ── */}
       <AppDrawer

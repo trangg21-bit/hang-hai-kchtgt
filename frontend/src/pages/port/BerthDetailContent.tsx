@@ -27,6 +27,8 @@ const spaceFormField = 12;
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { pierCRUD } from '../../services/portService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import { formatOperationalFunction } from '../../constants/operationalFunction';
 
 const isImageFile = (fileName?: string): boolean => {
   if (!fileName) return false;
@@ -131,6 +133,15 @@ export default function BerthDetailContent({
   const [previewImageFile, setPreviewImageFile] = useState<any>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  const [resolvedWaterway, setResolvedWaterway] = useState<string | undefined>();
+  useEffect(() => {
+    if (!r.waterwayId) return;
+    if (waterwayMap?.has(r.waterwayId)) return;
+    navigationChannelCRUD.getById(r.waterwayId)
+      .then((ch) => { if (ch?.channelName || ch?.channelCode) setResolvedWaterway(ch.channelName || ch.channelCode); })
+      .catch(() => {});
+  }, [r.waterwayId, waterwayMap]);
 
   const handleDownloadFile = async (fileId: string, fileName: string) => {
     try {
@@ -292,6 +303,21 @@ export default function BerthDetailContent({
           margin-right: 4px !important;
         }
 
+        .berth-drawer-scope .berth-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label,
+        .berth-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label {
+          width: auto !important;
+          min-width: auto !important;
+          max-width: none !important;
+          flex-shrink: 0 !important;
+        }
+        .berth-drawer-scope .berth-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value,
+        .berth-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          justify-content: flex-start !important;
+          white-space: nowrap !important;
+        }
+
         .berth-detail-content-wrapper .chk-detail-value {
           color: #1e293b !important;
           font-size: 13.5px !important;
@@ -357,12 +383,17 @@ export default function BerthDetailContent({
                     </div>
                   </div>
                   <div className="chk-detail-grid">
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Mã bến cảng</span>
-                      <span className="chk-detail-value">
-                        {r.berthCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.berthCode}</span> : ''}
-                      </span>
-                    </div>
+                    {(() => {
+                      const isLongCode = ((r.berthCode || '').trim().length >= 18);
+                      return (
+                        <div className={`chk-detail-row ${isLongCode ? 'chk-detail-row--compact' : ''}`}>
+                          <span className="chk-detail-label sec-col1-label">Mã bến cảng</span>
+                          <span className="chk-detail-value">
+                            {r.berthCode ? <span style={{ ...statusBadgeStyle(actionPrimary), whiteSpace: 'nowrap' }}>{r.berthCode}</span> : ''}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Tên bến cảng</span>
                       <span className="chk-detail-value">
@@ -393,7 +424,7 @@ export default function BerthDetailContent({
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Thuộc luồng hàng hải</span>
-                      <span className="chk-detail-value">{waterwayMap.get(r.waterwayId || '') || r.waterwayId || ''}</span>
+                      <span className="chk-detail-value">{waterwayMap.get(r.waterwayId || '') || resolvedWaterway || r.waterway || r.waterwayId || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Địa điểm (Tỉnh/Thành Phố)</span>
@@ -442,7 +473,7 @@ export default function BerthDetailContent({
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Công năng khai thác</span>
-                      <span className="chk-detail-value">{r.operationalFunction || ''}</span>
+                      <span className="chk-detail-value">{formatOperationalFunction(r.operationalFunction, '')}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Loại kết cấu bến cảng</span>
@@ -531,16 +562,26 @@ export default function BerthDetailContent({
                   </div>
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
-                        <span className="chk-detail-value">
-                          {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
-                            <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
-                              {approvalStyleMap[r.approvalStatus].label}
+                      {(() => {
+                        const isPendingPortAuthority =
+                          r.approvalStatus === 'PENDING_APPROVAL' ||
+                          r.approvalStatus === 'CHO_PHE_DUYET' ||
+                          r.approvalStatus === 'PROPOSED' ||
+                          approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
+                          approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục');
+                        return (
+                          <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
+                            <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                            <span className="chk-detail-value">
+                              {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
+                                <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
+                                  {approvalStyleMap[r.approvalStatus].label}
+                                </span>
+                              ) : ''}
                             </span>
-                          ) : ''}
-                        </span>
-                      </div>
+                          </div>
+                        );
+                      })()}
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
@@ -611,7 +652,7 @@ export default function BerthDetailContent({
                   <div className="chk-detail-grid">
                     {[
                       { label: 'Loại đối tượng', value: ({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[(r as any).geometryType || ''] || (r as any).geometryType || '' },
-                      { label: 'Biểu tượng', value: (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:20,height:20,objectFit:'contain' }} /> : null}{symName}</span>; })() },
+                      { label: 'Biểu tượng', value: (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || ''; const symImg = symbolImageMap.get(symId); if (!symName && !symImg) return ''; return <span style={{ display:'inline-flex',alignItems:'center',gap:8 }}>{symImg ? <img src={symImg} alt="" style={{ width:20,height:20,objectFit:'contain' }} /> : null}{symName}</span>; })() },
                       { label: 'Hệ quy chiếu', value: r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem ? String(r.coordinateSystem) : '') },
                       { label: 'Quy tắc hiển thị', value: ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '' },
                     ].map((row, i) => (
@@ -759,7 +800,7 @@ export default function BerthDetailContent({
                   dataSource={infraRows}
                   emptyText="Chưa có dữ liệu"
                   rowKey={(r: any) => r.id || r.infraName || r.name}
-                  scrollY="calc(100vh - 320px)"
+                  scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
                   columns={[
                     { title: 'STT', width: 50, align: 'center' },
                     { title: 'Loại kết cấu hạ tầng', dataIndex: 'infraType', key: 'type', render: (_v: string, rec: any) => <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{rec.infraType === 'Pier' ? 'Cầu cảng' : rec.infraType || ''}</span> },

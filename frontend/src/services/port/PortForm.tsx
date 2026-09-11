@@ -1,17 +1,18 @@
 import { useState, useMemo } from 'react';
-import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Space, Modal, type FormInstance, type InputNumberProps } from 'antd';
-import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Space, Modal, Tooltip, Drawer, type FormInstance, type InputNumberProps } from 'antd';
+import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, DownOutlined, RightOutlined, EyeOutlined, EditOutlined, FileTextOutlined } from '@ant-design/icons';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
-  colors, textSecondary, textTertiary, borderDefault, statusCritical,
-  fontSizeSm, fontSizeLg, fontWeightBold,
+  colors, textPrimary, textSecondary, textTertiary, borderDefault, statusCritical,
+  fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, surfaceCard,
   readonlyInputStyle, actionPrimary, sidebarBg, textAreaStyle,
-  drawerTabBarStyle, drawerFormScrollStyle,
+  drawerTabBarStyle, drawerFormScrollStyle, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   outlineButtonStyle, primaryButtonStyle,
+  statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
   DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
@@ -21,6 +22,7 @@ import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '
 import DetailTable from '../../components/shared/DetailTable';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
+import type { PortWharfAreaItem } from './types';
 
 // ── Styles ──────────────────────────────────────────────────────────
 // Đồng bộ cỡ chữ 13.5px cho form Cảng biển (giống chuẩn VTS CHK/cols dùng ở Bến cảng).
@@ -276,6 +278,9 @@ export interface PortFormProps {
   removeInfra: (index: number) => void;
   updateInfraName: (index: number, value: string) => void;
   updateInfraQty: (index: number, value: number | null) => void;
+  /** Danh sách khu bến (tab mới) */
+  wharfAreaList: PortWharfAreaItem[];
+  setWharfAreaList: React.Dispatch<React.SetStateAction<PortWharfAreaItem[]>>;
   /** id cảng biển đang sửa (update) — dùng cho tải file đính kèm thật về máy (chuẩn Bến cảng). */
   recordId?: string;
   /** bản đồ id người dùng → tên (resovle uploadedByName giống BerthForm). */
@@ -311,6 +316,8 @@ export default function PortForm({
   removeInfra,
   updateInfraName,
   updateInfraQty,
+  wharfAreaList,
+  setWharfAreaList,
   uploadFileList,
   setUploadFileList,
   onDeleteAttachment,
@@ -328,6 +335,93 @@ export default function PortForm({
   const effectiveGeometryType = watchedGeometryType || geometryType;
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [indicatorOpen, setIndicatorOpen] = useState(true); // Toggle 'Chỉ số tổng hợp' (mặc định MỞ)
+  const [wharfAreaOpen, setWharfAreaOpen] = useState(true);
+  const [wharfDrawerOpen, setWharfDrawerOpen] = useState(false);
+  const [editingWharfIndex, setEditingWharfIndex] = useState<number | null>(null);
+  const [wharfForm] = Form.useForm();
+  const [viewingWharfArea, setViewingWharfArea] = useState<PortWharfAreaItem | null>(null);
+
+  const openAddWharfArea = async () => {
+    setEditingWharfIndex(null);
+    wharfForm.resetFields();
+    setWharfDrawerOpen(true);
+    const currentPortCode = form.getFieldValue('portCode');
+    const pCodeStr = (currentPortCode && String(currentPortCode).trim()) ? String(currentPortCode).trim() : '';
+    const prefix = pCodeStr ? `${pCodeStr}-KB` : 'KB-';
+    let maxNum = 0;
+    (wharfAreaList || []).forEach((w) => {
+      if (w.wharfCode && w.wharfCode.startsWith(prefix)) {
+        const n = parseInt(w.wharfCode.substring(prefix.length), 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+    });
+    try {
+      const res = await api.get('/v1/ports/wharf-areas/generate-code', {
+        params: { portId: recordId, portCode: pCodeStr || undefined },
+      });
+      const sCode = res.data?.data?.wharfCode;
+      if (sCode && sCode.startsWith(prefix)) {
+        const sNum = parseInt(sCode.substring(prefix.length), 10);
+        if (!isNaN(sNum) && sNum > maxNum) {
+          maxNum = sNum - 1;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    const nextCode = prefix.endsWith('-KB')
+      ? `${prefix}${String(maxNum + 1).padStart(2, '0')}`
+      : `KB-${String(maxNum + 1).padStart(6, '0')}`;
+    wharfForm.setFieldsValue({ wharfCode: nextCode });
+  };
+
+  const openEditWharfArea = (index: number) => {
+    setEditingWharfIndex(index);
+    const item = wharfAreaList[index];
+    if (item) {
+      wharfForm.setFieldsValue({
+        wharfCode: item.wharfCode,
+        wharfName: item.wharfName,
+        mainPlanningFunction: item.mainPlanningFunction,
+        planningScope: item.planningScope,
+        regulatoryDocument: item.regulatoryDocument,
+        notes: item.notes,
+      });
+    }
+    setWharfDrawerOpen(true);
+  };
+
+  const saveWharfArea = async () => {
+    try {
+      const values = await wharfForm.validateFields();
+      const newItem: PortWharfAreaItem = {
+        id: editingWharfIndex != null ? wharfAreaList[editingWharfIndex]?.id : undefined,
+        wharfCode: values.wharfCode,
+        wharfName: values.wharfName?.trim(),
+        mainPlanningFunction: values.mainPlanningFunction?.trim() || null,
+        planningScope: values.planningScope?.trim() || null,
+        regulatoryDocument: values.regulatoryDocument?.trim() || null,
+        notes: values.notes?.trim() || null,
+      };
+      if (editingWharfIndex != null) {
+        setWharfAreaList((prev) => {
+          const next = [...prev];
+          next[editingWharfIndex] = newItem;
+          return next;
+        });
+      } else {
+        setWharfAreaList((prev) => [...prev, newItem]);
+      }
+      setWharfDrawerOpen(false);
+      wharfForm.resetFields();
+    } catch {
+      // validation error
+    }
+  };
+
+  const removeWharfArea = (index: number) => {
+    setWharfAreaList((prev) => prev.filter((_, i) => i !== index));
+  };
   void onGpsPageChange;
 
   // Transform uploadFileList từ kiểu upload nội bộ { uid, name, size, status, originFileObj }
@@ -1012,6 +1106,143 @@ export default function PortForm({
         />
       ),
     },
+    // ── Tab: Khu bến ──
+    {
+      key: 'wharfArea',
+      label: `Khu bến (${wharfAreaList.length})`,
+      children: (
+        <div style={drawerFormScrollStyle}>
+          {/* Card: Thông tin khu bến */}
+          <div style={sectionBoxStyle}>
+            <div
+              onClick={() => setWharfAreaOpen(!wharfAreaOpen)}
+              style={{
+                ...sectionHeaderStyle,
+                cursor: 'pointer',
+                userSelect: 'none',
+                marginBottom: wharfAreaOpen ? spaceSm : 0,
+                paddingBottom: wharfAreaOpen ? spaceSm : 0,
+                borderBottom: wharfAreaOpen ? sectionHeaderStyle.borderBottom : 'none',
+              }}
+            >
+              <div style={sectionTitleStyle}>
+                <FileTextOutlined style={{ color: actionPrimary }} />
+                <span>Danh sách khu bến ({wharfAreaList.length})</span>
+              </div>
+              <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>
+                {wharfAreaOpen ? <DownOutlined /> : <RightOutlined />}
+              </span>
+            </div>
+            {wharfAreaOpen && (
+              <div>
+                <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', height: 32 }}>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={openAddWharfArea}
+                    style={{ ...primaryButtonStyle, height: 32, fontSize: fontSizeMd, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Thêm khu bến
+                  </Button>
+                </div>
+                {wharfAreaList.length === 0 ? (
+                  <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
+                    <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có khu bến nào.</span>
+                  </div>
+                ) : (
+                  <DetailTable<PortWharfAreaItem & { _idx: number }>
+                    size="small"
+                    scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
+                    dataSource={wharfAreaList.map((item, i) => ({ ...item, _idx: i }))}
+                    rowKey={(record) => String(record._idx)}
+                    emptyText="Chưa có dữ liệu"
+                    columns={[
+                      {
+                        title: 'STT',
+                        width: 60,
+                        align: 'center' as const,
+                        render: (_value, _record, index) => index + 1,
+                      },
+                      {
+                        title: 'Tên / Mã khu bến',
+                        key: 'wharfNameAndCode',
+                        width: 220,
+                        render: (_value, record) => (
+                          <div style={{ overflow: 'hidden' }}>
+                            <a
+                              title={record.wharfName || ''}
+                              onClick={() => setViewingWharfArea(record)}
+                              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            >
+                              {record.wharfName || ''}
+                            </a>
+                            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {record.wharfCode || ''}
+                            </span>
+                          </div>
+                        ),
+                      },
+                      {
+                        title: 'Chức năng quy hoạch chính',
+                        dataIndex: 'mainPlanningFunction',
+                        key: 'mainPlanningFunction',
+                        ellipsis: true,
+                        render: (text: string) => text || '',
+                      },
+                      {
+                        title: 'Phạm vi / Địa bàn quy hoạch',
+                        dataIndex: 'planningScope',
+                        key: 'planningScope',
+                        ellipsis: true,
+                        render: (text: string) => text || '',
+                      },
+                      {
+                        title: 'Thao tác',
+                        key: 'actions',
+                        width: 100,
+                        align: 'center' as const,
+                        render: (_value, record) => (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                            <Tooltip title="Xem chi tiết">
+                              <Button
+                                type="text"
+                                size="small"
+                                style={{ width: 28, height: 28, padding: 0 }}
+                                icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 15 }} />}
+                                onClick={() => setViewingWharfArea(record)}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Chỉnh sửa">
+                              <Button
+                                type="text"
+                                size="small"
+                                style={{ width: 28, height: 28, padding: 0 }}
+                                icon={<EditOutlined style={{ color: actionPrimary, fontSize: 15 }} />}
+                                onClick={() => openEditWharfArea(record._idx)}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Xóa">
+                              <Button
+                                type="text"
+                                size="small"
+                                danger
+                                style={{ width: 28, height: 28, padding: 0 }}
+                                icon={<DeleteOutlined style={{ fontSize: 15 }} />}
+                                onClick={() => removeWharfArea(record._idx)}
+                              />
+                            </Tooltip>
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
     // ── Tab 4: Công trình KCHT trực thuộc ──
     {
       key: 'infra', label: `Công trình KCHT trực thuộc (${infraList.length})`,
@@ -1073,7 +1304,7 @@ export default function PortForm({
                     maxLength={5}
                     onChange={(v) => updateInfraQty(record._idx, v)}
                     min={0}
-                    max={5}
+                    max={99999}
                     step={1}
                     precision={0}
                     placeholder="0"
@@ -1185,6 +1416,254 @@ export default function PortForm({
           />
         </div>
       </Modal>
+
+      {/* Drawer thêm/sửa Khu bến */}
+      <Drawer
+        open={wharfDrawerOpen}
+        onClose={() => {
+          setWharfDrawerOpen(false);
+          wharfForm.resetFields();
+        }}
+        destroyOnClose
+        push={false}
+        closable={false}
+        width="min(920px, 96vw)"
+        rootClassName="port-drawer-scope"
+        className="port-drawer-scope"
+        title={
+          <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+            {editingWharfIndex == null ? 'Thêm mới thông tin khu bến' : 'Chỉnh sửa thông tin khu bến'}
+          </span>
+        }
+        extra={
+          <Button
+            type="text"
+            onClick={() => {
+              setWharfDrawerOpen(false);
+              wharfForm.resetFields();
+            }}
+            style={drawerCloseBtnStyle}
+          >
+            ✕
+          </Button>
+        }
+        footer={
+          <div style={drawerFooterStyle}>
+            <Button type="primary" onClick={saveWharfArea} style={primaryButtonStyle}>
+              Lưu
+            </Button>
+          </div>
+        }
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '16px 24px' },
+        }}
+      >
+        <Form form={wharfForm} layout="vertical">
+          <div style={{ ...sectionBoxStyle, padding: '12px 18px' }}>
+            <div style={{ ...sectionHeaderStyle, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+              <div style={sectionTitleStyle}>
+                <FileTextOutlined style={{ color: actionPrimary }} />
+                <span>Thông tin khu bến</span>
+              </div>
+            </div>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="wharfCode"
+                  {...labelProps('Mã khu bến')}
+                  style={{ marginBottom: spaceFormField }}
+                  tooltip="Mã khu bến tự động sinh, không thể chỉnh sửa"
+                >
+                  <Input disabled placeholder="Mã tự động" maxLength={50} style={readonlyInputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="wharfName"
+                  {...labelProps('Tên khu bến')}
+                  required
+                  rules={[
+                    { required: true, message: 'Tên khu bến không được để trống' },
+                    { max: 255, message: 'Tên khu bến tối đa 255 ký tự' },
+                  ]}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input placeholder="Nhập tên khu bến" maxLength={255} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="mainPlanningFunction"
+                  {...labelProps('Chức năng quy hoạch chính')}
+                  rules={[{ max: 255, message: 'Chức năng quy hoạch chính tối đa 255 ký tự' }]}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input placeholder="Nhập chức năng quy hoạch chính" maxLength={255} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="planningScope"
+                  {...labelProps('Phạm vi / Địa bàn quy hoạch')}
+                  rules={[{ max: 255, message: 'Phạm vi / địa bàn quy hoạch tối đa 255 ký tự' }]}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input placeholder="Nhập phạm vi / địa bàn quy hoạch" maxLength={255} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={24}>
+                <Form.Item
+                  name="regulatoryDocument"
+                  {...labelProps('Văn bản quy định')}
+                  rules={[{ max: 2000, message: 'Văn bản quy định tối đa 2000 ký tự' }]}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input.TextArea rows={3} placeholder="Nhập văn bản quy định" maxLength={2000} showCount style={textAreaStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={24}>
+                <Form.Item
+                  name="notes"
+                  {...labelProps('Ghi chú')}
+                  rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
+        </Form>
+      </Drawer>
+
+      {/* Drawer xem chi tiết Khu bến */}
+      <Drawer
+        open={!!viewingWharfArea}
+        onClose={() => setViewingWharfArea(null)}
+        destroyOnClose
+        push={false}
+        closable={false}
+        width="min(920px, 96vw)"
+        rootClassName="port-drawer-scope"
+        className="port-drawer-scope"
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu bến</span>}
+        extra={
+          <Button type="text" onClick={() => setViewingWharfArea(null)} style={drawerCloseBtnStyle}>
+            ✕
+          </Button>
+        }
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {viewingWharfArea && (
+          <div className="port-detail-content-wrapper">
+            <style>{`
+              .port-detail-content-wrapper,
+              .port-detail-content-wrapper .chk-detail-label,
+              .port-detail-content-wrapper .chk-detail-value {
+                font-size: 13.5px !important;
+              }
+              .port-detail-content-wrapper .chk-detail-grid {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 0 !important;
+              }
+              .port-detail-content-wrapper .chk-detail-row {
+                display: flex !important;
+                align-items: flex-start !important;
+                min-height: 36px !important;
+                padding: 7px 0 !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                line-height: 1.5 !important;
+                gap: 10px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+              }
+              .port-detail-content-wrapper .chk-detail-row:last-child {
+                border-bottom: none !important;
+              }
+              .port-detail-content-wrapper .chk-detail-label {
+                width: 220px !important;
+                min-width: 220px !important;
+                max-width: 220px !important;
+                flex-shrink: 0 !important;
+                color: ${sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: nowrap !important;
+              }
+              .port-detail-content-wrapper .chk-detail-label::after {
+                content: ':' !important;
+                margin-left: 1px !important;
+                margin-right: 4px !important;
+              }
+              .port-detail-content-wrapper .chk-detail-value {
+                flex: 1 1 auto !important;
+                color: #1e293b !important;
+                font-size: 13.5px !important;
+                font-weight: 500 !important;
+                line-height: 1.5 !important;
+                min-width: 0 !important;
+                word-break: break-word !important;
+              }
+            `}</style>
+            <div style={{ paddingTop: 10 }}>
+              <div style={{ ...sectionBoxStyle, padding: '12px 18px' }}>
+                <div style={{ ...sectionHeaderStyle, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={sectionTitleStyle}>
+                    <FileTextOutlined style={{ color: actionPrimary }} />
+                    <span>Thông tin khu bến</span>
+                  </div>
+                </div>
+                <div className="chk-detail-grid">
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Mã khu bến</span>
+                    <span className="chk-detail-value">
+                      {viewingWharfArea.wharfCode ? <span style={statusBadgeStyle(actionPrimary)}>{viewingWharfArea.wharfCode}</span> : ''}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Tên khu bến</span>
+                    <span className="chk-detail-value">
+                      {viewingWharfArea.wharfName ? <span style={{ fontWeight: fontWeightBold, color: sidebarBg }}>{viewingWharfArea.wharfName}</span> : ''}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Chức năng quy hoạch chính</span>
+                    <span className="chk-detail-value">{viewingWharfArea.mainPlanningFunction || ''}</span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Phạm vi / Địa bàn quy hoạch</span>
+                    <span className="chk-detail-value">{viewingWharfArea.planningScope || ''}</span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Văn bản quy định</span>
+                    <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{viewingWharfArea.regulatoryDocument || ''}</span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ghi chú</span>
+                    <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{viewingWharfArea.notes || ''}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </>
   );
 }

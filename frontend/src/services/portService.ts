@@ -1590,7 +1590,7 @@ export const daiTtdhApproval = {
   },
 
   async rejectStage(id: string, reason: string, currentStatus?: string): Promise<void> {
-    const cap = currentStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
+    const cap = (currentStatus === 'APPROVED_LEVEL1' || currentStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
     await api.post(`/v1/dai-ttdh/${id}/reject`, { cap, lyDo: reason });
   },
 };

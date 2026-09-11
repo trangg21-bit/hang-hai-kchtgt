@@ -35,7 +35,7 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
            "(:condition IS NULL OR b.condition = :condition) AND " +
            "(:provinceId IS NULL OR b.provinceId = :provinceId) AND " +
            "(cast(:locationDetail as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.locationDetail)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:locationDetail as string), '%'))) AS string)) AND " +
-           "(:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) ORDER BY b.updatedAt DESC")
+           "(:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) ORDER BY b.updatedAt DESC, b.createdAt DESC, b.id ASC")
     List<Buoy> searchFiltered(
         @Param("name") String name,
         @Param("code") String code,

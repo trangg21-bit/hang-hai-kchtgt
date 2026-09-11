@@ -165,10 +165,17 @@ public class BerthApprovalService {
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
                     m.put("fieldName", h.getChangedField());
+                    m.put("changedField", h.getChangedField());
                     m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("previousValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
                     m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("value", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("status", h.getStatus() != null ? h.getStatus().name() : "");
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
                     m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("approvedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("changedAt", h.getApprovedDate());
+                    m.put("approvedDate", h.getApprovedDate());
                     return m;
                 })
                 .toList();

@@ -359,6 +359,8 @@ public class BerthService {
             entity.setOperationalFunction(request.getOperationalFunction());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
+        if (request.getMapSymbolId() != null)
+            entity.setMapSymbolId(request.getMapSymbolId());
         // Extended fields
         if (request.getProvinceId() != null)
             entity.setProvinceId(request.getProvinceId());
@@ -525,8 +527,6 @@ public class BerthService {
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
         berthRepository.save(entity);
-        changeHistoryService.recordChanges("Berth", entity.getId().toString(), "system", snapshot, entity);
-        changeHistoryService.insertChangeRecord("Berth", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -674,7 +674,7 @@ public class BerthService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
                 entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
                 break;
@@ -696,10 +696,20 @@ public class BerthService {
 
     @Transactional
     public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files,
-            UUID userId) {
+            UUID userId, Boolean skipHistory) {
         List<Attachment> savedAttachments = new java.util.ArrayList<>();
         List<String> uploadedFileNames = new java.util.ArrayList<>();
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
+
+        // 1. Summary danh sách file cũ trước khi upload (bảng file đính kèm)
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
             String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
@@ -728,18 +738,32 @@ public class BerthService {
             uploadedFileNames.add(originalFilename);
         }
 
-        // Ghi lịch sử file đính kèm chỉ khi bến cảng cha đã duyệt (chuẩn Cảng biển/DocumentService)
+        // 2. Summary danh sách file mới sau khi upload (bảng file đính kèm đầy đủ)
+        List<String> fileListAfter = new java.util.ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        // Ghi lịch sử file đính kèm chỉ khi cha đã duyệt (chuẩn Cảng biển)
         if (!uploadedFileNames.isEmpty()) {
             String mergedNames = String.join(", ", uploadedFileNames);
             if ("BERTH".equalsIgnoreCase(entityType)) {
-                recordBerthAttachmentHistory(entityId, mergedNames,
-                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+                recordBerthAttachmentHistory(entityId, userId, oldFilesSummary, newFilesSummary, mergedNames,
+                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
             } else if ("PIER".equalsIgnoreCase(entityType)) {
-                recordPierAttachmentHistory(entityId, mergedNames,
-                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+                recordPierAttachmentHistory(entityId, userId, oldFilesSummary, newFilesSummary, mergedNames,
+                        InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
             }
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
+    }
+
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files,
+            UUID userId) {
+        return uploadAttachments(entityType, entityId, files, userId, null);
     }
 
     public List<AttachmentDto> listAttachments(String entityType, UUID entityId) {
@@ -757,13 +781,30 @@ public class BerthService {
     }
 
     @Transactional
-    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId, Boolean skipHistory) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
         String fileName = attachment.getFileName();
+
+        // 1. Summary danh sách file trước khi xóa
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.joining(", "));
+
+        // 2. Summary danh sách file sau khi xóa
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(java.util.stream.Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -771,22 +812,28 @@ public class BerthService {
         }
         attachmentRepository.delete(attachment);
 
-        // Ghi lịch sử file đính kèm chỉ khi bến cảng cha đã duyệt (chuẩn Cảng biển/DocumentService)
+        // Ghi lịch sử file đính kèm chỉ khi cha đã duyệt (chuẩn Cảng biển)
         if ("BERTH".equalsIgnoreCase(entityType)) {
-            recordBerthAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+            recordBerthAttachmentHistory(entityId, userId, oldFilesSummary, newFilesSummary, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
         } else if ("PIER".equalsIgnoreCase(entityType)) {
-            recordPierAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+            recordPierAttachmentHistory(entityId, userId, oldFilesSummary, newFilesSummary, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
         }
     }
 
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+        deleteAttachment(entityType, entityId, attachmentId, userId, null);
+    }
+
     /**
-     * Ghi lịch sử thay đổi file đính kèm của Bến cảng (chuẩn Port/DocumentService:
-     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
-     * Chỉ ghi khi bến cảng cha đã duyệt (APPROVED / APPROVED_LEVEL2).
+     * Ghi lịch sử thay đổi file đính kèm của Bến cảng dạng BẢNG SNAPSHOT (chuẩn PortService).
+     * Chỉ ghi khi bến cảng cha đã duyệt (APPROVED / APPROVED_LEVEL2). Thêm mới không ghi.
      */
-    private void recordBerthAttachmentHistory(UUID berthId, String fileName,
-                                              InfrastructureHistoryStatus status) {
+    private void recordBerthAttachmentHistory(UUID berthId, UUID userId, String oldFilesSummary, String newFilesSummary,
+                                              String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
+            if (Boolean.TRUE.equals(skipHistory)) {
+                return;
+            }
             if (berthId == null || historyRepository == null) {
                 return;
             }
@@ -800,22 +847,35 @@ public class BerthService {
             if (!wasApproved) {
                 return;
             }
-            String name = fileName != null ? fileName : "không rõ tên";
+            // Guard: Thêm mới bến cảng không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát updatedAt)
+            if (berth.getCreatedAt() != null && berth.getUpdatedAt() != null) {
+                long diffSec = Math.abs(java.time.Duration.between(berth.getCreatedAt(), berth.getUpdatedAt()).toSeconds());
+                if (diffSec <= 5 && !Boolean.FALSE.equals(skipHistory)) {
+                    return;
+                }
+            }
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (java.util.Objects.equals(oldVal, newVal)) {
+                return;
+            }
+            String name = affectedFileName != null ? affectedFileName : "không rõ tên";
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            UUID actor = userId != null ? userId : SecurityUtils.getCurrentUserId();
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(berthId)
                     .refType(InfrastructureType.PORT_TERMINAL)
                     .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(status)
-                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedBy(actor)
                     .approvedDate(LocalDateTime.now())
                     .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(uploaded ? "—" : name)
-                    .newValue(uploaded ? name : "—")
+                    .changedField("File đính kèm")
+                    .previousValue(oldVal)
+                    .newValue(newVal)
                     .build());
-            log.info("[BerthService] Đã ghi lịch sử {} file đính kèm của Bến cảng [{}]: {}",
-                    uploaded ? "tải lên" : "xóa", berthId, name);
+            log.info("[BerthService] Đã ghi lịch sử {} file đính kèm của Bến cảng [{}]: [{}] -> [{}]",
+                    uploaded ? "tải lên" : "xóa", berthId, oldVal, newVal);
         } catch (Exception e) {
             log.warn("[BerthService] Không ghi được lịch sử file đính kèm (berthId={}): {}",
                     berthId, e.getMessage());
@@ -823,37 +883,57 @@ public class BerthService {
     }
 
     /**
-     * Ghi lịch sử thay đổi file đính kèm của Cầu cảng (chuẩn Port/DocumentService:
-     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm",
-     * approvedBy = user thật từ SecurityContext). PierController ủy quyền /attachments
-     * sang BerthService với entityType = "PIER". Chỉ ghi khi cầu cảng đã duyệt (APPROVED).
+     * Ghi lịch sử thay đổi file đính kèm của Cầu cảng dạng BẢNG SNAPSHOT (chuẩn PortService).
+     * Chỉ ghi khi cầu cảng đã duyệt (APPROVED). Thêm mới không ghi.
      */
-    private void recordPierAttachmentHistory(UUID pierId, String fileName,
-                                             InfrastructureHistoryStatus status) {
+    private void recordPierAttachmentHistory(UUID pierId, UUID userId, String oldFilesSummary, String newFilesSummary,
+                                             String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
+            if (Boolean.TRUE.equals(skipHistory)) {
+                return;
+            }
             if (pierId == null || historyRepository == null) {
                 return;
             }
             Pier pier = pierRepository.findById(pierId).orElse(null);
-            if (pier == null || pier.getApprovalStatus() != ApprovalStatus.APPROVED) {
+            if (pier == null) {
                 return;
             }
-            String name = fileName != null ? fileName : "không rõ tên";
+            ApprovalStatus approval = pier.getApprovalStatus();
+            boolean wasApproved = approval == ApprovalStatus.APPROVED
+                    || approval == ApprovalStatus.APPROVED_LEVEL2;
+            if (!wasApproved) {
+                return;
+            }
+            // Guard: Thêm mới cầu cảng không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát updatedAt)
+            if (pier.getCreatedAt() != null && pier.getUpdatedAt() != null) {
+                long diffSec = Math.abs(java.time.Duration.between(pier.getCreatedAt(), pier.getUpdatedAt()).toSeconds());
+                if (diffSec <= 5 && !Boolean.FALSE.equals(skipHistory)) {
+                    return;
+                }
+            }
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (java.util.Objects.equals(oldVal, newVal)) {
+                return;
+            }
+            String name = affectedFileName != null ? affectedFileName : "không rõ tên";
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+            UUID actor = userId != null ? userId : SecurityUtils.getCurrentUserId();
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(pierId)
                     .refType(InfrastructureType.PIER)
                     .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(status)
-                    .approvedBy(SecurityUtils.getCurrentUserId())
+                    .approvedBy(actor)
                     .approvedDate(LocalDateTime.now())
                     .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(uploaded ? "—" : name)
-                    .newValue(uploaded ? name : "—")
+                    .changedField("File đính kèm")
+                    .previousValue(oldVal)
+                    .newValue(newVal)
                     .build());
-            log.info("[BerthService] Đã ghi lịch sử {} file đính kèm của Cầu cảng [{}]: {}",
-                    uploaded ? "tải lên" : "xóa", pierId, name);
+            log.info("[BerthService] Đã ghi lịch sử {} file đính kèm của Cầu cảng [{}]: [{}] -> [{}]",
+                    uploaded ? "tải lên" : "xóa", pierId, oldVal, newVal);
         } catch (Exception e) {
             log.warn("[BerthService] Không ghi được lịch sử file đính kèm (pierId={}): {}",
                     pierId, e.getMessage());
