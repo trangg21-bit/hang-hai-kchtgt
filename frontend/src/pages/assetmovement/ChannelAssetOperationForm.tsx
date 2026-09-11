@@ -300,7 +300,6 @@ export default function ChannelAssetOperationForm({
       tabs={tabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={typeof window !== 'undefined' ? Math.min(900, Math.floor(window.innerWidth * 0.95)) : 900}
     />
   );
 }

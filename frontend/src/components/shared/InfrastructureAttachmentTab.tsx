@@ -14,6 +14,11 @@ import toast from '../ToastNotification';
 import DetailTable from './DetailTable';
 import api from '../../services/api';
 import {
+  triggerBlobDownload,
+  resolveMimeType,
+  formatAttachmentFileSize,
+} from './infrastructureAttachmentUtils';
+import {
   actionPrimary,
   textPrimary,
   textTertiary,
@@ -27,6 +32,9 @@ import {
   DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 
+// eslint-disable-next-line react-refresh/only-export-components
+export { triggerBlobDownload, resolveMimeType, formatAttachmentFileSize };
+
 export interface InfrastructureAttachmentItem {
   id: string;
   fileName: string;
@@ -35,14 +43,18 @@ export interface InfrastructureAttachmentItem {
   fileType?: string;
   uploadedByName?: string;
   uploadedBy?: string;
+  uploaderName?: string;
+  createdByName?: string;
+  createdBy?: string;
   uploadedDate?: string;
   uploadedAt?: string;
   createdAt?: string;
+  createdDate?: string;
   filePath?: string;
   file?: File;
   originFileObj?: File;
   url?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface InfrastructureAttachmentTabProps {
@@ -55,11 +67,11 @@ export interface InfrastructureAttachmentTabProps {
   /** Bảng tra cứu tên người dùng theo UUID */
   userMap?: Map<string, string>;
   /** Callback khi người dùng chọn/kéo thả tải lên tệp mới */
-  onUpload?: (file: File) => void | boolean | Promise<any>;
+  onUpload?: (file: File) => void | boolean | Promise<unknown>;
   /** Callback khi người dùng xóa tệp */
-  onDelete?: (attachmentId: string) => void | Promise<any>;
+  onDelete?: (attachmentId: string) => void | Promise<unknown>;
   /** Callback khi người dùng nhấn tải xuống tệp */
-  onDownload?: (attachmentId: string, fileName: string) => void | Promise<any>;
+  onDownload?: (attachmentId: string, fileName: string) => void | Promise<unknown>;
   /** Callback xem trước tùy biến */
   onPreview?: (attachment: InfrastructureAttachmentItem) => void;
   /**
@@ -100,7 +112,7 @@ const DEFAULT_ALLOWED_EXTS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg'
 /**
  * Kiểm tra xem tệp có phải là định dạng hình ảnh hay không
  */
-export const isImageFile = (fileName?: string, fileType?: string): boolean => {
+const isImageFile = (fileName?: string, fileType?: string): boolean => {
   if (fileType?.startsWith('image/')) return true;
   if (!fileName) return false;
   const ext = fileName.split('.').pop()?.toLowerCase();
@@ -110,7 +122,7 @@ export const isImageFile = (fileName?: string, fileType?: string): boolean => {
 /**
  * Hàm kiểm tra định dạng và dung lượng tệp đính kèm theo chuẩn hệ thống KCHTGT
  */
-export const validateAttachmentFile = (
+const validateAttachmentFile = (
   file: File,
   options?: { maxSizeMB?: number; acceptExtensions?: string[] }
 ): boolean => {
@@ -128,38 +140,6 @@ export const validateAttachmentFile = (
   return true;
 };
 
-/**
- * Định dạng dung lượng tệp chuẩn (KB / MB)
- */
-export const formatAttachmentFileSize = (bytes?: number): string => {
-  if (bytes === undefined || bytes === null || isNaN(Number(bytes))) return '—';
-  const num = Number(bytes);
-  if (num >= 1024 * 1024) {
-    return `${(num / (1024 * 1024)).toFixed(2)} MB`;
-  }
-  return `${(num / 1024).toFixed(1)} KB`;
-};
-
-export const triggerBlobDownload = (blobOrUrl: Blob | string, fileName: string) => {
-  const isUrl = typeof blobOrUrl === 'string';
-  const url = isUrl ? blobOrUrl : URL.createObjectURL(blobOrUrl);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName || 'tai-lieu';
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  setTimeout(() => {
-    try {
-      document.body.removeChild(link);
-      if (!isUrl) {
-        URL.revokeObjectURL(url);
-      }
-    } catch {
-      // ignore
-    }
-  }, 3000);
-};
 
 /**
  * Component dùng chung cho Tab "File đính kèm" trên tất cả các Drawer Thêm mới, Sửa và Xem chi tiết.
@@ -299,7 +279,7 @@ export default function InfrastructureAttachmentTab({
           cleanPath = `/${cleanPath}`;
         }
         const res = await api.get(cleanPath, { responseType: 'blob' });
-        const contentType = res.headers?.['content-type'] || 'image/jpeg';
+        const contentType = (typeof res.headers?.['content-type'] === 'string' ? res.headers['content-type'] : '') || 'image/jpeg';
         const blob = new Blob([res.data], { type: contentType });
         const blobUrl = URL.createObjectURL(blob);
         activeBlobUrlRef.current = blobUrl;
@@ -347,7 +327,7 @@ export default function InfrastructureAttachmentTab({
           cleanPath = `/${cleanPath}`;
         }
         const res = await api.get(cleanPath, { responseType: 'blob' });
-        const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+        const contentType = (typeof res.headers?.['content-type'] === 'string' ? res.headers['content-type'] : '') || 'application/octet-stream';
         const blob = new Blob([res.data], { type: contentType });
         triggerBlobDownload(blob, record.fileName || 'tai-lieu');
         toast.success(`Đã tải xuống tệp: ${record.fileName}`);
@@ -465,12 +445,21 @@ export default function InfrastructureAttachmentTab({
       width: 180,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
         const byUploadedBy = record.uploadedBy ? userMap?.get(record.uploadedBy) : undefined;
-        const raw = v || record.uploadedByName || record.uploadedBy || record.uploaderName || record.createdByName || record.createdBy;
-        const resolved = byUploadedBy || ((raw && userMap?.get(raw)) ? userMap.get(raw) : raw);
-        const isUuid = resolved && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolved);
-        const displayName = isUuid
-          ? (currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý')
-          : (resolved || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý');
+        const raw = (v ||
+          record.uploadedByName ||
+          record.uploadedBy ||
+          record.uploaderName ||
+          record.createdByName ||
+          record.createdBy) as string | undefined;
+        const resolved = byUploadedBy || (raw && userMap?.get(raw) ? userMap.get(raw) : raw);
+        const isUuid = Boolean(
+          resolved && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolved)
+        );
+        const displayName: string =
+          (isUuid
+            ? currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý'
+            : resolved || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý') ||
+          'Cán bộ quản lý';
         return (
           <span
             style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -487,8 +476,17 @@ export default function InfrastructureAttachmentTab({
       width: 160,
       align: 'left' as const,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
-        const dateVal = v || record.uploadedDate || record.uploadedAt || record.createdAt || record.createdDate
-          || (record.originFileObj ? dayjs(record.originFileObj.lastModified).toISOString() : (record.file ? dayjs(record.file.lastModified).toISOString() : dayjs().toISOString()));
+        const dateVal =
+          v ||
+          record.uploadedDate ||
+          record.uploadedAt ||
+          record.createdAt ||
+          record.createdDate ||
+          (record.originFileObj
+            ? dayjs(record.originFileObj.lastModified).toISOString()
+            : record.file
+            ? dayjs(record.file.lastModified).toISOString()
+            : dayjs().toISOString());
         return dateVal ? dayjs(dateVal).format('DD/MM/YYYY HH:mm') : dayjs().format('DD/MM/YYYY HH:mm');
       },
     },
@@ -641,7 +639,7 @@ export default function InfrastructureAttachmentTab({
         scrollY={effectiveScrollY}
         dataSource={effectiveAttachments}
         emptyText={isLoading ? 'Đang tải tài liệu đính kèm...' : (emptyText || 'Chưa có tài liệu đính kèm')}
-        rowKey={(r: any) => r.id || r.fileName}
+        rowKey={(record: InfrastructureAttachmentItem) => record.id || record.fileName}
         columns={columns}
       />
 
@@ -679,7 +677,7 @@ export default function InfrastructureAttachmentTab({
         ]}
         width="min(800px, 90vw)"
         centered
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: radiusMd }}>
           {previewLoading ? (

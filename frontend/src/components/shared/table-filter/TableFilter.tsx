@@ -310,7 +310,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
             showSearch={showSearch}
             optionFilterProp="label"
             disabled={disabled}
-            options={filter.options}
+            options={filter.options as any}
             style={{
               width: '100%',
               borderRadius: radiusPill,
@@ -348,7 +348,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
             allowClear={allowClear}
             showSearch={showSearch}
             disabled={disabled}
-            options={filter.options}
+            options={filter.options as any}
             style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
             {...(filter.selectProps as React.ComponentProps<typeof Select>)}
           />

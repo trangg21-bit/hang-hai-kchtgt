@@ -29,6 +29,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -195,22 +196,19 @@ public class PermissionMiddleware extends OncePerRequestFilter {
      */
     private String extractResource(String path) {
         String[] segments = path.split("/");
-        StringBuilder resource = new StringBuilder();
-        boolean found = false;
+        List<String> validSegments = new ArrayList<>();
         for (String segment : segments) {
-            if (segment.isEmpty())
-                continue;
-            if (!found && ("api".equals(segment) || "v1".equals(segment))) {
-                continue;
+            if (!segment.isEmpty() && !"api".equals(segment) && !"v1".equals(segment)) {
+                validSegments.add(segment);
             }
-            found = true;
-            resource.append(segment);
-            break;
         }
-        String res = resource.toString();
-        if (res.isEmpty())
+        if (validSegments.isEmpty()) {
             return "unknown";
-        return normalizeResource(res);
+        }
+        if ("asset".equals(validSegments.get(0)) && validSegments.size() > 1) {
+            return normalizeResource(validSegments.get(1));
+        }
+        return normalizeResource(validSegments.get(0));
     }
 
     /**
@@ -324,7 +322,17 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("dashboard", "dashboard"),
             entry("backups", "admin"),
             entry("siem", "security"),
-            entry("admin", "admin"));
+            entry("admin", "admin"),
+            entry("infra-assets", "infraasset"),
+            entry("asset-decrease-requests", "assetdecrease"),
+            entry("asset-increase-requests", "assetincrease"),
+            entry("inventory-assets", "inventoryasset"),
+            entry("inventory-reports", "inventoryreport"),
+            entry("inventory-plans", "inventoryplan"),
+            entry("movement-requests", "movementrequest"),
+            entry("asset-processing-records", "assetprocessingrecord"),
+            entry("asset-exploitations", "assetexploitation"),
+            entry("approval-records", "approvalrecord"));
 
     /**
      * Map HTTP method to CRUD action.

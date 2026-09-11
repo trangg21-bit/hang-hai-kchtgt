@@ -96,7 +96,7 @@ export const LogoutConfirmModal: React.FC<LogoutConfirmModalProps> = ({
       ]}
       width={460}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ paddingTop: spaceSm, paddingBottom: spaceSm }}>
         <p style={{ fontSize: fontSizeMd, color: textPrimary, lineHeight: 1.6, marginBottom: 12 }}>

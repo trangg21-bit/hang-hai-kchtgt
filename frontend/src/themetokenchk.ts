@@ -293,6 +293,17 @@ export const DRAWER_TABLE_SCROLL_Y = {
   detailGis: 'calc(100vh - 426px)',
 } as const;
 
+/**
+ * Chiều rộng chuẩn duy nhất cho toàn bộ Drawer Thêm mới, Sửa, Biến động, Xem chi tiết trên toàn hệ thống (1000px).
+ */
+export const DRAWER_WIDTH = typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000;
+export const DRAWER_FORM_WIDTH = DRAWER_WIDTH;
+
+/**
+ * Chiều rộng chuẩn duy nhất cho Modal Xác nhận Xóa trên toàn hệ thống (480px).
+ */
+export const DELETE_MODAL_WIDTH = 480;
+
 /** --info-color của chk, ghi đè --kt-info của Metronic (#7239ea tím). */
 export const statusInfo = '#0284C7';
 
@@ -340,7 +351,7 @@ export const formatUserDisplayName = (
   }
   if (fallbackUserName && !isUuidString(fallbackUserName)) return fallbackUserName;
   if (userId && !isUuidString(String(userId))) return String(userId);
-  return null;
+  return '';
 };
 
 /** Hàm so sánh sắp xếp cột Cán bộ cập nhật (ưu tiên Họ và tên A-Z, sau đó theo ngày) */
@@ -433,7 +444,7 @@ export const statusBadgeStyle = (color: string): React.CSSProperties => ({
 
 /** Render Pill Badge màu ngữ nghĩa cho trạng thái kế hoạch/công việc/xử lý. */
 export const renderPlanStatusBadge = (status?: string): React.ReactNode => {
-  if (!status) return null;
+  if (!status) return '';
   let color = statusDraft;
   if (status.includes('Hoàn thành') || status.includes('Đã xử lý') || status.includes('Đã khắc phục')) {
     color = statusOperational;
@@ -449,7 +460,7 @@ export const renderPlanStatusBadge = (status?: string): React.ReactNode => {
 
 /** Render Pill Badge màu ngữ nghĩa cho mức độ sự cố/rủi ro. */
 export const renderSeverityBadge = (severity?: string): React.ReactNode => {
-  if (!severity) return null;
+  if (!severity) return '';
   let color = statusOperational;
   if (severity.includes('Nghiêm trọng') || severity.includes('Cao')) {
     color = statusCritical;
@@ -500,7 +511,7 @@ export const getConditionStatusColor = (status?: unknown): string => {
 
 /** Lấy nhãn tiếng Việt chuẩn cho Tình trạng hoạt động (ConditionStatus). */
 export const getConditionStatusLabel = (status?: unknown): string => {
-  if (status == null || status === '' || status === null) return null;
+  if (status == null || status === '' || status === '—') return '';
   const s = String(status).trim();
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
@@ -525,7 +536,7 @@ export const getConditionStatusLabel = (status?: unknown): string => {
 
 /** Render Pill Badge chuẩn cho Tình trạng hoạt động (ConditionStatus). */
 export const renderConditionStatusPillBadge = (status?: unknown): React.ReactNode => {
-  if (status == null || status === '' || status === null) return null;
+  if (status == null || status === '' || status === '—') return '';
   const label = getConditionStatusLabel(status);
   const color = getConditionStatusColor(status);
   return React.createElement('span', { style: statusBadgeStyle(color) }, label);
@@ -2225,10 +2236,10 @@ textarea.ant-input {
 /**
  * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
  * Đảm bảo kích thước đồng nhất:
- * - DatePicker đơn trong form: popupClassName="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
- * - DatePicker đơn trên Sidebar: popupClassName="chk-sidebar-datepicker-popup", khóa chuẩn 280px theo Sidebar.
- * - DatePicker.RangePicker: popupClassName="chk-range-datepicker-popup", kích thước 1 panel gọn gàng 280px, ô ngày 26px đồng bộ.
- * - DatePicker.RangePicker (Sidebar): popupClassName="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
+ * - DatePicker đơn trong form: classNames.popup.root="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
+ * - DatePicker đơn trên Sidebar: classNames.popup.root="chk-sidebar-datepicker-popup", khóa chuẩn 280px theo Sidebar.
+ * - DatePicker.RangePicker: classNames.popup.root="chk-range-datepicker-popup", kích thước 1 panel gọn gàng 280px, ô ngày 26px đồng bộ.
+ * - DatePicker.RangePicker (Sidebar): classNames.popup.root="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
  */
 export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
   const {
@@ -2248,7 +2259,7 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
   };
   return {
     format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
-    getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || document.body),
+    getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
     popupClassName: [
       'chk-form-datepicker-popup',
       typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
@@ -2282,12 +2293,6 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) 
   };
   return {
     format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
-    popupClassName: [
-      'chk-sidebar-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2316,12 +2321,6 @@ export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
   return {
     format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
-    popupClassName: [
-      'chk-range-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -2350,12 +2349,6 @@ export const getSidebarRangePickerProps = (extraProps?: Record<string, unknown>)
   return {
     format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
-    popupClassName: [
-      'chk-sidebar-range-datepicker-popup',
-      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
-      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
-      extraPopupClassName,
-    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {

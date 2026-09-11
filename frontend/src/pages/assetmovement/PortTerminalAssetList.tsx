@@ -55,13 +55,15 @@ import type {
   PortTerminalAssetFilters,
   PortTerminalAssetPayload,
 } from "../../services/assetmovement/types";
-import {
-  type InfrastructureAttachmentItem,
-  triggerBlobDownload,
-} from "../../components/shared/InfrastructureAttachmentTab";
+import { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
+import { triggerBlobDownload } from "../../components/shared/infrastructureAttachmentUtils";
 import { useAuthStore } from "../../store/authStore";
 import * as themeTokenChk from "../../themetokenchk";
-import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
+import { fontWeightBold } from "../../themetokenchk";
+import {
+  ThemeTokenProvider,
+  type ThemeToken,
+} from "../../context/ThemeTokenContext";
 import PortTerminalAssetForm, {
   type FormValues,
 } from "./PortTerminalAssetForm";
@@ -158,7 +160,10 @@ function PortTerminalAssetList({
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [filters, setFilters] = useState<PortTerminalAssetFilters>({});
+  const [filters, setFilters] = useState<PortTerminalAssetFilters>({
+    sortBy: "updatedAt",
+    sortDir: "DESC",
+  });
   const [draftFilters, setDraftFilters] = useState<PortTerminalAssetFilters>(
     {},
   );
@@ -307,7 +312,11 @@ function PortTerminalAssetList({
                   record.updatedByName ||
                   record.submittedByName ||
                   "Cán bộ quản lý",
-                uploadedDate: att.uploadedAt || (record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString()),
+                uploadedDate:
+                  att.uploadedAt ||
+                  (record.updatedAt
+                    ? dayjs(record.updatedAt).toISOString()
+                    : dayjs().toISOString()),
                 filePath: `/v1/asset/infra-assets/${record.id}/attachments/${att.id}/download`,
               })),
             );
@@ -391,12 +400,15 @@ function PortTerminalAssetList({
     [currentUser],
   );
 
-  const handleDeleteAttachment = useCallback((id: string) => {
-    if (selected?.id && id.includes("-")) {
-      deleteInfraAssetAttachment(selected.id, id).catch(() => {});
-    }
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, [selected?.id]);
+  const handleDeleteAttachment = useCallback(
+    (id: string) => {
+      if (selected?.id && id.includes("-")) {
+        deleteInfraAssetAttachment(selected.id, id).catch(() => {});
+      }
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
+    },
+    [selected],
+  );
 
   const handleDownloadAttachment = useCallback(
     async (id: string, fileName: string) => {
@@ -426,14 +438,17 @@ function PortTerminalAssetList({
             cleanPath = `/${cleanPath}`;
           }
           const res = await api.get(cleanPath, { responseType: "blob" });
-          const contentType = res.headers?.["content-type"] || "application/octet-stream";
+          const contentType =
+            res.headers?.["content-type"] || "application/octet-stream";
           const blob = new Blob([res.data], { type: contentType });
           triggerBlobDownload(blob, fileName || "tai-lieu");
           toast.success(`Đã tải xuống tệp: ${fileName}`);
           return;
         } catch (err) {
           console.error("Download error:", err);
-          toast.error(`Không thể tải xuống tệp tin "${fileName}": Lỗi máy chủ hoặc tệp không tồn tại.`);
+          toast.error(
+            `Không thể tải xuống tệp tin "${fileName}": Lỗi máy chủ hoặc tệp không tồn tại.`,
+          );
           return;
         }
       }
@@ -497,7 +512,10 @@ function PortTerminalAssetList({
           payload,
         );
       } else {
-        savedAsset = await createInfrastructureAsset(screenConfig.assetType, payload);
+        savedAsset = await createInfrastructureAsset(
+          screenConfig.assetType,
+          payload,
+        );
       }
 
       const targetAssetId = savedAsset?.id || selected?.id;
@@ -520,6 +538,12 @@ function PortTerminalAssetList({
             : `Đã lưu và phê duyệt ${screenConfig.subjectLabel}.`,
       );
       setDrawerMode(undefined);
+      setFilters((current) => ({
+        ...current,
+        sortBy: "updatedAt",
+        sortDir: "DESC",
+      }));
+      setPage(1);
       await loadData();
     } catch (cause: unknown) {
       if (!isValidationError(cause)) {
@@ -712,13 +736,20 @@ function PortTerminalAssetList({
 
   const handleFilterReset = useCallback(() => {
     setDraftFilters({});
-    setFilters({});
+    setFilters({
+      sortBy: "updatedAt",
+      sortDir: "DESC",
+    });
     setPage(1);
   }, []);
 
   const tableOptions = useMemo<TableOption<PortTerminalAsset>>(
     () => ({
       dataKey: "id",
+      defaultSort: {
+        field: "updatedAt",
+        order: "descend",
+      },
       mainColumns: [
         {
           title: "TÊN/MÃ TÀI SẢN",
@@ -727,7 +758,6 @@ function PortTerminalAssetList({
           subField: "assetCode",
           width: 230,
           fixed: "left",
-          allowSort: true,
           onClick: (record) => void openDetail(record),
         },
         {
@@ -736,71 +766,62 @@ function PortTerminalAssetList({
           type: TableColumnType.Text,
           width: 250,
           bold: true,
-          allowSort: true,
-          valueRef: (r) => orgName.get(r.orgUnitId),
+          render: (v) => (
+            <span style={{ fontWeight: fontWeightBold }}>
+              {orgName.get(v as string) || ""}
+            </span>
+          ),
         },
         {
           title: "ĐƠN VỊ SỬ DỤNG",
           dataIndex: "usingOrgUnitId",
           type: TableColumnType.Text,
           width: 250,
-          allowSort: true,
-          valueRef: (r) =>
-            r.usingOrgUnitId ? orgName.get(r.usingOrgUnitId) : undefined,
+          render: (v) => orgName.get(v as string) || "",
         },
         {
           title: screenConfig.relationColumnTitle,
           dataIndex: screenConfig.relationField,
           type: TableColumnType.Text,
           width: screenConfig.relationColumnWidth,
-          allowSort: true,
-          valueRef: (r) =>
-            r.berthId
-              ? relatedInfrastructureMap.get(r.berthId)?.code
-              : undefined,
+          render: (v) => relatedInfrastructureMap.get(v as string)?.code || "",
         },
         {
           title: "LOẠI TÀI SẢN",
           dataIndex: "assetType",
           type: TableColumnType.Text,
           width: 160,
-          allowSort: true,
-          render: () => screenConfig.title,
+          render: () => "Tài sản bến cảng",
         },
         {
           title: "TÌNH TRẠNG TÀI SẢN",
           dataIndex: "assetCondition",
           type: TableColumnType.Status,
           width: 190,
-          allowSort: true,
         },
         {
           title: "HIỆN TRẠNG SỬ DỤNG",
           dataIndex: "usageStatus",
           type: TableColumnType.Status,
           width: 190,
-          allowSort: true,
         },
         {
           title: "NHÓM TÀI SẢN",
           dataIndex: "assetGroup",
           type: TableColumnType.Text,
           width: 210,
-          allowSort: true,
         },
         {
           title: "NGÀY SỬ DỤNG TÀI SẢN",
           dataIndex: "useDate",
           type: TableColumnType.Date,
           width: 190,
-          allowSort: true,
         },
         {
           title: "TRẠNG THÁI",
           dataIndex: "approvalStatus",
           type: TableColumnType.Status,
           width: 260,
-          allowSort: true,
         },
         {
           title: "CÁN BỘ CẬP NHẬT",
@@ -808,8 +829,6 @@ function PortTerminalAssetList({
           type: TableColumnType.TwoLine,
           subField: "updatedAt",
           width: 210,
-          allowSort: true,
-          sortField: "updatedBy",
         },
         {
           title: "CÁN BỘ GỬI PHÊ DUYỆT",
@@ -817,8 +836,6 @@ function PortTerminalAssetList({
           type: TableColumnType.TwoLine,
           subField: "submittedAt",
           width: 240,
-          allowSort: true,
-          sortField: "submittedBy",
         },
         {
           title: "CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC",
@@ -826,15 +843,13 @@ function PortTerminalAssetList({
           type: TableColumnType.TwoLine,
           subField: "portAuthorityApprovedAt",
           width: 340,
-          allowSort: true,
-          sortField: "portAuthorityApprovedBy",
         },
         {
           title: "NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC",
           dataIndex: "portAuthorityApprovalContent",
           type: TableColumnType.Text,
           width: 280,
-          allowSort: true,
+          sortField: "portAuthorityApprovalContent",
         },
         {
           title: "CÁN BỘ PHÊ DUYỆT CẤP CỤC",
@@ -843,14 +858,14 @@ function PortTerminalAssetList({
           subField: "departmentApprovedAt",
           width: 260,
           allowSort: true,
-          sortField: "departmentApprovedBy",
+          sortField: "departmentApprovedAt",
         },
         {
           title: "NỘI DUNG PHÊ DUYỆT CẤP CỤC",
           dataIndex: "departmentApprovalContent",
           type: TableColumnType.Text,
           width: 260,
-          allowSort: true,
+          sortField: "departmentApprovalContent",
         },
       ],
       actions: (record: PortTerminalAsset) => [
@@ -928,16 +943,8 @@ function PortTerminalAssetList({
     [openCreate],
   );
 
-  const customBerthTokens = useMemo(
-    () => ({
-      ...themeTokenChk,
-      fontSizeMd: 13.5,
-    }),
-    [],
-  );
-
   return (
-    <ThemeTokenProvider tokens={customBerthTokens}>
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
       <div
         className={`berth-page-wrapper ${screenConfig.pageClassName}`}
         style={{
@@ -1059,7 +1066,6 @@ function PortTerminalAssetList({
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -1112,10 +1118,6 @@ function PortTerminalAssetList({
           relatedInfrastructure={relatedInfrastructure}
           screenConfig={screenConfig}
           attachments={attachments}
-          exploitationRows={exploitationRows}
-          increaseRows={increaseRows}
-          decreaseRows={decreaseRows}
-          orgName={(id) => orgName.get(id || "") || id || "—"}
           saving={saving}
           saveAction={saveAction}
           onClose={() => {

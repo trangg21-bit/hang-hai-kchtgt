@@ -53,15 +53,12 @@ import {
   spaceFormField,
   drawerTitleStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
-  historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
-  historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
   icons, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
   formatUserDisplayName, isUuidString,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
+import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
@@ -73,7 +70,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
   PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
   APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
@@ -85,17 +82,18 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
-  all: undefined, DRAFT: 'DRAFT',
+  all: undefined,
+  DRAFT: 'DRAFT',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
   APPROVED_LEVEL1: 'APPROVED_LEVEL1',
-  APPROVED_LEVEL2: 'APPROVED_LEVEL2',
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
@@ -104,7 +102,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
 // ── Helper: format date ──────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '';
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
@@ -124,13 +122,14 @@ const historyFieldLabels: Record<string, string> = {
   portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ',
   departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
   departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
-  'Trạng thái': 'Hành động', 'Tọa độ GIS': 'Tọa độ GIS', 'Loại đối tượng GIS': 'Loại đối tượng GIS', 'Tài liệu đính kèm': 'Tài liệu đính kèm', 'File đính kèm': 'Tài liệu đính kèm',
+  'Trạng thái': 'Trạng thái', 'Tọa độ GIS': 'Tọa độ GPS', 'Loại đối tượng GIS': 'Loại đối tượng',
+  'Tài liệu đính kèm': 'File đính kèm', 'File đính kèm': 'File đính kèm', attachments: 'File đính kèm',
 };
 
 function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
 
 function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, pierMap?: Map<string, string>): string {
-  if (!val || val === '(null)' || val === 'null') return '(trống)';
+  if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
   if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'portId' && portMap) return portMap.get(val) || val;
@@ -140,216 +139,6 @@ function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, 
   if (fn === 'provinceId') { const m: Record<number,string> = { 1:'Hà Nội', 2:'Hà Giang', 3:'Cao Bằng', 4:'Bắc Kạn', 5:'Lào Cai', 6:'Tuyên Quang', 7:'Lạng Sơn', 8:'Quảng Ninh', 9:'Thái Nguyên', 10:'Yên Bái', 11:'Hà Nam', 12:'Hòa Bình', 13:'Nam Định', 14:'Ninh Bình', 15:'Thanh Hóa', 16:'Nghệ An', 17:'Hà Tĩnh', 18:'Quảng Bình', 19:'Quảng Trị', 20:'Thừa Thiên Huế', 21:'Đà Nẵng', 22:'Quảng Nam', 23:'Quảng Ngãi', 24:'Bình Định', 25:'Phú Yên', 26:'Khánh Hòa', 27:'Ninh Thuận', 28:'Bình Thuận', 29:'Kon Tum', 30:'Gia Lai', 31:'Đắk Lắk', 32:'Đắk Nông', 33:'Lâm Đồng', 34:'TP. Hồ Chí Minh', 35:'Bà Rịa - Vũng Tàu', 36:'Long An', 37:'Tiền Giang', 38:'An Giang', 39:'Bến Tre', 40:'Đồng Tháp', 41:'Vĩnh Long', 42:'Trà Vinh', 43:'Hậu Giang', 44:'Sóc Trăng', 45:'Kiên Giang', 46:'Cần Thơ', 47:'Bạc Liêu', 48:'Cà Mau', 49:'Điện Biên', 50:'Lai Châu', 51:'Sơn La', 52:'Yên Bái', 53:'Hòa Bình', 54:'Thái Bình', 55:'Hải Dương', 56:'Hải Phòng', 57:' Hưng Yên' }; return m[Number(val)-1] || val; }
   if (fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
   return val;
-}
-
-/** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
-function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
-  const item = group.items?.[0] || {};
-  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
-
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
-    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-
-  // Tải lên / xóa tệp đính kèm
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (item.changedField?.includes('đính kèm') && !rawReason.includes('xóa') && !rawReason.includes('xoa'))) {
-    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
-  }
-  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
-    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
-  }
-
-  // Cập nhật thông tin
-  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
-    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-  }
-
-  // Ưu tiên lý do ghi sẵn cho hành động duyệt/từ chối (chuẩn VTS CHK)
-  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
-    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
-    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-  }
-
-  const approvalChange = changes.find((c: any) => {
-    const k = normalizeHistoryKey(c.field);
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
-  });
-
-  if (approvalChange) {
-    const nv = normalizeHistoryKey(approvalChange.newValue || '');
-    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
-      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    }
-    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
-      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    }
-    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
-      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-    }
-  }
-
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
-
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
-
-// ── History helpers (chuẩn VTS CHK) ───────────────────────────────
-function historyTimestamp(item: any): string {
-  return item.approvedDate || item.changedAt || item.createdAt || '';
-}
-
-function historyField(item: any): string {
-  return item.changedField || item.fieldName || '';
-}
-
-function historyOldValue(item: any): string | null {
-  return item.previousValue ?? item.oldValue ?? null;
-}
-
-function historyNewValue(item: any): string | null {
-  return item.newValue ?? null;
-}
-
-function historyActor(item: any, userMap?: Map<string, string>): string {
-  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return (raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw) && userMap?.get(raw)) || raw || '—';
-}
-
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-}
-
-function normalizedHistoryFields(value: string): string[] {
-  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
-  const hasApprovalStatus = fields.some((field) => {
-    const key = normalizeHistoryKey(field);
-    return key === 'approvalstatus' || key === 'trang thai phe duyet';
-  });
-  if (hasApprovalStatus) {
-    return fields.filter((field) => {
-      const key = normalizeHistoryKey(field);
-      return key !== 'approvedlevel1' && key !== 'approvedlevel2' && key !== 'da phe duyet cap 1' && key !== 'da phe duyet cap 2';
-    });
-  }
-  return fields;
-}
-
-function parseHistoryAssignments(value: string | null): Map<string, string> {
-  const result = new Map<string, string>();
-  if (!value) return result;
-  value.split(';').forEach((part) => {
-    const separator = part.indexOf('=');
-    if (separator < 0) return;
-    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
-  });
-  return result;
-}
-
-function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
-  const fields = normalizedHistoryFields(historyField(item));
-  const oldValue = historyOldValue(item);
-  const newValue = historyNewValue(item);
-  const oldAssignments = parseHistoryAssignments(oldValue);
-  const newAssignments = parseHistoryAssignments(newValue);
-
-  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
-    return [{ field: fields.join(', '), oldValue, newValue }];
-  }
-  if (fields.length === 0) {
-    return [{ field: '', oldValue, newValue }];
-  }
-  return fields.map((field, index) => {
-    const displayField = historyFieldName(field);
-    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field)) ?? oldAssignments.get(normalizeHistoryKey(displayField));
-    const newAssigned = newAssignments.get(normalizeHistoryKey(field)) ?? newAssignments.get(normalizeHistoryKey(displayField));
-    const oldParts = oldValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    const newParts = newValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    return {
-      field,
-      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
-      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
-    };
-  });
-}
-
-function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—') {
-    return <span style={{ color: textTertiary }}>—</span>;
-  }
-  const normKey = normalizeHistoryKey(field);
-  const normVal = normalizeHistoryKey(val);
-
-  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
-    }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-    return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
-  }
-
-  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
-      return (<span style={statusBadgeStyle(actionPrimary)}>{val}</span>);
-    }
-  }
-
-  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
 }
 
 // ── Component ────────────────────────────────────────────────────────
@@ -424,10 +213,9 @@ export default function ShipRepairYardList() {
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
   const [editShipRepairYardId, setEditShipRepairYardId] = useState<string | undefined>();
   const [editShipRepairYardName, setEditShipRepairYardName] = useState('');
+  const [editBaseStatus, setEditBaseStatus] = useState<string | undefined>();
   const [createForm] = Form.useForm();
-  const [updateForm] = Form.useForm();
   const shipRepairYardFormRef = useRef<any>(null);
-  const editShipRepairYardFormRef = useRef<any>(null);
   // ── Submit loading — nút được bấm mới hiện loading tròn (tham chiếu màn Cảng biển) ──
   const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('submit');
@@ -484,146 +272,54 @@ export default function ShipRepairYardList() {
   const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'pierId', 'shipRepairYardCode', 'shipRepairYardName', 'provinceId', 'detailedLocation', 'operationalStatus', 'usageFunction', 'workshopArea', 'vesselType', 'vesselDwt', 'businessType', 'activity', 'slipwayCount', 'remarks', 'mapSymbolId'];
 
   const renderShipRepairYardHistoryTimeline = (records: any[]) => {
-    const safeRecords = Array.isArray(records) ? records : [];
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
-    for (const r of sorted) {
+    const from = historyFrom ? historyFrom.trim() : '';
+    const to = historyTo ? historyTo.trim() : '';
+
+    const filtered = (records || []).filter((r: any) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
-        const ov = (r.oldValue ?? r.previousValue ?? '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const lb = historyFieldName(r.fieldName || r.changedField || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName || r.changedField || '', r.oldValue ?? r.previousValue ?? null, orgMap, symbolMap, portMap, pierMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName || r.changedField || '', r.newValue, orgMap, symbolMap, portMap, pierMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
+        const rawOld = (r.oldValue ?? r.previousValue ?? '').toLowerCase();
+        const rawNew = (r.newValue || '').toLowerCase();
+        const label = historyFieldName(r.fieldName || r.changedField || '').toLowerCase();
+        const resolvedOld = historyFieldValue(r.fieldName || r.changedField || '', r.oldValue ?? r.previousValue ?? null, orgMap, symbolMap, portMap, pierMap).toLowerCase();
+        const resolvedNew = historyFieldValue(r.fieldName || r.changedField || '', r.newValue, orgMap, symbolMap, portMap, pierMap).toLowerCase();
+        if (!fn.includes(q) && !rawOld.includes(q) && !rawNew.includes(q) && !label.includes(q) && !resolvedOld.includes(q) && !resolvedNew.includes(q)) return false;
       }
-      if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
-      if (historyFrom || historyTo) {
-        const cd = (historyTimestamp(r) || '').substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
+      if (historyEntityFilter && r.entityId !== historyEntityFilter) return false;
+      if (from || to) {
+        const ts = String(r?.changedAt ?? r?.createdAt ?? r?.approvedDate ?? '');
+        if (from && ts.substring(0, 10) < from) return false;
+        if (to && ts.substring(0, 10) > to) return false;
       }
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r, userMap);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
-      }
-    }
-    if (groups.length === 0) return (
-      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-      </div>
-    );
-    const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
-    return (
-      <div>{groups.map((g, gi) => {
-        const rec0 = g.items[0] || {};
-        const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
+      return true;
+    });
+
+    return renderStandardHistoryCards({
+      records: filtered,
+      fieldLabels: historyFieldLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'mapSymbolId' && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const formatted = historyFieldValue(fn, raw, orgMap, symbolMap, portMap, pierMap);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
-        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
-        const barColor = actionPrimary;
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-        const actionMeta = resolveHistoryActionMeta(g, changes);
-        const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
-          if (t.startsWith('[') && t.endsWith(']')) {
-            if (t === '[]') return 'Không có';
-            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-            return `${parts.length} công trình hạ tầng`;
-          }
-          if (/^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? String(n) : t;
-          }
-          return historyFieldValue(fn, raw, orgMap, symbolMap, portMap, pierMap);
-        };
-        const validChanges = changes.filter((c: any) => {
-          if (!c.field) return false;
-          const ov = formatHistoryValue(c.field, c.oldValue);
-          const nv = formatHistoryValue(c.field, c.newValue);
-          if (ov == null && nv == null) return false;
-          if (ov === nv) return false;
-          return true;
-        });
-        const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-        if (validChanges.length === 0 && reasons.length === 0) return null;
-        return (
-          <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : '—'}
-                </Typography.Text>
-                <span style={{ flexShrink: 0 }}>
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Người cập nhật: {g.actor || '—'}
-                </Typography.Text>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Đơn vị: {unitName}
-                </Typography.Text>
-              </div>
-            </div>
-            <div style={historyInfoCardStyle}>
-              <div style={historyAccentBarStyle(barColor)} />
-              <Typography.Text style={historyInfoTitleStyle}>
-                {informationTitle}
-              </Typography.Text>
-              {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
-                const fn = change.field;
-                const ov = formatHistoryValue(fn, change.oldValue);
-                const nv = formatHistoryValue(fn, change.newValue);
-                const renderCell = (rawVal: string | null) => {
-                  if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
-                    const img = symbolImageMap.get(rawVal);
-                    const name = symbolMap.get(rawVal) || rawVal;
-                    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
-                  }
-                  return null;
-                };
-                const renderVal = (rawVal: string | null, fmtVal: string | null) => renderCell(rawVal) ?? (fmtVal != null ? renderHistoryValueTag(fn, fmtVal) : <span style={{ color: textTertiary }}>—</span>);
-                return isCreate ? (
-                  <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                  </div>
-                ) : (
-                  <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
-                    <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                  </div>
-                );
-              })}</div> : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                  {reasons.map((r: string, ri: number) => (
-                    <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}</div>
-    );
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+      emptyMessage: q || from || to ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
+    });
   };
 
   // ── Load organizations ──────────────────────────────────────────
@@ -813,6 +509,9 @@ export default function ShipRepairYardList() {
       toast.success('Đã xóa cơ sở sửa chữa, đóng tàu');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
     } catch (err: unknown) {
@@ -825,10 +524,13 @@ export default function ShipRepairYardList() {
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: ShipRepairYard, content?: string) => {
     try {
-      const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
+      const cap = (record.approvalStatus === 'APPROVED_LEVEL1' || record.approvalStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
       await shipRepairYardCRUD.approve(record.id, cap, content || 'Đã phê duyệt');
       toast.success('Đã phê duyệt cơ sở sửa chữa, đóng tàu');
       setApproveModalOpen(false); setApprovingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
   }, [fetchData, fetchCounts, managingUnitId]);
@@ -839,6 +541,9 @@ export default function ShipRepairYardList() {
       await shipRepairYardCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
       toast.success('Đã gửi phê duyệt cơ sở sửa chữa, đóng tàu');
       setSubmitModalOpen(false); setSubmittingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
   }, [submittingRecord, fetchData, fetchCounts, managingUnitId]);
@@ -854,9 +559,13 @@ export default function ShipRepairYardList() {
     if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
     if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
     try {
-      await shipRepairYardCRUD.reject(rejectingRecord.id, rejectingRecord.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU', reason);
+      const cap = (rejectingRecord.approvalStatus === 'APPROVED_LEVEL1' || rejectingRecord.approvalStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
+      await shipRepairYardCRUD.reject(rejectingRecord.id, cap, reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, managingUnitId]);
@@ -865,10 +574,22 @@ export default function ShipRepairYardList() {
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
     if (hasPerm('shiprepairyard:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: icons.create, onClick: () => setCreateDrawerVisible(true) });
+      actions.push({
+        key: 'create',
+        label: 'Thêm mới',
+        variant: 'primary',
+        icon: icons.create,
+        onClick: () => {
+          setEditShipRepairYardId(undefined);
+          setEditShipRepairYardName('');
+          setEditBaseStatus(undefined);
+          createForm.resetFields();
+          setCreateDrawerVisible(true);
+        },
+      });
     }
     return actions;
-  }, [hasPerm]);
+  }, [hasPerm, createForm]);
 
   // ── Filter panel content ────────────────────────────────────────
   const filterContent = (
@@ -919,72 +640,69 @@ export default function ShipRepairYardList() {
         />
       </div>
 
-      {/* ── Nâng cao: đúng các trường CSV đánh dấu Bộ lọc ───────── */}
-      {filterCollapsed && (<>
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cơ sở sửa chữa, đóng tàu</div>
-          <Input
-            placeholder="Tìm theo mã cơ sở sửa chữa, đóng tàu"
-            allowClear
-            value={filterCode}
-            onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
-            onPressEnter={handleFilterApply}
-            style={{ borderRadius: radiusPill, height: 40 }}
-          />
-        </div>
+      {/* ── Bộ lọc nâng cao: hiển thị trực tiếp theo chuẩn AGENTS.md ───────── */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cơ sở sửa chữa, đóng tàu</div>
+        <Input
+          placeholder="Tìm theo mã cơ sở sửa chữa, đóng tàu"
+          allowClear
+          value={filterCode}
+          onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-          <Select
-            placeholder="Chọn cảng biển"
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            value={filterPortId}
-            onChange={(v) => { setFilterPortId(v); setFilterPierId(undefined); setPage(1); }}
-            options={portOptions}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-          />
-        </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+        <Select
+          placeholder="Chọn cảng biển"
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          value={filterPortId}
+          onChange={(v) => { setFilterPortId(v); setFilterPierId(undefined); setPage(1); }}
+          options={portOptions}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cầu cảng</div>
-          <Select
-            placeholder="Chọn cầu cảng"
-            allowClear
-            showSearch
-            optionFilterProp="label"
-            value={filterPierId}
-            onChange={(v) => { setFilterPierId(v); setPage(1); }}
-            options={pierOptions}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-          />
-        </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cầu cảng</div>
+        <Select
+          placeholder="Chọn cầu cảng"
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          value={filterPierId}
+          onChange={(v) => { setFilterPierId(v); setPage(1); }}
+          options={pierOptions}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
-          <Select
-            placeholder="Chọn tỉnh/thành phố"
-            allowClear
-            showSearch
-            filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-            value={filterProvince || undefined}
-            onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
-            options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-          />
-        </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
+        <Select
+          placeholder="Chọn tỉnh/thành phố"
+          allowClear
+          showSearch
+          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+          value={filterProvince || undefined}
+          onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
+          options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-          <DatePicker.RangePicker format="DD/MM/YYYY"
-            placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
-            value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-            onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
-            style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-        </div>
-
-      </>)}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+        <DatePicker.RangePicker format="DD/MM/YYYY"
+          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
+          value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+          onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+      </div>
     </>
   );
 
@@ -1003,14 +721,42 @@ export default function ShipRepairYardList() {
       ];
       const st = record.approvalStatus || '';
       // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
-      if (canEditApprovalRecord(st, { hasPerm, resource: 'shiprepairyard', extraApprovePerms: ['shiprepairyard:approve'] })) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditShipRepairYardId(record.id); setEditShipRepairYardName(record.shipRepairYardName || ''); } });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('shiprepairyard:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      if (canEditApprovalRecord(st, { hasPerm, resource: 'shiprepairyard', extraApprovePerms: ['shiprepairyard:approve'] })) {
+        actions.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: icons.edit,
+          onClick: () => {
+            setEditShipRepairYardId(record.id);
+            setEditShipRepairYardName(record.shipRepairYardName || '');
+            setEditBaseStatus(record.approvalStatus);
+            setCreateDrawerVisible(true);
+          },
+        });
+      }
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('shiprepairyard:update')) {
+        actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      }
+      if (['REJECTED_LEVEL1','REJECTED_LEVEL2','REJECTED','TU_CHOI'].includes(st) && hasPerm('shiprepairyard:update')) {
+        actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      }
       // Lịch sử — luôn hiển thị khi có quyền
-      if (hasPerm('shiprepairyard:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
-      // Phê duyệt / Từ chối — theo trạng thái
-      if (hasPerm('shiprepairyard:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) }); }
+      if (hasPerm('shiprepairyard:history')) {
+        actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      }
+      // Phê duyệt / Từ chối — theo trạng thái 2 cấp
+      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET','PROPOSED'].includes(st) && (hasPerm('shiprepairyard:approvec1') || hasPerm('shiprepairyard:approve'))) {
+        actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+        actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
+      }
+      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && (hasPerm('shiprepairyard:approvec2') || hasPerm('shiprepairyard:approve'))) {
+        actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+        actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
+      }
       // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
-      if (canDeleteApprovalRecord(st, { hasPerm, resource: 'shiprepairyard' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+      if (hasPerm('shiprepairyard:delete') && ['DRAFT','NHAP'].includes(st)) {
+        actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+      }
       return actions;
     },
     [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
@@ -1019,6 +765,7 @@ export default function ShipRepairYardList() {
   // ── Table columns (đối chiếu đúng cột CSV) ─────────────────────
   const getSortValue = useCallback((r: any, field: string): string | number => {
     if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
+    if (field === 'shipRepairYardName') return r.shipRepairYardName ?? '';
     if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label ?? r.portId ?? '';
     if (field === 'pierId') return pierOptions.find(o => o.value === r.pierId)?.label ?? r.pierName ?? r.pierId ?? '';
     if (field === 'provinceId') return r.provinceId ? VIETNAM_PROVINCES[r.provinceId - 1] ?? '' : '';
@@ -1031,6 +778,13 @@ export default function ShipRepairYardList() {
       return m[r.operationalStatus] || r.operationalStatus || '';
     }
     if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
+    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
     return r[field] ?? '';
   }, [organizations, orgMap, portOptions, pierOptions]);
 
@@ -1052,7 +806,6 @@ export default function ShipRepairYardList() {
         minWidth: 350,
         fixed: 'left' as const,
         sortable: true,
-        sortOrder,
         ellipsis: false,
         render: (v: string, record: ShipRepairYard) => (
           <div>
@@ -1064,7 +817,7 @@ export default function ShipRepairYardList() {
               {v}
             </a>
             <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {record.shipRepairYardCode || '—'}
+              {record.shipRepairYardCode || ''}
             </span>
           </div>
         ),
@@ -1075,10 +828,9 @@ export default function ShipRepairYardList() {
         dataIndex: 'orgUnitId',
         width: 260,
         sortable: true,
-        sortOrder,
         render: (_v: string | null, record: ShipRepairYard) => (
           <span style={{ fontWeight: fontWeightBold }}>
-            {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—'}
+            {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || ''}
           </span>
         ),
       },
@@ -1088,8 +840,7 @@ export default function ShipRepairYardList() {
         dataIndex: 'portId',
         width: 200,
         sortable: true,
-        sortOrder,
-        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—',
+        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '',
       },
       {
         key: 'pierId',
@@ -1097,8 +848,7 @@ export default function ShipRepairYardList() {
         dataIndex: 'pierId',
         width: 200,
         sortable: true,
-        sortOrder,
-        render: (v: string | null, record: ShipRepairYard) => pierOptions.find(o => o.value === v)?.label || record.pierName || v || '—',
+        render: (v: string | null, record: ShipRepairYard) => pierOptions.find(o => o.value === v)?.label || record.pierName || v || '',
       },
       {
         key: 'provinceId',
@@ -1106,8 +856,7 @@ export default function ShipRepairYardList() {
         dataIndex: 'provinceId',
         width: 250,
         sortable: true,
-        sortOrder,
-        render: (v: number | null) => (v ? VIETNAM_PROVINCES[v - 1] : '—'),
+        render: (v: number | null) => (v ? VIETNAM_PROVINCES[v - 1] : ''),
       },
       {
         key: 'operationalStatus',
@@ -1115,14 +864,14 @@ export default function ShipRepairYardList() {
         dataIndex: 'operationalStatus',
         width: 210,
         sortable: true,
-        sortOrder,
         render: (v: string | null) => {
+          if (!v) return '';
           const m: Record<string, { color: string; label: string }> = {
             OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
             NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
             SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
           };
-          const s = m[v || ''] || { color: textTertiary, label: v || '—' };
+          const s = m[v] || { color: textTertiary, label: v };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
       },
@@ -1130,54 +879,62 @@ export default function ShipRepairYardList() {
 
     // Audit columns
     const auditColumns: any[] = [
-      { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true, sortOrder,
-        render: (v: string | null, record: ShipRepairYard) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName)}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
+      { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true,
         render: (v: string | null, record: ShipRepairYard) => {
-          const name = formatUserDisplayName(record.submittedForApprovalBy, (record as any).submittedForApprovalByName, userMap);
+          const rawName = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
+          const name = (rawName === '—' || rawName === '-') ? '' : rawName;
           const date = formatDate(v);
-          const cleanName = name === '—' ? '' : name;
-          const cleanDate = date === '—' ? '' : date;
-          if (!cleanName && !cleanDate) return '';
+          const cleanDate = (date === '—' || date === '-') ? '' : date;
+          if (!name && !cleanDate) return '';
           return (
             <div>
-              {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
-              {cleanName && cleanDate && <br />}
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && cleanDate && <br />}
               {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
             </div>
           );
         } },
-      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true, sortOrder,
+      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true,
         render: (v: string | null, record: ShipRepairYard) => {
-          const name = formatUserDisplayName(record.portAuthorityApprovedBy, (record as any).portAuthorityApprovedByName, userMap);
+          const rawName = formatUserDisplayName(record.submittedForApprovalBy, (record as any).submittedForApprovalByName, userMap);
+          const name = (rawName === '—' || rawName === '-') ? '' : rawName;
           const date = formatDate(v);
-          const cleanName = name === '—' ? '' : name;
-          const cleanDate = date === '—' ? '' : date;
-          if (!cleanName && !cleanDate) return '';
+          const cleanDate = (date === '—' || date === '-') ? '' : date;
+          if (!name && !cleanDate) return '';
           return (
             <div>
-              {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
-              {cleanName && cleanDate && <br />}
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && cleanDate && <br />}
               {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
             </div>
           );
         } },
-      { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
+      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true,
         render: (v: string | null, record: ShipRepairYard) => {
-          const name = formatUserDisplayName(record.departmentApprovedBy, (record as any).departmentApprovedByName, userMap);
+          const rawName = formatUserDisplayName(record.portAuthorityApprovedBy, (record as any).portAuthorityApprovedByName, userMap);
+          const name = (rawName === '—' || rawName === '-') ? '' : rawName;
           const date = formatDate(v);
-          const cleanName = name === '—' ? '' : name;
-          const cleanDate = date === '—' ? '' : date;
-          if (!cleanName && !cleanDate) return '';
+          const cleanDate = (date === '—' || date === '-') ? '' : date;
+          if (!name && !cleanDate) return '';
           return (
             <div>
-              {cleanName && <span style={{ fontWeight: fontWeightBold }}>{cleanName}</span>}
-              {cleanName && cleanDate && <br />}
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && cleanDate && <br />}
+              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            </div>
+          );
+        } },
+      { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true,
+        render: (v: string | null, record: ShipRepairYard) => {
+          const rawName = formatUserDisplayName(record.departmentApprovedBy, (record as any).departmentApprovedByName, userMap);
+          const name = (rawName === '—' || rawName === '-') ? '' : rawName;
+          const date = formatDate(v);
+          const cleanDate = (date === '—' || date === '-') ? '' : date;
+          if (!name && !cleanDate) return '';
+          return (
+            <div>
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && cleanDate && <br />}
               {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
             </div>
           );
@@ -1185,9 +942,10 @@ export default function ShipRepairYardList() {
     ];
 
     const tailColumns: any[] = [
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true,
         render: (v: string) => {
-          const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
+          if (!v) return '';
+          const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         } },
     ];
@@ -1195,7 +953,7 @@ export default function ShipRepairYardList() {
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
     return allColumns.map(col => ({
       ...col,
-      sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
+      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
     }));
   }, [
     openDetailDrawer,
@@ -1306,6 +1064,7 @@ export default function ShipRepairYardList() {
         onFilterReset={handleFilterReset}
         filterCollapsed={filterCollapsed}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+        hideFilterToggle={true}
         loading={isLoading}
         error={isError}
         onRetry={() => void fetchData()}
@@ -1321,58 +1080,111 @@ export default function ShipRepairYardList() {
         />
       </FilterTableLayout>
 
-      {/* ── Create Drawer ──────────────────────────────────────────── */}
+      {/* ── Create / Edit Drawer (Hợp nhất 1 Drawer chuẩn Cầu cảng / VTS CHK) ── */}
       <AppDrawer
         width="min(920px, 96vw)"
         rootClassName="ship-repair-yard-drawer-scope"
         className="ship-repair-yard-drawer-scope"
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Cơ sở sửa chữa, đóng tàu</span>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editShipRepairYardId ? `Chỉnh sửa thông tin — ${editShipRepairYardName || 'Cơ sở sửa chữa, đóng tàu'}` : 'Thêm mới Cơ sở sửa chữa, đóng tàu'}</span>}
         open={createDrawerVisible}
         destroyOnHidden
-        onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+        onClose={() => {
+          setCreateDrawerVisible(false);
+          createForm.resetFields();
+        }}
         footer={
           <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); shipRepairYardFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); shipRepairYardFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+            {(() => {
+              const st = !editShipRepairYardId ? 'DRAFT' : (editBaseStatus ? String(editBaseStatus).toUpperCase() : 'DRAFT');
+              if (st === 'APPROVED') {
+                return (
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
+                    loading={submitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                );
+              }
+              if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED' || st === 'TU_CHOI') {
+                return (
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); shipRepairYardFormRef.current?.submit('SUBMIT'); }}
+                    loading={submitting && actionType === 'submit'}
+                    style={primaryButtonStyle}
+                  >
+                    Lưu và gửi phê duyệt
+                  </Button>
+                );
+              }
+              return (
+                <>
+                  <Button
+                    htmlType="button"
+                    onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); shipRepairYardFormRef.current?.submit('DRAFT'); }}
+                    loading={submitting && actionType === 'draft'}
+                    style={outlineButtonStyle}
+                  >
+                    Lưu tạm
+                  </Button>
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); shipRepairYardFormRef.current?.submit('SUBMIT'); }}
+                    loading={submitting && actionType === 'submit'}
+                    style={primaryButtonStyle}
+                  >
+                    Lưu và gửi phê duyệt
+                  </Button>
+                  <Button
+                    htmlType="button"
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
+                    loading={submitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
         }}
-        afterOpenChange={(open) => { if (open) createForm.resetFields(); }}
+        afterOpenChange={(open) => {
+          if (!open) {
+            setEditShipRepairYardId(undefined);
+            setEditShipRepairYardName('');
+            setEditBaseStatus(undefined);
+            createForm.resetFields();
+          }
+        }}
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" initialValues={{}}>
-          <ShipRepairYardForm ref={shipRepairYardFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+          <ShipRepairYardForm
+            ref={shipRepairYardFormRef}
+            form={createForm}
+            id={editShipRepairYardId}
+            onFinish={() => {
+              setCreateDrawerVisible(false);
+              setSortField('updatedAt');
+              setSortOrder('descend');
+              setPage(1);
+              void fetchData();
+              void fetchCounts(managingUnitId);
+            }}
+            onSubmittingChange={setSubmitting}
+          />
         </Form>
-      </AppDrawer>
-
-      {/* ── Edit Drawer ────────────────────────────────────────────── */}
-      <AppDrawer
-        width="min(920px, 96vw)"
-        rootClassName="ship-repair-yard-drawer-scope"
-        className="ship-repair-yard-drawer-scope"
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editShipRepairYardName || 'Cơ sở sửa chữa, đóng tàu'}</span>}
-        open={!!editShipRepairYardId}
-        onClose={() => { setEditShipRepairYardId(undefined); setEditShipRepairYardName(''); updateForm.resetFields(); }}
-        footer={
-          <div style={drawerFooterStyle}>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); editShipRepairYardFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
-          </div>
-        }
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '0 24px 12px 24px' },
-        }}
-      >
-        {editShipRepairYardId && (<>
-          <style>{requiredMarkStyle}</style>
-          <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <ShipRepairYardForm ref={editShipRepairYardFormRef} form={updateForm} id={editShipRepairYardId} onFinish={() => { setEditShipRepairYardId(undefined); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
-          </Form>
-        </>)}
       </AppDrawer>
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}

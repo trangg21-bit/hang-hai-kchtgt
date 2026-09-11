@@ -723,10 +723,20 @@ export async function uploadInfraAssetAttachments(
   return res.data.data;
 }
 
+const INFRA_ASSET_ATTACHMENT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isPersistedInfraAssetAttachmentId(attId: string): boolean {
+  return INFRA_ASSET_ATTACHMENT_ID_PATTERN.test(attId);
+}
+
 export async function deleteInfraAssetAttachment(
   assetId: string,
   attId: string,
 ): Promise<void> {
+  // Hồ sơ legacy chỉ có tên file được dựng thành ID hiển thị `att-*`.
+  // Backend khai báo PathVariable UUID, vì vậy các ID này chỉ xóa ở client.
+  if (!isPersistedInfraAssetAttachmentId(attId)) return;
   await api.delete(`/v1/asset/infra-assets/${assetId}/attachments/${attId}`);
 }
 
@@ -753,4 +763,3 @@ export async function downloadInfraAssetAttachment(
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
-

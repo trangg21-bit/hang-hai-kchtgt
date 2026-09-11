@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import {
@@ -10,15 +10,14 @@ import {
 import type { Organization } from '../../services/organizationService';
 import type { Buoy } from '../../types/beacon';
 import type { BuoyStationResponse } from '../../services/buoy-station/types';
-import type { BuoyAsset } from '../../services/assetmovement/types';
+import type {
+  BuoyAsset,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetDecreaseResponse,
+} from '../../services/assetmovement/types';
+import type { OperationMode } from './BuoyAssetOperationForm';
 import { fmtInputNumber } from '../../utils/numFmt';
-import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-} from '../../themetokenchk';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -93,9 +92,14 @@ export interface BuoyAssetFormProps {
   saveAction: string;
   onClose: () => void;
   onSave: (status: string) => void | Promise<void>;
-  onUploadAttachment: (files: File[]) => void;
+  onUploadAttachment: (file: File) => void;
   onDeleteAttachment: (id: string) => void;
-  onDownloadAttachment?: (att: InfrastructureAttachmentItem) => void;
+  onDownloadAttachment?: (id: string, fileName: string) => void;
+  currentUser?: { fullName?: string; username?: string };
+  exploitationRows?: AssetExploitationResponse[];
+  increaseRows?: AssetIncreaseResponse[];
+  decreaseRows?: AssetDecreaseResponse[];
+  onOpenOperation?: (mode: OperationMode) => void;
 }
 
 export default function BuoyAssetForm({
@@ -240,7 +244,7 @@ export default function BuoyAssetForm({
         ],
       },
     ];
-  }, [organizations, refOptions, attachments, onUploadAttachment, onDeleteAttachment, onDownloadAttachment, drawerMode]);
+  }, [organizations, refOptions, attachments, onUploadAttachment, onDeleteAttachment, onDownloadAttachment]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
     if (drawerMode === 'edit') {

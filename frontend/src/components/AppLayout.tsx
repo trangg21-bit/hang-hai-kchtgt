@@ -44,6 +44,9 @@ import {
   ApartmentOutlined,
   BuildOutlined,
   ToolOutlined,
+  RadarChartOutlined,
+  GlobalOutlined,
+  CompassOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
@@ -76,6 +79,7 @@ const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
 export { MENU_PERMISSION_MAP };
+
 
 const canAccessMenu = (path: string): boolean => {
   let required = MENU_PERMISSION_MAP[path];
@@ -252,6 +256,11 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       label: 'Quản lý tài sản KCHT hàng hải',
       children: [
         canAccessMenu('/asset/berth') ? { key: '/asset/berth', icon: <BankOutlined />, label: 'Tài sản bến cảng' } : null,
+        canAccessMenu('/asset/transmission') ? { key: '/asset/transmission', icon: <DeploymentUnitOutlined />, label: 'Tài sản HT truyền dẫn' } : null,
+        canAccessMenu('/asset/vts-assist') ? { key: '/asset/vts-assist', icon: <ToolOutlined />, label: 'Tài sản hệ thống phụ trợ VTS' } : null,
+        canAccessMenu('/asset/vhf') ? { key: '/asset/vhf', icon: <ApiOutlined />, label: 'Tài sản HTTT liên lạc VHF' } : null,
+        canAccessMenu('/asset/dai-ttdh') ? { key: '/asset/dai-ttdh', icon: <RadarChartOutlined />, label: 'Tài sản đài TTDH' } : null,
+        canAccessMenu('/asset/inmarsat') ? { key: '/asset/inmarsat', icon: <GlobalOutlined />, label: 'Tài sản đài Inmarsat' } : null,
         canAccessMenu('/asset/transfer-area') ? { key: '/asset/transfer-area', icon: <SwapOutlined />, label: 'Tài sản khu chuyển tải' } : null,
         canAccessMenu('/asset/storm-shelter') ? { key: '/asset/storm-shelter', icon: <SafetyCertificateOutlined />, label: 'Tài sản khu tránh, trú bão' } : null,
         canAccessMenu('/asset/anchorage') ? { key: '/asset/anchorage', icon: <EnvironmentOutlined />, label: 'Tài sản khu neo đậu' } : null,
@@ -259,6 +268,11 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
         canAccessMenu('/asset/dike-revetment') ? { key: '/asset/dike-revetment', icon: <BlockOutlined />, label: 'Tài sản đê/kè' } : null,
         canAccessMenu('/asset/buoy') ? { key: '/asset/buoy', icon: <AimOutlined />, label: 'Tài sản phao, tiêu và nhà trạm' } : null,
         canAccessMenu('/asset/channel') ? { key: '/asset/channel', icon: <DeploymentUnitOutlined />, label: 'Tài sản luồng hàng hải' } : null,
+        canAccessMenu('/asset/vts-system') ? { key: '/asset/vts-system', icon: <CompassOutlined />, label: 'Tài sản hệ thống VTS' } : null,
+        canAccessMenu('/asset/radar-station') ? { key: '/asset/radar-station', icon: <CompassOutlined />, label: 'Tài sản trạm radar' } : null,
+        canAccessMenu('/asset/ais-system') ? { key: '/asset/ais-system', icon: <CompassOutlined />, label: 'Tài sản hệ thống AIS' } : null,
+        canAccessMenu('/asset/cctv-system') ? { key: '/asset/cctv-system', icon: <CompassOutlined />, label: 'Tài sản HT CCTV' } : null,
+        canAccessMenu('/asset/scada-system') ? { key: '/asset/scada-system', icon: <CompassOutlined />, label: 'Tài sản HT SCADA' } : null,
         canAccessMenu('/asset/increase') ? { key: '/asset/increase', icon: <PlusCircleOutlined />, label: 'Yêu cầu tăng tài sản' } : null,
         canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', icon: <MinusCircleOutlined />, label: 'Yêu cầu giảm tài sản' } : null,
         canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', icon: <AuditOutlined />, label: 'Kiểm kê tài sản' } : null,

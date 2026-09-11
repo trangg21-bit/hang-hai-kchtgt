@@ -134,9 +134,9 @@
 /* ---------- DỮ LIỆU 6 KHỐI CHỨC NĂNG CẤP 1 ---------- */
 const GROUPS = [
   { id:'kcht', ic:'📋', name:'Quản lý KCHT hàng hải', desc:'28 loại kết cấu hạ tầng, phân cấp cha–con', hasTree:true },
-  { id:'asset', ic:'🏗️', name:'Quản lý tài sản KCHT hàng hải', desc:'Tài sản, kiểm kê, xử lý tài sản', hasTree:false },
-  { id:'plan', ic:'🗺️', name:'Quản lý quy hoạch & vận hành', desc:'Quy hoạch, vận hành, bảo trì, sự cố', hasTree:false },
-  { id:'gis', ic:'🌐', name:'Quản lý KCHT trên nền bản đồ (GIS)', desc:'Trực quan hoá KCHT trên bản đồ số', hasTree:false },
+  { id:'asset', ic:'🏗️', name:'Tài sản KCHT hàng hải', desc:'Tài sản, kiểm kê, xử lý tài sản', hasTree:false },
+  { id:'plan', ic:'🗺️', name:'Quy hoạch & vận hành', desc:'Quy hoạch, vận hành, bảo trì, sự cố', hasTree:false },
+  { id:'gis', ic:'🌐', name:'KCHT trên nền bản đồ (GIS)', desc:'Trực quan hoá KCHT trên bản đồ số', hasTree:false },
   { id:'report', ic:'📊', name:'Báo cáo thống kê', desc:'Các biểu mẫu báo cáo nghiệp vụ', hasTree:false },
   { id:'admin', ic:'⚙️', name:'Quản trị hệ thống', desc:'Người dùng, nhóm, đơn vị, tích hợp', hasTree:false },
 ];
@@ -161,14 +161,13 @@ const TREE = [
     { id:'cs-sua-chua', n:'Cơ sở sửa chữa, đóng tàu', lv:1, ic:'🔧' }
   ]},
   { id:'vts', n:'Hệ thống VTS', lv:0, ic:'🛰️', kids:[
-    { id:'ttdh-vts', n:'Trung tâm điều hành VTS', lv:1, ic:'🖥️', kids:[
-      { id:'radar', n:'Trạm Radar', lv:2, ic:'📡' },
-      { id:'ais', n:'Hệ thống AIS', lv:2, ic:'📶' },
-      { id:'cctv', n:'Hệ thống CCTV', lv:2, ic:'🎥' },
-      { id:'scada', n:'Hệ thống SCADA', lv:2, ic:'🎛️' },
-      { id:'truyen-dan', n:'Hệ thống truyền dẫn', lv:2, ic:'🔗' },
-      { id:'phu-tro-vts', n:'Hệ thống phụ trợ VTS', lv:2, ic:'⚙️' }
-    ]}
+    { id:'ttdh-vts', n:'Trung tâm điều hành VTS', lv:1, ic:'🖥️' },
+    { id:'radar', n:'Trạm radar', lv:1, ic:'📡' },
+    { id:'ais', n:'Hệ thống trạm bờ AIS', lv:1, ic:'📶' },
+    { id:'cctv', n:'Hệ thống CCTV', lv:1, ic:'🎥' },
+    { id:'scada', n:'Hệ thống SCADA', lv:1, ic:'🎛️' },
+    { id:'truyen-dan', n:'Hệ thống truyền dẫn', lv:1, ic:'🔗' },
+    { id:'phu-tro-vts', n:'Hệ thống phụ trợ VTS', lv:1, ic:'⚙️' }
   ]},
   { id:'cang-can', n:'Cảng cạn', lv:0, ic:'🚚' },
   { id:'dai-vt', n:'Đài viễn thông hàng hải', lv:0, ic:'📡', kids:[

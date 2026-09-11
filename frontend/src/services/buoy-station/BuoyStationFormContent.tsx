@@ -1,11 +1,11 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { Tabs, Form, Row, Col, InputNumber, Select, Input, DatePicker, Table, Space, Button, Modal } from 'antd';
-import type { FormInstance, UploadFile } from 'antd';
+import type { FormInstance, UploadFile, InputNumberProps } from 'antd';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { symbolService } from '../../services/symbolService';
@@ -22,12 +22,14 @@ import {
 } from './api';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { BuoyStationResponse, CreateBuoyStationRequest } from './types';
+import DetailTable from '../../components/shared/DetailTable';
 import {
   sidebarBg, actionPrimary, statusCritical,
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
   outlineButtonStyle, primaryButtonStyle, fontSizeLg,
-  spaceFormField, radiusPill, radiusMd, borderDefault, textTertiary,
-  spaceSm, spaceXs, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard,
+  spaceFormField, radiusPill, radiusMd, borderDefault, textSecondary, textTertiary,
+  spaceSm, spaceXs, fontWeightBold, fontSizeMd, fontSizeSm, surfaceCard, textAreaStyle,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 
 import {
@@ -44,6 +46,21 @@ type SaveAction = 'DRAFT' | 'SUBMIT' | 'APPROVED' | 'UPDATE';
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Xem chi tiết & chuẩn Bến cảng
 const sectionBoxStyle: React.CSSProperties = {
@@ -170,13 +187,6 @@ const parseInteger = (v: string | undefined): number => {
   return intPart === '' ? 0 : Number(intPart);
 };
 
-/** true khi giá trị field đã đạt đủ max ký tự — dùng để bật viền đỏ ô nhập + message cảnh báo bên dưới. */
-function useMaxReached(form: FormInstance, name: string, max: number): boolean {
-  const raw = Form.useWatch(name, form) ?? '';
-  const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
-  return len >= max;
-}
-
 const ddToDms = (v: number | null | undefined): { d: number | null; m: number | null; s: number | null } => {
   if (v == null || isNaN(v)) return { d: null, m: null, s: null };
   let abs = Math.abs(v);
@@ -263,6 +273,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage, setGpsPage] = useState(1);
   const [activeTabKey, setActiveTabKey] = useState('general');
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   const editPortIdRef = useRef<string | undefined>(undefined);
 
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
@@ -270,15 +281,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
   const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
-
-  const atMax = {
-    name: useMaxReached(form, 'name', 255),
-    address: useMaxReached(form, 'address', 500),
-    totalArea: useMaxReached(form, 'totalArea', 20),
-    usableArea: useMaxReached(form, 'usableArea', 20),
-    staffCount: useMaxReached(form, 'staffCount', 5),
-    note: useMaxReached(form, 'note', 2000),
-  };
 
   const loadPortOptions = useCallback(async (orgUnitId?: string) => {
     setLoadingPorts(true);
@@ -367,8 +369,9 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       operatingOrgId: data.operatingOrgId, portId: data.portId,
       provinceId: data.province || undefined, address: data.address,
       constructionDate: data.constructionDate ? dayjs(data.constructionDate) : undefined,
-      totalArea: data.totalArea, usableArea: data.usableArea,
-      staffCount: data.staffCount, lastMaintenanceYear: data.lastMaintenanceYear ? dayjs(`${data.lastMaintenanceYear}-01-01`) : undefined,
+      totalArea: normalizeSafeNumber(data.totalArea),
+      usableArea: normalizeSafeNumber(data.usableArea),
+      staffCount: normalizeSafeNumber(data.staffCount), lastMaintenanceYear: data.lastMaintenanceYear ? dayjs(`${data.lastMaintenanceYear}-01-01`) : undefined,
       note: data.note, condition: data.condition, isActive: data.isActive,
       waterwayId: data.waterwayId || undefined, waterwayRouteId: data.waterwayRouteId || undefined,
       geometryType: data.geometryType || undefined, mapSymbolId: data.icon || undefined, coordinateSystem: data.geometryType ? (data.coordinateSystem || 'WGS84') : undefined,
@@ -466,13 +469,20 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     }
     setGpsError(null);
     try {
+      const toPayloadNumber = (v: unknown): number | undefined => {
+        if (v == null) return undefined;
+        const s = String(v).trim();
+        if (s === '') return undefined;
+        const num = Number(s);
+        return isNaN(num) ? undefined : num;
+      };
       const p: Record<string, unknown> = {
         name,
         unitId: values.orgUnitId || undefined, operatingOrgId: values.operatingOrgId || undefined,
         portId: values.portId || undefined,
         province: values.provinceId || undefined, address: values.address || undefined,
         constructionDate: values.constructionDate ? (typeof values.constructionDate === 'string' ? values.constructionDate : values.constructionDate.format('YYYY-MM-DD')) : undefined,
-        totalArea: values.totalArea, usableArea: values.usableArea, staffCount: values.staffCount,
+        totalArea: toPayloadNumber(values.totalArea), usableArea: toPayloadNumber(values.usableArea), staffCount: toPayloadNumber(values.staffCount),
         lastMaintenanceYear: values.lastMaintenanceYear ? (typeof values.lastMaintenanceYear === 'number' ? values.lastMaintenanceYear : values.lastMaintenanceYear.year()) : undefined,
         note: values.note || undefined, waterwayId: values.waterwayId || undefined, waterwayRouteId: values.waterwayRouteId || undefined,
         objectType: geomType, geometryType: geomType, icon: values.mapSymbolId || undefined, coordinateSystem: geomType ? (values.coordinateSystem || 'WGS84') : undefined,
@@ -492,6 +502,16 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         sid = (r as { id?: string })?.id;
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu nháp thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : 'Gửi phê duyệt thành công');
+      const wasApproved = isEdit && (entityData?.approvalStatus === 'APPROVED' || entityData?.approvalStatus === 'APPROVED_L2' || entityData?.approvalStatus === 'PUBLISHED');
+
+      if (sid && pendingDeletedAttachmentIds.length > 0) {
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/documents/${attId}`, {
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
+        }
+      }
+
       if (sid && uploadedFiles.length > 0) {
         for (const f of uploadedFiles) {
           const rawFile = (f.originFileObj || (f as any).file || (f instanceof File ? f : undefined)) as File | undefined;
@@ -501,13 +521,14 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
             fd.append('file', rawFile);
             await api.post(`/v1/documents/upload/buoy-station/${sid}`, fd, {
               headers: { 'Content-Type': 'multipart/form-data' },
+              params: { skipHistory: !wasApproved },
             });
           } catch { /* non-blocking */ }
         }
       }
       onFinish(true);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra'); }
-  }, [form, isEdit, entityData, coordinateList, uploadedFiles, onFinish]);
+  }, [form, isEdit, entityData, coordinateList, uploadedFiles, pendingDeletedAttachmentIds, onFinish]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => void handleSave(saveAction) }), [handleSave]);
 
@@ -527,7 +548,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
           <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]}><Select placeholder="Chọn đơn vị khai thác..." options={operatingOrgs.map(o => ({ value: o.id, label: o.name }))} showSearch optionFilterProp="label" allowClear style={selectStyle} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
-          <Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={isEdit || !watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} /></Form.Item></Col>
           <Col span={12}><Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Thuộc luồng hàng hải là bắt buộc' }]}><Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} style={selectStyle} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
@@ -535,11 +556,11 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
           <Col span={12}><Form.Item name="code" {...labelProps('Mã nhà trạm')} style={{ marginBottom: spaceFormField }} tooltip="Mã nhà trạm được sinh tự động khi lưu"><Input disabled maxLength={50} placeholder={codeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
-          <Col span={12}><Form.Item name="name" {...labelProps('Tên nhà trạm')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên nhà trạm không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]} validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}><Input placeholder="Nhập Tên nhà trạm quản lý vận hành phao, tiêu" maxLength={255} showCount style={inputStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="name" {...labelProps('Tên nhà trạm')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên nhà trạm không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}><Input placeholder="Nhập Tên nhà trạm quản lý vận hành phao, tiêu" maxLength={255} showCount style={inputStyle} /></Form.Item></Col>
           <Col span={12}><Form.Item name="provinceId" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm (Tỉnh/Thành phố) là bắt buộc' }]}><Select placeholder="Chọn địa điểm" showSearch optionFilterProp="label" filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))} options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
-          <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]} validateStatus={atMax.address ? 'error' : undefined} help={atMax.address ? 'Đã đạt tối đa 500 ký tự' : undefined}><Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]}><Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} /></Form.Item></Col>
           <Col span={12}><Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={{ marginBottom: spaceFormField }}><DatePicker popupClassName="buoy-station-date-picker" placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
@@ -556,15 +577,15 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
           </div>
         </div>
         <Row gutter={[24, 0]}>
-          <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.totalArea ? 'error' : undefined} help={atMax.totalArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-          <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích sử dụng (m²)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.usableArea ? 'error' : undefined} help={atMax.usableArea ? 'Đã đạt tối đa 20 ký tự' : undefined}><InputNumber min={0} maxLength={20} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="totalArea" {...labelProps('Tổng diện tích (m²)')} style={{ marginBottom: spaceFormField }}><NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="usableArea" {...labelProps('Diện tích sử dụng (m²)')} style={{ marginBottom: spaceFormField }}><NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
-          <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]} validateStatus={atMax.staffCount ? 'error' : undefined} help={atMax.staffCount ? 'Đã đạt tối đa 5 ký tự' : undefined}><InputNumber min={0} maxLength={5} precision={0} parser={parseInteger} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]}><NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
           <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" popupClassName="buoy-station-date-picker" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
-          <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]} validateStatus={atMax.note ? 'error' : undefined} help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}><Input.TextArea placeholder="Ghi chú..." maxLength={2000} rows={3} showCount style={{ borderRadius: 8, fontSize: fontSizeMd, resize: 'none' }} /></Form.Item></Col>
+          <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}><Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} /></Form.Item></Col>
         </Row>
       </div>
     </div>) },
@@ -691,42 +712,33 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
             <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
           </div>
         )}
-        <Table
+        <DetailTable
           size="small"
-          tableLayout="fixed"
-          pagination={coordinateList.length > 10 ? {
-            current: gpsPage,
-            pageSize: 10,
-            total: coordinateList.length,
-            onChange: (p) => setGpsPage(p),
-            showSizeChanger: false,
-            size: 'small',
-          } : false}
+          scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
           dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-          rowKey={(r, idx) => r._idx ?? String(idx)}
-          locale={{ emptyText: 'Chưa có tọa độ GPS nào' }}
+          emptyText="Chưa có tọa độ GPS nào"
           columns={[
             {
               title: 'STT',
               width: 60,
-              align: 'center',
-              render: (_v, _r, idx) => (gpsPage - 1) * 10 + idx + 1,
+              align: 'center' as const,
+              render: (_v: any, _r: any, idx: number) => idx + 1,
             },
             {
               title: 'Vĩ độ (Latitude - N)',
               key: 'lat',
-              render: (_v, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+              render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
             },
             {
               title: 'Kinh độ (Longitude - E)',
               key: 'lng',
-              render: (_v, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+              render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
             },
             {
               title: '',
               width: 50,
-              align: 'center',
-              render: (_v, record: any) => (
+              align: 'center' as const,
+              render: (_v: any, record: any) => (
                 <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
               ),
             },
@@ -736,7 +748,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       )}
     </div>) },
     // Tab 3: File đính kèm (chuẩn VTS CHK — InfrastructureAttachmentTab)
-    { key: 'files', label: `File đính kèm (${uploadedFiles.length + existingFiles.length})`, children: (
+    { key: 'files', label: `File đính kèm (${uploadedFiles.length + existingFiles.filter((f) => !pendingDeletedAttachmentIds.includes(f.id)).length})`, children: (
       <InfrastructureAttachmentTab
         attachments={[
           ...uploadedFiles.map((f: any) => ({
@@ -747,10 +759,10 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
             uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap?.get(f.uploadedBy) || f.uploadedBy) : '') || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
             uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
           })),
-          ...existingFiles.map((f: any) => ({
+          ...existingFiles.filter((f: any) => !pendingDeletedAttachmentIds.includes(f.id)).map((f: any) => ({
             ...f,
             id: f.id,
-            fileName: f.fileName || f.name || '—',
+            fileName: f.fileName || f.name || '',
             fileSize: f.fileSize,
             uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap?.get(f.uploadedBy) || f.uploadedBy) : '') || 'Cán bộ quản lý',
             uploadedBy: f.uploadedBy,
@@ -761,7 +773,13 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         readonly={false}
         userMap={userMap}
         onUpload={(file) => { handleBeforeUpload(file); return false; }}
-        onDelete={(id) => { setUploadedFiles((p) => p.filter((x) => (x.uid || (x as any).id) !== id)); }}
+        onDelete={(id) => {
+          const isExisting = existingFiles.some((f) => f.id === id);
+          if (isExisting) {
+            setPendingDeletedAttachmentIds((prev) => [...prev, id]);
+          }
+          setUploadedFiles((p) => p.filter((x) => (x.uid || (x as any).id) !== id));
+        }}
         onDownload={(_id, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
       />
     ) },

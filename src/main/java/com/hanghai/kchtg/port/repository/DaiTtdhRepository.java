@@ -60,4 +60,6 @@ public interface DaiTtdhRepository extends JpaRepository<DaiTtdh, UUID> {
             @Param("updatedFrom") java.time.LocalDateTime updatedFrom,
             @Param("updatedTo") java.time.LocalDateTime updatedTo,
             Pageable pageable);
+
+    java.util.List<DaiTtdh> findByDeletedAtIsNullOrderByDaiTtdhNameAsc();
 }

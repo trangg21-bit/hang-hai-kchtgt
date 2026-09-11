@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { formatHistoryNumber, normalizeSafeNumber } from '../../utils/numFmt';
+import { renderWharfAreaHistory } from '../../utils/changeHistoryRenderer';
 import { berthCRUD, waterZoneCRUD, pierCRUD } from '../../services/portService';
 import BerthDetailContent from '../../pages/port/BerthDetailContent';
 import PierDetailContent from '../../pages/port/PierDetailContent';
@@ -40,7 +41,7 @@ import {
 } from './api';
 import { portApproval } from '../portService';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from './schema';
-import type { CangBienResponse } from './types';
+import type { CangBienResponse, PortWharfAreaItem } from './types';
 import toast from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 import { documentApi } from '../../app/document/api';
@@ -61,14 +62,15 @@ async function fetchPortAttachmentList(portId: string): Promise<any[]> {
   }
 }
 
-async function uploadPortAttachments(portId: string, files: any[]): Promise<number> {
+async function uploadPortAttachments(portId: string, files: any[], skipHistory = false): Promise<number> {
   const newFiles = (files || []).filter((f: any) => f && f.originFileObj);
   if (newFiles.length === 0) return 0;
   const formData = new FormData();
   newFiles.forEach((fi: any) => {
     formData.append('files', fi.originFileObj as File);
   });
-  await api.post(`/v1/ports/${portId}/attachments`, formData, { headers: { 'Content-Type': undefined } });
+  const url = `/v1/ports/${portId}/attachments${skipHistory ? '?skipHistory=true' : ''}`;
+  await api.post(url, formData, { headers: { 'Content-Type': undefined } });
   return newFiles.length;
 }
 import dayjs from 'dayjs';
@@ -142,39 +144,29 @@ import PortDetailContent from './PortDetailContent';
 // Nhóm các thay đổi theo cùng thời điểm (đến giây) + người thao tác thành 1 card,
 // cột trái: mốc thời gian + pill hành động; cột phải: info-card có vạch accent,
 // tiêu đề 'Thông tin thêm mới'/'Thông tin thay đổi', từng dòng field cũ → mới.
-type PortHistKind = { isCreate: boolean; label: string; color: string; bg: string };
-
-function portHistActionMeta(field: string, rows: { field: string; oldValue: string | null; newValue: string | null }[]): PortHistKind {
-  const lb = (field || '').toLowerCase();
-  const nv = String(rows.find((x) => x.field.toLowerCase() === lb)?.newValue ?? (rows[0]?.field || '')).toLowerCase();
-  if (!rows.some((x) => x.oldValue != null)) {
-    return { isCreate: true, label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (nv.includes('phê duyệt') || nv.includes('phe duyet') || nv.includes('approved')) {
-    return { isCreate: false, label: 'Phê duyệt', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (nv.includes('từ chối') || nv.includes('tu choi') || nv.includes('rejected')) {
-    return { isCreate: false, label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (nv.includes('trình duyệt') || nv.includes('trinh duyet') || nv.includes('pending')) {
-    return { isCreate: false, label: 'Trình duyệt', color: '#EDA100', bg: '#EDA10018' };
-  }
-  if (nv.includes('xóa') || nv.includes('xoa') || nv.includes('deleted')) {
-    return { isCreate: false, label: 'Xóa', color: textTertiary, bg: `${textTertiary}18` };
-  }
-  return { isCreate: false, label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
-
 function fmtPortHistoryThousands(s: string): string {
   return formatHistoryNumber(s);
 }
 
+const isBlankOrDash = (v: unknown): boolean => {
+  if (v === null || v === undefined) return true;
+  const s = String(v).trim();
+  return (
+    s === '' ||
+    s === '—' ||
+    s === '-' ||
+    s === '–' ||
+    s === '(null)' ||
+    s === 'null' ||
+    s === 'undefined' ||
+    s.toLowerCase() === 'chưa có'
+  );
+};
+
 function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap: Map<string, string>, symbolImageMap: Map<string, string>) {
-  const norm = (v: string | null): string | null => {
-    if (v === null || v === undefined) return null;
-    const s = String(v);
-    if (s === 'null' || s === '(null)' || s === 'undefined' || s === '') return null;
-    return s;
+  const norm = (v: string | null | undefined): string | null => {
+    if (isBlankOrDash(v)) return null;
+    return String(v).trim();
   };
   const unitName = (r: any): string => {
     const display = orgMap.get(String(r?.orgUnitId ?? ''));
@@ -182,66 +174,265 @@ function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbol
       const i = display.indexOf(' - ');
       return i >= 0 ? display.slice(i + 3) : display;
     }
-    return (r?.orgUnitName || r?.unitName) || '—';
+    const fallback = r?.orgUnitName || r?.unitName;
+    return isBlankOrDash(fallback) ? '' : String(fallback);
   };
   const fieldLabel = (fn: string): string => PORT_HISTORY_FIELD_LABELS[fn] || fn;
 
-  const GROUP_ORDER = ['createEntity', 'portCode', 'portName', 'portGroup', 'portClass', 'province', 'coordinates', 'mapSymbolId', 'geometryType', 'coordinateSystem', 'displayRule', 'maxVesselCapacity', 'area', 'totalBerths', 'totalAnchoragesTransshipment', 'remarks', 'orgUnitId'];
+  const GROUP_ORDER = [
+    'portCode', 'orgUnitId', 'portName', 'province', 'provinceId',
+    'area', 'maxVesselCapacity', 'portGroup', 'portClass', 'detailedLocation',
+    'waterAreaScope',
+    'totalBerths', 'totalAnchoragesTransshipment', 'totalPublicChannels',
+    'totalDedicatedChannels', 'totalPublicChannelLength', 'totalDedicatedChannelLength',
+    'totalBuoysBeacons', 'totalDikes', 'totalDikeLength', 'totalLighthouses',
+    'buoyBerthCount', 'anchorageCount', 'transshipmentCount', 'otherWaterAreas',
+    'remarks',
+    'geometryType', 'Loại đối tượng', 'Loại đối tượng GIS',
+    'mapSymbolId', 'coordinateSystem', 'displayRule',
+    'coordinates', 'Tọa độ GIS', 'Tọa độ GPS',
+    'attachments', 'Tài liệu đính kèm', 'File đính kèm',
+    'wharfAreas', 'Khu bến', 'Danh sách khu bến',
+    'infrastructureList', 'Công trình KCHT trực thuộc', 'Danh sách hạ tầng',
+  ];
+
+  const IGNORED_FIELDS = new Set([
+    'spatialId', 'infrastructureList_raw',
+    'approvalStatus', 'approverLevel1', 'approvedDateLevel1',
+    'approverLevel2', 'approvedDateLevel2', 'rejectionReason', 'Lý do từ chối',
+    'Trạng thái phê duyệt',
+  ]);
 
   const sorted = [...(records || [])].sort((a, b) => {
-    // API Cảng biển (HistoryEntry) trả approvedDate; fallback đủ khóa giống Bến cảng.
     const at = a.changedAt || a.createdAt || a.approvedDate || '';
     const bt = b.changedAt || b.createdAt || b.approvedDate || '';
     return String(bt) < String(at) ? -1 : String(bt) > String(at) ? 1 : 0;
   });
+
   const groups: { tsMs: number; ts: string; actor: string; items: any[] }[] = [];
   for (const r of sorted) {
     const ts = r.changedAt || r.createdAt || r.approvedDate || '';
-    // Gom nhóm theo đúng logic Bến cảng: theo GIÂY (tsSec) + actor, mỗi nhóm giữ ts ISO để hiển thị.
-    const tsMs = ts ? Math.floor(new Date(ts).getTime() / 1000) || 0 : 0;
+    const timeMs = ts ? new Date(ts).getTime() || 0 : 0;
     const actor = String(r.changedBy ?? r.createdBy ?? r.approvedBy ?? r.actorName ?? '');
     const g = groups[groups.length - 1];
-    if (g && g.tsMs === tsMs && g.actor === actor) {
+    if (g && g.actor === actor && Math.abs(g.tsMs - timeMs) <= 10000) {
       g.items.push(r);
     } else {
-      groups.push({ tsMs, ts, actor, items: [r] });
+      groups.push({ tsMs: timeMs, ts, actor, items: [r] });
     }
   }
 
-  return groups.map((g, gi) => {
-    const rows = g.items.map((it) => {
-      const fn = it.changedField ?? it.fieldName ?? '';
+  const cards = groups.map((g, gi) => {
+    // 1. Tách các trường thông thường và tệp đính kèm trong cùng nhóm 60s
+    const attachmentItems: any[] = [];
+    const nonAttachmentItems: any[] = [];
+
+    for (const it of g.items) {
+      const rawFn = (it.changedField ?? it.fieldName ?? '').trim();
+      if (IGNORED_FIELDS.has(rawFn)) continue;
+
+      if (rawFn === 'attachments' || rawFn === 'Tài liệu đính kèm' || rawFn === 'File đính kèm') {
+        attachmentItems.push(it);
+      } else {
+        nonAttachmentItems.push(it);
+      }
+    }
+
+    // 2. Gom nhóm các trường thông thường (giữ oldValue sớm nhất và newValue mới nhất)
+    const fieldMap = new Map<string, { rowId: string; field: string; oldValue: string | null; newValue: string | null }>();
+    for (const it of nonAttachmentItems) {
+      let fn = (it.changedField ?? it.fieldName ?? '').trim();
+      if (fn === 'Danh sách hạ tầng' || fn === 'infrastructureList') {
+        fn = 'Công trình KCHT trực thuộc';
+      } else if (fn === 'wharfAreas' || fn === 'Danh sách khu bến') {
+        fn = 'Khu bến';
+      } else if (fn === 'Tọa độ GIS' || fn === 'coordinates') {
+        fn = 'coordinates';
+      } else if (fn === 'Loại đối tượng GIS') {
+        fn = 'geometryType';
+      }
+
       const oldV = norm(it.oldValue ?? it.previousValue);
       const newV = norm(it.newValue ?? it.value);
-      return { rowId: String(it.id ?? `${String(it.changedAt ?? '')}-${String(it.changedField ?? it.fieldName ?? '')}`), field: fn, oldValue: oldV, newValue: newV };
+
+      if (!fieldMap.has(fn)) {
+        fieldMap.set(fn, {
+          rowId: String(it.id ?? `${g.tsMs}-${fn}`),
+          field: fn,
+          oldValue: oldV,
+          newValue: newV,
+        });
+      } else {
+        const existing = fieldMap.get(fn)!;
+        // g.items duyệt từ MỚI NHẤT -> CŨ NHẤT:
+        // Item đầu tiên duyệt qua đã có newValue mới nhất.
+        // Item cũ hơn có oldV là trạng thái trước đó -> cập nhật oldValue về mốc ban đầu.
+        if (oldV !== null && oldV !== undefined) {
+          existing.oldValue = oldV;
+        }
+      }
+    }
+
+    // 3. Xử lý tệp đính kèm dạng snapshot bảng:
+    // - File đã xóa bằng action KHÔNG BAO GIỜ được xuất hiện ở newValue!
+    // - File vừa tải lên KHÔNG BAO GIỜ xuất hiện ở oldValue!
+    // - Các file giữ nguyên không xóa sẽ xuất hiện ở cả oldValue và newValue.
+    if (attachmentItems.length > 0) {
+      const deletedFileNames = new Set<string>();
+      const addedFileNames = new Set<string>();
+
+      for (const it of attachmentItems) {
+        const reason = String(it.reason || '');
+        const mDel = reason.match(/xóa.*đính kèm:\s*(.*)/i);
+        if (mDel && mDel[1]?.trim()) {
+          mDel[1].split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => deletedFileNames.add(f));
+        }
+        const mUp = reason.match(/tải lên.*đính kèm:\s*(.*)/i);
+        if (mUp && mUp[1]?.trim()) {
+          mUp[1].split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => addedFileNames.add(f));
+        }
+        const st = it.status;
+        if (st === 8 || st === 'ATTACHMENT_DELETED') {
+          const raw = it.previousValue ?? it.oldValue;
+          if (raw && isBlankOrDash(it.newValue ?? it.value)) {
+            String(raw).split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => deletedFileNames.add(f));
+          }
+        }
+        if (st === 7 || st === 'ATTACHMENT_UPLOADED') {
+          const raw = it.newValue ?? it.value;
+          if (raw && isBlankOrDash(it.previousValue ?? it.oldValue)) {
+            String(raw).split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => addedFileNames.add(f));
+          }
+        }
+      }
+
+      // oldValue: Danh sách file ban đầu trước khi thực hiện thao tác sửa
+      const oldFilesList: string[] = [];
+      const oldestAtt = attachmentItems[attachmentItems.length - 1];
+      const oldestOldV = norm(oldestAtt?.oldValue ?? oldestAtt?.previousValue);
+      if (oldestOldV) {
+        oldestOldV.split(',').map((s) => s.trim()).filter(Boolean).forEach((f) => {
+          if (!oldFilesList.includes(f)) oldFilesList.push(f);
+        });
+      }
+      for (let i = attachmentItems.length - 1; i >= 0; i--) {
+        const it = attachmentItems[i];
+        const oldV = norm(it.oldValue ?? it.previousValue);
+        if (oldV) {
+          oldV.split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f) => {
+            if (!oldFilesList.includes(f)) oldFilesList.push(f);
+          });
+        }
+      }
+      // Đảm bảo 100% mọi file đã bị xóa bằng thùng rác đều có mặt đầy đủ trong oldFilesList
+      for (const f of deletedFileNames) {
+        if (!oldFilesList.includes(f)) {
+          oldFilesList.push(f);
+        }
+      }
+
+      // Chỉ loại file khỏi oldFilesList nếu file đó vừa được tải lên trong chính phiên này
+      // và KHÔNG hề có trong oldValue ban đầu hay trong danh sách xóa
+      const initialOldSet = new Set(oldestOldV ? oldestOldV.split(',').map((s) => s.trim()).filter(Boolean) : []);
+      const finalOldFilesList = oldFilesList.filter((f) => {
+        if (addedFileNames.has(f) && !initialOldSet.has(f) && !deletedFileNames.has(f)) {
+          return false;
+        }
+        return true;
+      });
+
+      // newValue: Danh sách file sau cùng sau khi hoàn tất thao tác sửa
+      const newFilesList: string[] = [];
+      const newestAtt = attachmentItems[0];
+      const newestNewV = norm(newestAtt?.newValue ?? newestAtt?.value);
+      if (newestNewV) {
+        newestNewV.split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => {
+          if (!newFilesList.includes(f) && !deletedFileNames.has(f)) {
+            newFilesList.push(f);
+          }
+        });
+      }
+      for (const f of addedFileNames) {
+        if (!newFilesList.includes(f) && !deletedFileNames.has(f)) {
+          newFilesList.push(f);
+        }
+      }
+      // Giữ lại các file cũ không bị xóa (retained files)
+      for (const f of finalOldFilesList) {
+        if (!deletedFileNames.has(f) && !newFilesList.includes(f)) {
+          newFilesList.push(f);
+        }
+      }
+
+      const finalOld = finalOldFilesList.length > 0 ? finalOldFilesList.join(', ') : null;
+      const finalNew = newFilesList.length > 0 ? newFilesList.join(', ') : null;
+
+      if (finalOld !== finalNew) {
+        fieldMap.set('File đính kèm', {
+          rowId: `att-${g.tsMs}`,
+          field: 'File đính kèm',
+          oldValue: finalOld,
+          newValue: finalNew,
+        });
+      }
+    }
+
+    const rows = Array.from(fieldMap.values()).filter((r) => {
+      const o = r.oldValue?.trim() || '';
+      const n = r.newValue?.trim() || '';
+      return o !== n;
     });
-    // Xác định "thêm mới"/hành động theo chuẩn semantic — dùng hàm có sẵn portHistActionMeta,
-    // giống Bến cảng (badge phân biệt Phê duyệt/Từ chối/Trình duyệt/Xóa/Cập nhật theo rows).
-    // Bản ghi đại diện của mốc nhóm (dùng cho "Người cập nhật"/đơn vị trong node).
+
+    const ordered = [...rows].sort((a, b) => {
+      const ia = GROUP_ORDER.indexOf(a.field);
+      const ib = GROUP_ORDER.indexOf(b.field);
+      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+    });
+
+    if (ordered.length === 0) return null;
+
     const meta = g.items?.[0] || {};
-    const kind = portHistActionMeta('', rows);
-    // isCreate (tiêu đề "Thông tin thêm mới/thay đổi", nhánh render dòng) lấy từ kết quả hàm chuẩn.
-    const isCreate = kind.isCreate;
     const barColor = actionPrimary;
     const accent = historyAccentBarStyle(barColor);
+
     const paintValue = (fn: string, rawV: string | null) => {
-      if (rawV === null) return null;
+      if (isBlankOrDash(rawV)) return '';
       if (fn === 'orgUnitId') {
         const full = orgMap.get(String(rawV));
         if (full) {
           const i = full.indexOf(' - ');
           return i >= 0 ? full.slice(i + 3) : full;
         }
-        return String(rawV);
+        return isBlankOrDash(rawV) ? '' : String(rawV);
       }
       if (fn === 'mapSymbolId') {
-        const img = symbolImageMap.get(rawV);
-        const nm = symbolMap.get(rawV) || rawV;
-        return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{nm}</span>;
+        const img = symbolImageMap.get(rawV!);
+        const nm = symbolMap.get(rawV!) || rawV;
+        if (isBlankOrDash(nm)) return '';
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+            {nm}
+          </span>
+        );
       }
-      // Danh sách công trình KCHT do BE nén thành text "Tên (SL), Tên (SL)…" (field
-      // ghi literal "Công trình KCHT trực thuộc"). Chuyển sang hiển thị rõ: mỗi công trình
-      // 1 dòng dạng "Tên: Số lượng SL" thay vì nén (SL) khó đọc.
+      if ((fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') && rawV) {
+        const files = String(rawV)
+          .split(/\s*,\s*/)
+          .map((f) => f.trim())
+          .filter((f) => !isBlankOrDash(f));
+        if (files.length > 0) {
+          return (
+            <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+              {files.map((file, idx) => (
+                <span key={idx} style={{ wordBreak: 'break-all' }}>
+                  {file}
+                </span>
+              ))}
+            </span>
+          );
+        }
+      }
       if ((fn === 'Công trình KCHT trực thuộc' || fn === 'Danh sách hạ tầng' || fn === 'infrastructureList') && rawV) {
         const lines = String(rawV)
           .split(/\s*,\s*/)
@@ -252,76 +443,88 @@ function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbol
             if (m) return { label: m[1].trim() || seg, qty: m[2] };
             return { label: seg, qty: '' };
           })
-          .filter((x) => x.label && x.label !== '(null)' && x.label !== 'null');
+          .filter((x) => x.label && !isBlankOrDash(x.label));
         if (lines.length > 0) {
           return (
             <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
               {lines.map((x, i) => (
-                <span key={i}>Tên: {x.label}, Số lượng: {x.qty || '—'}</span>
+                <span key={i}>
+                  Tên: {x.label}{x.qty && !isBlankOrDash(x.qty) ? `, Số lượng: ${fmtPortHistoryThousands(x.qty)}` : ''}
+                </span>
               ))}
             </span>
           );
         }
       }
+      if ((fn === 'Khu bến' || fn === 'wharfAreas' || fn === 'Danh sách khu bến') && rawV) {
+        return renderWharfAreaHistory(rawV);
+      }
       const resolved = resolvePortHistoryValue(fn, rawV, orgMap, symbolMap);
-      return resolved ?? fmtPortHistoryThousands(String(rawV));
+      if (resolved !== undefined) {
+        return isBlankOrDash(resolved) ? '' : resolved;
+      }
+      const formatted = fmtPortHistoryThousands(String(rawV));
+      return isBlankOrDash(formatted) ? '' : formatted;
     };
-    const ordered = [...rows].sort((a, b) => {
-      const ia = GROUP_ORDER.indexOf(a.field); const ib = GROUP_ORDER.indexOf(b.field);
-      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-    });
+
     return (
       <div key={g.tsMs !== 0 && g.tsMs ? `g-${g.tsMs}-${g.actor}` : `gi-${gi}`} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
         <div style={{ minWidth: 0, paddingTop: spaceXs }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-            <Typography.Text style={historyTimeStyle}>{g.items[0]?.changedAt || g.items[0]?.createdAt || g.items[0]?.approvedDate ? dayjs(g.items[0]?.changedAt || g.items[0]?.createdAt || g.items[0]?.approvedDate).format('HH:mm DD/MM/YYYY') : '—'}</Typography.Text>
+            <Typography.Text style={historyTimeStyle}>
+              {g.ts ? dayjs(g.ts).format('HH:mm DD/MM/YYYY') : ''}
+            </Typography.Text>
             <span style={{ flexShrink: 0 }}>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${kind.color}18`, color: kind.color, whiteSpace: 'nowrap' }}>{kind.label}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: `${actionPrimary}18`, color: actionPrimary, border: `1px solid ${actionPrimary}40`, whiteSpace: 'nowrap' }}>
+                Cập nhật
+              </span>
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-            <Typography.Text style={historyMetaRowStyle}>Người cập nhật: {meta.changedBy ? String(meta.changedBy) : meta.createdBy ? String(meta.createdBy) : g.actor ? g.actor : '—'}</Typography.Text>
-            <Typography.Text style={historyMetaRowStyle}>Đơn vị: {unitName(g.items[0])}</Typography.Text>
+            <Typography.Text style={historyMetaRowStyle}>
+              Người cập nhật: {meta.changedBy ? String(meta.changedBy) : meta.createdBy ? String(meta.createdBy) : g.actor ? g.actor : ''}
+            </Typography.Text>
+            <Typography.Text style={historyMetaRowStyle}>
+              Đơn vị: {unitName(g.items[0])}
+            </Typography.Text>
           </div>
         </div>
         <div style={historyInfoCardStyle}>
           <div style={accent} />
-          <Typography.Text style={historyInfoTitleStyle}>{isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:'}</Typography.Text>
-          {ordered.filter((x) => !(x.field === 'spatialId' || x.field === 'infrastructureList' || x.field === 'attachments')).length === 0 ? (
-            <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>
-          ) : (
-            ordered.filter((x) => !(x.field === 'spatialId' || x.field === 'infrastructureList' || x.field === 'attachments')).map((x, ri) => {
-              const label = `${fieldLabel(x.field)}:`;
-              if (x.field === 'coordinates' || x.field === 'geometryType') {
-                return (
-                  <div key={x.rowId} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
-                    <Typography.Text style={historyNewValueStyle}>Cập nhật tọa độ / ranh giới</Typography.Text>
-                  </div>
-                );
-              }
-              if (isCreate) {
-                return (
-                  <div key={x.rowId} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
-                    <Typography.Text style={historyNewValueStyle} title={typeof (x.newValue ?? '') === 'string' ? x.newValue as unknown as string : undefined}>{x.newValue !== null && x.newValue !== '' && x.newValue !== '—' && x.newValue !== '-' ? <>{paintValue(x.field, x.newValue)}</> : ''}</Typography.Text>
-                  </div>
-                );
-              }
-              return (
-                <div key={x.rowId} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                  <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
-                  <Typography.Text style={historyOldValueStyle} title={x.oldValue !== null && x.oldValue !== '' && x.oldValue !== '—' && x.oldValue !== '-' ? String(x.oldValue) : undefined}>{x.oldValue !== null && x.oldValue !== '' && x.oldValue !== '—' && x.oldValue !== '-' ? <>{paintValue(x.field, x.oldValue)}</> : ''}</Typography.Text>
-                  <Typography.Text style={historyArrowStyle}>→</Typography.Text>
-                  <Typography.Text style={historyNewValueStyle} title={typeof (x.newValue ?? '') === 'string' ? x.newValue as unknown as string : undefined}>{x.newValue !== null && x.newValue !== '' && x.newValue !== '—' && x.newValue !== '-' ? <>{paintValue(x.field, x.newValue)}</> : ''}</Typography.Text>
-                </div>
-              );
-            })
-          )}
+          <Typography.Text style={historyInfoTitleStyle}>
+            Thông tin thay đổi:
+          </Typography.Text>
+          {ordered.map((x, ri) => {
+            const label = `${fieldLabel(x.field)}:`;
+            const ov = paintValue(x.field, x.oldValue);
+            const nv = paintValue(x.field, x.newValue);
+            return (
+              <div key={x.rowId} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
+                <span style={historyOldValueStyle} title={typeof ov === 'string' && ov ? ov : undefined}>
+                  {ov}
+                </span>
+                <Typography.Text style={historyArrowStyle}>→</Typography.Text>
+                <span style={historyNewValueStyle} title={typeof nv === 'string' && nv ? nv : undefined}>
+                  {nv}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
-  });
+  }).filter(Boolean);
+
+  if (cards.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+      </div>
+    );
+  }
+  return cards;
 }
 
 // ── Helper: format date ─────────────────────────────────────────────
@@ -344,35 +547,49 @@ const PORT_HISTORY_FIELD_LABELS: Record<string, string> = {
   portCode: 'Mã cảng biển',
   orgUnitId: 'Đơn vị quản lý',
   portName: 'Tên cảng biển',
-  province: 'Địa điểm (Tỉnh/Thành Phố)',
-  provinceId: 'Địa điểm (Tỉnh/Thành Phố)',
+  province: 'Địa điểm (Tỉnh/Thành phố)',
+  provinceId: 'Địa điểm (Tỉnh/Thành phố)',
   area: 'Diện tích (km²)',
   maxVesselCapacity: 'Khả năng tiếp nhận tàu',
   portGroup: 'Nhóm cảng biển',
   portClass: 'Phân cấp cảng biển',
-  coordinateSystem: 'Hệ quy chiếu tọa độ',
-  displayRule: 'Quy tắc hiển thị',
   detailedLocation: 'Địa điểm chi tiết',
-  mapSymbolId: 'Biểu tượng',
-  spatialId: 'Vị trí không gian',
-  coordinates: 'Tọa độ GPS',
-  waterAreaScope: 'Phạm vi vùng nước',
+  waterAreaScope: 'Phạm vi vùng nước cảng biển',
   totalBerths: 'Tổng số bến cảng',
-  totalAnchoragesTransshipment: 'Tổng số khu neo đậu/chuyển tải',
-  totalPublicChannels: 'Tổng số tuyến luồng công cộng',
-  totalDedicatedChannels: 'Tổng số tuyến luồng chuyên dùng',
-  totalPublicChannelLength: 'Tổng chiều dài luồng công cộng (km)',
-  totalDedicatedChannelLength: 'Tổng chiều dài luồng chuyên dùng (km)',
-  totalBuoysBeacons: 'Tổng số phao tiêu/báo hiệu',
-  totalDikes: 'Tổng số đê kè',
-  totalDikeLength: 'Tổng chiều dài đê kè (km)',
-  totalLighthouses: 'Tổng số đèn biển/đăng tiêu',
+  totalAnchoragesTransshipment: 'Tổng số khu neo đậu, khu chuyển tải',
+  totalPublicChannels: 'Tổng số tuyến luồng hàng hải công cộng',
+  totalDedicatedChannels: 'Tổng số tuyến luồng hàng hải chuyên dùng',
+  totalPublicChannelLength: 'Tổng chiều dài luồng hàng hải công cộng (km)',
+  totalDedicatedChannelLength: 'Tổng chiều dài luồng hàng hải chuyên dùng (km)',
+  totalBuoysBeacons: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng',
+  totalDikes: 'Tổng số đê, kè',
+  totalDikeLength: 'Tổng chiều dài hệ thống đê, kè (km)',
+  totalLighthouses: 'Tổng số đèn biển, đăng, tiêu độc lập',
   buoyBerthCount: 'Số lượng bến phao',
   anchorageCount: 'Số lượng khu neo đậu',
   transshipmentCount: 'Số lượng khu chuyển tải',
-  otherWaterAreas: 'Các khu nước khác',
+  otherWaterAreas: 'Các khu nước, vùng nước khác',
   remarks: 'Ghi chú',
-  geometryType: 'Loại hình học',
+  geometryType: 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
+  'Loại đối tượng GIS': 'Loại đối tượng',
+  mapSymbolId: 'Biểu tượng',
+  coordinateSystem: 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
+  coordinates: 'Tọa độ GPS',
+  'Tọa độ GIS': 'Tọa độ GPS',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  spatialId: 'Vị trí không gian',
+  attachments: 'File đính kèm',
+  'Tài liệu đính kèm': 'File đính kèm',
+  'File đính kèm': 'File đính kèm',
+  wharfAreas: 'Khu bến',
+  'Khu bến': 'Khu bến',
+  'Danh sách khu bến': 'Khu bến',
+  infrastructureList: 'Công trình KCHT trực thuộc',
+  'Công trình KCHT trực thuộc': 'Công trình KCHT trực thuộc',
+  'Danh sách hạ tầng': 'Công trình KCHT trực thuộc',
+  operationalStatus: 'Tình trạng hoạt động',
 };
 
 const PORT_APPROVAL_STATUS_LABELS: Record<string, string> = {
@@ -391,14 +608,21 @@ const PORT_OPERATIONAL_STATUS_LABELS: Record<string, string> = {
 
 function resolvePortHistoryValue(field: string, val: unknown, orgMap: Map<string, string>, symbolMap: Map<string, string>): string | undefined {
   if (val === null || val === undefined || val === '') return undefined;
-  const s = String(val);
+  const s = String(val).trim();
+  if (isBlankOrDash(s)) return '';
   switch (field) {
     case 'orgUnitId': return orgMap.get(s) || s;
     case 'mapSymbolId': return symbolMap.get(s) || s;
-    case 'spatialId': return '—';
-    case 'portGroup': return s ? `Nhóm ${s}` : '—';
-    case 'portClass': return s ? (s === '5' ? 'Cấp đặc biệt' : `Cấp ${s}`) : '—';
-    case 'coordinateSystem': return s === '1' ? 'WGS-84' : s === '2' ? 'VN-2000' : s;
+    case 'spatialId': return '';
+    case 'portGroup': return s ? (s.toLowerCase().startsWith('nhóm') ? s : `Nhóm ${s}`) : '';
+    case 'portClass': return s ? (s === '5' || s === 'Cấp đặc biệt' ? 'Cấp đặc biệt' : s.startsWith('Cấp') ? s : `Cấp ${s}`) : '';
+    case 'coordinateSystem': return s === '1' || s === 'WGS-84' ? 'WGS-84' : s === '2' || s === 'VN-2000' ? 'VN-2000' : s;
+    case 'geometryType':
+    case 'Loại đối tượng':
+    case 'Loại đối tượng GIS':
+      return s === 'POINT' ? 'Đối tượng điểm' : s === 'LINE' ? 'Đối tượng đường' : s === 'POLYGON' ? 'Đối tượng vùng' : s;
+    case 'displayRule':
+      return s === '1' || s === 'DMS' ? 'Độ, phút, giây (DMS)' : s;
     case 'approvalStatus': return PORT_APPROVAL_STATUS_LABELS[s] || s;
     case 'operationalStatus': return PORT_OPERATIONAL_STATUS_LABELS[s] || s;
     default: return undefined;
@@ -409,34 +633,51 @@ export const translateFieldName = (fieldName: string): string => {
   const map: Record<string, string> = {
     // Port (Cảng biển)
     portCode: 'Mã cảng biển',
+    orgUnitId: 'Đơn vị quản lý',
     portName: 'Tên cảng biển',
-    province: 'Tỉnh/Thành phố',
+    province: 'Địa điểm (Tỉnh/Thành phố)',
+    provinceId: 'Địa điểm (Tỉnh/Thành phố)',
     area: 'Diện tích (km²)',
     maxVesselCapacity: 'Khả năng tiếp nhận tàu',
     khaNangTiepNhan: 'Khả năng tiếp nhận tàu',
     portGroup: 'Nhóm cảng biển',
     portClass: 'Phân cấp cảng biển',
     detailedLocation: 'Địa điểm chi tiết',
-    coordinateSystem: 'Hệ quy chiếu tọa độ',
+    coordinateSystem: 'Hệ quy chiếu',
     displayRule: 'Quy tắc hiển thị',
-    waterAreaScope: 'Phạm vi vùng nước',
+    waterAreaScope: 'Phạm vi vùng nước cảng biển',
     totalBerths: 'Tổng số bến cảng',
-    totalAnchoragesTransshipment: 'Tổng số khu neo đậu/chuyển tải',
-    totalPublicChannels: 'Tổng số tuyến luồng công cộng',
-    totalDedicatedChannels: 'Tổng số tuyến luồng chuyên dùng',
-    totalPublicChannelLength: 'Tổng chiều dài luồng công cộng (km)',
-    totalDedicatedChannelLength: 'Tổng chiều dài luồng chuyên dùng (km)',
-    totalBuoysBeacons: 'Tổng số phao tiêu/báo hiệu',
-    totalDikes: 'Tổng số đê kè',
-    totalDikeLength: 'Tổng chiều dài đê kè (km)',
-    totalLighthouses: 'Tổng số đèn biển/đăng tiêu',
+    totalAnchoragesTransshipment: 'Tổng số khu neo đậu, khu chuyển tải',
+    totalPublicChannels: 'Tổng số tuyến luồng hàng hải công cộng',
+    totalDedicatedChannels: 'Tổng số tuyến luồng hàng hải chuyên dùng',
+    totalPublicChannelLength: 'Tổng chiều dài luồng hàng hải công cộng (km)',
+    totalDedicatedChannelLength: 'Tổng chiều dài luồng hàng hải chuyên dùng (km)',
+    totalBuoysBeacons: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng',
+    totalDikes: 'Tổng số đê, kè',
+    totalDikeLength: 'Tổng chiều dài hệ thống đê, kè (km)',
+    totalLighthouses: 'Tổng số đèn biển, đăng, tiêu độc lập',
     buoyBerthCount: 'Số lượng bến phao',
     anchorageCount: 'Số lượng khu neo đậu',
     transshipmentCount: 'Số lượng khu chuyển tải',
-    otherWaterAreas: 'Các khu nước khác',
+    otherWaterAreas: 'Các khu nước, vùng nước khác',
     remarks: 'Ghi chú',
     mapSymbolId: 'Biểu tượng',
-    geometryType: 'Loại hình học',
+    geometryType: 'Loại đối tượng',
+    'Loại đối tượng': 'Loại đối tượng',
+    'Loại đối tượng GIS': 'Loại đối tượng',
+    coordinates: 'Tọa độ GPS',
+    'Tọa độ GIS': 'Tọa độ GPS',
+    'Tọa độ GPS': 'Tọa độ GPS',
+    attachments: 'File đính kèm',
+    'Tài liệu đính kèm': 'File đính kèm',
+    'File đính kèm': 'File đính kèm',
+    wharfAreas: 'Khu bến',
+    'Khu bến': 'Khu bến',
+    'Danh sách khu bến': 'Khu bến',
+    infrastructureList: 'Công trình KCHT trực thuộc',
+    'Công trình KCHT trực thuộc': 'Công trình KCHT trực thuộc',
+    'Danh sách hạ tầng': 'Công trình KCHT trực thuộc',
+    operationalStatus: 'Tình trạng hoạt động',
     // Berth (Bến cảng)
     berthCode: 'Mã bến cảng',
     berthName: 'Tên bến cảng',
@@ -500,7 +741,8 @@ export const translateFieldName = (fieldName: string): string => {
     conditionStatus: 'Tình trạng',
     navigationChannelId: 'Thuộc luồng hàng hải',
     // Collections (fallback label)
-    infrastructureList: 'Danh sách hạ tầng',
+    wharfAreas: 'Khu bến',
+    infrastructureList: 'Công trình KCHT trực thuộc',
     attachments: 'File đính kèm',
     attachmentList: 'File đính kèm',
   };
@@ -752,6 +994,7 @@ export default function PortListPage() {
 
   // Infrastructure list for create modal
   const [infraList, setInfraList] = useState<Array<{ stt: number; infraName: string; quantity: number | null }>>([]);
+  const [wharfAreaList, setWharfAreaList] = useState<PortWharfAreaItem[]>([]);
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   // GPS coordinates — 6 trường DMS riêng (latD/latM/latS/lngD/lngM/lngS — chuẩn VTS CHK)
@@ -791,20 +1034,23 @@ export default function PortListPage() {
   };
 
   // Infra helpers
-  const addInfra = () => setInfraList([...infraList, { stt: infraList.length + 1, infraName: '', quantity: null }]);
+  const addInfra = () => setInfraList((prev) => [...prev, { stt: prev.length + 1, infraName: '', quantity: null }]);
   const removeInfra = (i: number) => {
-    const next = infraList.filter((_, idx) => idx !== i).map((item, idx) => ({ ...item, stt: idx + 1 }));
-    setInfraList(next);
+    setInfraList((prev) => prev.filter((_, idx) => idx !== i).map((item, idx) => ({ ...item, stt: idx + 1 })));
   };
   const updateInfraName = (i: number, val: string) => {
-    const next = [...infraList];
-    next[i] = { ...next[i], infraName: val };
-    setInfraList(next);
+    setInfraList((prev) => {
+      const next = [...prev];
+      if (next[i]) next[i] = { ...next[i], infraName: val };
+      return next;
+    });
   };
   const updateInfraQty = (i: number, val: number | null) => {
-    const next = [...infraList];
-    next[i] = { ...next[i], quantity: val };
-    setInfraList(next);
+    setInfraList((prev) => {
+      const next = [...prev];
+      if (next[i]) next[i] = { ...next[i], quantity: val };
+      return next;
+    });
   };
 
   // Debounce search 300ms (F-012 AC-012-02) — tên và mã tách riêng
@@ -842,6 +1088,14 @@ export default function PortListPage() {
   const symbolMap = useMemo(() => {
     const map = new Map<string, string>();
     symbols.forEach((s: any) => map.set(s.id, s.name));
+    return map;
+  }, [symbols]);
+
+  const symbolImageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    symbols.forEach((s: any) => {
+      if (s.image) map.set(s.id, s.image);
+    });
     return map;
   }, [symbols]);
 
@@ -924,6 +1178,7 @@ export default function PortListPage() {
   const closeUpdateModal = useCallback(() => {
     setUpdateModalVisible(false);
     setInfraList([]);
+    setWharfAreaList([]);
     setUploadFileList([]);
     setPendingDeletedAttachmentIds([]);
     setGpsCoordList([]);
@@ -994,6 +1249,7 @@ export default function PortListPage() {
             });
             // Load infrastructure & attachments for edit
             setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
+            setWharfAreaList(((data as any).wharfAreas || []).map((w: any) => ({ ...w })));
             // Load attachments via API
             try {
               const attRows = await fetchPortAttachmentList(id);
@@ -1314,6 +1570,7 @@ export default function PortListPage() {
           ? Number(values.transshipmentCount) : undefined,
         otherWaterAreas: (values.otherWaterAreas as string) || undefined,
         coordinateList,
+        wharfAreas: wharfAreaList,
         infrastructureList: infraList
           .filter((inf) => (inf.infraName || '').trim() || (inf.quantity != null && Number(inf.quantity) > 0))
           .map((inf, idx) => ({ stt: idx + 1, infraName: (inf.infraName || '').trim(), quantity: inf.quantity != null && Number(inf.quantity) > 0 ? Number(inf.quantity) : 1 })),
@@ -1327,15 +1584,16 @@ export default function PortListPage() {
 
       const pendingFiles = [...uploadFileList];
       setInfraList([]);
+      setWharfAreaList([]);
       setGpsCoordList([]);
       setUploadFileList([]);
       setCreateModalVisible(false);
 
-      // Upload files after port created successfully
+      // Upload files after port created successfully (skipHistory = true: Thêm mới không ghi lịch sử)
       if (createdPortId && pendingFiles.length > 0) {
         let uploaded = 0;
         try {
-          uploaded = await uploadPortAttachments(createdPortId, pendingFiles);
+          uploaded = await uploadPortAttachments(createdPortId, pendingFiles, true);
           if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
         } catch { /* non-blocking */ }
       }
@@ -1464,6 +1722,7 @@ export default function PortListPage() {
         transshipmentCount: n(values.transshipmentCount),
         otherWaterAreas: (values.otherWaterAreas as string) || null,
         coordinateList,
+        wharfAreas: wharfAreaList,
         infrastructureList: infraList
           .filter((inf) => (inf.infraName || '').trim() || (inf.quantity != null && Number(inf.quantity) > 0))
           .map((inf, idx) => ({ stt: idx + 1, infraName: (inf.infraName || '').trim(), quantity: inf.quantity != null && Number(inf.quantity) > 0 ? Number(inf.quantity) : 1 })),
@@ -1474,13 +1733,11 @@ export default function PortListPage() {
       if (window.parent && (window.parent as any).kchtDetailCache) {
         (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
       }
-      // Delete removed attachments
+      // Delete removed attachments (tuần tự tránh race condition trong DB)
       if (selectedRecord?.id && pendingDeletedAttachmentIds.length > 0) {
-        await Promise.all(
-          pendingDeletedAttachmentIds.map((attId) =>
-            api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`).catch(() => {})
-          )
-        );
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`).catch(() => {});
+        }
       }
       // Upload files after port updated
       const pendingFiles = [...uploadFileList];
@@ -1564,6 +1821,8 @@ export default function PortListPage() {
       await deleteCangBien(deleteTarget.id);
       toast.success('Đã xóa cảng biển');
       setDeleteTarget(null);
+      setSortField('updatedByName');
+      setSortOrder('descend');
       setPage(1);
       fetchData();
       fetchTabCounts();
@@ -1603,6 +1862,8 @@ export default function PortListPage() {
       }
       setApproveModalOpen(false);
       setApprovingRecord(null);
+      setSortField('updatedByName');
+      setSortOrder('descend');
       setPage(1);
       fetchData();
       fetchTabCounts();
@@ -1632,6 +1893,8 @@ export default function PortListPage() {
       setRejectTarget(null);
       setRejectReason('');
       setRejectError('');
+      setSortField('updatedByName');
+      setSortOrder('descend');
       setPage(1);
       fetchData();
       fetchTabCounts();
@@ -1696,6 +1959,8 @@ export default function PortListPage() {
             // KHÔNG bật setIsLoading để tránh load lại/remount danh sách
             setSelectedRecord(record);
             setUpdateModalVisible(true);
+            setInfraList(((record as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
+            setWharfAreaList(((record as any).wharfAreas || []).map((w: any) => ({ ...w })));
             try {
               const data = await fetchCangBienById(record.id);
               setSelectedRecord(data);
@@ -1735,6 +2000,7 @@ export default function PortListPage() {
               });
               // Load infrastructure & attachments for edit
               setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
+              setWharfAreaList(((data as any).wharfAreas || []).map((w: any) => ({ ...w })));
               try {
                 const attRows = await fetchPortAttachmentList(record.id);
                 setUploadFileList(attRows.map((a: any) => ({
@@ -1922,7 +2188,7 @@ export default function PortListPage() {
         width: 190,
         ellipsis: false,
         sortable: true,
-        sortOrder: sortField === 'updatedByName' ? sortOrder : null,
+        sortOrder: (sortField === 'updatedByName' || sortField === 'updatedAt' || sortField === 'updatedBy') ? sortOrder : null,
         render: (v: string | null, record: CangBienResponse) => {
           const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, (record as any).createdByName);
           const date = record.updatedAt || (record as any).createdAt;
@@ -1962,7 +2228,7 @@ export default function PortListPage() {
         while (!cancelled) {
           const history = await fetchportHistory(selectedRecord.id, page, HISTORY_PAGE_SIZE);
           if (cancelled) break;
-          const batch = (history || []).filter((r: any) => r && !['spatialId', 'infrastructureList', 'attachments'].includes(r.changedField));
+          const batch = (history || []).filter((r: any) => r && !['spatialId', 'infrastructureList_raw'].includes(r.changedField));
           all.push(...batch);
           if (!history || history.length < HISTORY_PAGE_SIZE) break;
           page += 1;
@@ -1989,7 +2255,7 @@ export default function PortListPage() {
       const nextPage = historyPage + 1;
       const history = await fetchportHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE);
       if (history && history.length > 0) {
-        const filteredMore = history.filter((r: any) => r && !['spatialId', 'infrastructureList', 'attachments'].includes(r.changedField));
+        const filteredMore = history.filter((r: any) => r && !['spatialId', 'infrastructureList_raw'].includes(r.changedField));
         setHistoryRecords(prev => [...prev, ...filteredMore]);
         setHistoryPage(nextPage);
         setHasMoreHistory(history.length === HISTORY_PAGE_SIZE);
@@ -2227,7 +2493,7 @@ export default function PortListPage() {
                   // Cột "Cán bộ cập nhật" — nhấn sort phải sắp theo THỜI GIAN cập nhật (mới nhất/cũ nhất),
                   // chứ không phải theo tên cán bộ. DataTable đánh dấu cột theo dataKey = dataIndex = 'updatedByName'
                   // (khác col.key 'updatedBy') — phải so sánh đúng 'updatedByName' thì vòng lặp asc→desc→… mới chạy tiếp.
-                  if (sortField === 'updatedByName') {
+                  if (sortField === 'updatedByName' || sortField === 'updatedAt' || sortField === 'updatedBy') {
                     const t = r.updatedAt || r.createdAt;
                     return t ? new Date(t).getTime() : 0;
                   }
@@ -2266,7 +2532,7 @@ export default function PortListPage() {
           className="port-drawer-scope"
           destroyOnHidden
           open={createModalVisible}
-          onClose={() => { setCreateModalVisible(false); setInfraList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
+          onClose={() => { setCreateModalVisible(false); setInfraList([]); setWharfAreaList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
           footer={
             <div style={drawerFooterStyle}>
               <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
@@ -2282,6 +2548,7 @@ export default function PortListPage() {
               // Reset toàn bộ trước khi mở form mới
               createForm.resetFields();
               setInfraList([]);
+              setWharfAreaList([]);
               setUploadFileList([]);
               setGpsCoordList([]);
               setCreateTabKey('general');
@@ -2325,6 +2592,8 @@ export default function PortListPage() {
             removeInfra={removeInfra}
             updateInfraName={updateInfraName}
             updateInfraQty={updateInfraQty}
+            wharfAreaList={wharfAreaList}
+            setWharfAreaList={setWharfAreaList}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             userMap={userMap}
@@ -2384,6 +2653,8 @@ export default function PortListPage() {
             removeInfra={removeInfra}
             updateInfraName={updateInfraName}
             updateInfraQty={updateInfraQty}
+            wharfAreaList={wharfAreaList}
+            setWharfAreaList={setWharfAreaList}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             onDeleteAttachment={(attId) => setPendingDeletedAttachmentIds((prev) => [...prev, attId])}
@@ -2601,7 +2872,7 @@ export default function PortListPage() {
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>
             </div>
           ) : (
-            renderPortHistCards(filteredHistory, orgMap, symbolMap, new Map())
+            renderPortHistCards(filteredHistory, orgMap, symbolMap, symbolImageMap)
           )}
           {loadingMoreHistory && (
             <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm…</div>

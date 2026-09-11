@@ -85,6 +85,12 @@ public class DaiTtdhController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đài TTDH thành công", result));
     }
 
+    @GetMapping("/options")
+    public ResponseEntity<ApiResponse<java.util.List<java.util.Map<String, Object>>>> getOptions() {
+        java.util.List<java.util.Map<String, Object>> options = daiTtdhService.getOptions();
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh mục đài TTDH thành công", options));
+    }
+
     @PutMapping
     // @PreAuthorize("@auth.check(authentication, 'daittdh:update')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
     public ResponseEntity<ApiResponse<DaiTtdhResponse>> update(
@@ -147,13 +153,14 @@ public class DaiTtdhController {
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(value = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
         }
         UUID userId = SecurityUtils.getCurrentUserId();
-        List<AttachmentDto> result = daiTtdhService.uploadAttachments("DAI_TTDH", id, files, userId);
+        List<AttachmentDto> result = daiTtdhService.uploadAttachments("DAI_TTDH", id, files, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
     }
 
@@ -169,9 +176,10 @@ public class DaiTtdhController {
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,
+            @RequestParam(value = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        daiTtdhService.deleteAttachment("DAI_TTDH", id, attId, userId);
+        daiTtdhService.deleteAttachment("DAI_TTDH", id, attId, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 
@@ -185,20 +193,17 @@ public class DaiTtdhController {
             return ResponseEntity.notFound().build();
         }
         org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(path);
-        String contentType;
-        try {
-            contentType = java.nio.file.Files.probeContentType(path);
-        } catch (Exception ignored) {
-            contentType = null;
-        }
-        if (contentType == null) {
-            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
-        }
-        String downloadName = attachment.getFileName();
+        String downloadName = attachment.getFileName() != null ? attachment.getFileName() : "attachment";
+        MediaType mediaType = org.springframework.http.MediaTypeFactory.getMediaType(downloadName)
+                .orElseGet(() -> {
+                    String ct = null;
+                    try { ct = java.nio.file.Files.probeContentType(path); } catch (Exception ignored) {}
+                    return ct != null ? MediaType.parseMediaType(ct) : MediaType.APPLICATION_OCTET_STREAM;
+                });
         String encodedFileName = java.net.URLEncoder.encode(downloadName, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadName + "\"; filename*=UTF-8''" + encodedFileName)
+                .contentType(mediaType)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadName.replace("\"", "") + "\"; filename*=UTF-8''" + encodedFileName)
                 .body(resource);
     }
 }

@@ -263,13 +263,13 @@ public class StormShelterAreaService {
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                             geometryTypeLabel(geomType), actorId);
                 }
             }
@@ -282,8 +282,8 @@ public class StormShelterAreaService {
                     stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(saved.getId()));
             if (!oldMooringSummary.equals(newMooringSummary)) {
                 changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Khu nước neo buộc tàu",
-                        oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
-                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary, actorId);
+                        oldMooringSummary.isEmpty() ? null : oldMooringSummary,
+                        newMooringSummary.isEmpty() ? null : newMooringSummary, actorId);
             }
         }
         evictAfterCommit();
@@ -360,10 +360,7 @@ public class StormShelterAreaService {
             throw new IllegalStateException("Khu tránh, trú bão đã bị xóa trước đó");
         }
 
-        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cầu cảng)
-        StormShelterArea snapshot = buildSnapshot(entity);
         UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
 
         entity.softDelete(operatorId);
         stormShelterAreaRepository.save(entity);
@@ -375,9 +372,7 @@ public class StormShelterAreaService {
             stormShelterMooringWaterAreaRepository.save(wa);
         }
 
-        // Ghi lịch sử thay đổi vào infrastructure_history (chuẩn Cảng biển/Cầu cảng) với actor thật từ SecurityContext
-        changeHistoryService.recordChanges("StormShelterArea", entity.getId().toString(), actorId, snapshot, entity);
-        changeHistoryService.insertChangeRecord("StormShelterArea", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
+        // Không ghi lịch sử khi xóa bản ghi Nháp (chuẩn Cảng biển / Bến cảng / Cầu cảng).
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -418,6 +413,14 @@ public class StormShelterAreaService {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
         }
 
+        // Snapshot trước khi upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
         java.util.List<String> uploadedFilenames = new java.util.ArrayList<>();
@@ -452,8 +455,17 @@ public class StormShelterAreaService {
                 uploadedFilenames.add(originalFilename.trim());
             }
         }
+
+        // Snapshot sau khi upload
+        List<Attachment> allAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String newFilesSummary = allAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         if ("STORM_SHELTER".equalsIgnoreCase(entityType) && !uploadedFilenames.isEmpty()) {
-            recordStormShelterAttachmentHistory(entityId, String.join(", ", uploadedFilenames),
+            recordStormShelterAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, String.join(", ", uploadedFilenames),
                     InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
@@ -476,6 +488,21 @@ public class StormShelterAreaService {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
         String fileName = attachment.getFileName();
+
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -485,7 +512,8 @@ public class StormShelterAreaService {
 
         // Ghi lịch sử file đính kèm chỉ khi khu tránh, trú bão đã được phê duyệt (chuẩn Bến cảng/DocumentService)
         if ("STORM_SHELTER".equalsIgnoreCase(entityType)) {
-            recordStormShelterAttachmentHistory(entityId, fileName, InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
+            recordStormShelterAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, fileName,
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
         }
     }
 
@@ -519,12 +547,10 @@ public class StormShelterAreaService {
     }
 
     /**
-     * Ghi lịch sử thay đổi file đính kèm của Khu tránh, trú bão (chuẩn Port/BerthService.recordBerthAttachmentHistory:
-     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm",
-     * approvedBy = user thật từ SecurityContext). Chỉ ghi khi hồ sơ đã được phê duyệt (APPROVED / APPROVED_LEVEL2). Thêm mới không ghi.
+     * Ghi lịch sử thay đổi file đính kèm của Khu tránh, trú bão theo chuẩn snapshot bảng — chỉ khi hồ sơ đã duyệt.
      */
-    private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String fileName,
-                                                     InfrastructureHistoryStatus status, Boolean skipHistory) {
+    private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String oldFilesSummary, String newFilesSummary,
+                                                     String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
             if (Boolean.TRUE.equals(skipHistory)) {
                 return;
@@ -548,7 +574,13 @@ public class StormShelterAreaService {
                     || java.time.Duration.between(stormShelter.getCreatedAt(), stormShelter.getUpdatedAt()).abs().toSeconds() <= 2)) {
                 return;
             }
-            String name = fileName != null ? fileName : "không rõ tên";
+
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (java.util.Objects.equals(oldVal, newVal)) {
+                return;
+            }
+
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(stormShelterAreaId)
@@ -557,27 +589,27 @@ public class StormShelterAreaService {
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(uploaded ? "—" : name)
-                    .newValue(uploaded ? name : "—")
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
+                    .changedField("File đính kèm")
+                    .previousValue(oldVal)
+                    .newValue(newVal)
                     .build());
-            log.info("[StormShelterAreaService] Đã ghi lịch sử {} file đính kèm của Khu tránh, trú bão [{}]: {}",
-                    uploaded ? "tải lên" : "xóa", stormShelterAreaId, name);
+            log.info("[StormShelterAreaService] Đã ghi lịch sử {} file đính kèm của Khu tránh, trú bão [{}]: [{}] -> [{}]",
+                    uploaded ? "tải lên" : "xóa", stormShelterAreaId, oldVal, newVal);
         } catch (Exception e) {
             log.warn("[StormShelterAreaService] Không ghi được lịch sử file đính kèm (stormShelterAreaId={}): {}",
                     stormShelterAreaId, e.getMessage());
         }
     }
 
-    private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String fileName,
-                                                     InfrastructureHistoryStatus status) {
-        recordStormShelterAttachmentHistory(stormShelterAreaId, fileName, status, null);
+    private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String oldFilesSummary, String newFilesSummary,
+                                                     String affectedFileName, InfrastructureHistoryStatus status) {
+        recordStormShelterAttachmentHistory(stormShelterAreaId, oldFilesSummary, newFilesSummary, affectedFileName, status, null);
     }
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";

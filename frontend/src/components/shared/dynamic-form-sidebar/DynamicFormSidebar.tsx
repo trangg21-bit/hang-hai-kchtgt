@@ -28,6 +28,7 @@ import {
   drawerTabBarStyle,
   drawerFormScrollStyle,
   getDatePickerProps,
+  DRAWER_FORM_WIDTH,
 } from "../../../themetokenchk";
 import {
   type DynamicFormSidebarProps,
@@ -209,7 +210,7 @@ function renderFormField<T extends Record<string, unknown>>(
         ? field.valueFormatter(computedVal)
         : computedVal != null
           ? String(computedVal)
-          : "—";
+          : "";
       controlNode = (
         <Input
           disabled
@@ -421,7 +422,7 @@ export function DynamicFormSidebar<
       return renderActionButtons(resolvedActions);
     }
     return null;
-  }, [footer, footerActions, actions, renderActionButtons]);
+  }, [actions, footer, footerActions, renderActionButtons]);
 
   const effectiveTabs = useMemo<FormTabConfig<T>[] | undefined>(() => {
     if (tabs && tabs.length > 0) return tabs;
@@ -468,7 +469,12 @@ export function DynamicFormSidebar<
               tab.customContent
             )
           ) : (
-            <div style={drawerFormScrollStyle}>
+            <div
+              style={{
+                ...drawerFormScrollStyle,
+                maxHeight: "calc(100vh - 170px)",
+              }}
+            >
               {tab.sections &&
                 tab.sections.map((section) =>
                   renderSection(section, form, formValues),
@@ -492,12 +498,7 @@ export function DynamicFormSidebar<
       title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{title}</span>}
       open={open}
       onClose={onClose}
-      width={
-        width ||
-        (typeof window !== "undefined"
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000)
-      }
+      width={width || DRAWER_FORM_WIDTH}
       size={size}
       destroyOnHidden={destroyOnClose}
       rootClassName={rootClassName}

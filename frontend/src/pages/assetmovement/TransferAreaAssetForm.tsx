@@ -2,13 +2,9 @@ import { useMemo } from 'react';
 import { Form, Select, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import dayjs from 'dayjs';
 import {
   BankOutlined,
   SlidersOutlined,
-  AuditOutlined,
-  RocketOutlined,
-  HistoryOutlined,
   AppstoreOutlined,
 } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
@@ -16,12 +12,8 @@ import type { TransferArea } from '../../types/port';
 import type {
   TransferAreaAsset,
   TransferAreaAssetPayload,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
-import { fmtInputNumber, fmtNum } from '../../utils/numFmt';
-import { useAuthStore } from '../../store/authStore';
+import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -32,11 +24,6 @@ import {
   radiusPill,
   spaceSm,
   spaceFormField,
-  textSecondary,
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
 } from '../../themetokenchk';
 import {
   DynamicFormSidebar,
@@ -87,10 +74,6 @@ export interface TransferAreaAssetFormProps {
   organizations: Organization[];
   transferAreas: TransferArea[];
   attachments: InfrastructureAttachmentItem[];
-  exploitationRows?: AssetExploitationResponse[];
-  increaseRows?: AssetIncreaseResponse[];
-  decreaseRows?: AssetDecreaseResponse[];
-  orgName?: Map<string, string>;
   saving: boolean;
   saveAction: string;
   onClose: () => void;
@@ -108,10 +91,6 @@ export default function TransferAreaAssetForm({
   organizations,
   transferAreas,
   attachments,
-  exploitationRows = [],
-  increaseRows = [],
-  decreaseRows = [],
-  orgName,
   saving,
   saveAction,
   onClose,
@@ -120,7 +99,9 @@ export default function TransferAreaAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: TransferAreaAssetFormProps) {
-  const currentUser = useAuthStore((s) => s.user);
+  const effectiveDrawerMode = drawerMode || (selected ? 'edit' : 'create');
+  const effectiveSelected = selected;
+
   const transferAreaOptions = useMemo(
     () =>
       transferAreas.map((item) => ({
@@ -130,26 +111,7 @@ export default function TransferAreaAssetForm({
     [transferAreas],
   );
 
-  const combinedAdjustments = useMemo(() => {
-    return [
-      ...increaseRows.map((row) => ({
-        ...row,
-        changeType: 'Tăng nguyên giá',
-      })),
-      ...decreaseRows.map((row) => ({
-        ...row,
-        changeType: 'Giảm nguyên giá',
-      })),
-    ];
-  }, [increaseRows, decreaseRows]);
-
   const formTabs = useMemo<FormTabConfig<FormValues>[]>(() => {
-    const currentApproval = selected?.approvalStatus || 'DRAFT';
-    const isApproved = currentApproval === 'APPROVED';
-    const isRejected = currentApproval.includes('REJECTED');
-    const badgeColor = isApproved ? statusOperational : isRejected ? statusCritical : currentApproval === 'DRAFT' ? statusDraft : statusAttention;
-    const badgeLabel = isApproved ? 'Đã duyệt' : isRejected ? 'Từ chối' : currentApproval === 'DRAFT' ? 'Lưu tạm' : 'Chờ phê duyệt';
-
     return [
       {
         key: 'general',
@@ -280,7 +242,7 @@ export default function TransferAreaAssetForm({
                 label: '',
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customRender: () => (
+                customContent: () => (
                   <div style={{ display: 'flex', gap: spaceSm }}>
                     <div style={{ flex: 1 }}>
                       <Form.Item
@@ -401,317 +363,6 @@ export default function TransferAreaAssetForm({
           },
         ],
       },
-      {
-        key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
-        customContent: (
-          <div style={{ paddingTop: 8 }}>
-            <div
-              style={{
-                background: '#F0FDF4',
-                border: '1px solid #BBF7D0',
-                borderRadius: 8,
-                padding: '10px 14px',
-                marginBottom: 12,
-                fontSize: 13,
-                color: '#166534',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <RocketOutlined style={{ fontSize: 16 }} />
-              <span>
-                Quản lý các đợt khai thác tài sản khu chuyển tải. Nghiệp vụ thêm mới đợt khai thác được kích hoạt từ menu hành động dòng trên bảng danh sách.
-              </span>
-            </div>
-            {exploitationRows.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '36px 0',
-                  color: textSecondary,
-                  background: '#F8FAFC',
-                  borderRadius: 8,
-                  border: '1px dashed #E2E8F0',
-                }}
-              >
-                Chưa có thông tin khai thác cho tài sản này.
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#F5F8FA', borderBottom: '1px solid #E2E8F0' }}>
-                      <th style={{ padding: '8px 10px', textAlign: 'center', width: 45 }}>STT</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Đơn vị khai thác</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Thời hạn</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Tổng thu (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Chi phí (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Nộp NSNN (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Cán bộ cập nhật</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Ghi chú</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exploitationRows.map((row, idx) => (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>{idx + 1}</td>
-                        <td style={{ padding: '8px 10px', fontWeight: 500 }}>
-                          {orgName?.get(row.operatorOrgUnitId || '') || '—'}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>
-                          {row.exploitationDeadline ? dayjs(row.exploitationDeadline).format('DD/MM/YYYY') : '—'}
-                        </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 500 }}>
-                          {fmtNum(row.totalRevenue ?? row.doanhThu ?? 0)}
-                        </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                          {fmtNum(row.relatedCosts ?? row.depreciation ?? 0)}
-                        </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                          {fmtNum(row.stateBudgetPayment ?? 0)}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>{row.createdByName || '—'}</td>
-                        <td style={{ padding: '8px 10px' }}>{row.notes || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'adjustments',
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
-        customContent: (
-          <div style={{ paddingTop: 8 }}>
-            <div
-              style={{
-                background: '#EFF6FF',
-                border: '1px solid #BFDBFE',
-                borderRadius: 8,
-                padding: '10px 14px',
-                marginBottom: 12,
-                fontSize: 13,
-                color: '#1E40AF',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <HistoryOutlined style={{ fontSize: 16 }} />
-              <span>
-                Lịch sử tăng / giảm nguyên giá tài sản khu chuyển tải. Dữ liệu được ghi nhận tự động khi thực hiện nghiệp vụ điều chỉnh giá.
-              </span>
-            </div>
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '36px 0',
-                  color: textSecondary,
-                  background: '#F8FAFC',
-                  borderRadius: 8,
-                  border: '1px dashed #E2E8F0',
-                }}
-              >
-                Chưa có lịch sử thay đổi nguyên giá cho tài sản này.
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#F5F8FA', borderBottom: '1px solid #E2E8F0' }}>
-                      <th style={{ padding: '8px 10px', textAlign: 'center', width: 45 }}>STT</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Loại thay đổi</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Số QĐ</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Ngày ra QĐ</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Lý do</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Nguyên giá sau (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Khấu hao lũy kế</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Cán bộ cập nhật</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combinedAdjustments.map((row, idx) => {
-                      const isInc = row.changeType === 'Tăng nguyên giá';
-                      return (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                          <td style={{ padding: '8px 10px', textAlign: 'center' }}>{idx + 1}</td>
-                          <td style={{ padding: '8px 10px' }}>
-                            <span
-                              style={{
-                                borderRadius: 999,
-                                padding: '2px 8px',
-                                fontSize: 12,
-                                fontWeight: 500,
-                                background: isInc ? '#1BAF7A15' : '#E3494815',
-                                border: `1px solid ${isInc ? '#1BAF7A40' : '#E3494840'}`,
-                                color: isInc ? '#1BAF7A' : '#E34948',
-                              }}
-                            >
-                              {row.changeType}
-                            </span>
-                          </td>
-                          <td style={{ padding: '8px 10px', fontWeight: 500 }}>
-                            {(row as AssetIncreaseResponse).increaseCode || (row as AssetDecreaseResponse).decreaseReason || '—'}
-                          </td>
-                          <td style={{ padding: '8px 10px' }}>
-                            {row.updatedAt ? dayjs(row.updatedAt).format('DD/MM/YYYY') : '—'}
-                          </td>
-                          <td style={{ padding: '8px 10px' }}>
-                            {row.reason || (row as AssetDecreaseResponse).decreaseReason || '—'}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#12468C' }}>
-                            {row.adjustmentDetails?.originalValue ? fmtNum(Number(row.adjustmentDetails.originalValue)) : '—'}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                            {row.adjustmentDetails?.accumulatedDepreciation ? fmtNum(Number(row.adjustmentDetails.accumulatedDepreciation)) : '—'}
-                          </td>
-                          <td style={{ padding: '8px 10px' }}>{row.createdByName || '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'approval',
-        label: 'Xử lý & theo dõi',
-        customContent: (
-          <div style={{ paddingTop: 8 }}>
-            <div
-              style={{
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: 8,
-                padding: 16,
-                marginBottom: 14,
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: 600,
-                  fontSize: 14,
-                  color: '#12468C',
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                <AuditOutlined style={{ color: '#204e9c' }} />
-                <span>Thông tin cập nhật & gửi phê duyệt</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px 24px', fontSize: 13 }}>
-                <div>
-                  <span style={{ color: textSecondary }}>Trạng thái: </span>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      marginLeft: 8,
-                      borderRadius: 999,
-                      padding: '2px 10px',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      background: `${badgeColor}15`,
-                      border: `1px solid ${badgeColor}40`,
-                      color: badgeColor,
-                    }}
-                  >
-                    {badgeLabel}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: textSecondary }}>Cán bộ cập nhật: </span>
-                  <span style={{ fontWeight: 500 }}>
-                    {selected?.updatedByName || currentUser?.fullName || '—'}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: textSecondary }}>Ngày cập nhật: </span>
-                  <span style={{ fontWeight: 500 }}>
-                    {selected?.updatedAt
-                      ? dayjs(selected.updatedAt).format('DD/MM/YYYY HH:mm:ss')
-                      : dayjs().format('DD/MM/YYYY')}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: textSecondary }}>Cán bộ gửi phê duyệt: </span>
-                  <span style={{ fontWeight: 500 }}>{selected?.submittedByName || '—'}</span>
-                </div>
-                <div>
-                  <span style={{ color: textSecondary }}>Ngày gửi phê duyệt: </span>
-                  <span style={{ fontWeight: 500 }}>
-                    {selected?.submittedAt ? dayjs(selected.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 8,
-                padding: 16,
-              }}
-            >
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#12468C', marginBottom: 12 }}>
-                Tiến trình phê duyệt 2 cấp
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: 6, borderLeft: '4px solid #EDA100' }}>
-                  <div style={{ fontWeight: 600, color: '#B45309', marginBottom: 6 }}>
-                    1. Phê duyệt cấp Cảng vụ / Chi cục
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: 13 }}>
-                    <div>
-                      <span style={{ color: textSecondary }}>Cán bộ phê duyệt cấp Cảng vụ/Chi cục: </span>
-                      <b>{selected?.portAuthorityApprovedByName || 'Chưa duyệt'}</b>
-                    </div>
-                    <div>
-                      <span style={{ color: textSecondary }}>Ngày phê duyệt cấp Cảng vụ/Chi cục: </span>
-                      {selected?.portAuthorityApprovedAt ? dayjs(selected.portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                    </div>
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <span style={{ color: textSecondary }}>Nội dung phê duyệt: </span>
-                      {selected?.portAuthorityApprovalContent || '—'}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ padding: '12px 14px', background: '#F8FAFC', borderRadius: 6, borderLeft: '4px solid #0284C7' }}>
-                  <div style={{ fontWeight: 600, color: '#0369A1', marginBottom: 6 }}>
-                    2. Phê duyệt cấp Cục Hàng hải
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: 13 }}>
-                    <div>
-                      <span style={{ color: textSecondary }}>Cán bộ phê duyệt cấp Cục: </span>
-                      <b>{selected?.departmentApprovedByName || 'Chưa duyệt'}</b>
-                    </div>
-                    <div>
-                      <span style={{ color: textSecondary }}>Ngày phê duyệt cấp Cục: </span>
-                      {selected?.departmentApprovedAt ? dayjs(selected.departmentApprovedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
-                    </div>
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <span style={{ color: textSecondary }}>Nội dung phê duyệt: </span>
-                      {selected?.departmentApprovalContent || '—'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ),
-      },
     ];
   }, [
     organizations,
@@ -720,19 +371,14 @@ export default function TransferAreaAssetForm({
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
-    exploitationRows,
-    combinedAdjustments,
-    selected,
-    currentUser,
-    orgName,
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'edit') {
+    if (effectiveDrawerMode === 'edit') {
       const isDraft =
-        !selected?.approvalStatus ||
+        !effectiveSelected?.approvalStatus ||
         ['DRAFT', 'NHAP'].includes(
-          String(selected.approvalStatus).toUpperCase(),
+          String(effectiveSelected.approvalStatus).toUpperCase(),
         );
 
       const actions: FormSidebarAction[] = [];
@@ -778,11 +424,11 @@ export default function TransferAreaAssetForm({
         onClick: () => void onSave('APPROVED'),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
 
   const title =
-    drawerMode === 'edit'
-      ? `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản khu chuyển tải'}`
+    effectiveDrawerMode === 'edit'
+      ? `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || 'Tài sản khu chuyển tải'}`
       : 'Thêm mới Tài sản khu chuyển tải';
 
   return (

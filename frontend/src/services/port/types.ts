@@ -49,6 +49,17 @@ export interface CangBienResponse {
   geometryType?: string;
   coordinates?: string;
   coordinateList?: Array<{ latitude: number; longitude: number }>;
+  wharfAreas?: PortWharfAreaItem[];
+}
+
+export interface PortWharfAreaItem {
+  id?: string;
+  wharfCode: string;
+  wharfName: string;
+  mainPlanningFunction?: string | null;
+  planningScope?: string | null;
+  regulatoryDocument?: string | null;
+  notes?: string | null;
 }
 
 // ── CreateCangBienRequest (matches CreateCangBienRequest.java) ─
@@ -88,6 +99,7 @@ export interface CreateCangBienRequest {
   quantityKhuChuyenTai?: number | null;
   cacKhuNuocKhac?: string | null;
   remarks?: string | null;
+  wharfAreas?: PortWharfAreaItem[];
 }
 
 // ── UpdateCangBienRequest (matches UpdateCangBienRequest.java) ─
@@ -126,6 +138,7 @@ export interface UpdateCangBienRequest {
   quantityKhuChuyenTai?: number | null;
   cacKhuNuocKhac?: string | null;
   remarks?: string | null;
+  wharfAreas?: PortWharfAreaItem[];
 }
 
 // ── ChangeHistory record (matches LichSuThayDoi.java) ─

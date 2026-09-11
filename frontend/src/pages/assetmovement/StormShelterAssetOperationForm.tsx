@@ -315,9 +315,9 @@ export function StormShelterAssetOperationForm({
       title={operationTitle}
       form={form}
       tabs={operationTabs}
+      footerActions={actions}
       actions={actions}
       onClose={onClose}
-      width={780}
     />
   );
 }

@@ -746,4 +746,7 @@ export interface ChannelAssetFilters {
   approvalStatus?: string;
   updatedFrom?: string;
   updatedTo?: string;
+  sortBy?: string;
+  sortDir?: "ASC" | "DESC";
+  [key: string]: unknown;
 }

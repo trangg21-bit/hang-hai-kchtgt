@@ -314,6 +314,7 @@ export function PierAssetOperationForm({
       {
         key: 'cancel',
         label: 'Hủy',
+        variant: 'outline',
         onClick: onClose,
       },
       {
@@ -323,8 +324,10 @@ export function PierAssetOperationForm({
             ? 'Lưu khai thác'
             : operationMode === 'increase'
               ? 'Lưu tăng nguyên giá'
-              : 'Lưu giảm nguyên giá',
-        type: 'primary',
+              : operationMode === 'decrease'
+                ? 'Lưu giảm nguyên giá'
+                : 'Lưu thông tin',
+        variant: 'primary',
         loading: saving,
         onClick: onSubmit,
       },
@@ -337,9 +340,9 @@ export function PierAssetOperationForm({
       title={title}
       form={form}
       tabs={formTabs}
+      footerActions={actions}
       actions={actions}
       onClose={onClose}
-      width={780}
       rootClassName="pier-operation-scope"
     />
   );

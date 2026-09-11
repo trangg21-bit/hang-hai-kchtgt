@@ -241,19 +241,18 @@ public class VtsAssistController {
       return ResponseEntity.notFound().build();
     }
     Resource resource = new FileSystemResource(path);
-    String contentType;
-    try {
-      contentType = Files.probeContentType(path);
-    } catch (Exception ignored) {
-      contentType = null;
-    }
-    MediaType mediaType = contentType == null
-        ? MediaType.APPLICATION_OCTET_STREAM
-        : MediaType.parseMediaType(contentType);
+    String downloadName = attachment.getFileName() != null ? attachment.getFileName() : "attachment";
+    MediaType mediaType = org.springframework.http.MediaTypeFactory.getMediaType(downloadName)
+        .orElseGet(() -> {
+          String ct = null;
+          try { ct = Files.probeContentType(path); } catch (Exception ignored) {}
+          return ct != null ? MediaType.parseMediaType(ct) : MediaType.APPLICATION_OCTET_STREAM;
+        });
+    String encodedFileName = java.net.URLEncoder.encode(downloadName, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
     return ResponseEntity.ok()
         .contentType(mediaType)
         .header(HttpHeaders.CONTENT_DISPOSITION,
-            "attachment; filename=\"" + (attachment.getFileName() != null ? attachment.getFileName().replace("\"", "") : "attachment") + "\"")
+            "attachment; filename=\"" + downloadName.replace("\"", "") + "\"; filename*=UTF-8''" + encodedFileName)
         .body(resource);
   }
 }

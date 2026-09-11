@@ -23,6 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import com.hanghai.kchtg.security.annotation.DataScope;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
 
 @RestController
 @RequestMapping("/api/v1/dry-ports")
@@ -198,25 +202,64 @@ public class DryPortController {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử cảng cạn thành công", history));
     }
 
-    // ── Attachments ────────────────────────────────────────────
+    // ── Attachments (chuẩn Cảng biển / Bến cảng) ────────────────────────────
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("@auth.check(authentication, 'dryport:update')")
-    public ResponseEntity<ApiResponse<?>> uploadAttachments(
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(value = "skipHistory", required = false, defaultValue = "false") boolean skipHistory,
             Authentication authentication) {
         if (files == null || files.isEmpty())
             return ResponseEntity.badRequest().body(ApiResponse.error("Không có file"));
         UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
-        dryPortService.uploadAttachments(id, files, userId);
-        return ResponseEntity.ok(ApiResponse.success("Tải lên thành công", null));
+        List<AttachmentDto> result = dryPortService.uploadAttachmentsGeneric(id, files, userId, skipHistory);
+        return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'dryport:read')")
+    public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+        List<AttachmentDto> result = dryPortService.listAttachmentsGeneric(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
     }
 
     @DeleteMapping("/{id}/attachments/{attId}")
     @PreAuthorize("@auth.check(authentication, 'dryport:update')")
-    public ResponseEntity<ApiResponse<Void>> deleteAttachment(@PathVariable UUID id, @PathVariable UUID attId) {
-        dryPortService.deleteAttachment(id, attId);
-        return ResponseEntity.ok(ApiResponse.success("Xóa file thành công", null));
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId,
+            @RequestParam(value = "skipHistory", required = false, defaultValue = "false") boolean skipHistory) {
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        dryPortService.deleteAttachmentGeneric(id, attId, userId, skipHistory);
+        return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @PreAuthorize("@auth.check(authentication, 'dryport:read')")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.port.entity.Attachment attachment = dryPortService.getAttachmentGeneric(id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!java.nio.file.Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = new FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = java.nio.file.Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + attachment.getFileName().replace("\"", "") + "\"")
+                .body(resource);
     }
 }

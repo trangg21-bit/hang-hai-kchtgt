@@ -297,20 +297,20 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
               <Descriptions.Item label="Địa chỉ">{record.address}</Descriptions.Item>
               <Descriptions.Item label="Tỉnh/thành">{record.province}</Descriptions.Item>
               <Descriptions.Item label="Số điện thoại">
-                {record.phone ?? '—'}
+                {record.phone ?? ''}
               </Descriptions.Item>
               <Descriptions.Item label="Email">
-                {record.email ?? '—'}
+                {record.email ?? ''}
               </Descriptions.Item>
               <Descriptions.Item label="Loại cơ sở">{LOAI_CO_SO_MAP[record.facilityType] || record.facilityType}</Descriptions.Item>
               <Descriptions.Item label="Khả năng" span={2}>
-                {record.capacity ?? '—'}
+                {record.capacity ?? ''}
               </Descriptions.Item>
               <Descriptions.Item label="Chủ quản">
-                {record.authority ?? '—'}
+                {record.authority ?? ''}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitName || record.orgUnitId || '—'}
+                {record.orgUnitName || record.orgUnitId || ''}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.approvalStatus} />

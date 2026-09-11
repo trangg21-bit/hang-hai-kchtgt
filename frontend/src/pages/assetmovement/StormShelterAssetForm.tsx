@@ -2,13 +2,9 @@ import { useMemo } from 'react';
 import { Form, Select, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import dayjs from 'dayjs';
 import {
   BankOutlined,
   SlidersOutlined,
-  AuditOutlined,
-  RocketOutlined,
-  HistoryOutlined,
   AppstoreOutlined,
 } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
@@ -16,12 +12,8 @@ import type { StormShelterArea } from '../../types/port';
 import type {
   StormShelterAsset,
   StormShelterAssetPayload,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
-import { fmtInputNumber, fmtNum } from '../../utils/numFmt';
-import { useAuthStore } from '../../store/authStore';
+import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -32,11 +24,6 @@ import {
   radiusPill,
   spaceSm,
   spaceFormField,
-  textSecondary,
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
 } from '../../themetokenchk';
 import {
   DynamicFormSidebar,
@@ -113,10 +100,6 @@ export interface StormShelterAssetFormProps {
   organizations: Organization[];
   stormShelters: StormShelterArea[];
   attachments: InfrastructureAttachmentItem[];
-  exploitationRows?: AssetExploitationResponse[];
-  increaseRows?: AssetIncreaseResponse[];
-  decreaseRows?: AssetDecreaseResponse[];
-  orgName?: (id?: string) => string;
   saving?: boolean;
   saveAction?: 'draft' | 'submit' | 'approve';
   onClose: () => void;
@@ -134,10 +117,6 @@ export default function StormShelterAssetForm({
   organizations,
   stormShelters,
   attachments,
-  exploitationRows = [],
-  increaseRows = [],
-  decreaseRows = [],
-  orgName,
   saving,
   saveAction,
   onClose,
@@ -146,7 +125,9 @@ export default function StormShelterAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: StormShelterAssetFormProps) {
-  const currentUser = useAuthStore((s) => s.user);
+  const effectiveDrawerMode = drawerMode || (selected ? 'edit' : 'create');
+  const effectiveSelected = selected;
+
   const stormShelterOptions = useMemo(
     () =>
       stormShelters.map((item) => ({
@@ -156,26 +137,7 @@ export default function StormShelterAssetForm({
     [stormShelters],
   );
 
-  const combinedAdjustments = useMemo(() => {
-    return [
-      ...increaseRows.map((row) => ({
-        ...row,
-        changeType: 'Tăng nguyên giá',
-      })),
-      ...decreaseRows.map((row) => ({
-        ...row,
-        changeType: 'Giảm nguyên giá',
-      })),
-    ];
-  }, [increaseRows, decreaseRows]);
-
   const formTabs = useMemo<FormTabConfig<FormValues>[]>(() => {
-    const currentApproval = selected?.approvalStatus || 'DRAFT';
-    const isApproved = currentApproval === 'APPROVED';
-    const isRejected = currentApproval.includes('REJECTED');
-    const badgeColor = isApproved ? statusOperational : isRejected ? statusCritical : currentApproval === 'DRAFT' ? statusDraft : statusAttention;
-    const badgeLabel = isApproved ? 'Đã duyệt' : isRejected ? 'Từ chối' : currentApproval === 'DRAFT' ? 'Lưu tạm' : 'Chờ phê duyệt';
-
     return [
       {
         key: 'general',
@@ -306,7 +268,7 @@ export default function StormShelterAssetForm({
                 label: '',
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customRender: () => (
+                customContent: () => (
                   <div style={{ display: 'flex', gap: spaceSm }}>
                     <div style={{ flex: 1 }}>
                       <Form.Item
@@ -427,304 +389,21 @@ export default function StormShelterAssetForm({
           },
         ],
       },
-      {
-        key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
-        customContent: (
-          <div style={{ paddingTop: 8 }}>
-            <div
-              style={{
-                background: '#F0FDF4',
-                border: '1px solid #BBF7D0',
-                borderRadius: 8,
-                padding: '10px 14px',
-                marginBottom: 12,
-                fontSize: 13,
-                color: '#166534',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <RocketOutlined style={{ fontSize: 16 }} />
-              <span>
-                Quản lý các đợt khai thác tài sản khu tránh, trú bão. Nghiệp vụ thêm mới đợt khai thác được kích hoạt từ menu hành động dòng trên bảng danh sách.
-              </span>
-            </div>
-            {exploitationRows.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '36px 0',
-                  color: textSecondary,
-                  background: '#F8FAFC',
-                  borderRadius: 8,
-                  border: '1px dashed #E2E8F0',
-                }}
-              >
-                Chưa có thông tin khai thác cho tài sản này.
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#F5F8FA', borderBottom: '1px solid #E2E8F0' }}>
-                      <th style={{ padding: '8px 10px', textAlign: 'center', width: 45 }}>STT</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Đơn vị khai thác</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Thời hạn</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Tổng thu (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Chi phí (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Nộp NSNN (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Ghi chú</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exploitationRows.map((row, idx) => (
-                      <tr key={row.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>{idx + 1}</td>
-                        <td style={{ padding: '8px 10px' }}>{orgName ? orgName(row.operatorOrgUnitId) : row.operatorOrgUnitId}</td>
-                        <td style={{ padding: '8px 10px' }}>{row.exploitationDeadline ? dayjs(row.exploitationDeadline).format('DD/MM/YYYY') : '—'}</td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 500 }}>{fmtNum(row.totalRevenue)}</td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right' }}>{fmtNum(row.relatedCosts)}</td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right' }}>{fmtNum(row.stateBudgetPayment)}</td>
-                        <td style={{ padding: '8px 10px' }}>{row.notes || row.description || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'adjustments',
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
-        customContent: (
-          <div style={{ paddingTop: 8 }}>
-            <div
-              style={{
-                background: '#EFF6FF',
-                border: '1px solid #BFDBFE',
-                borderRadius: 8,
-                padding: '10px 14px',
-                marginBottom: 12,
-                fontSize: 13,
-                color: '#1D4ED8',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <HistoryOutlined style={{ fontSize: 16 }} />
-              <span>
-                Theo dõi biến động tăng/giảm nguyên giá tài sản theo quyết định. Để tạo biến động mới, sử dụng thao tác Tăng nguyên giá / Giảm nguyên giá ở menu hành động dòng.
-              </span>
-            </div>
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '36px 0',
-                  color: textSecondary,
-                  background: '#F8FAFC',
-                  borderRadius: 8,
-                  border: '1px dashed #E2E8F0',
-                }}
-              >
-                Chưa có biến động nguyên giá cho tài sản này.
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ background: '#F5F8FA', borderBottom: '1px solid #E2E8F0' }}>
-                      <th style={{ padding: '8px 10px', textAlign: 'center', width: 45 }}>STT</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Loại thay đổi</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Số quyết định</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Ngày quyết định</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Giá trị điều chỉnh (VNĐ)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Lý do</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'left' }}>Ghi chú</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combinedAdjustments.map((row, idx) => (
-                      <tr key={row.id || idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>{idx + 1}</td>
-                        <td style={{ padding: '8px 10px' }}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '2px 8px',
-                              borderRadius: radiusPill,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              background: row.changeType === 'Tăng nguyên giá' ? '#ECFDF5' : '#FEF2F2',
-                              color: row.changeType === 'Tăng nguyên giá' ? statusOperational : statusCritical,
-                            }}
-                          >
-                            {row.changeType}
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>{row.decisionNumber || row.adjustmentDetails?.decisionNumber || '—'}</td>
-                        <td style={{ padding: '8px 10px' }}>
-                          {row.decisionDate || row.adjustmentDetails?.decisionDate
-                            ? dayjs(row.decisionDate || row.adjustmentDetails?.decisionDate).format('DD/MM/YYYY')
-                            : '—'}
-                        </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 500 }}>
-                          {row.changeType === 'Tăng nguyên giá'
-                            ? `+${fmtNum((row as AssetIncreaseResponse).increaseAmount || row.adjustmentDetails?.originalValueAfter || 0)}`
-                            : `-${fmtNum((row as AssetDecreaseResponse).decreaseAmount || row.adjustmentDetails?.originalValueBefore || 0)}`}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>{row.reason || '—'}</td>
-                        <td style={{ padding: '8px 10px' }}>{row.notes || row.adjustmentDetails?.adjustmentNotes || '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'tracking',
-        label: 'Xử lý & theo dõi',
-        sections: [
-          {
-            key: 'audit_info',
-            title: 'Xử lý & theo dõi',
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                name: 'approvalStatusCustom',
-                label: 'Trạng thái',
-                type: FormFieldType.Custom,
-                colSpan: 12,
-                customRender: () => (
-                  <Form.Item
-                    label={
-                      <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                        Trạng thái
-                      </span>
-                    }
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', height: 40 }}>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '4px 12px',
-                          borderRadius: radiusPill,
-                          background: `${badgeColor}15`,
-                          border: `1px solid ${badgeColor}40`,
-                          color: badgeColor,
-                          fontWeight: 600,
-                          fontSize: 13,
-                        }}
-                      >
-                        {badgeLabel}
-                      </span>
-                    </div>
-                  </Form.Item>
-                ),
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.updatedByName || currentUser?.fullName || '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'updatedAt',
-                label: 'Ngày cập nhật',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.updatedAt ? dayjs(selected.updatedAt).format('DD/MM/YYYY HH:mm') : dayjs().format('DD/MM/YYYY HH:mm'),
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.submittedByName || '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'submittedAt',
-                label: 'Ngày gửi phê duyệt',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.submittedAt ? dayjs(selected.submittedAt).format('DD/MM/YYYY HH:mm') : '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.portAuthorityApprovedByName || '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.portAuthorityApprovedAt ? dayjs(selected.portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm') : '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.portAuthorityApprovalContent || '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.departmentApprovedByName || '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt cấp Cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.departmentApprovedAt ? dayjs(selected.departmentApprovedAt).format('DD/MM/YYYY HH:mm') : '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.departmentApprovalContent || '—',
-                valueFormatter: (val) => String(val || '—'),
-              },
-            ],
-          },
-        ],
-      },
     ];
   }, [
     organizations,
     stormShelterOptions,
-    selected,
     attachments,
-    exploitationRows,
-    combinedAdjustments,
-    currentUser,
-    orgName,
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
   ]);
 
   const actions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'edit') {
+    if (effectiveDrawerMode === 'edit') {
       const isDraft =
-        !selected?.approvalStatus ||
-        ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase());
+        !effectiveSelected?.approvalStatus ||
+        ['DRAFT', 'NHAP'].includes(effectiveSelected.approvalStatus.toUpperCase());
       const res: FormSidebarAction[] = [];
 
       if (isDraft) {
@@ -771,18 +450,24 @@ export default function StormShelterAssetForm({
         onClick: () => onSave('approve'),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
+
+  const title = useMemo(() => {
+    if (effectiveDrawerMode === 'create') return 'Thêm mới tài sản khu tránh, trú bão';
+    return `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || 'Tài sản khu tránh, trú bão'}`;
+  }, [effectiveDrawerMode, effectiveSelected]);
 
   return (
     <DynamicFormSidebar<FormValues>
       open={open}
-      title={drawerMode === 'create' ? 'Thêm mới tài sản khu tránh, trú bão' : `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản khu tránh, trú bão'}`}
+      title={title}
       form={form}
       tabs={formTabs}
       footerActions={actions}
-      footerAlign="center"
+      actions={actions}
       onClose={onClose}
       width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+      rootClassName="storm-shelter-drawer-scope"
     />
   );
 }

@@ -14,6 +14,7 @@ import {
   statusBadgeStyle,
   borderDefault,
   drawerTitleStyle,
+  DRAWER_WIDTH,
 } from "../../../themetokenchk";
 import {
   type DynamicViewSidebarProps,
@@ -67,7 +68,7 @@ function formatFieldValue<T>(
   }
 
   if (rawValue == null || rawValue === "") {
-    return "—";
+    return "";
   }
 
   switch (field.type) {
@@ -410,12 +411,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
 
   return (
     <AppDrawer
-      width={
-        width ||
-        (typeof window !== "undefined"
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000)
-      }
+      width={width || DRAWER_WIDTH}
       size={size}
       rootClassName={rootClassName}
       className={className}

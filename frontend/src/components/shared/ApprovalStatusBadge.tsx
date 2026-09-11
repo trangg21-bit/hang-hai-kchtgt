@@ -40,7 +40,7 @@ export const APPROVAL_STATUS_STYLE: Record<string, { label: string; color: strin
 
 /** Nhãn tiếng Việt của một mã trạng thái (chấp nhận cả mã legacy). */
 export function approvalStatusLabel(status?: string | null): string {
-  if (!status) return '—';
+  if (!status) return '';
   return APPROVAL_STATUS_STYLE[normalizeApprovalStatus(status)]?.label || String(status);
 }
 
@@ -80,9 +80,11 @@ export default function ApprovalStatusBadge({ status, size = 'default', labelOve
   const base = APPROVAL_STATUS_STYLE[normalized];
   // Nhãn vẫn lấy từ bảng chuẩn dùng chung; cho phép màn ghi đè từ ngữ riêng khi cần.
   const config = {
-    label: labelOverrides?.[normalized] ?? base?.label ?? (status || '—'),
+    label: labelOverrides?.[normalized] ?? base?.label ?? (status || ''),
     color: t[STATUS_COLOR_TOKEN[normalized] ?? 'textTertiary'],
   };
+
+  if (!config.label) return null;
 
   return (
     <span

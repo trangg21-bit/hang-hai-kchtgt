@@ -1,16 +1,19 @@
-import React from 'react';
-import { Drawer, Button, Grid } from 'antd';
-import type { DrawerProps } from 'antd';
-import { useThemeToken } from '../../context/ThemeTokenContext';
+import React from "react";
+import { Drawer, Button, Grid } from "antd";
+import type { DrawerProps } from "antd";
+import { useThemeToken } from "../../context/ThemeTokenContext";
 
 const { useBreakpoint } = Grid;
 
-export interface AppDrawerProps extends Omit<DrawerProps, 'title' | 'footer' | 'size'> {
+export interface AppDrawerProps extends Omit<
+  DrawerProps,
+  "title" | "footer" | "size"
+> {
   title: React.ReactNode;
   open: boolean;
   onClose: () => void;
-  /** 
-   * Kích thước hoặc Tỉ lệ % chiều rộng màn hình: 
+  /**
+   * Kích thước hoặc Tỉ lệ % chiều rộng màn hình:
    * - 'sm' (~40%-45%)
    * - 'md' (~55%-65% - mặc định cho form chuẩn)
    * - 'lg' (~75%-80% - cho form nhiều tab/bảng)
@@ -18,8 +21,8 @@ export interface AppDrawerProps extends Omit<DrawerProps, 'title' | 'footer' | '
    * - 'full' (100%)
    * Hoặc truyền chuỗi/số tùy chỉnh như '50%', '65%', 960
    */
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | string | number;
-  drawerSize?: 'sm' | 'md' | 'lg' | 'xl' | 'full' | string | number;
+  size?: "sm" | "md" | "lg" | "xl" | "full" | string | number;
+  drawerSize?: "sm" | "md" | "lg" | "xl" | "full" | string | number;
   width?: string | number;
   /** Custom footer node, hoặc false/null để ẩn */
   footer?: React.ReactNode;
@@ -47,9 +50,9 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
   width,
   footer,
   onOk,
-  okText = 'Lưu thông tin',
+  okText = "Lưu thông tin",
   okLoading = false,
-  cancelText = 'Hủy',
+  cancelText = "Hủy",
   children,
   extra,
   ...rest
@@ -65,13 +68,13 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
     outlineButtonStyle,
   } = useThemeToken();
 
-  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
+  const isIframe = typeof window !== "undefined" && window.self !== window.top;
 
   const handleClose = () => {
     if (isIframe) {
-      window.parent.postMessage({ type: 'CLOSE_GIS_MODAL' }, '*');
-      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
-      window.parent.postMessage({ action: 'close' }, '*');
+      window.parent.postMessage({ type: "CLOSE_GIS_MODAL" }, "*");
+      window.parent.postMessage({ type: "CLOSE_KCHT_MODAL" }, "*");
+      window.parent.postMessage({ action: "close" }, "*");
     }
     if (onClose) {
       onClose();
@@ -80,49 +83,50 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
 
   // Tính toán responsive size theo tỉ lệ % màn hình hoặc giá trị trực tiếp
   const getResponsiveSize = (): string | number => {
-    if (isIframe) return '100%';
-    
-    const rawTarget = width || propSize || drawerSize || 'md';
+    if (isIframe) return "100%";
 
-    if (typeof rawTarget === 'number') {
+    const rawTarget = width || propSize || drawerSize || "md";
+
+    if (typeof rawTarget === "number") {
       return rawTarget;
     }
 
     // Nếu truyền chuỗi số hoặc biểu thức CSS tùy chỉnh (min, calc, px, %...) ngoài preset
-    if (typeof rawTarget === 'string') {
-      if (!['sm', 'md', 'lg', 'xl', 'full'].includes(rawTarget)) {
+    if (typeof rawTarget === "string") {
+      if (!["sm", "md", "lg", "xl", "full"].includes(rawTarget)) {
         if (/^\d+$/.test(rawTarget)) return Number(rawTarget);
-        if (!screens.md) return '100%';
-        if (!screens.lg && rawTarget.endsWith('%') && rawTarget !== '100%') return '80%';
+        if (!screens.md) return "100%";
+        if (!screens.lg && rawTarget.endsWith("%") && rawTarget !== "100%")
+          return "80%";
         return rawTarget;
       }
     }
 
     // Mobile / Tablet nhỏ: Full 100% hoặc 80%
-    if (!screens.md) return '100%';
-    if (!screens.lg) return '80%';
+    if (!screens.md) return "100%";
+    if (!screens.lg) return "80%";
 
     // Desktop: tính theo preset tỉ lệ %
     switch (rawTarget) {
-      case 'sm':
-        return screens.xxl ? '30%' : screens.xl ? '35%' : '40%';
-      case 'lg':
-        return screens.xxl ? '60%' : screens.xl ? '65%' : '70%';
-      case 'xl':
-        return '85%';
-      case 'full':
-        return '100%';
-      case 'md':
+      case "sm":
+        return screens.xxl ? "30%" : screens.xl ? "35%" : "40%";
+      case "lg":
+        return screens.xxl ? "60%" : screens.xl ? "65%" : "70%";
+      case "xl":
+        return "85%";
+      case "full":
+        return "100%";
+      case "md":
       default:
         // Mặc định 'md': 50% màn hình
-        return screens.xl ? '50%' : '55%';
+        return screens.xl ? "50%" : "55%";
     }
   };
 
   const calculatedWidth = getResponsiveSize();
 
   const headerExtra = extra ? (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {extra}
       <Button type="text" onClick={handleClose} style={drawerCloseBtnStyle}>
         ✕
@@ -136,12 +140,18 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
 
   let renderedFooter: React.ReactNode = null;
   if (footer !== undefined) {
-    renderedFooter = footer ? <div style={drawerFooterStyle}>{footer}</div> : null;
+    renderedFooter = footer ? (
+      <div style={drawerFooterStyle}>{footer}</div>
+    ) : null;
   } else if (onOk) {
     renderedFooter = (
       <div style={drawerFooterStyle}>
         <Button
-          style={{ ...outlineButtonStyle, borderRadius: buttonRadius, height: 40 }}
+          style={{
+            ...outlineButtonStyle,
+            borderRadius: buttonRadius,
+            height: 40,
+          }}
           onClick={onClose}
         >
           {cancelText}
@@ -149,7 +159,11 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
         <Button
           type="primary"
           loading={okLoading}
-          style={{ ...primaryButtonStyle, borderRadius: buttonRadius, height: 40 }}
+          style={{
+            ...primaryButtonStyle,
+            borderRadius: buttonRadius,
+            height: 40,
+          }}
           onClick={onOk}
         >
           {okText}
@@ -160,18 +174,30 @@ export const AppDrawer: React.FC<AppDrawerProps> = ({
 
   const safeDrawerProps = { ...drawerProps };
   delete (safeDrawerProps as Record<string, unknown>).size;
+  delete (safeDrawerProps as Record<string, unknown>).width;
+
+  const { width: _discardWidth, ...cleanRest } = rest as Record<
+    string,
+    unknown
+  >;
 
   return (
     <Drawer
       {...safeDrawerProps}
-      width={calculatedWidth}
+      size={calculatedWidth}
       destroyOnHidden
       open={open}
       onClose={onClose}
-      title={typeof title === 'string' ? <span style={drawerTitleStyle}>{title}</span> : title}
+      title={
+        typeof title === "string" ? (
+          <span style={drawerTitleStyle}>{title}</span>
+        ) : (
+          title
+        )
+      }
       extra={headerExtra}
       footer={renderedFooter}
-      {...rest}
+      {...cleanRest}
     >
       {children}
     </Drawer>

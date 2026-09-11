@@ -91,6 +91,16 @@ const AssetDecreaseList = lazy(() => import('./pages/assetmovement/AssetDecrease
 const InventoryList = lazy(() => import('./pages/assetmovement/InventoryList'));
 const AssetExploitationList = lazy(() => import('./pages/assetmovement/AssetExploitationList'));
 const PortTerminalAssetList = lazy(() => import('./pages/assetmovement/PortTerminalAssetList'));
+const VtsSystemAssetList = lazy(() => import('./pages/vtsasset/VtsSystemAssetList'));
+const RadarStationAssetList = lazy(() => import('./pages/radarasset/RadarStationAssetList'));
+const AisSystemAssetList = lazy(() => import('./pages/aisasset/AisSystemAssetList'));
+const CctvSystemAssetList = lazy(() => import('./pages/cctvasset/CctvSystemAssetList'));
+const ScadaSystemAssetList = lazy(() => import('./pages/scadaasset/ScadaSystemAssetList'));
+const TransmissionAssetList = lazy(() => import('./pages/transmissionasset/TransmissionAssetList'));
+const VtsAssistAssetList = lazy(() => import('./pages/vtsassistasset/VtsAssistAssetList'));
+const VhfAssetList = lazy(() => import('./pages/vhfasset/VhfAssetList'));
+const DaiTtdhAssetList = lazy(() => import('./pages/daittdhasset/DaiTtdhAssetList'));
+const InmarsatAssetList = lazy(() => import('./pages/inmarsatasset/InmarsatAssetList'));
 const TransferAreaAssetList = lazy(() => import('./pages/assetmovement/TransferAreaAssetList'));
 const StormShelterAssetList = lazy(() => import('./pages/assetmovement/StormShelterAssetList'));
 const BuoyBerthAssetList = lazy(() => import('./pages/assetmovement/BuoyBerthAssetList'));
@@ -292,6 +302,16 @@ export default function App() {
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/berth" element={<PermissionGuard permission="infraasset:manage"><PortTerminalAssetList /></PermissionGuard>} />
+                <Route path="/asset/transmission" element={<PermissionGuard permission="infraasset:manage"><TransmissionAssetList /></PermissionGuard>} />
+                <Route path="/asset/vts-assist" element={<PermissionGuard permission="infraasset:manage"><VtsAssistAssetList /></PermissionGuard>} />
+                <Route path="/asset/vhf" element={<PermissionGuard permission="infraasset:manage"><VhfAssetList /></PermissionGuard>} />
+                <Route path="/asset/dai-ttdh" element={<PermissionGuard permission="infraasset:manage"><DaiTtdhAssetList /></PermissionGuard>} />
+                <Route path="/asset/inmarsat" element={<PermissionGuard permission="infraasset:manage"><InmarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/vts-system" element={<PermissionGuard permission="infraasset:manage"><VtsSystemAssetList /></PermissionGuard>} />
+                <Route path="/asset/radar-station" element={<PermissionGuard permission="infraasset:manage"><RadarStationAssetList /></PermissionGuard>} />
+                <Route path="/asset/ais-system" element={<PermissionGuard permission="infraasset:manage"><AisSystemAssetList /></PermissionGuard>} />
+                <Route path="/asset/cctv-system" element={<PermissionGuard permission="infraasset:manage"><CctvSystemAssetList /></PermissionGuard>} />
+                <Route path="/asset/scada-system" element={<PermissionGuard permission="infraasset:manage"><ScadaSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/transfer-area" element={<PermissionGuard permission="infraasset:manage"><TransferAreaAssetList /></PermissionGuard>} />
                 <Route path="/asset/storm-shelter" element={<PermissionGuard permission="infraasset:manage"><StormShelterAssetList /></PermissionGuard>} />
                 <Route path="/asset/buoy-berth" element={<PermissionGuard permission="infraasset:manage"><BuoyBerthAssetList /></PermissionGuard>} />
