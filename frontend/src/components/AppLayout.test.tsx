@@ -3,10 +3,27 @@ import * as React from 'react';
 import type { MenuProps } from 'antd';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
-import AppLayout, { filterMenuByQuery, collectOpenableKeys } from './AppLayout';
+import AppLayout from './AppLayout';
+import { filterMenuByQuery, collectOpenableKeys } from './appLayoutMenu';
 import HomePage from '../pages/Home';
 import { usePermissionStore } from '../store/permissionStore';
 import { NAV_GROUPS, groupOfPath } from '../config/navigation';
+
+vi.hoisted(() => {
+  const storage = {
+    getItem: () => null,
+    setItem: () => undefined,
+    removeItem: () => undefined,
+    clear: () => undefined,
+    key: () => null,
+    length: 0,
+  } satisfies Storage;
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: storage,
+    configurable: true,
+    writable: true,
+  });
+});
 
 // M-024 rework render suite: this repo's vitest runs in the NODE environment (no
 // jsdom/happy-dom/@testing-library installed) and antd's useBreakpoint has no
@@ -66,10 +83,16 @@ const gatedMenu: MenuProps['items'] = [
 ];
 
 /** Recursively collect every string key (leaf + parent) in the tree, in traversal order. */
+type TestMenuItem = {
+  key?: unknown;
+  type?: unknown;
+  children?: MenuProps['items'];
+};
+
 function collectKeys(items: MenuProps['items']): string[] {
   const keys: string[] = [];
   const walk = (nodes: MenuProps['items']): void => {
-    for (const node of (nodes ?? []) as any[]) {
+    for (const node of (nodes ?? []) as TestMenuItem[]) {
       if (!node) continue;
       if (typeof node.key === 'string') keys.push(node.key);
       if (node.children) walk(node.children);
@@ -81,7 +104,7 @@ function collectKeys(items: MenuProps['items']): string[] {
 
 /** Indexes of every `type === 'divider'` item in a (flat) item array. */
 function dividerPositions(items: MenuProps['items']): number[] {
-  return ((items ?? []) as any[])
+  return ((items ?? []) as TestMenuItem[])
     .map((node, i) => (node?.type === 'divider' ? i : -1))
     .filter((i) => i >= 0);
 }

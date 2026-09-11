@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   Layout,
@@ -36,6 +36,7 @@ import {
   ApiOutlined,
   FileTextOutlined,
   AimOutlined,
+  BulbOutlined,
   DeploymentUnitOutlined,
   BlockOutlined,
   ApartmentOutlined,
@@ -52,6 +53,12 @@ import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import LogoutConfirmModal from './shared/LogoutConfirmModal';
 import type { MenuProps } from 'antd';
 import {
+  MENU_PERMISSION_MAP,
+  collectOpenableKeys,
+  filterEmptyChildren,
+  filterMenuByQuery,
+} from './appLayoutMenu';
+import {
   NAV_GROUPS,
   accessibleTree,
   firstAccessibleRoute,
@@ -64,67 +71,6 @@ import {
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
-
-export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
-  '/users': 'user:read',
-  '/organizations': 'orgunit:read',
-  '/groups': 'group:read',
-  '/gis/map': 'data:read',
-  '/gis/points': 'data:read',
-  '/gis/lines': 'data:read',
-  '/gis/polygons': 'data:read',
-  '/gis/layers': 'map:manage',
-  '/gis/permits': 'data:read',
-  '/beacon-stations': 'beaconstation:read',
-  '/buoys': 'buoy:read',
-  '/buoy-station': 'buoystation:read',
-  '/history': 'data:read',
-  '/port': 'port:read',
-  '/berth': 'berth:read',
-  '/pier': 'pier:read',
-  '/dry-port': 'dryport:read',
-  '/water-zone': 'waterzone:read',
-  '/anchorage': 'anchorage:read',
-  '/transfer-area': 'transferarea:read',
-  '/storm-shelter': 'stormshelter:read',
-  '/buoy-berth': 'buoyberth:read',
-  '/dai-ttdh': 'daittdh:read',
-  '/ship-repair-yard': 'shiprepairyard:read',
-  '/asset/increase': 'assetincrease:manage',
-  '/asset/decrease': 'assetdecrease:manage',
-  '/asset/inventory': 'inventoryasset:manage',
-  '/asset/exploitation': 'assetexploitation:manage',
-  '/asset/berth': 'infraasset:manage',
-  '/navigation-channel': 'navigationchannel:read',
-  '/navigation-channel-chk': 'navigationchannel:read',
-  '/dike-revetment': 'dikerevetment:read',
-  '/ship-repair-facility': 'shiprepair:read',
-  '/radar-station': 'radarstation:read',
-  '/vts-system': 'vts:read',
-  '/vts-operation-center': 'vtsoperationcenter:read',
-  '/ais-system': 'aissystem:read',
-  '/cctv': 'cctv:read',
-  '/scada': 'scada:read',
-  '/transmission': 'transmission:read',
-  '/vts-assist': 'vtsassist:read',
-  '/station/coastal': 'coastalstation:read',
-  '/station/inmarsat': ['specialstation:read', 'coastalstationinmarsat:read', 'coastalstation:read', 'data:read'],
-  '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
-  '/station/lrit': 'coastalstationlrit:read',
-  '/station/hanoi': 'coastalstationhaiphong:read',
-  '/connections': 'connection:read',
-  '/interconnect': 'connection:read',
-  '/reports': 'report:read',
-  '/dashboard': 'report:read',
-  '/settings': 'admin:manage',
-  '/logs': 'admin:view',
-  '/symbols': 'data:read',
-  '/documents/legal': 'document:read',
-  '/documents/incidents': 'document:read',
-  '/documents/port-planning': 'document:read',
-  '/documents/operation': 'document:read',
-  '/documents/maintenance': 'document:read',
-};
 
 const canAccessMenu = (path: string): boolean => {
   const required = MENU_PERMISSION_MAP[path];
@@ -165,54 +111,6 @@ function buildNavMenuItems(
   return convert(accessibleTree(group.tree, canAccess));
 }
 
-function filterEmptyChildren(items: MenuProps['items']): NonNullable<MenuProps['items']> {
-  if (!items) return [];
-  return items
-    .map((item: any) => {
-      if (!item) return null;
-      if (item.children) {
-        const validChildren = filterEmptyChildren(item.children);
-        if (validChildren.length === 0) return null;
-        return { ...item, children: validChildren };
-      }
-      return item;
-    })
-    .filter(Boolean)
-    .reduce((acc: any[], item: any, idx: number, arr: any[]) => {
-      if (item.type === 'divider') {
-        if (acc.length === 0) return acc;
-        if (acc[acc.length - 1]?.type === 'divider') return acc;
-        if (idx === arr.length - 1) return acc;
-      }
-      acc.push(item);
-      return acc;
-    }, []);
-}
-
-export function filterMenuByQuery(items: MenuProps['items'], query: string): MenuProps['items'] {
-  const q = query.trim().toLowerCase();
-  if (!q) return items;
-  const keepMatching = (nodes: MenuProps['items']): MenuProps['items'] =>
-    (nodes ?? []).map((node: any) => {
-      if (!node) return null;
-      if (node.type === 'divider') return node;
-      if (node.children) return { ...node, children: keepMatching(node.children) };
-      const labelMatches = typeof node.label === 'string' && node.label.toLowerCase().includes(q);
-      return labelMatches ? node : null;
-    });
-  return filterEmptyChildren(keepMatching(items));
-}
-
-export function collectOpenableKeys(items: MenuProps['items']): string[] {
-  return (items ?? []).reduce<string[]>((acc, node: any) => {
-    if (node?.children?.length) {
-      acc.push(node.key as string);
-      acc.push(...collectOpenableKeys(node.children));
-    }
-    return acc;
-  }, []);
-}
-
 export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidden?: boolean } = {}) {
   const isInIframe = window.self !== window.top;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -221,13 +119,29 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   const activeGroup = groupOfPath(location.pathname);
   const navHit = activeGroup ? locateRoute(activeGroup.tree, location.pathname) : undefined;
 
-  const [sidebarHidden, setSidebarHidden] = useState(() => {
-    if (initialSidebarHidden !== undefined) return initialSidebarHidden;
-    return location.pathname === '/';
-  });
+  const [sidebarState, setSidebarState] = useState(() => ({
+    pathname: location.pathname,
+    hidden: initialSidebarHidden ?? location.pathname === '/',
+  }));
+  const sidebarHidden = sidebarState.pathname === location.pathname
+    ? sidebarState.hidden
+    : initialSidebarHidden !== undefined
+      ? sidebarState.hidden
+      : location.pathname === '/'
+        ? true
+        : sidebarState.pathname === '/'
+          ? false
+          : sidebarState.hidden;
+  const setSidebarHidden = (hidden: boolean) => {
+    setSidebarState({ pathname: location.pathname, hidden });
+  };
   const isMenuFullScreen = false;
   const [openKeys, setOpenKeys] = useState<string[]>(() => navHit?.openKeys ?? []);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchState, setSearchState] = useState(() => ({ pathname: location.pathname, query: '' }));
+  const searchQuery = searchState.pathname === location.pathname ? searchState.query : '';
+  const setSearchQuery = (query: string) => {
+    setSearchState({ pathname: location.pathname, query });
+  };
   // M-024 rework: chips C0..C3 — tập level đang được phép hiển thị trong cây khối kcht
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -236,16 +150,6 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   const screens = useBreakpoint();
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
-
-  const prevPathnameForOpenRef = useRef(location.pathname);
-  useEffect(() => {
-    if (prevPathnameForOpenRef.current !== location.pathname) {
-      prevPathnameForOpenRef.current = location.pathname;
-      if (navHit?.openKeys && navHit.openKeys.length > 0) {
-        setOpenKeys((prev) => Array.from(new Set([...prev, ...(navHit.openKeys ?? [])])));
-      }
-    }
-  }, [location.pathname, navHit]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -279,21 +183,19 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     selectedKey = '/' + pathSegments[0];
   }
 
-  useEffect(() => {
-    if (selectedKey) {
-      if (selectedKey.startsWith('/asset')) {
-        setOpenKeys(['asset-management']);
-      } else if (selectedKey.startsWith('/documents')) {
-        setOpenKeys(['planning-operation']);
-      } else if (selectedKey.startsWith('/gis') || selectedKey === '/symbols' || selectedKey === '/water-zone') {
-        setOpenKeys(['gis-management']);
-      } else if (selectedKey.startsWith('/reports')) {
-        setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
-      } else if (['/users', '/organizations', '/groups', '/logs', '/history', '/interconnect', '/connections', '/settings'].includes(selectedKey)) {
-        setOpenKeys(['system-admin']);
-      }
-    }
-  }, [selectedKey]);
+  const routeOpenKeys = navHit?.openKeys ?? (
+    selectedKey.startsWith('/asset')
+      ? ['asset-management']
+      : selectedKey.startsWith('/documents')
+        ? ['planning-operation']
+        : selectedKey.startsWith('/gis') || selectedKey === '/symbols' || selectedKey === '/water-zone'
+          ? ['gis-management']
+          : selectedKey.startsWith('/reports')
+            ? ['reports-parent', 'reports-chung', 'reports-kcht']
+            : ['/users', '/organizations', '/groups', '/logs', '/history', '/interconnect', '/connections', '/settings'].includes(selectedKey)
+              ? ['system-admin']
+              : []
+  );
 
   const activeSelectedKey = navHit?.key ?? selectedKey;
 
@@ -313,6 +215,11 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       label: 'Quản lý tài sản KCHT hàng hải',
       children: [
         canAccessMenu('/asset/berth') ? { key: '/asset/berth', icon: <BankOutlined />, label: 'Tài sản bến cảng' } : null,
+        canAccessMenu('/asset/anchorage') ? { key: '/asset/anchorage', icon: <EnvironmentOutlined />, label: 'Tài sản khu neo đậu' } : null,
+        canAccessMenu('/asset/lighthouse') ? { key: '/asset/lighthouse', icon: <BulbOutlined />, label: 'Tài sản đèn biển và nhà trạm gắn liền đèn biển' } : null,
+        canAccessMenu('/asset/dike-revetment') ? { key: '/asset/dike-revetment', icon: <BlockOutlined />, label: 'Tài sản đê/kè' } : null,
+        canAccessMenu('/asset/buoy') ? { key: '/asset/buoy', icon: <AimOutlined />, label: 'Tài sản phao, tiêu và nhà trạm' } : null,
+        canAccessMenu('/asset/channel') ? { key: '/asset/channel', icon: <DeploymentUnitOutlined />, label: 'Tài sản luồng hàng hải' } : null,
         canAccessMenu('/asset/increase') ? { key: '/asset/increase', icon: <PlusCircleOutlined />, label: 'Yêu cầu tăng tài sản' } : null,
         canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', icon: <MinusCircleOutlined />, label: 'Yêu cầu giảm tài sản' } : null,
         canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', icon: <AuditOutlined />, label: 'Kiểm kê tài sản' } : null,
@@ -501,25 +408,10 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     return undefined;
   })();
 
-  // Text search chỉ sống ở '/': rời landing (click card / Enter / menu trang chủ)
-  // hoặc quay lại landing từ một khối → dọn text cũ, tránh text landing làm nhiễu
-  // bộ lọc menu của khối. Điều hướng TRONG khối không đụng tới searchQuery.
-  const prevPathnameRef = useRef(location.pathname);
-  useEffect(() => {
-    const prev = prevPathnameRef.current;
-    prevPathnameRef.current = location.pathname;
-    if (prev === location.pathname) return;
-    if (prev === '/' || location.pathname === '/') setSearchQuery('');
-    if (initialSidebarHidden === undefined) {
-      if (location.pathname === '/') {
-        setSidebarHidden(true);
-      } else if (prev === '/') {
-        setSidebarHidden(false);
-      }
-    }
-  }, [location.pathname, initialSidebarHidden]);
   const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
-  const effectiveOpenKeys = isSearching ? collectOpenableKeys(displayedItems) : openKeys;
+  const effectiveOpenKeys = isSearching
+    ? collectOpenableKeys(displayedItems)
+    : Array.from(new Set([...openKeys, ...routeOpenKeys]));
 
   // Keep the responsive mode aligned with Sider's `lg` breakpoint. Using
   // `md` here left a 272px layout offset while AntD had already collapsed the

@@ -90,6 +90,11 @@ const AssetDecreaseList = lazy(() => import('./pages/assetmovement/AssetDecrease
 const InventoryList = lazy(() => import('./pages/assetmovement/InventoryList'));
 const AssetExploitationList = lazy(() => import('./pages/assetmovement/AssetExploitationList'));
 const PortTerminalAssetList = lazy(() => import('./pages/assetmovement/PortTerminalAssetList'));
+const AnchorageAssetList = lazy(() => import('./pages/assetmovement/AnchorageAssetList'));
+const LighthouseAssetList = lazy(() => import('./pages/assetmovement/LighthouseAssetList'));
+const DikeRevetmentAssetList = lazy(() => import('./pages/assetmovement/DikeRevetmentAssetList'));
+const BuoyAssetList = lazy(() => import('./pages/assetmovement/BuoyAssetList'));
+const ChannelAssetList = lazy(() => import('./pages/assetmovement/ChannelAssetList'));
 const LegalDocumentList = lazy(() => import('./pages/document/LegalDocumentList'));
 const IncidentList = lazy(() => import('./pages/document/IncidentList'));
 const PortPlanningList = lazy(() => import('./pages/document/PortPlanningList'));
@@ -281,6 +286,13 @@ export default function App() {
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/berth" element={<PermissionGuard permission="infraasset:manage"><PortTerminalAssetList /></PermissionGuard>} />
+                <Route path="/asset/anchorage" element={<PermissionGuard permission="infraasset:manage"><AnchorageAssetList /></PermissionGuard>} />
+                <Route path="/asset/lighthouse" element={<PermissionGuard permission="infraasset:manage"><LighthouseAssetList /></PermissionGuard>} />
+                <Route path="/asset/dike-revetment" element={<PermissionGuard permission="infraasset:manage"><DikeRevetmentAssetList /></PermissionGuard>} />
+                <Route path="/asset/buoy" element={<PermissionGuard permission="infraasset:manage"><BuoyAssetList /></PermissionGuard>} />
+                <Route path="/asset/buoy-station" element={<PermissionGuard permission="infraasset:manage"><BuoyAssetList /></PermissionGuard>} />
+                <Route path="/asset/channel" element={<PermissionGuard permission="infraasset:manage"><ChannelAssetList /></PermissionGuard>} />
+                <Route path="/asset/navigation-channel" element={<PermissionGuard permission="infraasset:manage"><ChannelAssetList /></PermissionGuard>} />
                 <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />
                 <Route path="/asset/decrease" element={<PermissionGuard permission="assetdecrease:manage"><AssetDecreaseList /></PermissionGuard>} />
                 <Route path="/asset/inventory" element={<PermissionGuard permission="inventoryasset:manage"><InventoryList /></PermissionGuard>} />

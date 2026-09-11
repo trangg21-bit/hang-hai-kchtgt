@@ -8,7 +8,10 @@ public enum InfraAssetType {
     RADAR_STATION(1),
     LIGHTHOUSE(2),
     AUXILIARY_EQUIPMENT(3),
-    PORT_TERMINAL(4);
+    PORT_TERMINAL(4),
+    ANCHORAGE(5),
+    NAVIGATION_CHANNEL(6),
+    DIKE_REVETMENT(7);
 
     private final int value;
 

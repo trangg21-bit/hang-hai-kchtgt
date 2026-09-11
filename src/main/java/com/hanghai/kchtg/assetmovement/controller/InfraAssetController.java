@@ -53,6 +53,12 @@ public class InfraAssetController {
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID usingOrgUnitId,
             @RequestParam(required = false) UUID berthId,
+            @RequestParam(required = false) UUID anchorageId,
+            @RequestParam(required = false) UUID beaconStationId,
+            @RequestParam(required = false) UUID dikeRevetmentId,
+            @RequestParam(required = false) UUID buoyId,
+            @RequestParam(required = false) UUID buoyStationId,
+            @RequestParam(required = false) UUID navigationChannelId,
             @RequestParam(required = false) InfraAssetType assetType,
             @RequestParam(required = false) String assetCondition,
             @RequestParam(required = false) String approvalStatus,
@@ -63,7 +69,9 @@ public class InfraAssetController {
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by(EntityFields.CREATED_AT).descending());
         Page<InfraAssetResponse> result = infraAssetService.findAll(assetCode, assetName, parentOrgUnitId, orgUnitId,
-                usingOrgUnitId, berthId, assetType, assetCondition, approvalStatus, updatedFrom, updatedTo, pageable);
+                usingOrgUnitId, berthId, anchorageId, beaconStationId, dikeRevetmentId, buoyId, buoyStationId, navigationChannelId,
+                assetType, assetCondition,
+                approvalStatus, updatedFrom, updatedTo, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

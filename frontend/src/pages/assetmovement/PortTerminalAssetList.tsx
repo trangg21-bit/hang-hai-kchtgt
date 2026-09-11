@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Form } from 'antd';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined, EditOutlined, EyeOutlined, MinusCircleOutlined,
   PlusCircleOutlined, PlusOutlined, RocketOutlined,
@@ -19,19 +20,20 @@ import {
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
-import { berthCRUD } from '../../services/portService';
-import type { Berth } from '../../types/port';
+import { anchorageCRUD, berthCRUD } from '../../services/portService';
+import { beaconStationCRUD } from '../../services/beaconService';
+import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import {
   createKhaiThac,
   createAssetDecrease,
   createAssetIncrease,
-  createPortTerminalAsset,
-  deletePortTerminalAsset,
+  createInfrastructureAsset,
+  deleteInfrastructureAsset,
   fetchAssetDecreaseList,
   fetchAssetIncreaseList,
+  fetchInfrastructureAssets,
   fetchKhaiThacList,
-  fetchPortTerminalAssets,
-  updatePortTerminalAsset,
+  updateInfrastructureAsset,
 } from '../../services/assetmovement/api';
 import type {
   AssetDecreaseResponse, AssetExploitationResponse, AssetIncreaseResponse,
@@ -49,6 +51,11 @@ import PortTerminalAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './PortTerminalAssetOperationForm';
+import {
+  PORT_TERMINAL_ASSET_SCREEN,
+  type InfrastructureAssetScreenConfig,
+  type InfrastructureReferenceOption,
+} from './infrastructureAssetScreen';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -70,10 +77,54 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
-function PortTerminalAssetList() {
+async function loadRelatedInfrastructure(
+  screenConfig: InfrastructureAssetScreenConfig,
+): Promise<InfrastructureReferenceOption[]> {
+  if (screenConfig.assetType === 'DIKE_REVETMENT') {
+    const items = await dikeRevetmentCRUD.getOptions();
+    return items.map((item) => ({
+      id: item.id,
+      code: item.code,
+      name: item.dikeRevetmentName,
+    }));
+  }
+
+  if (screenConfig.assetType === 'LIGHTHOUSE') {
+    const items = await beaconStationCRUD.findAll();
+    return items.map((item) => ({
+      id: item.id,
+      code: item.code,
+      name: item.name,
+    }));
+  }
+
+  if (screenConfig.assetType === 'ANCHORAGE') {
+    const page = await anchorageCRUD.findAll({ page: 1, size: 5000 });
+    return page.data.map((item) => ({
+      id: item.id,
+      code: item.anchorageCode,
+      name: item.anchorageName,
+    }));
+  }
+
+  const page = await berthCRUD.findAll({ page: 1, size: 5000 });
+  return page.data.map((item) => ({
+    id: item.id,
+    code: item.berthCode,
+    name: item.berthName,
+  }));
+}
+
+export interface PortTerminalAssetListProps {
+  screenConfig?: InfrastructureAssetScreenConfig;
+}
+
+function PortTerminalAssetList({
+  screenConfig = PORT_TERMINAL_ASSET_SCREEN,
+}: PortTerminalAssetListProps = {}) {
   const [data, setData] = useState<PortTerminalAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [berths, setBerths] = useState<Berth[]>([]);
+  const [relatedInfrastructure, setRelatedInfrastructure] = useState<InfrastructureReferenceOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveAction, setSaveAction] = useState<string>('DRAFT');
@@ -97,31 +148,40 @@ function PortTerminalAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
   const orgName = useMemo(() => new Map(organizations.map(item => [item.id, item.name])), [organizations]);
-  const berthMap = useMemo(() => new Map(berths.map(item => [item.id, item])), [berths]);
+  const relatedInfrastructureMap = useMemo(
+    () => new Map(relatedInfrastructure.map((item) => [item.id, item])),
+    [relatedInfrastructure],
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetchPortTerminalAssets({ ...filters, page: page - 1, size: pageSize });
+      const response = await fetchInfrastructureAssets(screenConfig.assetType, {
+        ...filters,
+        page: page - 1,
+        size: pageSize,
+      });
       setData(response.content);
       setTotal(response.totalElements);
 
       const baseFilters = { ...filters, approvalStatus: undefined, page: 0, size: 1 };
       const [all, ...statusPages] = await Promise.all([
-        fetchPortTerminalAssets(baseFilters),
-        ...STATUS_COUNT_KEYS.map(approvalStatus => fetchPortTerminalAssets({ ...baseFilters, approvalStatus })),
+        fetchInfrastructureAssets(screenConfig.assetType, baseFilters),
+        ...STATUS_COUNT_KEYS.map((approvalStatus) =>
+          fetchInfrastructureAssets(screenConfig.assetType, { ...baseFilters, approvalStatus }),
+        ),
       ]);
       setStatusCounts({
         all: all.totalElements,
         ...Object.fromEntries(STATUS_COUNT_KEYS.map((key, index) => [key, statusPages[index].totalElements])),
       });
     } catch (cause: unknown) {
-      setError(getErrorMessage(cause, 'Không thể tải danh sách tài sản bến cảng.'));
+      setError(getErrorMessage(cause, `Không thể tải danh sách ${screenConfig.subjectLabel}.`));
     } finally {
       setLoading(false);
     }
-  }, [filters, page, pageSize]);
+  }, [filters, page, pageSize, screenConfig]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu khi trang/bộ lọc thay đổi
@@ -129,21 +189,21 @@ function PortTerminalAssetList() {
   }, [loadData]);
 
   useEffect(() => {
-    void Promise.all([organizationService.getAll(), berthCRUD.findAll({ page: 1, size: 5000 })])
-      .then(([orgs, berthPage]) => {
+    void Promise.all([organizationService.getAll(), loadRelatedInfrastructure(screenConfig)])
+      .then(([orgs, relatedItems]) => {
         setOrganizations(orgs);
-        setBerths(berthPage.data);
+        setRelatedInfrastructure(relatedItems);
       })
-      .catch(() => toast.error('Không thể tải danh mục đơn vị hoặc bến cảng.'));
-  }, []);
+      .catch(() => toast.error(`Không thể tải danh mục đơn vị hoặc ${screenConfig.relationNameLabel.toLowerCase()}.`));
+  }, [screenConfig]);
 
   const openCreate = useCallback(() => {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({ assetType: 'PORT_TERMINAL', status: 'MANAGED' });
+    form.setFieldsValue({ assetType: screenConfig.assetType, status: 'MANAGED' });
     setAttachments([]);
-  }, [form]);
+  }, [form, screenConfig.assetType]);
 
   const openEdit = useCallback((record: PortTerminalAsset) => {
     setSelected(record);
@@ -222,7 +282,7 @@ function PortTerminalAssetList() {
     }
   }, []);
 
-  const saveAsset = async (targetAction: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED') => {
+  const saveAsset = async (targetAction: string) => {
     try {
       const values = await form.validateFields();
       setSaving(true);
@@ -234,7 +294,7 @@ function PortTerminalAssetList() {
 
       const payload: PortTerminalAssetPayload = {
         ...values,
-        assetType: 'PORT_TERMINAL',
+        assetType: screenConfig.assetType,
         constructionYear: values.constructionYear ? Number(values.constructionYear.format('YYYY')) : undefined,
         useDate: values.useDate?.format('YYYY-MM-DD'),
         declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
@@ -245,22 +305,24 @@ function PortTerminalAssetList() {
       };
 
       if (drawerMode === 'edit' && selected) {
-        await updatePortTerminalAsset(selected.id, payload);
+        await updateInfrastructureAsset(selected.id, screenConfig.assetType, payload);
       } else {
-        await createPortTerminalAsset(payload);
+        await createInfrastructureAsset(screenConfig.assetType, payload);
       }
 
       toast.success(
         targetAction === 'DRAFT'
-          ? 'Đã lưu tạm tài sản bến cảng.'
+          ? `Đã lưu tạm ${screenConfig.subjectLabel}.`
           : targetAction === 'PENDING_APPROVAL'
-            ? 'Đã lưu và gửi phê duyệt tài sản bến cảng.'
-            : 'Đã lưu và phê duyệt tài sản bến cảng.',
+            ? `Đã lưu và gửi phê duyệt ${screenConfig.subjectLabel}.`
+            : `Đã lưu và phê duyệt ${screenConfig.subjectLabel}.`,
       );
       setDrawerMode(undefined);
       await loadData();
     } catch (cause: unknown) {
-      if (!isValidationError(cause)) toast.error(getErrorMessage(cause, 'Không thể lưu tài sản bến cảng.'));
+      if (!isValidationError(cause)) {
+        toast.error(getErrorMessage(cause, `Không thể lưu ${screenConfig.subjectLabel}.`));
+      }
     } finally {
       setSaving(false);
     }
@@ -371,13 +433,13 @@ function PortTerminalAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'berthId',
-      label: 'Mã bến cảng',
+      key: screenConfig.relationField,
+      label: screenConfig.relationCodeLabel,
       type: 'select',
-      placeholder: 'Chọn bến cảng',
-      options: berths.map((item) => ({
+      placeholder: screenConfig.relationPlaceholder,
+      options: relatedInfrastructure.map((item) => ({
         value: item.id,
-        label: `${item.berthCode} - ${item.berthName}`,
+        label: `${item.code} - ${item.name}`,
       })),
     },
     {
@@ -385,8 +447,8 @@ function PortTerminalAssetList() {
       label: 'Loại tài sản',
       type: 'select',
       disabled: true,
-      defaultValue: 'PORT_TERMINAL',
-      options: [{ value: 'PORT_TERMINAL', label: 'Tài sản bến cảng' }],
+      defaultValue: screenConfig.assetType,
+      options: [{ value: screenConfig.assetType, label: screenConfig.title }],
     },
     {
       key: 'assetCode',
@@ -412,7 +474,7 @@ function PortTerminalAssetList() {
       label: 'Ngày cập nhật',
       type: 'dateRange',
     },
-  ], [berths, organizations]);
+  ], [organizations, relatedInfrastructure, screenConfig]);
 
   const handleFilterApply = useCallback(() => {
     setPage(1);
@@ -458,18 +520,18 @@ function PortTerminalAssetList() {
         render: (v) => orgName.get(v as string) || '—',
       },
       {
-        title: 'MÃ BẾN CẢNG',
-        dataIndex: 'berthId',
+        title: screenConfig.relationColumnTitle,
+        dataIndex: screenConfig.relationField,
         type: TableColumnType.Text,
-        width: 190,
-        render: (v) => berthMap.get(v as string)?.berthCode || '—',
+        width: screenConfig.relationColumnWidth,
+        render: (v) => relatedInfrastructureMap.get(v as string)?.code || '—',
       },
       {
         title: 'LOẠI TÀI SẢN',
         dataIndex: 'assetType',
         type: TableColumnType.Text,
         width: 160,
-        render: () => 'Tài sản bến cảng',
+        render: () => screenConfig.title,
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -538,7 +600,7 @@ function PortTerminalAssetList() {
       { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
       { key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) },
     ],
-  }), [berthMap, openDetail, openEdit, operationForm, orgName]);
+  }), [openDetail, openEdit, operationForm, orgName, relatedInfrastructureMap, screenConfig]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(() => [
     { key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreate },
@@ -551,7 +613,7 @@ function PortTerminalAssetList() {
 
   return (
     <ThemeTokenProvider tokens={customBerthTokens}>
-      <div className="berth-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <div className={`berth-page-wrapper ${screenConfig.pageClassName}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         <style>{`
           .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
 
@@ -642,7 +704,7 @@ function PortTerminalAssetList() {
         `}</style>
 
         <ScreenHeader
-          breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: 'Tài sản bến cảng' }]}
+          breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: screenConfig.title }]}
           actions={headerActions}
         />
 
@@ -694,7 +756,8 @@ function PortTerminalAssetList() {
           selected={selected}
           form={form}
           organizations={organizations}
-          berths={berths}
+          relatedInfrastructure={relatedInfrastructure}
+          screenConfig={screenConfig}
           attachments={attachments}
           saving={saving}
           saveAction={saveAction}
@@ -714,7 +777,8 @@ function PortTerminalAssetList() {
           selectedRecord={selected}
           onClose={() => setDrawerMode(undefined)}
           orgName={orgName}
-          berthMap={berthMap}
+          relatedInfrastructureMap={relatedInfrastructureMap}
+          screenConfig={screenConfig}
           exploitationRows={exploitationRows}
           increaseRows={increaseRows}
           decreaseRows={decreaseRows}
@@ -728,6 +792,7 @@ function PortTerminalAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          drawerClassName={screenConfig.drawerClassName}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();
@@ -740,15 +805,15 @@ function PortTerminalAssetList() {
           open={Boolean(deleteTarget)}
           onCancel={() => setDeleteTarget(undefined)}
           loading={saving}
-          itemType="tài sản bến cảng"
+          itemType={screenConfig.subjectLabel}
           itemName={deleteTarget?.assetName}
           itemCode={deleteTarget?.assetCode}
           onConfirm={() => {
             if (!deleteTarget) return;
             setSaving(true);
-            void deletePortTerminalAsset(deleteTarget.id)
+            void deleteInfrastructureAsset(deleteTarget.id)
               .then(() => {
-                toast.success('Đã xóa tài sản bến cảng.');
+                toast.success(`Đã xóa ${screenConfig.subjectLabel}.`);
                 setDeleteTarget(undefined);
                 return loadData();
               })

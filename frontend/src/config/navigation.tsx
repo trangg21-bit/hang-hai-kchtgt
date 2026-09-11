@@ -191,6 +191,11 @@ export const NAV_GROUPS: NavGroup[] = [
     underDevelopment: true,
     tree: [
       { key: '/asset/berth', route: '/asset/berth', label: 'Tài sản bến cảng', icon: icons.bank },
+      { key: '/asset/anchorage', route: '/asset/anchorage', label: 'Tài sản khu neo đậu', icon: icons.environment },
+      { key: '/asset/lighthouse', route: '/asset/lighthouse', label: 'Tài sản đèn biển và nhà trạm gắn liền đèn biển', icon: icons.bulb },
+      { key: '/asset/dike-revetment', route: '/asset/dike-revetment', label: 'Tài sản đê/kè', icon: icons.block },
+      { key: '/asset/buoy', route: '/asset/buoy', label: 'Tài sản phao, tiêu và nhà trạm', icon: icons.aim },
+      { key: '/asset/channel', route: '/asset/channel', label: 'Tài sản luồng hàng hải', icon: icons.compass },
       { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản', icon: icons.plusCircle },
       { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản', icon: icons.minusCircle },
       { key: '/asset/inventory', route: '/asset/inventory', label: 'Kiểm kê tài sản', icon: icons.audit },
