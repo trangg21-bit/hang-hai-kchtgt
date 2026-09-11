@@ -1,4 +1,4 @@
--- V20260910160000__create_vts_system_assets.sql
+-- V20260910155000__create_vts_system_assets.sql
 -- Tạo bảng lưu trữ Tài sản hệ thống VTS và các chỉ số nghiệp vụ
 
 CREATE TABLE IF NOT EXISTS vts_system_assets (
