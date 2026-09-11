@@ -35,8 +35,8 @@ public class InfraAssetService {
     public InfraAssetResponse create(InfraAssetRequest request) {
         InfraAsset entity = new InfraAsset();
         copyEditableFields(request, entity);
-        entity.setAssetCode(generateAssetCode(request.getAssetCode()));
         if (entity.getAssetType() == null) entity.setAssetType(InfraAssetType.PORT_TERMINAL);
+        entity.setAssetCode(generateAssetCode(request.getAssetCode(), entity.getAssetType()));
         if (entity.getStatus() == null) entity.setStatus(AssetStatus.MANAGED);
         calculateValues(entity);
         return toResponse(repository.save(entity));
@@ -47,8 +47,10 @@ public class InfraAssetService {
     }
 
     public Page<InfraAssetResponse> findAll(String assetCode, String assetName, UUID parentOrgUnitId, UUID orgUnitId,
-                                             UUID usingOrgUnitId, UUID berthId, InfraAssetType assetType,
-                                             String assetCondition, String approvalStatus,
+                                             UUID usingOrgUnitId, UUID berthId, UUID anchorageId,
+                                             UUID beaconStationId, UUID dikeRevetmentId, UUID buoyId,
+                                             UUID buoyStationId, UUID navigationChannelId,
+                                             InfraAssetType assetType, String assetCondition, String approvalStatus,
                                              LocalDate updatedFrom, LocalDate updatedTo, Pageable pageable) {
         Specification<InfraAsset> specification = (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
@@ -58,6 +60,12 @@ public class InfraAssetService {
             if (orgUnitId != null) predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
             if (usingOrgUnitId != null) predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
             if (berthId != null) predicates.add(cb.equal(root.get("berthId"), berthId));
+            if (anchorageId != null) predicates.add(cb.equal(root.get("anchorageId"), anchorageId));
+            if (beaconStationId != null) predicates.add(cb.equal(root.get("beaconStationId"), beaconStationId));
+            if (dikeRevetmentId != null) predicates.add(cb.equal(root.get("dikeRevetmentId"), dikeRevetmentId));
+            if (buoyId != null) predicates.add(cb.equal(root.get("buoyId"), buoyId));
+            if (buoyStationId != null) predicates.add(cb.equal(root.get("buoyStationId"), buoyStationId));
+            if (navigationChannelId != null) predicates.add(cb.equal(root.get("navigationChannelId"), navigationChannelId));
             if (assetType != null) predicates.add(cb.equal(root.get("assetType"), assetType));
             if (assetCondition != null && !assetCondition.isBlank()) predicates.add(cb.equal(root.get("assetCondition"), assetCondition));
             if (approvalStatus != null && !approvalStatus.isBlank()) {
@@ -95,13 +103,21 @@ public class InfraAssetService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài sản kết cấu hạ tầng với id: " + id));
     }
 
-    private String generateAssetCode(String requestedCode) {
+    private String generateAssetCode(String requestedCode, InfraAssetType assetType) {
         if (requestedCode != null && !requestedCode.isBlank() && repository.findByAssetCode(requestedCode.trim()).isEmpty()) {
             return requestedCode.trim();
         }
+        String prefix = switch (assetType) {
+            case BUOY -> "TS-PT-";
+            case ANCHORAGE -> "TS-ND-";
+            case LIGHTHOUSE -> "TS-DB-";
+            case NAVIGATION_CHANNEL -> "TS-LHH-";
+            case DIKE_REVETMENT -> "TS-DK-";
+            default -> "TS-BC-";
+        };
         String code;
         do {
-            code = "TS-BC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+            code = prefix + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
         } while (repository.findByAssetCode(code).isPresent());
         return code;
     }

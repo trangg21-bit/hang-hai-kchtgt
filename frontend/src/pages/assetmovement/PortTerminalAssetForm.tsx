@@ -1,14 +1,18 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Form, Select, InputNumber } from "antd";
 import type { FormInstance } from "antd";
 import type { Dayjs } from "dayjs";
 import { BankOutlined, SlidersOutlined } from "@ant-design/icons";
 import type { Organization } from "../../services/organizationService";
-import type { Berth } from "../../types/port";
 import type {
   PortTerminalAsset,
   PortTerminalAssetPayload,
 } from "../../services/assetmovement/types";
+import {
+  PORT_TERMINAL_ASSET_SCREEN,
+  type InfrastructureAssetScreenConfig,
+  type InfrastructureReferenceOption,
+} from "./infrastructureAssetScreen";
 import { fmtInputNumber } from "../../utils/numFmt";
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
@@ -37,6 +41,7 @@ export type FormValues = Omit<
   | "depreciationStartDate"
   | "depreciationEndDate"
 > & {
+  assetType?: PortTerminalAssetPayload["assetType"];
   constructionYear?: Dayjs;
   useDate?: Dayjs;
   declarationDate?: Dayjs;
@@ -68,7 +73,8 @@ export interface PortTerminalAssetFormProps {
   selected?: PortTerminalAsset;
   form: FormInstance<FormValues>;
   organizations: Organization[];
-  berths: Berth[];
+  relatedInfrastructure: InfrastructureReferenceOption[];
+  screenConfig?: InfrastructureAssetScreenConfig;
   attachments: InfrastructureAttachmentItem[];
   saving: boolean;
   saveAction: string;
@@ -85,7 +91,8 @@ export default function PortTerminalAssetForm({
   selected,
   form,
   organizations,
-  berths,
+  relatedInfrastructure,
+  screenConfig = PORT_TERMINAL_ASSET_SCREEN,
   attachments,
   saving,
   saveAction,
@@ -95,13 +102,13 @@ export default function PortTerminalAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: PortTerminalAssetFormProps) {
-  const berthOptions = useMemo(
+  const relationOptions = useMemo(
     () =>
-      berths.map((item) => ({
+      relatedInfrastructure.map((item) => ({
         value: item.id,
-        label: `${item.berthCode} - ${item.berthName}`,
+        label: `${item.code} - ${item.name}`,
       })),
-    [berths],
+    [relatedInfrastructure],
   );
 
   const formTabs = useMemo<FormTabConfig<FormValues>[]>(() => {
@@ -142,22 +149,22 @@ export default function PortTerminalAssetForm({
                 ],
               },
               {
-                name: "berthId",
-                label: "Mã bến cảng",
+                name: screenConfig.relationField,
+                label: screenConfig.relationCodeLabel,
                 type: FormFieldType.Select,
-                options: berthOptions,
-                placeholder: "Chọn bến cảng",
+                options: relationOptions,
+                placeholder: screenConfig.relationPlaceholder,
                 required: true,
-                rules: [{ required: true, message: "Mã bến cảng là bắt buộc" }],
+                rules: [{ required: true, message: `${screenConfig.relationCodeLabel} là bắt buộc` }],
               },
               {
                 name: "assetType",
                 label: "Loại tài sản",
                 type: FormFieldType.Select,
-                initialValue: "PORT_TERMINAL",
+                initialValue: screenConfig.assetType,
                 disabled: true,
                 options: [
-                  { value: "PORT_TERMINAL", label: "Tài sản bến cảng" },
+                  { value: screenConfig.assetType, label: screenConfig.title },
                 ],
               },
               {
@@ -484,7 +491,8 @@ export default function PortTerminalAssetForm({
     ];
   }, [
     organizations,
-    berthOptions,
+    relationOptions,
+    screenConfig,
     attachments,
     onUploadAttachment,
     onDeleteAttachment,
@@ -546,10 +554,10 @@ export default function PortTerminalAssetForm({
 
   const title = useMemo(() => {
     if (drawerMode === "edit") {
-      return `Chỉnh sửa thông tin — ${selected?.assetName || "Tài sản bến cảng"}`;
+      return `Chỉnh sửa thông tin — ${selected?.assetName || screenConfig.title}`;
     }
-    return "Thêm mới tài sản bến cảng";
-  }, [drawerMode, selected]);
+    return `Thêm mới ${screenConfig.subjectLabel}`;
+  }, [drawerMode, screenConfig, selected]);
 
   return (
     <DynamicFormSidebar<FormValues>
@@ -562,10 +570,11 @@ export default function PortTerminalAssetForm({
           ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
           : 1000
       }
-      rootClassName="berth-drawer-scope"
-      className="berth-drawer-scope"
+      rootClassName={`berth-drawer-scope ${screenConfig.drawerClassName}`}
+      className={`berth-drawer-scope ${screenConfig.drawerClassName}`}
       tabs={formTabs}
       footerActions={footerActions}
+      footerAlign="center"
     />
   );
 }

@@ -6,6 +6,7 @@ Thumbs.db
 .vscode/*
 !.vscode/launch.json
 .idea/
+.codex-tmp/
 
 # Env
 .env

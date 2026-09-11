@@ -34,6 +34,13 @@ public class InfraAssetResponse {
     private UUID orgUnitId;
     private UUID usingOrgUnitId;
     private UUID berthId;
+    private UUID anchorageId;
+    private UUID beaconStationId;
+    private UUID dikeRevetmentId;
+    private UUID buoyId;
+    private UUID buoyStationId;
+    private UUID navigationChannelId;
+    private String navigationChannelName;
     private String barcode;
     private String assetCondition;
     private String usageStatus;

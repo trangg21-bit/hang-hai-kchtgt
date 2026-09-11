@@ -8,13 +8,17 @@ import {
   MinusCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { Berth } from "../../types/port";
 import type {
   PortTerminalAsset,
   AssetExploitationResponse,
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from "../../services/assetmovement/types";
+import {
+  PORT_TERMINAL_ASSET_SCREEN,
+  type InfrastructureAssetScreenConfig,
+  type InfrastructureReferenceOption,
+} from "./infrastructureAssetScreen";
 import { fmtNum } from "../../utils/numFmt";
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
@@ -41,7 +45,8 @@ export interface PortTerminalAssetDetailContentProps {
   selectedRecord?: PortTerminalAsset;
   onClose: () => void;
   orgName: Map<string, string>;
-  berthMap: Map<string, Berth>;
+  relatedInfrastructureMap: Map<string, InfrastructureReferenceOption>;
+  screenConfig?: InfrastructureAssetScreenConfig;
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
   decreaseRows: AssetDecreaseResponse[];
@@ -117,7 +122,8 @@ export default function PortTerminalAssetDetailContent({
   selectedRecord: r,
   onClose,
   orgName,
-  berthMap,
+  relatedInfrastructureMap,
+  screenConfig = PORT_TERMINAL_ASSET_SCREEN,
   exploitationRows,
   increaseRows,
   decreaseRows,
@@ -209,22 +215,19 @@ export default function PortTerminalAssetDetailContent({
                 ),
               },
               {
-                label: "Mã bến cảng",
+                label: screenConfig.relationCodeLabel,
                 value: (rec) =>
-                  berthMap.get(rec.berthId || "")?.berthCode || "—",
+                  relatedInfrastructureMap.get(rec[screenConfig.relationField] || "")?.code || "—",
               },
               {
-                label: "Tên bến cảng",
+                label: screenConfig.relationNameLabel,
                 value: (rec) =>
-                  berthMap.get(rec.berthId || "")?.berthName || "—",
+                  relatedInfrastructureMap.get(rec[screenConfig.relationField] || "")?.name || "—",
               },
               {
                 name: "assetType",
                 label: "Loại tài sản",
-                render: (val) =>
-                  val === "PORT_TERMINAL"
-                    ? "Tài sản bến cảng"
-                    : String(val || "—"),
+                render: () => screenConfig.title,
               },
               {
                 name: "barcode",
@@ -768,7 +771,8 @@ export default function PortTerminalAssetDetailContent({
   }, [
     r,
     orgName,
-    berthMap,
+    relatedInfrastructureMap,
+    screenConfig,
     detailAttachments,
     exploitationRows,
     combinedAdjustments,
@@ -779,15 +783,15 @@ export default function PortTerminalAssetDetailContent({
       open={open}
       onClose={onClose}
       record={r}
-      title={`Chi tiết tài sản bến cảng${r ? ` - ${r.assetName}` : ""}`}
+      title={`Chi tiết ${screenConfig.subjectLabel}${r ? ` - ${r.assetName}` : ""}`}
       tabs={viewTabs}
       width={
         typeof window !== "undefined"
           ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
           : 1000
       }
-      rootClassName="berth-drawer-scope"
-      className="berth-drawer-scope"
+      rootClassName={`berth-drawer-scope ${screenConfig.drawerClassName}`}
+      className={`berth-drawer-scope ${screenConfig.drawerClassName}`}
     />
   );
 }

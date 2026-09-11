@@ -22,6 +22,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -70,5 +71,83 @@ class InfraAssetServiceTest {
         assertEquals(ApprovalStatus.DRAFT.name(), response.getApprovalStatus());
         assertEquals(new BigDecimal("750000"), response.getRemainingValue());
         assertEquals(new BigDecimal("50000.00"), response.getMonthlyDepreciation());
+    }
+
+    @Test
+    void createAnchorageAssetKeepsAnchorageRelationAndUsesAnchorageCodePrefix() {
+        UUID anchorageId = UUID.randomUUID();
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Thiết bị neo đậu số 1");
+        request.setAssetType(InfraAssetType.ANCHORAGE);
+        request.setAnchorageId(anchorageId);
+        request.setOriginalValue(new BigDecimal("500000"));
+
+        when(repository.findByAssetCode(any())).thenReturn(Optional.empty());
+        when(repository.save(any(InfraAsset.class))).thenAnswer(invocation -> {
+            InfraAsset entity = invocation.getArgument(0);
+            entity.setId(UUID.randomUUID());
+            entity.setCreatedAt(LocalDateTime.now());
+            entity.setUpdatedAt(LocalDateTime.now());
+            return entity;
+        });
+
+        InfraAssetResponse response = service.create(request);
+
+        assertEquals(InfraAssetType.ANCHORAGE.name(), response.getAssetType());
+        assertEquals(anchorageId, response.getAnchorageId());
+        assertTrue(response.getAssetCode().startsWith("TS-ND-"));
+        assertEquals(new BigDecimal("500000"), response.getRemainingValue());
+    }
+
+    @Test
+    void createLighthouseAssetKeepsLighthouseRelationAndUsesLighthouseCodePrefix() {
+        UUID beaconStationId = UUID.randomUUID();
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Thiết bị đèn biển số 1");
+        request.setAssetType(InfraAssetType.LIGHTHOUSE);
+        request.setBeaconStationId(beaconStationId);
+        request.setOriginalValue(new BigDecimal("750000"));
+
+        when(repository.findByAssetCode(any())).thenReturn(Optional.empty());
+        when(repository.save(any(InfraAsset.class))).thenAnswer(invocation -> {
+            InfraAsset entity = invocation.getArgument(0);
+            entity.setId(UUID.randomUUID());
+            entity.setCreatedAt(LocalDateTime.now());
+            entity.setUpdatedAt(LocalDateTime.now());
+            return entity;
+        });
+
+        InfraAssetResponse response = service.create(request);
+
+        assertEquals(InfraAssetType.LIGHTHOUSE.name(), response.getAssetType());
+        assertEquals(beaconStationId, response.getBeaconStationId());
+        assertTrue(response.getAssetCode().startsWith("TS-DB-"));
+        assertEquals(new BigDecimal("750000"), response.getRemainingValue());
+    }
+
+    @Test
+    void createDikeRevetmentAssetKeepsDikeRelationAndUsesDikeCodePrefix() {
+        UUID dikeRevetmentId = UUID.randomUUID();
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Thiết bị đê chắn sóng số 1");
+        request.setAssetType(InfraAssetType.DIKE_REVETMENT);
+        request.setDikeRevetmentId(dikeRevetmentId);
+        request.setOriginalValue(new BigDecimal("900000"));
+
+        when(repository.findByAssetCode(any())).thenReturn(Optional.empty());
+        when(repository.save(any(InfraAsset.class))).thenAnswer(invocation -> {
+            InfraAsset entity = invocation.getArgument(0);
+            entity.setId(UUID.randomUUID());
+            entity.setCreatedAt(LocalDateTime.now());
+            entity.setUpdatedAt(LocalDateTime.now());
+            return entity;
+        });
+
+        InfraAssetResponse response = service.create(request);
+
+        assertEquals(InfraAssetType.DIKE_REVETMENT.name(), response.getAssetType());
+        assertEquals(dikeRevetmentId, response.getDikeRevetmentId());
+        assertTrue(response.getAssetCode().startsWith("TS-DK-"));
+        assertEquals(new BigDecimal("900000"), response.getRemainingValue());
     }
 }

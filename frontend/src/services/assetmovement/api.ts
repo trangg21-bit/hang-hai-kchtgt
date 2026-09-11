@@ -16,6 +16,13 @@ import type {
   PortTerminalAsset,
   PortTerminalAssetFilters,
   PortTerminalAssetPayload,
+  InfrastructureAssetType,
+  BuoyAsset,
+  BuoyAssetFilters,
+  BuoyAssetPayload,
+  ChannelAsset,
+  ChannelAssetFilters,
+  ChannelAssetPayload,
 } from './types';
 
 // ==========================================
@@ -204,13 +211,41 @@ export async function fetchInfraAssetList(params?: {
   return res.data.data;
 }
 
-export async function fetchPortTerminalAssets(params: PortTerminalAssetFilters): Promise<PageResponse<PortTerminalAsset>> {
+export async function fetchInfrastructureAssets(
+  assetType: InfrastructureAssetType,
+  params: PortTerminalAssetFilters,
+): Promise<PageResponse<PortTerminalAsset>> {
   const sp = new URLSearchParams();
-  Object.entries({ ...params, assetType: 'PORT_TERMINAL' }).forEach(([key, value]) => {
+  Object.entries({ ...params, assetType }).forEach(([key, value]) => {
     if (value !== undefined && value !== '') sp.set(key, String(value));
   });
   const res = await api.get(`/v1/asset/infra-assets?${sp}`);
   return res.data.data;
+}
+
+export async function createInfrastructureAsset(
+  assetType: InfrastructureAssetType,
+  payload: PortTerminalAssetPayload,
+): Promise<PortTerminalAsset> {
+  const res = await api.post('/v1/asset/infra-assets', { ...payload, assetType });
+  return res.data.data;
+}
+
+export async function updateInfrastructureAsset(
+  id: string,
+  assetType: InfrastructureAssetType,
+  payload: PortTerminalAssetPayload,
+): Promise<PortTerminalAsset> {
+  const res = await api.put(`/v1/asset/infra-assets/${id}`, { ...payload, assetType });
+  return res.data.data;
+}
+
+export async function deleteInfrastructureAsset(id: string): Promise<void> {
+  await api.delete(`/v1/asset/infra-assets/${id}`);
+}
+
+export async function fetchPortTerminalAssets(params: PortTerminalAssetFilters): Promise<PageResponse<PortTerminalAsset>> {
+  return fetchInfrastructureAssets('PORT_TERMINAL', params);
 }
 
 export async function fetchPortTerminalAsset(id: string): Promise<PortTerminalAsset> {
@@ -219,16 +254,52 @@ export async function fetchPortTerminalAsset(id: string): Promise<PortTerminalAs
 }
 
 export async function createPortTerminalAsset(payload: PortTerminalAssetPayload): Promise<PortTerminalAsset> {
-  const res = await api.post('/v1/asset/infra-assets', { ...payload, assetType: 'PORT_TERMINAL' });
-  return res.data.data;
+  return createInfrastructureAsset('PORT_TERMINAL', payload);
 }
 
 export async function updatePortTerminalAsset(id: string, payload: PortTerminalAssetPayload): Promise<PortTerminalAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, { ...payload, assetType: 'PORT_TERMINAL' });
-  return res.data.data;
+  return updateInfrastructureAsset(id, 'PORT_TERMINAL', payload);
 }
 
 export async function deletePortTerminalAsset(id: string): Promise<void> {
+  await deleteInfrastructureAsset(id);
+}
+
+// ==========================================
+// 6. Tài sản phao, tiêu và nhà trạm QLVH
+// ==========================================
+export async function fetchBuoyAssets(params: BuoyAssetFilters): Promise<PageResponse<BuoyAsset>> {
+  const sp = new URLSearchParams();
+  const { refId, ...rest } = params;
+  const merged: Record<string, unknown> = { ...rest, assetType: 'BUOY' };
+  if (refId) {
+    if (!merged.buoyId && !merged.buoyStationId) {
+      merged.buoyId = refId;
+    }
+  }
+  Object.entries(merged).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') sp.set(key, String(value));
+  });
+  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  return res.data.data;
+}
+
+export async function fetchBuoyAsset(id: string): Promise<BuoyAsset> {
+  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  return res.data.data;
+}
+
+export async function createBuoyAsset(payload: BuoyAssetPayload): Promise<BuoyAsset> {
+  const res = await api.post('/v1/asset/infra-assets', { ...payload, assetType: 'BUOY' });
+  return res.data.data;
+}
+
+export async function updateBuoyAsset(id: string, payload: BuoyAssetPayload): Promise<BuoyAsset> {
+  const res = await api.put(`/v1/asset/infra-assets/${id}`, { ...payload, assetType: 'BUOY' });
+  return res.data.data;
+}
+
+export async function deleteBuoyAsset(id: string): Promise<void> {
   await api.delete(`/v1/asset/infra-assets/${id}`);
 }
 
@@ -282,3 +353,34 @@ export async function rejectInventoryReport(id: string, remarks?: string): Promi
   return res.data.data;
 }
 
+// ==========================================
+// 8. Tài sản luồng hàng hải
+// ==========================================
+export async function fetchChannelAssets(params: ChannelAssetFilters): Promise<PageResponse<ChannelAsset>> {
+  const sp = new URLSearchParams();
+  const merged: Record<string, unknown> = { ...params, assetType: 'NAVIGATION_CHANNEL' };
+  Object.entries(merged).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') sp.set(key, String(value));
+  });
+  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  return res.data.data;
+}
+
+export async function fetchChannelAsset(id: string): Promise<ChannelAsset> {
+  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  return res.data.data;
+}
+
+export async function createChannelAsset(payload: ChannelAssetPayload): Promise<ChannelAsset> {
+  const res = await api.post('/v1/asset/infra-assets', { ...payload, assetType: 'NAVIGATION_CHANNEL' });
+  return res.data.data;
+}
+
+export async function updateChannelAsset(id: string, payload: ChannelAssetPayload): Promise<ChannelAsset> {
+  const res = await api.put(`/v1/asset/infra-assets/${id}`, { ...payload, assetType: 'NAVIGATION_CHANNEL' });
+  return res.data.data;
+}
+
+export async function deleteChannelAsset(id: string): Promise<void> {
+  await api.delete(`/v1/asset/infra-assets/${id}`);
+}

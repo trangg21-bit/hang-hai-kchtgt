@@ -271,9 +271,10 @@ describe('navigation.groupOfPath — AC-024-02/09', () => {
     expect(groupOfPath('/dai-ttdh/1')?.id).toBe('kcht');
   });
 
-  it('maps deeper routes to their owning block (/users → admin, /asset/increase → asset)', () => {
+  it('maps deeper routes to their owning block (/users → admin, asset routes → asset)', () => {
     expect(groupOfPath('/users')?.id).toBe('admin');
     expect(groupOfPath('/asset/increase')?.id).toBe('asset');
+    expect(groupOfPath('/asset/dike-revetment')?.id).toBe('asset');
   });
 
   it('returns undefined for unknown pathnames', () => {

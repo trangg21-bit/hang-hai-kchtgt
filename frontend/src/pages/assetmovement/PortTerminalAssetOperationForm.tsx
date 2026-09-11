@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -57,6 +57,7 @@ export interface PortTerminalAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  drawerClassName?: string;
   onClose: () => void;
   onSubmit: () => Promise<void> | void;
 }
@@ -68,6 +69,7 @@ export function PortTerminalAssetOperationForm({
   organizations,
   form,
   saving,
+  drawerClassName = 'berth-drawer-scope',
   onClose,
   onSubmit,
 }: PortTerminalAssetOperationFormProps) {
@@ -374,10 +376,11 @@ export function PortTerminalAssetOperationForm({
       onClose={onClose}
       form={form}
       width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-      rootClassName="berth-drawer-scope"
-      className="berth-drawer-scope"
+      rootClassName={`berth-drawer-scope ${drawerClassName}`}
+      className={`berth-drawer-scope ${drawerClassName}`}
       tabs={tabs}
       footerActions={footerActions}
+      footerAlign="center"
     />
   );
 }

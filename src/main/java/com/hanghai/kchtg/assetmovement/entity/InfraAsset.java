@@ -45,6 +45,12 @@ public class InfraAsset extends BaseEntity {
     private UUID orgUnitId;
     private UUID usingOrgUnitId;
     private UUID berthId;
+    private UUID anchorageId;
+    private UUID beaconStationId;
+    private UUID dikeRevetmentId;
+    private UUID buoyId;
+    private UUID buoyStationId;
+    private UUID navigationChannelId;
 
     @Column(length = 100)
     private String barcode;

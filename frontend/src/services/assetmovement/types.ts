@@ -6,15 +6,21 @@ export interface PageResponse<T> {
   number: number;
 }
 
+export type InfrastructureAssetType = 'PORT_TERMINAL' | 'ANCHORAGE' | 'LIGHTHOUSE' | 'DIKE_REVETMENT';
+
 export interface PortTerminalAsset {
+  [key: string]: unknown;
   id: string;
   parentOrgUnitId?: string;
   orgUnitId?: string;
   usingOrgUnitId?: string;
   berthId?: string;
+  anchorageId?: string;
+  beaconStationId?: string;
+  dikeRevetmentId?: string;
   assetCode: string;
   assetName: string;
-  assetType: 'PORT_TERMINAL';
+  assetType: InfrastructureAssetType;
   barcode?: string;
   assetCondition?: string;
   usageStatus?: string;
@@ -58,6 +64,7 @@ export interface PortTerminalAsset {
   departmentApprovedByName?: string;
   departmentApprovedAt?: string;
   departmentApprovalContent?: string;
+  rejectionReason?: string;
   createdBy?: string;
   updatedBy?: string;
   updatedByName?: string;
@@ -68,6 +75,7 @@ export interface PortTerminalAsset {
 export type PortTerminalAssetPayload = Omit<PortTerminalAsset, 'id' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
 
 export interface PortTerminalAssetFilters {
+  [key: string]: unknown;
   page?: number;
   size?: number;
   assetCode?: string;
@@ -76,10 +84,29 @@ export interface PortTerminalAssetFilters {
   orgUnitId?: string;
   usingOrgUnitId?: string;
   berthId?: string;
+  anchorageId?: string;
+  beaconStationId?: string;
+  dikeRevetmentId?: string;
+  assetType?: InfrastructureAssetType;
   assetCondition?: string;
   approvalStatus?: string;
   updatedFrom?: string;
   updatedTo?: string;
+  updatedRange?: unknown;
+}
+
+export interface BuoyAsset extends Omit<PortTerminalAsset, 'assetType'> {
+  buoyId?: string;
+  buoyStationId?: string;
+  assetType: 'BUOY';
+}
+
+export type BuoyAssetPayload = Omit<BuoyAsset, 'id' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
+
+export interface BuoyAssetFilters extends Omit<PortTerminalAssetFilters, 'assetType' | 'berthId' | 'anchorageId' | 'beaconStationId' | 'dikeRevetmentId'> {
+  refId?: string;
+  buoyId?: string;
+  buoyStationId?: string;
 }
 
 export interface AssetIncreaseRequest {
@@ -261,4 +288,83 @@ export interface AssetProcessingRecordResponse {
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ==========================================
+// Tài sản luồng hàng hải
+// ==========================================
+export interface ChannelAsset {
+  id: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  navigationChannelId?: string;
+  assetCode: string;
+  assetName: string;
+  assetType: 'NAVIGATION_CHANNEL';
+  barcode?: string;
+  assetCondition?: string;
+  usageStatus?: string;
+  assetGroup?: string;
+  assetSubgroup?: string;
+  address?: string;
+  origin?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  model?: string;
+  serialNumber?: string;
+  countryOfOrigin?: string;
+  manufacturer?: string;
+  constructionYear?: number;
+  useDate?: string;
+  landArea?: number;
+  floorArea?: number;
+  assetLocation?: string;
+  attachmentName?: string;
+  declarationDate?: string;
+  originalValue?: number;
+  depreciationRate?: number;
+  accumulatedDepreciation?: number;
+  remainingValue?: number;
+  assignmentDecisionNumber?: string;
+  depreciationStartDate?: string;
+  depreciationMonths?: number;
+  depreciationEndDate?: string;
+  monthlyDepreciation?: number;
+  disposalMethod?: string;
+  status?: string;
+  approvalStatus?: string;
+  submittedBy?: string;
+  submittedByName?: string;
+  submittedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovedByName?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedBy?: string;
+  departmentApprovedByName?: string;
+  departmentApprovedAt?: string;
+  departmentApprovalContent?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type ChannelAssetPayload = Omit<ChannelAsset, 'id' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
+
+export interface ChannelAssetFilters {
+  page?: number;
+  size?: number;
+  assetCode?: string;
+  assetName?: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  navigationChannelId?: string;
+  assetCondition?: string;
+  approvalStatus?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
 }

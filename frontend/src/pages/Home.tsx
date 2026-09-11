@@ -4,7 +4,7 @@ import { LockOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
 import type { CSSProperties } from 'react';
 import { usePermissionStore } from '../store/permissionStore';
 import { useAuthStore } from '../store/authStore';
-import { MENU_PERMISSION_MAP } from '../components/AppLayout';
+import { MENU_PERMISSION_MAP } from '../components/appLayoutMenu';
 import {
   NAV_GROUPS,
   accessibleTree,
