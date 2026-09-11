@@ -388,6 +388,15 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
     }
   }, [watchedGeometryType, isEdit, form]);
 
+  // Create mode: mặc định tình trạng "Chưa khai thác/vận hành"
+  useEffect(() => {
+    if (!isEdit) {
+      if (!form.getFieldValue('operationalStatus')) {
+        form.setFieldsValue({ operationalStatus: 'NOT_YET_OPERATIONAL' });
+      }
+    }
+  }, [isEdit, form]);
+
   // Edit mode: load existing
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -782,7 +791,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
+            <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
               <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
             </Form.Item>
           </Col>

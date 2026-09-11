@@ -23,6 +23,8 @@ export interface DryPort {
   orgUnitId?: string | null;
   orgUnitName?: string | null;
   // General info
+  operatingOrgId?: string | null;
+  operatingOrgName?: string | null;
   operatingUnit?: string | null;
   region?: string | null;
   detailedLocation?: string | null;
@@ -40,6 +42,10 @@ export interface DryPort {
   announcementDecisionNumber?: string | null;
   announcementDecisionDate?: string | null;
   announcementOrg?: string | null;
+  // Opening announcement (đồng bộ chuẩn Cầu cảng - Pier)
+  openingAnnouncementDate?: string | null;
+  openingDecision?: string | null;
+  investmentAgreementDoc?: string | null;
   // GIS
   coordinateSystem?: number | null;
   displayRule?: number | null;
@@ -71,6 +77,7 @@ export interface DryPortFilterParams {
   page?: number;
   size?: number;
   search?: string;
+  name?: string;
   code?: string;
   orgUnitId?: string;
   provinceId?: number;
@@ -88,6 +95,7 @@ export interface CreateDryPortRequest {
   dryPortName: string;
   provinceId?: number;
   orgUnitId?: string;
+  operatingOrgId?: string;
   operatingUnit?: string;
   region?: string;
   detailedLocation?: string;
@@ -103,6 +111,10 @@ export interface CreateDryPortRequest {
   announcementDecisionNumber?: string;
   announcementDecisionDate?: string;
   announcementOrg?: string;
+  // Opening announcement (đồng bộ chuẩn Cầu cảng - Pier)
+  openingAnnouncementDate?: string;
+  openingDecision?: string;
+  investmentAgreementDoc?: string;
   coordinateSystem?: number;
   displayRule?: number;
   mapSymbolId?: string;

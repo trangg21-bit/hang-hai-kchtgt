@@ -79,6 +79,7 @@ public class DryPortController {
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String name,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String region,
@@ -88,9 +89,9 @@ public class DryPortController {
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String transportCorridor) {
         log.info(
-                "Listing DryPorts: page={}, size={}, orgUnitId={}, provinceId={}, search={}, status={}, approvalStatus={}, region={}, portStatus={}, updatedFrom={}, updatedTo={}, code={}, transportCorridor={}",
-                page, size, orgUnitId, provinceId, search, status, approvalStatus, region, portStatus, updatedFrom, updatedTo, code, transportCorridor);
-        Page<DryPortResponse> result = dryPortService.findAll(page, size, orgUnitId, provinceId, search, status,
+                "Listing DryPorts: page={}, size={}, orgUnitId={}, provinceId={}, search={}, name={}, status={}, approvalStatus={}, region={}, portStatus={}, updatedFrom={}, updatedTo={}, code={}, transportCorridor={}",
+                page, size, orgUnitId, provinceId, search, name, status, approvalStatus, region, portStatus, updatedFrom, updatedTo, code, transportCorridor);
+        Page<DryPortResponse> result = dryPortService.findAll(page, size, orgUnitId, provinceId, search, name, status,
                 approvalStatus, region, portStatus, updatedFrom, updatedTo, code, transportCorridor);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng cạn thành công", result));
     }

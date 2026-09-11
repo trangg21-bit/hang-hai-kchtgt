@@ -63,6 +63,8 @@ public class UpdateBuoyRequest {
     private String coordinates;
 
     private java.util.UUID unitId;
+    private java.util.UUID orgUnitId;
+    private java.util.UUID navigationChannelId;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private Boolean isActive;

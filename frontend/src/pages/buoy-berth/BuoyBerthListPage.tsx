@@ -90,6 +90,17 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
 };
 
+const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
+  TAM_NGUNG: { color: statusCritical, label: 'Tạm ngừng' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+};
+
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
@@ -1090,12 +1101,7 @@ export default function BuoyBerthList() {
         sortable: true,
         render: (v: string | null) => {
           if (!v) return '';
-          const m: Record<string, { color: string; label: string }> = {
-            OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
-            NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
-            SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
-          };
-          const s = m[v] || { color: textTertiary, label: v };
+          const s = OPERATIONAL_STYLE_MAP[v] || { color: textTertiary, label: v };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
       },
@@ -1475,7 +1481,7 @@ export default function BuoyBerthList() {
           body: { padding: '0 24px 12px 24px' },
         }}
       >
-        <Form form={createForm} layout="vertical">
+        <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 'NOT_YET_OPERATIONAL' }}>
           <style>{requiredMarkStyle}</style>
           <BuoyBerthForm
             ref={buoyBerthFormRef}
@@ -1545,6 +1551,7 @@ export default function BuoyBerthList() {
             detailFiles={[]}
             ddToDms={ddToDms}
             approvalStyleMap={APPROVAL_STYLE_MAP}
+            operationalStyleMap={OPERATIONAL_STYLE_MAP}
           />
         ) : infraDetail?.type === 'STORM_SHELTER' && infraDetail.record ? (
           <StormShelterDetailContent
@@ -1559,6 +1566,7 @@ export default function BuoyBerthList() {
             detailFiles={[]}
             ddToDms={ddToDms}
             approvalStyleMap={APPROVAL_STYLE_MAP}
+            operationalStyleMap={OPERATIONAL_STYLE_MAP}
           />
         ) : null}
       </AppDrawer>

@@ -265,10 +265,12 @@ public class ShipRepairYardService {
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả cơ sở của toàn bộ đơn vị con (hậu duệ)
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
-        String searchTrim = search != null ? search.trim() : null;
+        String searchTrim = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String codeTrim = (shipRepairYardCode != null && !shipRepairYardCode.trim().isEmpty()) ? shipRepairYardCode.trim() : null;
+        String nameTrim = (shipRepairYardName != null && !shipRepairYardName.trim().isEmpty()) ? shipRepairYardName.trim() : null;
         Page<ShipRepairYard> result = shipRepairYardRepository.searchShipRepairYards(
                 includeAll, orgUnitIds,
-                searchTrim, shipRepairYardCode, shipRepairYardName, portId,
+                searchTrim, codeTrim, nameTrim, portId,
                 pierId, provinceId,
                 approvalEnum, statusEnum, false,
                 updatedFromDt, updatedToDt,
@@ -437,6 +439,16 @@ public class ShipRepairYardService {
     @Transactional
     public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
         deleteAttachment(entityType, entityId, attachmentId, userId, false);
+    }
+
+    public Attachment getAttachmentGeneric(UUID yardId, UUID attId) {
+        Attachment a = attachmentRepository.findById(attId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file đính kèm: " + attId));
+        boolean owned = a.getEntityType() != null && a.getEntityType().equalsIgnoreCase("SHIP_REPAIR_YARD") && yardId.equals(a.getEntityId());
+        if (!owned) {
+            throw new EntityNotFoundException("File đính kèm không thuộc cơ sở sửa chữa, đóng tàu này");
+        }
+        return a;
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {

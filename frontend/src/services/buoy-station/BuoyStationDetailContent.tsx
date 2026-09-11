@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import dayjs from 'dayjs';
 import {
-  FileOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined,
+  EnvironmentOutlined, BankOutlined, SlidersOutlined,
   AuditOutlined, DownOutlined, RightOutlined,
 } from '@ant-design/icons';
 import type { BuoyStationResponse, StationBuoySummary } from './types';
@@ -14,14 +14,17 @@ import {
   GEO_MAP, COORD_MAP, APPROVAL_STYLE_MAP,
 } from './schema';
 import {
-  colors, sidebarBg, actionPrimary, statusOperational, statusAttention, statusCritical, surfaceCard,
+  colors, actionPrimary, statusOperational, statusAttention, statusCritical, surfaceCard,
   textPrimary, textTertiary,
-  fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold,
+  fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, statusBadgeStyle,
   outlineButtonStyle, primaryButtonStyle,
   formatUserDisplayName, isUuidString,
   DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
+
+// Đồng bộ cỡ chữ 13.5px toàn màn chi tiết theo chuẩn VTS CHK / Cầu cảng
+const fontSizeMd = 13.5;
 import type { OrgUnitTreeOption } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -410,18 +413,27 @@ export default function BuoyStationDetailContent({
         },
         {
           key: 'location',
-          label: 'Thông tin vị trí',
+          label: `Thông tin vị trí (${coords.length})`,
           children: (
-            <div style={{ paddingTop: 3 }}>
-              {gridRows([
-                ['Loại đối tượng', r.objectType ? (GEO_MAP[r.objectType] || r.objectType) : ''],
-                ['Biểu tượng', (() => { const symId = r.icon || ''; const symName = symbolMap.get(symId) || symId || ''; const symImg = symbolImageMap.get(symId); if (!symName && !symImg) return ''; return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span>; })(),],
-                ['Hệ quy chiếu', r.coordinateSystem ? (COORD_MAP[r.coordinateSystem] || r.coordinateSystem) : ''],
-                ['Quy tắc hiển thị', r.displayFormat || ''],
-              ])}
+            <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
+              <div style={sectionBoxStyle}>
+                <div className="chk-detail-grid">
+                  {[
+                    ['Loại đối tượng', r.objectType ? (GEO_MAP[r.objectType] || r.objectType) : ''],
+                    ['Biểu tượng', (() => { const symId = r.icon || ''; const symName = symbolMap.get(symId) || symId || ''; const symImg = symbolImageMap.get(symId); if (!symName && !symImg) return ''; return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span>; })(),],
+                    ['Hệ quy chiếu', r.coordinateSystem ? (COORD_MAP[r.coordinateSystem] || r.coordinateSystem) : ''],
+                    ['Quy tắc hiển thị', r.displayFormat || ''],
+                  ].map(([label, value], index) => (
+                    <div key={label as string} className="chk-detail-row">
+                      <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
+                      <span className="chk-detail-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div style={{ marginTop: spaceMd }}>
                 <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                  <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
                     Tọa độ GPS ({coords.length})
                   </span>
                   <Button
@@ -437,7 +449,7 @@ export default function BuoyStationDetailContent({
                   emptyText="Chưa có tọa độ GPS nào"
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                   columns={[
-                    { title: 'STT', width: 50 },
+                    { title: 'STT', width: 50, align: 'center' as const, render: (_v: any, _rec: any, idx: number) => idx + 1 },
                     { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
                     { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return `${dms.d}° ${dms.m}' ${dms.s}" E`; } },
                   ]}

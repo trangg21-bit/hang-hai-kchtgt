@@ -25,4 +25,60 @@ public class MaintenanceReport {
     private Integer maintenanceCount;
     private BigDecimal totalCost;
     private ReportStatus status;
+
+    public static MaintenanceReportBuilder builder() {
+        return new MaintenanceReportBuilder();
+    }
+
+    public static class MaintenanceReportBuilder {
+        private String code;
+        private String name;
+        private String facilityType;
+        private String period;
+        private Integer maintenanceCount;
+        private BigDecimal totalCost;
+        private ReportStatus status;
+
+        MaintenanceReportBuilder() {
+        }
+
+        public MaintenanceReportBuilder code(String code) {
+            this.code = code;
+            return this;
+        }
+
+        public MaintenanceReportBuilder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public MaintenanceReportBuilder facilityType(String facilityType) {
+            this.facilityType = facilityType;
+            return this;
+        }
+
+        public MaintenanceReportBuilder period(String period) {
+            this.period = period;
+            return this;
+        }
+
+        public MaintenanceReportBuilder maintenanceCount(Integer maintenanceCount) {
+            this.maintenanceCount = maintenanceCount;
+            return this;
+        }
+
+        public MaintenanceReportBuilder totalCost(BigDecimal totalCost) {
+            this.totalCost = totalCost;
+            return this;
+        }
+
+        public MaintenanceReportBuilder status(ReportStatus status) {
+            this.status = status;
+            return this;
+        }
+
+        public MaintenanceReport build() {
+            return new MaintenanceReport(code, name, facilityType, period, maintenanceCount, totalCost, status);
+        }
+    }
 }

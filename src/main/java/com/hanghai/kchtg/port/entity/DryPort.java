@@ -43,10 +43,10 @@ public class DryPort extends BaseEntity implements ApprovableEntity {
     @Column(name = "province_id")
     private Integer provinceId;
 
-    @Column(name = "area", precision = 15, scale = 2)
+    @Column(name = "area", precision = 28, scale = 4)
     private BigDecimal area;
 
-    @Column(name = "teu_capacity", precision = 15, scale = 2)
+    @Column(name = "teu_capacity", precision = 28, scale = 4)
     private BigDecimal teuCapacity;
 
     @Column(name = "operational_status")
@@ -88,6 +88,9 @@ public class DryPort extends BaseEntity implements ApprovableEntity {
     // ── Extended fields (V113 — from F-026 feature brief) ──────────────
 
     // General info
+    @Column(name = "operating_org_id")
+    private UUID operatingOrgId;
+
     @Column(name = "operating_unit", length = 255)
     private String operatingUnit;
 
@@ -100,19 +103,19 @@ public class DryPort extends BaseEntity implements ApprovableEntity {
     @Column(name = "transport_corridor", length = 255)
     private String transportCorridor;
 
-    @Column(name = "warehouse_area", precision = 15, scale = 2)
+    @Column(name = "warehouse_area", precision = 28, scale = 4)
     private BigDecimal warehouseArea;
 
-    @Column(name = "yard_area", precision = 15, scale = 2)
+    @Column(name = "yard_area", precision = 28, scale = 4)
     private BigDecimal yardArea;
 
-    @Column(name = "connection_mode", length = 500)
+    @Column(name = "connection_mode", length = 2000)
     private String connectionMode;
 
     @Column(name = "port_status", nullable = false)
     private Integer portStatus;
 
-    @Column(name = "remarks", length = 1000)
+    @Column(name = "remarks", length = 2000)
     private String remarks;
 
     // Announcement
@@ -127,6 +130,16 @@ public class DryPort extends BaseEntity implements ApprovableEntity {
 
     @Column(name = "announcement_org", length = 255)
     private String announcementOrg;
+
+    // Opening Announcement (đồng bộ chuẩn Cầu cảng - Pier)
+    @Column(name = "opening_announcement_date")
+    private LocalDate openingAnnouncementDate;
+
+    @Column(name = "opening_decision", length = 2000)
+    private String openingDecision;
+
+    @Column(name = "investment_agreement_doc", length = 2000)
+    private String investmentAgreementDoc;
 
     // GIS (coordinates + geometry_type managed by gis_spatial_objects via
     // spatial_id)

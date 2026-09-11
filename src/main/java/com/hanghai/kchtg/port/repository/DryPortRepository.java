@@ -36,6 +36,7 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
             "AND (:includeAll = true OR d.orgUnitId IN :orgUnitIds) " +
             "AND (:provinceId IS NULL OR d.provinceId = :provinceId) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(d.dryPortCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(d.dryPortName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(d.detailedLocation)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
+            "AND (CAST(:name AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dryPortName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:name AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR d.operationalStatus = :operationalStatus) " +
             "AND (:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) " +
             "AND (CAST(:code AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dryPortCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:code AS string), '%'))) AS string)) " +
@@ -49,6 +50,7 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
             @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("provinceId") Integer provinceId,
             @Param("search") String search,
+            @Param("name") String name,
             @Param("operationalStatus") OperationalStatus operationalStatus,
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("code") String code,
@@ -68,7 +70,7 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
                                           OperationalStatus operationalStatus, ApprovalStatus approvalStatus,
                                           Pageable pageable) {
         return searchDryPorts(orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),
-                provinceId, search, operationalStatus, approvalStatus,
+                provinceId, search, null, operationalStatus, approvalStatus,
                 null, null, null, null, null, null, pageable);
     }
 

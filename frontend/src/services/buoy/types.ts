@@ -1,15 +1,12 @@
-// ── Buoy feature types (D-1: single source of truth = types/beacon.ts) ──
-// Re-export the canonical Buoy entity types so consumers keep compiling
-// against types/beacon.ts while this module owns the feature-scoped envelopes.
-
+// ── Buoy feature types (single source of truth = types/buoy.ts) ──
 import type {
   Buoy,
   CreateBuoyRequest,
   UpdateBuoyRequest,
-  BeaconStatus,
-} from '../../types/beacon';
+  BuoyStatus,
+} from '../../types/buoy';
 
-export type { Buoy, CreateBuoyRequest, UpdateBuoyRequest, BeaconStatus };
+export type { Buoy, CreateBuoyRequest, UpdateBuoyRequest, BuoyStatus };
 
 // ── Feature-scoped envelopes ─────────────────────────────────────────
 

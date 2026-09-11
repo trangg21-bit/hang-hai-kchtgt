@@ -12,10 +12,8 @@ import {
   Form,
   DatePicker,
   Select,
-  Typography,
-  Radio,
 } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, HistoryOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -24,10 +22,10 @@ import type { Organization } from '../../services/organizationService';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { userService } from '../../services/userService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import {
   fetchBuoyById, searchBuoys, createBuoy, updateBuoy, deleteBuoy,
   submitBuoyForApproval, approveBuoyL1, approveBuoyL2, rejectBuoy, fetchBuoyHistory,
-  fetchBuoyAllHistory,
   generateBuoyCode,
 } from './api';
 import { fetchBuoyStationList } from '../buoy-station/api';
@@ -35,6 +33,7 @@ import type { BuoyStationResponse } from '../buoy-station/types';
 import {
   BUOY_TYPE_OPTIONS,
   COLOR_LABEL_MAP, SHAPE_LABEL_MAP, LIGHT_CHAR_LABEL_MAP, BUOY_FIELD_MAP,
+  CLASSIFICATION_OPTIONS,
   CONDITION_OPTIONS, buoyStatusBadge, TAB_STATUS_LIST,
 } from './schema';
 import type { Buoy, ChangeHistory, CreateBuoyRequest } from './types';
@@ -59,7 +58,7 @@ import {
   drawerTitleStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, icons,
-  fontSizeSm, getRangePickerProps,
+  fontSizeSm,
   formatUserDisplayName, isUuidString,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
@@ -140,7 +139,13 @@ function collectOrgSubtreeIds(organizations: Organization[], orgUnitId: string):
 // ── Nhãn tiếng Việt bổ sung cho các trường phao tiêu trong lịch sử thay đổi ──
 // (BUOY_FIELD_MAP trong schema.ts không sửa vì là one-way-door — bổ sung local)
 const EXTRA_HISTORY_FIELD_LABELS: Record<string, string> = {
-  buoyStationId: 'Nhà trạm quản lý vận hành', locationDetail: 'Địa điểm chi tiết',
+  buoyStationId: 'Nhà trạm quản lý vận hành',
+  navigationChannelId: 'Thuộc luồng hàng hải',
+  'Thuộc luồng hàng hải': 'Thuộc luồng hàng hải',
+  unitId: 'Đơn vị quản lý',
+  orgUnitId: 'Đơn vị quản lý',
+  'Đơn vị quản lý': 'Đơn vị quản lý',
+  locationDetail: 'Địa điểm chi tiết',
   condition: 'Tình trạng', structure: 'Kết cấu', area: 'Diện tích',
   bodyHeight: 'Chiều cao thân', diameter: 'Đường kính', beaconLight: 'Đèn hiệu',
   towerHeight: 'Chiều cao tháp', lightHeight: 'Chiều cao đèn', lightModel: 'Mẫu đèn',
@@ -185,7 +190,7 @@ function historyFieldLabel(fn: string): string {
 
 // ── Thứ tự hiển thị field trong lịch sử (theo thứ tự form tạo phao tiêu — giống BerthList) ──
 const HISTORY_FIELD_ORDER = ['code', 'name', 'type', 'classification', 'classificationBuoy', 'classificationMark',
-  'unitId', 'buoyStationId', 'provinceId', 'locationDetail', 'color', 'shape', 'structure', 'area',
+  'unitId', 'buoyStationId', 'navigationChannelId', 'provinceId', 'locationDetail', 'color', 'shape', 'structure', 'area',
   'bodyHeight', 'diameter', 'beaconLight', 'towerHeight', 'lightHeight', 'lightModel', 'towerColor',
   'powerSupply', 'range', 'lightCharacteristic', 'lightColor', 'flashType', 'period', 'commissionedDate',
   'lastRepairDate', 'condition', 'lastInspectionDate', 'nextInspectionDate', 'isActive',
@@ -266,20 +271,15 @@ export default function BuoyListPage() {
   const [filterCode, setFilterCode] = useState('');
 
   // Bộ lọc nâng cao (toggle)
+  const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
+  const [filterClassification, setFilterClassification] = useState<string | undefined>();
   const [filterProvince, setFilterProvince] = useState('');
   const [filterCondition, setFilterCondition] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
 
-  const {
-    orgUnitId: managingUnitId,
-    setOrgUnitId: setManagingUnitId,
-    resetOrgUnit,
-    organizations,
-    orgLevel2Map,
-    orgMap,
-    isReady: orgUnitReady,
-  } = useOrgUnitFilter();
+  const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
+  const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   const [activeTab, setActiveTab] = useState('all');
   const [sortField, setSortField] = useState<string>('updatedAt');
@@ -322,6 +322,26 @@ export default function BuoyListPage() {
     fetchBuoyStationList({})
       .then((res) => { if (!cancelled) setBuoyStations(res.content || []); })
       .catch(() => { if (!cancelled) toast.error('Không thể tải danh sách nhà trạm quản lý vận hành'); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Danh sách luồng hàng hải (thuộc luồng hàng hải — giống Cầu cảng) ──
+  useEffect(() => {
+    let cancelled = false;
+    navigationChannelCRUD.search({ page: 0, size: 1000, approvalStatus: 'APPROVED' })
+      .then((r) => {
+        if (cancelled) return;
+        const m = new Map<string, string>();
+        const opts: Array<{ value: string; label: string }> = [];
+        (r.items || []).forEach((n) => {
+          const name = n.channelName || n.channelCode || '';
+          m.set(n.id, name);
+          opts.push({ value: n.id, label: name });
+        });
+        setWaterwayMap(m);
+        setWaterwayOptions(opts);
+      })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
@@ -448,11 +468,6 @@ export default function BuoyListPage() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
-  const [historyMode, setHistoryMode] = useState<'current' | 'all'>('current');
-  const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
-  const [historyEntityFilter, setHistoryEntityFilter] = useState('');
-
-  const historyFieldCount = useMemo(() => historyData.length, [historyData]);
 
   // ── Submit approval modal ───────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -511,17 +526,19 @@ export default function BuoyListPage() {
       const unitSubtree = managingUnitId ? collectOrgSubtreeIds(orgList, managingUnitId) : null;
       const unitFiltered = unitSubtree ? all.filter((d) => d.unitId && unitSubtree.has(d.unitId)) : all;
       const stationFiltered = filterStationId ? unitFiltered.filter((d) => d.buoyStationId === filterStationId) : unitFiltered;
+      const channelFiltered = filterWaterwayId ? stationFiltered.filter((d) => d.navigationChannelId === filterWaterwayId) : stationFiltered;
+      const classFiltered = filterClassification ? channelFiltered.filter((d) => d.classification === filterClassification) : channelFiltered;
 
       // Tab counts từ FULL dataset (không lọc theo tab đang chọn — giống BerthList fetchCounts)
-      const counts: Record<string, number> = { all: stationFiltered.length };
+      const counts: Record<string, number> = { all: classFiltered.length };
       TAB_STATUS_LIST.slice(1).forEach((tab) => {
-        counts[tab.key] = stationFiltered.filter((d) => d.status === tab.key).length;
+        counts[tab.key] = classFiltered.filter((d) => d.status === tab.key).length;
       });
       setTabCounts(counts);
 
       // Lọc trạng thái theo tab đang chọn (bộ lọc nâng cao đã bỏ trạng thái — tab là nguồn duy nhất)
       const effectiveStatus = TAB_QUERY_MAP[activeTab];
-      const tabFiltered = effectiveStatus ? stationFiltered.filter((d) => d.status === effectiveStatus) : stationFiltered;
+      const tabFiltered = effectiveStatus ? classFiltered.filter((d) => d.status === effectiveStatus) : classFiltered;
       setTotal(tabFiltered.length);
 
       const start = (page - 1) * pageSize;
@@ -531,7 +548,7 @@ export default function BuoyListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterName, filterCode, filterCondition, filterProvince, managingUnitId, filterStationId, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [filterName, filterCode, filterCondition, filterProvince, managingUnitId, filterStationId, filterWaterwayId, filterClassification, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, organizations]);
 
   useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
 
@@ -546,6 +563,8 @@ export default function BuoyListPage() {
     // Reset về đơn vị quản lý mặc định
     resetOrgUnit();
     setFilterStationId(undefined);
+    setFilterWaterwayId(undefined);
+    setFilterClassification(undefined);
     setFilterName('');
     setFilterCode('');
     setFilterProvince('');
@@ -605,11 +624,7 @@ export default function BuoyListPage() {
     setPendingDeletedAttachmentIds([]);
     setCreateCoords([]);
     createForm.resetFields();
-    setCodeLoading(true);
-    generateBuoyCode()
-      .then((code) => { createForm.setFieldsValue({ code }); })
-      .catch(() => { toast.error('Không thể sinh mã tự động, vui lòng thử lại'); })
-      .finally(() => { setCodeLoading(false); });
+    // Không tự sinh mã khi chưa chọn nhà trạm (Bug 3)
   }, [createForm]);
 
   const closeCreateDrawer = useCallback(() => {
@@ -651,7 +666,8 @@ export default function BuoyListPage() {
       createForm.setFieldsValue({
         code: data.code,
         name: data.name,
-        unitId: data.unitId,
+        unitId: data.unitId || data.orgUnitId,
+        navigationChannelId: data.navigationChannelId || undefined,
         description: data.description || undefined,
         isActive: data.isActive,
         color: data.color || undefined,
@@ -690,7 +706,7 @@ export default function BuoyListPage() {
       setCreateDrawerOpen(false);
       setEditingRecord(null);
     }
-  }, [createForm, ddToDms]);
+  }, [createForm]);
 
   // ── Upload helper (after save) ──────────────────────────────────
 
@@ -783,36 +799,38 @@ export default function BuoyListPage() {
         code,
         name,
         unitId: values.unitId || undefined,
-        description: values.description || undefined,
+        orgUnitId: values.unitId || undefined,
+        buoyStationId: values.buoyStationId || undefined,
+        navigationChannelId: values.navigationChannelId || undefined,
+        description: values.description?.trim() || undefined,
         color: values.color || undefined,
-        shape: values.shape || undefined,
+        shape: values.shape?.trim() || undefined,
         lightCharacteristic: values.lightCharacteristic || undefined,
         range: toPayloadNumber(values.range),
-        buoyStationId: values.buoyStationId || undefined,
         classification: values.classification || undefined,
         classificationBuoy: values.classificationBuoy || undefined,
         classificationMark: values.classificationMark || undefined,
         provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
-        locationDetail: values.locationDetail || undefined,
+        locationDetail: values.locationDetail?.trim() || undefined,
         condition: values.condition || undefined,
-        structure: values.structure || undefined,
+        structure: values.structure?.trim() || undefined,
         area: toPayloadNumber(values.area),
         bodyHeight: toPayloadNumber(values.bodyHeight),
         diameter: toPayloadNumber(values.diameter),
-        beaconLight: values.beaconLight || undefined,
+        beaconLight: values.beaconLight?.trim() || undefined,
         towerHeight: toPayloadNumber(values.towerHeight),
         lightHeight: toPayloadNumber(values.lightHeight),
-        lightModel: values.lightModel || undefined,
-        towerColor: values.towerColor || undefined,
-        powerSupply: values.powerSupply || undefined,
+        lightModel: values.lightModel?.trim() || undefined,
+        towerColor: values.towerColor?.trim() || undefined,
+        powerSupply: values.powerSupply?.trim() || undefined,
         commissionedDate: values.commissionedDate
           ? (typeof values.commissionedDate === 'string' ? values.commissionedDate : values.commissionedDate.format('YYYY-MM-DD'))
           : undefined,
         lastRepairDate: values.lastRepairDate
           ? (typeof values.lastRepairDate === 'string' ? values.lastRepairDate : values.lastRepairDate.format('YYYY-MM-DD'))
           : undefined,
-        lightColor: values.lightColor || undefined,
-        flashType: values.flashType || undefined,
+        lightColor: values.lightColor?.trim() || undefined,
+        flashType: values.flashType?.trim() || undefined,
         period: values.period || undefined,
         isActive: values.isActive !== undefined ? values.isActive : true,
       };
@@ -914,36 +932,38 @@ export default function BuoyListPage() {
       const payload: Partial<CreateBuoyRequest> = {
         name,
         unitId: values.unitId || undefined,
-        description: values.description || undefined,
+        orgUnitId: values.unitId || undefined,
+        buoyStationId: values.buoyStationId || undefined,
+        navigationChannelId: values.navigationChannelId || undefined,
+        description: values.description?.trim() || undefined,
         color: values.color || undefined,
-        shape: values.shape || undefined,
+        shape: values.shape?.trim() || undefined,
         lightCharacteristic: values.lightCharacteristic || undefined,
         range: toPayloadNumber(values.range),
-        buoyStationId: values.buoyStationId || undefined,
         classification: values.classification || undefined,
         classificationBuoy: values.classificationBuoy || undefined,
         classificationMark: values.classificationMark || undefined,
         provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
-        locationDetail: values.locationDetail || undefined,
+        locationDetail: values.locationDetail?.trim() || undefined,
         condition: values.condition || undefined,
-        structure: values.structure || undefined,
+        structure: values.structure?.trim() || undefined,
         area: toPayloadNumber(values.area),
         bodyHeight: toPayloadNumber(values.bodyHeight),
         diameter: toPayloadNumber(values.diameter),
-        beaconLight: values.beaconLight || undefined,
+        beaconLight: values.beaconLight?.trim() || undefined,
         towerHeight: toPayloadNumber(values.towerHeight),
         lightHeight: toPayloadNumber(values.lightHeight),
-        lightModel: values.lightModel || undefined,
-        towerColor: values.towerColor || undefined,
-        powerSupply: values.powerSupply || undefined,
+        lightModel: values.lightModel?.trim() || undefined,
+        towerColor: values.towerColor?.trim() || undefined,
+        powerSupply: values.powerSupply?.trim() || undefined,
         commissionedDate: values.commissionedDate
           ? (typeof values.commissionedDate === 'string' ? values.commissionedDate : values.commissionedDate.format('YYYY-MM-DD'))
           : undefined,
         lastRepairDate: values.lastRepairDate
           ? (typeof values.lastRepairDate === 'string' ? values.lastRepairDate : values.lastRepairDate.format('YYYY-MM-DD'))
           : undefined,
-        lightColor: values.lightColor || undefined,
-        flashType: values.flashType || undefined,
+        lightColor: values.lightColor?.trim() || undefined,
+        flashType: values.flashType?.trim() || undefined,
         period: values.period || undefined,
         isActive: values.isActive !== undefined ? values.isActive : true,
       };
@@ -1008,9 +1028,6 @@ export default function BuoyListPage() {
     setHistorySearch('');
     setHistoryFrom('');
     setHistoryTo('');
-    setHistoryMode('current');
-    setHistoryEntityNames({});
-    setHistoryEntityFilter('');
     setHistoryData([]);
     try {
       const payload = await fetchBuoyHistory(record.id);
@@ -1021,34 +1038,6 @@ export default function BuoyListPage() {
       setHistoryLoading(false);
     }
   }, []);
-
-  const loadHistoryMode = useCallback(async (mode: 'current' | 'all') => {
-    setHistoryMode(mode);
-    setHistoryLoading(true);
-    setHistoryData([]);
-    if (mode === 'all') {
-      try {
-        const payload = await fetchBuoyAllHistory();
-        setHistoryData(Array.isArray(payload?.changeHistory) ? payload.changeHistory : []);
-        setHistoryEntityNames(payload?.entityNames || {});
-      } catch {
-        toast.error('Không thể tải lịch sử');
-      } finally {
-        setHistoryLoading(false);
-      }
-    } else {
-      try {
-        if (historyRecord) {
-          const payload = await fetchBuoyHistory(historyRecord.id);
-          setHistoryData(Array.isArray(payload?.changeHistory) ? payload.changeHistory : []);
-        }
-      } catch {
-        toast.error('Không thể tải lịch sử');
-      } finally {
-        setHistoryLoading(false);
-      }
-    }
-  }, [historyRecord]);
 
   const stationMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -1063,8 +1052,9 @@ export default function BuoyListPage() {
     if (fn === 'color') return COLOR_LABEL_MAP[val] || val;
     if (fn === 'shape') return SHAPE_LABEL_MAP[val] || val;
     if (fn === 'lightCharacteristic') return LIGHT_CHAR_LABEL_MAP[val] || val;
-    if (fn === 'unitId') return orgMap.get(val) || val;
+    if (fn === 'unitId' || fn === 'orgUnitId') return orgMap.get(val) || val;
     if (fn === 'buoyStationId') return stationMap.get(val) || val;
+    if (fn === 'navigationChannelId') return waterwayMap.get(val) || val;
     if (fn === 'status') return buoyStatusBadge(val).label;
     if (fn === 'approvalStatus') return approvalStatusLabel(val);
     if (fn === 'geometryType') return GEOMETRY_TYPE_LABELS[val] || val;
@@ -1072,24 +1062,23 @@ export default function BuoyListPage() {
     if (fn === 'coordinateSystem') return COORD_SYS_LABELS[val] || val;
     if (fn === 'lastInspectionDate' || fn === 'nextInspectionDate') return formatDateOnly(val);
     return val;
-  }, [orgMap, stationMap]);
+  }, [orgMap, stationMap, waterwayMap]);
 
   const actorName = useCallback((actor: string | undefined) => {
     if (!actor) return '';
     return formatUserDisplayName(actor, null, userMap);
   }, [userMap]);
 
-  // ── Timeline (design §5.3 — history*Style tokens, BuoyList grouping) ─
+  // ── Timeline (design §5.3 — history*Style tokens, Pier standard) ──
 
-  const renderBuoyHistoryTimeline = (records: ChangeHistory[]) => {
-    const safeRecords = Array.isArray(records) ? records : [];
+  const filteredHistory = useMemo(() => {
+    const safeRecords = Array.isArray(historyData) ? historyData : [];
     const q = historySearch.toLowerCase().trim();
-    const filtered = safeRecords.filter((r) => {
-      if (historyEntityFilter && r.refId !== historyEntityFilter) return false;
+    return safeRecords.filter((r) => {
       if (historyFrom || historyTo) {
-        const cd = (r.approvedDate || '').substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) return false;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') return false;
+        const cd = (r.approvedDate || (r as any).changedAt || '').substring(0, 10);
+        if (historyFrom && cd < historyFrom) return false;
+        if (historyTo && cd > historyTo) return false;
       }
       if (q) {
         const fn = (r.changedField || '').toLowerCase();
@@ -1101,9 +1090,11 @@ export default function BuoyListPage() {
       }
       return true;
     });
+  }, [historyData, historySearch, historyFrom, historyTo, translateBuoyVal]);
 
+  const renderBuoyHistoryTimeline = (records: ChangeHistory[]) => {
     return renderStandardHistoryCards({
-      records: filtered,
+      records,
       fieldLabels: (fn) => historyFieldLabel(fn),
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
@@ -1318,6 +1309,19 @@ export default function BuoyListPage() {
       render: (v: string, rec: Buoy) => (v || (rec?.buoyStationId ? (buoyStations.find((s) => s.id === rec.buoyStationId)?.name || '') : '')),
     },
     {
+      key: 'navigationChannelId',
+      label: 'Thuộc luồng hàng hải',
+      dataIndex: 'navigationChannelId',
+      width: 280,
+      ellipsis: true,
+      sortable: true,
+      render: (v?: string) => (
+        <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
+          {v ? (waterwayMap.get(v) || v) : ''}
+        </span>
+      ),
+    },
+    {
       key: 'provinceId',
       label: 'Địa điểm (Tỉnh/Thành phố)',
       dataIndex: 'provinceId',
@@ -1438,7 +1442,7 @@ export default function BuoyListPage() {
   ].map((col) => ({
     ...col,
     sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
-  })), [page, pageSize, orgLevel2Map, userMap, buoyStations, openDetailDrawer, sortField, sortOrder]);
+  })), [page, pageSize, orgLevel2Map, userMap, buoyStations, waterwayMap, openDetailDrawer, sortField, sortOrder]);
 
   // ── Row actions with RBAC (moved from BuoyList.tsx) ─────────────
   // Thứ tự: Xem chi tiết → Chỉnh sửa → Xem vị trí → Lịch sử → Phê duyệt/Từ chối → Xóa
@@ -1643,14 +1647,15 @@ export default function BuoyListPage() {
       />
 
       <FilterTableLayout
-        hideFilterToggle={true}
+        filterCollapsed={filterCollapsed}
+        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         onFilterApply={handleFilterApply}
         onFilterReset={handleFilterReset}
         loading={isLoading}
         error={isError}
         onRetry={fetchData}
         filterContent={<>
-          {/* ── Bộ lọc (hiển thị trực tiếp) ──────────────────────── */}
+          {/* ── Bộ lọc thường (luôn hiển thị) ──────────────────────── */}
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
               Đơn vị quản lý
@@ -1672,38 +1677,6 @@ export default function BuoyListPage() {
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm quản lý vận hành phao, tiêu</div>
-            <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
-              value={filterStationId || undefined}
-              onChange={(val) => { setFilterStationId(val); setPage(1); }}
-              options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã Phao, tiêu</div>
-            <Input placeholder="Tìm theo mã phao tiêu..." allowClear
-              value={filterCode}
-              onChange={(e) => setFilterCode(e.target.value)}
-              onPressEnter={handleFilterApply}
-              style={{ borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
-            <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-              value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
-              options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-            <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
-              placeholder={['Từ ngày', 'Đến ngày']} allowClear
-              value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-              onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
             <Select placeholder="Chọn tình trạng" allowClear
               value={filterCondition || undefined}
@@ -1711,6 +1684,59 @@ export default function BuoyListPage() {
               options={CONDITION_OPTIONS}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
+
+          {/* ── Bộ lọc nâng cao (toggle) ───────────────────────────── */}
+          {filterCollapsed && (<>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
+              <Select placeholder="Chọn luồng hàng hải..." allowClear showSearch
+                value={filterWaterwayId || undefined}
+                onChange={(val) => { setFilterWaterwayId(val); setPage(1); }}
+                options={waterwayOptions}
+                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc nhà trạm quản lý vận hành phao, tiêu</div>
+              <Select placeholder="Chọn nhà trạm" allowClear showSearch optionFilterProp="label"
+                value={filterStationId || undefined}
+                onChange={(val) => { setFilterStationId(val); setPage(1); }}
+                options={buoyStations.map((s) => ({ label: s.name, value: s.id }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã Phao, tiêu</div>
+              <Input placeholder="Tìm theo mã phao tiêu..." allowClear
+                value={filterCode}
+                onChange={(e) => setFilterCode(e.target.value)}
+                onPressEnter={handleFilterApply}
+                style={{ borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Phân loại</div>
+              <Select placeholder="Chọn phân loại" allowClear
+                value={filterClassification || undefined}
+                onChange={(v) => { setFilterClassification(v); setPage(1); }}
+                options={CLASSIFICATION_OPTIONS}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
+              <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
+                options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+              <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
+                placeholder={['Từ ngày', 'Đến ngày']} allowClear
+                value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+                onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+            </div>
+          </>)}
         </>}
         statusTabs={TAB_STATUS_LIST.map((tab) => ({
           key: tab.key,
@@ -1733,6 +1759,7 @@ export default function BuoyListPage() {
               const resolve = (r: any) => {
                 if (sortField === 'unitId') return orgLevel2Map.get(r.unitId) ?? r.unitId ?? '';
                 if (sortField === 'buoyStationId') return r.buoyStationName || (r.buoyStationId ? (buoyStations.find((s) => s.id === r.buoyStationId)?.name || '') : '') || '';
+                if (sortField === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
                 if (sortField === 'provinceId') return (r.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label || String(r.provinceId)) : '') || '';
                 if (sortField === 'condition') return CONDITION_STYLE[r.condition || '']?.label ?? r.condition ?? '';
                 if (sortField === 'status') return buoyStatusBadge(r.status).label;
@@ -1877,6 +1904,7 @@ export default function BuoyListPage() {
             buoyStations={createStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
             loadingStations={loadingCreateStations}
             onStationChange={handleStationChange}
+            waterwayOptions={waterwayOptions}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             symbols={symbols}
@@ -1919,6 +1947,7 @@ export default function BuoyListPage() {
             symbolMap={symbolMap}
             symbolImageMap={symbolImageMap}
             ddToDms={ddToDms}
+            waterwayMap={waterwayMap}
           />
         ) : null}
       </AppDrawer>
@@ -1931,11 +1960,13 @@ export default function BuoyListPage() {
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <Space size={spaceSm} style={{ alignItems: 'center' }}>
-              <span style={{ color: colors.sidebarBg, fontSize: fontSizeLg, display: 'inline-flex', alignItems: 'center' }}>{icons.history}</span>
+              <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
               <span style={drawerTitleStyle}>
-                {historyMode === 'all' ? 'Tất cả lịch sử thay đổi — Phao tiêu' : (historyRecord ? `Lịch sử thay đổi — ${historyRecord.name}` : 'Lịch sử thay đổi')}
+                Lịch sử thay đổi — {historyRecord ? (historyRecord.name || historyRecord.code || '') : ''}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+              </span>
             </Space>
           </div>
         }
@@ -1944,74 +1975,68 @@ export default function BuoyListPage() {
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
         }}
       >
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
-        {!historyLoading && (
-          <div style={{ display: 'none' }}>
-            <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}`, marginBottom: spaceMd }}
-              onChange={(e) => loadHistoryMode(e.target.value)}>
-              <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại</Radio.Button>
-              <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi</Radio.Button>
-            </Radio.Group>
-          </div>
-        )}
-        {!historyLoading && (
-          <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-            <Input
-              placeholder="Tìm kiếm nội dung thay đổi..."
-              allowClear
-              value={historySearchInput}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHistorySearchInput(val);
-                if (!val) setHistorySearch('');
-              }}
-              onPressEnter={() => setHistorySearch(historySearchInput.trim())}
-              style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
-            />
-            {historyMode === 'all' && (
-              <Select placeholder="Chọn phao tiêu" allowClear showSearch value={historyEntityFilter || undefined}
-                onChange={(v) => setHistoryEntityFilter(v || '')}
-                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                style={{ width: 200, borderRadius: radiusPill, height: 40 }}
-                options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />
-            )}
-            <DatePicker.RangePicker
-              {...getRangePickerProps({
-                value: (historyFrom && historyTo)
-                  ? [dayjs(historyFrom), dayjs(historyTo)]
-                  : (historyFrom ? [dayjs(historyFrom), null] : (historyTo ? [null, dayjs(historyTo)] : null)),
-                onChange: (dates: any) => {
-                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                    setHistoryFrom('');
-                    setHistoryTo('');
-                  } else {
-                    setHistoryFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD HH:mm') : '');
-                    setHistoryTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD HH:mm') : '');
-                  }
-                },
-                style: { width: 280, borderRadius: radiusPill, height: 40 },
-              })}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={() => setHistorySearch(historySearchInput.trim())}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
-            >
-              Tìm kiếm
-            </Button>
-          </div>
-        )}
+        <div style={{ flexShrink: 0 }}>
+          {!historyLoading && (
+            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+              <Input
+                placeholder="Tìm kiếm nội dung thay đổi..."
+                allowClear
+                value={historySearchInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setHistorySearchInput(val);
+                  if (!val) setHistorySearch('');
+                }}
+                onPressEnter={() => setHistorySearch(historySearchInput.trim())}
+                style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+              />
+              <DatePicker
+                placeholder="Từ ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyFrom ? dayjs(historyFrom) : null}
+                onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY"
+              />
+              <DatePicker
+                placeholder="Đến ngày"
+                classNames={{ popup: { root: 'history-dt-popup' } }}
+                value={historyTo ? dayjs(historyTo) : null}
+                onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY"
+              />
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                onClick={() => setHistorySearch(historySearchInput.trim())}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+              >
+                Tìm kiếm
+              </Button>
+            </div>
+          )}
+        </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {historyLoading ? <LoadingSkeleton rows={5} /> : historyData.length === 0 ? (
+          {historyLoading ? (
+            <div style={{ padding: `${spaceMd}px 0` }}>
+              <LoadingSkeleton rows={5} />
+            </div>
+          ) : historyData.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-              <span style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd, display: 'inline-block' }}>{icons.history}</span>
+              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
             </div>
-          ) : renderBuoyHistoryTimeline(historyData)}
+          ) : (historySearch || historyFrom || historyTo) && filteredHistory.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>
+            </div>
+          ) : (
+            renderBuoyHistoryTimeline(filteredHistory)
+          )}
         </div>
       </AppDrawer>
 

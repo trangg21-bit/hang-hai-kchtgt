@@ -27,7 +27,7 @@ import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchAllBuoys } from '../../services/buoy/api';
 import { fetchBuoyStationList } from '../../services/buoy-station/api';
-import type { Buoy } from '../../types/beacon';
+import type { Buoy } from '../../types/buoy';
 import type { BuoyStationResponse } from '../../services/buoy-station/types';
 import {
   createKhaiThac,

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import lombok.Data;
 
@@ -11,6 +12,7 @@ import java.util.UUID;
  * Request DTO cho Tai San KCHT (create/update).
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class InfraAssetRequest {
 
     private String assetCode;
@@ -24,10 +26,20 @@ public class InfraAssetRequest {
     private String technicalSpecs;
     private String fundingSource;
     private BigDecimal originalValue;
+    private String types;
     private UUID parentOrgUnitId;
     private UUID orgUnitId;
     private UUID usingOrgUnitId;
     private UUID berthId;
+
+    private UUID stationId;
+    private UUID lritStationId;
+    private UUID ttdhStationId;
+    private UUID inmarsatStationId;
+    private UUID cospasSarsatStationId;
+    private UUID ttxlttStationId;
+    private UUID dryPortId;
+
     private UUID transferAreaId;
     private UUID stormShelterId;
     private UUID buoyBerthId;
@@ -38,6 +50,7 @@ public class InfraAssetRequest {
     private UUID buoyId;
     private UUID buoyStationId;
     private UUID navigationChannelId;
+
     private String barcode;
     private String assetCondition;
     private String usageStatus;

@@ -35,6 +35,9 @@ public class Buoy extends BaseEntity {
     @Column(name = "org_unit_id")
     private java.util.UUID orgUnitId;
 
+    @Column(name = "navigation_channel_id")
+    private java.util.UUID navigationChannelId;
+
     @Column(name = "province_id")
     private Integer provinceId;
 

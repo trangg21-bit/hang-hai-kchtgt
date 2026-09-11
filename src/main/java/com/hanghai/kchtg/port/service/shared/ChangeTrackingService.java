@@ -135,7 +135,8 @@ public class ChangeTrackingService {
                 || name.equals("level1ApprovalContent")
                 || name.equals("level2ApprovalContent")
                 || name.equals("submittedAt")
-                || name.equals("submittedBy");
+                || name.equals("submittedBy")
+                || name.equals("waterway");
     }
 
     private boolean valuesEqual(Object a, Object b) {

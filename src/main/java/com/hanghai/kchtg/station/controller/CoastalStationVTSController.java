@@ -50,19 +50,26 @@ public class CoastalStationVTSController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping
+    @Operation(summary = "Get all active coastal stations")
+    public ResponseEntity<List<CoastalStationVTS>> getAllStations() {
+        List<CoastalStationVTS> stations = service.getAllStations();
+        return ResponseEntity.ok(stations);
+    }
+
+    @GetMapping("/options")
+    @Operation(summary = "Get coastal stations for dropdown options")
+    public ResponseEntity<List<CoastalStationVTSResponse>> getOptions() {
+        List<CoastalStationVTS> stations = service.getAllStations();
+        return ResponseEntity.ok(stations.stream().map(service::buildResponse).toList());
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get a coastal station by ID")
     public ResponseEntity<CoastalStationVTSResponse> getStationById(@PathVariable UUID id) {
         CoastalStationVTS entity = service.getStationById(id);
         CoastalStationVTSResponse response = service.buildResponse(entity);
         return ResponseEntity.ok(response);
-    }
-
-    @GetMapping
-    @Operation(summary = "Get all active coastal stations")
-    public ResponseEntity<List<CoastalStationVTS>> getAllStations() {
-        List<CoastalStationVTS> stations = service.getAllStations();
-        return ResponseEntity.ok(stations);
     }
 
     @GetMapping("/search")

@@ -9,13 +9,19 @@ public enum InfraAssetType {
     LIGHTHOUSE(2),
     AUXILIARY_EQUIPMENT(3),
     PORT_TERMINAL(4),
-    TRANSFER_AREA(5),
-    STORM_SHELTER(6),
-    BUOY_BERTH(7),
-    PIER(8),
-    ANCHORAGE(9),
-    NAVIGATION_CHANNEL(10),
-    DIKE_REVETMENT(11);
+    LRIT_STATION(5),
+    TTDH_STATION(6),
+    INMARSAT_STATION(7),
+    COSPAS_SARSAT_STATION(8),
+    TTXLTT_STATION(9),
+    DRY_PORT(10),
+    TRANSFER_AREA(11),
+    STORM_SHELTER(12),
+    BUOY_BERTH(13),
+    PIER(14),
+    ANCHORAGE(15),
+    NAVIGATION_CHANNEL(16),
+    DIKE_REVETMENT(17);
 
     private final int value;
 
@@ -50,3 +56,4 @@ public enum InfraAssetType {
         return this.name();
     }
 }
+

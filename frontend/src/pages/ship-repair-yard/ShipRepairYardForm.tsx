@@ -287,6 +287,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const [loadingPorts, setLoadingPorts] = useState(false);
   const [pierOptions, setPierOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
+  const [loadingSymbols, setLoadingSymbols] = useState(false);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
   const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
@@ -310,7 +311,13 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     })();
   }, []);
 
-  useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
+  useEffect(() => {
+    setLoadingSymbols(true);
+    symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
+      .then(r => setSymbols(r.data || []))
+      .catch(() => {})
+      .finally(() => setLoadingSymbols(false));
+  }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
 
   const loadPortOptions = async (orgUnitId: string) => {
@@ -365,7 +372,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
   useEffect(() => {
-    if (!watchedGeometryType) return;
+    if (!watchedGeometryType) {
+      if (!isEdit) {
+        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+      }
+      return;
+    }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     // GIỮ tọa độ đã nhập/chọn khi đổi loại đối tượng — chỉ thêm dòng trống cho đủ số lượng
@@ -374,7 +386,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       return [...prev, ...added];
     });
-  }, [watchedGeometryType]);
+  }, [watchedGeometryType, isEdit, form]);
 
   // Edit mode: load existing
   useEffect(() => {
@@ -409,11 +421,42 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           vesselType: data.vesselType, vesselDwt: data.vesselDwt,
           businessType: data.businessType, activity: data.activity,
           slipwayCount: normalizeSafeNumber(data.slipwayCount), remarks: data.remarks,
-          geometryType: data.geometryType || undefined, mapSymbolId: data.mapSymbolId, coordinateSystem: data.coordinateSystem, displayRule: data.displayRule,
+          geometryType: data.geometryType || undefined, mapSymbolId: data.mapSymbolId || (data as any).bieuTuongId || (data as any).symbolId, coordinateSystem: data.coordinateSystem, displayRule: data.displayRule,
         });
       } catch { toast.error('Không thể tải thông tin cơ sở sửa chữa, đóng tàu'); }
     })();
   }, [isEdit, id]);
+
+  const triggerBlobDownload = (data: BlobPart | undefined, downloadName: string) => {
+    if (!data) return false;
+    const url = window.URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = downloadName || 'attachment';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    return true;
+  };
+
+  const handleDownloadAttachment = (uid: string, name?: string) => {
+    const fresh = uploadedFiles.find((file: any) => file.uid === uid || file.id === uid);
+    const localFile: File | undefined = fresh?.originFileObj;
+    if (localFile) {
+      triggerBlobDownload(localFile, name || localFile.name);
+      return;
+    }
+    if (!id) {
+      toast.info(`Đang tải xuống tệp: ${name}`);
+      return;
+    }
+    api.get(`/v1/ship-repair-yard/${id}/attachments/${uid}/download`, { responseType: 'blob' })
+      .then((response) => {
+        if (!triggerBlobDownload(response.data, name || 'attachment')) toast.error('Không thể tải xuống tệp đính kèm');
+      })
+      .catch(() => toast.error('Không thể tải xuống tệp đính kèm'));
+  };
 
   const handleBeforeUpload = (file: File): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB, vui lòng chọn file khác'); return false; }
@@ -465,9 +508,9 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   };
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
-    let values: any;
+    const vals = form.getFieldsValue();
     try {
-      values = await form.validateFields();
+      await form.validateFields();
     } catch (e: any) {
       // Khi lưu thất bại do thiếu trường bắt buộc, nhảy về đúng tab chứa lỗi để người dùng biết.
       const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
@@ -479,30 +522,32 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     }
 
     // Bắt buộc chọn địa điểm và tình trạng
-    if (!values.provinceId) {
-      toast.error('Địa điểm (Tỉnh/Thành Phố) là bắt buộc');
+    if (!vals.provinceId) {
+      toast.error('Địa điểm (Tỉnh/Thành phố) không được để trống');
       setActiveTabKey('general');
       return false;
     }
-    if (!values.operationalStatus) {
-      toast.error('Tình trạng là bắt buộc');
+    if (!vals.operationalStatus) {
+      toast.error('Tình trạng không được để trống');
       setActiveTabKey('general');
       return false;
     }
 
-    if (hasLocation && !values.mapSymbolId) {
-      toast.error('Vui lòng chọn biểu tượng bản đồ');
+    const symbolIdVal = vals.mapSymbolId || (vals as any).symbolId || form.getFieldValue('mapSymbolId');
+    if (vals.geometryType && !symbolIdVal) {
       setActiveTabKey('location');
+      form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
+      toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
       return false;
     }
-    if (hasCoordinates && !values.geometryType) {
+    if (hasCoordinates && !vals.geometryType) {
       toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setActiveTabKey('location');
       return false;
     }
 
     // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-    const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+    const coordResult = validateDmsCoordinates(coordinateList, vals.geometryType);
     if (!coordResult.valid) {
       const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
       toast.error(errMsg);
@@ -511,39 +556,39 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       return false;
     }
     const validCoords = coordResult.validCoords;
-    const wktCoordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
+    const wktCoordinates = serializeCoordinatesToWkt(validCoords, vals.geometryType || 'POINT');
 
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
       const toPayloadNumber = (v: unknown): number | undefined => {
         if (v == null) return undefined;
-        const s = String(v).trim();
+        const s = String(v).trim().replace(/,/g, '');
         if (s === '') return undefined;
         const num = Number(s);
         return isNaN(num) ? undefined : num;
       };
       const payload: Record<string, unknown> = {
-        orgUnitId: values.orgUnitId, portId: values.portId,
-        shipRepairYardCode: String(values.shipRepairYardCode || '').trim() || undefined, shipRepairYardName: String(values.shipRepairYardName || '').trim(),
-        pierId: values.pierId || undefined,
-        provinceId: values.provinceId ? VIETNAM_PROVINCES.indexOf(values.provinceId) + 1 : undefined,
-        detailedLocation: values.detailedLocation || undefined,
-        operationalStatus: values.operationalStatus || undefined,
-        usageFunction: values.usageFunction || undefined,
-        workshopArea: toPayloadNumber(values.workshopArea),
-        vesselType: values.vesselType || undefined,
-        vesselDwt: values.vesselDwt || undefined,
-        businessType: values.businessType || undefined,
-        activity: values.activity || undefined,
-        slipwayCount: toPayloadNumber(values.slipwayCount),
-        remarks: values.remarks || undefined,
+        orgUnitId: vals.orgUnitId, portId: vals.portId,
+        shipRepairYardCode: String(vals.shipRepairYardCode || '').trim() || undefined, shipRepairYardName: String(vals.shipRepairYardName || '').trim(),
+        pierId: vals.pierId || undefined,
+        provinceId: vals.provinceId ? (typeof vals.provinceId === 'number' ? vals.provinceId : VIETNAM_PROVINCES.indexOf(vals.provinceId) + 1) : undefined,
+        detailedLocation: vals.detailedLocation || undefined,
+        operationalStatus: vals.operationalStatus || undefined,
+        usageFunction: vals.usageFunction || undefined,
+        workshopArea: toPayloadNumber(vals.workshopArea),
+        vesselType: vals.vesselType || undefined,
+        vesselDwt: vals.vesselDwt || undefined,
+        businessType: vals.businessType || undefined,
+        activity: vals.activity || undefined,
+        slipwayCount: toPayloadNumber(vals.slipwayCount),
+        remarks: vals.remarks || undefined,
         latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
         longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
         coordinates: wktCoordinates || undefined,
-        geometryType: values.geometryType || undefined, mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null ? Number(values.displayRule) : undefined,
+        geometryType: vals.geometryType || undefined, mapSymbolId: symbolIdVal || undefined,
+        coordinateSystem: vals.coordinateSystem != null ? Number(vals.coordinateSystem) : undefined,
+        displayRule: vals.displayRule || undefined,
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -560,15 +605,18 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       }
       if (createdId && uploadedFiles.length > 0) {
         const newFiles = uploadedFiles.filter((fi: any) => !!fi.originFileObj);
-        for (const fi of newFiles) {
-          const of = fi.originFileObj as File;
-          if (!of) continue;
+        if (newFiles.length > 0) {
           const fd = new FormData();
-          fd.append('files', of);
-          await api.post(`/v1/ship-repair-yard/${createdId}/attachments`, fd, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-            params: { skipHistory: !wasApproved },
-          }).catch(() => {});
+          newFiles.forEach((fi: any) => fd.append('files', fi.originFileObj as File));
+          try {
+            await api.post(`/v1/ship-repair-yard/${createdId}/attachments`, fd, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+              params: { skipHistory: !wasApproved },
+            });
+            toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
+          } catch {
+            toast.error('Tải lên tệp đính kèm thất bại');
+          }
         }
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu tạm thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : 'Gửi phê duyệt thành công');
@@ -581,7 +629,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, isEdit, id, onFinish, onSubmittingChange, coordinateList, uploadedFiles, pendingDeletedAttachmentIds, existingFiles]);
+  }, [form, isEdit, id, onFinish, onSubmittingChange, coordinateList, uploadedFiles, pendingDeletedAttachmentIds, hasCoordinates]);
 
   const tabItems = [
     // Tab 1: Thông tin chung
@@ -643,7 +691,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
+            <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng không được để trống' }]}>
               <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
             </Form.Item>
           </Col>
@@ -728,11 +776,15 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           <Form.Item
             name="mapSymbolId"
             {...labelProps('Biểu tượng')}
-            required={hasLocation}
-            rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+            required={!!watchedGeometryType}
+            rules={
+              watchedGeometryType
+                ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
+                : []
+            }
             style={{ marginBottom: spaceFormField }}
           >
-            <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
+            <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} loading={loadingSymbols} style={selectStyle}>
               {symbols.map(sym => (
                 <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
                   <Space>
@@ -883,6 +935,13 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           }))}
           readonly={false}
           userMap={userMap}
+          onUpload={(file) => {
+            handleBeforeUpload(file);
+            return false;
+          }}
+          onDownload={(uid, name) => {
+            handleDownloadAttachment(uid, name);
+          }}
           onDelete={(uid) => {
             setUploadedFiles((prev) => prev.filter((x: any) => (x.uid || x.id) !== uid));
             if (existingFiles.some((ef: any) => (ef.id || ef.uid) === uid)) {

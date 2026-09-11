@@ -379,7 +379,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   });
 
   // AC-024-01f / AC-024-05 (render seam): no-permission blocks render dimmed (disabled), per-card.
-  it('AC-01/AC-05: "/" restricted user — blocks without any granted route are disabled (4 of 6)', () => {
+  it('AC-01/AC-05: "/" restricted user — blocks without any granted route are disabled (5 of 6)', () => {
     const html = renderAt('/', ['port:read', 'report:read']);
     expect(html).toContain('Quản lý KCHT hàng hải'); // port:read granted -> kcht enabled
     expect(html).toContain('Báo cáo thống kê'); // report:read granted -> report enabled
