@@ -71,7 +71,7 @@ public class UpdateBerthRequest {
 
     private LocalDateTime openingAnnouncementDate;
 
-    @Size(max = 500)
+    @Size(max = 2000)
     private String openingDecision;
 
     @Size(max = 2000)

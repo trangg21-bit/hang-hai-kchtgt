@@ -481,11 +481,12 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
-      const toPayloadNumber = (v: unknown): number | undefined => {
+      const toPayloadNumber = (v: unknown): number | string | undefined => {
         if (v == null) return undefined;
-        const s = String(v).trim();
-        if (s === '') return undefined;
-        const num = Number(s);
+        const norm = normalizeSafeNumber(v);
+        if (!norm) return undefined;
+        if (norm.length >= 16) return norm;
+        const num = Number(norm);
         return isNaN(num) ? undefined : num;
       };
       const provinceName: string | undefined = values.provinceId;

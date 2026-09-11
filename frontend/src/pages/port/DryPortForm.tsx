@@ -1,4 +1,4 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   Row,
@@ -25,10 +25,6 @@ import {
   FileTextOutlined,
   DownOutlined,
   RightOutlined,
-  EyeOutlined,
-  DownloadOutlined,
-  FileImageOutlined,
-  FileOutlined,
 } from '@ant-design/icons';
 import {
   colors,
@@ -59,15 +55,19 @@ import {
   sidebarBg,
   textAreaStyle,
   getDatePickerProps,
+  isUuidString,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../../services/organizationService';
+import api from '../../services/api';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { symbolService, type Symbol } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import DetailTable from '../../components/shared/DetailTable';
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { useAuthStore } from '../../store/authStore';
 import { GEOMETRY_POINT_COUNT, parseWktToCoordinates } from '../../utils/gisGeometry';
 import toast from '../../components/ToastNotification';
@@ -79,7 +79,7 @@ import {
   ddToDms,
   buildCoordinatesWkt,
 } from './dry-port/schema';
-import type { DryPort, SaveAction, DryPortAttachment } from './dry-port/types';
+import type { DryPort, SaveAction } from './dry-port/types';
 import {
   createDryPort,
   updateDryPort,
@@ -302,24 +302,38 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code?: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<
     Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>
   >([]);
   const hasCoordinates = coordinateList.some((c) => (c.latD ?? c.latM ?? c.latS) != null && (c.lngD ?? c.lngM ?? c.lngS) != null);
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
+  const effectiveGeometryType = watchedGeometryType || form.getFieldValue('geometryType') || (coordinateList.length > 0 || form.getFieldValue('mapSymbolId') ? 'POINT' : undefined);
+  const hasLocation = Boolean(effectiveGeometryType || hasCoordinates);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gpsPage, setGpsPage] = useState(1);
   const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // Attachments
-  const [attachments, setAttachments] = useState<DryPortAttachment[]>([]);
-  const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
+  const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [pendingDeletedAttIds, setPendingDeletedAttIds] = useState<string[]>([]);
-  const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
-  const [previewImageName, setPreviewImageName] = useState<string>('');
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+
+  const mappedAttachments: InfrastructureAttachmentItem[] = useMemo(() => {
+    return uploadFileList.map((f: any) => ({
+      id: f.id || f.uid,
+      uid: f.uid || f.id,
+      fileName: f.fileName || f.name,
+      name: f.name || f.fileName,
+      fileSize: f.fileSize ?? f.size,
+      size: f.size ?? f.fileSize,
+      uploadedByName: f.uploadedByName || (!isUuidString(f.uploadedBy) ? f.uploadedBy : '') || (f.uploadedBy ? userMap.get(f.uploadedBy) : '') || 'Cán bộ quản lý',
+      uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt,
+      uploadedAt: f.uploadedAt || f.uploadedDate || f.createdAt,
+      status: f.status,
+      originFileObj: f.originFileObj,
+    }));
+  }, [uploadFileList, userMap]);
 
   useEffect(() => {
     (async () => {
@@ -336,8 +350,18 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
   }, []);
 
   useEffect(() => {
-    symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then((r) => setSymbols(r.data || [])).catch(() => {});
-  }, []);
+    symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then((r) => {
+      const symList = r.data || [];
+      setSymbols(symList);
+      const currSymId = form.getFieldValue('mapSymbolId');
+      if (currSymId && symList.length > 0) {
+        const matched = symList.find((s: any) => s.id.toLowerCase() === String(currSymId).toLowerCase());
+        if (matched && matched.id !== currSymId) {
+          form.setFieldsValue({ mapSymbolId: matched.id });
+        }
+      }
+    }).catch(() => {});
+  }, [form]);
 
   useEffect(() => {
     setLoadingOrgs(true);
@@ -346,6 +370,13 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
       .then((r) => setOrganizations(r.data || []))
       .catch(() => {})
       .finally(() => setLoadingOrgs(false));
+  }, []);
+
+  useEffect(() => {
+    api.get('/common/options/operating-units').then((r) => {
+      const list = r.data?.data;
+      if (Array.isArray(list) && list.length) setOperatingOrgs(list);
+    }).catch(() => {});
   }, []);
 
   // Tự sinh mã khi thêm mới
@@ -405,10 +436,16 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           setCoordinateList([{ latD: la.d, latM: la.m, latS: la.s, lngD: lo.d, lngM: lo.m, lngS: lo.s }]);
         }
 
+        const resolvedOpOrgId = (data as any).operatingOrgId
+          || (data.operatingUnit && isUuidString(data.operatingUnit) ? data.operatingUnit : undefined)
+          || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.name === data.operatingUnit)?.id
+          || data.operatingUnit;
+
         form.setFieldsValue({
           dryPortCode: data.dryPortCode,
           dryPortName: data.dryPortName,
           orgUnitId: data.orgUnitId || undefined,
+          operatingOrgId: resolvedOpOrgId,
           operatingUnit: data.operatingUnit,
           region: data.region,
           provinceId: data.provinceId != null ? (VIETNAM_PROVINCES[data.provinceId - 1] || undefined) : undefined,
@@ -419,21 +456,49 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           warehouseArea: normalizeSafeNumber(data.warehouseArea),
           yardArea: normalizeSafeNumber(data.yardArea),
           connectionMode: data.connectionMode,
-          portStatus: data.portStatus !== undefined && data.portStatus !== null ? data.portStatus : 1,
+          portStatus: data.portStatus !== undefined && data.portStatus !== null ? data.portStatus : 0,
           remarks: data.remarks,
+          openingAnnouncementDate: data.openingAnnouncementDate
+            ? dayjs(data.openingAnnouncementDate)
+            : data.announcementDecisionDate
+              ? dayjs(data.announcementDecisionDate)
+              : data.announcementTime
+                ? dayjs(data.announcementTime)
+                : undefined,
+          openingDecision: data.openingDecision || data.announcementDecisionNumber || undefined,
+          investmentAgreementDoc: data.investmentAgreementDoc || undefined,
           announcementTime: data.announcementTime ? dayjs(data.announcementTime) : undefined,
           announcementDecisionNumber: data.announcementDecisionNumber,
           announcementDecisionDate: data.announcementDecisionDate ? dayjs(data.announcementDecisionDate) : undefined,
           announcementOrg: data.announcementOrg,
-          geometryType: data.geometryType || undefined,
-          mapSymbolId: data.mapSymbolId,
-          coordinateSystem: data.coordinateSystem,
+          geometryType: data.geometryType || (pts.length > 0 || (data.latitude != null && data.longitude != null) || data.mapSymbolId ? 'POINT' : undefined),
+          mapSymbolId: (() => {
+            const symId = data.mapSymbolId;
+            if (!symId) return undefined;
+            const matched = symbols.find((s) => s.id.toLowerCase() === symId.toLowerCase());
+            return matched ? matched.id : symId;
+          })(),
+          coordinateSystem: data.coordinateSystem ?? 1,
           displayRule: data.geometryType || data.coordinates ? 'Độ, phút, giây (DMS)' : undefined,
         });
 
         // Load attachments
         const atts = await fetchDryPortAttachmentList(id);
-        setAttachments(atts);
+        setUploadFileList(
+          (atts || []).map((a: any) => ({
+            uid: a.id,
+            id: a.id,
+            name: a.fileName,
+            fileName: a.fileName,
+            size: a.fileSize,
+            fileSize: a.fileSize,
+            uploadedBy: a.uploadedBy,
+            uploadedByName: a.uploadedByName || (!isUuidString(a.uploadedBy) ? a.uploadedBy : undefined) || (a.uploadedBy ? userMap.get(a.uploadedBy) : undefined) || 'Cán bộ quản lý',
+            uploadedAt: a.uploadedAt,
+            uploadedDate: a.uploadedDate || a.uploadedAt,
+            status: 'done' as const,
+          })),
+        );
       } catch {
         toast.error('Không thể tải thông tin cảng cạn');
       }
@@ -461,59 +526,6 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
     });
   };
 
-  // Attachments handling
-  const handleBeforeUpload = (file: File): false => {
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('File vượt quá 20MB');
-      return false;
-    }
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext || !['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'].includes(ext)) {
-      toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC/DOCX, XLS/XLSX, JPG, PNG, TIFF)');
-      return false;
-    }
-    if (attachments.length + pendingUploadFiles.length >= 20) {
-      toast.error('Tối đa 20 file đính kèm');
-      return false;
-    }
-    setPendingUploadFiles((prev) => [...prev, file]);
-    return false;
-  };
-
-  const handleRemoveAttachment = (attId: string) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== attId));
-    setPendingDeletedAttIds((prev) => [...prev, attId]);
-  };
-
-  const handleRemovePendingFile = (idx: number) => {
-    setPendingUploadFiles((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const openPreview = (att: DryPortAttachment | File) => {
-    if (att instanceof File) {
-      const url = URL.createObjectURL(att);
-      setPreviewImageUrl(url);
-      setPreviewImageName(att.name);
-      setPreviewModalOpen(true);
-    } else {
-      if (!id || !att.id) return;
-      setPreviewImageName(att.fileName);
-      setPreviewModalOpen(true);
-      setPreviewImageUrl('');
-      // Download blob preview
-      import('../../services/api').then(({ default: api }) => {
-        api
-          .get(`/v1/dry-ports/${id}/attachments/${att.id}/download`, { responseType: 'blob' })
-          .then((res) => {
-            const url = URL.createObjectURL(new Blob([res.data]));
-            setPreviewImageUrl(url);
-          })
-          .catch(() => {
-            toast.error('Không thể tải hình ảnh để xem trước');
-          });
-      });
-    }
-  };
 
   const handleSave = useCallback(
     async (saveAction: SaveAction) => {
@@ -532,7 +544,8 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
 
         const toPayloadNumber = (v: unknown): number | undefined => {
           if (v == null) return undefined;
-          const s = String(v).trim();
+          if (typeof v === 'number') return isNaN(v) ? undefined : v;
+          const s = String(v).replace(/,/g, '').trim();
           if (s === '') return undefined;
           const num = Number(s);
           return isNaN(num) ? undefined : num;
@@ -575,7 +588,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           }
         }
 
-        if (hasLocation && !values.mapSymbolId) {
+        if (effectiveGeometryType && !values.mapSymbolId) {
           toast.error('Vui lòng chọn biểu tượng bản đồ');
           setActiveTabKey('gis');
           onSubmittingChange?.(false);
@@ -596,6 +609,10 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           APPROVE: 'approve',
         };
 
+        const selectedOp = operatingOrgs.find((o) => o.id === values.operatingOrgId || o.id === values.operatingUnit);
+        const opOrgId = values.operatingOrgId || selectedOp?.id || undefined;
+        const opUnit = selectedOp ? selectedOp.name : values.operatingUnit || values.operatingOrgId || undefined;
+
         const payload: any = {
           saveAction: actionMap[saveAction],
           dryPortCode: String(values.dryPortCode || '').trim() || undefined,
@@ -605,7 +622,8 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
           longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
           coordinates: buildCoordinatesWkt(values.geometryType, manualCoords),
-          operatingUnit: values.operatingUnit || undefined,
+          operatingOrgId: opOrgId,
+          operatingUnit: opUnit,
           region: values.region || undefined,
           provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
           detailedLocation: values.detailedLocation || undefined,
@@ -633,6 +651,14 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
               : values.announcementDecisionDate.format('YYYY-MM-DD')
             : undefined,
           announcementOrg: values.announcementOrg || undefined,
+          // Opening announcement (đồng bộ chuẩn Cầu cảng - Pier)
+          openingAnnouncementDate: values.openingAnnouncementDate
+            ? typeof values.openingAnnouncementDate === 'string'
+              ? values.openingAnnouncementDate
+              : values.openingAnnouncementDate.format('YYYY-MM-DD')
+            : undefined,
+          openingDecision: values.openingDecision?.trim() || undefined,
+          investmentAgreementDoc: values.investmentAgreementDoc?.trim() || undefined,
         };
 
         Object.keys(payload).forEach((key) => {
@@ -656,8 +682,9 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
         }
 
         // Upload các file đính kèm mới
-        if (savedId && pendingUploadFiles.length > 0) {
-          const uploadedCount = await uploadDryPortAttachments(savedId, pendingUploadFiles);
+        const filesToUpload = uploadFileList.filter((f: any) => f && f.originFileObj);
+        if (savedId && filesToUpload.length > 0) {
+          const uploadedCount = await uploadDryPortAttachments(savedId, filesToUpload);
           if (uploadedCount > 0) toast.success(`Đã tải lên ${uploadedCount} tệp đính kèm`);
         }
 
@@ -690,7 +717,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
         onSubmittingChange?.(false);
       }
     },
-    [form, coordinateList, isEdit, id, onFinish, onSubmittingChange, hasLocation, pendingDeletedAttIds, pendingUploadFiles],
+    [form, coordinateList, isEdit, id, onFinish, onSubmittingChange, hasLocation, effectiveGeometryType, pendingDeletedAttIds, uploadFileList],
   );
 
   useImperativeHandle(
@@ -703,7 +730,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
     [handleSave],
   );
 
-  const totalAttachmentsCount = attachments.length + pendingUploadFiles.length;
+  const totalAttachmentsCount = uploadFileList.length;
 
   const formTabs = [
     // ── Tab 1: Thông tin chung ──
@@ -766,8 +793,21 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="operatingUnit" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập đơn vị khai thác" maxLength={255} showCount style={inputStyle} />
+                <Form.Item
+                  name="operatingOrgId"
+                  {...labelProps('Đơn vị khai thác')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Đơn vị khai thác không được để trống' }]}
+                >
+                  <Select
+                    placeholder="Chọn đơn vị khai thác..."
+                    options={operatingOrgs.map((o) => ({ value: o.id, label: o.name }))}
+                    showSearch
+                    optionFilterProp="label"
+                    allowClear
+                    style={selectStyle}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -803,7 +843,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                   required
                   rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}
                   style={{ marginBottom: spaceFormField }}
-                  initialValue={1}
+                  initialValue={0}
                 >
                   <Select options={PORT_STATUS_OPTIONS} style={selectStyle} />
                 </Form.Item>
@@ -878,7 +918,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                   <Col span={12}>
                     <Form.Item
                       name="teuCapacity"
-                      {...labelProps('Công suất khai thác (TEU/năm)')}
+                      {...labelProps('Công suất khai thác')}
                       required
                       rules={[{ required: true, message: 'Công suất khai thác là bắt buộc' }]}
                       style={{ marginBottom: spaceFormField }}
@@ -915,72 +955,49 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
             )}
           </div>
 
-          {/* Section 3: Thông tin công bố mở, đưa vào sử dụng */}
-          <div style={{ ...sectionBoxStyle, padding: announcementOpen ? '14px 18px 10px 18px' : '10px 18px' }}>
+          {/* Section 3: Thông tin công bố mở, đưa vào sử dụng (đồng bộ chuẩn Cầu cảng - Pier) */}
+          <div style={sectionBoxStyle}>
             <div
               onClick={() => setAnnouncementOpen(!announcementOpen)}
               style={{
                 ...sectionHeaderStyle,
-                marginBottom: announcementOpen ? 12 : 0,
-                paddingBottom: announcementOpen ? 8 : 0,
-                borderBottom: announcementOpen ? '1px solid #f1f5f9' : 'none',
                 cursor: 'pointer',
                 userSelect: 'none',
+                marginBottom: announcementOpen ? spaceSm : 0,
+                paddingBottom: announcementOpen ? spaceSm : 0,
+                borderBottom: announcementOpen ? sectionHeaderStyle.borderBottom : 'none',
               }}
             >
               <div style={sectionTitleStyle}>
                 <FileTextOutlined style={{ color: actionPrimary }} />
                 <span>Thông tin công bố mở, đưa vào sử dụng</span>
               </div>
-              <span style={{ color: actionPrimary, fontSize: 12 }}>{announcementOpen ? <DownOutlined /> : <RightOutlined />}</span>
+              <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>{announcementOpen ? <DownOutlined /> : <RightOutlined />}</span>
             </div>
             {announcementOpen && (
-              <>
+              <div>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
-                    <Form.Item
-                      name="announcementDecisionNumber"
-                      {...labelProps('Quyết định công bố số')}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input placeholder="Nhập quyết định công bố số" maxLength={20} showCount style={inputStyle} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="announcementDecisionDate"
-                      {...labelProps('Ngày ra quyết định công bố')}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <DatePicker
-                        placeholder="Chọn ngày ra quyết định"
-                        format="DD/MM/YYYY"
-                        style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                      />
+                    <Form.Item name="openingAnnouncementDate" {...labelProps('Thời điểm công bố mở, đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
+                      <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm' })} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="announcementOrg"
-                      {...labelProps('Đơn vị ra quyết định công bố')}
-                      style={{ marginBottom: spaceFormField }}
-                    >
-                      <Input placeholder="Nhập đơn vị ra quyết định" maxLength={255} showCount style={inputStyle} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="announcementTime" {...labelProps('Thời điểm công bố mở')} style={{ marginBottom: spaceFormField }}>
-                      <DatePicker
-                        placeholder="Chọn thời điểm công bố mở"
-                        format="DD/MM/YYYY"
-                        style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                      />
+                  <Col span={24}>
+                    <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}>
+                      <Input.TextArea rows={3} placeholder="Nhập quyết định" maxLength={2000} showCount style={textAreaStyle} />
                     </Form.Item>
                   </Col>
                 </Row>
-              </>
+                <Row gutter={[24, 0]}>
+                  <Col span={24}>
+                    <Form.Item name="investmentAgreementDoc" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}>
+                      <Input.TextArea rows={3} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={textAreaStyle} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </div>
             )}
           </div>
         </div>
@@ -1031,8 +1048,12 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                 <Form.Item
                   name="mapSymbolId"
                   {...labelProps('Biểu tượng')}
-                  required={hasLocation}
-                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  required={!!effectiveGeometryType}
+                  rules={
+                    effectiveGeometryType
+                      ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
+                      : []
+                  }
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select
@@ -1040,7 +1061,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                     allowClear
                     showSearch
                     optionFilterProp="label"
-                    disabled={!watchedGeometryType}
+                    disabled={!effectiveGeometryType && !form.getFieldValue('mapSymbolId')}
                     style={selectStyle}
                   >
                     {symbols.map((sym) => (
@@ -1227,186 +1248,68 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
     // ── Tab 3: File đính kèm ──
     {
       key: 'files',
-      label: `File đính kèm (${totalAttachmentsCount})`,
+      label: `File đính kèm (${uploadFileList.length})`,
       children: (
         <div style={drawerFormScrollStyle}>
-          <div style={sectionBoxStyle}>
-            <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-              <span
-                style={{
-                  color: colors.sidebarBg,
-                  fontWeight: fontWeightBold,
-                  fontSize: fontSizeMd,
-                  lineHeight: '32px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  height: 32,
-                }}
-              >
-                Danh sách tệp đính kèm ({totalAttachmentsCount})
-              </span>
-              <label
-                style={{
-                  ...primaryButtonStyle,
-                  height: 32,
-                  fontSize: fontSizeMd,
-                  padding: '0 14px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                  borderRadius: radiusPill,
-                }}
-              >
-                <PlusOutlined /> Chọn tệp tải lên
-                <input
-                  type="file"
-                  multiple
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const fl = e.target.files;
-                    if (fl) {
-                      Array.from(fl).forEach((file) => handleBeforeUpload(file));
-                    }
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            </div>
-
-            {totalAttachmentsCount === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tệp đính kèm nào.</span>
-              </div>
-            ) : (
-              <DetailTable
-                scrollY={DRAWER_TABLE_SCROLL_Y.withButton}
-                dataSource={[
-                  ...attachments.map((a) => ({ ...a, _isExisting: true })),
-                  ...pendingUploadFiles.map((f, i) => ({
-                    id: `new-${i}`,
-                    fileName: f.name,
-                    fileSize: f.size,
-                    uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-                    uploadedAt: dayjs().toISOString(),
-                    _isExisting: false,
-                    _rawFile: f,
-                    _idx: i,
-                  })),
-                ]}
-                emptyText="Chưa có tệp đính kèm nào"
-                columns={[
-                  { title: 'STT', width: 50, align: 'center' as const, render: (_v, _r, index) => index + 1 },
+          <InfrastructureAttachmentTab
+            attachments={mappedAttachments}
+            readonly={false}
+            userMap={userMap}
+            onUpload={(file) => {
+              const ALLOWED_EXTS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
+              const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+              if (!ALLOWED_EXTS.includes(ext)) {
+                toast.error('Định dạng không hỗ trợ (chỉ chấp nhận PDF, DOC/DOCX, XLS/XLSX, JPG, PNG, TIFF)');
+                return false;
+              }
+              if (file.size > 20 * 1024 * 1024) {
+                toast.error('File vượt quá 20MB');
+                return false;
+              }
+              const nowIso = dayjs().toISOString();
+              const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
+              const newUid = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+              setUploadFileList((prev: any[]) => {
+                const currentList = Array.isArray(prev) ? prev : [];
+                return [
+                  ...currentList,
                   {
-                    title: 'Tên tài liệu',
-                    dataIndex: 'fileName',
-                    key: 'fileName',
-                    render: (v: string, rec: any) => {
-                      const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(v || '');
-                      return (
-                        <span
-                          title={isImg ? `${v} (Nhấp để xem trước ảnh)` : `${v} (Tệp tài liệu)`}
-                          onClick={() => {
-                            if (isImg) openPreview(rec._isExisting ? rec : rec._rawFile);
-                            else if (rec._isExisting && id) void downloadDryPortAttachment(id, rec.id, v);
-                          }}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            cursor: rec._isExisting || isImg ? 'pointer' : 'default',
-                            color: isImg || rec._isExisting ? actionPrimary : textPrimary,
-                            fontWeight: fontWeightMedium,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: '100%',
-                          }}
-                        >
-                          {isImg ? (
-                            <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
-                          ) : (
-                            <FileOutlined style={{ color: textTertiary, flexShrink: 0 }} />
-                          )}
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v || ''}</span>
-                        </span>
-                      );
-                    },
+                    uid: newUid,
+                    id: newUid,
+                    name: file.name,
+                    fileName: file.name,
+                    size: file.size,
+                    fileSize: file.size,
+                    type: file.type,
+                    fileType: file.type,
+                    status: 'done',
+                    originFileObj: file,
+                    uploadedByName: uploaderName,
+                    uploadedBy: currentUser?.userId || currentUser?.id || uploaderName,
+                    uploadedDate: nowIso,
+                    uploadedAt: nowIso,
+                    createdAt: nowIso,
                   },
-                  {
-                    title: 'Dung lượng',
-                    dataIndex: 'fileSize',
-                    key: 'fileSize',
-                    width: 120,
-                    align: 'left' as const,
-                    render: (v: number) =>
-                      v ? (v > 1024 * 1024 ? `${(v / (1024 * 1024)).toFixed(2)} MB` : `${(v / 1024).toFixed(1)} KB`) : '',
-                  },
-                  {
-                    title: 'Người tải lên',
-                    dataIndex: 'uploadedByName',
-                    key: 'uploadedByName',
-                    width: 180,
-                    render: (v: string, rec: any) => v || (rec.uploadedBy ? userMap.get(rec.uploadedBy) || rec.uploadedBy : ''),
-                  },
-                  {
-                    title: 'Ngày tải lên',
-                    dataIndex: 'uploadedAt',
-                    key: 'uploadedAt',
-                    width: 150,
-                    align: 'left' as const,
-                    render: (v: string) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : ''),
-                  },
-                  {
-                    title: 'Thao tác',
-                    key: 'actions',
-                    width: 90,
-                    align: 'center' as const,
-                    render: (_: any, rec: any) => {
-                      const fname: string = rec?.fileName || '';
-                      const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(fname);
-                      return (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                          {isImg && (
-                            <Tooltip title="Xem chi tiết ảnh">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
-                                onClick={() => openPreview(rec._isExisting ? rec : rec._rawFile)}
-                              />
-                            </Tooltip>
-                          )}
-                          {rec._isExisting && id && (
-                            <Tooltip title="Tải xuống tệp">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<DownloadOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
-                                onClick={() => void downloadDryPortAttachment(id, rec.id, rec.fileName)}
-                              />
-                            </Tooltip>
-                          )}
-                          <Tooltip title="Xóa tệp">
-                            <Button
-                              type="text"
-                              danger
-                              size="small"
-                              icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                              onClick={() => {
-                                if (rec._isExisting) handleRemoveAttachment(rec.id);
-                                else handleRemovePendingFile(rec._idx);
-                              }}
-                            />
-                          </Tooltip>
-                        </div>
-                      );
-                    },
-                  },
-                ]}
-              />
-            )}
-          </div>
+                ];
+              });
+              return false;
+            }}
+            onDelete={(uid) => {
+              const fileToDelete = uploadFileList.find((x) => x.uid === uid || (x as any).id === uid);
+              if (fileToDelete && !fileToDelete.originFileObj) {
+                const attId = (fileToDelete as any).id || fileToDelete.uid;
+                if (attId) setPendingDeletedAttIds((prev) => [...prev, attId]);
+              }
+              setUploadFileList((prev: any[]) =>
+                (Array.isArray(prev) ? prev : []).filter((x) => x.uid !== uid && (x as any).id !== uid),
+              );
+            }}
+            onDownload={(attId, fileName) => {
+              if (isEdit && id && attId) {
+                void downloadDryPortAttachment(id, attId, fileName);
+              }
+            }}
+          />
         </div>
       ),
     },
@@ -1481,25 +1384,6 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
         </div>
       </Modal>
 
-      {/* Image Preview Modal */}
-      <Modal
-        open={previewModalOpen}
-        title={<span style={{ color: sidebarBg, fontWeight: fontWeightBold }}>Xem hình ảnh: {previewImageName}</span>}
-        footer={null}
-        onCancel={() => {
-          setPreviewModalOpen(false);
-          setPreviewImageUrl('');
-        }}
-        width={700}
-      >
-        <div style={{ textAlign: 'center', padding: '16px 0' }}>
-          {previewImageUrl ? (
-            <img src={previewImageUrl} alt={previewImageName} style={{ maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain' }} />
-          ) : (
-            <div style={{ padding: 40, color: textTertiary }}>Đang tải hình ảnh...</div>
-          )}
-        </div>
-      </Modal>
     </>
   );
 });

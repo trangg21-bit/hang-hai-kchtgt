@@ -9,6 +9,8 @@ import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.security.annotation.DataScope;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,10 +18,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * REST Controller for Buoy CRUD + approval endpoints (F-074 to F-077).
@@ -32,6 +38,7 @@ public class BuoyController {
 
     private final BuoyService buoyService;
     private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
 
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'buoy:read') or @auth.check(authentication, 'data:read')")
@@ -140,22 +147,72 @@ public class BuoyController {
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'buoy:read') or @auth.check(authentication, 'buoy:history') or @auth.check(authentication, 'data:read')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getHistory(@PathVariable UUID id) {
-        List<InfrastructureHistory> changeHistory = historyRepository
+        String entityId = id.toString();
+        String entityType = "Buoy";
+
+        List<InfrastructureHistory> list = historyRepository
                 .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.BUOY, id);
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("fieldName", h.getChangedField());
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+                    return m;
+                })
+                .toList();
+
         Map<String, Object> result = new HashMap<>();
+        result.put("entityId", entityId);
+        result.put("entityType", entityType);
         result.put("changeHistory", changeHistory);
-        result.put("approvalLog", List.of());
-        result.put("histories", changeHistory);
+        result.put("approvalLog", approvalLog);
+        result.put("histories", list);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @GetMapping("/history/all")
     @PreAuthorize("@auth.check(authentication, 'buoy:read') or @auth.check(authentication, 'buoy:history') or @auth.check(authentication, 'data:read')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAllHistory() {
-        List<InfrastructureHistory> changeHistory = historyRepository
+        String entityType = "Buoy";
+        List<InfrastructureHistory> list = historyRepository
                 .findByRefTypeOrderByApprovedDateDesc(InfrastructureType.BUOY);
         Map<String, String> entityNames = new HashMap<>();
-        for (InfrastructureHistory logItem : changeHistory) {
+        for (InfrastructureHistory logItem : list) {
             if (logItem.getRefId() != null) {
                 String refIdStr = logItem.getRefId().toString();
                 if (!entityNames.containsKey(refIdStr)) {
@@ -168,8 +225,46 @@ public class BuoyController {
                 }
             }
         }
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("refId", h.getRefId());
+                    m.put("entityId", h.getRefId() != null ? h.getRefId().toString() : null);
+                    m.put("refType", h.getRefType());
+                    m.put("approvalLevel", h.getApprovalLevel());
+                    m.put("status", h.getStatus());
+                    m.put("approvedBy", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
+                    m.put("changedField", h.getChangedField());
+                    m.put("fieldName", h.getChangedField());
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("oldValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue());
+                    m.put("changedBy", h.getApprovedBy() != null
+                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
+                            : null);
+                    m.put("changedAt", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+
         Map<String, Object> result = new HashMap<>();
-        result.put("entityType", "Buoy");
+        result.put("entityType", entityType);
         result.put("changeHistory", changeHistory);
         result.put("entityNames", entityNames);
         return ResponseEntity.ok(ApiResponse.success(result));

@@ -76,9 +76,10 @@ public class BerthApprovalService {
     @Transactional
     public void reject(UUID id, String reason, UUID userId) {
         Berth entity = loadForApproval(id);
+        String finalReason = (reason != null && !reason.trim().isEmpty()) ? reason.trim() : "Từ chối phê duyệt";
         entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
                 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
-        entity.setRejectionReason(reason);
+        entity.setRejectionReason(finalReason);
         entity.setUpdatedAt(LocalDateTime.now());
         if (userId != null) entity.setUpdatedBy(userId);
         berthRepository.saveAndFlush(entity);
@@ -92,12 +93,13 @@ public class BerthApprovalService {
     public void reject(UUID id, String userId, String cap, String reason) {
         UUID uid = null;
         try { if (userId != null) uid = UUID.fromString(userId); } catch (Exception ignored) {}
+        String finalReason = (reason != null && !reason.trim().isEmpty()) ? reason.trim() : "Từ chối phê duyệt";
         if ("CUC".equalsIgnoreCase(cap)) {
             infrastructureApprovalService.approveC2(loadForApproval(id), InfrastructureType.PORT_TERMINAL,
-                    ApprovalStatus.REJECTED.name(), reason, uid);
+                    ApprovalStatus.REJECTED.name(), finalReason, uid);
         } else {
             infrastructureApprovalService.approveC1(loadForApproval(id), InfrastructureType.PORT_TERMINAL,
-                    ApprovalStatus.REJECTED.name(), reason, uid);
+                    ApprovalStatus.REJECTED.name(), finalReason, uid);
         }
         berthRepository.save(loadForApproval(id));
     }

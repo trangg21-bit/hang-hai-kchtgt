@@ -8,7 +8,7 @@ import {
   AuditOutlined,
 } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
-import type { Buoy } from '../../types/beacon';
+import type { Buoy } from '../../types/buoy';
 import type { BuoyStationResponse } from '../../services/buoy-station/types';
 import type {
   BuoyAsset,

@@ -540,14 +540,14 @@ export default function BerthDetailContent({
                 </div>
 
                 {/* ── Section 4: Thông tin phê duyệt (Toggle chuẩn AGENTS.md) ── */}
-                <div style={{ ...sectionBoxStyle, padding: approvalOpen ? '12px 18px 8px 18px' : '10px 18px' }}>
+                <div style={{ ...sectionBoxStyle, padding: approvalOpen ? sectionBoxStyle.padding : spaceMd }}>
                   <div
                     onClick={() => setApprovalOpen(!approvalOpen)}
                     style={{
                       ...sectionHeaderStyle,
-                      marginBottom: approvalOpen ? 10 : 0,
-                      paddingBottom: approvalOpen ? 8 : 0,
-                      borderBottom: approvalOpen ? '1px solid #f1f5f9' : 'none',
+                      marginBottom: approvalOpen ? spaceMd : 0,
+                      paddingBottom: approvalOpen ? spaceSm : 0,
+                      borderBottom: approvalOpen ? sectionHeaderStyle.borderBottom : 'none',
                       cursor: 'pointer',
                       userSelect: 'none',
                     }}
@@ -556,9 +556,7 @@ export default function BerthDetailContent({
                       <AuditOutlined style={{ color: actionPrimary }} />
                       <span>Thông tin phê duyệt</span>
                     </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {approvalOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
+                    {approvalOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                   </div>
                   {approvalOpen && (
                     <div className="chk-detail-grid">
@@ -570,7 +568,7 @@ export default function BerthDetailContent({
                           approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
                           approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục');
                         return (
-                          <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
+                          <div className={`chk-detail-row chk-detail-row--full ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
                               {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
@@ -638,6 +636,14 @@ export default function BerthDetailContent({
                         <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">{r.departmentApprovalContent || ''}</span>
                       </div>
+                      {r.rejectionReason && (
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                          <span className="chk-detail-value" style={{ color: statusCritical, fontWeight: fontWeightBold }}>
+                            {r.rejectionReason}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

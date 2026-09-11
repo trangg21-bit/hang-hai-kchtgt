@@ -29,6 +29,8 @@ public class BuoyResponse {
     private Double range;
     private String description;
     private UUID unitId;
+    private UUID orgUnitId;
+    private UUID navigationChannelId;
     private String unitName;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;

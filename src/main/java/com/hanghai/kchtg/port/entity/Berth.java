@@ -140,7 +140,7 @@ public class Berth extends BaseEntity implements ApprovableEntity {
     @Column(name = "opening_announcement_date")
     private LocalDateTime openingAnnouncementDate;
 
-    @Column(name = "opening_decision", length = 500)
+    @Column(name = "opening_decision", length = 2000)
     private String openingDecision;
 
     @Column(name = "investment_agreement", length = 2000)
@@ -180,6 +180,6 @@ public class Berth extends BaseEntity implements ApprovableEntity {
     @Column(name = "department_approval_content")
     private String departmentApprovalContent;
 
-    @Column(name = "rejection_reason", length = 500)
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 }

@@ -8,7 +8,6 @@ import { useState } from 'react';
 import { Tabs, Button, Modal } from 'antd';
 import { EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined, AuditOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import { fmtNum } from '../../utils/numFmt';
@@ -17,7 +16,7 @@ import toast from '../../components/ToastNotification';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { OrgUnitTreeOption } from '../../components/org-unit';
 import {
-  textTertiary, surfaceCard, borderDefault,
+  surfaceCard, borderDefault,
   actionPrimary, statusOperational, statusAttention, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
@@ -40,6 +39,7 @@ export interface BuoyDetailContentProps {
   symbolMap: Map<string, string>;
   symbolImageMap: Map<string, string>;
   ddToDms: (dd: number) => { d: number; m: number; s: number };
+  waterwayMap?: Map<string, string>;
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -153,6 +153,7 @@ export default function BuoyDetailContent({
   symbolMap,
   symbolImageMap,
   ddToDms,
+  waterwayMap,
 }: BuoyDetailContentProps) {
   const r = selectedRecord;
   const [operationOpen, setOperationOpen] = useState(true);
@@ -188,12 +189,7 @@ export default function BuoyDetailContent({
         .buoy-detail-content-wrapper .chk-detail-value,
         .buoy-detail-content-wrapper .ant-table,
         .buoy-detail-content-wrapper .ant-table-cell,
-        .buoy-detail-content-wrapper .ant-table-thead > tr > th,
-        .buoy-detail-content-wrapper .ant-tabs-tab,
-        .buoy-detail-content-wrapper .ant-btn,
-        .buoy-detail-content-wrapper .ant-select,
-        .buoy-detail-content-wrapper .ant-select-selection-item,
-        .buoy-detail-content-wrapper .ant-select-item {
+        .buoy-detail-content-wrapper .ant-btn {
           font-size: 13.5px !important;
         }
 
@@ -201,15 +197,20 @@ export default function BuoyDetailContent({
           display: grid !important;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
           column-gap: 28px !important;
-          row-gap: 6px !important;
+          row-gap: 0 !important;
           padding: 4px 0 !important;
         }
 
         .buoy-detail-content-wrapper .chk-detail-row {
           display: flex !important;
-          align-items: baseline !important;
-          min-height: 28px !important;
-          line-height: 1.5 !important;
+          align-items: flex-start !important;
+          min-height: 36px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          overflow: visible !important;
+          padding: 7px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          gap: 10px !important;
         }
 
         .buoy-detail-content-wrapper .chk-detail-row--full {
@@ -307,6 +308,7 @@ export default function BuoyDetailContent({
                       return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                     })()],
                     ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || ''],
+                    ['Thuộc luồng hàng hải', waterwayMap?.get(r.navigationChannelId || '') || r.navigationChannelId || ''],
                     ['Phân loại', r.classification || ''],
                     ['Phân loại phao', r.classificationBuoy || ''],
                     ['Phân loại tiêu', r.classificationMark || ''],
@@ -330,7 +332,7 @@ export default function BuoyDetailContent({
                   ['Diện tích m²', r.area != null ? fmtNum(r.area) : ''],
                   ['Chiều cao thân phao m', r.bodyHeight != null ? fmtNum(r.bodyHeight) : ''],
                   ['Đường kính phao m', r.diameter != null ? fmtNum(r.diameter) : ''],
-                  ['Đèn biển', r.beaconLight || ''],
+                  ['Đèn hiệu', r.beaconLight || ''],
                   ['Chiều cao tháp đèn', r.towerHeight != null ? fmtNum(r.towerHeight) : ''],
                   ['Chiều cao tâm sáng', r.lightHeight != null ? fmtNum(r.lightHeight) : ''],
                   ['Chủng loại đèn', r.lightModel || ''],
@@ -582,7 +584,7 @@ export default function BuoyDetailContent({
             if (pts.length > 0) {
               const rawWkt = (r as any).coordinates || '';
               let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
-              let wkt = '';
+              let wkt: string;
               if (rawWkt.startsWith('LINESTRING')) {
                 geom = 'LINE';
                 wkt = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;

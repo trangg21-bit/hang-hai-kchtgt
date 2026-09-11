@@ -456,7 +456,8 @@ export default function ShipRepairYardList() {
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
     setPage(1);
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
@@ -606,10 +607,11 @@ export default function ShipRepairYardList() {
         <Input
           placeholder="Tìm theo tên cơ sở sửa chữa, đóng tàu"
           allowClear
+          prefix={<SearchOutlined style={{ color: textTertiary }} />}
           value={filterName}
-          onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+          onChange={(e) => setFilterName(e.target.value)}
           onPressEnter={handleFilterApply}
-          style={{ borderRadius: radiusPill, height: 40 }}
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
         />
       </div>
 
@@ -635,10 +637,11 @@ export default function ShipRepairYardList() {
         <Input
           placeholder="Tìm theo mã cơ sở sửa chữa, đóng tàu"
           allowClear
+          prefix={<SearchOutlined style={{ color: textTertiary }} />}
           value={filterCode}
-          onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+          onChange={(e) => setFilterCode(e.target.value)}
           onPressEnter={handleFilterApply}
-          style={{ borderRadius: radiusPill, height: 40 }}
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
         />
       </div>
 
@@ -686,11 +689,20 @@ export default function ShipRepairYardList() {
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-        <DatePicker.RangePicker format="DD/MM/YYYY"
-          placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="range-single-panel"
+        <DatePicker.RangePicker
+          format="DD/MM/YYYY"
+          placeholder={['Từ ngày', 'Đến ngày']}
+          allowClear
+          popupClassName="chk-range-datepicker-popup"
+          classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
           value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-          onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+          onChange={(dates) => {
+            setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
+            setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
+            setPage(1);
+          }}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
       </div>
     </>
   );

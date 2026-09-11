@@ -77,7 +77,7 @@ public class ShipRepairYard extends BaseEntity {
     @Column(name = "usage_function", length = 255)
     private String usageFunction;          // Công năng sử dụng
 
-    @Column(name = "workshop_area", precision = 15, scale = 2)
+    @Column(name = "workshop_area", precision = 28, scale = 4)
     private BigDecimal workshopArea;       // Diện tích nhà xưởng, kho bãi (m2)
 
     @Column(name = "vessel_type", length = 255)

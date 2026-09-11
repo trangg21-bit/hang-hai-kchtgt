@@ -6,8 +6,6 @@ import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
 import com.hanghai.kchtg.beacon.entity.Buoy;
-import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.beacon.service.BuoyService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
@@ -46,12 +44,6 @@ class BuoyServiceTest {
 
     @Mock
     private BuoyRepository buoyRepo;
-
-    @Mock
-    private BeaconStationRepository beaconStationRepo;
-
-    @Mock
-    private BeaconHistoryRepository historyRepo;
 
     @Mock
     private com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository infraHistoryRepo;
@@ -229,7 +221,6 @@ class BuoyServiceTest {
             CreateBuoyRequest request = makeCreateRequest();
 
             when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(false);
             when(buoyRepo.save(any())).thenAnswer(invocation -> {
                 Buoy entity = invocation.getArgument(0);
                 setId(entity, savedId);
@@ -243,7 +234,7 @@ class BuoyServiceTest {
             assertThat(result.getName()).isEqualTo("Phao tiêu mới");
             assertThat(result.getType()).isEqualTo("SAFE_WATER");
             assertThat(result.getStatus()).isEqualTo("DRAFT");
-            assertThat(result.getApprovalStatus()).isEqualTo("PROPOSED");
+            assertThat(result.getApprovalStatus()).isEqualTo("DRAFT");
 
             verify(buoyRepo, atLeastOnce()).save(any());
             verify(infraHistoryRepo).save(any());
@@ -264,20 +255,6 @@ class BuoyServiceTest {
         }
 
         @Test
-        @DisplayName("create with duplicate code in beaconStationRepo — throws IllegalArgumentException")
-        void createDuplicateCodeInBeaconStation() {
-            CreateBuoyRequest request = makeCreateRequest();
-            when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(true);
-
-            assertThatThrownBy(() -> service.create(request))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Đã tồn tại");
-
-            verify(buoyRepo, never()).save(any());
-        }
-
-        @Test
         @DisplayName("create with action=submit — sets PENDING_APPROVAL status")
         void createWithSubmitAction() {
             UUID savedId = UUID.randomUUID();
@@ -285,7 +262,6 @@ class BuoyServiceTest {
             request.setAction("submit");
 
             when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(false);
             when(buoyRepo.save(any())).thenAnswer(invocation -> {
                 Buoy entity = invocation.getArgument(0);
                 setId(entity, savedId);
@@ -305,7 +281,6 @@ class BuoyServiceTest {
             request.setLastInspectionDate(LocalDate.now().plusDays(30));
 
             when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconStationRepo.existsByCode("PHAO-002")).thenReturn(false);
 
             assertThatThrownBy(() -> service.create(request))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -505,7 +480,7 @@ class BuoyServiceTest {
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("PENDING_APPROVAL");
-            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.PROPOSED);
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.PENDING_APPROVAL);
             assertThat(saved.getApprovalLevel()).isEqualTo(1);
             verify(notificationService).sendApprovalNotificationBuoy(entity);
         }
@@ -537,7 +512,7 @@ class BuoyServiceTest {
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
-            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
             assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDate()).isNotNull();
             assertThat(result.getStatus()).isEqualTo("APPROVED_L1");

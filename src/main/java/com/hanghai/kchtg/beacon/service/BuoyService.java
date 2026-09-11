@@ -5,16 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
-import com.hanghai.kchtg.beacon.entity.BeaconHistory;
-import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
-import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -50,8 +45,6 @@ import java.util.*;
 public class BuoyService {
 
     private final BuoyRepository buoyRepo;
-    private final BeaconStationRepository beaconStationRepo;
-    private final BeaconHistoryRepository historyRepo;
     private final InfrastructureHistoryRepository infraHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
@@ -121,7 +114,7 @@ public class BuoyService {
             }
         }
         String code = prefix + String.format("%03d", nextNumber);
-        while (buoyRepo.existsByCode(code) || beaconStationRepo.existsByCode(code)) {
+        while (buoyRepo.existsByCode(code)) {
             nextNumber++;
             code = prefix + String.format("%03d", nextNumber);
         }
@@ -144,7 +137,7 @@ public class BuoyService {
             }
         }
         String code = String.format("PT-%06d", nextNumber);
-        while (buoyRepo.existsByCode(code) || beaconStationRepo.existsByCode(code)) {
+        while (buoyRepo.existsByCode(code)) {
             nextNumber++;
             code = String.format("PT-%06d", nextNumber);
         }
@@ -163,8 +156,7 @@ public class BuoyService {
             log.info("Auto-generated buoy code: {}", code);
         }
 
-        if (buoyRepo.existsByCode(code)
-                || beaconStationRepo.existsByCode(code)) {
+        if (buoyRepo.existsByCode(code)) {
             throw new IllegalArgumentException("Đã tồn tại: " + code);
         }
 
@@ -179,7 +171,9 @@ public class BuoyService {
                 .lightCharacteristic(request.getLightCharacteristic())
                 .range(request.getRange())
                 .description(request.getDescription())
-                .unitId(request.getUnitId())
+                .unitId(request.getUnitId() != null ? request.getUnitId() : request.getOrgUnitId())
+                .orgUnitId(request.getOrgUnitId() != null ? request.getOrgUnitId() : request.getUnitId())
+                .navigationChannelId(request.getNavigationChannelId())
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
@@ -213,9 +207,9 @@ public class BuoyService {
                 .approvalStatus(ApprovalStatus.DRAFT)
                 .build();
 
-        if (entity.getUnitId() == null) {
-            entity.setUnitId(getCurrentUserUnitId());
-        }
+        java.util.UUID effectiveUnitId = entity.getUnitId() != null ? entity.getUnitId() : getCurrentUserUnitId();
+        entity.setUnitId(effectiveUnitId);
+        entity.setOrgUnitId(effectiveUnitId);
 
         if ("submit".equals(request.getAction())) {
             entity.setStatus("PENDING_APPROVAL");
@@ -260,7 +254,7 @@ public class BuoyService {
             entity = buoyRepo.save(entity);
         }
 
-        logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
+        logHistory(entity, InfrastructureHistoryStatus.CREATED, ApprovalLevel.LEVEL_0, null, null, toJson(entity), null);
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
@@ -319,6 +313,8 @@ public class BuoyService {
                 .color(entity.getColor()).shape(entity.getShape())
                 .lightCharacteristic(entity.getLightCharacteristic()).range(entity.getRange())
                 .description(entity.getDescription()).unitId(entity.getUnitId())
+                .orgUnitId(entity.getOrgUnitId())
+                .navigationChannelId(entity.getNavigationChannelId())
                 .lastInspectionDate(entity.getLastInspectionDate()).nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive()).status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus()).approvalLevel(entity.getApprovalLevel())
@@ -406,8 +402,14 @@ public class BuoyService {
             entity.setRange(request.getRange());
         if (request.getDescription() != null)
             entity.setDescription(request.getDescription());
-        if (request.getUnitId() != null)
-            entity.setUnitId(request.getUnitId());
+        java.util.UUID updateUnitId = request.getOrgUnitId() != null ? request.getOrgUnitId() : request.getUnitId();
+        if (updateUnitId != null) {
+            entity.setUnitId(updateUnitId);
+            entity.setOrgUnitId(updateUnitId);
+        }
+        if (request.getNavigationChannelId() != null) {
+            entity.setNavigationChannelId(request.getNavigationChannelId());
+        }
         if (request.getLastInspectionDate() != null) {
             entity.setLastInspectionDate(request.getLastInspectionDate());
         }
@@ -429,7 +431,7 @@ public class BuoyService {
         if (request.getCode() != null && !request.getCode().trim().isEmpty()
                 && !request.getCode().trim().equals(entity.getCode())) {
             String newCode = request.getCode().trim();
-            if (buoyRepo.existsByCode(newCode) || beaconStationRepo.existsByCode(newCode)) {
+            if (buoyRepo.existsByCode(newCode)) {
                 throw new IllegalArgumentException("Đã tồn tại mã phao, tiêu: " + newCode);
             }
             entity.setCode(newCode);
@@ -563,7 +565,10 @@ public class BuoyService {
         }
 
         // Only record history when the record is already approved
-        if (wasApproved) {
+        String newJson = toJson(entity);
+        if (wasApproved && !compareJsonNodes(oldJson, newJson)) {
+            logHistory(entity, InfrastructureHistoryStatus.UPDATED, ApprovalLevel.LEVEL_0,
+                    getChangedFields(oldJson, newJson), oldJson, newJson, null);
             changeHistoryService.recordChanges("Buoy", entity.getId().toString(),
                     actorId, snapshot, entity);
         }
@@ -599,7 +604,7 @@ public class BuoyService {
         java.util.UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
-        logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
+        logHistory(entity, InfrastructureHistoryStatus.DELETED, ApprovalLevel.LEVEL_0, null, null, toJson(entity), null);
         if (wasApproved) {
             changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
         }
@@ -658,7 +663,7 @@ public class BuoyService {
         }
         buoyRepo.save(entity);
 
-        logHistory(entity, BeaconHistoryActionType.APPROVE_L1, null, null, null);
+        logHistory(entity, InfrastructureHistoryStatus.APPROVED, ApprovalLevel.LEVEL_1, null, null, null, null);
         notificationService.sendL2ApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
@@ -686,7 +691,7 @@ public class BuoyService {
         }
         buoyRepo.save(entity);
 
-        logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
+        logHistory(entity, InfrastructureHistoryStatus.APPROVED, ApprovalLevel.LEVEL_2, null, null, null, null);
         pointObjectSyncService.syncToMapBuoy(entity);
 
         return toResponse(entity);
@@ -720,7 +725,8 @@ public class BuoyService {
         entity.setRejectionReason(rejectReason);
         buoyRepo.save(entity);
 
-        logHistory(entity, BeaconHistoryActionType.REJECT, null, null, rejectReason);
+        logHistory(entity, InfrastructureHistoryStatus.REJECTED,
+                rejectedAtC2 ? ApprovalLevel.LEVEL_2 : ApprovalLevel.LEVEL_1, null, null, null, rejectReason);
         notificationService.sendRejectionNotificationBuoy(entity, rejectReason);
 
         return toResponse(entity);
@@ -754,48 +760,21 @@ public class BuoyService {
     }
 
     private void logHistory(Buoy entity,
-            BeaconHistoryActionType action, String fields, String previousJson, String newJson) {
-        Long legacyUserId = resolveCurrentUserId();
-        UUID currentUserId = SecurityUtils.getCurrentUserId();
-        BeaconHistory entry = BeaconHistory.builder()
-                .beaconType(BeaconType.BUOY)
-                .entityId(entity.getId())
-                .actionType(action)
-                .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
-                .previousValue(previousJson)
-                .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
-                .changedBy(legacyUserId)
-                .changedAt(LocalDateTime.now())
-                .build();
-        // TODO (2026-08-26): tạm ẩn ghi beacon_history — DB đang chạy chưa có bảng này
-        // (ERROR: relation "beacon_history" does not exist; migration
-        // V20260803370000__repair_all_schema_types_and_columns.sql chưa được áp dụng).
-        // if (historyRepo != null) {
-        //     historyRepo.save(entry);
-        // }
-
-        if (infraHistoryRepo != null && entity.getId() != null && action != BeaconHistoryActionType.UPDATE) {
-            InfrastructureHistoryStatus status = switch (action) {
-                case CREATE -> InfrastructureHistoryStatus.CREATED;
-                case SOFT_DELETE -> InfrastructureHistoryStatus.DELETED;
-                case APPROVE_L1, APPROVE_L2 -> InfrastructureHistoryStatus.APPROVED;
-                case REJECT -> InfrastructureHistoryStatus.REJECTED;
-                default -> InfrastructureHistoryStatus.UPDATED;
-            };
+            InfrastructureHistoryStatus status, ApprovalLevel level,
+            String fields, String previousJson, String newJson, String reason) {
+        if (infraHistoryRepo != null && entity.getId() != null) {
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
             infraHistoryRepo.save(InfrastructureHistory.builder()
                     .refId(entity.getId())
                     .refType(InfrastructureType.BUOY)
-                    .approvalLevel(action == BeaconHistoryActionType.APPROVE_L2
-                            ? ApprovalLevel.LEVEL_2
-                            : (action == BeaconHistoryActionType.APPROVE_L1
-                                    ? ApprovalLevel.LEVEL_1
-                                    : ApprovalLevel.LEVEL_0))
-                    .status(status)
+                    .approvalLevel(level != null ? level : ApprovalLevel.LEVEL_0)
+                    .status(status != null ? status : InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(currentUserId)
                     .approvedDate(LocalDateTime.now())
-                    .changedField(fields)
-                    .previousValue(action == BeaconHistoryActionType.CREATE ? null : previousJson)
-                    .newValue(action == BeaconHistoryActionType.CREATE ? null : newJson)
+                    .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
+                    .previousValue(previousJson)
+                    .newValue(newJson)
+                    .reason(reason)
                     .build());
         }
     }
@@ -840,6 +819,8 @@ public class BuoyService {
                 .range(entity.getRange())
                 .description(entity.getDescription())
                 .unitId(entity.getUnitId())
+                .orgUnitId(entity.getOrgUnitId() != null ? entity.getOrgUnitId() : entity.getUnitId())
+                .navigationChannelId(entity.getNavigationChannelId())
                 .unitName(unitName)
                 .latitude(latitude)
                 .longitude(longitude)
@@ -929,10 +910,6 @@ public class BuoyService {
 
     private java.util.UUID getCurrentUserUnitId() {
         return null;
-    }
-
-    private Long resolveCurrentUserId() {
-        return 1L;
     }
 
     private java.util.UUID resolveCreatedBy(Buoy entity) {
