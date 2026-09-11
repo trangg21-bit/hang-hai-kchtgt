@@ -13,14 +13,17 @@ BEGIN
     ) AND EXISTS (
         SELECT 1 FROM information_schema.tables 
         WHERE table_schema = 'public' AND table_name = 'gis_spatial_objects'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'vts_zone' AND column_name = 'coordinates'
     ) THEN
-        FOR rec IN
-            SELECT z.id, z.name, z.code, z.coordinates, z.vts_system_id, s.org_unit_id
-            FROM vts_zone z
-            LEFT JOIN vts_system s ON s.id = z.vts_system_id
-            WHERE z.coordinates IS NOT NULL 
-              AND TRIM(z.coordinates) <> '' 
-              AND z.spatial_id IS NULL
+        FOR rec IN EXECUTE
+            'SELECT z.id, z.name, z.code, z.coordinates, z.vts_system_id, s.org_unit_id ' ||
+            'FROM vts_zone z ' ||
+            'LEFT JOIN vts_system s ON s.id = z.vts_system_id ' ||
+            'WHERE z.coordinates IS NOT NULL ' ||
+            '  AND TRIM(z.coordinates) <> '''' ' ||
+            '  AND z.spatial_id IS NULL'
         LOOP
             new_spatial_id := gen_random_uuid();
             zone_code_val := 'VTS_ZONE_' || SUBSTRING(REPLACE(new_spatial_id::text, '-', ''), 1, 16);
