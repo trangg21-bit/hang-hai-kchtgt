@@ -126,4 +126,37 @@ describe('permissionStore Unit Tests', () => {
     expect(usePermissionStore.getState().permissions).toEqual(['vts:read', 'vts:approvec1']);
     expect(usePermissionStore.getState().hasPermission('vts:approvec1')).toBe(true);
   });
+
+  it('should implicitly grant read permission when user has operational permissions (Implicit Read)', () => {
+    // User only has approvec1 for VTS, no explicit read
+    useAuthStore.setState({
+      user: { id: '1', username: 'evaluator', permissions: ['vts:approvec1'] } as any,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('vts:read')).toBe(true);
+    expect(store.hasPermission('vts:view')).toBe(true);
+    expect(store.hasPermission('vts:search')).toBe(true);
+    expect(store.hasPermission('vts:delete')).toBe(false);
+
+    // User only has create for LRIT station
+    useAuthStore.setState({
+      user: { id: '2', username: 'creator', permissions: ['coastalstationlrit:create'] } as any,
+    });
+
+    expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
+    expect(store.hasPermission('coastalstationlrit:delete')).toBe(false);
+  });
+
+  it('should cover child stations when user has parent specialstation permission', () => {
+    useAuthStore.setState({
+      user: { id: '3', username: 'specialAdmin', permissions: ['specialstation:read'] } as any,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
+    expect(store.hasPermission('coastalstationinmarsat:read')).toBe(true);
+    expect(store.hasPermission('coastalstationhaiphong:read')).toBe(true);
+    expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(true);
+  });
 });

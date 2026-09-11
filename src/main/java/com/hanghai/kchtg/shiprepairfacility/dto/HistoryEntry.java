@@ -21,4 +21,7 @@ public class HistoryEntry {
     private String approvedBy;
     private LocalDateTime approvedDate;
     private String reason;
+    private String changedField;
+    private String previousValue;
+    private String newValue;
 }

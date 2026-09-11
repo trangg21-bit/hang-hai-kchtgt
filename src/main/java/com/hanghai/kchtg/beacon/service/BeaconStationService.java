@@ -597,7 +597,7 @@ public class BeaconStationService {
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(currentUserId)
                         .approvedDate(now)
-                        .changedField(fieldName)
+                        .changedField(field)
                         .previousValue(oldVal)
                         .newValue(newVal)
                         .reason("Cập nhật thông tin " + fieldName)
@@ -1276,7 +1276,7 @@ public class BeaconStationService {
             if ("false".equalsIgnoreCase(rawValue)) return "Ngừng hoạt động";
             return rawValue;
         }
-        if ("coordinates".equals(field) || "Tọa độ GIS".equals(field)) {
+        if ("coordinates".equals(field) || "Tọa độ".equals(field) || "Tọa độ GIS".equals(field)) {
             if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
                 return "Chưa có";
             }

@@ -13,6 +13,42 @@ export interface PermissionState {
   setPermissions: (permissions: string[]) => void;
 }
 
+const RESOURCE_CANONICAL_MAP: Record<string, string> = {
+  vtssystem: 'vts',
+  tramradar: 'radarstation',
+  beaconlight: 'beaconstation',
+  interconnect: 'connection',
+  groupmember: 'group',
+  shiprepair: 'shiprepairfacility',
+  shiprepairyard: 'shiprepairfacility',
+};
+
+const RESOURCE_PARENT_DOMAINS: Record<string, string[]> = {
+  coastalstationlrit: ['specialstation', 'coastalstation', 'station', 'data'],
+  coastalstationinmarsat: ['specialstation', 'coastalstation', 'station', 'data'],
+  coastalstationhaiphong: ['specialstation', 'coastalstation', 'station', 'data'],
+  coastalstationcospassarsat: ['specialstation', 'coastalstation', 'station', 'data'],
+  vtsoperationcenter: ['vts'],
+  portplanning: ['document'],
+  planningadjustment: ['document'],
+  operationplan: ['document'],
+  maintenanceplan: ['document'],
+};
+
+export function canonicalResource(resource: string): string {
+  if (!resource) return '';
+  const lower = resource.toLowerCase();
+  return RESOURCE_CANONICAL_MAP[lower] || lower;
+}
+
+export function isResourceCoveredBy(candidateResource: string, targetResource: string): boolean {
+  const canonicalCandidate = canonicalResource(candidateResource);
+  const canonicalTarget = canonicalResource(targetResource);
+  if (canonicalCandidate === canonicalTarget) return true;
+  const parents = RESOURCE_PARENT_DOMAINS[canonicalTarget];
+  return parents ? parents.includes(canonicalCandidate) : false;
+}
+
 /**
  * Normalize legacy dot-notation keys to standard backend permission keys {resource}:{action}.
  */
@@ -75,19 +111,44 @@ export function hasPermissionFromList(grantedPermissions: string[] | undefined, 
     return true;
   }
 
-  const [resource, action] = normalizedKey.split(':', 2);
-  if (!resource) return false;
+  const [rawResource, action] = normalizedKey.split(':', 2);
+  if (!rawResource) return false;
 
-  if (permissions.has(`${resource}:manage`) || permissions.has(`${resource}:*`)) {
+  const resource = canonicalResource(rawResource);
+
+  if (permissions.has(`${rawResource}:manage`) || permissions.has(`${resource}:manage`) ||
+      permissions.has(`${rawResource}:*`) || permissions.has(`${resource}:*`)) {
     return true;
   }
 
-  if (['create', 'update', 'delete'].includes(action || '') && permissions.has(`${resource}:write`)) {
+  // Parent domain match
+  const parents = RESOURCE_PARENT_DOMAINS[resource];
+  if (parents) {
+    for (const parent of parents) {
+      if (permissions.has(`${parent}:${action}`) || permissions.has(`${parent}:manage`) || permissions.has(`${parent}:*`)) {
+        return true;
+      }
+    }
+  }
+
+  // Implicit Read: Có bất kỳ quyền thao tác nào trên resource (hoặc domain bao trùm) thì mặc định có quyền xem
+  if (action === 'read' || action === 'view' || action === 'search') {
+    for (const p of permissions) {
+      const pRes = p.split(':', 2)[0];
+      if (isResourceCoveredBy(pRes, resource)) {
+        return true;
+      }
+    }
+  }
+
+  if (['create', 'update', 'delete'].includes(action || '') &&
+      (permissions.has(`${rawResource}:write`) || permissions.has(`${resource}:write`))) {
     return true;
   }
 
   if (action === 'approve' && (
-    permissions.has(`${resource}:approvec1`) || permissions.has(`${resource}:approvec2`)
+    permissions.has(`${rawResource}:approvec1`) || permissions.has(`${resource}:approvec1`) ||
+    permissions.has(`${rawResource}:approvec2`) || permissions.has(`${resource}:approvec2`)
   )) {
     return true;
   }

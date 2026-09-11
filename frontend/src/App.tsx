@@ -293,10 +293,10 @@ export default function App() {
                 <Route path="/radar-station/:id" element={<PermissionGuard permission="radarstation:read"><RadarStationForm /></PermissionGuard>} />
 
                 {/* Hệ thống VTS */}
-                <Route path="/vts-system" element={<PermissionGuard permission="vts:read"><VtsSystemList /></PermissionGuard>} />
+                <Route path="/vts-system" element={<PermissionGuard permission={['vts:read', 'vtssystem:read']}><VtsSystemList /></PermissionGuard>} />
 
                 {/* Trung tâm điều hành VTS */}
-                <Route path="/vts-operation-center" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterList /></PermissionGuard>} />
+                <Route path="/vts-operation-center" element={<PermissionGuard permission={['vtsoperationcenter:read', 'vts:read']}><VtsOperationCenterList /></PermissionGuard>} />
 
                 {/* Hệ thống trạm bờ AIS */}
                 <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />

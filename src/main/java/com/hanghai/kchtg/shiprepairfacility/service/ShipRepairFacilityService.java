@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,6 +45,7 @@ public class ShipRepairFacilityService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     public ShipRepairFacilityResponse create(ShipRepairFacilityCreateRequest request, UUID createdBy) {
         FieldWriteGuard.validateObject(request);
@@ -166,6 +168,26 @@ public class ShipRepairFacilityService {
         if (request.getOrgUnitId() != null)
             entity.setOrgUnitId(request.getOrgUnitId());
 
+        String oldCoord = null;
+        GisGeometryType oldGeom = null;
+        if (entity.getSpatialId() != null) {
+            Optional<GisSpatialObject> sp = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (sp.isPresent()) {
+                oldCoord = sp.get().getCoordinates();
+                oldGeom = sp.get().getGeometryType();
+            }
+        }
+        if (request.getCoordinates() != null) {
+            String newCoord = request.getCoordinates().trim();
+            if (!java.util.Objects.equals(oldCoord, newCoord)) {
+                previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
+            }
+            GisGeometryType newGeom = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            if (oldGeom != newGeom) {
+                previousValues.put("geometryType", oldGeom != null ? oldGeom.name() : "Chưa có");
+            }
+        }
+
         if (request.getCoordinates() != null) {
             if (request.getCoordinates().trim().isEmpty()) {
                 if (entity.getSpatialId() != null) {
@@ -206,16 +228,32 @@ public class ShipRepairFacilityService {
 
         ShipRepairFacility saved = repository.save(entity);
 
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .status(InfrastructureHistoryStatus.UPDATED)
-                .approvedBy(updatedBy)
-                .approvedDate(LocalDateTime.now())
-                .changedField(formatChangedFields(previousValues))
-                .previousValue(formatPreviousValues(previousValues))
-                .newValue(formatNewValues(saved, previousValues))
-                .build());
+        if (!previousValues.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                String field = entry.getKey();
+                String oldVal = formatDisplayValue(field, entry.getValue());
+                String rawNew;
+                if ("coordinates".equals(field)) {
+                    rawNew = request.getCoordinates();
+                } else if ("geometryType".equals(field)) {
+                    rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : GisGeometryType.POINT.name();
+                } else {
+                    rawNew = currentFieldValue(saved, field);
+                }
+                String newVal = formatDisplayValue(field, rawNew);
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(saved.getId())
+                        .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(updatedBy)
+                        .approvedDate(now)
+                        .changedField(field)
+                        .previousValue(oldVal)
+                        .newValue(newVal)
+                        .build());
+            }
+        }
 
         return toResponse(saved);
     }
@@ -350,6 +388,10 @@ public class ShipRepairFacilityService {
                     ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
+            entry.setReason(h.getReason());
+            entry.setChangedField(h.getChangedField());
+            entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
+            entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
             return entry;
         }).toList();
     }
@@ -500,12 +542,31 @@ public class ShipRepairFacilityService {
     }
 
     private String formatDisplayValue(String field, String rawValue) {
-        if (rawValue == null || rawValue.isEmpty())
-            return "";
+        if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
+            return "Chưa có";
+        }
+        if ("coordinates".equals(field)) {
+            return rawValue.trim();
+        }
+        if ("geometryType".equals(field)) {
+            if (GisGeometryType.POINT.name().equals(rawValue)) return "Đối tượng điểm";
+            if (GisGeometryType.LINE.name().equals(rawValue) || "LINESTRING".equals(rawValue)) return "Đối tượng đường";
+            if (GisGeometryType.POLYGON.name().equals(rawValue)) return "Đối tượng vùng";
+            return rawValue;
+        }
         if ("orgUnitId".equals(field)) {
             try {
                 String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
                 return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("provinceId".equals(field)) {
+            try {
+                int pid = Integer.parseInt(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM provinces WHERE id = ?", String.class, pid);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
             } catch (Exception e) {
                 return rawValue;
             }

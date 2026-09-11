@@ -689,17 +689,142 @@ function stripPrefixByField(val: string, fName: string): string {
   return res;
 }
 
+function splitRespectingParentheses(str: string): string[] {
+  if (!str) return [];
+  const res: string[] = [];
+  let current = '';
+  let depth = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (char === '(') depth++;
+    else if (char === ')') depth = Math.max(0, depth - 1);
+
+    if ((char === ',' || char === '\n') && depth === 0) {
+      if (current.trim()) res.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) res.push(current.trim());
+  return res;
+}
+
 function parseZoneChanges(field: string, prevRaw: string, newRaw: string): HistoryChangeItem[] {
   const cleanPrev = stripPrefixByField(prevRaw, field);
   const cleanNew = stripPrefixByField(newRaw, field);
 
   const splitItems = (str: string) => {
     if (!str || str === '—' || str === '-' || str === '(null)' || str === 'null' || str === '(trống)' || str === 'undefined') return [];
-    return str.split(/[,\n]/).map((s) => stripPrefixByField(s.trim(), field)).filter(Boolean);
+    return splitRespectingParentheses(str).map((s) => stripPrefixByField(s.trim(), field)).filter(Boolean);
   };
 
   const prevItems = splitItems(cleanPrev);
   const newItems = splitItems(cleanNew);
+
+  // Helper bóc tách cấu trúc zone: "Tên (Mã) - Tọa độ: WKT - Loại hình: TYPE"
+  const extractZoneDetails = (str: string) => {
+    if (!str) return null;
+    let text = str.trim();
+    let coord: string | null = null;
+    let geomType: string | null = null;
+    let symbol: string | null = null;
+
+    const coordMatch = text.match(/(?:[-–—\s,;:]|^)Tọa độ:\s*(POINT\s*\([^)]+\)|LINESTRING\s*\([^)]+(?:\)[^)]*)*\)|LINE\s*\([^)]+\)|POLYGON\s*\(\([^)]+\)\)|MULTIPOINT\s*\([^)]+\)|[A-Z]+\s*\([^)]+\))/i);
+    if (coordMatch) {
+      coord = coordMatch[1].trim();
+      text = text.replace(coordMatch[0], '').trim();
+    }
+
+    const geomMatch = text.match(/(?:[-–—\s,;:]|^)Loại hình:\s*([A-Za-z0-9_]+|Đối tượng [^–—\n\r,;:]+)/i);
+    if (geomMatch) {
+      geomType = geomMatch[1].trim();
+      text = text.replace(geomMatch[0], '').trim();
+    }
+
+    const symbolMatch = text.match(/(?:[-–—\s,;:]|^)Biểu tượng:\s*([^–—\n\r,;:]+)/i);
+    if (symbolMatch) {
+      symbol = symbolMatch[1].trim();
+      text = text.replace(symbolMatch[0], '').trim();
+    }
+
+    const mapGeomLabel = (g: string | null) => {
+      if (!g) return '';
+      const u = g.toUpperCase();
+      if (u === 'POINT') return 'Đối tượng điểm';
+      if (u === 'LINE' || u === 'LINESTRING') return 'Đối tượng đường';
+      if (u === 'POLYGON') return 'Đối tượng vùng';
+      return g;
+    };
+
+    const cleanZoneName = text
+      .replace(/^[-–—\s]+|[-–—\s]+$/g, '')
+      .replace(/^(cũ|mới|thêm|xóa):\s*/i, '')
+      .trim();
+
+    return {
+      name: cleanZoneName,
+      coord,
+      geomType: mapGeomLabel(geomType),
+      symbol,
+    };
+  };
+
+  // Kiểm tra nếu có chuỗi zone chi tiết chứa Tọa độ / Loại hình
+  const prevDetail = extractZoneDetails(cleanPrev);
+  const newDetail = extractZoneDetails(cleanNew);
+
+  if ((prevDetail && (prevDetail.coord || prevDetail.geomType)) || (newDetail && (newDetail.coord || newDetail.geomType))) {
+    const detailResults: HistoryChangeItem[] = [];
+
+    // 1. Loại đối tượng GIS
+    const oldGeom = prevDetail?.geomType || '';
+    const newGeom = newDetail?.geomType || '';
+    if ((oldGeom || newGeom) && oldGeom !== newGeom) {
+      detailResults.push({
+        field: 'Loại đối tượng GIS',
+        oldValue: oldGeom,
+        newValue: newGeom,
+      });
+    }
+
+    // 2. Tọa độ GIS (kích hoạt renderCoordinatesDisplay chuẩn DMS)
+    const oldCoord = prevDetail?.coord || '';
+    const newCoord = newDetail?.coord || '';
+    if ((oldCoord || newCoord) && oldCoord !== newCoord) {
+      detailResults.push({
+        field: 'Tọa độ GIS',
+        oldValue: oldCoord,
+        newValue: newCoord,
+      });
+    }
+
+    // 3. Biểu tượng bản đồ (nếu có)
+    const oldSym = prevDetail?.symbol || '';
+    const newSym = newDetail?.symbol || '';
+    if ((oldSym || newSym) && oldSym !== newSym) {
+      detailResults.push({
+        field: 'Biểu tượng bản đồ',
+        oldValue: oldSym,
+        newValue: newSym,
+      });
+    }
+
+    // 4. Tên / mã vùng VTS (nếu thay đổi tên)
+    const oldName = prevDetail?.name || '';
+    const newName = newDetail?.name || '';
+    if (oldName && newName && oldName !== newName) {
+      detailResults.push({
+        field: 'Vùng VTS',
+        oldValue: oldName,
+        newValue: newName,
+      });
+    }
+
+    if (detailResults.length > 0) {
+      return detailResults;
+    }
+  }
 
   const hasKeywords = /(xóa|thêm|cũ:|mới:)/i.test(cleanPrev) || /(xóa|thêm|cũ:|mới:)/i.test(cleanNew);
   if (!hasKeywords) {
@@ -713,15 +838,19 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
     if (maxLen > 0) {
       const res: HistoryChangeItem[] = [];
       for (let i = 0; i < maxLen; i++) {
-        res.push({
-          field,
-          oldValue: prevItems[i] || '',
-          newValue: newItems[i] || '',
-        });
+        const p = (prevItems[i] || '').trim();
+        const n = (newItems[i] || '').trim();
+        if (p !== n && (p || n)) {
+          res.push({
+            field,
+            oldValue: p,
+            newValue: n,
+          });
+        }
       }
-      return res;
+      if (res.length > 0) return res;
     }
-    return [{ field, oldValue: cleanPrev !== '' ? cleanPrev : '', newValue: cleanNew !== '' ? cleanNew : '' }];
+    return cleanPrev !== cleanNew ? [{ field, oldValue: cleanPrev || '', newValue: cleanNew || '' }] : [];
   }
 
   const removed: string[] = [];
@@ -760,11 +889,15 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
   // 2. Chỉnh sửa vùng: giá trị cũ là tên cũ, giá trị mới là tên mới
   const modCount = Math.max(modifiedOld.length, modifiedNew.length);
   for (let i = 0; i < modCount; i++) {
-    results.push({
-      field,
-      oldValue: modifiedOld[i] || '',
-      newValue: modifiedNew[i] || '',
-    });
+    const o = (modifiedOld[i] || '').trim();
+    const n = (modifiedNew[i] || '').trim();
+    if (o !== n && (o || n)) {
+      results.push({
+        field,
+        oldValue: o,
+        newValue: n,
+      });
+    }
   }
 
   // 3. Thêm mới vùng: giá trị cũ là '', giá trị mới là tên vùng
@@ -772,7 +905,9 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
     results.push({ field, oldValue: '', newValue: name });
   });
 
-  return results.length > 0 ? results : [{ field, oldValue: cleanPrev || '', newValue: cleanNew || '' }];
+  if (results.length > 0) return results;
+  const stripKw = (s: string) => s.replace(/^(cũ|mới|thêm|xóa):\s*/i, '').trim();
+  return stripKw(cleanPrev) !== stripKw(cleanNew) ? [{ field, oldValue: cleanPrev || '', newValue: cleanNew || '' }] : [];
 }
 
 function parseAttachmentChanges(field: string, prevRaw: string, newRaw: string): HistoryChangeItem[] {

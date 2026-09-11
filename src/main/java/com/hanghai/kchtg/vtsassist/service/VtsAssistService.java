@@ -477,7 +477,7 @@ public class VtsAssistService {
               .status(InfrastructureHistoryStatus.UPDATED)
               .approvedBy(currentUserId)
               .approvedDate(now)
-              .changedField(fieldName)
+              .changedField(field)
               .previousValue(formatDisplayValue(field, oldVal))
               .newValue(formatDisplayValue(field, newVal))
               .reason("Cập nhật thông tin " + fieldName)
@@ -694,6 +694,12 @@ public class VtsAssistService {
       if (ApprovalStatus.REJECTED_LEVEL1.name().equalsIgnoreCase(rawValue) || "REJECTED_LEVEL1".equalsIgnoreCase(rawValue)) return "Bị Cảng vụ trả về";
       if (ApprovalStatus.REJECTED_LEVEL2.name().equalsIgnoreCase(rawValue) || ApprovalStatus.REJECTED.name().equalsIgnoreCase(rawValue) || "REJECTED".equalsIgnoreCase(rawValue)) return "Bị Cục trả về";
       return rawValue;
+    }
+    if ("coordinates".equals(field) || "Tọa độ".equals(field) || "Tọa độ GIS".equals(field)) {
+      if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
+        return "Chưa có";
+      }
+      return rawValue.trim();
     }
     return rawValue;
   }

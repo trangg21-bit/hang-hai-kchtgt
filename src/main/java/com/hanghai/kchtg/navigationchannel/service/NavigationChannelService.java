@@ -396,17 +396,29 @@ public class NavigationChannelService {
         nc.setUpdatedBy(updatedBy);
         NavigationChannel saved = repo.save(nc);
 
-        // F-039 D3: ghi history UPDATED sau save (cùng transaction)
-        approvalHistoryRepo.save(InfrastructureHistory.builder()
-                .refId(saved.getId())
-                .refType(InfrastructureType.NAVIGATION_CHANNEL)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.UPDATED)
-                .approvedBy(updatedBy)
-                .changedField(formatChangedFields(previousValues))
-                .previousValue(formatPreviousValues(previousValues))
-                .newValue(formatNewValues(saved, previousValues, manualNewValues))
-                .build());
+        // F-039 D3: ghi history UPDATED sau save (cùng transaction) - lưu từng trường riêng biệt
+        if (!previousValues.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                String field = entry.getKey();
+                String oldVal = formatDisplayValue(field, entry.getValue());
+                String rawNew = manualNewValues.containsKey(field)
+                        ? manualNewValues.get(field)
+                        : currentFieldValue(saved, field);
+                String newVal = formatDisplayValue(field, rawNew);
+                approvalHistoryRepo.save(InfrastructureHistory.builder()
+                        .refId(saved.getId())
+                        .refType(InfrastructureType.NAVIGATION_CHANNEL)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(updatedBy)
+                        .approvedDate(now)
+                        .changedField(field)
+                        .previousValue(oldVal)
+                        .newValue(newVal)
+                        .build());
+            }
+        }
         return toResponse(saved);
     }
 
@@ -522,8 +534,43 @@ public class NavigationChannelService {
                     ? userNames.getOrDefault(h.getApprovedBy(), null)
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
+            entry.setReason(h.getReason());
+            entry.setChangedField(h.getChangedField());
+            entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
+            entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
             return entry;
         }).collect(Collectors.toList());
+    }
+
+    public String formatDisplayValue(String field, String rawValue) {
+        if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
+            return "Chưa có";
+        }
+        if (NavigationChannelUpdateRequest.Fields.coordinates.equals(field) || "coordinates".equals(field)) {
+            return rawValue.trim();
+        }
+        if (NavigationChannelUpdateRequest.Fields.orgUnitId.equals(field) || "orgUnitId".equals(field)) {
+            try {
+                String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
+                return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if (NavigationChannelUpdateRequest.Fields.conditionStatus.equals(field) || "conditionStatus".equals(field)) {
+            if (ConditionStatus.OPERATIONAL.name().equals(rawValue)) return "Đang hoạt động";
+            if (ConditionStatus.STOPPED.name().equals(rawValue)) return "Dừng hoạt động";
+            if (ConditionStatus.MAINTENANCE.name().equals(rawValue)) return "Đang bảo trì";
+            if (ConditionStatus.UNDER_CONSTRUCTION.name().equals(rawValue)) return "Đang xây dựng";
+            return rawValue;
+        }
+        if ("geometryType".equals(field)) {
+            if (GisGeometryType.POINT.name().equals(rawValue)) return "Đối tượng điểm";
+            if (GisGeometryType.LINE.name().equals(rawValue) || "LINESTRING".equals(rawValue)) return "Đối tượng đường";
+            if (GisGeometryType.POLYGON.name().equals(rawValue)) return "Đối tượng vùng";
+            return rawValue;
+        }
+        return rawValue;
     }
 
     private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {

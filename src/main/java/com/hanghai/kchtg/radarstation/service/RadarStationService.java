@@ -305,7 +305,7 @@ public class RadarStationService {
                             .approvalLevel(ApprovalLevel.LEVEL_2)
                             .status(InfrastructureHistoryStatus.UPDATED)
                             .approvedBy(updatedBy)
-                            .changedField(fieldName)
+                            .changedField(field)
                             .previousValue(formatDisplayValue(field, oldVal))
                             .newValue(formatDisplayValue(field, newVal))
                             .reason("Cập nhật " + fieldName)

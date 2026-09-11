@@ -783,6 +783,7 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "reject", "Từ chối đài Inmarsat", "Từ chối phê duyệt đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "history", "Lịch sử phê duyệt đài Inmarsat", "Xem lịch sử thay đổi và phê duyệt đài Inmarsat");
 
                 // 10.4 Đài Cospas-Sarsat (Coastal Station Cospas-Sarsat - M-004)
                 seedPermission(definitions, "coastalstationcospassarsat", "read", "Xem đài Cospas-Sarsat",
@@ -801,6 +802,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Phê duyệt cấp 2 (Cục Hàng hải) đài Cospas-Sarsat");
                 seedPermission(definitions, "coastalstationcospassarsat", "reject", "Từ chối đài Cospas-Sarsat",
                                 "Từ chối phê duyệt đài Cospas-Sarsat");
+                seedPermission(definitions, "coastalstationcospassarsat", "history", "Lịch sử phê duyệt đài Cospas-Sarsat",
+                                "Xem lịch sử thay đổi và phê duyệt đài Cospas-Sarsat");
 
                 // 10.5 Đài thông tin LRIT (Coastal Station LRIT - M-004: F-110..F-115)
                 seedPermission(definitions, "coastalstationlrit", "read", "Xem đài LRIT", "Xem danh sách và chi tiết đài LRIT");
@@ -811,6 +814,7 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationlrit", "approvec1", "Phê duyệt C1 đài LRIT", "Phê duyệt cấp 1 đài LRIT");
                 seedPermission(definitions, "coastalstationlrit", "approvec2", "Phê duyệt C2 đài LRIT", "Phê duyệt cấp 2 đài LRIT");
                 seedPermission(definitions, "coastalstationlrit", "reject", "Từ chối đài LRIT", "Từ chối phê duyệt đài LRIT");
+                seedPermission(definitions, "coastalstationlrit", "history", "Lịch sử phê duyệt đài LRIT", "Xem lịch sử thay đổi và phê duyệt đài LRIT");
 
                 // 10.6 Đài TTXLTT Hà Nội / Hải Phòng (Coastal Station Haiphong/Hanoi - M-004: F-116..F-121)
                 seedPermission(definitions, "coastalstationhaiphong", "read", "Xem đài TTXLTT Hà Nội", "Xem danh sách và chi tiết đài TTXLTT");
@@ -821,6 +825,7 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationhaiphong", "approvec1", "Phê duyệt C1 đài TTXLTT Hà Nội", "Phê duyệt cấp 1 đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "approvec2", "Phê duyệt C2 đài TTXLTT Hà Nội", "Phê duyệt cấp 2 đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "reject", "Từ chối đài TTXLTT Hà Nội", "Từ chối phê duyệt đài TTXLTT");
+                seedPermission(definitions, "coastalstationhaiphong", "history", "Lịch sử phê duyệt đài TTXLTT Hà Nội", "Xem lịch sử thay đổi và phê duyệt đài TTXLTT");
 
                 // 11. Quản lý tài sản kết cấu hạ tầng, Điều chuyển, Kiểm kê & Bảo trì (Asset
                 // Management & Operations)

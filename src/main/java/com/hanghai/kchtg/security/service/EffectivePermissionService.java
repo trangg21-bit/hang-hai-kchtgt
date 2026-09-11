@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,6 +38,85 @@ public class EffectivePermissionService {
             "ROLE_SUPER_ADMIN",
             "ADMIN:ALL",
             "*");
+
+    /**
+     * Bản đồ ánh xạ chuẩn hóa tên Resource (Resource Canonicalization Map)
+     * Thay thế hoàn toàn các chuỗi so sánh hardcode rời rạc giữa tên cũ và tên mới.
+     */
+    private static final Map<String, String> RESOURCE_CANONICAL_MAP = Map.of(
+            "vtssystem", "vts",
+            "tramradar", "radarstation",
+            "beaconlight", "beaconstation",
+            "interconnect", "connection",
+            "groupmember", "group",
+            "shiprepair", "shiprepairfacility",
+            "shiprepairyard", "shiprepairfacility");
+
+    /**
+     * Bản đồ ánh xạ đối xứng các resource đồng nghĩa (Equivalent Resources Map)
+     */
+    private static final Map<String, Set<String>> RESOURCE_EQUIVALENTS = Map.ofEntries(
+            Map.entry("vts", Set.of("vts", "vtssystem")),
+            Map.entry("vtssystem", Set.of("vts", "vtssystem")),
+            Map.entry("radarstation", Set.of("radarstation", "tramradar")),
+            Map.entry("tramradar", Set.of("radarstation", "tramradar")),
+            Map.entry("beaconstation", Set.of("beaconstation", "beaconlight")),
+            Map.entry("beaconlight", Set.of("beaconstation", "beaconlight")),
+            Map.entry("connection", Set.of("connection", "interconnect")),
+            Map.entry("interconnect", Set.of("connection", "interconnect")),
+            Map.entry("group", Set.of("group", "groupmember")),
+            Map.entry("groupmember", Set.of("group", "groupmember")),
+            Map.entry("shiprepairfacility", Set.of("shiprepairfacility", "shiprepair", "shiprepairyard")),
+            Map.entry("shiprepair", Set.of("shiprepairfacility", "shiprepair", "shiprepairyard")),
+            Map.entry("shiprepairyard", Set.of("shiprepairfacility", "shiprepair", "shiprepairyard")));
+
+    /**
+     * Bản đồ phân cấp miền tài nguyên (Parent Domain Coverage Map)
+     * Xác định quyền hạn của nhóm tài nguyên cấp cha bao trùm lên các tài nguyên chuyên biệt.
+     */
+    private static final Map<String, Set<String>> RESOURCE_PARENT_DOMAINS = Map.of(
+            "coastalstationlrit", Set.of("specialstation", "coastalstation", "station", "data"),
+            "coastalstationinmarsat", Set.of("specialstation", "coastalstation", "station", "data"),
+            "coastalstationhaiphong", Set.of("specialstation", "coastalstation", "station", "data"),
+            "coastalstationcospassarsat", Set.of("specialstation", "coastalstation", "station", "data"),
+            "portplanning", Set.of("document"),
+            "planningadjustment", Set.of("document"),
+            "operationplan", Set.of("document"),
+            "maintenanceplan", Set.of("document"));
+
+    /**
+     * Tập các Action thuộc nhóm xem/đọc dữ liệu phục vụ quy tắc Implicit Read.
+     */
+    private static final Set<String> READ_ACTIONS = Set.of(
+            ACTION_READ,
+            "view",
+            "search");
+
+    public static String canonicalResource(String resource) {
+        if (resource == null) return "";
+        String normalized = resource.trim().toLowerCase(Locale.ROOT);
+        return RESOURCE_CANONICAL_MAP.getOrDefault(normalized, normalized);
+    }
+
+    private static Set<String> getEquivalentResources(String resource) {
+        if (resource == null) return Collections.emptySet();
+        String normalized = resource.trim().toLowerCase(Locale.ROOT);
+        return RESOURCE_EQUIVALENTS.getOrDefault(normalized, Set.of(normalized));
+    }
+
+    private static boolean isResourceCoveredBy(String candidateResource, String targetResource) {
+        String canonicalCandidate = canonicalResource(candidateResource);
+        String canonicalTarget = canonicalResource(targetResource);
+        if (canonicalCandidate.equals(canonicalTarget)) {
+            return true;
+        }
+        Set<String> parents = RESOURCE_PARENT_DOMAINS.get(canonicalTarget);
+        return parents != null && parents.contains(canonicalCandidate);
+    }
+
+    private static boolean isReadAction(String action) {
+        return READ_ACTIONS.contains(action);
+    }
 
     private final UserRepository userRepository;
     private final PermissionCacheService permissionCacheService;
@@ -322,35 +402,65 @@ public class EffectivePermissionService {
             return false;
         }
 
-        String requiredPermission = PermissionConstants.build(resource, action);
-        String wildcardPermission = PermissionConstants.build(resource, ACTION_WILDCARD);
-        String aggregatePermission = PermissionConstants.build(resource, ACTION_MANAGE);
+        String canonicalRes = canonicalResource(resource);
+        Set<String> targetResources = getEquivalentResources(resource);
 
-        // 1. Exact or wildcard match
-        if (permissions.contains(requiredPermission)
-                || permissions.contains(wildcardPermission)
-                || permissions.contains(aggregatePermission)) {
-            return true;
+        // 1. Exact, alias, manage or wildcard match across all equivalent resources
+        for (String res : targetResources) {
+            if (permissions.contains(PermissionConstants.build(res, action))
+                    || permissions.contains(PermissionConstants.build(res, ACTION_WILDCARD))
+                    || permissions.contains(PermissionConstants.build(res, ACTION_MANAGE))) {
+                return true;
+            }
         }
 
-        // 2. Legacy write match
+        // 2. Parent domain match (e.g. specialstation, document, data)
+        Set<String> parentDomains = RESOURCE_PARENT_DOMAINS.get(canonicalRes);
+        if (parentDomains != null) {
+            for (String parent : parentDomains) {
+                if (permissions.contains(PermissionConstants.build(parent, action))
+                        || permissions.contains(PermissionConstants.build(parent, ACTION_WILDCARD))
+                        || permissions.contains(PermissionConstants.build(parent, ACTION_MANAGE))) {
+                    return true;
+                }
+            }
+        }
+
+        // 3. Implicit Read: Có bất kỳ quyền thao tác nào trên resource (hoặc domain bao trùm) thì mặc định có quyền xem
+        if (isReadAction(action)) {
+            for (String p : permissions) {
+                if (p != null && isResourceCoveredBy(resourceOf(p), canonicalRes)) {
+                    return true;
+                }
+            }
+        }
+
+        // 4. Legacy write match
         boolean isWriteAction = Set.of(ACTION_CREATE, ACTION_UPDATE, ACTION_DELETE).contains(action);
-        if (isWriteAction && permissions.contains(PermissionConstants.build(resource, ACTION_WRITE))) {
-            return true;
+        if (isWriteAction) {
+            for (String res : targetResources) {
+                if (permissions.contains(PermissionConstants.build(res, ACTION_WRITE))) {
+                    return true;
+                }
+            }
         }
 
-        // 3. Approval C1 / L1 matching
+        // 5. Approval C1 / L1 matching
         boolean isC1Action = Set
                 .of(ACTION_APPROVE_C1, "approvel1", "approve:c1", "approve:l1", "approve-c1", "approve-l1")
                 .contains(action);
         if (isC1Action) {
-            if (permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE_C1))
-                    || permissions.contains(PermissionConstants.build(resource, "approvel1"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:c1"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:l1"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve-c1"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve-l1"))
-                    || permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C1))
+            for (String res : targetResources) {
+                if (permissions.contains(PermissionConstants.build(res, ACTION_APPROVE_C1))
+                        || permissions.contains(PermissionConstants.build(res, "approvel1"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:c1"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:l1"))
+                        || permissions.contains(PermissionConstants.build(res, "approve-c1"))
+                        || permissions.contains(PermissionConstants.build(res, "approve-l1"))) {
+                    return true;
+                }
+            }
+            if (permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C1))
                     || permissions.contains(PermissionConstants.build("data", "approvel1"))
                     || permissions.contains(PermissionConstants.build("data", "approve:c1"))
                     || permissions.contains(PermissionConstants.build("data", "approve:l1"))) {
@@ -358,18 +468,22 @@ public class EffectivePermissionService {
             }
         }
 
-        // 4. Approval C2 / L2 matching
+        // 6. Approval C2 / L2 matching
         boolean isC2Action = Set
                 .of(ACTION_APPROVE_C2, "approvel2", "approve:c2", "approve:l2", "approve-c2", "approve-l2")
                 .contains(action);
         if (isC2Action) {
-            if (permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE_C2))
-                    || permissions.contains(PermissionConstants.build(resource, "approvel2"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:c2"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:l2"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve-c2"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve-l2"))
-                    || permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C2))
+            for (String res : targetResources) {
+                if (permissions.contains(PermissionConstants.build(res, ACTION_APPROVE_C2))
+                        || permissions.contains(PermissionConstants.build(res, "approvel2"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:c2"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:l2"))
+                        || permissions.contains(PermissionConstants.build(res, "approve-c2"))
+                        || permissions.contains(PermissionConstants.build(res, "approve-l2"))) {
+                    return true;
+                }
+            }
+            if (permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C2))
                     || permissions.contains(PermissionConstants.build("data", "approvel2"))
                     || permissions.contains(PermissionConstants.build("data", "approve:c2"))
                     || permissions.contains(PermissionConstants.build("data", "approve:l2"))) {
@@ -377,99 +491,40 @@ public class EffectivePermissionService {
             }
         }
 
-        // 5. Generic Approval hierarchy matching (e.g. view approval list or general
-        // approve status)
+        // 7. Generic Approval hierarchy matching
         if (ACTION_APPROVE.equals(action) || "approve".equals(action)) {
-            if (permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE))
-                    || permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE_C1))
-                    || permissions.contains(PermissionConstants.build(resource, ACTION_APPROVE_C2))
-                    || permissions.contains(PermissionConstants.build(resource, "approvel1"))
-                    || permissions.contains(PermissionConstants.build(resource, "approvel2"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:c1"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:c2"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:l1"))
-                    || permissions.contains(PermissionConstants.build(resource, "approve:l2"))
-                    || permissions.contains(PermissionConstants.build("data", ACTION_APPROVE))
+            for (String res : targetResources) {
+                if (permissions.contains(PermissionConstants.build(res, ACTION_APPROVE))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_APPROVE_C1))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_APPROVE_C2))
+                        || permissions.contains(PermissionConstants.build(res, "approvel1"))
+                        || permissions.contains(PermissionConstants.build(res, "approvel2"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:c1"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:c2"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:l1"))
+                        || permissions.contains(PermissionConstants.build(res, "approve:l2"))) {
+                    return true;
+                }
+            }
+            if (permissions.contains(PermissionConstants.build("data", ACTION_APPROVE))
                     || permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C1))
                     || permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C2))) {
                 return true;
             }
         }
 
-        // 6. Action aliases (e.g. edit <-> update)
+        // 8. Action aliases (e.g. edit <-> update)
         if ("edit".equals(action) || "update".equals(action)) {
-            if (permissions.contains(PermissionConstants.build(resource, "edit"))
-                    || permissions.contains(PermissionConstants.build(resource, "update"))) {
-                return true;
-            }
-        }
-
-        // 7. Connection / Interconnect resource aliases
-        if ("connection".equals(resource) || "interconnect".equals(resource)) {
-            if (permissions.contains(PermissionConstants.build("connection", action))
-                    || permissions.contains(PermissionConstants.build("interconnect", action))
-                    || permissions.contains("connection:manage")
-                    || permissions.contains("interconnect:manage")
-                    || permissions.contains("connection:*")
-                    || permissions.contains("interconnect:*")) {
-                return true;
-            }
-        }
-
-        // 8. Group / GroupMember resource management
-        if ("groupmember".equals(resource) || "group".equals(resource)) {
-            if (permissions.contains("group:manage") || permissions.contains("groupmember:manage")) {
-                return true;
-            }
-        }
-
-        // 8b. VTS / VtsSystem resource alias
-        if ("vts".equals(resource) || "vtssystem".equals(resource)) {
-            if (permissions.contains(PermissionConstants.build("vts", action))
-                    || permissions.contains(PermissionConstants.build("vtssystem", action))
-                    || permissions.contains("vts:manage")
-                    || permissions.contains("vtssystem:manage")
-                    || permissions.contains("vts:*")
-                    || permissions.contains("vtssystem:*")) {
-                return true;
-            }
-        }
-
-        // 8c. RadarStation / TramRadar resource alias
-        if ("radarstation".equals(resource) || "tramradar".equals(resource)) {
-            if (permissions.contains(PermissionConstants.build("radarstation", action))
-                    || permissions.contains(PermissionConstants.build("tramradar", action))
-                    || permissions.contains("radarstation:manage")
-                    || permissions.contains("tramradar:manage")
-                    || permissions.contains("radarstation:*")
-                    || permissions.contains("tramradar:*")) {
-                return true;
-            }
-        }
-
-        // 8d. BeaconStation / BeaconLight resource alias
-        if ("beaconstation".equals(resource) || "beaconlight".equals(resource)) {
-            if (permissions.contains(PermissionConstants.build("beaconstation", action))
-                    || permissions.contains(PermissionConstants.build("beaconlight", action))
-                    || permissions.contains("beaconstation:manage")
-                    || permissions.contains("beaconlight:manage")
-                    || permissions.contains("beaconstation:*")
-                    || permissions.contains("beaconlight:*")) {
-                return true;
-            }
-        }
-
-        // 9. Document domain fallbacks for port planning, adjustments, operation plans,
-        // maintenance plans
-        if (Set.of("portplanning", "planningadjustment", "operationplan", "maintenanceplan").contains(resource)) {
-            if (permissions.contains(PermissionConstants.build("document", action))
-                    || permissions.contains("document:manage")
-                    || permissions.contains("document:*")) {
-                return true;
+            for (String res : targetResources) {
+                if (permissions.contains(PermissionConstants.build(res, "edit"))
+                        || permissions.contains(PermissionConstants.build(res, "update"))) {
+                    return true;
+                }
             }
         }
 
         // Normalization variations (e.g. approve:c1 vs approvec1)
+        String requiredPermission = PermissionConstants.build(resource, action);
         String normNoColon = requiredPermission.replace(":approve:", ":approve");
         if (permissions.contains(normNoColon)) {
             return true;

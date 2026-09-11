@@ -280,6 +280,12 @@ public class CctvApprovalService {
     if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
       return "Chưa có";
     }
+    if ("coordinates".equals(field) || "Tọa độ".equals(field) || "Tọa độ GIS".equals(field)) {
+      if (rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
+        return "Chưa có";
+      }
+      return rawValue.trim();
+    }
     if ("mapSymbolId".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field) || "symbolId".equals(field)) {
       try {
         if (jdbcTemplate != null) {

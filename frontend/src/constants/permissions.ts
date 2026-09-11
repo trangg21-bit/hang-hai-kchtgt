@@ -157,6 +157,72 @@ export const PERMISSIONS = {
     HISTORY: 'buoy:history',
   },
 
+  /** Hệ thống VTS (M-004) */
+  VTS: {
+    READ: 'vts:read',
+    CREATE: 'vts:create',
+    UPDATE: 'vts:update',
+    DELETE: 'vts:delete',
+    APPROVE_C1: 'vts:approvec1',
+    APPROVE_C2: 'vts:approvec2',
+    HISTORY: 'vts:history',
+  },
+
+  /** Trung tâm điều hành VTS (M-004) */
+  VTS_OPERATION_CENTER: {
+    READ: 'vtsoperationcenter:read',
+    CREATE: 'vtsoperationcenter:create',
+    UPDATE: 'vtsoperationcenter:update',
+    DELETE: 'vtsoperationcenter:delete',
+    APPROVE_C1: 'vtsoperationcenter:approvec1',
+    APPROVE_C2: 'vtsoperationcenter:approvec2',
+    HISTORY: 'vtsoperationcenter:history',
+  },
+
+  /** Hệ thống trạm bờ AIS (M-004) */
+  AIS_SYSTEM: {
+    READ: 'aissystem:read',
+    CREATE: 'aissystem:create',
+    UPDATE: 'aissystem:update',
+    DELETE: 'aissystem:delete',
+    APPROVE_C1: 'aissystem:approvec1',
+    APPROVE_C2: 'aissystem:approvec2',
+    HISTORY: 'aissystem:history',
+  },
+
+  /** Đài thông tin LRIT (M-004) */
+  COASTAL_STATION_LRIT: {
+    READ: 'coastalstationlrit:read',
+    CREATE: 'coastalstationlrit:create',
+    UPDATE: 'coastalstationlrit:update',
+    DELETE: 'coastalstationlrit:delete',
+    APPROVE_C1: 'coastalstationlrit:approvec1',
+    APPROVE_C2: 'coastalstationlrit:approvec2',
+    HISTORY: 'coastalstationlrit:history',
+  },
+
+  /** Đài thông tin vệ tinh Inmarsat (M-004) */
+  COASTAL_STATION_INMARSAT: {
+    READ: 'coastalstationinmarsat:read',
+    CREATE: 'coastalstationinmarsat:create',
+    UPDATE: 'coastalstationinmarsat:update',
+    DELETE: 'coastalstationinmarsat:delete',
+    APPROVE_C1: 'coastalstationinmarsat:approvec1',
+    APPROVE_C2: 'coastalstationinmarsat:approvec2',
+    HISTORY: 'coastalstationinmarsat:history',
+  },
+
+  /** Đài TTXLTT Hà Nội / Hải Phòng (M-004) */
+  COASTAL_STATION_HAIPHONG: {
+    READ: 'coastalstationhaiphong:read',
+    CREATE: 'coastalstationhaiphong:create',
+    UPDATE: 'coastalstationhaiphong:update',
+    DELETE: 'coastalstationhaiphong:delete',
+    APPROVE_C1: 'coastalstationhaiphong:approvec1',
+    APPROVE_C2: 'coastalstationhaiphong:approvec2',
+    HISTORY: 'coastalstationhaiphong:history',
+  },
+
   /** Văn bản pháp lý (M-001) */
   DOCUMENT: {
     READ: 'document:read',
@@ -298,6 +364,54 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.BUOY.APPROVE_C1, title: 'Duyệt Phao/Báo hiệu C1' },
       { key: PERMISSIONS.BUOY.APPROVE_C2, title: 'Duyệt Phao/Báo hiệu C2' },
       { key: PERMISSIONS.BUOY.HISTORY, title: 'Lịch sử Phao/Báo hiệu' },
+    ],
+  },
+  {
+    key: 'group_m004',
+    title: 'Hệ thống VTS & Đài duyên hải (M-004)',
+    children: [
+      { key: PERMISSIONS.VTS.READ, title: 'Xem Hệ thống VTS' },
+      { key: PERMISSIONS.VTS.CREATE, title: 'Thêm Hệ thống VTS' },
+      { key: PERMISSIONS.VTS.UPDATE, title: 'Sửa Hệ thống VTS' },
+      { key: PERMISSIONS.VTS.DELETE, title: 'Xóa Hệ thống VTS' },
+      { key: PERMISSIONS.VTS.APPROVE_C1, title: 'Duyệt Hệ thống VTS C1' },
+      { key: PERMISSIONS.VTS.APPROVE_C2, title: 'Duyệt Hệ thống VTS C2' },
+      { key: PERMISSIONS.VTS.HISTORY, title: 'Lịch sử Hệ thống VTS' },
+      { key: PERMISSIONS.VTS_OPERATION_CENTER.READ, title: 'Xem TTDH VTS' },
+      { key: PERMISSIONS.VTS_OPERATION_CENTER.CREATE, title: 'Thêm TTDH VTS' },
+      { key: PERMISSIONS.VTS_OPERATION_CENTER.UPDATE, title: 'Sửa TTDH VTS' },
+      { key: PERMISSIONS.VTS_OPERATION_CENTER.DELETE, title: 'Xóa TTDH VTS' },
+      { key: PERMISSIONS.VTS_OPERATION_CENTER.APPROVE_C1, title: 'Duyệt TTDH VTS C1' },
+      { key: PERMISSIONS.VTS_OPERATION_CENTER.APPROVE_C2, title: 'Duyệt TTDH VTS C2' },
+      { key: PERMISSIONS.VTS_OPERATION_CENTER.HISTORY, title: 'Lịch sử TTDH VTS' },
+      { key: PERMISSIONS.AIS_SYSTEM.READ, title: 'Xem Trạm bờ AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.CREATE, title: 'Thêm Trạm bờ AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.UPDATE, title: 'Sửa Trạm bờ AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.DELETE, title: 'Xóa Trạm bờ AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.APPROVE_C1, title: 'Duyệt Trạm bờ AIS C1' },
+      { key: PERMISSIONS.AIS_SYSTEM.APPROVE_C2, title: 'Duyệt Trạm bờ AIS C2' },
+      { key: PERMISSIONS.AIS_SYSTEM.HISTORY, title: 'Lịch sử Trạm bờ AIS' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.READ, title: 'Xem Đài LRIT' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.CREATE, title: 'Thêm Đài LRIT' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.UPDATE, title: 'Sửa Đài LRIT' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.DELETE, title: 'Xóa Đài LRIT' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.APPROVE_C1, title: 'Duyệt Đài LRIT C1' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.APPROVE_C2, title: 'Duyệt Đài LRIT C2' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.HISTORY, title: 'Lịch sử Đài LRIT' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.READ, title: 'Xem Đài Inmarsat' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.CREATE, title: 'Thêm Đài Inmarsat' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.UPDATE, title: 'Sửa Đài Inmarsat' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.DELETE, title: 'Xóa Đài Inmarsat' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.APPROVE_C1, title: 'Duyệt Đài Inmarsat C1' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.APPROVE_C2, title: 'Duyệt Đài Inmarsat C2' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.HISTORY, title: 'Lịch sử Đài Inmarsat' },
+      { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.READ, title: 'Xem Đài TTXLTT Hà Nội' },
+      { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.CREATE, title: 'Thêm Đài TTXLTT Hà Nội' },
+      { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.UPDATE, title: 'Sửa Đài TTXLTT Hà Nội' },
+      { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.DELETE, title: 'Xóa Đài TTXLTT Hà Nội' },
+      { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.APPROVE_C1, title: 'Duyệt Đài TTXLTT Hà Nội C1' },
+      { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.APPROVE_C2, title: 'Duyệt Đài TTXLTT Hà Nội C2' },
+      { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.HISTORY, title: 'Lịch sử Đài TTXLTT Hà Nội' },
     ],
   },
   {
