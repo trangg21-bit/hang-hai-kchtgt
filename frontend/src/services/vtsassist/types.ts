@@ -49,6 +49,9 @@ export interface VtsAssistResponse {
   updatedByName: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  deletedBy?: string | null;
+  deletedByName?: string | null;
+  deletedAt?: string | null;
 }
 
 // ── CreateVtsAssistRequest (matches CreateVtsAssistRequest.java) ──

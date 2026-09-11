@@ -83,6 +83,7 @@ public enum ApprovalStatus {
                 case "TU CHOI":
                     return REJECTED;
                 case "ARCHIVED":
+                case "DELETED":
                 case "ĐÃ XÓA":
                 case "DA XOA":
                 case "LƯU TRỮ":

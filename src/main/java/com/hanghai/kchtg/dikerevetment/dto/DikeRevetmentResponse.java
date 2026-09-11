@@ -10,6 +10,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,10 +34,10 @@ public class DikeRevetmentResponse {
     private UUID seaportId;
     private String seaportName;
     private UUID operatingUnitId;
-    private Double length;
-    private Double crestElevation;
+    private BigDecimal length;
+    private BigDecimal crestElevation;
     private LocalDate commissioningDate;
-    private Double height;
+    private BigDecimal height;
     private String surfaceMaterial;
     private String status;
     private String note;

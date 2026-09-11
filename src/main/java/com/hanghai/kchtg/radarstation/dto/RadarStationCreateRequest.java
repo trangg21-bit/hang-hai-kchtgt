@@ -3,6 +3,7 @@ package com.hanghai.kchtg.radarstation.dto;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -42,6 +43,7 @@ public class RadarStationCreateRequest {
     private String coverage;
 
     @Positive(message = "Diện tích phải là số dương")
+    @Digits(integer = 16, fraction = 4, message = "Diện tích không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal emissionArea;
 
     private String source;
@@ -61,7 +63,9 @@ public class RadarStationCreateRequest {
     @Max(value = 99999, message = "Số lượng tối đa 5 chữ số")
     private Integer quantity;
 
+    @Digits(integer = 16, fraction = 4, message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal towerHeight;
+    @Digits(integer = 16, fraction = 4, message = "Tầm radar không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal radarRange;
 
     @Size(max = 2000, message = "Ghi chú không được vượt quá 2000 ký tự")

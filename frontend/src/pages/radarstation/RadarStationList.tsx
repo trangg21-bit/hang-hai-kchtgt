@@ -4,7 +4,6 @@ import {
   Modal,
   Input,
   InputNumber,
-  type InputNumberProps,
   Select,
   Space,
   Typography,
@@ -130,6 +129,13 @@ import {
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import ApprovalModal from '../../components/shared/ApprovalModal';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import {
+  parseNumber20,
+  getValueFromEvent20,
+  decimalNumberRule,
+  safeNumber,
+} from '../../utils/numberRuleHelper';
 
 // Cỡ chữ chuẩn 13.5px cho toàn màn /radar-station (thay token fontSizeMd=13 của themetokenchk) —
 // mirror chuẩn BerthListPage để mọi text/label dùng fontSizeMd hiển thị 13.5px.
@@ -168,21 +174,6 @@ const GEOMETRY_TYPE_OPTIONS = [
 ];
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
-
 const parseNumber5 = (value: unknown): any => {
   if (!value) return '' as any;
   const digits = String(value).replace(/\D/g, '');
@@ -193,25 +184,6 @@ const getValueFromEvent5 = (val: unknown): number | null => {
   if (val === null || val === undefined || val === '') return null;
   const str = String(val).replace(/\D/g, '');
   return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
-};
-
-const parseNumber20 = (value: unknown): any => {
-  if (!value) return '' as any;
-  const str = String(value).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
-};
-
-const getValueFromEvent20 = (val: unknown): number | null => {
-  if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
-  if (sliced.endsWith('.')) return sliced as any;
-  const num = Number(sliced);
-  return isNaN(num) ? null : num;
 };
 
 const dmsUnitStyle: React.CSSProperties = {
@@ -316,7 +288,7 @@ const renderDmsGroup = (
 
 // ── Constants ────────────────────────────────────────────────────────
 
-// Status tabs 7 tab chuẩn (Tất cả + 6 trạng thái phê duyệt đầy đủ)
+// Status tabs (Tất cả + các trạng thái phê duyệt + Đã xóa)
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
@@ -325,6 +297,7 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, RadarStationStatus | undefined> = {
@@ -335,6 +308,7 @@ const TAB_QUERY_MAP: Record<string, RadarStationStatus | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  DELETED: 'DELETED',
 };
 
 // Status badge — semantic tokens (AGENTS.md: không hardcode màu)
@@ -349,6 +323,17 @@ const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: str
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+};
+
+const isRecordDeleted = (record?: RadarStationResponse | null): boolean => {
+  if (!record) return false;
+  const anyRec = record as any;
+  const hasDeletedBy = (record.deletedBy != null && record.deletedBy !== '') || (anyRec.deleted_by != null && anyRec.deleted_by !== '');
+  const hasDeletedAt = (record.deletedAt != null && record.deletedAt !== '') || (anyRec.deleted_at != null && anyRec.deleted_at !== '');
+  const isArchived = record.approvalStatus === 'ARCHIVED' || record.approvalStatus === 'DELETED' || record.status === 'ARCHIVED' || record.status === 'DELETED';
+  return Boolean(hasDeletedBy || hasDeletedAt || isArchived);
 };
 
 // Tình trạng hoạt động — semantic tokens (khớp CONDITION_STATUS_OPTIONS '0'/'1'/'2')
@@ -1198,7 +1183,7 @@ export default function RadarStationList() {
     setDetailRecord(null);
     createForm.resetFields();
     createForm.setFieldsValue({
-      conditionStatus: '1',
+      conditionStatus: '0',
       orgUnitId: currentUser?.orgUnitId || undefined,
     });
     setGeometryTypeState('');
@@ -1594,7 +1579,7 @@ export default function RadarStationList() {
         unitOfMeasure: values.unitOfMeasure || undefined,
         quantity: values.quantity,
         conditionStatus: values.conditionStatus || '1',
-        towerHeight: values.towerHeight,
+        towerHeight: safeNumber(values.towerHeight),
         radarRange: values.radarRange,
         note: values.note?.trim() || undefined,
         longitude,
@@ -1683,6 +1668,16 @@ export default function RadarStationList() {
   // ── Row actions (chuẩn: Xem chi tiết → Chỉnh sửa → Lịch sử → Gửi duyệt → Phê duyệt/Từ chối theo cấp → Xóa; icon theo themetokenchk) ──
   const rowActions = useCallback((record: RadarStationResponse) => {
     const actions: any[] = [];
+    // Bản ghi đã xóa: chỉ còn thao tác Xem chi tiết (và Lịch sử)
+    if (isRecordDeleted(record)) {
+      if (hasPerm('radarstation:read')) {
+        actions.push({ key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) });
+      }
+      if (hasPerm('radarstation:history') || hasPerm('radarstation:read') || hasPerm('data:read')) {
+        actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
+      }
+      return actions;
+    }
     const st = record.approvalStatus;
     if (hasPerm('radarstation:read')) {
       actions.push({ key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) });
@@ -1691,7 +1686,7 @@ export default function RadarStationList() {
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'radarstation' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: themeTokenChk.icons.edit, onClick: () => openEditDrawer(record) });
     }
-    if (hasPerm('radarstation:history')) {
+    if (hasPerm('radarstation:history') || hasPerm('radarstation:read') || hasPerm('data:read')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
     }
     const currentUserId = useAuthStore.getState().user?.userId;
@@ -1865,7 +1860,10 @@ export default function RadarStationList() {
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 350,
-      render: (status: string) => {
+      render: (status: string, record: RadarStationResponse) => {
+        if (isRecordDeleted(record)) {
+          return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+        }
         const s = RADAR_STATION_STATUS_STYLE_MAP[status];
         return s
           ? <span style={statusBadgeStyle(s.color)}>{s.label}</span>
@@ -2092,11 +2090,20 @@ export default function RadarStationList() {
         {
           label: 'Trạng thái phê duyệt',
           value: (() => {
+            if (isRecordDeleted(detailRecord)) {
+              return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+            }
             const st = detailRecord.approvalStatus || detailRecord.status || '';
             const s = RADAR_STATION_STATUS_STYLE_MAP[st] || (st ? { color: textTertiary, label: st } : null);
             return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
           })(),
         },
+        ...(isRecordDeleted(detailRecord)
+          ? [
+              { label: 'Cán bộ xóa', value: detailRecord.deletedByName || (detailRecord as any).deletedBy || null, bold: true },
+              { label: 'Thời gian xóa', value: safeText(formatDate(detailRecord.deletedAt || (detailRecord as any).deleted_at)) },
+            ]
+          : []),
         { label: 'Cán bộ cập nhật', value: detailRecord.updatedByName || detailRecord.createdByName || null, bold: true },
         { label: 'Cán bộ gửi phê duyệt', value: detailRecord.submittedByName || null, bold: true },
         { label: 'Ngày gửi phê duyệt', value: safeText(formatDate(detailRecord.submittedForApprovalAt)) },
@@ -2681,6 +2688,16 @@ export default function RadarStationList() {
       return style ? style.label : displayValue;
     }
     const key = normalizeHistoryKey(fn);
+    if (key === 'coordinatesystem' || key === 'he toa do' || key === 'he quy chieu') {
+      if (displayValue === '1' || displayValue === '4326') return 'WGS 84';
+      if (displayValue === '2') return 'VN-2000';
+      return displayValue;
+    }
+    if (key === 'stationtype' || key === 'loai tram') {
+      if (displayValue === 'INDEPENDENT' || displayValue === '1') return 'Trạm độc lập';
+      if (displayValue === 'DEPENDENT' || displayValue === '2') return 'Trạm phụ thuộc';
+      return displayValue;
+    }
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(displayValue.trim());
     if (!isUuid) return displayValue;
     if (key === 'orgunitid' || key === 'don vi quan ly' || key === 'operatingunitid' || key === 'don vi khai thac') return orgNameById(displayValue.trim());
@@ -2811,7 +2828,7 @@ export default function RadarStationList() {
         const rawUnit = rec0.orgUnitName;
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const resolvedName = orgId ? orgNameById(orgId) : undefined;
-        const unitName = (rawUnit && rawUnit !== '—') ? rawUnit : (resolvedName && resolvedName !== '—' ? (resolvedName.split(' - ').pop() || resolvedName) : '—');
+        const unitName = (rawUnit && rawUnit !== '—' && rawUnit !== '-') ? rawUnit : (resolvedName && resolvedName !== '—' && resolvedName !== '-' ? (resolvedName.split(' - ').pop() || resolvedName) : 'Cục Hàng hải Việt Nam');
         const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
         const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const formatHistoryValue = (fn: string, raw: string | null) => {
@@ -3434,6 +3451,7 @@ export default function RadarStationList() {
                             <Form.Item
                               name="conditionStatus"
                               {...labelProps('Tình trạng')}
+                              initialValue="0"
                               required
                               style={{ marginBottom: spaceFormField }}
                               rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
@@ -3535,11 +3553,11 @@ export default function RadarStationList() {
                               {...labelProps('Chiều cao tháp radar (m)')}
                               style={{ marginBottom: spaceFormField }}
                               getValueFromEvent={getValueFromEvent20}
+                              rules={[decimalNumberRule]}
                             >
                               <NumberInputWithCount
                                 min={0}
                                 step={0.01}
-                                precision={2}
                                 placeholder="0"
                                 style={numberInputStyle}
                                 maxLength={20}

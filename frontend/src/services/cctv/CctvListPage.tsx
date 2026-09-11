@@ -22,6 +22,7 @@ import {
   Drawer,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { organizationService } from "../organizationService";
 import {
   PlusOutlined,
   SearchOutlined,
@@ -48,6 +49,7 @@ import {
 } from "./api";
 import {
   OPERATIONAL_STATUS_OPTIONS,
+  attachedInfraTypeOptions,
 } from "./schema";
 import type { CctvResponse, ApprovalRequest } from "./types";
 import toast from "../../components/ToastNotification";
@@ -66,7 +68,7 @@ import LoadingSkeleton from "../../components/LoadingSkeleton";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
 import { userService } from "../userService";
-import type { Symbol as MapSymbolType } from "../symbolService";
+import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
   DataTable,
@@ -108,7 +110,7 @@ const UOM_LABELS: Record<number, string> = {
 };
 
 function formatUnitOfMeasure(code: number | null | undefined): string {
-  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
+  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
 }
 
 import {
@@ -150,6 +152,7 @@ import {
   statusBadgeStyle,
   radiusSm,
   getRangePickerProps,
+  getSidebarDatePickerProps,
   inputStyle,
 } from "../../themetokenchk";
 import { cellTitleStyle, cellSubtitleStyle } from "../../themetokenchk";
@@ -166,6 +169,7 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp cục',
+  DELETED: 'Đã xóa',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -175,6 +179,7 @@ const APPROVAL_COLOR: Record<string, string> = {
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
+  DELETED: statusCritical,
 };
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
@@ -216,7 +221,7 @@ const cctvDetailSectionTitleStyle: React.CSSProperties = {
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return null;
   try {
     const d = new Date(dateStr);
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -234,7 +239,10 @@ function renderCctvStatusBadge(b: { color: string; label: string }) {
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
-function renderApprovalBadge(status: string | null | undefined) {
+function renderApprovalBadge(status: string | null | undefined, isDeleted?: boolean) {
+  if (isDeleted) {
+    return <span className="kcht-cell-badge" style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+  }
   if (!status) return null;
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
@@ -322,6 +330,10 @@ const CctvListPage = () => {
     updatedTo: "" as string,
   });
 
+  const defaultOrgUnitId = useRef<string | undefined>(undefined);
+  const defaultOrgApplied = useRef(false);
+  const [orgUnitReady, setOrgUnitReady] = useState(false);
+
   // Tab counts for approval status filter
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [totalAll, setTotalAll] = useState(0);
@@ -333,6 +345,7 @@ const CctvListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
+      { key: "DELETED", status: "DELETED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -352,33 +365,72 @@ const CctvListPage = () => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
     setTotalAll(
-      counts.DRAFT +
-        counts.PENDING_APPROVAL +
-        counts.APPROVED_LEVEL1 +
-        counts.APPROVED +
-        counts.REJECTED_LEVEL1 +
-        counts.REJECTED_LEVEL2
+      (counts.DRAFT || 0) +
+        (counts.PENDING_APPROVAL || 0) +
+        (counts.APPROVED_LEVEL1 || 0) +
+        (counts.APPROVED || 0) +
+        (counts.REJECTED_LEVEL1 || 0) +
+        (counts.REJECTED_LEVEL2 || 0) +
+        (counts.DELETED || 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
-  // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
-  // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
-  const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
+  // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const orgUnitOptions = orgUnits;
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
   // Symbols
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
 
-  // Year options for "Năm đưa vào sử dụng" (current year - 30 to current year)
-  const yearOfUseOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 31 }, (_, i) => ({
-      label: String(currentYear - i),
-      value: currentYear - i,
-    }));
+
+  // Danh sách trạm radar và trung tâm VTS cho dropdown lọc hạ tầng phụ thuộc
+  const [radarStationOptions, setRadarStationOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [loadingRadars, setLoadingRadars] = useState(false);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
+
+  useEffect(() => {
+    let disposed = false;
+    setLoadingRadars(true);
+    api.get('/common/options/radar-stations')
+      .then((r) => {
+        if (disposed) return;
+        const items = r.data?.data;
+        setRadarStationOptions(
+          (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; name?: string; code?: string }) => ({
+            label: s.stationName || s.name || s.code || s.id,
+            value: s.id,
+          }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!disposed) setLoadingRadars(false);
+      });
+
+    setLoadingVtsCenters(true);
+    api.get('/common/options/vts-operation-centers')
+      .then((r) => {
+        if (disposed) return;
+        const items = r.data?.data;
+        setVtsOperationCenterOptions(
+          (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
+            label: s.name || s.code || s.id,
+            value: s.id,
+          }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!disposed) setLoadingVtsCenters(false);
+      });
+
+    return () => {
+      disposed = true;
+    };
   }, []);
 
 
@@ -727,7 +779,10 @@ const CctvListPage = () => {
         dataIndex: "approvalStatus",
         width: 180,
         type: "status" as const,
-        render: (val: string) => renderApprovalBadge(val),
+        render: (val: string, record: CctvResponse) => {
+          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+          return renderApprovalBadge(val, isDeleted);
+        },
       },
     ];
     },
@@ -754,7 +809,9 @@ const CctvListPage = () => {
     specifications: 'Thông số kỹ thuật',
     maintenanceInformation: 'Thông tin bảo trì',
     note: 'Ghi chú',
-    objectType: 'Loại đối tượng',
+    objectType: 'Loại đối tượng (GIS)',
+    geometryType: 'Loại đối tượng GIS',
+    coordinates: 'Tọa độ GIS',
     mapSymbolId: 'Biểu tượng',
     coordinateSystem: 'Hệ quy chiếu',
     displayRule: 'Quy tắc hiển thị',
@@ -772,13 +829,25 @@ const CctvListPage = () => {
     orgMap?: Map<string, string>,
     symbolMap?: Map<string, string>
   ): string {
-    if (!val || val === '(null)' || val === 'null') return '(trống)';
-    if (fn === 'orgUnitId' && orgMap) {
+    if (!val || val === '(null)' || val === 'null' || val === 'Chưa có') return 'Chưa có';
+    const fieldKey = String(fn || '').trim();
+    if ((fieldKey === 'orgUnitId' || fieldKey === 'Đơn vị quản lý') && orgMap) {
       const full = orgMap.get(val);
-      return full ? full.split(' - ').pop() || full : '';
+      return full ? full.split(' - ').pop() || full : val;
     }
-    if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || '';
-    if (fn === 'approvalStatus') {
+    if ((fieldKey === 'operatingUnitId' || fieldKey === 'Đơn vị khai thác' || fieldKey === 'Đơn vị vận hành') && orgMap) {
+      const full = orgMap.get(val);
+      return full ? full.split(' - ').pop() || full : val;
+    }
+    if ((fieldKey === 'mapSymbolId' || fieldKey === 'Biểu tượng' || fieldKey === 'Biểu tượng bản đồ') && symbolMap) {
+      return symbolMap.get(val) || val;
+    }
+    if (fieldKey === 'attachedInfrastructureType' || fieldKey === 'Loại hạ tầng' || fieldKey === 'Thuộc loại hạ tầng') {
+      if (val === '1' || val === 'TTDH VTS') return 'TTDH VTS';
+      if (val === '2' || val === 'Trạm Radar') return 'Trạm Radar';
+      return val;
+    }
+    if (fieldKey === 'approvalStatus' || fieldKey === 'Trạng thái phê duyệt') {
       // Mã legacy (dữ liệu cũ) quy đổi về mã chuẩn 7 trạng thái rồi tra nhãn dùng chung.
       const ALIAS: Record<string, string> = {
         NHAP: 'DRAFT',
@@ -796,34 +865,35 @@ const CctvListPage = () => {
       };
       const m: Record<string, string> = {
         DRAFT: 'Lưu tạm',
-        PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
-        APPROVED: 'Đã phê duyệt',
-        REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-        REJECTED_LEVEL2: 'Từ chối cấp cục',
+        PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+        APPROVED_LEVEL1: 'Chờ Cục duyệt',
+        APPROVED: 'Đã duyệt',
+        REJECTED_LEVEL1: 'Bị Cảng vụ trả về',
+        REJECTED_LEVEL2: 'Bị Cục trả về',
       };
       const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
       return m[norm] || val;
     }
-    if (fn === 'operationalStatus') {
+    if (fieldKey === 'operationalStatus' || fieldKey === 'Trạng thái hoạt động' || fieldKey === 'Tình trạng hoạt động') {
       const m: Record<string, string> = {
         '0': 'Chưa khai thác/vận hành',
         '1': 'Đang khai thác/vận hành',
         '2': 'Dừng khai thác/vận hành',
-    NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-    OPERATIONAL: 'Đang khai thác/vận hành',
-    SUSPENDED: 'Dừng khai thác/vận hành',
+        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+        OPERATIONAL: 'Đang khai thác/vận hành',
+        SUSPENDED: 'Dừng khai thác/vận hành',
       };
       return m[val] || val;
     }
-    if (fn === 'unitOfMeasure') {
-      return formatUnitOfMeasure(Number(val));
+    if (fieldKey === 'unitOfMeasure' || fieldKey === 'Đơn vị tính') {
+      const uomNum = Number(val);
+      return (!isNaN(uomNum) && formatUnitOfMeasure(uomNum)) ? formatUnitOfMeasure(uomNum) : val;
     }
-    if (fn === 'coordinateSystem') {
-      const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    if (fieldKey === 'coordinateSystem' || fieldKey === 'Hệ quy chiếu' || fieldKey === 'Hệ tọa độ') {
+      const m: Record<string, string> = { '1': 'WGS 84', '4326': 'WGS 84', '2': 'VN-2000' };
       return m[String(val)] || val;
     }
-    if (fn === 'changedAt' || fn === 'createdAt') {
+    if (fieldKey === 'changedAt' || fieldKey === 'createdAt') {
       try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     }
     return val;
@@ -845,7 +915,7 @@ const CctvListPage = () => {
 
   const historyActor = (item: any): string => {
     const raw = item?.approvedBy || item?.changedBy || '';
-    return raw || '—';
+    return raw || null;
   };
 
   const resolveHistoryActionMeta = (item: any): { label: string; color: string; bg: string } => {
@@ -966,12 +1036,31 @@ const CctvListPage = () => {
   };
 
   const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
-    'quantity', 'operatingUnitId', 'provinceName', 'detailedLocation',
-    'attachedInfrastructureType', 'attachedInfrastructureId',
-    'unitOfMeasure', 'yearOfUse', 'operationalStatus',
-    'specifications', 'maintenanceInformation', 'note',
-    'objectType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+    'orgUnitId', 'Đơn vị quản lý',
+    'deviceCode', 'Mã thiết bị',
+    'deviceName', 'Tên thiết bị',
+    'manufacturer', 'Hãng sản xuất',
+    'model', 'Model',
+    'quantity', 'Số lượng',
+    'operatingUnitId', 'Đơn vị khai thác', 'Đơn vị vận hành',
+    'provinceName', 'Tỉnh/Thành phố', 'Địa điểm (Tỉnh/TP)',
+    'detailedLocation', 'Địa điểm chi tiết',
+    'attachedInfrastructureType', 'Loại hạ tầng', 'Thuộc loại hạ tầng',
+    'attachedInfrastructureId', 'Thuộc hạ tầng', 'Hạ tầng phụ thuộc',
+    'unitOfMeasure', 'Đơn vị tính',
+    'yearOfUse', 'Năm đưa vào sử dụng',
+    'operationalStatus', 'Trạng thái hoạt động', 'Tình trạng hoạt động',
+    'approvalStatus', 'Trạng thái phê duyệt',
+    'specifications', 'Thông số kỹ thuật',
+    'maintenanceInformation', 'Thông tin bảo trì',
+    'note', 'Ghi chú',
+    'objectType', 'Loại đối tượng', 'Loại đối tượng (GIS)',
+    'geometryType', 'Loại đối tượng GIS',
+    'coordinates', 'Tọa độ', 'Tọa độ GIS',
+    'mapSymbolId', 'Biểu tượng', 'Biểu tượng bản đồ',
+    'coordinateSystem', 'Hệ quy chiếu', 'Hệ tọa độ',
+    'displayRule', 'Quy tắc hiển thị',
+    'Tài liệu đính kèm',
   ];
 
   const renderCctvHistoryTimeline = (records: any[]) => {
@@ -1029,7 +1118,7 @@ const CctvListPage = () => {
             rec0.orgUnitName ||
             (orgName ? orgName.split(' - ').pop() || orgName : '') ||
             selectedRecord?.orgUnitName ||
-            '';
+            'Cục Hàng hải Việt Nam';
           // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
           const changes = deduplicateAttachmentHistoryChanges(
             g.items.flatMap((item: any) => {
@@ -1092,7 +1181,7 @@ const CctvListPage = () => {
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
-                    {g.ts ? fmtTime(g.ts) : '—'}
+                    {g.ts ? fmtTime(g.ts) : null}
                   </Typography.Text>
                   <span style={{ flexShrink: 0 }}>
                     <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
@@ -1160,7 +1249,7 @@ const CctvListPage = () => {
                           }}
                         >
                           <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
-                            {fn ? `${historyFieldName(fn)}:` : '—'}
+                            {fn ? `${historyFieldName(fn)}:` : null}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
                             {renderValueNode(change.newValue, nv)}
@@ -1180,7 +1269,7 @@ const CctvListPage = () => {
                           }}
                         >
                           <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'break-word' }}>
-                            {fn ? `${historyFieldName(fn)}:` : '—'}
+                            {fn ? `${historyFieldName(fn)}:` : null}
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, overflowWrap: 'break-word', color: textPrimary }}>
                             {renderValueNode(change.oldValue, ov)}
@@ -1209,6 +1298,41 @@ const CctvListPage = () => {
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: CctvResponse) => {
+      const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+      if (isDeleted) {
+        const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [];
+        if (hasPerm?.("cctv:read")) {
+          actions.push({
+            key: "view",
+            label: "Xem chi tiết",
+            icon: icons.view,
+            onClick: () => openViewDetail(record),
+          });
+        }
+        if (hasPerm?.("cctv:history") || hasPerm?.("cctv:read") || hasPerm?.("data:read")) {
+          actions.push({
+            key: "history",
+            label: "Lịch sử",
+            icon: icons.history,
+            onClick: () => {
+              setSelectedRecord(record);
+              setHistoryEntityName(record.deviceName || '');
+              setHistoryModalVisible(true);
+              setHistoryRecords([]);
+              setLoadingHistory(false);
+              setLoadingMoreHistory(false);
+              setHasMoreHistory(true);
+              setHistorySearch('');
+              setHistorySearchInput('');
+              setHistoryDateFrom('');
+              setHistoryDateTo('');
+              setHistoryPage(0);
+            },
+          });
+        }
+        return actions;
+      }
+
       const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [];
 
       if (hasPerm?.("cctv:read")) {
@@ -1233,7 +1357,7 @@ const CctvListPage = () => {
         });
       }
 
-      if (hasPerm?.("cctv:history")) {
+      if (hasPerm?.("cctv:history") || hasPerm?.("cctv:read") || hasPerm?.("data:read")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -1389,29 +1513,54 @@ const CctvListPage = () => {
     }
   }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
-  const fetchOrgUnits = useCallback(async () => {
-    setLoadingOrgs(true);
-    try {
-      const res = await api.get("/common/options/org-units");
-      const items = res.data?.data;
-      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
-        id: String(o.id),
-        name: o.name || "Đơn vị",
-        code: o.code || undefined,
-        parentId: o.parentId ? String(o.parentId) : undefined,
-      }));
+  // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
+  useEffect(() => {
+    const loadOrgDefault = async () => {
+      setLoadingOrgs(true);
+      const isIframe = window.self !== window.top;
+      const data = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+      const orgs: any[] = data && data.length > 0
+        ? data
+        : ((await organizationService.getTree()) || []);
       setOrgUnits(orgs);
-    } catch (error) {
-      console.error("Lỗi tải danh sách đơn vị:", error);
-    } finally {
+      if (orgs.length > 0 && !defaultOrgApplied.current) {
+        defaultOrgApplied.current = true;
+        const found = data && data.length > 0
+          ? data[0]
+          : null;
+        if (found) {
+          defaultOrgUnitId.current = found.id;
+          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
+        } else {
+          // lấy đơn vị của user đang đăng nhập
+          try {
+            const profileRes = await api.get('/users/me');
+            const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+            const userOrgId = profile?.orgUnitId;
+            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
+            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
+            defaultOrgUnitId.current = defaultId;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+          } catch {
+            defaultOrgUnitId.current = orgs[0].id;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+          }
+        }
+      }
+      setOrgUnitReady(true);
       setLoadingOrgs(false);
-    }
+    };
+    loadOrgDefault().catch(() => {
+      console.error('Không tải được cây đơn vị quản lý', 'Failed to load organizations');
+      setOrgUnitReady(true);
+      setLoadingOrgs(false);
+    });
   }, []);
 
   const fetchSymbols = useCallback(async () => {
     try {
-      const res = await api.get("/common/options/symbols");
-      const items = res.data?.data;
+      const resp = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+      const items = resp.data || (resp as any).content || [];
       setSymbols((Array.isArray(items) ? items : []) as MapSymbolType[]);
     } catch (error) {
       console.error("Lỗi tải biểu tượng:", error);
@@ -1419,11 +1568,14 @@ const CctvListPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchData();
-    fetchOrgUnits();
     fetchSymbols();
+  }, [fetchSymbols]);
+
+  useEffect(() => {
+    if (!orgUnitReady) return;
+    fetchData();
     fetchTabCounts();
-  }, [fetchData, fetchOrgUnits, fetchSymbols, fetchTabCounts]);
+  }, [orgUnitReady, fetchData, fetchTabCounts]);
 
   const handleFilterApply = useCallback(() => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
@@ -1441,8 +1593,9 @@ const CctvListPage = () => {
     setInputDeviceCode("");
     setFilterDeviceName("");
     setFilterDeviceCode("");
+    const defaultOrg = defaultOrgUnitId.current;
     setFilterValues({
-      orgUnitId: "",
+      orgUnitId: defaultOrg === '__all__' ? "" : (defaultOrg || ""),
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -1860,6 +2013,10 @@ const CctvListPage = () => {
                     return;
                   }
                   createForm.resetFields();
+                  createForm.setFieldsValue({
+                    operationalStatus: 0,
+                    orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+                  });
                   setCreateModalOpen(true);
                 },
               }
@@ -1885,20 +2042,21 @@ const CctvListPage = () => {
             >
               <OrgUnitTreeSelect
                 organizations={orgUnitOptions}
-                placeholder="Chọn đơn vị"
+                placeholder="Chọn đơn vị..."
                 allowClear
                 showPath
                 allLabel="Tất cả"
                 treeDefaultExpandAll={false}
+                showSearch
                 value={filterValues.orgUnitId || undefined}
                 onChange={(val) =>
                   setFilterValues((prev) => ({
                     ...prev,
-                    orgUnitId: val as string,
+                    orgUnitId: (val as string) || "",
                   }))
                 }
                 loading={loadingOrgs}
-                style={{ borderRadius: radiusPill, height: 40 }}
+                style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
             </SidebarFilterField>
 
@@ -1970,16 +2128,17 @@ const CctvListPage = () => {
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Năm đưa vào sử dụng" labelGap={spaceSm}>
-                  <Select placeholder="Chọn năm" allowClear
-                    value={filterValues.yearOfUse}
-                    onChange={(val) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        yearOfUse: val as number | undefined,
-                      }))
-                    }
-                    options={yearOfUseOptions}
-                    style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
+                  <DatePicker
+                    picker="year"
+                    {...getSidebarDatePickerProps({
+                      picker: 'year',
+                      placeholder: 'Chọn năm',
+                      format: 'YYYY',
+                      allowClear: true,
+                      value: filterValues.yearOfUse ? dayjs(String(filterValues.yearOfUse), 'YYYY') : null,
+                      onChange: (d: any) => setFilterValues((prev) => ({ ...prev, yearOfUse: d ? d.year() : undefined })),
+                    })}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Ngày cập nhật" labelGap={spaceSm}>
@@ -2060,6 +2219,13 @@ const CctvListPage = () => {
             count: tabCounts["REJECTED_LEVEL2"] ?? 0,
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+          },
+          {
+            key: "DELETED",
+            label: "Đã xóa",
+            count: tabCounts["DELETED"] ?? 0,
+            color: statusCritical,
+            active: filterValues.approvalStatus === "DELETED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -2284,7 +2450,7 @@ const CctvListPage = () => {
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
                             <span className="chk-detail-value">
-                              {renderApprovalBadge(selectedRecord.approvalStatus)}
+                              {renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy))}
                             </span>
                           </div>
                           <div className="chk-detail-row">

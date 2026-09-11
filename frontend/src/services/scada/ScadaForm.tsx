@@ -7,6 +7,8 @@ import {
 import type { FormInstance, UploadFile } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
+import { parseNumber5, getValueFromEvent5, integer5Rule } from '../../utils/numberRuleHelper';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
   BankOutlined, SlidersOutlined, FileTextOutlined,
@@ -355,7 +357,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   const loadOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
     try {
-      const data = await organizationService.getAll();
+      const data = await organizationService.getTree();
       setOrgUnits(data || []);
     } catch {
       setOrgUnits([]);
@@ -937,12 +939,22 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         name="quantity"
                         {...labelProps('Số lượng')}
                         style={{ marginBottom: spaceFormField }}
+                        getValueFromEvent={getValueFromEvent5}
                         rules={[
                           { required: true, message: 'Số lượng là bắt buộc' },
-                          { type: 'number', min: 1, message: 'Số lượng phải lớn hơn 0' },
+                          integer5Rule,
                         ]}
+                        initialValue={1}
                       >
-                        <InputNumber min={1} placeholder="0" controls={false} style={numberInputStyle} />
+                        <NumberInputWithCount
+                          min={1}
+                          step={1}
+                          precision={0}
+                          placeholder="Nhập số lượng..."
+                          style={numberInputStyle}
+                          maxLength={5}
+                          parser={parseNumber5}
+                        />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -964,7 +976,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         name="operationalStatus"
                         {...labelProps('Tình trạng hoạt động')}
                         style={{ marginBottom: spaceFormField }}
-                        initialValue={1}
+                        initialValue={0}
                         rules={[{ required: true, message: 'Tình trạng hoạt động là bắt buộc' }]}
                       >
                         <Select placeholder="Chọn tình trạng..." options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />

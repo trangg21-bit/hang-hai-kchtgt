@@ -8,6 +8,8 @@ import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import type { VtsAssistResponse } from './types';
 import { OPERATIONAL_STATUS_OPTIONS } from './schema';
 import toast from '../../components/ToastNotification';
+import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
+import { parseNumber5, getValueFromEvent5, integer5Rule } from '../../utils/numberRuleHelper';
 import {
   colors,
   actionPrimary,
@@ -118,7 +120,7 @@ const VtsAssistFormContent = ({ initialData, onSuccess }: VtsAssistFormProps) =>
       layout="vertical"
       onFinish={handleSubmit}
       initialValues={{
-        operationalStatus: 1,
+        operationalStatus: 0,
         ...initialData,
       }}
     >
@@ -135,26 +137,38 @@ const VtsAssistFormContent = ({ initialData, onSuccess }: VtsAssistFormProps) =>
         name="deviceName"
         label="Tên thiết bị"
         style={{ marginBottom: spaceFormField }}
-        rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }]}
+        rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
       >
-        <Input placeholder="Nhập tên thiết bị..." style={{ borderRadius: radiusPill, height: 40 }} />
+        <Input placeholder="Nhập tên thiết bị..." maxLength={255} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="model" label="Model" style={{ marginBottom: spaceFormField }}>
-        <Input placeholder="Nhập model..." style={{ borderRadius: radiusPill, height: 40 }} />
+      <Form.Item name="model" label="Model" style={{ marginBottom: spaceFormField }} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+        <Input placeholder="Nhập model..." maxLength={255} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item name="manufacturer" label="Hãng sản xuất" style={{ marginBottom: spaceFormField }} rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
-        <Input placeholder="Nhập hãng..." style={{ borderRadius: radiusPill, height: 40 }} />
+        <Input placeholder="Nhập hãng..." maxLength={50} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
         name="quantity"
         label="Số lượng"
         style={{ marginBottom: spaceFormField }}
-        rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
+        getValueFromEvent={getValueFromEvent5}
+        rules={[
+          { required: true, message: 'Vui lòng nhập số lượng' },
+          integer5Rule,
+        ]}
       >
-        <InputNumber min={1} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+        <NumberInputWithCount
+          min={1}
+          step={1}
+          precision={0}
+          placeholder="Nhập số lượng..."
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          maxLength={5}
+          parser={parseNumber5}
+        />
       </Form.Item>
 
       <Form.Item name="yearOfUse" label="Năm đưa vào sử dụng" style={{ marginBottom: spaceFormField }}>
@@ -195,27 +209,27 @@ const VtsAssistFormContent = ({ initialData, onSuccess }: VtsAssistFormProps) =>
         />
       </Form.Item>
 
-      <Form.Item name="operationalStatus" label="Tình trạng" style={{ marginBottom: spaceFormField }}>
+      <Form.Item name="operationalStatus" label="Tình trạng" initialValue={0} style={{ marginBottom: spaceFormField }}>
         <Select
           options={OPERATIONAL_STATUS_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>
 
-      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={{ marginBottom: spaceFormField }} rules={[{ max: 500 }]}>
-        <Input placeholder="Nhập địa điểm..." style={{ borderRadius: radiusPill, height: 40 }} />
+      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]}>
+        <Input placeholder="Nhập địa điểm..." maxLength={500} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="specifications" label="Thông số kỹ thuật" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
-        <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." style={{ borderRadius: radiusPill }} />
+      <Form.Item name="specifications" label="Thông số kỹ thuật" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
+        <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
-        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." style={{ borderRadius: radiusPill }} />
+      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
+        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
-        <Input.TextArea rows={2} placeholder="Nhập ghi chú..." style={{ borderRadius: radiusPill }} />
+      <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
+        <Input.TextArea rows={2} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <div style={{ textAlign: 'right', marginTop: spaceMd }}>

@@ -32,7 +32,11 @@ import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -66,6 +70,9 @@ public class BeaconStationService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final AttachmentRepository attachmentRepository;
     private final UserResolverService userResolverService;
+    private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final PortCacheService portCacheService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -106,13 +113,18 @@ public class BeaconStationService {
             Integer operationalStatus, Double stationArea, String approvalStatus, UUID updatedBy,
             String commissionedFrom, String commissionedTo,
             String updatedFrom, String updatedTo) {
+        boolean includeAll = unitId == null;
+        List<UUID> orgUnitIds = unitId != null
+                ? orgUnitScopeService.resolveSubtreeIds(unitId)
+                : List.of();
         return beaconStationRepo.searchFiltered(
                 name,
                 code,
                 type,
                 primaryLightModel,
                 status,
-                unitId,
+                includeAll,
+                orgUnitIds,
                 seaportId,
                 operator,
                 provinceId,
@@ -135,9 +147,14 @@ public class BeaconStationService {
             String commissionedFrom, String commissionedTo,
             String updatedFrom, String updatedTo,
             org.springframework.data.domain.Pageable pageable) {
+        boolean includeAll = unitId == null;
+        List<UUID> orgUnitIds = unitId != null
+                ? orgUnitScopeService.resolveSubtreeIds(unitId)
+                : List.of();
         return beaconStationRepo.searchFilteredPaged(
                 name, code, type, primaryLightModel, status,
-                unitId, seaportId, operator, provinceId,
+                includeAll, orgUnitIds,
+                seaportId, operator, provinceId,
                 operationalStatus, stationArea, parseApprovalStatus(approvalStatus), updatedBy,
                 parseLocalDate(commissionedFrom), parseLocalDate(commissionedTo),
                 parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
@@ -149,18 +166,40 @@ public class BeaconStationService {
 
     @Transactional
     public BeaconHistoryEntry toHistoryEntry(InfrastructureHistory h) {
-        BeaconHistoryEntry e = new BeaconHistoryEntry();
-        e.setId(h.getId());
-        e.setApprovalLevel(h.getApprovalLevel());
-        e.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
-        e.setApprovedBy(h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null);
-        e.setOrgUnitName(null);
-        e.setApprovedDate(h.getApprovedDate());
-        e.setReason(h.getReason());
-        e.setChangedField(h.getChangedField());
-        e.setPreviousValue(h.getPreviousValue());
-        e.setNewValue(h.getNewValue());
-        return e;
+        return toHistoryEntry(h, Collections.emptyMap());
+    }
+
+    public BeaconHistoryEntry toHistoryEntry(InfrastructureHistory h, Map<UUID, User> userMap) {
+        User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+        String userName = u != null
+                ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
+                        : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
+                : (h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null);
+        String orgUnitName = null;
+        if (u != null) {
+            if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+                orgUnitName = u.getOrgUnit().getName();
+            } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
+                orgUnitName = u.getDepartment();
+            } else {
+                orgUnitName = "Cục Hàng hải Việt Nam";
+            }
+        }
+        if (orgUnitName == null) {
+            orgUnitName = "Cục Hàng hải Việt Nam";
+        }
+        BeaconHistoryEntry entry = new BeaconHistoryEntry();
+        entry.setId(h.getId());
+        entry.setApprovalLevel(h.getApprovalLevel());
+        entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
+        entry.setApprovedBy(userName);
+        entry.setOrgUnitName(orgUnitName);
+        entry.setApprovedDate(h.getApprovedDate());
+        entry.setReason(h.getReason());
+        entry.setChangedField(h.getChangedField());
+        entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
+        entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
+        return entry;
     }
 
     /**
@@ -191,14 +230,26 @@ public class BeaconStationService {
                     paged ? org.springframework.data.domain.PageRequest.of(page, pageSize)
                             : org.springframework.data.domain.Pageable.unpaged());
         }
-        return list.stream().map(this::toHistoryEntry).collect(java.util.stream.Collectors.toList());
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<UUID, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllByIdInWithOrgUnit(userIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
+        return list.stream().map(h -> toHistoryEntry(h, userMap)).collect(java.util.stream.Collectors.toList());
     }
 
     private static String normalizeHistoryKeyword(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) return null;
-        String n = java.text.Normalizer.normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT),
-                java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-        return "%" + n + "%";
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return java.text.Normalizer
+                .normalize(keyword.trim().toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
     }
 
     @Transactional
@@ -252,6 +303,9 @@ public class BeaconStationService {
 
         if (entity.getUnitId() == null) {
             entity.setUnitId(getCurrentUserUnitId());
+        }
+        if (entity.getOrgUnitId() == null) {
+            entity.setOrgUnitId(entity.getUnitId());
         }
         if (entity.getUnitId() == null || !orgUnitScopeService.currentUserScope().allows(entity.getUnitId())) {
             throw new AccessDeniedException("Bạn không có quyền tạo đèn biển ngoài phạm vi đơn vị được phân quyền");
@@ -322,20 +376,6 @@ public class BeaconStationService {
             throw new EntityNotFoundException("Đèn biển đã bị xóa");
         }
 
-        String oldJson = toJson(entity);
-
-        // Apply mutable fields only
-        if (request.getName() != null)
-            entity.setName(request.getName());
-
-        // Handle type field update conditionally (BR-069-02)
-        if (request.getType() != null && !request.getType().equals(entity.getType())) {
-            if ("APPROVED_L2".equals(entity.getStatus()) || "PUBLISHED".equals(entity.getStatus())) {
-                throw new IllegalArgumentException("Loại đèn biển không thể thay đổi khi đèn biển đã được phê duyệt.");
-            }
-            entity.setType(request.getType());
-        }
-
         // Tọa độ GIS (chuẩn /vts-operation-center): nhận coordinates = WKT từ form;
         // nếu trống → giữ vị trí spatial hiện có (chỉ đổi khi người dùng chọn vị trí mới).
         String requestedWkt = request.getCoordinates() != null ? request.getCoordinates().trim() : "";
@@ -351,70 +391,143 @@ public class BeaconStationService {
                 ? resolveGisGeometryType(request.getGeometryType(), requestedWkt)
                 : (existingWkt != null ? resolveGisGeometryType(entity.getGeometryType(), existingWkt) : GisGeometryType.POINT);
 
-        if (request.getTowerColor() != null)
+        Map<String, String> previousValues = new LinkedHashMap<>();
+        if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
+            previousValues.put("name", entity.getName());
+            entity.setName(request.getName());
+        }
+        if (request.getType() != null && !Objects.equals(request.getType(), entity.getType())) {
+            if ("APPROVED_L2".equals(entity.getStatus()) || "PUBLISHED".equals(entity.getStatus())) {
+                throw new IllegalArgumentException("Loại đèn biển không thể thay đổi khi đèn biển đã được phê duyệt.");
+            }
+            previousValues.put("type", entity.getType());
+            entity.setType(request.getType());
+        }
+        if (request.getTowerColor() != null && !Objects.equals(request.getTowerColor(), entity.getTowerColor())) {
+            previousValues.put("towerColor", entity.getTowerColor());
             entity.setTowerColor(request.getTowerColor());
-        if (request.getPrimaryLightModel() != null) {
+        }
+        if (request.getPrimaryLightModel() != null && !Objects.equals(request.getPrimaryLightModel(), entity.getPrimaryLightModel())) {
+            previousValues.put("primaryLightModel", entity.getPrimaryLightModel());
             entity.setPrimaryLightModel(request.getPrimaryLightModel());
         }
-        // BUG FIX #2: Apply lightRange on update
-        if (request.getLightRange() != null)
+        if (request.getBackupLightModel() != null && !Objects.equals(request.getBackupLightModel(), entity.getBackupLightModel())) {
+            previousValues.put("backupLightModel", entity.getBackupLightModel());
+            entity.setBackupLightModel(request.getBackupLightModel());
+        }
+        if (request.getLightRange() != null && !Objects.equals(request.getLightRange(), entity.getLightRange())) {
+            previousValues.put("lightRange", entity.getLightRange() != null ? String.valueOf(entity.getLightRange()) : null);
             entity.setLightRange(request.getLightRange());
-        if (request.getArea() != null)
+        }
+        if (request.getArea() != null && !Objects.equals(request.getArea(), entity.getArea())) {
+            previousValues.put("area", entity.getArea() != null ? String.valueOf(entity.getArea()) : null);
             entity.setArea(request.getArea());
-        if (request.getLocation() != null)
+        }
+        if (request.getLocation() != null && !Objects.equals(request.getLocation(), entity.getLocation())) {
+            previousValues.put("location", entity.getLocation());
             entity.setLocation(request.getLocation());
-        if (request.getUnitId() != null)
+        }
+        if (request.getDetailedLocation() != null && !Objects.equals(request.getDetailedLocation(), entity.getDetailedLocation())) {
+            previousValues.put("detailedLocation", entity.getDetailedLocation());
+            entity.setDetailedLocation(request.getDetailedLocation());
+        }
+        if (request.getUnitId() != null && !Objects.equals(request.getUnitId(), entity.getUnitId())) {
+            previousValues.put("unitId", entity.getUnitId() != null ? entity.getUnitId().toString() : null);
             entity.setUnitId(request.getUnitId());
-        if (request.getProvinceId() != null)
+            entity.setOrgUnitId(request.getUnitId());
+        }
+        if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+            previousValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null);
             entity.setProvinceId(request.getProvinceId());
-        if (request.getLastRepairDate() != null) {
+        }
+        if (request.getSeaportId() != null && !Objects.equals(request.getSeaportId(), entity.getSeaportId())) {
+            previousValues.put("seaportId", entity.getSeaportId() != null ? entity.getSeaportId().toString() : null);
+            entity.setSeaportId(request.getSeaportId());
+        }
+        if (request.getOperator() != null && !Objects.equals(request.getOperator(), entity.getOperator())) {
+            previousValues.put("operator", entity.getOperator());
+            entity.setOperator(request.getOperator());
+        }
+        if (request.getLastRepairDate() != null && !Objects.equals(request.getLastRepairDate(), entity.getLastRepairDate())) {
+            previousValues.put("lastRepairDate", entity.getLastRepairDate() != null ? entity.getLastRepairDate().toString() : null);
             entity.setLastRepairDate(request.getLastRepairDate());
         }
-        if (request.getCommissionedDate() != null) {
+        if (request.getCommissionedDate() != null && !Objects.equals(request.getCommissionedDate(), entity.getCommissionedDate())) {
+            previousValues.put("commissionedDate", entity.getCommissionedDate() != null ? entity.getCommissionedDate().toString() : null);
             entity.setCommissionedDate(request.getCommissionedDate());
         }
-        if (request.getIsActive() != null)
+        if (request.getIsActive() != null && !Objects.equals(request.getIsActive(), entity.getIsActive())) {
+            previousValues.put("isActive", entity.getIsActive() != null ? String.valueOf(entity.getIsActive()) : null);
             entity.setIsActive(request.getIsActive());
-
-        if (request.getShape() != null)
+        }
+        if (request.getShape() != null && !Objects.equals(request.getShape(), entity.getShape())) {
+            previousValues.put("shape", entity.getShape());
             entity.setShape(request.getShape());
-        if (request.getStructure() != null)
+        }
+        if (request.getStructure() != null && !Objects.equals(request.getStructure(), entity.getStructure())) {
+            previousValues.put("structure", entity.getStructure());
             entity.setStructure(request.getStructure());
-        if (request.getTowerHeight() != null)
+        }
+        if (request.getTowerHeight() != null && !Objects.equals(request.getTowerHeight(), entity.getTowerHeight())) {
+            previousValues.put("towerHeight", entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : null);
             entity.setTowerHeight(request.getTowerHeight());
-        if (request.getLightHeight() != null)
+        }
+        if (request.getLightHeight() != null && !Objects.equals(request.getLightHeight(), entity.getLightHeight())) {
+            previousValues.put("lightHeight", entity.getLightHeight() != null ? String.valueOf(entity.getLightHeight()) : null);
             entity.setLightHeight(request.getLightHeight());
-        if (request.getGeographicRange() != null)
+        }
+        if (request.getGeographicRange() != null && !Objects.equals(request.getGeographicRange(), entity.getGeographicRange())) {
+            previousValues.put("geographicRange", entity.getGeographicRange());
             entity.setGeographicRange(request.getGeographicRange());
-        if (request.getBackupLightModel() != null)
-            entity.setBackupLightModel(request.getBackupLightModel());
-        if (request.getPowerSupply() != null)
+        }
+        if (request.getPowerSupply() != null && !Objects.equals(request.getPowerSupply(), entity.getPowerSupply())) {
+            previousValues.put("powerSupply", entity.getPowerSupply());
             entity.setPowerSupply(request.getPowerSupply());
-        if (request.getStaffCount() != null)
+        }
+        if (request.getStaffCount() != null && !Objects.equals(request.getStaffCount(), entity.getStaffCount())) {
+            previousValues.put("staffCount", entity.getStaffCount() != null ? String.valueOf(entity.getStaffCount()) : null);
             entity.setStaffCount(request.getStaffCount());
-        if (request.getStationArea() != null)
+        }
+        if (request.getStationArea() != null && !Objects.equals(request.getStationArea(), entity.getStationArea())) {
+            previousValues.put("stationArea", entity.getStationArea() != null ? String.valueOf(entity.getStationArea()) : null);
             entity.setStationArea(request.getStationArea());
-
-        if (request.getSeaportId() != null)
-            entity.setSeaportId(request.getSeaportId());
-        if (request.getOperator() != null)
-            entity.setOperator(request.getOperator());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getOperationalStatus() != null)
+        }
+        if (request.getOperationalStatus() != null && !Objects.equals(request.getOperationalStatus(), entity.getOperationalStatus())) {
+            previousValues.put("operationalStatus", entity.getOperationalStatus() != null ? String.valueOf(entity.getOperationalStatus()) : null);
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getRegion() != null)
+        }
+        if (request.getRegion() != null && !Objects.equals(request.getRegion(), entity.getRegion())) {
+            previousValues.put("region", entity.getRegion());
             entity.setRegion(request.getRegion());
-        if (request.getIdentifyingFeature() != null)
+        }
+        if (request.getIdentifyingFeature() != null && !Objects.equals(request.getIdentifyingFeature(), entity.getIdentifyingFeature())) {
+            previousValues.put("identifyingFeature", entity.getIdentifyingFeature());
             entity.setIdentifyingFeature(request.getIdentifyingFeature());
-        if (request.getNote() != null)
+        }
+        if (request.getNote() != null && !Objects.equals(request.getNote(), entity.getNote())) {
+            previousValues.put("note", entity.getNote());
             entity.setNote(request.getNote());
-        if (request.getGeometryType() != null)
+        }
+        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), entity.getGeometryType())) {
+            previousValues.put("geometryType", entity.getGeometryType());
             entity.setGeometryType(request.getGeometryType());
-        if (request.getMapSymbolId() != null)
+        }
+        if (request.getMapSymbolId() != null && !Objects.equals(request.getMapSymbolId(), entity.getMapSymbolId())) {
+            previousValues.put("mapSymbolId", entity.getMapSymbolId() != null ? entity.getMapSymbolId().toString() : null);
             entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
+        }
+        if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
+            previousValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? String.valueOf(entity.getCoordinateSystem()) : null);
             entity.setCoordinateSystem(request.getCoordinateSystem());
+        }
+        if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
+            previousValues.put("displayRule", entity.getDisplayRule());
+            entity.setDisplayRule(request.getDisplayRule());
+        }
+        if (!requestedWkt.isEmpty() && !Objects.equals(requestedWkt, existingWkt != null ? existingWkt.trim() : null)) {
+            previousValues.put("coordinates", existingWkt != null ? existingWkt : "Chưa có");
+        }
+
         boolean wasApproved = isApprovedStatus(entity.getStatus())
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
@@ -467,11 +580,29 @@ public class BeaconStationService {
             }
         }
 
-        // Only record history when the record is already approved
-        String newJson = toJson(entity);
-        if (wasApproved && !compareJsonNodes(oldJson, newJson)) {
-            logHistory(entity, BeaconHistoryActionType.UPDATE,
-                    getChangedFields(oldJson, newJson), oldJson, newJson);
+        // Ghi nhật ký từng trường thay đổi (chuẩn /vts-operation-center)
+        if (wasApproved && !previousValues.isEmpty()) {
+            UUID currentUserId = SecurityUtils.getCurrentUserId();
+            LocalDateTime now = LocalDateTime.now();
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                String field = entry.getKey();
+                String fieldName = getFieldDisplayName(field);
+                String oldVal = formatDisplayValue(field, entry.getValue());
+                Object rawNew = getEntityFieldValue(entity, field, request);
+                String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
+                infraHistoryRepo.save(InfrastructureHistory.builder()
+                        .refId(entity.getId())
+                        .refType(InfrastructureType.LIGHTHOUSE)
+                        .approvalLevel(ApprovalLevel.LEVEL_2)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(currentUserId)
+                        .approvedDate(now)
+                        .changedField(fieldName)
+                        .previousValue(oldVal)
+                        .newValue(newVal)
+                        .reason("Cập nhật thông tin " + fieldName)
+                        .build());
+            }
         }
         return toResponse(entity);
     }
@@ -497,7 +628,12 @@ public class BeaconStationService {
         entity.softDelete(SecurityUtils.getCurrentUserId());
         beaconStationRepo.save(entity);
 
-        logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
+        InfrastructureHistoryUtils.recordSoftDelete(
+                infraHistoryRepo,
+                id,
+                InfrastructureType.LIGHTHOUSE,
+                SecurityUtils.getCurrentUserId(),
+                "Xóa đèn biển: " + entity.getName());
 
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -556,9 +692,9 @@ public class BeaconStationService {
         beaconStationRepo.save(entity);
 
         // Ghi nội dung chuyển trạng thái (chuẩn /vts-operation-center) — tránh log rỗng không có khối thông tin
-        logHistory(entity, BeaconHistoryActionType.APPROVE_L1, "approvalStatus",
+        logHistory(entity, BeaconHistoryActionType.APPROVE_L1, "Trạng thái phê duyệt",
                 previousApprovalStatus != null ? previousApprovalStatus.getLabel() : null,
-                entity.getApprovalStatus().getLabel());
+                entity.getApprovalStatus().getLabel(), note);
 
         return toResponse(entity);
     }
@@ -590,9 +726,9 @@ public class BeaconStationService {
         beaconStationRepo.save(entity);
 
         // Ghi nội dung chuyển trạng thái (chuẩn /vts-operation-center) — tránh log rỗng không có khối thông tin
-        logHistory(entity, BeaconHistoryActionType.APPROVE_L2, "approvalStatus",
+        logHistory(entity, BeaconHistoryActionType.APPROVE_L2, "Trạng thái phê duyệt",
                 previousApprovalStatus != null ? previousApprovalStatus.getLabel() : null,
-                entity.getApprovalStatus().getLabel());
+                entity.getApprovalStatus().getLabel(), note);
 
         return toResponse(entity);
     }
@@ -614,7 +750,8 @@ public class BeaconStationService {
         entity.setRejectionReason(rejectReason);
         beaconStationRepo.save(entity);
 
-        logHistory(entity, BeaconHistoryActionType.REJECT, null, null, rejectReason);
+        logHistory(entity, BeaconHistoryActionType.REJECT, "Trạng thái phê duyệt",
+                null, entity.getApprovalStatus().getLabel(), rejectReason);
         notificationService.sendRejectionNotification(entity, rejectReason);
 
         return toResponse(entity);
@@ -677,6 +814,11 @@ public class BeaconStationService {
 
     private void logHistory(BeaconStation entity,
             BeaconHistoryActionType action, String fields, String previousJson, String newJson) {
+        logHistory(entity, action, fields, previousJson, newJson, null);
+    }
+
+    private void logHistory(BeaconStation entity,
+            BeaconHistoryActionType action, String fields, String previousJson, String newJson, String customReason) {
         Long legacyUserId = resolveCurrentUserId();
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         BeaconHistory entry = BeaconHistory.builder()
@@ -688,14 +830,8 @@ public class BeaconStationService {
                 .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
                 .changedBy(legacyUserId)
                 .changedAt(LocalDateTime.now())
-                .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
+                .reason(customReason != null ? customReason : (action == BeaconHistoryActionType.REJECT ? newJson : null))
                 .build();
-        // TODO (2026-08-26): tạm ẩn ghi beacon_history — DB đang chạy chưa có bảng này
-        // (ERROR: relation "beacon_history" does not exist; migration
-        // V20260803370000__repair_all_schema_types_and_columns.sql chưa được áp dụng).
-        // if (historyRepo != null) {
-        //     historyRepo.save(entry);
-        // }
 
         if (infraHistoryRepo != null && entity.getId() != null) {
             InfrastructureHistoryStatus status = switch (action) {
@@ -706,6 +842,16 @@ public class BeaconStationService {
                 case REJECT -> InfrastructureHistoryStatus.REJECTED;
                 default -> InfrastructureHistoryStatus.UPDATED;
             };
+            String reason = customReason;
+            if (reason == null) {
+                reason = switch (action) {
+                    case CREATE -> "Tạo mới hồ sơ";
+                    case APPROVE_L1 -> "Phê duyệt cấp Chi cục/Cảng vụ";
+                    case APPROVE_L2 -> "Phê duyệt cấp Cục";
+                    case REJECT -> newJson;
+                    default -> null;
+                };
+            }
             infraHistoryRepo.save(InfrastructureHistory.builder()
                     .refId(entity.getId())
                     .refType(InfrastructureType.LIGHTHOUSE)
@@ -720,7 +866,7 @@ public class BeaconStationService {
                     .changedField(fields)
                     .previousValue(previousJson)
                     .newValue(newJson)
-                    .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
+                    .reason(reason)
                     .build());
         }
     }
@@ -749,6 +895,11 @@ public class BeaconStationService {
             }
         }
 
+        String status = entity.getStatus();
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            status = "DELETED";
+        }
+
         return BeaconStationResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
@@ -765,7 +916,9 @@ public class BeaconStationService {
                 .lastRepairDate(entity.getLastRepairDate())
                 .commissionedDate(entity.getCommissionedDate())
                 .isActive(entity.getIsActive())
-                .status(entity.getStatus())
+                .status(status)
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .approvalStatus(entity.getApprovalStatus().name())
                 .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
@@ -947,7 +1100,20 @@ public class BeaconStationService {
             String uploadedNames = files.stream()
                     .map(f -> f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown")
                     .collect(java.util.stream.Collectors.joining("; "));
-            logHistory(station, BeaconHistoryActionType.UPDATE, "attachments", null, uploadedNames);
+            if (infraHistoryRepo != null) {
+                infraHistoryRepo.save(InfrastructureHistory.builder()
+                        .refId(entityId)
+                        .refType(InfrastructureType.LIGHTHOUSE)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .approvedBy(userId)
+                        .approvedDate(LocalDateTime.now())
+                        .reason("Thêm tài liệu đính kèm: " + uploadedNames)
+                        .changedField("Tài liệu đính kèm")
+                        .previousValue("—")
+                        .newValue(uploadedNames)
+                        .build());
+            }
         }
         return saved.stream().map(this::toAttachmentDto).toList();
     }
@@ -975,8 +1141,189 @@ public class BeaconStationService {
         if (station != null && (isApprovedStatus(station.getStatus())
                 || station.getApprovalStatus() == ApprovalStatus.APPROVED
                 || station.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
-            logHistory(station, BeaconHistoryActionType.UPDATE, "attachments", attachment.getFileName(), null);
+            if (infraHistoryRepo != null) {
+                infraHistoryRepo.save(InfrastructureHistory.builder()
+                        .refId(entityId)
+                        .refType(InfrastructureType.LIGHTHOUSE)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                        .approvedBy(SecurityUtils.getCurrentUserId())
+                        .approvedDate(LocalDateTime.now())
+                        .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
+                        .changedField("Tài liệu đính kèm")
+                        .previousValue(attachment.getFileName())
+                        .newValue("—")
+                        .build());
+            }
         }
+    }
+
+    public String getFieldDisplayName(String field) {
+        if (field == null) return "";
+        return switch (field) {
+            case "name" -> "Tên đèn biển";
+            case "code" -> "Mã đèn biển";
+            case "type" -> "Cấp trạm đèn";
+            case "lightRange" -> "Tầm hiệu lực ánh sáng (hải lý)";
+            case "towerColor" -> "Màu sắc tháp đèn";
+            case "primaryLightModel" -> "Loại đèn chính";
+            case "backupLightModel" -> "Loại đèn phụ";
+            case "area" -> "Vùng nước";
+            case "location" -> "Vị trí đặt đèn";
+            case "detailedLocation" -> "Địa điểm chi tiết";
+            case "unitId", "orgUnitId" -> "Đơn vị quản lý";
+            case "provinceId" -> "Địa điểm (Tỉnh/TP)";
+            case "seaportId" -> "Thuộc cảng biển";
+            case "operator" -> "Đơn vị khai thác";
+            case "lastRepairDate" -> "Ngày sửa chữa gần nhất";
+            case "commissionedDate" -> "Ngày đưa vào sử dụng";
+            case "isActive" -> "Trạng thái hoạt động";
+            case "shape" -> "Hình dạng tháp đèn";
+            case "structure" -> "Kết cấu tháp đèn";
+            case "towerHeight" -> "Chiều cao tháp đèn (m)";
+            case "lightHeight" -> "Chiều cao tâm sáng (m)";
+            case "geographicRange" -> "Tầm hiệu lực địa lý (hải lý)";
+            case "powerSupply" -> "Nguồn năng lượng";
+            case "staffCount" -> "Số lượng nhân viên";
+            case "stationArea" -> "Diện tích trạm (m²)";
+            case "operationalStatus" -> "Tình trạng hoạt động";
+            case "region" -> "Địa bàn";
+            case "identifyingFeature" -> "Đặc điểm nhận biết";
+            case "note" -> "Ghi chú";
+            case "geometryType" -> "Loại đối tượng GIS";
+            case "mapSymbolId" -> "Biểu tượng";
+            case "coordinateSystem" -> "Hệ tọa độ";
+            case "displayRule" -> "Quy tắc hiển thị";
+            case "coordinates" -> "Tọa độ GIS";
+            case "approvalStatus", "status" -> "Trạng thái phê duyệt";
+            case "attachments" -> "Tài liệu đính kèm";
+            default -> field;
+        };
+    }
+
+    public String formatDisplayValue(String field, String rawValue) {
+        if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
+            return "Chưa có";
+        }
+        if ("mapSymbolId".equals(field) || "Biểu tượng".equals(field)) {
+            try {
+                UUID symId = UUID.fromString(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM map_symbols WHERE id = ?", String.class, symId);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("unitId".equals(field) || "orgUnitId".equals(field) || "Đơn vị quản lý".equals(field)) {
+            try {
+                String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
+                return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("seaportId".equals(field) || "Thuộc cảng biển".equals(field)) {
+            try {
+                String name = portCacheService.getName(UUID.fromString(rawValue));
+                return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("provinceId".equals(field) || "Địa điểm (Tỉnh/TP)".equals(field) || "Tỉnh / Thành phố".equals(field)) {
+            try {
+                int pid = Integer.parseInt(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM provinces WHERE id = ?", String.class, pid);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("operationalStatus".equals(field) || "Tình trạng hoạt động".equals(field) || "Tình trạng".equals(field)) {
+            if ("0".equals(rawValue)) return "Chưa khai thác/vận hành";
+            if ("1".equals(rawValue)) return "Đang khai thác/vận hành";
+            if ("2".equals(rawValue)) return "Dừng khai thác/vận hành";
+            return rawValue;
+        }
+        if ("type".equals(field) || "Cấp trạm đèn".equals(field) || "Phân loại đèn biển".equals(field)) {
+            if ("LIGHTHOUSE".equals(rawValue)) return "Cấp I";
+            if ("BEACON_LIGHT".equals(rawValue)) return "Cấp II";
+            if ("BEACON_MARK".equals(rawValue)) return "Cấp III";
+            return rawValue;
+        }
+        if ("coordinateSystem".equals(field) || "Hệ tọa độ".equals(field) || "Hệ quy chiếu".equals(field)) {
+            if ("1".equals(rawValue) || "4326".equals(rawValue)) return "WGS 84";
+            if ("2".equals(rawValue)) return "VN-2000";
+            return rawValue;
+        }
+        if ("geometryType".equals(field) || "Loại đối tượng GIS".equals(field)) {
+            if (GisGeometryType.POINT.name().equals(rawValue)) return "Đối tượng điểm";
+            if (GisGeometryType.LINE.name().equals(rawValue) || "LINESTRING".equals(rawValue)) return "Đối tượng đường";
+            if (GisGeometryType.POLYGON.name().equals(rawValue)) return "Đối tượng vùng";
+            return rawValue;
+        }
+        if ("approvalStatus".equals(field) || "Trạng thái phê duyệt".equals(field) || "status".equals(field) || "Trạng thái".equals(field)) {
+            if (ApprovalStatus.DRAFT.name().equals(rawValue) || "DRAFT".equals(rawValue)) return "Lưu tạm";
+            if (ApprovalStatus.PROPOSED.name().equals(rawValue) || ApprovalStatus.PENDING_APPROVAL.name().equals(rawValue) || "PENDING_APPROVAL".equals(rawValue)) return "Chờ Cảng vụ duyệt";
+            if (ApprovalStatus.APPROVED_LEVEL1.name().equals(rawValue) || "APPROVED_LEVEL1".equals(rawValue)) return "Chờ Cục duyệt";
+            if (ApprovalStatus.APPROVED.name().equals(rawValue) || ApprovalStatus.APPROVED_LEVEL2.name().equals(rawValue) || "APPROVED".equals(rawValue)) return "Đã duyệt";
+            if (ApprovalStatus.REJECTED_LEVEL1.name().equals(rawValue) || "REJECTED_LEVEL1".equals(rawValue)) return "Bị Cảng vụ trả về";
+            if (ApprovalStatus.REJECTED_LEVEL2.name().equals(rawValue) || ApprovalStatus.REJECTED.name().equals(rawValue) || "REJECTED".equals(rawValue)) return "Bị Cục trả về";
+            return rawValue;
+        }
+        if ("isActive".equals(field) || "Trạng thái hoạt động".equals(field)) {
+            if ("true".equalsIgnoreCase(rawValue)) return "Hoạt động";
+            if ("false".equalsIgnoreCase(rawValue)) return "Ngừng hoạt động";
+            return rawValue;
+        }
+        if ("coordinates".equals(field) || "Tọa độ GIS".equals(field)) {
+            if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
+                return "Chưa có";
+            }
+            return rawValue.trim();
+        }
+        return rawValue;
+    }
+
+    private Object getEntityFieldValue(BeaconStation entity, String field, UpdateBeaconStationRequest request) {
+        if (entity == null || field == null) return null;
+        return switch (field) {
+            case "name" -> entity.getName();
+            case "code" -> entity.getCode();
+            case "type" -> entity.getType();
+            case "lightRange" -> entity.getLightRange();
+            case "towerColor" -> entity.getTowerColor();
+            case "primaryLightModel" -> entity.getPrimaryLightModel();
+            case "backupLightModel" -> entity.getBackupLightModel();
+            case "area" -> entity.getArea();
+            case "location" -> entity.getLocation();
+            case "detailedLocation" -> entity.getDetailedLocation();
+            case "unitId" -> entity.getUnitId();
+            case "provinceId" -> entity.getProvinceId();
+            case "seaportId" -> entity.getSeaportId();
+            case "operator" -> entity.getOperator();
+            case "lastRepairDate" -> entity.getLastRepairDate();
+            case "commissionedDate" -> entity.getCommissionedDate();
+            case "isActive" -> entity.getIsActive();
+            case "shape" -> entity.getShape();
+            case "structure" -> entity.getStructure();
+            case "towerHeight" -> entity.getTowerHeight();
+            case "lightHeight" -> entity.getLightHeight();
+            case "geographicRange" -> entity.getGeographicRange();
+            case "powerSupply" -> entity.getPowerSupply();
+            case "staffCount" -> entity.getStaffCount();
+            case "stationArea" -> entity.getStationArea();
+            case "operationalStatus" -> entity.getOperationalStatus();
+            case "region" -> entity.getRegion();
+            case "identifyingFeature" -> entity.getIdentifyingFeature();
+            case "note" -> entity.getNote();
+            case "geometryType" -> entity.getGeometryType();
+            case "mapSymbolId" -> entity.getMapSymbolId();
+            case "coordinateSystem" -> entity.getCoordinateSystem();
+            case "displayRule" -> entity.getDisplayRule();
+            case "coordinates" -> request != null && request.getCoordinates() != null ? request.getCoordinates().trim() : null;
+            default -> null;
+        };
     }
 
     /**

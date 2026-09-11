@@ -96,6 +96,8 @@ export interface BeaconStation {
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
+  deletedBy?: string;
   provinceId?: number;
   seaportId?: string;
   operator?: string;
@@ -138,10 +140,10 @@ export interface CreateBeaconStationRequest {
   type: BeaconLightType;
   latitude?: number;
   longitude?: number;
-  lightRange: number;
+  lightRange: number | string;
   towerColor?: string;
   primaryLightModel?: string;
-  area?: number;
+  area?: number | string;
   location?: string;
   unitId?: string;
   lastRepairDate?: string;
@@ -162,13 +164,13 @@ export interface CreateBeaconStationRequest {
   displayRule?: string;
   shape?: string;
   structure?: string;
-  towerHeight?: number;
-  lightHeight?: number;
+  towerHeight?: number | string;
+  lightHeight?: number | string;
   geographicRange?: string;
   backupLightModel?: string;
   powerSupply?: string;
   staffCount?: number;
-  stationArea?: number;
+  stationArea?: number | string;
 }
 
 export interface UpdateBeaconStationRequest {
@@ -178,10 +180,10 @@ export interface UpdateBeaconStationRequest {
   type?: BeaconLightType;
   latitude?: number;
   longitude?: number;
-  lightRange?: number;
+  lightRange?: number | string;
   towerColor?: string;
   primaryLightModel?: string;
-  area?: number;
+  area?: number | string;
   location?: string;
   unitId?: string;
   lastRepairDate?: string;
@@ -201,13 +203,13 @@ export interface UpdateBeaconStationRequest {
   displayRule?: string;
   shape?: string;
   structure?: string;
-  towerHeight?: number;
-  lightHeight?: number;
+  towerHeight?: number | string;
+  lightHeight?: number | string;
   geographicRange?: string;
   backupLightModel?: string;
   powerSupply?: string;
   staffCount?: number;
-  stationArea?: number;
+  stationArea?: number | string;
 }
 
 export interface Buoy {

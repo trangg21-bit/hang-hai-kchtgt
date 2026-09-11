@@ -23,7 +23,6 @@ import {
   HomeOutlined,
   LinkOutlined,
   MonitorOutlined,
-  PhoneOutlined,
   PushpinOutlined,
   RadarChartOutlined,
   RetweetOutlined,
@@ -65,6 +64,7 @@ import {
 } from '../../themetokenchk';
 import { ScreenHeader } from '../../components/list-view';
 import { usePermissionStore } from '../../store/permissionStore';
+import { RadioIcon } from '../../config/navigation';
 
 // ============================================================
 // Danh mục KCHT hàng hải — route /kcht-directory
@@ -137,6 +137,7 @@ const KCHT_TREE: KchtTypeNode[] = [
           },
           { key: '/beacon-stations', name: 'Đèn biển & nhà trạm', level: 'C2' },
           { key: '/dike-revetment', name: 'Đê chắn sóng, đê chắn cát, kè', level: 'C2' },
+          { key: '/vhf', name: 'Hệ thống VHF', level: 'C2' },
         ],
       },
       { key: '/anchorage', name: 'Khu neo đậu', level: 'C1' },
@@ -174,12 +175,6 @@ const KCHT_TREE: KchtTypeNode[] = [
     icon: <ApartmentOutlined />,
     children: [
       { key: '/dai-ttdh', name: 'Đài TTDH', level: 'C1' },
-      {
-        key: 'vhf-system',
-        name: 'Hệ thống VHF',
-        level: 'C1',
-        noRouteNote: 'Hệ thống VHF chưa có màn hình quản lý riêng.',
-      },
       { key: '/station/inmarsat', name: 'Đài Inmarsat', level: 'C1' },
       { key: '/station/lrit', name: 'Đài LRIT', level: 'C1' },
       { key: '/station/cospas-sarsat', name: 'Đài Cospas-Sarsat', level: 'C1' },
@@ -215,7 +210,8 @@ const NODE_ICONS: Record<string, ReactNode> = {
   '/dry-port': <TruckOutlined />,
   'dai-vien-thong-hang-hai': <ApartmentOutlined />,
   '/dai-ttdh': <SoundOutlined />,
-  'vhf-system': <PhoneOutlined />,
+  '/vhf': <RadioIcon />,
+  'vhf-system': <RadioIcon />,
   '/station/inmarsat': <RocketOutlined />,
   '/station/lrit': <EyeOutlined />,
   '/station/cospas-sarsat': <AlertOutlined />,
@@ -247,6 +243,7 @@ const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   '/vts-assist': 'vtsassist:read',
   '/dry-port': 'dryport:read',
   '/dai-ttdh': 'daittdh:read',
+  '/vhf': ['vhf:read', 'daittdh:read', 'specialstation:read', 'data:read'],
   '/station/inmarsat': ['specialstation:read', 'coastalstationinmarsat:read', 'coastalstation:read', 'data:read'],
   '/station/cospas-sarsat': 'coastalstationcospassarsat:read',
   '/station/lrit': 'coastalstationlrit:read',

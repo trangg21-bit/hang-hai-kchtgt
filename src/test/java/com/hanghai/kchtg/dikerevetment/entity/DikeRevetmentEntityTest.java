@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -29,14 +30,14 @@ class DikeRevetmentEntityTest {
         entity.setLocation("Bac Giang");
         assertEquals("Bac Giang", entity.getLocation());
 
-        entity.setLength(150.5);
-        assertEquals(150.5, entity.getLength());
+        entity.setLength(new BigDecimal("150.5"));
+        assertEquals(new BigDecimal("150.5"), entity.getLength());
 
-        entity.setCrestElevation(10.0);
-        assertEquals(10.0, entity.getCrestElevation());
+        entity.setCrestElevation(new BigDecimal("10.0"));
+        assertEquals(new BigDecimal("10.0"), entity.getCrestElevation());
 
-        entity.setHeight(5.0);
-        assertEquals(5.0, entity.getHeight());
+        entity.setHeight(new BigDecimal("5.0"));
+        assertEquals(new BigDecimal("5.0"), entity.getHeight());
 
         entity.setSurfaceMaterial("Betong");
         assertEquals("Betong", entity.getSurfaceMaterial());
@@ -81,9 +82,9 @@ class DikeRevetmentEntityTest {
         DikeRevetment dr = DikeRevetment.builder()
                 .dikeRevetmentType(DikeRevetmentType.SAND_DIKE)
                 .location("Ha Noi")
-                .length(200.0)
-                .crestElevation(20.0)
-                .height(8.0)
+                .length(new BigDecimal("200.0"))
+                .crestElevation(new BigDecimal("20.0"))
+                .height(new BigDecimal("8.0"))
                 .surfaceMaterial("Thep")
                 .status("Tot")
                 .approvalStatus(ApprovalStatus.APPROVED)
@@ -94,7 +95,7 @@ class DikeRevetmentEntityTest {
 
         assertEquals(DikeRevetmentType.SAND_DIKE, dr.getDikeRevetmentType());
         assertEquals("Ha Noi", dr.getLocation());
-        assertEquals(200.0, dr.getLength());
+        assertEquals(new BigDecimal("200.0"), dr.getLength());
         assertEquals(ApprovalStatus.APPROVED, dr.getApprovalStatus());
         assertTrue(dr.getIsApprovedLevel1());
         assertTrue(dr.getIsApprovedLevel2());

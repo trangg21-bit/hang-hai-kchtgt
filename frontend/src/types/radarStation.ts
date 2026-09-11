@@ -18,6 +18,7 @@ export type RadarStationStatus =
   | 'REJECTED_LEVEL1'
   | 'REJECTED_LEVEL2'
   | 'APPROVED'
+  | 'DELETED'
   | 'ARCHIVED'
   | 'PROPOSED'
   | 'APPROVED_LEVEL2'
@@ -34,6 +35,8 @@ export const RADAR_STATION_STATUS_MAP: Record<string, { label: string }> = {
   APPROVED: { label: 'Đã phê duyệt' },
   APPROVED_LEVEL2: { label: 'Đã phê duyệt' },
   REJECTED: { label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  DELETED: { label: 'Đã xóa' },
+  ARCHIVED: { label: 'Đã xóa' },
 };
 
 export interface RadarStationResponse {
@@ -56,10 +59,10 @@ export interface RadarStationResponse {
   unitOfMeasure?: string;
   quantity?: number;
   conditionStatus?: string;
-  towerHeight?: number;
+  towerHeight?: number | string;
   radarRange?: string | number;
   coverage?: string;
-  emissionArea?: number;
+  emissionArea?: number | string;
   stationType?: string;
   source?: string;
   note?: string;
@@ -94,6 +97,9 @@ export interface RadarStationResponse {
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
   mapIcon?: string;
+  deletedBy?: string;
+  deletedByName?: string;
+  deletedAt?: string;
 }
 
 export interface RadarStationOptionResponse {
@@ -116,10 +122,10 @@ export interface CreateRadarStationRequest {
   unitOfMeasure?: string;
   quantity?: number;
   conditionStatus?: string;
-  towerHeight?: number;
+  towerHeight?: number | string;
   radarRange?: string | number;
   coverage?: string;
-  emissionArea?: number;
+  emissionArea?: number | string;
   stationType?: string;
   source?: string;
   note?: string;

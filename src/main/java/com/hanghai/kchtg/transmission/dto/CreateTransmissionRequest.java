@@ -36,6 +36,7 @@ public class CreateTransmissionRequest {
     @Size(max = 255, message = "Model tối đa 255 ký tự")
     private String model;
 
+    @NotNull(message = "Đơn vị quản lý không được để trống")
     private UUID orgUnitId;
     private UUID operatingUnitId;
     private String provinceName;

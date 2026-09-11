@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,9 +40,9 @@ class DikeRevetmentControllerTest {
                 .id(TEST_ID)
                 .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
                 .location("Bac Giang")
-                .length(150.5)
-                .crestElevation(10.0)
-                .height(5.0)
+                .length(new BigDecimal("150.5"))
+                .crestElevation(new BigDecimal("10.0"))
+                .height(new BigDecimal("5.0"))
                 .surfaceMaterial("Betong")
                 .status("1")
                 .approvalStatus(ApprovalStatus.DRAFT)
@@ -50,9 +52,9 @@ class DikeRevetmentControllerTest {
         createReq = DikeRevetmentCreateRequest.builder()
                 .dikeRevetmentType(DikeRevetmentType.SAND_DIKE)
                 .location("Ha Noi")
-                .length(200.0)
-                .crestElevation(20.0)
-                .height(8.0)
+                .length(new BigDecimal("200.0"))
+                .crestElevation(new BigDecimal("20.0"))
+                .height(new BigDecimal("8.0"))
                 .surfaceMaterial("Thep")
                 .status("1")
                 .build();
@@ -116,5 +118,14 @@ class DikeRevetmentControllerTest {
         var resp = controller.rejectC2(TEST_ID, "Từ chối C2", null, authentication);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         verify(service, times(1)).rejectLevel2(eq(TEST_ID), nullable(UUID.class), eq("Từ chối C2"));
+    }
+
+    @Test
+    void getHistory_shouldReturnSuccess() {
+        when(service.getHistory(eq(TEST_ID), any(), any(), any(), any(String.class), any(String.class))).thenReturn(List.of());
+        var resp = controller.getHistory(TEST_ID, 0, 10, "keyword", "2026-01-01", "2026-01-31");
+        assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(resp.getBody().getData()).isEmpty();
+        verify(service, times(1)).getHistory(eq(TEST_ID), eq(0), eq(10), eq("keyword"), eq("2026-01-01"), eq("2026-01-31"));
     }
 }

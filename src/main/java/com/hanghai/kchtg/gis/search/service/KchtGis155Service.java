@@ -699,6 +699,7 @@ public class KchtGis155Service {
 
         case CCTV:
             List<Cctv> cctvs = cctvRepository.searchCctv(
+                false,
                 orgUnitId == null,
                 orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
                 false, null, null, null, null, ApprovalStatus.APPROVED, null, null, null,
@@ -744,6 +745,7 @@ public class KchtGis155Service {
 
         case SCADA:
             List<Scada> scadaSystems = scadaRepository.searchScada(
+                false,
                 orgUnitId == null,
                 orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
                 false, null, null, null, null, ApprovalStatus.APPROVED, null, null, null,
@@ -822,7 +824,10 @@ public class KchtGis155Service {
 
         case VTS_ASSIST:
           List<VtsAssist> vtsAssistSystems = vtsAssistRepository.searchVtsAssist(
-              true, List.of(), false, List.of(), null, null, null,
+              false,
+              orgUnitId == null,
+              orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
+              false, null, null, null, null,
               ApprovalStatus.APPROVED, null, null, null, province, null, null,
               searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
           Map<UUID, GisSpatialObject> vtsAssistSpatialMap = loadSpatialMap(
@@ -859,7 +864,10 @@ public class KchtGis155Service {
 
         case TRANSMISSION:
           List<Transmission> transmissionSystems = transmissionRepository.searchTransmission(
-              true, List.of(), false, List.of(), null, null, null,
+              false,
+              orgUnitId == null,
+              orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of(),
+              false, null, null, null, null,
               ApprovalStatus.APPROVED, null, null, null, province, null, null,
               searchLower, PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
           Map<UUID, GisSpatialObject> transmissionSpatialMap = loadSpatialMap(

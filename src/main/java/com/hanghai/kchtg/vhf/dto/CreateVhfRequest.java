@@ -36,6 +36,8 @@ public class CreateVhfRequest {
     private String model;
 
     private UUID seaportId;
+
+    @NotNull(message = "Đơn vị quản lý không được để trống")
     private UUID orgUnitId;
     private UUID operatingUnitId;
     private String provinceName;

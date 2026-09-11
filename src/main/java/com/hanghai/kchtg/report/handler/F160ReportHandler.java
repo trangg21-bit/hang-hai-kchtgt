@@ -10,6 +10,7 @@ import com.hanghai.kchtg.report.dto.ReportResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -58,8 +59,8 @@ public class F160ReportHandler extends BaseReportHandler {
                     dr.getCommissioningDate() != null
                             ? String.valueOf(dr.getCommissioningDate().getYear())
                             : "");
-            r.put("Chiều dài", dr.getLength() != null ? (dr.getLength() % 1 == 0 ? String.valueOf(dr.getLength().longValue()) : String.valueOf(dr.getLength())) : "0");
-            r.put("Chiều cao", dr.getHeight() != null ? (dr.getHeight() % 1 == 0 ? String.valueOf(dr.getHeight().longValue()) : String.valueOf(dr.getHeight())) : "0");
+            r.put("Chiều dài", formatNumber(dr.getLength()));
+            r.put("Chiều cao", formatNumber(dr.getHeight()));
             r.put("Cao trình đỉnh", formatCaoTrinhDinh(dr.getCrestElevation()));
             r.put("Hiện trạng của công trình", statusLabel(dr.getStatus()));
             String donVi = "";
@@ -113,8 +114,8 @@ public class F160ReportHandler extends BaseReportHandler {
                     dikeRev.getCommissioningDate() != null
                             ? String.valueOf(dikeRev.getCommissioningDate().getYear())
                             : "");
-            item.put("chieuDai", dikeRev.getLength() != null ? (dikeRev.getLength() % 1 == 0 ? String.valueOf(dikeRev.getLength().longValue()) : String.valueOf(dikeRev.getLength())) : "0");
-            item.put("chieuCao", dikeRev.getHeight() != null ? (dikeRev.getHeight() % 1 == 0 ? String.valueOf(dikeRev.getHeight().longValue()) : String.valueOf(dikeRev.getHeight())) : "0");
+            item.put("chieuDai", formatNumber(dikeRev.getLength()));
+            item.put("chieuCao", formatNumber(dikeRev.getHeight()));
             item.put("caoTrinhDinh", formatCaoTrinhDinh(dikeRev.getCrestElevation()));
             item.put("hienTrang", statusLabel(dikeRev.getStatus()));
             String donVi = "";
@@ -129,10 +130,18 @@ public class F160ReportHandler extends BaseReportHandler {
         return arrResult;
     }
 
-    private String formatCaoTrinhDinh(Double value) {
+    private String formatNumber(BigDecimal val) {
+        if (val == null) return "0";
+        BigDecimal stripped = val.stripTrailingZeros();
+        return stripped.scale() <= 0 ? stripped.toBigInteger().toString() : stripped.toPlainString();
+    }
+
+    private String formatCaoTrinhDinh(BigDecimal value) {
         if (value == null) return "";
-        if (value > 0) return "+" + value;
-        return String.valueOf(value);
+        BigDecimal stripped = value.stripTrailingZeros();
+        String str = stripped.scale() <= 0 ? stripped.toBigInteger().toString() : stripped.toPlainString();
+        if (value.compareTo(BigDecimal.ZERO) > 0) return "+" + str;
+        return str;
     }
 
     private String statusLabel(String value) {

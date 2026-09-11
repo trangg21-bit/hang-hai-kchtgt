@@ -9,6 +9,7 @@ import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLRestriction;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,6 +30,7 @@ import lombok.experimental.FieldNameConstants;
 @Table(name = "vts_assist",
         uniqueConstraints = @UniqueConstraint(columnNames = "device_code"))
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@SQLRestriction("1=1")
 @Getter
 @Setter
 @NoArgsConstructor

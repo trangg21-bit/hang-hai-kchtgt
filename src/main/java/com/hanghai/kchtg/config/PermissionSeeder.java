@@ -405,8 +405,7 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "cctv", "history", "Lịch sử phê duyệt CCTV",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống CCTV");
 
-                // 8.7.1 Hệ thống thông tin liên lạc VHF (VHF System) - Tạm ẩn do chưa hoàn thiện
-                /*
+                // 8.7.1 Hệ thống thông tin liên lạc VHF (VHF System)
                 seedPermission(definitions, "vhf", "read", "Xem hệ thống thông tin liên lạc VHF", "Tra cứu thông tin hệ thống VHF");
                 seedPermission(definitions, "vhf", "read:restricted", "Xem bản ghi hạn chế VHF",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống VHF");
@@ -422,7 +421,6 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Phê duyệt cấp 2 hệ thống VHF");
                 seedPermission(definitions, "vhf", "history", "Lịch sử phê duyệt VHF",
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống VHF");
-                */
 
                 // 8.8 Hệ thống SCADA (SCADA System)
                 seedPermission(definitions, "scada", "read", "Xem hệ thống SCADA", "Tra cứu thông tin hệ thống SCADA");

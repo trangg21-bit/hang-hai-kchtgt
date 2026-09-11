@@ -23,6 +23,7 @@ import {
   Drawer,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { organizationService } from "../organizationService";
 import {
   SearchOutlined,
   HistoryOutlined,
@@ -59,7 +60,7 @@ import { VIETNAM_PROVINCES } from "../../types/common";
 import api from "../api";
 import { userService } from "../userService";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
-import type { Symbol as MapSymbolType } from "../symbolService";
+import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
 import {
   ScreenHeader,
   DataTable,
@@ -100,7 +101,7 @@ const UOM_LABELS: Record<number, string> = {
 };
 
 function formatUnitOfMeasure(code: number | null | undefined): string {
-  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
+  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
 }
 
 import {
@@ -137,6 +138,7 @@ import {
   outlineButtonStyle,
   requiredMarkStyle,
   statusBadgeStyle,
+  getSidebarDatePickerProps,
   icons,
   statusInfo,
   historyGroupGridStyle,
@@ -172,6 +174,8 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp cục',
+  ARCHIVED: 'Đã xóa',
+  DELETED: 'Đã xóa',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -181,7 +185,19 @@ const APPROVAL_COLOR: Record<string, string> = {
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
+  ARCHIVED: statusCritical,
+  DELETED: statusCritical,
 };
+
+export function isScadaDeleted(record?: Partial<ScadaResponse> | null): boolean {
+  if (!record) return false;
+  return Boolean(
+    record.deletedAt ||
+    record.deletedBy ||
+    record.approvalStatus === 'DELETED' ||
+    record.approvalStatus === 'ARCHIVED'
+  );
+}
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
 const pillStyle: React.CSSProperties = {
@@ -219,7 +235,7 @@ const scadaDetailSectionTitleStyle: React.CSSProperties = {
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return null;
   try {
     const d = new Date(dateStr);
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -237,8 +253,15 @@ function renderScadaStatusBadge(b: { color: string; label: string }) {
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
-function renderApprovalBadge(status: string | null | undefined) {
-  if (!status) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
+function renderApprovalBadge(status: string | null | undefined, isDeleted?: boolean) {
+  if (isDeleted) {
+    return (
+      <span className="kcht-cell-badge" style={statusBadgeStyle(statusCritical)}>
+        Đã xóa
+      </span>
+    );
+  }
+  if (!status) return null;
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
   return (
@@ -297,6 +320,10 @@ const ScadaListPage = () => {
     updatedTo: "" as string,
   });
 
+  const defaultOrgUnitId = useRef<string | undefined>(undefined);
+  const defaultOrgApplied = useRef(false);
+  const [orgUnitReady, setOrgUnitReady] = useState(false);
+
   // Tab counts for approval status filter
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [totalAll, setTotalAll] = useState(0);
@@ -308,6 +335,7 @@ const ScadaListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
+      { key: "DELETED", status: "DELETED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -329,18 +357,18 @@ const ScadaListPage = () => {
     setTabCounts(counts);
     // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
     setTotalAll(
-      counts.DRAFT +
-        counts.PENDING_APPROVAL +
-        counts.APPROVED_LEVEL1 +
-        counts.APPROVED +
-        counts.REJECTED_LEVEL1 +
-        counts.REJECTED_LEVEL2
+      (counts.DRAFT || 0) +
+        (counts.PENDING_APPROVAL || 0) +
+        (counts.APPROVED_LEVEL1 || 0) +
+        (counts.APPROVED || 0) +
+        (counts.REJECTED_LEVEL1 || 0) +
+        (counts.REJECTED_LEVEL2 || 0) +
+        (counts.DELETED || 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
-  // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
-  // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
-  const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
+  // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const orgUnitOptions = orgUnits;
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
@@ -348,14 +376,6 @@ const ScadaListPage = () => {
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [, setLoadingSymbols] = useState(false);
 
-  // Year options for "Năm đưa vào sử dụng" (current year - 30 to current year)
-  const yearOfUseOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 31 }, (_, i) => ({
-      label: String(currentYear - i),
-      value: currentYear - i,
-    }));
-  }, []);
 
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
@@ -767,7 +787,10 @@ const ScadaListPage = () => {
         dataIndex: "approvalStatus",
         width: 180,
         type: "status" as const,
-        render: (val: string) => renderApprovalBadge(val),
+        render: (val: string, record: ScadaResponse) => {
+          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+          return renderApprovalBadge(val, isDeleted);
+        },
       },
     ];
     },
@@ -795,9 +818,14 @@ const ScadaListPage = () => {
     maintenanceInformation: 'Thông tin bảo trì',
     note: 'Ghi chú',
     objectType: 'Loại đối tượng',
+    geometryType: 'Loại đối tượng GIS',
+    coordinates: 'Tọa độ GIS',
     mapSymbolId: 'Biểu tượng',
     coordinateSystem: 'Hệ quy chiếu',
     displayRule: 'Quy tắc hiển thị',
+    'Loại đối tượng GIS': 'Loại đối tượng GIS',
+    'Tọa độ GIS': 'Tọa độ GIS',
+    'Tài liệu đính kèm': 'Tài liệu đính kèm',
     'Lý do từ chối': 'Lý do từ chối',
     'Trạng thái': 'Hành động',
   };
@@ -813,12 +841,15 @@ const ScadaListPage = () => {
     symbolMap?: Map<string, string>
   ): string {
     if (!val || val === '(null)' || val === 'null') return '(trống)';
-    if (fn === 'orgUnitId' && orgMap) {
+    const fieldKey = fn.trim();
+    if ((fieldKey === 'orgUnitId' || fieldKey === 'Đơn vị quản lý') && orgMap) {
       const full = orgMap.get(val);
       return full ? full.split(' - ').pop() || full : val;
     }
-    if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-    if (fn === 'approvalStatus') {
+    if ((fieldKey === 'mapSymbolId' || fieldKey === 'Biểu tượng' || fieldKey === 'Biểu tượng bản đồ') && symbolMap) {
+      return symbolMap.get(val) || val;
+    }
+    if (fieldKey === 'approvalStatus' || fieldKey === 'Trạng thái phê duyệt') {
       // Mã legacy (dữ liệu cũ) quy đổi về mã chuẩn 7 trạng thái rồi tra nhãn dùng chung.
       const ALIAS: Record<string, string> = {
         NHAP: 'DRAFT',
@@ -836,34 +867,35 @@ const ScadaListPage = () => {
       };
       const m: Record<string, string> = {
         DRAFT: 'Lưu tạm',
-        PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
-        APPROVED: 'Đã phê duyệt',
-        REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-        REJECTED_LEVEL2: 'Từ chối cấp cục',
+        PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+        APPROVED_LEVEL1: 'Chờ Cục duyệt',
+        APPROVED: 'Đã duyệt',
+        REJECTED_LEVEL1: 'Bị Cảng vụ trả về',
+        REJECTED_LEVEL2: 'Bị Cục trả về',
       };
       const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
       return m[norm] || val;
     }
-    if (fn === 'operationalStatus') {
+    if (fieldKey === 'operationalStatus' || fieldKey === 'Trạng thái hoạt động' || fieldKey === 'Tình trạng hoạt động') {
       const m: Record<string, string> = {
         '0': 'Chưa khai thác/vận hành',
         '1': 'Đang khai thác/vận hành',
         '2': 'Dừng khai thác/vận hành',
-    NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-    OPERATIONAL: 'Đang khai thác/vận hành',
-    SUSPENDED: 'Dừng khai thác/vận hành',
+        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+        OPERATIONAL: 'Đang khai thác/vận hành',
+        SUSPENDED: 'Dừng khai thác/vận hành',
       };
       return m[val] || val;
     }
-    if (fn === 'unitOfMeasure') {
-      return formatUnitOfMeasure(Number(val));
+    if (fieldKey === 'unitOfMeasure' || fieldKey === 'Đơn vị tính') {
+      const uomNum = Number(val);
+      return (!isNaN(uomNum) && formatUnitOfMeasure(uomNum)) ? formatUnitOfMeasure(uomNum) : val;
     }
-    if (fn === 'coordinateSystem') {
-      const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    if (fieldKey === 'coordinateSystem' || fieldKey === 'Hệ quy chiếu' || fieldKey === 'Hệ tọa độ') {
+      const m: Record<string, string> = { '1': 'WGS 84', '4326': 'WGS 84', '2': 'VN-2000' };
       return m[String(val)] || val;
     }
-    if (fn === 'changedAt' || fn === 'createdAt') {
+    if (fieldKey === 'changedAt' || fieldKey === 'createdAt') {
       try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     }
     return val;
@@ -883,7 +915,7 @@ const ScadaListPage = () => {
 
   const historyActor = (item: any): string => {
     const raw = item?.approvedBy || item?.changedBy || '';
-    return raw || '—';
+    return raw || null;
   };
 
   const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
@@ -968,7 +1000,7 @@ const ScadaListPage = () => {
   };
 
   const openHistory = useCallback(async (r: ScadaResponse) => {
-    if (!hasPerm?.("scada:history")) {
+    if (!hasPerm?.("scada:history") && !hasPerm?.("scada:read") && !hasPerm?.("data:read")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống SCADA");
       return;
     }
@@ -992,12 +1024,31 @@ const ScadaListPage = () => {
   }, [hasPerm]);
 
   const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
-    'quantity', 'operatingUnitId', 'provinceName', 'detailedLocation',
-    'attachedInfrastructureType', 'attachedInfrastructureId',
-    'unitOfMeasure', 'yearOfUse', 'operationalStatus',
-    'specifications', 'maintenanceInformation', 'note',
-    'objectType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+    'orgUnitId', 'Đơn vị quản lý',
+    'deviceCode', 'Mã thiết bị',
+    'deviceName', 'Tên thiết bị',
+    'manufacturer', 'Hãng sản xuất',
+    'model', 'Model',
+    'quantity', 'Số lượng',
+    'operatingUnitId', 'Đơn vị khai thác', 'Đơn vị vận hành',
+    'provinceName', 'Tỉnh/Thành phố', 'Địa điểm (Tỉnh/TP)',
+    'detailedLocation', 'Địa điểm chi tiết',
+    'attachedInfrastructureType', 'Loại hạ tầng', 'Thuộc loại hạ tầng',
+    'attachedInfrastructureId', 'Thuộc hạ tầng', 'Hạ tầng phụ thuộc',
+    'unitOfMeasure', 'Đơn vị tính',
+    'yearOfUse', 'Năm đưa vào sử dụng',
+    'operationalStatus', 'Trạng thái hoạt động', 'Tình trạng hoạt động',
+    'approvalStatus', 'Trạng thái phê duyệt',
+    'specifications', 'Thông số kỹ thuật',
+    'maintenanceInformation', 'Thông tin bảo trì',
+    'note', 'Ghi chú',
+    'objectType', 'Loại đối tượng', 'Loại đối tượng (GIS)',
+    'geometryType', 'Loại đối tượng GIS',
+    'coordinates', 'Tọa độ', 'Tọa độ GIS',
+    'mapSymbolId', 'Biểu tượng', 'Biểu tượng bản đồ',
+    'coordinateSystem', 'Hệ quy chiếu', 'Hệ tọa độ',
+    'displayRule', 'Quy tắc hiển thị',
+    'Tài liệu đính kèm',
   ];
 
   const renderScadaHistoryTimeline = (records: any[]) => {
@@ -1112,7 +1163,7 @@ const ScadaListPage = () => {
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
-                    {g.ts ? fmtTime(g.ts) : '—'}
+                    {g.ts ? fmtTime(g.ts) : null}
                   </Typography.Text>
                   <span style={{ flexShrink: 0 }}>
                     {(() => {
@@ -1127,7 +1178,7 @@ const ScadaListPage = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
                   <Typography.Text style={historyMetaRowStyle}>
-                    Người cập nhật: {g.actor || '—'}
+                    Người cập nhật: {g.actor || null}
                   </Typography.Text>
                   <Typography.Text style={historyMetaRowStyle}>
                     Đơn vị: {unitName}
@@ -1172,10 +1223,10 @@ const ScadaListPage = () => {
                             style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}
                           >
                             <div style={historyFieldLabelStyle}>
-                              {fn ? `${historyFieldName(fn)}:` : '—'}
+                              {fn ? `${historyFieldName(fn)}:` : null}
                             </div>
                             <span title={typeof nv === 'string' ? nv : undefined} style={{ ...historyNewValueStyle, ...gisCellStyle }}>
-                              {renderCell(change.newValue) ?? (nv ?? '—')}
+                              {renderCell(change.newValue) ?? (nv ?? null)}
                             </span>
                           </div>
                         );
@@ -1186,14 +1237,14 @@ const ScadaListPage = () => {
                           style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}
                         >
                           <div style={historyFieldLabelStyle}>
-                            {fn ? `${historyFieldName(fn)}:` : '—'}
+                            {fn ? `${historyFieldName(fn)}:` : null}
                           </div>
                           <span title={typeof ov === 'string' ? ov : undefined} style={{ ...historyOldValueStyle, ...gisCellStyle }}>
-                            {renderCell(change.oldValue) ?? (ov ?? '—')}
+                            {renderCell(change.oldValue) ?? (ov ?? null)}
                           </span>
                           <span style={historyArrowStyle}>→</span>
                           <span title={typeof nv === 'string' ? nv : undefined} style={{ ...historyNewValueStyle, ...gisCellStyle }}>
-                            {renderCell(change.newValue) ?? (nv ?? '—')}
+                            {renderCell(change.newValue) ?? (nv ?? null)}
                           </span>
                         </div>
                       );
@@ -1259,6 +1310,27 @@ const ScadaListPage = () => {
     (record: ScadaResponse) => {
       const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [];
 
+      // Nếu bản ghi đã xóa, chỉ còn Xem chi tiết và Lịch sử
+      if (isScadaDeleted(record)) {
+        if (hasPerm?.("scada:read")) {
+          actions.push({
+            key: "view",
+            label: "Xem chi tiết",
+            icon: icons.view,
+            onClick: () => openDetailRecord(record),
+          });
+        }
+        if (hasPerm?.("scada:history") || hasPerm?.("scada:read") || hasPerm?.("data:read")) {
+          actions.push({
+            key: "history",
+            label: "Lịch sử",
+            icon: icons.history,
+            onClick: () => openHistory(record),
+          });
+        }
+        return actions;
+      }
+
       if (hasPerm?.("scada:read")) {
         actions.push({
           key: "view",
@@ -1279,7 +1351,7 @@ const ScadaListPage = () => {
       }
 
       // Lịch sử thay đổi (Audit trail — chuẩn CHK: Xem chi tiết → Chỉnh sửa → Lịch sử)
-      if (hasPerm?.("scada:history")) {
+      if (hasPerm?.("scada:history") || hasPerm?.("scada:read") || hasPerm?.("data:read")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -1422,30 +1494,55 @@ const ScadaListPage = () => {
     }
   }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
-  const fetchOrgUnits = useCallback(async () => {
-    setLoadingOrgs(true);
-    try {
-      const res = await api.get("/common/options/org-units");
-      const items = res.data?.data;
-      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
-        id: String(o.id),
-        name: o.name || "Đơn vị",
-        code: o.code || undefined,
-        parentId: o.parentId ? String(o.parentId) : undefined,
-      }));
+  // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
+  useEffect(() => {
+    const loadOrgDefault = async () => {
+      setLoadingOrgs(true);
+      const isIframe = window.self !== window.top;
+      const data = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+      const orgs: any[] = data && data.length > 0
+        ? data
+        : ((await organizationService.getTree()) || []);
       setOrgUnits(orgs);
-    } catch (error) {
-      console.error("Lỗi tải danh sách đơn vị:", error);
-    } finally {
+      if (orgs.length > 0 && !defaultOrgApplied.current) {
+        defaultOrgApplied.current = true;
+        const found = data && data.length > 0
+          ? data[0]
+          : null;
+        if (found) {
+          defaultOrgUnitId.current = found.id;
+          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
+        } else {
+          // lấy đơn vị của user đang đăng nhập
+          try {
+            const profileRes = await api.get('/users/me');
+            const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+            const userOrgId = profile?.orgUnitId;
+            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
+            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
+            defaultOrgUnitId.current = defaultId;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+          } catch {
+            defaultOrgUnitId.current = orgs[0].id;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+          }
+        }
+      }
+      setOrgUnitReady(true);
       setLoadingOrgs(false);
-    }
+    };
+    loadOrgDefault().catch(() => {
+      console.error('Không tải được cây đơn vị quản lý', 'Failed to load organizations');
+      setOrgUnitReady(true);
+      setLoadingOrgs(false);
+    });
   }, []);
 
   const fetchSymbols = useCallback(async () => {
     setLoadingSymbols(true);
     try {
-      const res = await api.get("/common/options/symbols");
-      const items = res.data?.data;
+      const resp = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+      const items = resp.data || (resp as any).content || [];
       setSymbols((Array.isArray(items) ? items : []) as MapSymbolType[]);
     } catch (error) {
       console.error("Lỗi tải biểu tượng:", error);
@@ -1455,11 +1552,14 @@ const ScadaListPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchData();
-    fetchOrgUnits();
     fetchSymbols();
+  }, [fetchSymbols]);
+
+  useEffect(() => {
+    if (!orgUnitReady) return;
+    fetchData();
     fetchTabCounts();
-  }, [fetchData, fetchOrgUnits, fetchSymbols, fetchTabCounts]);
+  }, [orgUnitReady, fetchData, fetchTabCounts]);
 
   const handleFilterApply = useCallback(() => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
@@ -1477,8 +1577,9 @@ const ScadaListPage = () => {
     setInputDeviceCode("");
     setFilterDeviceName("");
     setFilterDeviceCode("");
+    const defaultOrg = defaultOrgUnitId.current;
     setFilterValues({
-      orgUnitId: "",
+      orgUnitId: defaultOrg === '__all__' ? "" : (defaultOrg || ""),
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -1633,7 +1734,14 @@ const ScadaListPage = () => {
         .scada-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track { background: #f1f5f9 !important; border-radius: 999px !important; }
         .scada-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb { background: #cbd5e1 !important; border-radius: 999px !important; }
         .scada-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
-        .scada-page-wrapper div:has(> button[aria-pressed]) > button { white-space: nowrap !important; flex-shrink: 0 !important; cursor: pointer !important; flex: 0 0 auto; }
+        /* ── Breadcrumb title (màn /scada): "Trang chủ" 14px, "Quản lý hệ thống SCADA" 16px —
+           khóa cỡ 14/16 trên span tiêu đề, thắng cả ép 13.5px của font trang bên dưới ── */
+        .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link > span,
+        .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link,
+        .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) span { font-size: 14px !important; }
+        .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child > .ant-breadcrumb-link > span,
+        .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child > .ant-breadcrumb-link,
+        .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child span { font-size: 16px !important; }
 
         /* ── Cỡ chữ 13.5px chuẩn: bảng + popup/drawer con (port đầy đủ từ /cctv ≡ /berth; bao cả nhãn/giá trị chk-detail bị theme dùng chung ép 13px) ── */
         .scada-page-wrapper .ant-table,
@@ -1642,7 +1750,6 @@ const ScadaListPage = () => {
         .scada-page-wrapper .ant-table-tbody > tr > td,
         .scada-page-wrapper .ant-pagination-item,
         .scada-page-wrapper .ant-pagination-total-text,
-        .scada-page-wrapper .ant-breadcrumb,
         .scada-page-wrapper .list-view-table .ant-table-cell,
         .scada-drawer-scope,
         .scada-drawer-scope .ant-drawer-content,
@@ -1675,20 +1782,6 @@ const ScadaListPage = () => {
         .scada-drawer-scope .chk-detail-value,
         .scada-modal-scope .chk-detail-value {
           font-size: 13.5px !important;
-        }
-
-        /* ── Footer Sidebar Bộ lọc: Cân đối nút Reload và Tìm kiếm (port chuẩn /cctv & /berth) ── */
-        .scada-page-wrapper div:has(> button .anticon-reload) {
-          display: flex !important;
-          justify-content: space-between !important;
-          gap: 8px !important;
-          align-items: center !important;
-        }
-        .scada-page-wrapper div:has(> button .anticon-reload) > div[style*="visibility: hidden"] {
-          display: none !important;
-        }
-        .scada-page-wrapper div:has(> button .anticon-reload) > button.ant-btn-primary {
-          flex: 1 !important;
         }
 
         /* ── KẸP CỨNG 13.5px (port chuẩn /cctv) — nâng MỌI text/label còn để 13px trong phạm vi /scada ── */
@@ -1832,6 +1925,11 @@ const ScadaListPage = () => {
                     toast.warning("Bạn không có quyền thêm mới hệ thống SCADA");
                     return;
                   }
+                  createForm.resetFields();
+                  createForm.setFieldsValue({
+                    operationalStatus: 0,
+                    orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+                  });
                   setCreateModalOpen(true);
                 },
               }
@@ -1856,20 +1954,21 @@ const ScadaListPage = () => {
             >
               <OrgUnitTreeSelect
                 organizations={orgUnitOptions}
-                placeholder="Chọn đơn vị"
+                placeholder="Chọn đơn vị..."
                 allowClear
                 showPath
                 allLabel="Tất cả"
                 treeDefaultExpandAll={false}
+                showSearch
                 value={filterValues.orgUnitId || undefined}
                 onChange={(val) =>
                   setFilterValues((prev) => ({
                     ...prev,
-                    orgUnitId: val as string,
+                    orgUnitId: (val as string) || "",
                   }))
                 }
                 loading={loadingOrgs}
-                style={{ borderRadius: radiusPill, height: 40 }}
+                style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
             </SidebarFilterField>
 
@@ -1941,16 +2040,17 @@ const ScadaListPage = () => {
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Năm đưa vào sử dụng" labelGap={spaceSm}>
-                  <Select placeholder="Chọn năm" allowClear
-                    value={filterValues.yearOfUse}
-                    onChange={(val) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        yearOfUse: val as number | undefined,
-                      }))
-                    }
-                    options={yearOfUseOptions}
-                    style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
+                  <DatePicker
+                    picker="year"
+                    {...getSidebarDatePickerProps({
+                      picker: 'year',
+                      placeholder: 'Chọn năm',
+                      format: 'YYYY',
+                      allowClear: true,
+                      value: filterValues.yearOfUse ? dayjs(String(filterValues.yearOfUse), 'YYYY') : null,
+                      onChange: (d: any) => setFilterValues((prev) => ({ ...prev, yearOfUse: d ? d.year() : undefined })),
+                    })}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Ngày cập nhật" labelGap={spaceSm}>
@@ -2047,6 +2147,13 @@ const ScadaListPage = () => {
             count: tabCounts["REJECTED_LEVEL2"] ?? 0,
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+          },
+          {
+            key: "DELETED",
+            label: "Đã xóa",
+            count: tabCounts["DELETED"] ?? 0,
+            color: statusCritical,
+            active: filterValues.approvalStatus === "DELETED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -2249,7 +2356,7 @@ const ScadaListPage = () => {
                           {(() => {
                             let colIndex = 0;
                             return ([
-                              { label: 'Trạng thái phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
+                              { label: 'Trạng thái phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy)) },
                               { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName || null}</span> },
                               { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName || null}</span> },
                               { label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : null },

@@ -1,37 +1,73 @@
 package com.hanghai.kchtg.beacon.entity;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.experimental.FieldNameConstants;
 
 /**
  * Entity representing a nautical beacon light and its attached station (M-023).
- * Extends BaseEntity for shared audit fields and soft-delete support.
+ * Declares audit fields directly without @SQLRestriction so soft-deleted records
+ * can be queried and displayed with status 'DELETED' in /beacon-stations.
  */
 @Entity
 @Table(name = "beacon_light")
-@SQLRestriction("deleted_at IS NULL")
-@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@EntityListeners(AuditingEntityListener.class)
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "(org_unit_id IN (:orgUnitIds) OR unit_id IN (:orgUnitIds))")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldNameConstants
-public class BeaconStation extends BaseEntity {
+public class BeaconStation {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(updatable = false, nullable = false)
+    private UUID id;
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false, nullable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "deleted_by")
+    private UUID deletedBy;
+
+    @org.springframework.data.annotation.CreatedBy
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "created_by")
+    private UUID createdBy;
+
+    @org.springframework.data.annotation.LastModifiedBy
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "updated_by")
+    private UUID updatedBy;
+
+    public void softDelete(UUID userId) {
+        this.deletedAt = LocalDateTime.now();
+        this.deletedBy = userId;
+    }
 
     @Column(name = "org_unit_id")
     private java.util.UUID orgUnitId;
@@ -55,7 +91,6 @@ public class BeaconStation extends BaseEntity {
 
     @NotNull
     @DecimalMin("0.01")
-    @DecimalMax("60.0")
     @Column(name = "light_range", nullable = false)
     private Double lightRange;
 

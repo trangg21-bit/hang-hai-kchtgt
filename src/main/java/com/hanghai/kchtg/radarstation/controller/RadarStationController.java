@@ -267,15 +267,15 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:history')")
+    @PreAuthorize("@auth.check(authentication, 'radarstation:history') or @auth.check(authentication, 'radarstation:read') or @auth.check(authentication, 'data:read')")
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "pageSize", required = false) Integer pageSize,
             @RequestParam(value = "keyword", required = false) String keyword,
-            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
-            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+            @RequestParam(value = "fromDate", required = false) String fromDate,
+            @RequestParam(value = "toDate", required = false) String toDate) {
         try {
             List<HistoryEntry> history = service.getHistory(id, page, pageSize, keyword, fromDate, toDate);
             return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", history));
@@ -286,7 +286,7 @@ public class RadarStationController {
     }
 
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(UUID id) {
-        return getHistory(id, null, null, null, null, null);
+        return getHistory(id, null, null, null, (String) null, (String) null);
     }
 
     @PreAuthorize("@auth.check(authentication, 'radarstation:read')")

@@ -108,7 +108,7 @@ const MATRIX_28_KEYS = [
   '/buoy-station', // Nhà trạm quản lý vận hành Phao, tiêu
   '/dike-revetment', // Đê chắn sóng, đê chắn cát, kè
   '/dai-ttdh', // Đài TTDH
-  'vhf-disabled', // Hệ thống VHF — disabled node, no route
+  '/vhf', // Hệ thống VHF
   '/station/inmarsat', // Đài vệ tinh Inmarsat
   '/station/lrit', // Đài LRIT
   '/station/cospas-sarsat', // Đài Cospas-Sarsat
@@ -151,14 +151,14 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     for (const e of entries) expect(e.label.trim().length).toBeGreaterThan(0);
   });
 
-  it('contains exactly one disabled node — VHF under the Đài viễn thông root', () => {
+  it('has all 28 canonical types enabled with valid routes under kcht', () => {
     const disabledEntries = entries.filter((e) => e.disabled);
-    expect(disabledEntries).toHaveLength(1);
-    const vhf = disabledEntries[0];
-    expect(vhf.key).toBe('vhf-disabled');
-    expect(vhf.label).toBe('VHF');
-    expect(vhf.route).toBeUndefined();
-    expect(vhf.ancestors).toEqual(['kcht-vienthong']);
+    expect(disabledEntries).toHaveLength(0);
+    const byKey = new Map(entries.map((e) => [e.key, e]));
+    const vhf = byKey.get('/vhf');
+    expect(vhf).toBeDefined();
+    expect(vhf?.route).toBe('/vhf');
+    expect(vhf?.ancestors).toEqual(['/navigation-channel']);
   });
 
   it('keeps the multi-layer parent–child chains of the matrix (depth >= 3)', () => {
@@ -167,6 +167,8 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     expect(byKey.get('/pier')?.ancestors).toEqual(['/port', '/berth']);
     // Luồng hàng hải → Bến phao
     expect(byKey.get('/buoy-berth')?.ancestors).toEqual(['/navigation-channel']);
+    // Luồng hàng hải → Quản lý hệ thống thông tin liên lạc VHF
+    expect(byKey.get('/vhf')?.ancestors).toEqual(['/navigation-channel']);
     // Luồng hàng hải → Nhà trạm phao tiêu → Phao tiêu
     expect(byKey.get('/buoys')?.ancestors).toEqual(['/navigation-channel', '/buoy-station']);
     // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS → Trạm Radar
@@ -233,9 +235,7 @@ describe('navigation.accessibleTree — AC-024-05', () => {
 
   it('allow-all keeps the whole tree identical (no accidental pruning)', () => {
     const out = accessibleTree(kchtTree, () => true);
-    // hidden nodes (vhf-disabled) are pruned even under allow-all
-    const expectedKeys = flatKeysOf(kchtTree).filter((k) => k !== 'vhf-disabled');
-    expect(flatKeysOf(out).sort()).toEqual(expectedKeys.sort());
+    expect(flatKeysOf(out).sort()).toEqual(flatKeysOf(kchtTree).sort());
   });
 
   it('does NOT mutate its input — deep-frozen tree survives every call', () => {
@@ -269,6 +269,8 @@ describe('navigation.groupOfPath — AC-024-02/09', () => {
   it("maps '/dai-ttdh' (Đài viễn thông branch) to the kcht block", () => {
     expect(groupOfPath('/dai-ttdh')?.id).toBe('kcht');
     expect(groupOfPath('/dai-ttdh/1')?.id).toBe('kcht');
+    expect(groupOfPath('/vhf')?.id).toBe('kcht');
+    expect(groupOfPath('/vhf/1')?.id).toBe('kcht');
   });
 
   it('maps deeper routes to their owning block (/users → admin, asset routes → asset)', () => {
@@ -328,6 +330,7 @@ describe('navigation.locateRoute — AC-024-06', () => {
       openKeys: ['/navigation-channel', '/buoy-station'],
     });
     expect(locateRoute(kchtTree, '/station/hanoi')).toEqual({ key: '/station/hanoi', openKeys: ['kcht-vienthong'] });
+    expect(locateRoute(kchtTree, '/vhf')).toEqual({ key: '/vhf', openKeys: ['/navigation-channel'] });
   });
 
   it('does not cross-match routes sharing a textual prefix (segment boundary)', () => {

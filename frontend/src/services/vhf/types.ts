@@ -30,18 +30,31 @@ export interface VhfResponse {
   approverLevel2Name: string | null;
   approvedDateLevel2: string | null;
   rejectionReason: string | null;
+  submittedDate: string | null;
+  submittedBy: string | null;
+  submittedByName: string | null;
+  approvalContentLevel1: string | null;
+  approvalContentLevel2: string | null;
   specifications: string | null;
   maintenanceInformation: string | null;
   note: string | null;
   objectType: number | null;
   mapSymbolId: string | null;
+  mapSymbolName: string | null;
   coordinateSystem: number | null;
   displayRule: number | null;
   spatialId: string | null;
   geometryType: string | null;
   coordinates: string | null;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdByName: string | null;
+  updatedByName: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  deletedBy?: string | null;
+  deletedByName?: string | null;
+  deletedAt?: string | null;
 }
 
 // ── CreateVhfRequest (matches CreateVhfRequest.java) ────────────────

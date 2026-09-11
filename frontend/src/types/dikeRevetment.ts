@@ -24,6 +24,8 @@ export const DIKE_REVETMENT_STATUS_MAP: Record<string, { label: string }> = {
   APPROVED: { label: 'Đã duyệt' },
   APPROVED_LEVEL2: { label: 'Đã duyệt' },
   REJECTED: { label: 'Từ chối' },
+  ARCHIVED: { label: 'Đã xóa' },
+  DELETED: { label: 'Đã xóa' },
 };
 
 export const CONDITION_STATUS_MAP: Record<string, { label: string }> = {
@@ -77,10 +79,10 @@ export interface DikeRevetmentResponse {
   dikeRevetmentType: DikeRevetmentType;
   location: string;
   dikeRevetmentName?: string;
-  length?: number;
-  crestElevation?: number;
+  length?: number | string;
+  crestElevation?: number | string;
   commissioningDate?: string;
-  height?: number;
+  height?: number | string;
   surfaceMaterial?: string;
   status?: string;
   conditionStatus?: string;
@@ -143,10 +145,10 @@ export interface CreateDikeRevetmentRequest {
   locationDetail?: string;
   constructionDate?: string;
   lastMaintenanceYear?: string;
-  length?: number;
-  crestElevation?: number;
+  length?: number | string;
+  crestElevation?: number | string;
   commissioningDate?: string;
-  height?: number;
+  height?: number | string;
   surfaceMaterial?: string;
   status?: string;
   note?: string;
@@ -190,4 +192,6 @@ export const DIKE_REVETMENT_STATUS_LABELS: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp cục',
+  ARCHIVED: 'Đã xóa',
+  DELETED: 'Đã xóa',
 };

@@ -54,6 +54,7 @@ class CctvServiceTest {
 
     private static final UUID ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID USER_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final UUID ORG_UNIT_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     @Mock
     private CctvRepository cctvRepository;
@@ -88,6 +89,7 @@ class CctvServiceTest {
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
 
         when(userRepository.findById(any())).thenReturn(Optional.empty());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
 
         User principal = mock(User.class);
         when(principal.getId()).thenReturn(USER_ID);
@@ -101,6 +103,7 @@ class CctvServiceTest {
                 .deviceCode("CCTV-001")
                 .deviceName("Camera cảng Hải Phòng")
                 .quantity(1)
+                .orgUnitId(ORG_UNIT_ID)
                 .approvalStatus(ApprovalStatus.DRAFT)
                 .createdBy(USER_ID)
                 .build();
@@ -116,6 +119,7 @@ class CctvServiceTest {
         req.setDeviceCode("CCTV-001");
         req.setDeviceName("Camera cảng Hải Phòng");
         req.setQuantity(1);
+        req.setOrgUnitId(ORG_UNIT_ID);
         req.setAction(action);
         return req;
     }
@@ -263,5 +267,73 @@ class CctvServiceTest {
         CctvResponse result = service.update(req);
 
         assertEquals(ApprovalStatus.DRAFT, result.getApprovalStatus());
+    }
+
+    @Test
+    void getById_DeletedRecordReturnsDeletedDetails() {
+        UUID deleterId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        java.time.LocalDateTime deletedTime = java.time.LocalDateTime.now();
+        entity.setDeletedAt(deletedTime);
+        entity.setDeletedBy(deleterId);
+
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(userResolverService.resolveName(deleterId)).thenReturn("Người Xóa Test");
+
+        CctvResponse response = service.getById(ID);
+
+        assertNotNull(response);
+        assertEquals(ID, response.getId());
+        assertEquals(deleterId, response.getDeletedBy());
+        assertEquals(deletedTime, response.getDeletedAt());
+    }
+
+    @Test
+    void update_DeletedRecordThrowsIllegalStateException() {
+        entity.setDeletedAt(java.time.LocalDateTime.now());
+        entity.setDeletedBy(USER_ID);
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("X");
+
+        assertThrows(IllegalStateException.class, () -> service.update(req));
+    }
+
+    @Test
+    void softDelete_AlreadyDeletedRecordThrowsIllegalStateException() {
+        entity.setDeletedAt(java.time.LocalDateTime.now());
+        entity.setDeletedBy(USER_ID);
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+
+        assertThrows(IllegalStateException.class, () -> service.softDelete(ID));
+    }
+
+    @Test
+    void create_withNullOrgUnitId_throwsAccessDeniedException() {
+        CreateCctvRequest req = createRequest(null);
+        req.setOrgUnitId(null);
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.create(req));
+    }
+
+    @Test
+    void create_withForbiddenOrgUnitId_throwsAccessDeniedException() {
+        UUID forbiddenOrg = UUID.randomUUID();
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.restricted(java.util.List.of(ORG_UNIT_ID)));
+        CreateCctvRequest req = createRequest(null);
+        req.setOrgUnitId(forbiddenOrg);
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.create(req));
+    }
+
+    @Test
+    void restore_withForbiddenOrgUnitId_throwsAccessDeniedException() {
+        entity.setOrgUnitId(UUID.randomUUID());
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.restricted(java.util.List.of(ORG_UNIT_ID)));
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.restore(ID));
+        verify(cctvRepository, never()).restoreCctvById(any());
     }
 }

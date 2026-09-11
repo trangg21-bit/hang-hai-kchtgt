@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -50,16 +51,16 @@ public class DikeRevetment extends BaseApprovableEntity {
     private UUID operatingUnitId;
 
     @Column(name = "length")
-    private Double length;
+    private BigDecimal length;
 
     @Column(name = "crest_elevation")
-    private Double crestElevation;
+    private BigDecimal crestElevation;
 
     @Column(name = "commissioning_date")
     private LocalDate commissioningDate;
 
     @Column(name = "height")
-    private Double height;
+    private BigDecimal height;
 
     @Column(name = "surface_material", length = 100)
     private String surfaceMaterial;

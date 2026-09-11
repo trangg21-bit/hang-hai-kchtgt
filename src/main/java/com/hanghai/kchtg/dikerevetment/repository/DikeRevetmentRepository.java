@@ -39,9 +39,8 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
     boolean existsByCode(String code);
 
     @Query("SELECT d FROM DikeRevetment d WHERE " +
-            "d.deletedAt IS NULL AND " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (d.deletedAt IS NOT NULL OR d.deletedBy IS NOT NULL)) OR (:isDeleted = false AND d.deletedAt IS NULL AND d.deletedBy IS NULL)) AND " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
-            "(:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) AND " +
             "(:seaportId IS NULL OR d.seaportId = :seaportId) AND " +
             "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +
             "(:conditionStatus IS NULL OR d.status = :conditionStatus) AND " +
@@ -59,9 +58,9 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "(:commissioningFrom IS NULL OR d.commissioningDate >= :commissioningFrom) AND " +
             "(:commissioningTo IS NULL OR d.commissioningDate <= :commissioningTo)")
     Page<DikeRevetment> searchPaged(
+            @Param("isDeleted") Boolean isDeleted,
             @Param("scopeEnabled") boolean scopeEnabled,
             @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
-            @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
             @Param("dikeRevetmentName") String dikeRevetmentName,
             @Param("seaportId") UUID seaportId,
@@ -78,9 +77,7 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             Pageable pageable);
 
     @Query("SELECT d.approvalStatus, COUNT(d) FROM DikeRevetment d WHERE " +
-            "d.deletedAt IS NULL AND " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
-            "(:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) AND " +
             "(:dikeRevetmentName IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
             "(CAST(:keyword AS string) IS NULL OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:keyword AS string) OR " +
@@ -91,7 +88,6 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
     List<Object[]> countByApprovalStatus(
             @Param("scopeEnabled") boolean scopeEnabled,
             @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
-            @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,
             @Param("dikeRevetmentName") String dikeRevetmentName,
             @Param("conditionStatus") String conditionStatus);

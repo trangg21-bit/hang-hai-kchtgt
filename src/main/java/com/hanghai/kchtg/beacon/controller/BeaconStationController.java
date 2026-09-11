@@ -67,6 +67,7 @@ public class BeaconStationController {
             @RequestParam(required = false) String primaryLightModel,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID seaportId,
             @RequestParam(required = false) String operator,
             @RequestParam(required = false) Integer provinceId,
@@ -78,9 +79,10 @@ public class BeaconStationController {
             @RequestParam(required = false) String commissionedTo,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo) {
+        UUID effectiveUnitId = unitId != null ? unitId : orgUnitId;
         return ResponseEntity.ok(ApiResponse.success(
                 beaconStationService.search(name, code, type, primaryLightModel, status,
-                        unitId, seaportId, operator, provinceId,
+                        effectiveUnitId, seaportId, operator, provinceId,
                         operationalStatus, stationArea, approvalStatus, updatedBy,
                         commissionedFrom, commissionedTo, updatedFrom, updatedTo)));
     }
@@ -93,6 +95,7 @@ public class BeaconStationController {
             @RequestParam(required = false) String primaryLightModel,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID seaportId,
             @RequestParam(required = false) String operator,
             @RequestParam(required = false) Integer provinceId,
@@ -106,10 +109,11 @@ public class BeaconStationController {
             @RequestParam(required = false) String updatedTo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        UUID effectiveUnitId = unitId != null ? unitId : orgUnitId;
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
         return ResponseEntity.ok(ApiResponse.success(
                 beaconStationService.searchPaged(name, code, type, primaryLightModel, status,
-                        unitId, seaportId, operator, provinceId,
+                        effectiveUnitId, seaportId, operator, provinceId,
                         operationalStatus, stationArea, approvalStatus, updatedBy,
                         commissionedFrom, commissionedTo, updatedFrom, updatedTo,
                         pageable)));

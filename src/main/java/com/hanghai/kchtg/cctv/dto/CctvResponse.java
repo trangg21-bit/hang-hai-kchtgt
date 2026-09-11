@@ -65,4 +65,7 @@ public class CctvResponse {
     private String updatedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private UUID deletedBy;
+    private String deletedByName;
+    private LocalDateTime deletedAt;
 }
