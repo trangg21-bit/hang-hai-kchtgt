@@ -15,7 +15,7 @@ import {
   InputNumber,
   Checkbox,
 } from 'antd';
-import type { Dayjs } from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -361,9 +361,29 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
           placeholder: (filter.placeholder as [string, string]) || ['Từ ngày', 'Đến ngày'],
           ...(filter.dateProps as Record<string, unknown>),
         }) as { popupClassName?: string; [key: string]: unknown };
+
+        const parseDayjsItem = (v: unknown): Dayjs | null => {
+          if (!v) return null;
+          if (dayjs.isDayjs(v)) return v.isValid() ? v : null;
+          if (typeof v === 'string' || typeof v === 'number' || v instanceof Date) {
+            if (typeof v === 'string' && !v.trim()) return null;
+            const d = dayjs(v);
+            return d.isValid() ? d : null;
+          }
+          return null;
+        };
+
+        const rangeValue: [Dayjs, Dayjs] | null = (() => {
+          if (!Array.isArray(value) || value.length < 2) return null;
+          const start = parseDayjsItem(value[0]);
+          const end = parseDayjsItem(value[1]);
+          if (start && end) return [start, end];
+          return null;
+        })();
+
         return (
           <DatePicker.RangePicker
-            value={value as [Dayjs | null, Dayjs | null] | null | undefined}
+            value={rangeValue}
             onChange={(dates) => handleFieldChange(key, dates)}
             disabled={disabled}
             allowClear={allowClear}
@@ -378,10 +398,21 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
         );
       }
 
-      case 'date':
+      case 'date': {
+        const parseDayjsItem = (v: unknown): Dayjs | null => {
+          if (!v) return null;
+          if (dayjs.isDayjs(v)) return v.isValid() ? v : null;
+          if (typeof v === 'string' || typeof v === 'number' || v instanceof Date) {
+            if (typeof v === 'string' && !v.trim()) return null;
+            const d = dayjs(v);
+            return d.isValid() ? d : null;
+          }
+          return null;
+        };
+
         return (
           <DatePicker
-            value={value as Dayjs | null | undefined}
+            value={parseDayjsItem(value)}
             onChange={(date) => handleFieldChange(key, date)}
             disabled={disabled}
             allowClear={allowClear}
@@ -396,6 +427,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
             })}
           />
         );
+      }
 
       case 'number':
         return (

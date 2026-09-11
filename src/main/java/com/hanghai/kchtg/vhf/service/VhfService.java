@@ -35,19 +35,24 @@ import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * Service for VHF communication system CRUD operations.
@@ -71,6 +76,9 @@ public class VhfService {
   private final RadarStationRepository radarStationRepository;
   private final PortRepository portRepository;
 
+  @Autowired(required = false)
+  private JdbcTemplate jdbcTemplate;
+
   @Value("${app.upload.dir:uploads}")
   private String uploadPath;
 
@@ -79,6 +87,7 @@ public class VhfService {
    */
   @Transactional
   public VhfResponse create(CreateVhfRequest request) {
+    validateAllowedOrgUnit(request.getOrgUnitId());
     String deviceCode = request.getDeviceCode();
     if (deviceCode == null || deviceCode.trim().isEmpty()) {
       deviceCode = generateDeviceCode();
@@ -146,6 +155,7 @@ public class VhfService {
   public VhfResponse findById(UUID id) {
     Vhf entity = vhfRepository.findById(id)
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống VHF với id: " + id));
+    validateAllowedOrgUnit(entity.getOrgUnitId());
     return toResponse(entity);
   }
 
@@ -174,18 +184,30 @@ public class VhfService {
     boolean includeAll = scope.unrestricted();
     Collection<UUID> orgUnitIds = scope.orgUnitIds();
 
+    // Filter "Đơn vị quản lý": mở rộng cây đơn vị (chuẩn như /berth)
     boolean filterEnabled = orgUnitId != null;
     Collection<UUID> filterOrgUnitIds = filterEnabled
         ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
         : List.of();
 
-    OperationalStatus opStatus = parseOperationalStatus(operationalStatus);
-    ApprovalStatus apprStatus = parseApprovalStatus(approvalStatus);
+    Boolean isDeleted = null;
+    ApprovalStatus apprStatus = null;
+    if (approvalStatus != null && !approvalStatus.isBlank()) {
+      String upper = approvalStatus.trim().toUpperCase();
+      if ("DELETED".equals(upper) || "ARCHIVED".equals(upper) || "DA_XOA".equals(upper)) {
+        isDeleted = Boolean.TRUE;
+      } else {
+        isDeleted = Boolean.FALSE;
+        apprStatus = parseApprovalStatus(approvalStatus);
+      }
+    }
 
+    OperationalStatus opStatus = parseOperationalStatus(operationalStatus);
     LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
     LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
 
     Page<Vhf> result = vhfRepository.searchVhf(
+      isDeleted,
       includeAll, orgUnitIds,
       filterEnabled, filterOrgUnitIds,
       seaportId,
@@ -209,6 +231,10 @@ public class VhfService {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
     Vhf entity = vhfRepository.findById(request.getId())
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống VHF với id: " + request.getId()));
+    validateAllowedOrgUnit(entity.getOrgUnitId());
+    if (request.getOrgUnitId() != null) {
+      validateAllowedOrgUnit(request.getOrgUnitId());
+    }
 
     Vhf snapshot = Vhf.builder()
       .id(entity.getId())
@@ -238,52 +264,66 @@ public class VhfService {
       .spatialId(entity.getSpatialId())
       .build();
 
+    Map<String, String> previousValues = new LinkedHashMap<>();
+
+    applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName() != null ? request.getDeviceName().trim() : null, entity::setDeviceName, previousValues);
+    applyIfChanged("detailedLocation", entity.getDetailedLocation(), request.getDetailedLocation(), entity::setDetailedLocation, previousValues);
+    applyIfChanged("manufacturer", entity.getManufacturer(), request.getManufacturer(), entity::setManufacturer, previousValues);
+    applyIfChanged("model", entity.getModel(), request.getModel(), entity::setModel, previousValues);
+    applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues);
+    applyIfChanged("seaportId", entity.getSeaportId(), request.getSeaportId(), entity::setSeaportId, previousValues);
+    applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues);
+    applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues);
+    applyIfChanged("provinceName", entity.getProvinceName(), request.getProvinceName(), entity::setProvinceName, previousValues);
+    applyIfChanged("attachedInfrastructureType", entity.getAttachedInfrastructureType(), request.getAttachedInfrastructureType(), entity::setAttachedInfrastructureType, previousValues);
+    applyIfChanged("attachedInfrastructureId", entity.getAttachedInfrastructureId(), request.getAttachedInfrastructureId(), entity::setAttachedInfrastructureId, previousValues);
+    applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), request.getUnitOfMeasure(), entity::setUnitOfMeasure, previousValues);
+    applyIfChanged("yearOfUse", entity.getYearOfUse(), request.getYearOfUse(), entity::setYearOfUse, previousValues);
+    applyIfChanged("operationalStatus", entity.getOperationalStatus(), request.getOperationalStatus(), entity::setOperationalStatus, previousValues);
+    applyIfChanged("specifications", entity.getSpecifications(), request.getSpecifications(), entity::setSpecifications, previousValues);
+    applyIfChanged("maintenanceInformation", entity.getMaintenanceInformation(), request.getMaintenanceInformation(), entity::setMaintenanceInformation, previousValues);
+    applyIfChanged("note", entity.getNote(), request.getNote(), entity::setNote, previousValues);
+    applyIfChanged("objectType", entity.getObjectType(), request.getObjectType(), entity::setObjectType, previousValues);
+    applyIfChanged("mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId(), entity::setMapSymbolId, previousValues);
+    applyIfChanged("coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem(), entity::setCoordinateSystem, previousValues);
+    applyIfChanged("displayRule", entity.getDisplayRule(), request.getDisplayRule(), entity::setDisplayRule, previousValues);
+    applyIfChanged("spatialId", entity.getSpatialId(), request.getSpatialId(), entity::setSpatialId, previousValues);
+
     String oldCoordinates = null;
     String oldGeometryType = null;
     if (entity.getSpatialId() != null) {
-      Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
-      if (spatialOpt.isPresent()) {
-        oldCoordinates = spatialOpt.get().getCoordinates();
-        oldGeometryType = spatialOpt.get().getGeometryType() != null ? spatialOpt.get().getGeometryType().name() : null;
+      Optional<GisSpatialObject> oldSpatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+      if (oldSpatialOpt.isPresent()) {
+        oldCoordinates = oldSpatialOpt.get().getCoordinates();
+        GisGeometryType oldGeom = oldSpatialOpt.get().getGeometryType();
+        oldGeometryType = oldGeom != null ? oldGeom.name() : null;
       }
     }
 
-    if (request.getDeviceName() != null) entity.setDeviceName(request.getDeviceName().trim());
-    if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
-    if (request.getManufacturer() != null) entity.setManufacturer(request.getManufacturer());
-    if (request.getModel() != null) entity.setModel(request.getModel());
-    if (request.getQuantity() != null) entity.setQuantity(request.getQuantity());
-    if (request.getSeaportId() != null) entity.setSeaportId(request.getSeaportId());
-    if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
-    if (request.getOperatingUnitId() != null) entity.setOperatingUnitId(request.getOperatingUnitId());
-    if (request.getProvinceName() != null) entity.setProvinceName(request.getProvinceName());
-    if (request.getAttachedInfrastructureType() != null) entity.setAttachedInfrastructureType(request.getAttachedInfrastructureType());
-    if (request.getAttachedInfrastructureId() != null) entity.setAttachedInfrastructureId(request.getAttachedInfrastructureId());
-    if (request.getUnitOfMeasure() != null) entity.setUnitOfMeasure(request.getUnitOfMeasure());
-    if (request.getYearOfUse() != null) entity.setYearOfUse(request.getYearOfUse());
-    if (request.getOperationalStatus() != null) entity.setOperationalStatus(request.getOperationalStatus());
-    if (request.getSpecifications() != null) entity.setSpecifications(request.getSpecifications());
-    if (request.getMaintenanceInformation() != null) entity.setMaintenanceInformation(request.getMaintenanceInformation());
-    if (request.getNote() != null) entity.setNote(request.getNote());
-    if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());
-    if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
-    if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-    if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+    if (request.getCoordinates() != null && !Objects.equals(request.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
+      previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+    }
+    if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
+      previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
+    }
 
-    if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+    if (request.getCoordinates() != null) {
+      GisGeometryType geomType = request.getGeometryType() != null
+        ? request.getGeometryType() : GisGeometryType.POINT;
       UUID spatialId = gisSpatialObjectService.syncSpatialObject(
         entity.getSpatialId(),
-        "Hệ thống VHF " + entity.getDeviceName(),
+        "Hệ thống VHF " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
         entity.getDeviceCode(),
-        request.getGeometryType(),
+        geomType,
         request.getCoordinates(),
         entity.getId(),
         InfrastructureType.VHF);
       entity.setSpatialId(spatialId);
     }
 
+    ApprovalStatus currentStatus = entity.getApprovalStatus();
     boolean approvedEdit = false;
-    if (snapshot.getApprovalStatus() == ApprovalStatus.APPROVED) {
+    if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
         approvalService.recordSaveAndApprove(entity, InfrastructureType.VHF,
             "Cập nhật hồ sơ đã duyệt", currentUserId);
@@ -297,32 +337,43 @@ public class VhfService {
 
     if (approvedEdit) {
       changeHistoryService.recordChanges("VHF", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
-      if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()
-          && !request.getCoordinates().trim().equals(oldCoordinates != null ? oldCoordinates.trim() : "")) {
+      LocalDateTime now = LocalDateTime.now();
+      if (!previousValues.isEmpty()) {
+        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+          String field = entry.getKey();
+          String fieldName = getFieldDisplayName(field);
+          String oldVal = entry.getValue();
+          Object rawNew;
+          if ("coordinates".equals(field)) {
+            rawNew = request.getCoordinates();
+          } else if ("geometryType".equals(field)) {
+            rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+          } else {
+            rawNew = getEntityFieldValue(saved, field);
+          }
+          String newVal = rawNew != null ? String.valueOf(rawNew) : null;
+          historyRepository.save(InfrastructureHistory.builder()
+              .refId(saved.getId())
+              .refType(InfrastructureType.VHF)
+              .approvalLevel(ApprovalLevel.LEVEL_2)
+              .status(InfrastructureHistoryStatus.UPDATED)
+              .approvedBy(currentUserId)
+              .approvedDate(now)
+              .changedField(fieldName)
+              .previousValue(formatDisplayValue(field, oldVal))
+              .newValue(formatDisplayValue(field, newVal))
+              .reason("Cập nhật thông tin " + fieldName)
+              .build());
+        }
+      } else {
         historyRepository.save(InfrastructureHistory.builder()
             .refId(saved.getId())
             .refType(InfrastructureType.VHF)
             .approvalLevel(ApprovalLevel.LEVEL_2)
             .status(InfrastructureHistoryStatus.UPDATED)
             .approvedBy(currentUserId)
-            .changedField("Tọa độ GIS")
-            .previousValue(oldCoordinates != null ? oldCoordinates.trim() : "Chưa có")
-            .newValue(request.getCoordinates().trim())
-            .reason("Cập nhật thông tin Tọa độ GIS")
-            .build());
-      }
-      String oldGeomKey = oldGeometryType != null ? oldGeometryType : "";
-      if (request.getGeometryType() != null && !request.getGeometryType().name().equals(oldGeomKey)) {
-        historyRepository.save(InfrastructureHistory.builder()
-            .refId(saved.getId())
-            .refType(InfrastructureType.VHF)
-            .approvalLevel(ApprovalLevel.LEVEL_2)
-            .status(InfrastructureHistoryStatus.UPDATED)
-            .approvedBy(currentUserId)
-            .changedField("Loại đối tượng GIS")
-            .previousValue(oldGeometryType != null ? oldGeometryType : "Chưa có")
-            .newValue(request.getGeometryType().name())
-            .reason("Cập nhật thông tin Loại đối tượng GIS")
+            .approvedDate(now)
+            .reason("Cập nhật sau phê duyệt")
             .build());
       }
     }
@@ -338,10 +389,261 @@ public class VhfService {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
     Vhf entity = vhfRepository.findById(id)
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống VHF với id: " + id));
+    validateAllowedOrgUnit(entity.getOrgUnitId());
     approvalService.deleteDraft(entity, InfrastructureType.VHF, currentUserId);
     entity.softDelete(currentUserId);
     vhfRepository.save(entity);
+    InfrastructureHistoryUtils.recordSoftDelete(historyRepository, entity.getId(), InfrastructureType.VHF, currentUserId, "Xóa hệ thống thông tin liên lạc VHF");
     log.info("Soft-deleted VHF: id={}", id);
+  }
+
+  private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter, Map<String, String> previousValues) {
+    if (newValue != null && !Objects.equals(oldValue, newValue)) {
+      previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
+      setter.accept(newValue);
+    }
+  }
+
+  private void validateAllowedOrgUnit(UUID orgUnitId) {
+    if (orgUnitId == null) {
+      throw new AccessDeniedException("Bản ghi thiếu thông tin đơn vị quản lý");
+    }
+    if (orgUnitScopeService == null) return;
+    OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
+    if (scope == null || scope.unrestricted()) return;
+    if (!scope.orgUnitIds().contains(orgUnitId)) {
+      throw new AccessDeniedException("Không có quyền truy cập dữ liệu của đơn vị: " + orgUnitId);
+    }
+  }
+
+  private Object getEntityFieldValue(Vhf entity, String field) {
+    if (entity == null) return null;
+    return switch (field) {
+      case "deviceName" -> entity.getDeviceName();
+      case "detailedLocation" -> entity.getDetailedLocation();
+      case "manufacturer" -> entity.getManufacturer();
+      case "model" -> entity.getModel();
+      case "quantity" -> entity.getQuantity();
+      case "seaportId" -> entity.getSeaportId();
+      case "orgUnitId" -> entity.getOrgUnitId();
+      case "operatingUnitId" -> entity.getOperatingUnitId();
+      case "provinceName" -> entity.getProvinceName();
+      case "attachedInfrastructureType" -> entity.getAttachedInfrastructureType();
+      case "attachedInfrastructureId" -> entity.getAttachedInfrastructureId();
+      case "unitOfMeasure" -> entity.getUnitOfMeasure();
+      case "yearOfUse" -> entity.getYearOfUse();
+      case "operationalStatus" -> entity.getOperationalStatus() != null ? entity.getOperationalStatus().name() : null;
+      case "specifications" -> entity.getSpecifications();
+      case "maintenanceInformation" -> entity.getMaintenanceInformation();
+      case "note" -> entity.getNote();
+      case "objectType" -> entity.getObjectType();
+      case "mapSymbolId" -> entity.getMapSymbolId();
+      case "coordinateSystem" -> entity.getCoordinateSystem();
+      case "displayRule" -> entity.getDisplayRule();
+      case "spatialId" -> entity.getSpatialId();
+      default -> null;
+    };
+  }
+
+  private String getFieldDisplayName(String field) {
+    return switch (field) {
+      case "deviceName" -> "Tên thiết bị";
+      case "detailedLocation" -> "Địa điểm chi tiết";
+      case "manufacturer" -> "Hãng sản xuất";
+      case "model" -> "Model";
+      case "quantity" -> "Số lượng";
+      case "seaportId" -> "Thuộc cảng biển";
+      case "orgUnitId" -> "Đơn vị quản lý";
+      case "operatingUnitId" -> "Đơn vị khai thác";
+      case "provinceName" -> "Tỉnh/Thành phố";
+      case "attachedInfrastructureType" -> "Loại hạ tầng";
+      case "attachedInfrastructureId" -> "Thuộc hạ tầng";
+      case "unitOfMeasure" -> "Đơn vị tính";
+      case "yearOfUse" -> "Năm đưa vào sử dụng";
+      case "operationalStatus" -> "Trạng thái hoạt động";
+      case "specifications" -> "Thông số kỹ thuật";
+      case "maintenanceInformation" -> "Thông tin bảo trì";
+      case "note" -> "Ghi chú";
+      case "objectType" -> "Loại đối tượng";
+      case "mapSymbolId" -> "Biểu tượng bản đồ";
+      case "coordinateSystem" -> "Hệ quy chiếu";
+      case "displayRule" -> "Quy tắc hiển thị";
+      case "spatialId" -> "ID không gian GIS";
+      case "coordinates" -> "Tọa độ GIS";
+      case "geometryType" -> "Loại đối tượng GIS";
+      default -> field;
+    };
+  }
+
+  public String formatDisplayValue(String field, String rawValue) {
+    if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
+      return "Chưa có";
+    }
+    if ("mapSymbolId".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field) || "symbolId".equals(field)) {
+      try {
+        if (jdbcTemplate != null) {
+          UUID symId = UUID.fromString(rawValue);
+          List<String> names = jdbcTemplate.queryForList("SELECT name FROM map_symbols WHERE id = ?", String.class, symId);
+          return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+        }
+      } catch (Exception e) {
+        return rawValue;
+      }
+    }
+    if ("orgUnitId".equals(field) || "Đơn vị quản lý".equals(field)) {
+      try {
+        if (orgUnitCacheService != null) {
+          String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
+          return name != null ? name : rawValue;
+        }
+      } catch (Exception e) {
+        return rawValue;
+      }
+    }
+    if ("seaportId".equals(field) || "Thuộc cảng biển".equals(field)) {
+      try {
+        UUID portId = UUID.fromString(rawValue);
+        if (portRepository != null) {
+          Optional<Port> p = portRepository.findById(portId);
+          if (p.isPresent() && p.get().getPortName() != null) return p.get().getPortName();
+        }
+        if (jdbcTemplate != null) {
+          List<String> names = jdbcTemplate.queryForList("SELECT port_name FROM ports WHERE id = ?", String.class, portId);
+          if (!names.isEmpty() && names.get(0) != null) return names.get(0);
+        }
+        return rawValue;
+      } catch (Exception e) {
+        return rawValue;
+      }
+    }
+    if ("operatingUnitId".equals(field) || "Đơn vị khai thác".equals(field) || "Đơn vị vận hành".equals(field)) {
+      try {
+        UUID uid = UUID.fromString(rawValue);
+        if (orgUnitCacheService != null) {
+          String name = orgUnitCacheService.getName(uid);
+          if (name != null && !name.equals(rawValue)) {
+            return name;
+          }
+        }
+        if (operatingOrganizationRepository != null) {
+          Optional<OperatingOrganization> org = operatingOrganizationRepository.findById(uid);
+          if (org.isPresent()) return org.get().getName();
+        }
+        if (jdbcTemplate != null) {
+          List<String> names = jdbcTemplate.queryForList("SELECT name FROM operating_organizations WHERE id = ?", String.class, uid);
+          if (!names.isEmpty() && names.get(0) != null) {
+            return names.get(0);
+          }
+          names = jdbcTemplate.queryForList("SELECT name FROM operating_units WHERE id = ?", String.class, uid);
+          if (!names.isEmpty() && names.get(0) != null) {
+            return names.get(0);
+          }
+        }
+        return rawValue;
+      } catch (Exception e) {
+        return rawValue;
+      }
+    }
+    if ("attachedInfrastructureType".equals(field) || "Loại hạ tầng".equals(field) || "Thuộc loại hạ tầng".equals(field)) {
+      if ("1".equals(rawValue) || "TTDH VTS".equalsIgnoreCase(rawValue)) return "TTDH VTS";
+      if ("2".equals(rawValue) || "Trạm Radar".equalsIgnoreCase(rawValue)) return "Trạm Radar";
+      return rawValue;
+    }
+    if ("attachedInfrastructureId".equals(field) || "Thuộc hạ tầng".equals(field) || "Hạ tầng phụ thuộc".equals(field)) {
+      try {
+        UUID infraId = UUID.fromString(rawValue);
+        if (vtsOperationCenterRepository != null) {
+          Optional<VtsOperationCenter> oc = vtsOperationCenterRepository.findByIdAndDeletedAtIsNull(infraId);
+          if (oc.isPresent()) return oc.get().getName();
+        }
+        if (radarStationRepository != null) {
+          Optional<RadarStation> rs = radarStationRepository.findById(infraId);
+          if (rs.isPresent()) return rs.get().getStationName();
+        }
+        if (jdbcTemplate != null) {
+          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
+          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);
+        }
+        return rawValue;
+      } catch (Exception e) {
+        return rawValue;
+      }
+    }
+    if ("provinceName".equals(field) || "provinceId".equals(field) || "Địa điểm (Tỉnh/TP)".equals(field) || "Tỉnh / Thành phố".equals(field) || "Tỉnh/Thành phố".equals(field)) {
+      try {
+        if (jdbcTemplate != null) {
+          int pid = Integer.parseInt(rawValue);
+          List<String> names = jdbcTemplate.queryForList("SELECT name FROM provinces WHERE id = ?", String.class, pid);
+          if (!names.isEmpty() && names.get(0) != null) return names.get(0);
+        }
+      } catch (Exception e) {
+        return rawValue;
+      }
+    }
+    if ("operationalStatus".equals(field) || "Trạng thái hoạt động".equals(field) || "Tình trạng hoạt động".equals(field) || "Tình trạng".equals(field)) {
+      if ("0".equals(rawValue) || "NOT_YET_OPERATIONAL".equalsIgnoreCase(rawValue)) return "Chưa khai thác/vận hành";
+      if ("1".equals(rawValue) || "OPERATIONAL".equalsIgnoreCase(rawValue)) return "Đang khai thác/vận hành";
+      if ("2".equals(rawValue) || "SUSPENDED".equalsIgnoreCase(rawValue)) return "Dừng khai thác/vận hành";
+      return rawValue;
+    }
+    if ("unitOfMeasure".equals(field) || "Đơn vị tính".equals(field)) {
+      try {
+        int uom = Integer.parseInt(rawValue);
+        return formatUom(uom);
+      } catch (Exception e) {
+        return rawValue;
+      }
+    }
+    if ("coordinateSystem".equals(field) || "Hệ quy chiếu".equals(field) || "Hệ tọa độ".equals(field)) {
+      if ("1".equals(rawValue) || "4326".equals(rawValue)) return "WGS 84";
+      if ("2".equals(rawValue)) return "VN-2000";
+      return rawValue;
+    }
+    if ("objectType".equals(field) || "geometryType".equals(field) || "Loại đối tượng (GIS)".equals(field) || "Loại đối tượng GIS".equals(field) || "Loại đối tượng".equals(field)) {
+      if ("POINT".equalsIgnoreCase(rawValue) || "1".equals(rawValue)) return "Đối tượng điểm";
+      if ("LINE".equalsIgnoreCase(rawValue) || "LINESTRING".equalsIgnoreCase(rawValue) || "2".equals(rawValue)) return "Đối tượng đường";
+      if ("POLYGON".equalsIgnoreCase(rawValue) || "3".equals(rawValue)) return "Đối tượng vùng";
+      return rawValue;
+    }
+    if ("approvalStatus".equals(field) || "Trạng thái phê duyệt".equals(field)) {
+      if (ApprovalStatus.DRAFT.name().equalsIgnoreCase(rawValue) || "DRAFT".equalsIgnoreCase(rawValue)) return "Lưu tạm";
+      if (ApprovalStatus.PROPOSED.name().equalsIgnoreCase(rawValue) || ApprovalStatus.PENDING_APPROVAL.name().equalsIgnoreCase(rawValue) || "PENDING_APPROVAL".equalsIgnoreCase(rawValue)) return "Chờ Cảng vụ duyệt";
+      if (ApprovalStatus.APPROVED_LEVEL1.name().equalsIgnoreCase(rawValue) || "APPROVED_LEVEL1".equalsIgnoreCase(rawValue)) return "Chờ Cục duyệt";
+      if (ApprovalStatus.APPROVED.name().equalsIgnoreCase(rawValue) || ApprovalStatus.APPROVED_LEVEL2.name().equalsIgnoreCase(rawValue) || "APPROVED".equalsIgnoreCase(rawValue)) return "Đã duyệt";
+      if (ApprovalStatus.REJECTED_LEVEL1.name().equalsIgnoreCase(rawValue) || "REJECTED_LEVEL1".equalsIgnoreCase(rawValue)) return "Bị Cảng vụ trả về";
+      if (ApprovalStatus.REJECTED_LEVEL2.name().equalsIgnoreCase(rawValue) || ApprovalStatus.REJECTED.name().equalsIgnoreCase(rawValue) || "REJECTED".equalsIgnoreCase(rawValue)) return "Bị Cục trả về";
+      return rawValue;
+    }
+    return rawValue;
+  }
+
+  private static String formatUom(int code) {
+    return switch (code) {
+      case 1 -> "Bộ";
+      case 2 -> "Bến";
+      case 3 -> "Bản quyền";
+      case 4 -> "Chiếc";
+      case 5 -> "Cổng";
+      case 6 -> "Cái";
+      case 7 -> "Cột";
+      case 8 -> "Cầu";
+      case 9 -> "Điểm";
+      case 10 -> "Đoạn";
+      case 11 -> "Hệ thống";
+      case 12 -> "Hải lý";
+      case 13 -> "Km";
+      case 14 -> "Kho";
+      case 15 -> "Khu";
+      case 16 -> "Luồng";
+      case 17 -> "Mét";
+      case 18 -> "Quả";
+      case 19 -> "Trạm";
+      case 20 -> "Tuyến";
+      case 21 -> "Vùng";
+      default -> String.valueOf(code);
+    };
   }
 
   /**
@@ -351,6 +653,7 @@ public class VhfService {
   public VhfResponse restore(UUID id) {
     Vhf entity = vhfRepository.findById(id)
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống VHF với id: " + id));
+    validateAllowedOrgUnit(entity.getOrgUnitId());
 
     int restored = vhfRepository.restoreVhfById(id);
     if (restored == 0) {
@@ -459,6 +762,11 @@ public class VhfService {
         : null)
       .createdAt(entity.getCreatedAt())
       .updatedAt(entity.getUpdatedAt())
+      .deletedBy(entity.getDeletedBy())
+      .deletedByName(entity.getDeletedBy() != null
+        ? userRepository.findById(entity.getDeletedBy()).map(User::getFullName).orElse(null)
+        : null)
+      .deletedAt(entity.getDeletedAt())
       .build();
   }
 
@@ -488,10 +796,10 @@ public class VhfService {
   public String generateDeviceCode() {
     int maxNumber = vhfRepository.findMaxDeviceCodeNumber();
     int nextNumber = maxNumber + 1;
-    String candidate = String.format("VHF-%04d", nextNumber);
+    String candidate = String.format("VHF-%06d", nextNumber);
     while (vhfRepository.existsDeviceCodeAnyState(candidate)) {
       nextNumber++;
-      candidate = String.format("VHF-%04d", nextNumber);
+      candidate = String.format("VHF-%06d", nextNumber);
     }
     return candidate;
   }

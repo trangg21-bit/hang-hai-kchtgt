@@ -129,12 +129,9 @@ public class DikeRevetmentController {
         try {
             Sort sort = Sort.by(Sort.Direction.fromString(sortOrder), sortBy);
             PageRequest pageable = PageRequest.of(page, size, sort);
-            ApprovalStatus statusEnum = approvalStatus != null && !approvalStatus.trim().isEmpty()
-                    ? ApprovalStatus.fromString(approvalStatus)
-                    : null;
             Page<DikeRevetmentResponse> responses = service.searchPaged(
                     orgUnitId, keyword, dikeRevetmentName, seaportId, dikeRevetmentType, conditionStatus,
-                    statusEnum, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
+                    approvalStatus, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
                     code, location, commissioningYear, pageable);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm đê kè thành công", responses));
         } catch (Exception e) {
@@ -240,14 +237,14 @@ public class DikeRevetmentController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'dikerevetment:history')")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:history') or @auth.check(authentication, 'dikerevetment:read') or @auth.check(authentication, 'data:read')")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "pageSize", required = false) Integer pageSize,
             @RequestParam(value = "keyword", required = false) String keyword,
-            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
-            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+            @RequestParam(value = "fromDate", required = false) String fromDate,
+            @RequestParam(value = "toDate", required = false) String toDate) {
         return ResponseEntity.ok(ApiResponse.success(service.getHistory(id, page, pageSize, keyword, fromDate, toDate)));
     }
 

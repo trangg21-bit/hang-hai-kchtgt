@@ -23,6 +23,7 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.radarstation.dto.*;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
@@ -33,13 +34,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -61,6 +65,7 @@ public class RadarStationService {
     private final UserRepository userRepository;
     private final InfrastructureApprovalService approvalService;
     private final OrgUnitScopeService orgUnitScopeService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -178,9 +183,6 @@ public class RadarStationService {
     public RadarStationResponse getById(UUID id) {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
-        if (entity.getDeletedAt() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
-            throw new RuntimeException("Trạm Radar đã bị xóa hoặc lưu trữ với ID: " + id);
-        }
         return toResponse(entity);
     }
 
@@ -218,82 +220,51 @@ public class RadarStationService {
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
-        Map<String, String> oldValues = new LinkedHashMap<>();
-        if (wasApproved) {
-            if (request.getStationName() != null && !Objects.equals(request.getStationName().trim(), entity.getStationName())) {
-                oldValues.put("Tên trạm radar", entity.getStationName() != null ? entity.getStationName() : "—");
-            }
-            if (request.getStationType() != null && !Objects.equals(request.getStationType().trim(), entity.getStationType())) {
-                oldValues.put("Loại trạm", entity.getStationType() != null ? entity.getStationType() : "—");
-            }
-            if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
-                String oldOrg = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
-                oldValues.put("Đơn vị quản lý", oldOrg != null ? oldOrg : "—");
-            }
-            if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
-                oldValues.put("Địa điểm (Tỉnh/TP)", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—");
-            }
-            if (request.getLocation() != null && !Objects.equals(request.getLocation().trim(), entity.getLocation())) {
-                oldValues.put("Địa điểm chi tiết", entity.getLocation() != null ? entity.getLocation() : "—");
-            }
-            if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus().trim(), entity.getConditionStatus())) {
-                oldValues.put("Tình trạng", entity.getConditionStatus() != null ? entity.getConditionStatus() : "—");
-            }
-            if (request.getCoverage() != null && !Objects.equals(request.getCoverage().trim(), entity.getCoverage())) {
-                oldValues.put("Vùng phủ sóng", entity.getCoverage() != null ? entity.getCoverage() : "—");
-            }
-            if (request.getTowerHeight() != null && !Objects.equals(request.getTowerHeight(), entity.getTowerHeight())) {
-                oldValues.put("Chiều cao tháp", entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : "—");
-            }
-            if (request.getRadarRange() != null && !Objects.equals(request.getRadarRange(), entity.getRadarRange())) {
-                oldValues.put("Tầm phủ radar", entity.getRadarRange() != null ? String.valueOf(entity.getRadarRange()) : "—");
-            }
-            if (request.getNote() != null && !Objects.equals(request.getNote().trim(), entity.getNote())) {
-                oldValues.put("Ghi chú", entity.getNote() != null ? entity.getNote() : "—");
-            }
+        Map<String, String> previousValues = new LinkedHashMap<>();
+        applyIfChanged("stationName", entity.getStationName(), request.getStationName() != null ? request.getStationName().trim() : null, entity::setStationName, previousValues);
+        applyIfChanged("stationType", entity.getStationType(), request.getStationType() != null ? request.getStationType().trim() : null, entity::setStationType, previousValues);
+        applyIfChanged("location", entity.getLocation(), request.getLocation() != null ? request.getLocation().trim() : null, entity::setLocation, previousValues);
+        applyIfChanged("coverage", entity.getCoverage(), request.getCoverage() != null ? request.getCoverage().trim() : null, entity::setCoverage, previousValues);
+        applyIfChanged("emissionArea", entity.getEmissionArea(), request.getEmissionArea(), entity::setEmissionArea, previousValues);
+        applyIfChanged("source", entity.getSource(), request.getSource() != null ? request.getSource().trim() : null, entity::setSource, previousValues);
+        applyIfChanged("conditionStatus", entity.getConditionStatus(), request.getConditionStatus() != null ? request.getConditionStatus().trim() : null, entity::setConditionStatus, previousValues);
+        applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues);
+        applyIfChanged("seaportId", entity.getSeaportId(), request.getSeaportId(), entity::setSeaportId, previousValues);
+        applyIfChanged("vtsSystemId", entity.getVtsSystemId(), request.getVtsSystemId(), entity::setVtsSystemId, previousValues);
+        applyIfChanged("vtsOperationCenterId", entity.getVtsOperationCenterId(), request.getVtsOperationCenterId(), entity::setVtsOperationCenterId, previousValues);
+        applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues);
+        applyIfChanged("provinceId", entity.getProvinceId(), request.getProvinceId(), entity::setProvinceId, previousValues);
+        applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), request.getUnitOfMeasure() != null ? request.getUnitOfMeasure().trim() : null, entity::setUnitOfMeasure, previousValues);
+        applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues);
+        applyIfChanged("towerHeight", entity.getTowerHeight(), request.getTowerHeight(), entity::setTowerHeight, previousValues);
+        applyIfChanged("radarRange", entity.getRadarRange(), request.getRadarRange(), entity::setRadarRange, previousValues);
+        applyIfChanged("note", entity.getNote(), request.getNote() != null ? request.getNote().trim() : null, entity::setNote, previousValues);
+        applyIfChanged("mapIcon", entity.getMapIcon(), request.getMapIcon() != null ? request.getMapIcon().trim() : null, entity::setMapIcon, previousValues);
 
-            String oldCoord = gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId());
-            String newCoord = trimToNull(request.getCoordinates());
-            if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
-                newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
-            }
-            if (newCoord != null && !Objects.equals(newCoord, oldCoord)) {
-                oldValues.put("Tọa độ", oldCoord != null ? oldCoord : "—");
-            }
+        String oldCoord = entity.getSpatialId() != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+        GisGeometryType oldGeom = null;
+        if (entity.getSpatialId() != null) {
+            Optional<GisSpatialObject> sp = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (sp.isPresent()) oldGeom = sp.get().getGeometryType();
+        }
+        String newCoord = trimToNull(request.getCoordinates());
+        if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
+            newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        }
+        if (newCoord != null && !Objects.equals(newCoord, oldCoord)) {
+            previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
+        }
+        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeom)) {
+            previousValues.put("geometryType", oldGeom != null ? oldGeom.name() : "Chưa có");
         }
 
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 
-        if (request.getStationName() != null) entity.setStationName(request.getStationName().trim());
-        if (request.getLocation() != null) entity.setLocation(request.getLocation().trim());
-        if (request.getStationType() != null) entity.setStationType(request.getStationType().trim());
-        if (request.getCoverage() != null) entity.setCoverage(request.getCoverage().trim());
-        if (request.getEmissionArea() != null) entity.setEmissionArea(request.getEmissionArea());
-        if (request.getSource() != null) entity.setSource(request.getSource().trim());
-        if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus().trim());
-        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
-        if (request.getSeaportId() != null) entity.setSeaportId(request.getSeaportId());
-        if (request.getVtsSystemId() != null) entity.setVtsSystemId(request.getVtsSystemId());
-        if (request.getVtsOperationCenterId() != null) entity.setVtsOperationCenterId(request.getVtsOperationCenterId());
-        if (request.getOperatingUnitId() != null) entity.setOperatingUnitId(request.getOperatingUnitId());
-        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
-        if (request.getUnitOfMeasure() != null) entity.setUnitOfMeasure(request.getUnitOfMeasure().trim());
-        if (request.getQuantity() != null) entity.setQuantity(request.getQuantity());
-        if (request.getNote() != null) entity.setNote(request.getNote().trim());
-        if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
-        if (request.getRadarRange() != null) entity.setRadarRange(request.getRadarRange());
-        if (request.getMapIcon() != null) entity.setMapIcon(request.getMapIcon().trim());
-
         RadarStation saved = repository.save(entity);
 
-        String coordinates = trimToNull(request.getCoordinates());
-        if (coordinates == null && request.getLongitude() != null && request.getLatitude() != null) {
-            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
-        }
-
-        if (coordinates != null) {
+        if (newCoord != null) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
             GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
             UUID refId = saved.getId();
@@ -303,7 +274,7 @@ public class RadarStationService {
                     "RADAR_" + saved.getId(),
                     geomType,
                     objType,
-                    coordinates,
+                    newCoord,
                     refId,
                     InfrastructureType.RADAR_STATION_LEGACY
             );
@@ -313,21 +284,41 @@ public class RadarStationService {
             }
         }
 
-        if (wasApproved && !oldValues.isEmpty()) {
-            for (Map.Entry<String, String> entry : oldValues.entrySet()) {
-                String fieldName = entry.getKey();
-                String oldVal = entry.getValue();
-                String newVal = getRadarNewValueDisplay(fieldName, saved);
+        if (wasApproved) {
+            if (!previousValues.isEmpty()) {
+                for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                    String field = entry.getKey();
+                    String fieldName = getFieldDisplayName(field);
+                    String oldVal = entry.getValue() != null ? entry.getValue() : "";
+                    Object rawNew;
+                    if ("coordinates".equals(field)) {
+                        rawNew = newCoord;
+                    } else if ("geometryType".equals(field)) {
+                        rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+                    } else {
+                        rawNew = getEntityFieldValue(saved, field);
+                    }
+                    String newVal = rawNew != null ? String.valueOf(rawNew) : null;
+                    historyRepository.save(InfrastructureHistory.builder()
+                            .refId(saved.getId())
+                            .refType(InfrastructureType.RADAR_STATION)
+                            .approvalLevel(ApprovalLevel.LEVEL_2)
+                            .status(InfrastructureHistoryStatus.UPDATED)
+                            .approvedBy(updatedBy)
+                            .changedField(fieldName)
+                            .previousValue(formatDisplayValue(field, oldVal))
+                            .newValue(formatDisplayValue(field, newVal))
+                            .reason("Cập nhật " + fieldName)
+                            .build());
+                }
+            } else {
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(saved.getId())
                         .refType(InfrastructureType.RADAR_STATION)
                         .approvalLevel(ApprovalLevel.LEVEL_2)
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(updatedBy)
-                        .changedField(fieldName)
-                        .previousValue(oldVal)
-                        .newValue(newVal)
-                        .reason("Cập nhật " + fieldName)
+                        .reason("Cập nhật sau phê duyệt")
                         .build());
             }
         }
@@ -335,24 +326,61 @@ public class RadarStationService {
         return toResponse(saved);
     }
 
-    private String getRadarNewValueDisplay(String fieldName, RadarStation entity) {
-        if (entity == null || fieldName == null) return "—";
-        return switch (fieldName) {
-            case "Tên trạm radar" -> entity.getStationName() != null ? entity.getStationName() : "—";
-            case "Loại trạm" -> entity.getStationType() != null ? entity.getStationType() : "—";
-            case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
-            case "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
-            case "Địa điểm chi tiết" -> entity.getLocation() != null ? entity.getLocation() : "—";
-            case "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus() : "—";
-            case "Vùng phủ sóng" -> entity.getCoverage() != null ? entity.getCoverage() : "—";
-            case "Chiều cao tháp" -> entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : "—";
-            case "Tầm phủ radar" -> entity.getRadarRange() != null ? String.valueOf(entity.getRadarRange()) : "—";
-            case "Ghi chú" -> entity.getNote() != null ? entity.getNote() : "—";
-            case "Tọa độ", "Tọa độ GPS" -> {
-                String c = gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId());
-                yield c != null && !c.isBlank() ? c : "—";
-            }
-            default -> "—";
+    private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
+            Map<String, String> previousValues) {
+        if (newVal == null) return;
+        if (Objects.equals(newVal, oldVal)) return;
+        previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
+        setter.accept(newVal);
+    }
+
+    private String getFieldDisplayName(String field) {
+        if ("stationName".equals(field)) return "Tên trạm radar";
+        if ("stationType".equals(field)) return "Loại trạm";
+        if ("location".equals(field)) return "Địa điểm chi tiết";
+        if ("coverage".equals(field)) return "Vùng phủ sóng";
+        if ("emissionArea".equals(field)) return "Diện tích phát xạ";
+        if ("source".equals(field)) return "Nguồn dữ liệu";
+        if ("conditionStatus".equals(field)) return "Tình trạng hoạt động";
+        if ("orgUnitId".equals(field)) return "Đơn vị quản lý";
+        if ("seaportId".equals(field)) return "Thuộc cảng biển";
+        if ("vtsSystemId".equals(field)) return "Hệ thống VTS";
+        if ("vtsOperationCenterId".equals(field)) return "Trung tâm điều hành VTS";
+        if ("operatingUnitId".equals(field)) return "Đơn vị vận hành";
+        if ("provinceId".equals(field)) return "Địa điểm (Tỉnh/TP)";
+        if ("unitOfMeasure".equals(field)) return "Đơn vị tính";
+        if ("quantity".equals(field)) return "Số lượng";
+        if ("towerHeight".equals(field)) return "Chiều cao tháp";
+        if ("radarRange".equals(field)) return "Tầm phủ radar";
+        if ("note".equals(field)) return "Ghi chú";
+        if ("mapIcon".equals(field)) return "Biểu tượng";
+        if ("coordinates".equals(field)) return "Tọa độ";
+        if ("geometryType".equals(field)) return "Loại đối tượng (GIS)";
+        return field;
+    }
+
+    private Object getEntityFieldValue(RadarStation entity, String field) {
+        return switch (field) {
+            case "stationName" -> entity.getStationName();
+            case "stationType" -> entity.getStationType();
+            case "location" -> entity.getLocation();
+            case "coverage" -> entity.getCoverage();
+            case "emissionArea" -> entity.getEmissionArea();
+            case "source" -> entity.getSource();
+            case "conditionStatus" -> entity.getConditionStatus();
+            case "orgUnitId" -> entity.getOrgUnitId();
+            case "seaportId" -> entity.getSeaportId();
+            case "vtsSystemId" -> entity.getVtsSystemId();
+            case "vtsOperationCenterId" -> entity.getVtsOperationCenterId();
+            case "operatingUnitId" -> entity.getOperatingUnitId();
+            case "provinceId" -> entity.getProvinceId();
+            case "unitOfMeasure" -> entity.getUnitOfMeasure();
+            case "quantity" -> entity.getQuantity();
+            case "towerHeight" -> entity.getTowerHeight();
+            case "radarRange" -> entity.getRadarRange();
+            case "note" -> entity.getNote();
+            case "mapIcon" -> entity.getMapIcon();
+            default -> null;
         };
     }
 
@@ -445,7 +473,7 @@ public class RadarStationService {
                 ? "%" + normalizeSearchKeyword(stationName) + "%"
                 : null;
         List<Object[]> rows = repository.countByApprovalStatus(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, stationNamePattern, conditionStatus);
+                !scope.unrestricted(), scope.orgUnitIds(), keywordPattern, stationNamePattern, conditionStatus);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("", 0L);
@@ -455,6 +483,7 @@ public class RadarStationService {
         counts.put("REJECTED_LEVEL1", 0L);
         counts.put("REJECTED_LEVEL2", 0L);
         counts.put("APPROVED", 0L);
+        counts.put("DELETED", 0L);
 
         long total = 0L;
         for (Object[] row : rows) {
@@ -473,6 +502,12 @@ public class RadarStationService {
                 default -> {}
             }
         }
+
+        long deletedCount = repository.countDeleted(
+                !scope.unrestricted(), scope.orgUnitIds(), keywordPattern, stationNamePattern, conditionStatus);
+        counts.put("DELETED", deletedCount);
+        total += deletedCount;
+
         counts.put("", total);
         return counts;
     }
@@ -505,14 +540,15 @@ public class RadarStationService {
         String codePattern = (code != null && !code.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(code) + "%"
                 : null;
-        ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty())
+        boolean deletedOnly = "DELETED".equalsIgnoreCase(approvalStatusStr != null ? approvalStatusStr.trim() : null);
+        ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty() && !deletedOnly)
                 ? ApprovalStatus.fromString(approvalStatusStr)
                 : null;
 
         return repository.searchPaged(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, stationNamePattern, codePattern,
+                !scope.unrestricted(), scope.orgUnitIds(), keywordPattern, stationNamePattern, codePattern,
                 seaportId, vtsSystemId, vtsOperationCenterId, operatingUnitId, provinceId,
-                conditionStatus, statusEnum, updatedBy, updatedFrom, updatedTo, pageable)
+                conditionStatus, statusEnum, deletedOnly, updatedBy, updatedFrom, updatedTo, pageable)
                 .map(this::toResponse);
     }
 
@@ -530,37 +566,47 @@ public class RadarStationService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID radarStationId, Integer page, Integer pageSize) {
-        return getHistory(radarStationId, page, pageSize, null, null, null);
+        return getHistory(radarStationId, page, pageSize, null, (LocalDateTime) null, (LocalDateTime) null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID radarStationId, Integer page, Integer pageSize, String keyword,
+            String fromDate, String toDate) {
+        return getHistory(radarStationId, page, pageSize, keyword, parseFromDate(fromDate), parseToDate(toDate));
     }
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID radarStationId, Integer page, Integer pageSize, String keyword,
             LocalDateTime fromDate, LocalDateTime toDate) {
+        RadarStation parent = repository.findById(radarStationId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + radarStationId));
+        validateAllowedOrgUnit(parent.getOrgUnitId());
+
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
+        boolean paged = page != null && pageSize != null && pageSize > 0;
         List<InfrastructureHistory> historyList;
-        if (page != null && pageSize != null && pageSize > 0) {
-            Pageable pageable = PageRequest.of(page, pageSize);
-            String normalizedKeyword = normalizeSearchKeyword(keyword);
-            if (normalizedKeyword == null && fromDate == null && toDate == null) {
-                historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                        InfrastructureType.RADAR_STATION, radarStationId, pageable);
-            } else {
-                historyList = historyRepository.searchHistory(InfrastructureType.RADAR_STATION, radarStationId, normalizedKeyword,
-                        fromDate, toDate, pageable);
-            }
+        if (normalizedKeyword == null && fromDate == null && toDate == null) {
+            historyList = paged
+                    ? historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.RADAR_STATION, radarStationId, PageRequest.of(page, pageSize))
+                    : historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.RADAR_STATION, radarStationId);
         } else {
-            historyList = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                    InfrastructureType.RADAR_STATION, radarStationId);
+            historyList = historyRepository.searchHistory(
+                    InfrastructureType.RADAR_STATION, radarStationId, normalizedKeyword, fromDate, toDate,
+                    paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
         }
+
         Set<UUID> userIds = historyList.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, com.hanghai.kchtg.user.entity.User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+        Map<UUID, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
                 userRepository.findAllByIdInWithOrgUnit(userIds).stream()
-                        .collect(Collectors.toMap(com.hanghai.kchtg.user.entity.User::getId, u -> u, (a, b) -> a));
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
         return historyList.stream().map(h -> {
-            com.hanghai.kchtg.user.entity.User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+            User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
             // list-screen-ui-standard §3: chỉ Họ và tên (hoặc tên đăng nhập);
             // không để lộ email hay UUID ra giao diện.
             String userName = u != null
@@ -589,10 +635,155 @@ public class RadarStationService {
                     .approvedDate(h.getApprovedDate())
                     .reason(h.getReason())
                     .changedField(h.getChangedField())
-                    .previousValue(h.getPreviousValue())
-                    .newValue(h.getNewValue())
+                    .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
+                    .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
                     .build();
         }).toList();
+    }
+
+    private LocalDateTime parseFromDate(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            String v = value.trim();
+            if (v.length() == 10) {
+                return LocalDate.parse(v).atStartOfDay();
+            }
+            return LocalDateTime.parse(v.replace(" ", "T"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime parseToDate(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            String v = value.trim();
+            if (v.length() == 10) {
+                return LocalDate.parse(v).atTime(LocalTime.MAX);
+            }
+            return LocalDateTime.parse(v.replace(" ", "T"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public String formatDisplayValue(String field, String rawValue) {
+        if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
+            return "Chưa có";
+        }
+        if ("mapIcon".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field) || "symbolId".equals(field)) {
+            try {
+                UUID symId = UUID.fromString(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM map_symbols WHERE id = ?", String.class, symId);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("orgUnitId".equals(field) || "Đơn vị quản lý".equals(field)) {
+            try {
+                String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
+                return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("seaportId".equals(field) || "Thuộc cảng biển".equals(field)) {
+            try {
+                UUID pId = UUID.fromString(rawValue);
+                return portRepository.findById(pId).map(Port::getPortName).orElse(rawValue);
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("vtsSystemId".equals(field) || "Hệ thống VTS".equals(field) || "Thuộc hệ thống VTS".equals(field)) {
+            try {
+                UUID sid = UUID.fromString(rawValue);
+                return vtsSystemRepository.findById(sid).map(VtsSystem::getSystemName).orElse(rawValue);
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("vtsOperationCenterId".equals(field) || "Trung tâm điều hành VTS".equals(field)) {
+            try {
+                UUID cid = UUID.fromString(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, cid);
+                if (!names.isEmpty() && names.get(0) != null) {
+                    return names.get(0);
+                }
+                return vtsSystemRepository.findById(cid).map(VtsSystem::getSystemName).orElse(rawValue);
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("operatingUnitId".equals(field) || "Đơn vị vận hành".equals(field) || "Đơn vị khai thác".equals(field)) {
+            try {
+                UUID uid = UUID.fromString(rawValue);
+                String name = orgUnitCacheService.getName(uid);
+                if (name != null && !name.equals(rawValue)) {
+                    return name;
+                }
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM operating_units WHERE id = ?", String.class, uid);
+                if (!names.isEmpty() && names.get(0) != null) {
+                    return names.get(0);
+                }
+                names = jdbcTemplate.queryForList("SELECT name FROM operating_organizations WHERE id = ?", String.class, uid);
+                if (!names.isEmpty() && names.get(0) != null) {
+                    return names.get(0);
+                }
+                return rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("provinceId".equals(field) || "Địa điểm (Tỉnh/TP)".equals(field) || "Tỉnh / Thành phố".equals(field)) {
+            try {
+                int pid = Integer.parseInt(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM provinces WHERE id = ?", String.class, pid);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("stationType".equals(field) || "Loại trạm".equals(field)) {
+            if ("INDEPENDENT".equalsIgnoreCase(rawValue) || "1".equals(rawValue)) return "Trạm độc lập";
+            if ("DEPENDENT".equalsIgnoreCase(rawValue) || "2".equals(rawValue)) return "Trạm phụ thuộc";
+            return rawValue;
+        }
+        if ("conditionStatus".equals(field) || "Tình trạng".equals(field) || "Tình trạng hoạt động".equals(field)) {
+            if ("1".equals(rawValue) || "OPERATIONAL".equalsIgnoreCase(rawValue)) return "Đang khai thác/vận hành";
+            if ("2".equals(rawValue) || "MAINTENANCE".equalsIgnoreCase(rawValue)) return "Đang bảo trì";
+            if ("3".equals(rawValue) || "STOPPED".equalsIgnoreCase(rawValue)) return "Dừng khai thác/vận hành";
+            if ("4".equals(rawValue) || "UNDER_CONSTRUCTION".equalsIgnoreCase(rawValue)) return "Đang xây dựng";
+            return rawValue;
+        }
+        if ("geometryType".equals(field) || "Loại đối tượng (GIS)".equals(field) || "Loại đối tượng GIS".equals(field)) {
+            if (GisGeometryType.POINT.name().equalsIgnoreCase(rawValue)) return "Đối tượng điểm";
+            if (GisGeometryType.LINE.name().equalsIgnoreCase(rawValue) || "LINESTRING".equalsIgnoreCase(rawValue)) return "Đối tượng đường";
+            if (GisGeometryType.POLYGON.name().equalsIgnoreCase(rawValue)) return "Đối tượng vùng";
+            return rawValue;
+        }
+        if ("approvalStatus".equals(field) || "Trạng thái phê duyệt".equals(field)) {
+            if (ApprovalStatus.DRAFT.name().equalsIgnoreCase(rawValue) || "DRAFT".equalsIgnoreCase(rawValue)) return "Lưu tạm";
+            if (ApprovalStatus.PROPOSED.name().equalsIgnoreCase(rawValue) || ApprovalStatus.PENDING_APPROVAL.name().equalsIgnoreCase(rawValue) || "PENDING_APPROVAL".equalsIgnoreCase(rawValue)) return "Chờ Cảng vụ duyệt";
+            if (ApprovalStatus.APPROVED_LEVEL1.name().equalsIgnoreCase(rawValue) || "APPROVED_LEVEL1".equalsIgnoreCase(rawValue)) return "Chờ Cục duyệt";
+            if (ApprovalStatus.APPROVED.name().equalsIgnoreCase(rawValue) || ApprovalStatus.APPROVED_LEVEL2.name().equalsIgnoreCase(rawValue) || "APPROVED".equalsIgnoreCase(rawValue)) return "Đã duyệt";
+            if (ApprovalStatus.REJECTED_LEVEL1.name().equalsIgnoreCase(rawValue) || "REJECTED_LEVEL1".equalsIgnoreCase(rawValue)) return "Bị Cảng vụ trả về";
+            if (ApprovalStatus.REJECTED_LEVEL2.name().equalsIgnoreCase(rawValue) || ApprovalStatus.REJECTED.name().equalsIgnoreCase(rawValue) || "REJECTED".equalsIgnoreCase(rawValue)) return "Bị Cục trả về";
+            return rawValue;
+        }
+        if ("coordinateSystem".equals(field) || "Hệ tọa độ".equals(field) || "Hệ quy chiếu".equals(field)) {
+            if ("1".equals(rawValue) || "4326".equals(rawValue)) return "WGS 84";
+            if ("2".equals(rawValue)) return "VN-2000";
+            return rawValue;
+        }
+        if ("coordinates".equals(field) || "Tọa độ".equals(field) || "Tọa độ GIS".equals(field)) {
+            if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
+                return "Chưa có";
+            }
+            return rawValue.trim();
+        }
+        return rawValue;
     }
 
     private static String normalizeSearchKeyword(String keyword) {
@@ -725,10 +916,10 @@ public class RadarStationService {
                 .findByRefIdAndRefTypeOrderByUploadedDateDesc(entity.getId(), InfrastructureType.RADAR_STATION)
                 .stream().map(this::toAttachmentResponse).toList();
 
-        // Gom 5 người dùng (tạo / sửa / gửi duyệt / duyệt C1 / duyệt C2) vào một truy vấn.
+        // Gom người dùng (tạo / sửa / gửi duyệt / duyệt C1 / duyệt C2 / xóa) vào một truy vấn.
         Set<UUID> relatedUserIds = Stream
                 .of(entity.getCreatedBy(), entity.getUpdatedBy(), entity.getApproverLevel1(),
-                        entity.getApproverLevel2(), entity.getSubmittedBy())
+                        entity.getApproverLevel2(), entity.getSubmittedBy(), entity.getDeletedBy())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, String> relatedUserNames = new HashMap<>();
@@ -744,6 +935,7 @@ public class RadarStationService {
         String submittedByName = relatedUserNames.get(entity.getSubmittedBy());
         String approverLevel1Name = relatedUserNames.get(entity.getApproverLevel1());
         String approverLevel2Name = relatedUserNames.get(entity.getApproverLevel2());
+        String deletedByName = relatedUserNames.get(entity.getDeletedBy());
 
         RadarStationResponse.RadarStationResponseBuilder builder = RadarStationResponse.builder()
                 .id(entity.getId())
@@ -795,6 +987,9 @@ public class RadarStationService {
                 .updatedByName(updatedByName)
                 .updatedDate(entity.getUpdatedAt())
                 .attachments(attachments)
+                .deletedBy(entity.getDeletedBy())
+                .deletedByName(deletedByName)
+                .deletedAt(entity.getDeletedAt())
                 .towerHeight(entity.getTowerHeight())
                 .radarRange(entity.getRadarRange())
                 .mapIcon(entity.getMapIcon());

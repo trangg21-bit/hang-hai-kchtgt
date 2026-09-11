@@ -13,7 +13,14 @@ import com.hanghai.kchtg.beacon.service.BeaconStationService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.beacon.dto.BeaconHistoryEntry;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import org.springframework.data.domain.Pageable;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
@@ -73,6 +80,18 @@ class BeaconStationServiceTest {
     @Mock
     private com.hanghai.kchtg.port.service.shared.UserResolverService userResolverService;
 
+    @Mock
+    private com.hanghai.kchtg.port.repository.AttachmentRepository attachmentRepository;
+
+    @Mock
+    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
+
+    @Mock
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @Mock
+    private com.hanghai.kchtg.port.service.PortCacheService portCacheService;
+
     @InjectMocks
     private BeaconStationService service;
 
@@ -124,12 +143,22 @@ class BeaconStationServiceTest {
     }
 
     private static void setId(Object entity, UUID id) {
+        if (entity instanceof BeaconStation bs) {
+            bs.setId(id);
+            return;
+        }
         try {
-            java.lang.reflect.Field idField = BaseEntity.class.getDeclaredField("id");
+            java.lang.reflect.Field idField = entity.getClass().getDeclaredField("id");
             idField.setAccessible(true);
             idField.set(entity, id);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            try {
+                java.lang.reflect.Field idField = BaseEntity.class.getDeclaredField("id");
+                idField.setAccessible(true);
+                idField.set(entity, id);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
@@ -201,7 +230,7 @@ class BeaconStationServiceTest {
         void search() {
             UUID id = UUID.randomUUID();
             BeaconStation entity = makeEntity(id, "DRAFT");
-            when(beaconStationRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(beaconStationRepo.searchFiltered(any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(List.of(entity));
 
             List<BeaconStationResponse> result = service.search(
@@ -210,7 +239,25 @@ class BeaconStationServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Đèn biển test");
             verify(beaconStationRepo).searchFiltered("Đèn", "DEN",
-                    "LIGHTHOUSE", null, "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
+                    "LIGHTHOUSE", null, "DRAFT", true, List.of(), null, null, null, null, null, null, null, null, null, null, null);
+        }
+
+        @Test
+        @DisplayName("findById deleted entity returns status DELETED and deleted audit fields")
+        void findByIdDeletedEntity() {
+            UUID id = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+            LocalDateTime now = LocalDateTime.now();
+            BeaconStation entity = makeEntity(id, "DRAFT");
+            entity.setDeletedAt(now);
+            entity.setDeletedBy(userId);
+            when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
+
+            BeaconStationResponse res = service.findById(id);
+
+            assertThat(res.getStatus()).isEqualTo("DELETED");
+            assertThat(res.getDeletedAt()).isEqualTo(now);
+            assertThat(res.getDeletedBy()).isEqualTo(userId);
         }
     }
 
@@ -297,6 +344,28 @@ class BeaconStationServiceTest {
                     .hasMessageContaining("Ngày bảo trì gần nhất");
 
             verify(beaconStationRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("create with lightRange > 60.0 succeeds without DecimalMax restriction")
+        void create_withLightRangeGreaterThan60_shouldSucceed() {
+            UUID savedId = UUID.randomUUID();
+            CreateBeaconStationRequest request = makeCreateRequest();
+            request.setLightRange(85.5);
+
+            when(beaconStationRepo.existsByCode("DEN-002")).thenReturn(false);
+            when(buoyRepo.existsByCode("DEN-002")).thenReturn(false);
+            when(beaconStationRepo.save(any())).thenAnswer(invocation -> {
+                BeaconStation entity = invocation.getArgument(0);
+                setId(entity, savedId);
+                return entity;
+            });
+
+            BeaconStationResponse result = service.create(request);
+
+            assertThat(result).isNotNull();
+            verify(beaconStationRepo, atLeastOnce()).save(beaconStationCaptor.capture());
+            assertThat(beaconStationCaptor.getValue().getLightRange()).isEqualTo(85.5);
         }
     }
 
@@ -610,6 +679,123 @@ class BeaconStationServiceTest {
                     () -> service.reject(id, null, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ít nhất 10 ký tự");
+        }
+    }
+
+    @Nested
+    @DisplayName("Lịch sử thay đổi (Audit trail) — chuẩn /vts-operation-center")
+    class HistoryTests {
+
+        @Test
+        @DisplayName("getHistory — lấy đúng tên user thực hiện và đơn vị của user đó")
+        void getHistoryResolvesActorAndUserUnit() {
+            UUID stationId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(makeEntity(stationId, "APPROVED")));
+
+            OrgUnit orgUnit = new OrgUnit();
+            orgUnit.setName("Cảng vụ Hàng hải Hải Phòng");
+
+            User user = new User();
+            user.setFullName("Trần Văn B");
+            user.setOrgUnit(orgUnit);
+            setId(user, userId);
+
+            InfrastructureHistory historyRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Chiều cao tháp đèn (m)")
+                    .previousValue("12")
+                    .newValue("15")
+                    .reason("Cập nhật thông tin Chiều cao tháp đèn (m)")
+                    .build();
+
+            when(infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), any(Pageable.class)))
+                    .thenReturn(List.of(historyRecord));
+            when(userRepository.findAllByIdInWithOrgUnit(any()))
+                    .thenReturn(List.of(user));
+
+            List<BeaconHistoryEntry> entries = service.getHistory(stationId, 0, 20, null, null, null);
+
+            assertThat(entries).hasSize(1);
+            BeaconHistoryEntry entry = entries.get(0);
+            assertThat(entry.getApprovedBy()).isEqualTo("Trần Văn B");
+            assertThat(entry.getOrgUnitName()).isEqualTo("Cảng vụ Hàng hải Hải Phòng");
+            assertThat(entry.getChangedField()).isEqualTo("Chiều cao tháp đèn (m)");
+            assertThat(entry.getPreviousValue()).isEqualTo("12");
+            assertThat(entry.getNewValue()).isEqualTo("15");
+        }
+
+        @Test
+        @DisplayName("getHistory — lọc theo từ khóa và khoảng ngày gọi searchHistory")
+        void getHistoryWithKeywordAndDateRange() {
+            UUID stationId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(makeEntity(stationId, "APPROVED")));
+
+            InfrastructureHistory historyRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.of(2026, 3, 10, 10, 0))
+                    .changedField("Tên đèn biển")
+                    .previousValue("Đèn biển cũ")
+                    .newValue("Đèn biển mới")
+                    .reason("Cập nhật thông tin Tên đèn biển")
+                    .build();
+
+            when(infraHistoryRepo.searchHistory(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), eq("den bien"), any(), any(), any(Pageable.class)))
+                    .thenReturn(List.of(historyRecord));
+            when(userRepository.findAllByIdInWithOrgUnit(any()))
+                    .thenReturn(List.of());
+
+            List<BeaconHistoryEntry> entries = service.getHistory(stationId, 0, 10, "đèn biển", "2026-03-01", "2026-03-31");
+
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).getChangedField()).isEqualTo("Tên đèn biển");
+            verify(infraHistoryRepo).searchHistory(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), eq("den bien"), any(), any(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("update — ghi nhận đầy đủ từng trường thay đổi vào infrastructure_history với tên hiển thị chuẩn")
+        void updateRecordsDetailedChanges() {
+            UUID id = UUID.randomUUID();
+            BeaconStation entity = makeEntity(id, "APPROVED");
+            entity.setTowerHeight(10.0);
+            entity.setLightHeight(15.0);
+            entity.setTowerColor("Trắng");
+
+            when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
+            when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateBeaconStationRequest request = UpdateBeaconStationRequest.builder()
+                    .name(entity.getName())
+                    .type(entity.getType())
+                    .unitId(entity.getUnitId())
+                    .towerHeight(12.0)
+                    .lightHeight(18.0)
+                    .towerColor("Đỏ - Trắng")
+                    .build();
+
+            service.update(id, request);
+
+            ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+            verify(infraHistoryRepo, atLeast(3)).save(historyCaptor.capture());
+
+            List<InfrastructureHistory> savedEntries = historyCaptor.getAllValues();
+            List<String> changedFields = savedEntries.stream().map(InfrastructureHistory::getChangedField).toList();
+
+            assertThat(changedFields).contains("Chiều cao tháp đèn (m)", "Chiều cao tâm sáng (m)", "Màu sắc tháp đèn");
         }
     }
 }

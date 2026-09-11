@@ -4,9 +4,36 @@ import {
   CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
+import viVN from 'antd/locale/vi_VN';
 import { colors as baseColors, layout as baseLayout } from './theme';
 
 export const layout = baseLayout;
+
+/** Locale vi_VN chuẩn hóa định dạng ngày hiển thị DD/MM/YYYY cho toàn hệ thống */
+export const appLocale = {
+  ...viVN,
+  DatePicker: {
+    ...viVN.DatePicker,
+    lang: {
+      ...viVN.DatePicker?.lang,
+      fieldDateFormat: 'DD/MM/YYYY',
+      fieldDateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
+      yearFormat: 'YYYY',
+      cellDateFormat: 'D',
+    },
+  },
+  Calendar: {
+    ...viVN.Calendar,
+    lang: {
+      ...viVN.Calendar?.lang,
+      fieldDateFormat: 'DD/MM/YYYY',
+      fieldDateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
+      yearFormat: 'YYYY',
+      cellDateFormat: 'D',
+    },
+  },
+};
+export const locale = appLocale;
 
 
 // ============================================================
@@ -313,7 +340,7 @@ export const formatUserDisplayName = (
   }
   if (fallbackUserName && !isUuidString(fallbackUserName)) return fallbackUserName;
   if (userId && !isUuidString(String(userId))) return String(userId);
-  return '—';
+  return null;
 };
 
 /** Hàm so sánh sắp xếp cột Cán bộ cập nhật (ưu tiên Họ và tên A-Z, sau đó theo ngày) */
@@ -406,7 +433,7 @@ export const statusBadgeStyle = (color: string): React.CSSProperties => ({
 
 /** Render Pill Badge màu ngữ nghĩa cho trạng thái kế hoạch/công việc/xử lý. */
 export const renderPlanStatusBadge = (status?: string): React.ReactNode => {
-  if (!status) return '—';
+  if (!status) return null;
   let color = statusDraft;
   if (status.includes('Hoàn thành') || status.includes('Đã xử lý') || status.includes('Đã khắc phục')) {
     color = statusOperational;
@@ -422,7 +449,7 @@ export const renderPlanStatusBadge = (status?: string): React.ReactNode => {
 
 /** Render Pill Badge màu ngữ nghĩa cho mức độ sự cố/rủi ro. */
 export const renderSeverityBadge = (severity?: string): React.ReactNode => {
-  if (!severity) return '—';
+  if (!severity) return null;
   let color = statusOperational;
   if (severity.includes('Nghiêm trọng') || severity.includes('Cao')) {
     color = statusCritical;
@@ -444,7 +471,7 @@ export const CONDITION_STATUS_COLOR_MAP: Record<string, string> = {
 
 /** Lấy màu ngữ nghĩa chuẩn cho Tình trạng hoạt động (ConditionStatus). */
 export const getConditionStatusColor = (status?: unknown): string => {
-  if (status == null || status === '' || status === '—') return textSecondary;
+  if (status == null || status === '' || status === null) return textSecondary;
   const s = String(status).trim();
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
@@ -473,7 +500,7 @@ export const getConditionStatusColor = (status?: unknown): string => {
 
 /** Lấy nhãn tiếng Việt chuẩn cho Tình trạng hoạt động (ConditionStatus). */
 export const getConditionStatusLabel = (status?: unknown): string => {
-  if (status == null || status === '' || status === '—') return '—';
+  if (status == null || status === '' || status === null) return null;
   const s = String(status).trim();
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
@@ -498,7 +525,7 @@ export const getConditionStatusLabel = (status?: unknown): string => {
 
 /** Render Pill Badge chuẩn cho Tình trạng hoạt động (ConditionStatus). */
 export const renderConditionStatusPillBadge = (status?: unknown): React.ReactNode => {
-  if (status == null || status === '' || status === '—') return '—';
+  if (status == null || status === '' || status === null) return null;
   const label = getConditionStatusLabel(status);
   const color = getConditionStatusColor(status);
   return React.createElement('span', { style: statusBadgeStyle(color) }, label);
@@ -1536,7 +1563,7 @@ textarea.ant-input {
 
 .chk-form-datepicker-popup .ant-picker-header button {
   padding: 0 6px !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-header-view {
@@ -1566,7 +1593,7 @@ textarea.ant-input {
   text-align: center !important;
   padding: 2px 0 !important;
   font-weight: 600 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   color: ${textSecondary} !important;
   height: 24px !important;
 }
@@ -1587,7 +1614,7 @@ textarea.ant-input {
   min-width: 28px !important;
   line-height: 28px !important;
   border-radius: ${radiusPill} !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .chk-form-datepicker-popup .ant-picker-year-panel .ant-picker-cell,
@@ -1672,12 +1699,21 @@ textarea.ant-input {
   padding: 2px 8px !important;
 }
 
-/* ── RangePicker Dropdown & 2-Panel Calendar Styling (x2 Width) ── */
+/* ── RangePicker Dropdown & 1-Panel Calendar Styling (Compact 280px) ── */
 .chk-range-datepicker-popup.ant-picker-dropdown {
   border-radius: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+  box-shadow: none !important;
   z-index: 1500 !important;
-  background: #ffffff !important;
+  background: transparent !important;
+  width: 280px !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-range-arrow {
+  display: none !important;
+}
+
+.chk-range-datepicker-popup.ant-picker-dropdown-range {
+  padding: 4px 0 !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-panel-container {
@@ -1686,25 +1722,35 @@ textarea.ant-input {
   background: #ffffff !important;
   border: 1px solid ${borderDefault} !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
-  padding-bottom: 10px !important;
+  width: 280px !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-panels {
   display: flex !important;
   flex-direction: row !important;
-  width: 560px !important;
+  width: 280px !important;
   background: #ffffff !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-panel {
-  flex: 1 !important;
   width: 280px !important;
   display: block !important;
   background: #ffffff !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-panel:first-child {
-  border-right: 1px solid ${borderDefault} !important;
+  border-right: none !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-panel + .ant-picker-panel {
+  display: none !important;
+}
+
+.chk-range-datepicker-popup .ant-picker-header button.ant-picker-header-next-btn,
+.chk-range-datepicker-popup .ant-picker-header button.ant-picker-header-super-next-btn,
+.chk-sidebar-range-datepicker-popup .ant-picker-header button.ant-picker-header-next-btn,
+.chk-sidebar-range-datepicker-popup .ant-picker-header button.ant-picker-header-super-next-btn {
+  visibility: visible !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-date-panel {
@@ -1715,22 +1761,32 @@ textarea.ant-input {
 
 .chk-range-datepicker-popup .ant-picker-header {
   width: 100% !important;
-  padding: 6px 14px !important;
+  padding: 0 12px !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
   border-bottom: 1px solid ${borderDefault} !important;
-  height: 36px !important;
+  height: 40px !important;
+  line-height: 40px !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-header button {
   padding: 0 6px !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-header-view {
   font-size: 13px !important;
   font-weight: 600 !important;
+  line-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-body {
@@ -1748,7 +1804,7 @@ textarea.ant-input {
   text-align: center !important;
   padding: 2px 0 !important;
   font-weight: 600 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   color: ${textSecondary} !important;
   height: 24px !important;
 }
@@ -1769,7 +1825,7 @@ textarea.ant-input {
   min-width: 26px !important;
   line-height: 26px !important;
   border-radius: ${radiusPill} !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .chk-range-datepicker-popup .ant-picker-year-panel .ant-picker-cell,
@@ -1852,10 +1908,18 @@ textarea.ant-input {
 /* ── Sidebar Compact 1-Panel RangePicker Styling (280px) ── */
 .chk-sidebar-range-datepicker-popup.ant-picker-dropdown {
   border-radius: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+  box-shadow: none !important;
   z-index: 1500 !important;
-  background: #ffffff !important;
+  background: transparent !important;
   width: 280px !important;
+}
+
+.chk-sidebar-range-datepicker-popup .ant-picker-range-arrow {
+  display: none !important;
+}
+
+.chk-sidebar-range-datepicker-popup.ant-picker-dropdown-range {
+  padding: 4px 0 !important;
 }
 
 .chk-sidebar-range-datepicker-popup .ant-picker-panel-container {
@@ -1864,7 +1928,6 @@ textarea.ant-input {
   background: #ffffff !important;
   border: 1px solid ${borderDefault} !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
-  padding-bottom: 10px !important;
   width: 280px !important;
 }
 
@@ -1893,22 +1956,32 @@ textarea.ant-input {
 
 .chk-sidebar-range-datepicker-popup .ant-picker-header {
   width: 100% !important;
-  padding: 6px 14px !important;
+  padding: 0 12px !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
   border-bottom: 1px solid ${borderDefault} !important;
-  height: 36px !important;
+  height: 40px !important;
+  line-height: 40px !important;
 }
 
 .chk-sidebar-range-datepicker-popup .ant-picker-header button {
   padding: 0 6px !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .chk-sidebar-range-datepicker-popup .ant-picker-header-view {
   font-size: 13px !important;
   font-weight: 600 !important;
+  line-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .chk-sidebar-range-datepicker-popup .ant-picker-body {
@@ -1921,23 +1994,26 @@ textarea.ant-input {
   table-layout: fixed !important;
 }
 
-.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-content th {
+.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-content th,
+.chk-sidebar-datepicker-popup .ant-picker-date-panel .ant-picker-content th {
   width: 14.285% !important;
   text-align: center !important;
   padding: 2px 0 !important;
   font-weight: 600 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   color: ${textSecondary} !important;
   height: 24px !important;
 }
 
-.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell {
+.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell,
+.chk-sidebar-datepicker-popup .ant-picker-date-panel .ant-picker-cell {
   width: 14.285% !important;
   text-align: center !important;
   padding: 1px 0 !important;
 }
 
-.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell .ant-picker-cell-inner {
+.chk-sidebar-range-datepicker-popup .ant-picker-date-panel .ant-picker-cell .ant-picker-cell-inner,
+.chk-sidebar-datepicker-popup .ant-picker-date-panel .ant-picker-cell .ant-picker-cell-inner {
   margin: 0 auto !important;
   display: flex !important;
   align-items: center !important;
@@ -1947,7 +2023,7 @@ textarea.ant-input {
   min-width: 26px !important;
   line-height: 26px !important;
   border-radius: ${radiusPill} !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
 }
 
 .chk-sidebar-range-datepicker-popup .ant-picker-year-panel .ant-picker-cell,
@@ -2013,12 +2089,21 @@ textarea.ant-input {
 /* ── Sidebar Compact 1-Panel DatePicker Styling (280px) ── */
 .chk-sidebar-datepicker-popup.ant-picker-dropdown {
   border-radius: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+  box-shadow: none !important;
   z-index: 1500 !important;
-  background: #ffffff !important;
+  background: transparent !important;
   width: 280px !important;
   min-width: 280px !important;
   max-width: 280px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-range-arrow,
+.chk-sidebar-datepicker-popup .ant-picker-arrow {
+  display: none !important;
+}
+
+.chk-sidebar-datepicker-popup.ant-picker-dropdown-range {
+  padding: 4px 0 !important;
 }
 
 .chk-sidebar-datepicker-popup .ant-picker-panel-container {
@@ -2027,7 +2112,6 @@ textarea.ant-input {
   background: #ffffff !important;
   border: 1px solid ${borderDefault} !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15) !important;
-  padding-bottom: 10px !important;
   width: 280px !important;
   min-width: 280px !important;
   max-width: 280px !important;
@@ -2039,6 +2123,13 @@ textarea.ant-input {
   max-width: 280px !important;
   display: block !important;
   background: #ffffff !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-panels {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  width: 280px !important;
+  overflow: hidden !important;
 }
 
 .chk-sidebar-datepicker-popup .ant-picker-date-panel,
@@ -2055,27 +2146,37 @@ textarea.ant-input {
 
 .chk-sidebar-datepicker-popup .ant-picker-header {
   width: 100% !important;
-  padding: 6px 14px !important;
+  padding: 0 12px !important;
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
   border-bottom: 1px solid ${borderDefault} !important;
-  height: 36px !important;
+  height: 40px !important;
+  line-height: 40px !important;
 }
 
 .chk-sidebar-datepicker-popup .ant-picker-header button {
   padding: 0 6px !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .chk-sidebar-datepicker-popup .ant-picker-header-view {
   font-size: 13px !important;
   font-weight: 600 !important;
+  line-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .chk-sidebar-datepicker-popup .ant-picker-body {
   width: 100% !important;
-  padding: 8px 10px !important;
+  padding: 6px 8px !important;
 }
 
 .chk-sidebar-datepicker-popup .ant-picker-content {
@@ -2088,7 +2189,7 @@ textarea.ant-input {
 .chk-sidebar-datepicker-popup .ant-picker-decade-panel .ant-picker-cell {
   width: 33.333333% !important;
   text-align: center !important;
-  padding: 8px 4px !important;
+  padding: 6px 3px !important;
 }
 
 .chk-sidebar-datepicker-popup .ant-picker-year-panel .ant-picker-cell .ant-picker-cell-inner,
@@ -2098,13 +2199,26 @@ textarea.ant-input {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: calc(100% - 12px) !important;
-  max-width: 90px !important;
+  width: calc(100% - 8px) !important;
+  max-width: 80px !important;
   min-width: 52px !important;
   height: 28px !important;
   line-height: 28px !important;
   border-radius: ${radiusPill} !important;
   font-size: 13px !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-cell-selected .ant-picker-cell-inner {
+  background: ${actionPrimary} !important;
+  color: #ffffff !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-cell:hover:not(.ant-picker-cell-selected) .ant-picker-cell-inner {
+  background: #eff6ff !important;
+}
+
+.chk-sidebar-datepicker-popup .ant-picker-footer {
+  display: none !important;
 }
 `;
 
@@ -2113,7 +2227,7 @@ textarea.ant-input {
  * Đảm bảo kích thước đồng nhất:
  * - DatePicker đơn trong form: popupClassName="chk-form-datepicker-popup", co dãn ôm khít 100% chiều rộng ô input.
  * - DatePicker đơn trên Sidebar: popupClassName="chk-sidebar-datepicker-popup", khóa chuẩn 280px theo Sidebar.
- * - DatePicker.RangePicker: popupClassName="chk-range-datepicker-popup", kích thước x2 (2 panel cạnh nhau 560px), ô ngày 26px đồng bộ.
+ * - DatePicker.RangePicker: popupClassName="chk-range-datepicker-popup", kích thước 1 panel gọn gàng 280px, ô ngày 26px đồng bộ.
  * - DatePicker.RangePicker (Sidebar): popupClassName="chk-sidebar-range-datepicker-popup", kích thước 1 panel ôm trọn thanh Sidebar 280px.
  */
 export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
@@ -2122,16 +2236,18 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
     getPopupContainer,
     popupClassName: extraPopupClassName,
     style: extraStyle,
+    format: extraFormat,
     ...rest
   } = (extraProps || {}) as {
     classNames?: { popup?: string | { root?: string } };
     getPopupContainer?: (trigger: HTMLElement) => HTMLElement;
     popupClassName?: string;
     style?: React.CSSProperties;
+    format?: string | string[];
     [key: string]: unknown;
   };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
     getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
     popupClassName: [
       'chk-form-datepicker-popup',
@@ -2157,14 +2273,15 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
 };
 
 export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) => {
-  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, ...rest } = (extraProps || {}) as {
+  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
     classNames?: { popup?: string | { root?: string } };
     popupClassName?: string;
     style?: React.CSSProperties;
+    format?: string | string[];
     [key: string]: unknown;
   };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
     popupClassName: [
       'chk-sidebar-datepicker-popup',
       typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
@@ -2189,14 +2306,15 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) 
 };
 
 export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
-  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, ...rest } = (extraProps || {}) as {
+  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
     classNames?: { popup?: string | { root?: string } };
     popupClassName?: string;
     style?: React.CSSProperties;
+    format?: string | string[];
     [key: string]: unknown;
   };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
     popupClassName: [
       'chk-range-datepicker-popup',
@@ -2222,14 +2340,15 @@ export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
 };
 
 export const getSidebarRangePickerProps = (extraProps?: Record<string, unknown>) => {
-  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, ...rest } = (extraProps || {}) as {
+  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
     classNames?: { popup?: string | { root?: string } };
     popupClassName?: string;
     style?: React.CSSProperties;
+    format?: string | string[];
     [key: string]: unknown;
   };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
     popupClassName: [
       'chk-sidebar-range-datepicker-popup',

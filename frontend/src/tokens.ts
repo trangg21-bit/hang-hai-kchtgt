@@ -3,8 +3,35 @@ import {
   DeleteOutlined, HistoryOutlined, SendOutlined,
   CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
 } from '@ant-design/icons';
+import viVN from 'antd/locale/vi_VN';
 import { colors } from './theme';
 export { colors };
+
+/** Locale vi_VN chuẩn hóa định dạng ngày hiển thị DD/MM/YYYY cho toàn hệ thống */
+export const appLocale = {
+  ...viVN,
+  DatePicker: {
+    ...viVN.DatePicker,
+    lang: {
+      ...viVN.DatePicker?.lang,
+      fieldDateFormat: 'DD/MM/YYYY',
+      fieldDateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
+      yearFormat: 'YYYY',
+      cellDateFormat: 'D',
+    },
+  },
+  Calendar: {
+    ...viVN.Calendar,
+    lang: {
+      ...viVN.Calendar?.lang,
+      fieldDateFormat: 'DD/MM/YYYY',
+      fieldDateTimeFormat: 'DD/MM/YYYY HH:mm:ss',
+      yearFormat: 'YYYY',
+      cellDateFormat: 'D',
+    },
+  },
+};
+export const locale = appLocale;
 
 // ============================================================
 // tokens.ts — Semantic design token architecture
@@ -344,15 +371,16 @@ export const requiredMarkStyle =
  * Helper chuẩn hóa props cho DatePicker (đơn) và RangePicker (khoảng ngày)
  */
 export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
-  const { classNames: extraClassNames, getPopupContainer, popupClassName: extraPopupClassName, style: extraStyle, ...rest } = (extraProps || {}) as {
+  const { classNames: extraClassNames, getPopupContainer, popupClassName: extraPopupClassName, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
     classNames?: { popup?: string | { root?: string } };
     getPopupContainer?: (trigger: HTMLElement) => HTMLElement;
     popupClassName?: string;
     style?: React.CSSProperties;
+    format?: string | string[];
     [key: string]: unknown;
   };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
     popupClassName: [
       'chk-form-datepicker-popup',
@@ -377,10 +405,15 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
   };
 };
 
-export const getSidebarDatePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, style: extraStyle, ...rest } = extraProps || {};
+export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    style?: React.CSSProperties;
+    format?: string | string[];
+    [key: string]: unknown;
+  };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     classNames: {
       ...extraClassNames,
       popup: {
@@ -397,10 +430,15 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, any>) => {
   };
 };
 
-export const getRangePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, style: extraStyle, ...rest } = extraProps || {};
+export const getRangePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    style?: React.CSSProperties;
+    format?: string | string[];
+    [key: string]: unknown;
+  };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
     classNames: {
       ...extraClassNames,
@@ -418,10 +456,15 @@ export const getRangePickerProps = (extraProps?: Record<string, any>) => {
   };
 };
 
-export const getSidebarRangePickerProps = (extraProps?: Record<string, any>) => {
-  const { classNames: extraClassNames, style: extraStyle, ...rest } = extraProps || {};
+export const getSidebarRangePickerProps = (extraProps?: Record<string, unknown>) => {
+  const { classNames: extraClassNames, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
+    classNames?: { popup?: string | { root?: string } };
+    style?: React.CSSProperties;
+    format?: string | string[];
+    [key: string]: unknown;
+  };
   return {
-    format: 'DD/MM/YYYY',
+    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
     placeholder: ['Từ ngày', 'Đến ngày'] as [string, string],
     classNames: {
       ...extraClassNames,

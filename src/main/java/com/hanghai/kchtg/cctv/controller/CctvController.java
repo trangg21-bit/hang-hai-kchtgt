@@ -166,14 +166,14 @@ public class CctvController {
   }
 
   @GetMapping("/{id}/history")
-  @PreAuthorize("@auth.check(authentication, 'cctv:history')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:history') or @auth.check(authentication, 'cctv:read') or @auth.check(authentication, 'data:read')")
   public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
     @PathVariable UUID id,
     @RequestParam(value = "page", required = false) Integer page,
     @RequestParam(value = "pageSize", required = false) Integer pageSize,
     @RequestParam(value = "keyword", required = false) String keyword,
-    @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
-    @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+    @RequestParam(value = "fromDate", required = false) String fromDate,
+    @RequestParam(value = "toDate", required = false) String toDate) {
     log.info("Getting CCTV history: id={}", id);
     List<HistoryEntry> history = cctvApprovalService.getHistory(id, page, pageSize, keyword, fromDate, toDate);
     return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử hệ thống CCTV thành công", history));
@@ -184,7 +184,7 @@ public class CctvController {
   }
 
   @GetMapping("/history/all")
-  @PreAuthorize("@auth.check(authentication, 'cctv:history')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:history') or @auth.check(authentication, 'cctv:read') or @auth.check(authentication, 'data:read')")
   public ResponseEntity<ApiResponse<Object>> getAllHistory() {
     log.info("Getting all CCTV history");
     Object history = cctvApprovalService.getAllHistory();

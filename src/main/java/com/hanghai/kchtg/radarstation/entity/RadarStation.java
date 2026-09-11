@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.radarstation.entity;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -25,7 +24,7 @@ import java.util.UUID;
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-public class RadarStation extends BaseApprovableEntity {
+public class RadarStation extends BaseRadarStationEntity {
     @Column(name = "code", nullable = false, unique = true, length = 50)
     private String code;
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Form, Input, InputNumber, Select, type InputNumberProps } from 'antd';
+import { Form, Input, InputNumber, Select } from 'antd';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -14,36 +14,9 @@ import {
   radiusPill,
   spaceFormField,
   spaceMd,
-  textSecondary,
-  fontSizeMd,
 } from '../../themetokenchk';
-
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
-
-const parseNumber5 = (value: unknown): any => {
-  if (!value) return '' as any;
-  const digits = String(value).replace(/\D/g, '');
-  return (digits.length > 5 ? digits.slice(0, 5) : digits) as any;
-};
-
-const getValueFromEvent5 = (val: unknown): number | null => {
-  if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/\D/g, '');
-  return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
-};
+import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
+import { parseNumber5, getValueFromEvent5, integer5Rule } from '../../utils/numberRuleHelper';
 
 interface TransmissionFormProps {
   initialData?: TransmissionResponse;
@@ -135,7 +108,7 @@ const TransmissionFormContent = ({ initialData, onSuccess }: TransmissionFormPro
       layout="vertical"
       onFinish={handleSubmit}
       initialValues={{
-        operationalStatus: 1,
+        operationalStatus: 0,
         ...initialData,
       }}
     >
@@ -152,17 +125,17 @@ const TransmissionFormContent = ({ initialData, onSuccess }: TransmissionFormPro
         name="deviceName"
         label="Tên thiết bị"
         style={{ marginBottom: spaceFormField }}
-        rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }]}
+        rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
       >
-        <Input placeholder="Nhập tên thiết bị..." style={{ borderRadius: radiusPill, height: 40 }} />
+        <Input placeholder="Nhập tên thiết bị..." maxLength={255} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="model" label="Model" style={{ marginBottom: spaceFormField }}>
-        <Input placeholder="Nhập model..." style={{ borderRadius: radiusPill, height: 40 }} />
+      <Form.Item name="model" label="Model" style={{ marginBottom: spaceFormField }} rules={[{ max: 255, message: 'Tối đa 255 ký tự' }]}>
+        <Input placeholder="Nhập model..." maxLength={255} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item name="manufacturer" label="Hãng sản xuất" style={{ marginBottom: spaceFormField }} rules={[{ max: 50, message: 'Tối đa 50 ký tự' }]}>
-        <Input placeholder="Nhập hãng..." style={{ borderRadius: radiusPill, height: 40 }} />
+        <Input placeholder="Nhập hãng..." maxLength={50} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
       <Form.Item
@@ -170,13 +143,16 @@ const TransmissionFormContent = ({ initialData, onSuccess }: TransmissionFormPro
         label="Số lượng"
         style={{ marginBottom: spaceFormField }}
         getValueFromEvent={getValueFromEvent5}
-        rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
+        rules={[
+          { required: true, message: 'Vui lòng nhập số lượng' },
+          integer5Rule,
+        ]}
       >
         <NumberInputWithCount
           min={1}
           step={1}
           precision={0}
-          placeholder="0"
+          placeholder="Nhập số lượng..."
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
           maxLength={5}
           parser={parseNumber5}
@@ -203,27 +179,27 @@ const TransmissionFormContent = ({ initialData, onSuccess }: TransmissionFormPro
         />
       </Form.Item>
 
-      <Form.Item name="operationalStatus" label="Tình trạng" style={{ marginBottom: spaceFormField }}>
+      <Form.Item name="operationalStatus" label="Tình trạng" initialValue={0} style={{ marginBottom: spaceFormField }}>
         <Select
           options={OPERATIONAL_STATUS_OPTIONS}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>
 
-      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={{ marginBottom: spaceFormField }} rules={[{ max: 500 }]}>
-        <Input placeholder="Nhập địa điểm..." style={{ borderRadius: radiusPill, height: 40 }} />
+      <Form.Item name="detailedLocation" label="Địa điểm chi tiết" style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]}>
+        <Input placeholder="Nhập địa điểm..." maxLength={500} showCount style={{ borderRadius: radiusPill, height: 40 }} />
       </Form.Item>
 
-      <Form.Item name="specifications" label="Thông số kỹ thuật" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
-        <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." style={{ borderRadius: radiusPill }} />
+      <Form.Item name="specifications" label="Thông số kỹ thuật" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
+        <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
-        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." style={{ borderRadius: radiusPill }} />
+      <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
+        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
-      <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000 }]}>
-        <Input.TextArea rows={2} placeholder="Nhập ghi chú..." style={{ borderRadius: radiusPill }} />
+      <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
+        <Input.TextArea rows={2} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <div style={{ textAlign: 'right', marginTop: spaceMd }}>

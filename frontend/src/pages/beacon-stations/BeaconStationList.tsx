@@ -205,6 +205,7 @@ const BEACON_APPROVAL_STATUS_LABELS: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp Cục',
+  DELETED: 'Đã xóa',
 };
 
 const STATUS_TAB_LIST = [
@@ -215,6 +216,7 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED', label: BEACON_APPROVAL_STATUS_LABELS.APPROVED, color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: BEACON_APPROVAL_STATUS_LABELS.REJECTED_LEVEL1, color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: BEACON_APPROVAL_STATUS_LABELS.REJECTED_LEVEL2, color: statusCritical },
+  { key: 'DELETED', label: BEACON_APPROVAL_STATUS_LABELS.DELETED, color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
@@ -225,6 +227,7 @@ const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  DELETED: 'DELETED',
 };
 
 // Status badge config — semantic token colors (AGENTS.md: no hardcoded hex)
@@ -245,7 +248,7 @@ const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> 
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  DELETED: { color: textTertiary, label: 'Đã xóa' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 // Tình trạng hoạt động — semantic tokens (integer enum khớp backend OperationalStatus)
@@ -429,44 +432,40 @@ export default function BeaconStationList() {
   // Đơn vị quản lý là bộ lọc bắt buộc (giống Bến cảng):
   // tự chọn mặc định = đơn vị của user đang đăng nhập; nếu không khớp thì lấy đơn vị đầu tiên
   useEffect(() => {
-    const isIframe = window.self !== window.top;
-    const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
-    if (parentOrgUnits && parentOrgUnits.length > 0) {
-      setOrganizations(parentOrgUnits);
-      if (!defaultOrgApplied.current) {
+    const loadOrgDefault = async () => {
+      const isIframe = window.self !== window.top;
+      const data = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+      const orgs: any[] = data && data.length > 0
+        ? data
+        : ((await organizationService.getTree()) || []);
+      setOrganizations(orgs);
+      if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        defaultOrgUnitId.current = parentOrgUnits[0].id;
-        setFilterUnitId(parentOrgUnits[0].id);
+        const found = data && data.length > 0
+          ? data[0]
+          : null;
+        if (found) {
+          defaultOrgUnitId.current = found.id;
+          setFilterUnitId(found.id);
+        } else {
+          // lấy đơn vị của user đang đăng nhập
+          try {
+            const profileRes = await api.get('/users/me');
+            const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+            const userOrgId = profile?.orgUnitId;
+            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
+            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
+            defaultOrgUnitId.current = defaultId;
+            setFilterUnitId(defaultId === '__all__' ? undefined : defaultId);
+          } catch {
+            defaultOrgUnitId.current = orgs[0].id;
+            setFilterOrgUnitId(orgs[0].id);
+          }
+        }
       }
       setOrgUnitReady(true);
-    } else {
-      (async () => {
-        try {
-          const resp = await organizationService.list({ pageSize: 1000 });
-          const data = resp.data || [];
-          setOrganizations(data);
-          if (data.length > 0 && !defaultOrgApplied.current) {
-            defaultOrgApplied.current = true;
-            try {
-              const profileRes = await api.get('/users/me');
-              const profile = profileRes.data?.data ?? profileRes.data;
-              const userOrgId = profile?.orgUnitId;
-              const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
-              defaultOrgUnitId.current = defaultId;
-              setFilterUnitId(defaultId === '__all__' ? undefined : defaultId);
-            } catch {
-              defaultOrgUnitId.current = data[0].id;
-              setFilterUnitId(data[0].id);
-            }
-          }
-          setOrgUnitReady(true);
-        } catch (err) {
-          console.error('Failed to load organizations', err);
-          setOrgUnitReady(true);
-        }
-      })();
-    }
+    };
+    void loadOrgDefault();
   }, []);
 
   // ── Load users (for "Cán bộ cập nhật" filter + detail) ──────────
@@ -593,6 +592,10 @@ export default function BeaconStationList() {
     setIsDetailMode(false);
     setDetailRecord(null);
     createForm.resetFields();
+    createForm.setFieldsValue({
+      operationalStatus: 1,
+      unitId: defaultOrgUnitId.current !== '__all__' ? defaultOrgUnitId.current : undefined,
+    });
     setCreateDrawerVisible(true);
   }, [createForm, hasPerm]);
 
@@ -760,6 +763,18 @@ export default function BeaconStationList() {
   // ── Row actions (popup chuẩn themetokenchk — thứ tự: Xem chi tiết, Chỉnh sửa, Lịch sử,
   //  rồi nhóm Phê duyệt/Từ chối, cuối cùng Xóa) ──
   const rowActions = useCallback((record: BeaconStation) => {
+    const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.status === 'DELETED');
+    if (isDeleted) {
+      const actions: any[] = [];
+      if (hasPerm('beaconstation:read') || hasPerm('beaconstation:view')) {
+        actions.push({ key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) });
+      }
+      if (hasPerm('beaconstation:history')) {
+        actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
+      }
+      return actions;
+    }
+
     const st = record.status || '';
     const currentUserId = useAuthStore.getState().user?.userId;
     const creatorId = record.submittedBy || record.createdBy;
@@ -986,8 +1001,10 @@ export default function BeaconStationList() {
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 200,
-      render: (status: string) => {
-        const s = BEACON_STATUS_STYLE_MAP[status] || { color: textTertiary, label: status || null };
+      render: (status: string, record: BeaconStation) => {
+        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'DELETED');
+        const displayStatus = isDeleted ? 'DELETED' : status;
+        const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
     },
@@ -1069,9 +1086,10 @@ export default function BeaconStationList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thời điểm đưa vào sử dụng</div>
             <DatePicker.RangePicker
+              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
               {...getRangePickerProps({
                 value: rangeValue(filterCommissionedFrom, filterCommissionedTo),
-                onChange: (range: any) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
               })}
             />
           </div>
@@ -1093,9 +1111,10 @@ export default function BeaconStationList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
+              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
               {...getRangePickerProps({
                 value: rangeValue(filterUpdatedFrom, filterUpdatedTo),
-                onChange: (range: any) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
               })}
             />
           </div>
@@ -1259,7 +1278,14 @@ export default function BeaconStationList() {
     ? [
         {
           label: 'Trạng thái phê duyệt',
-          value: <ApprovalStatusBadge status={detailRecord.status} labelOverrides={BEACON_APPROVAL_STATUS_LABELS} />,
+          value: (() => {
+            const isDel = Boolean(detailRecord.deletedAt || detailRecord.deletedBy || detailRecord.status === 'DELETED');
+            if (isDel) {
+              const s = BEACON_STATUS_STYLE_MAP.DELETED || { color: statusCritical, label: 'Đã xóa' };
+              return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+            }
+            return <ApprovalStatusBadge status={detailRecord.status} labelOverrides={BEACON_APPROVAL_STATUS_LABELS} />;
+          })(),
         },
         { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || null}</span> },
         { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || null}</span> },
@@ -1735,7 +1761,7 @@ export default function BeaconStationList() {
       'deletedAt', 'deletedBy', 'approvedBy', 'approvedDate', 'approvalLevel', 'submittedBy', 'submittedAt',
       'approverLevel1', 'approverLevel1Name', 'approverLevel2', 'approverLevel2Name',
       'approvedDateLevel1', 'approvedDateLevel2', 'approvalContentLevel1', 'approvalContentLevel2',
-      'status', 'isActive', 'unitId', 'submittedByName']);
+      'status', 'submittedByName']);
     const oldMap = parseJson(raw?.previousValue);
     const newMap = parseJson(raw?.newValue);
     const changes: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
@@ -1778,6 +1804,9 @@ export default function BeaconStationList() {
       changedByName: raw?.approvedBy || '',
       changedAt: raw?.approvedDate || raw?.changedAt || '',
       createdAt: raw?.approvedDate || '',
+      orgUnitName: raw?.orgUnitName || '',
+      unitId: raw?.unitId,
+      orgUnitId: raw?.orgUnitId,
       changes,
       reason: raw?.reason ?? null,
       approvalLevel: raw?.approvalLevel,
@@ -1858,21 +1887,36 @@ export default function BeaconStationList() {
         return <span>{sym?.name || String(raw)}</span>;
       }
       // Map ID/giá trị số sang tên hiển thị (chuẩn /vts-operation-center) — không lộ UUID
-      if (key === 'seaportid' || key === 'portid') {
+      if (key === 'seaportid' || key === 'portid' || key.includes('cang bien')) {
         const p = seaports.find((x: any) => String(x.id) === String(raw));
-        return <span>{p ? (p.portName || p.portCode || '—') : '—'}</span>;
+        return <span>{p ? (p.portName || p.portCode || String(raw)) : String(raw)}</span>;
       }
-      if (key === 'provinceid') {
+      if (key === 'unitid' || key === 'orgunitid' || key.includes('don vi quan ly')) {
+        const uName = orgMap.get(String(raw)) || String(raw);
+        return <span>{uName}</span>;
+      }
+      if (key === 'coordinatesystem' || key.includes('he quy chieu') || key.includes('he toa do')) {
+        const sVal = String(raw).trim();
+        if (sVal === '1' || sVal === '4326' || sVal.toUpperCase() === 'WGS84' || sVal.toUpperCase() === 'WGS 84') return <span>WGS 84</span>;
+        if (sVal === '2' || sVal.toUpperCase() === 'VN2000' || sVal.toUpperCase() === 'VN-2000') return <span>VN-2000</span>;
+        return <span>{raw}</span>;
+      }
+      if (key === 'provinceid' || key.includes('tinh / thanh pho')) {
         const num = Number(raw);
         const nm = Number.isFinite(num) ? getProvinceNameById(num) : null;
         return <span>{nm || String(raw)}</span>;
       }
-      if (key === 'operationalstatus') {
-        const opt = OPERATIONAL_STATUS_STYLE_MAP[Number(raw)];
+      if (key === 'operationalstatus' || key.includes('tinh trang')) {
+        const num = Number(raw);
+        const opt = Number.isFinite(num) ? OPERATIONAL_STATUS_STYLE_MAP[num] : null;
         return <span>{opt?.label || String(raw)}</span>;
       }
+      if (key === 'type' || key.includes('cap tram den')) {
+        const opt = BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === raw);
+        return <span>{opt ? opt.label : String(raw)}</span>;
+      }
       const txt = formatHistoryValue(field, raw);
-      if (/^-?\d+(\.\d+)?$/.test(String(txt).trim())) {
+      if (/^-?\d+(\.\d+)?$/.test(String(txt).trim()) && key !== 'coordinatesystem' && !key.includes('he quy chieu') && !key.includes('he toa do') && key !== 'provinceid') {
         return <span>{fmtNum(String(txt).trim())}</span>;
       }
       return <span title={String(txt)} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{txt}</span>;
@@ -1900,9 +1944,9 @@ export default function BeaconStationList() {
           if (allChanges.length === 0) return null;
 
           const actionMeta = resolveHistoryActionMeta(g, allChanges);
-          const orgId = rec0.unitId || rec0.orgUnitId || historyTarget?.unitId;
-          const orgName = orgId ? orgMap.get(orgId) : undefined;
-          const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
+          // Đơn vị của user thực hiện cập nhật (chuẩn /vts-operation-center) — KHÔNG lấy unitId của tài sản
+          const orgNameFromId = (rec0.unitId && orgMap.get(rec0.unitId)) || (rec0.orgUnitId && orgMap.get(rec0.orgUnitId));
+          const unitName = rec0.orgUnitName || orgNameFromId || rec0.unitName || '—';
 
           const isCreate = allChanges.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '' || c.oldValue === 'null');
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
@@ -1961,6 +2005,12 @@ export default function BeaconStationList() {
                         </div>
                       );
                     })}
+                    {rec0.reason && (
+                      <div style={{ marginTop: spaceSm, color: textSecondary, fontSize: fontSizeSm }}>
+                        <span style={{ fontWeight: fontWeightMedium }}>Lý do: </span>
+                        <span>{rec0.reason}</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>

@@ -34,7 +34,7 @@ public class CreateBeaconStationRequest {
 
     @NotNull
     @DecimalMin("0.01")
-    @DecimalMax("60.0")
+    @Digits(integer = 16, fraction = 4, message = "Tầm hiệu lực ánh sáng không quá 20 chữ số (tối đa 4 số lẻ)")
     private Double lightRange;
 
     @Size(max = 50)
@@ -44,6 +44,7 @@ public class CreateBeaconStationRequest {
     private String primaryLightModel;
 
     @DecimalMin("0.01")
+    @Digits(integer = 16, fraction = 4, message = "Diện tích không quá 20 chữ số (tối đa 4 số lẻ)")
     private Double area;
 
     @Size(max = 1000)
@@ -62,12 +63,15 @@ public class CreateBeaconStationRequest {
 
     private String shape;
     private String structure;
+    @Digits(integer = 16, fraction = 4, message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
     private Double towerHeight;
+    @Digits(integer = 16, fraction = 4, message = "Tâm sáng không quá 20 chữ số (tối đa 4 số lẻ)")
     private Double lightHeight;
     private String geographicRange;
     private String backupLightModel;
     private String powerSupply;
     private Integer staffCount;
+    @Digits(integer = 16, fraction = 4, message = "Diện tích trạm không quá 20 chữ số (tối đa 4 số lẻ)")
     private Double stationArea;
 
     private java.util.UUID seaportId;

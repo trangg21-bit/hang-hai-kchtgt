@@ -189,7 +189,7 @@ class KchtGis155ServiceTest {
         when(orgUnitCacheService.getDirectory()).thenReturn(Map.of(orgUnitId, "Đại diện"));
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
         when(scadaRepository.searchScada(
-                eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
+                eq(false), eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
                 eq(ApprovalStatus.APPROVED), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(scada)));
@@ -208,7 +208,7 @@ class KchtGis155ServiceTest {
         assertThat(result.getContent().get(0).getOrgName()).isEqualTo("Đại diện");
         assertThat(result.getContent().get(0).getMapSymbolId()).isEqualTo(mapSymbolId);
         verify(scadaRepository).searchScada(
-                eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
+                eq(false), eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
                 eq(ApprovalStatus.APPROVED), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), any(Pageable.class));
     }
@@ -256,7 +256,7 @@ class KchtGis155ServiceTest {
         when(orgUnitCacheService.getDirectory()).thenReturn(Map.of(orgUnitId, "Cảng vụ Vũng Tàu"));
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
         when(vtsAssistRepository.searchVtsAssist(
-                eq(true), eq(List.of()), eq(false), eq(List.of()), isNull(), isNull(), isNull(),
+                eq(false), eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
                 eq(ApprovalStatus.APPROVED), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(vtsAssist)));
@@ -285,7 +285,7 @@ class KchtGis155ServiceTest {
         when(orgUnitCacheService.getDirectory()).thenReturn(Map.of(orgUnitId, "Cảng vụ Đà Nẵng"));
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
         when(transmissionRepository.searchTransmission(
-                eq(true), eq(List.of()), eq(false), eq(List.of()), isNull(), isNull(), isNull(),
+                eq(false), eq(true), eq(List.of()), eq(false), isNull(), isNull(), isNull(), isNull(),
                 eq(ApprovalStatus.APPROVED), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(transmission)));

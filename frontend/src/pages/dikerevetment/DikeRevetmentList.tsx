@@ -13,7 +13,6 @@ import {
   Col,
   Tabs,
   InputNumber,
-  type InputNumberProps,
 } from 'antd';
 import {
   PlusOutlined,
@@ -53,7 +52,7 @@ import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
 import { portCRUD } from '../../services/portService';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 import { ScreenHeader, DataTable, FilterTableLayout } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -107,8 +106,9 @@ import {
   drawerTitleStyle,
   drawerFooterStyle,
   requiredMarkStyle,
-  filterLabelStyle,
-  filterInputStyle,
+  getRangePickerProps,
+  getSidebarDatePickerProps,
+  getDatePickerProps,
   confirmModalBodyStyle,
   cellTitleStyle,
   cellSubtitleStyle,
@@ -127,39 +127,13 @@ import {
   historyArrowStyle,
 } from '../../themetokenchk';
 
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
-
-const parseNumber20 = (value: unknown): any => {
-  if (!value) return '' as any;
-  const str = String(value).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
-};
-
-const getValueFromEvent20 = (val: unknown): number | null => {
-  if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
-  if (sliced.endsWith('.')) return sliced as any;
-  const num = Number(sliced);
-  return isNaN(num) ? null : num;
-};
+import {
+  parseNumber20,
+  getValueFromEvent20,
+  decimalNumberRule,
+  safeNumber,
+} from '../../utils/numberRuleHelper';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
@@ -327,9 +301,10 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED', label: DIKE_REVETMENT_STATUS_LABELS.APPROVED, color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: DIKE_REVETMENT_STATUS_LABELS.REJECTED_LEVEL1, color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: DIKE_REVETMENT_STATUS_LABELS.REJECTED_LEVEL2, color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
-const TAB_QUERY_MAP: Record<string, ApprovalStatus | undefined> = {
+const TAB_QUERY_MAP: Record<string, string | undefined> = {
   '': undefined,
   DRAFT: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
@@ -337,7 +312,18 @@ const TAB_QUERY_MAP: Record<string, ApprovalStatus | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  DELETED: 'DELETED',
 };
+
+export function isDikeRevetmentDeleted(record?: Partial<DikeRevetmentResponse> | null): boolean {
+  if (!record) return false;
+  return Boolean(
+    record.deletedAt ||
+    record.deletedBy ||
+    record.approvalStatus === 'DELETED' ||
+    record.approvalStatus === 'ARCHIVED'
+  );
+}
 
 // Loại kết cấu công trình — khớp backend enum dike_revetment_type
 const DIKE_REVETMENT_TYPE_OPTIONS = [
@@ -1003,7 +989,7 @@ export default function DikeRevetmentList() {
   // Tab counts — đếm theo từng trạng thái, BẮT BUỘC áp ĐÚNG bộ lọc như danh sách
   // để tổng 6 tab con khớp tổng "Tất cả" (tránh lệch 71 vs 76 khi có filter nghiệp vụ)
   const fetchTabCounts = useCallback(async () => {
-    const statuses: (ApprovalStatus | undefined)[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'];
+    const statuses: string[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'DELETED'];
     const filterScope = {
       orgUnitId: filterUnitId && filterUnitId !== '__all__' ? filterUnitId : undefined,
       code: filterCode.trim() || undefined,
@@ -1088,7 +1074,7 @@ export default function DikeRevetmentList() {
     setIsDetailMode(false);
     createForm.resetFields();
     createForm.setFieldsValue({
-      status: '2',
+      status: '1',
     });
     setCoordinateList([]);
     setGpsError(null);
@@ -1265,10 +1251,10 @@ export default function DikeRevetmentList() {
         operatingUnitId: values.operatingUnitId,
         constructionDate: values.constructionDate ? values.constructionDate.format('YYYY-MM-DD') : undefined,
         lastMaintenanceYear: values.lastMaintenanceYear ? values.lastMaintenanceYear.format('YYYY') : undefined,
-        length: values.length,
-        crestElevation: values.crestElevation,
+        length: safeNumber(values.length),
+        crestElevation: safeNumber(values.crestElevation),
         commissioningDate: values.commissioningDate ? values.commissioningDate.format('YYYY-MM-DD') : undefined,
-        height: values.height,
+        height: safeNumber(values.height),
         status: values.status,
         orgUnitId: values.orgUnitId,
         code: values.code,
@@ -1492,7 +1478,7 @@ export default function DikeRevetmentList() {
 
   // ── History ──────────────────────────────────────────────────────
   const openHistoryModal = useCallback(async (record: DikeRevetmentResponse) => {
-    if (!hasPerm?.('dikerevetment:history')) {
+    if (!hasPerm?.('dikerevetment:history') && !hasPerm?.('dikerevetment:read') && !hasPerm?.('data:read')) {
       message.warning('Bạn không có quyền xem lịch sử công trình đê kè');
       return;
     }
@@ -1506,7 +1492,7 @@ export default function DikeRevetmentList() {
     setLoadingMoreHistory(false);
     setHasMoreHistory(true);
     setHistoryPage(0);
-  }, []);
+  }, [hasPerm]);
 
   const HISTORY_PAGE_SIZE = 20;
 
@@ -1526,6 +1512,11 @@ export default function DikeRevetmentList() {
     const norm = field.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
     if (norm.includes('toa do') || norm.includes('coordinates')) return renderCoordinatesDisplay(raw);
     if (norm.includes('phe duyet') || norm.includes('approval')) return DIKE_REVETMENT_STATUS_LABELS[raw] || raw;
+    if (norm.includes('he toa do') || norm.includes('coordinatesystem') || norm.includes('he quy chieu')) {
+      if (raw === '1' || raw === '4326' || raw.toLowerCase().includes('wgs')) return 'WGS 84';
+      if (raw === '2' || raw.toLowerCase().includes('vn-2000') || raw.toLowerCase().includes('vn2000')) return 'VN-2000';
+      return raw;
+    }
     if (norm.includes('tinh trang') || norm === 'status' || norm.includes('conditionstatus')) {
       const st = OPERATIONAL_STATUS_STYLE_MAP[raw];
       return st ? st.label : raw;
@@ -1739,7 +1730,7 @@ export default function DikeRevetmentList() {
           const rawUnit = rec0.orgUnitName || rec0.unitName;
           const orgId = rec0.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
-          const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rawUnit && rawUnit !== '—' ? rawUnit : undefined)) || 'Cục Hàng hải Việt Nam';
+          const unitName = (rawUnit && rawUnit !== '—' ? rawUnit : (orgName ? (orgName.split(' - ').pop() || orgName) : undefined)) || 'Cục Hàng hải Việt Nam';
           const barColor = actionPrimary;
           const changes = g.items
             .map((item) => ({ field: historyField(item) || '', oldValue: historyOldValue(item), newValue: historyNewValue(item) }))
@@ -2020,7 +2011,21 @@ export default function DikeRevetmentList() {
       label: 'Trạng thái phê duyệt',
       dataIndex: 'approvalStatus',
       width: 245,
-      render: (status: string) => <ApprovalStatusBadge status={status} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />,
+      render: (status: string, record: DikeRevetmentResponse) => {
+        if (isDikeRevetmentDeleted(record)) {
+          return (
+            <span
+              style={{
+                ...themeTokenChk.statusBadgeStyle(statusCritical),
+                fontSize: 13,
+              }}
+            >
+              Đã xóa
+            </span>
+          );
+        }
+        return <ApprovalStatusBadge status={status} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />;
+      },
     },
   ], [page, pageSize, openDetailDrawer, isElevatedOrg, hasPerm]);
 
@@ -2029,6 +2034,27 @@ export default function DikeRevetmentList() {
     const canRead = hasPerm('dikerevetment:read');
     const canUpdate = hasPerm('dikerevetment:update');
     const canDelete = hasPerm('dikerevetment:delete');
+
+    // Bản ghi đã xóa: chỉ còn Xem chi tiết và Xem lịch sử
+    if (isDikeRevetmentDeleted(record)) {
+      if (canRead) {
+        actions.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: themeTokenChk.icons.view,
+          onClick: () => openDetailDrawer(record),
+        });
+      }
+      if (hasPerm('dikerevetment:history') || hasPerm('dikerevetment:read') || hasPerm('data:read')) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: themeTokenChk.icons.history,
+          onClick: () => openHistoryModal(record),
+        });
+      }
+      return actions;
+    }
     const isDraft = record.approvalStatus === 'DRAFT';
     const isRejectedL1 = record.approvalStatus === 'REJECTED_LEVEL1';
     const isRejectedL2 = record.approvalStatus === 'REJECTED_LEVEL2';
@@ -2053,7 +2079,7 @@ export default function DikeRevetmentList() {
       });
     }
     // Lịch sử thay đổi.
-    if (hasPerm('dikerevetment:history')) {
+    if (hasPerm('dikerevetment:history') || hasPerm('dikerevetment:read') || hasPerm('data:read')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',
@@ -2121,121 +2147,138 @@ export default function DikeRevetmentList() {
     return actions;
   }, [hasPerm, currentUser, canApproveC1, canApproveC2, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openDeleteModal, openHistoryModal]);
 
-  const filterLabel = { ...filterLabelStyle, fontSize: 13.5 };
-
-  // ── Filter content (sidebar) ─────────────────────────────────────
-  // Bộ lọc theo sheet QL đê kè: mặc định = Đơn vị quản lý + Tên đê kè (+ Trạng thái phê duyệt = StatusTabs),
-  // nâng cao (ẩn/hiện) = Mã đê kè, Thuộc cảng biển, Địa điểm, Loại kết cấu, Tình trạng, Thời điểm khai thác, Ngày cập nhật
+  // ── Filter panel content (markup div tay chuẩn /beacon-stations) ──
   const filterContent = (
-    <div>
-    <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd, marginTop: spaceMd }}>
-      <div style={{ ...filterLabel, marginBottom: spaceSm }}>Đơn vị quản lý</div>
-      <OrgUnitTreeSelect
-        organizations={organizations}
-        placeholder="Chọn đơn vị..."
-        showPath
-        allLabel="Tất cả"
-        treeDefaultExpandAll={false}
-        value={filterUnitId}
-        onChange={(val) => { setFilterUnitId(val); setPage(1); }}
-        allowClear
-      />
-    </div>
-    <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-      <div style={{ ...filterLabel, marginBottom: spaceSm }}>Tên đê kè</div>
-      <Input
-        placeholder="Tìm theo tên đê kè"
-        allowClear
-        value={inputName}
-        onChange={(e) => setInputName(e.target.value)}
-        onPressEnter={handleFilterApply}
-        style={filterInputStyle}
-      />
-    </div>
+    <>
+      <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
+        <OrgUnitTreeSelect
+          organizations={organizations}
+          placeholder="Chọn đơn vị..."
+          showPath
+          allLabel="Tất cả"
+          treeDefaultExpandAll={false}
+          value={filterUnitId}
+          onChange={(val) => { setFilterUnitId(val); setPage(1); }}
+          allowClear
+          style={{ ...selectStyle, width: '100%' }}
+        />
+      </div>
 
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên đê kè</div>
+        <Input
+          placeholder="Nhập tên đê kè"
+          allowClear
+          value={inputName}
+          onChange={(e) => setInputName(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={inputStyle}
+        />
+      </div>
+
+      {/* ── Bộ lọc nâng cao (ẩn, hiện khi bấm nút Filter) ── */}
       {filterCollapsed && (
         <>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-            <div style={{ ...filterLabel, marginBottom: spaceSm }}>Mã đê kè</div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã đê kè</div>
             <Input
-              placeholder="Tìm theo mã đê kè"
+              placeholder="Nhập mã đê kè"
               allowClear
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
               onPressEnter={handleFilterApply}
-              style={filterInputStyle}
+              style={inputStyle}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-            <div style={{ ...filterLabel, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
             <Select
-              placeholder="Chọn cảng biển"
-              options={seaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
+              placeholder="Tất cả cảng biển"
+              options={seaports.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }))}
               value={filterSeaportId}
               onChange={(val) => { setFilterCangBienId(val); setPage(1); }}
               allowClear
               showSearch
-              optionFilterProp="label"
-              style={selectStyle}
+              filterOption={(input, option) =>
+                normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+              }
+              style={{ ...selectStyle, width: '100%' }}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-            <div style={{ ...filterLabel, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/TP)</div>
             <Select
-              placeholder="Chọn tỉnh/thành phố"
+              placeholder="Tất cả tỉnh/thành phố"
               options={VIETNAM_PROVINCE_OPTIONS.map((p) => ({ value: p.label, label: p.label }))}
               value={filterLocation}
               onChange={(val) => { setFilterLocation(val); setPage(1); }}
               allowClear
               showSearch
-              optionFilterProp="label"
-              style={selectStyle}
+              filterOption={(input, option) =>
+                normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+              }
+              style={{ ...selectStyle, width: '100%' }}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-            <div style={{ ...filterLabel, marginBottom: spaceSm }}>Loại kết cấu công trình</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Loại kết cấu công trình</div>
             <Select
-              placeholder="Chọn loại kết cấu"
+              placeholder="Tất cả loại kết cấu"
               options={DIKE_REVETMENT_TYPE_OPTIONS}
               value={filterType}
               onChange={(val) => { setFilterType(val); setPage(1); }}
               allowClear
-              style={selectStyle}
+              style={{ ...selectStyle, width: '100%' }}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-            <div style={{ ...filterLabel, marginBottom: spaceSm }}>Tình trạng</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
             <Select
-              placeholder="Chọn tình trạng"
+              placeholder="Tất cả"
               options={OPERATIONAL_STATUS_OPTIONS}
               value={filterStatusVal}
               onChange={(val) => { setFilterStatusVal(val); setPage(1); }}
               allowClear
-              style={selectStyle}
+              style={{ ...selectStyle, width: '100%' }}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-            <div style={{ ...filterLabel, marginBottom: spaceSm }}>Thời điểm đưa vào khai thác</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thời điểm đưa vào khai thác</div>
             <DatePicker
               picker="year"
-              placeholder="Chọn năm..."
-              value={filterCommissioningYear ? dayjs(filterCommissioningYear) : null}
-              onChange={(d) => { setFilterCommissioningYear(d ? d.format('YYYY') : undefined); setPage(1); }}
-              style={selectStyle}
+              {...getSidebarDatePickerProps({
+                picker: 'year',
+                placeholder: 'Chọn năm...',
+                format: 'YYYY',
+                value: filterCommissioningYear ? dayjs(filterCommissioningYear) : null,
+                onChange: (d: any) => { setFilterCommissioningYear(d ? d.format('YYYY') : undefined); setPage(1); },
+                allowClear: true,
+              })}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', marginBottom: spaceMd }}>
-            <div style={{ ...filterLabel, marginBottom: spaceSm }}>Ngày cập nhật</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
-              placeholder={['Từ ngày', 'Đến ngày']}
-              value={filterUpdatedRange}
-              onChange={(range) => { setFilterUpdatedRange(range); setPage(1); }}
-              style={selectStyle}
+              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
+              {...getRangePickerProps({
+                value: filterUpdatedRange,
+                onChange: (range: unknown) => {
+                  setFilterUpdatedRange(range as [Dayjs | null, Dayjs | null] | null);
+                  setPage(1);
+                },
+              })}
             />
           </div>
         </>
       )}
-    </div>
+    </>
   );
 
   // ── Detail tabs (format chuẩn màn /beacon-stations) ───────────────
@@ -2385,7 +2428,13 @@ export default function DikeRevetmentList() {
   const detailApprovalRows: DetailRow[] = detailRecord ? [
     {
       label: 'Trạng thái phê duyệt',
-      value: <ApprovalStatusBadge status={detailRecord.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />,
+      value: isDikeRevetmentDeleted(detailRecord) ? (
+        <span style={{ ...themeTokenChk.statusBadgeStyle(statusCritical), fontSize: 13 }}>
+          Đã xóa
+        </span>
+      ) : (
+        <ApprovalStatusBadge status={detailRecord.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />
+      ),
     },
     { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || detailRecord.updatedBy || null}</span> },
     { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || null}</span> },
@@ -3072,12 +3121,14 @@ export default function DikeRevetmentList() {
                                 required
                                 style={formFieldStyle}
                                 getValueFromEvent={getValueFromEvent20}
-                                rules={[{ required: true, message: 'Vui lòng nhập chiều dài' }]}
+                                rules={[
+                                  { required: true, message: 'Vui lòng nhập chiều dài' },
+                                  decimalNumberRule,
+                                ]}
                               >
                                 <NumberInputWithCount
                                   min={0.01}
                                   step={0.01}
-                                  precision={2}
                                   placeholder="0"
                                   style={numberInputStyle}
                                   maxLength={20}
@@ -3091,11 +3142,11 @@ export default function DikeRevetmentList() {
                                 {...labelProps('Chiều cao (m)')}
                                 style={formFieldStyle}
                                 getValueFromEvent={getValueFromEvent20}
+                                rules={[decimalNumberRule]}
                               >
                                 <NumberInputWithCount
                                   min={0}
                                   step={0.01}
-                                  precision={2}
                                   placeholder="0"
                                   style={numberInputStyle}
                                   maxLength={20}
@@ -3111,11 +3162,11 @@ export default function DikeRevetmentList() {
                                 {...labelProps('Cao trình đỉnh (m)')}
                                 style={formFieldStyle}
                                 getValueFromEvent={getValueFromEvent20}
+                                rules={[decimalNumberRule]}
                               >
                                 <NumberInputWithCount
                                   min={0}
                                   step={0.01}
-                                  precision={2}
                                   placeholder="0"
                                   style={numberInputStyle}
                                   maxLength={20}
@@ -3148,19 +3199,19 @@ export default function DikeRevetmentList() {
                           <Row gutter={formRowGutter}>
                             <Col span={12}>
                               <Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={formFieldStyle}>
-                                <DatePicker placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', ...selectStyle }} />
+                                <DatePicker {...getDatePickerProps({ placeholder: 'Chọn ngày...', format: 'DD/MM/YYYY' })} />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
                               <Form.Item name="commissioningDate" {...labelProps('Thời điểm đưa vào khai thác')} style={formFieldStyle}>
-                                <DatePicker picker="year" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', ...selectStyle }} />
+                                <DatePicker picker="year" {...getDatePickerProps({ picker: 'year', placeholder: 'Chọn năm...', format: 'YYYY' })} />
                               </Form.Item>
                             </Col>
                           </Row>
                           <Row gutter={formRowGutter}>
                             <Col span={12}>
                               <Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={formFieldStyle}>
-                                <DatePicker picker="year" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', ...selectStyle }} />
+                                <DatePicker picker="year" {...getDatePickerProps({ picker: 'year', placeholder: 'Chọn năm...', format: 'YYYY' })} />
                               </Form.Item>
                             </Col>
                           </Row>

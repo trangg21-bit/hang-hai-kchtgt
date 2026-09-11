@@ -16,6 +16,7 @@ export const ATTACHED_INFRA_TYPE_OPTIONS: Array<{ label: string; value: number }
   { label: 'TTDH VTS', value: 1 },
   { label: 'Trạm Radar', value: 2 },
 ];
+export const attachedInfraTypeOptions = ATTACHED_INFRA_TYPE_OPTIONS;
 
 // ── List filter schema ──────────────────────────────────────────────
 

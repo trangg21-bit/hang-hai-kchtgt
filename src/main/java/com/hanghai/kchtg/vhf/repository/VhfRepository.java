@@ -54,7 +54,8 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
     @Query("SELECT v FROM Vhf v WHERE v.deletedAt IS NULL ORDER BY v.deviceName ASC")
     List<Vhf> findAllActiveForCache();
 
-    @Query("SELECT v FROM Vhf v WHERE v.deletedAt IS NULL " +
+    @Query("SELECT v FROM Vhf v WHERE " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL)) OR (:isDeleted = false AND v.deletedAt IS NULL AND v.deletedBy IS NULL)) " +
             "AND (:includeAll = true OR v.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR v.orgUnitId IN :filterOrgUnitIds) " +
             "AND (:seaportId IS NULL OR v.seaportId = :seaportId) " +
@@ -70,6 +71,7 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
             "AND (:attachedInfrastructureId IS NULL OR v.attachedInfrastructureId = :attachedInfrastructureId) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))")
     Page<Vhf> searchVhf(
+            @Param("isDeleted") Boolean isDeleted,
             @Param("includeAll") boolean includeAll,
             @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("filterEnabled") boolean filterEnabled,

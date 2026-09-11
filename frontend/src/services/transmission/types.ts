@@ -49,6 +49,9 @@ export interface TransmissionResponse {
   updatedByName: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  deletedBy?: string | null;
+  deletedByName?: string | null;
+  deletedAt?: string | null;
 }
 
 // ── CreateTransmissionRequest (matches CreateTransmissionRequest.java) ──

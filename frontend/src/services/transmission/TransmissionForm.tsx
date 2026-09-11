@@ -1,19 +1,21 @@
 import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, type InputNumberProps, Tabs,
+  Row, Col, Form, Input, Select, InputNumber, Tabs,
   Button, Space, DatePicker, Modal,
 } from 'antd';
 import type { FormInstance, UploadFile } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
+import { parseNumber5, getValueFromEvent5, integer5Rule } from '../../utils/numberRuleHelper';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
   BankOutlined, SlidersOutlined, FileTextOutlined,
 } from '@ant-design/icons';
 import {
   colors, DRAWER_TABLE_SCROLL_Y,
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, spaceMd,
   surfaceCard, readonlyInputStyle,
@@ -61,33 +63,6 @@ const labelProps = (text: string) => ({
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
-
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
-
-const parseNumber5 = (value: unknown): any => {
-  if (!value) return '' as any;
-  const digits = String(value).replace(/\D/g, '');
-  return (digits.length > 5 ? digits.slice(0, 5) : digits) as any;
-};
-
-const getValueFromEvent5 = (val: unknown): number | null => {
-  if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/\D/g, '');
-  return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
-};
 
 const textAreaStyle: React.CSSProperties = { borderRadius: 8 };
 
@@ -363,10 +338,24 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       .catch(() => {});
 
     setLoadingOrgs(true);
-    organizationService.list({ pageSize: 1000 })
-      .then((r) => setOrgUnits(r.data || []))
+    organizationService.getTree()
+      .then((r) => setOrgUnits(r || []))
       .catch(() => {})
       .finally(() => setLoadingOrgs(false));
+
+    if (!isEdit) {
+      const currentOrg = useAuthStore.getState().user?.orgUnitId;
+      if (currentOrg) {
+        form.setFieldsValue({ orgUnitId: currentOrg });
+      } else {
+        api.get('/users/me')
+          .then((res: any) => {
+            const p = res?.data?.data ?? res?.data;
+            if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
+          })
+          .catch(() => {});
+      }
+    }
 
     userService.list({ pageSize: 1000 })
       .then((resp) => {
@@ -907,6 +896,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   getValueFromEvent={getValueFromEvent5}
                   rules={[
                     { required: true, message: 'Vui lòng nhập số lượng' },
+                    integer5Rule,
                   ]}
                   initialValue={1}
                 >
@@ -914,7 +904,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     min={1}
                     step={1}
                     precision={0}
-                    placeholder="0"
+                    placeholder="Nhập số lượng..."
                     style={numberInputStyle}
                     maxLength={5}
                     parser={parseNumber5}
@@ -924,23 +914,27 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="yearOfUse" {...labelProps('Năm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="yearOfUse"
+                  {...labelProps('Năm đưa vào sử dụng')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueProps={(v: number | null | undefined) => ({
+                    value: v != null && !Number.isNaN(Number(v)) ? dayjs().year(Number(v)) : null,
+                  })}
+                  getValueFromEvent={(d: { year?: () => number } | null) =>
+                    d && typeof d.year === 'function' ? d.year() : null
+                  }
+                >
                   <DatePicker
                     picker="year"
                     placeholder="Chọn năm đưa vào sử dụng..."
                     style={selectStyle}
                     disabledDate={(d) => d && d.year() > dayjs().year()}
-                    getValueProps={(v: number | null | undefined) => ({
-                      value: v != null && !Number.isNaN(Number(v)) ? dayjs().year(Number(v)) : null,
-                    })}
-                    getValueFromEvent={(d: { year?: () => number } | null) =>
-                      d && typeof d.year === 'function' ? d.year() : null
-                    }
                   />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="operationalStatus" {...labelProps('Tình trạng hoạt động')} style={{ marginBottom: spaceFormField }} initialValue={1}>
+                <Form.Item name="operationalStatus" {...labelProps('Tình trạng hoạt động')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]} initialValue={0}>
                   <Select placeholder="Chọn tình trạng hoạt động..." options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
                 </Form.Item>
               </Col>
@@ -988,7 +982,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           </div>
 
           {/* ── Section 3: Thông tin bảo trì & Ghi chú ── */}
-          <div style={sectionBoxStyle}>
+          <div style={{ ...sectionBoxStyle, padding: '14px 18px 20px 18px' }}>
             <div style={sectionHeaderStyle}>
               <div style={sectionTitleStyle}>
                 <FileTextOutlined style={{ color: actionPrimary }} />

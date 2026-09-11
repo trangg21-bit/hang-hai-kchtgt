@@ -5,8 +5,6 @@ import {
   Form,
   Button,
   Input,
-  InputNumber,
-  type InputNumberProps,
   Select,
   Descriptions,
   Space,
@@ -45,29 +43,21 @@ import RejectionModal from '../../components/shared/RejectionModal';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
-import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, textSecondary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
+import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import {
+  parseNumber20,
+  getValueFromEvent20,
+  decimalNumberRule,
+  safeDecimal,
+} from '../../utils/numberRuleHelper';
 
 // Cỡ chữ chuẩn 13.5px cho màn trạm radar (tạo/mở chi tiết) — thay token fontSizeMd=13 của themetokenchk,
 // mirror chuẩn BerthListPage để mọi text/label dùng fontSizeMd hiển thị 13.5px.
 const fontSizeMd = 13.5;
 const radarFormTokens = { ...themeTokenChk, fontSizeMd: 13.5 };
-
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 const parseNumber5 = (value: unknown): any => {
   if (!value) return '' as any;
@@ -79,25 +69,6 @@ const getValueFromEvent5 = (val: unknown): number | null => {
   if (val === null || val === undefined || val === '') return null;
   const str = String(val).replace(/\D/g, '');
   return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
-};
-
-const parseNumber20 = (value: unknown): any => {
-  if (!value) return '' as any;
-  const str = String(value).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
-};
-
-const getValueFromEvent20 = (val: unknown): number | null => {
-  if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
-  if (sliced.endsWith('.')) return sliced as any;
-  const num = Number(sliced);
-  return isNaN(num) ? null : num;
 };
 
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
@@ -148,6 +119,8 @@ const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: str
   REJECTED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED?.label || 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL1?.label || 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.REJECTED_LEVEL2?.label || 'Từ chối cấp Cục' },
+  DELETED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.DELETED?.label || 'Đã xóa' },
+  ARCHIVED: { color: statusCritical, label: RADAR_STATION_STATUS_MAP.ARCHIVED?.label || 'Đã xóa' },
 };
 
 export default function RadarStationForm({ open, editId, mode, onCancel, onSuccess }: RadarStationFormProps = {}) {
@@ -332,8 +305,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         unitOfMeasure: values.unitOfMeasure || undefined,
         quantity: values.quantity,
         conditionStatus: values.conditionStatus || '1',
-        towerHeight: values.towerHeight,
-        radarRange: values.radarRange,
+        towerHeight: safeDecimal(values.towerHeight),
+        radarRange: safeDecimal(values.radarRange),
         note: values.note?.trim() || undefined,
         longitude,
         latitude,
@@ -717,6 +690,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     <Form
       form={form}
       layout="vertical"
+      initialValues={{ conditionStatus: '0' }}
       onFinish={() => handleSubmit('save')}
       autoComplete="off"
       style={{ marginTop: 16, maxHeight: '62vh', overflowY: 'auto', paddingRight: 12 }}
@@ -736,7 +710,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' },
             ]}
           >
-            <Input placeholder="VD: Trạm radar Hải Phòng 1" style={inputStyle} />
+            <Input placeholder="VD: Trạm radar Hải Phòng 1" maxLength={255} showCount style={inputStyle} />
           </Form.Item>
         </Col>
       </Row>
@@ -872,6 +846,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           <Form.Item
             label="Tình trạng"
             name="conditionStatus"
+            initialValue="0"
             rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
           >
             <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
@@ -885,11 +860,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             label="Chiều cao tháp radar (m)"
             name="towerHeight"
             getValueFromEvent={getValueFromEvent20}
+            rules={[decimalNumberRule]}
           >
             <NumberInputWithCount
               min={0}
               step={0.01}
-              precision={2}
               placeholder="0"
               style={numberInputStyle}
               maxLength={20}
@@ -899,7 +874,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         </Col>
         <Col span={12}>
           <Form.Item label="Tầm hiệu lực radar" name="radarRange">
-            <Input placeholder="Nhập tầm hiệu lực (tối đa 20 ký tự)" maxLength={20} style={inputStyle} />
+            <Input placeholder="Nhập tầm hiệu lực (tối đa 20 ký tự)" maxLength={20} showCount style={inputStyle} />
           </Form.Item>
         </Col>
       </Row>
@@ -922,7 +897,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           { max: 500, message: 'Vị trí tối đa 500 ký tự' },
         ]}
       >
-        <Input.TextArea rows={2} placeholder="Mô tả vị trí đặt trạm radar..." style={{ borderRadius: radiusPill }} />
+        <Input.TextArea rows={2} maxLength={500} showCount placeholder="Mô tả vị trí đặt trạm radar..." style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <Form.Item label="Ghi chú" name="note">

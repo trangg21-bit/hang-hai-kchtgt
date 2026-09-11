@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -121,7 +122,7 @@ class RadarStationControllerTest {
 
     @Test
     void testGetHistory() {
-        when(service.getHistory(eq(TEST_ID), any(), any(), any(), any(), any())).thenReturn(Collections.emptyList());
+        when(service.getHistory(eq(TEST_ID), any(), any(), any(), nullable(String.class), nullable(String.class))).thenReturn(Collections.emptyList());
         ResponseEntity<?> result = controller.getHistory(TEST_ID);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }

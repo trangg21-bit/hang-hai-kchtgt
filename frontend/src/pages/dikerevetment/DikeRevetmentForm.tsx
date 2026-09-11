@@ -5,8 +5,6 @@ import {
   Form,
   Button,
   Input,
-  InputNumber,
-  type InputNumberProps,
   Select,
   Tabs,
   TreeSelect,
@@ -35,7 +33,7 @@ import { useAuthStore } from '../../store/authStore';
 import { hasPermissionFromList } from '../../store/permissionStore';
 import { colors, sidebarBg, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold, fontSizeLg, fontSizeMd, textSecondary, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill } from '../../themetokenchk';
+import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill, getDatePickerProps } from '../../themetokenchk';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -43,6 +41,13 @@ import RejectionModal from '../../components/shared/RejectionModal';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import {
+  parseNumber20,
+  getValueFromEvent20,
+  decimalNumberRule,
+  safeDecimal,
+} from '../../utils/numberRuleHelper';
 
 const DIKE_REVETMENT_TYPE_MAP: Record<string, string> = {
   'RIVER_DIKE': 'Đê chắn sóng',
@@ -60,44 +65,10 @@ const STATUS_MAP: Record<string, string> = {
   '3': 'Dừng khai thác/vận hành',
 };
 
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
-
-const parseNumber20 = (value: unknown): any => {
-  if (!value) return '' as any;
-  const str = String(value).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
-};
-
-const getValueFromEvent20 = (val: unknown): number | null => {
-  if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
-  if (sliced.endsWith('.')) return sliced as any;
-  const num = Number(sliced);
-  return isNaN(num) ? null : num;
-};
-
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 const OPERATING_ORG_OPTIONS = DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }));
-const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || '—';
+const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || null;
 
 const buildOrgTree = (nodes: any[]): any[] => {
   const map = new Map<string, any>();
@@ -273,10 +244,10 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         operatingUnitId: values.operatingUnitId,
         constructionDate: values.constructionDate ? values.constructionDate.format('YYYY-MM-DD') : undefined,
         lastMaintenanceYear: values.lastMaintenanceYear ? values.lastMaintenanceYear.format('YYYY') : undefined,
-        length: values.length,
-        crestElevation: values.crestElevation,
+        length: safeDecimal(values.length),
+        crestElevation: safeDecimal(values.crestElevation),
         commissioningDate: values.commissioningDate || undefined,
-        height: values.height,
+        height: safeDecimal(values.height),
         status: values.status,
         orgUnitId: values.orgUnitId,
         geometryType: spatialData?.geometryType,
@@ -444,7 +415,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 24 }}>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Mã đê kè:</div>
-                <div style={detailValueStyle}>{record.code || '—'}</div>
+                <div style={detailValueStyle}>{record.code || null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Loại kết cấu công trình:</div>
@@ -452,7 +423,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Thuộc cảng biển:</div>
-                <div style={detailValueStyle}>{record.seaportName || record.seaportId || '—'}</div>
+                <div style={detailValueStyle}>{record.seaportName || record.seaportId || null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Đơn vị vận hành:</div>
@@ -460,51 +431,51 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Địa điểm (Tỉnh/TP):</div>
-                <div style={detailValueStyle}>{record.location || '—'}</div>
+                <div style={detailValueStyle}>{record.location || null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Địa điểm chi tiết:</div>
-                <div style={detailValueStyle}>{record.locationDetail || '—'}</div>
+                <div style={detailValueStyle}>{record.locationDetail || null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Tên đê kè:</div>
-                <div style={detailValueStyle}>{record.dikeRevetmentName || '—'}</div>
+                <div style={detailValueStyle}>{record.dikeRevetmentName || null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều dài (m):</div>
-                <div style={detailValueStyle}>{record.length !== undefined ? record.length.toFixed(2) : '—'}</div>
+                <div style={detailValueStyle}>{record.length !== undefined ? record.length.toFixed(2) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Cao trình đỉnh (m):</div>
-                <div style={detailValueStyle}>{record.crestElevation !== undefined ? record.crestElevation.toFixed(2) : '—'}</div>
+                <div style={detailValueStyle}>{record.crestElevation !== undefined ? record.crestElevation.toFixed(2) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Thời điểm đưa vào khai thác:</div>
-                <div style={detailValueStyle}>{record.commissioningDate ? dayjs(record.commissioningDate).format('YYYY') : '—'}</div>
+                <div style={detailValueStyle}>{record.commissioningDate ? dayjs(record.commissioningDate).format('YYYY') : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Thời điểm xây dựng:</div>
-                <div style={detailValueStyle}>{record.constructionDate ? dayjs(record.constructionDate).format('DD/MM/YYYY') : '—'}</div>
+                <div style={detailValueStyle}>{record.constructionDate ? dayjs(record.constructionDate).format('DD/MM/YYYY') : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Năm bảo trì gần nhất:</div>
-                <div style={detailValueStyle}>{record.lastMaintenanceYear || '—'}</div>
+                <div style={detailValueStyle}>{record.lastMaintenanceYear || null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều cao (m):</div>
-                <div style={detailValueStyle}>{record.height !== undefined ? record.height.toFixed(2) : '—'}</div>
+                <div style={detailValueStyle}>{record.height !== undefined ? record.height.toFixed(2) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Tình trạng:</div>
-                <div style={detailValueStyle}>{STATUS_MAP[record.status ?? ''] || record.status || '—'}</div>
+                <div style={detailValueStyle}>{STATUS_MAP[record.status ?? ''] || record.status || null}</div>
               </div>
               <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
                 <div style={detailLabelColStyle}>Ghi chú:</div>
-                <div style={detailValueStyle}>{record.note ?? '—'}</div>
+                <div style={detailValueStyle}>{record.note ?? null}</div>
               </div>
               <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
                 <div style={detailLabelColStyle}>Đơn vị quản lý:</div>
-                <div style={detailValueStyle}>{record.orgUnitName || record.orgUnitId || '—'}</div>
+                <div style={detailValueStyle}>{record.orgUnitName || record.orgUnitId || null}</div>
               </div>
               <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
                 <div style={detailLabelColStyle}>Trạng thái:</div>
@@ -513,23 +484,23 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               <div style={{ gridColumn: '1 / -1', color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13.5, marginTop: spaceLg }}>Vị trí (GIS)</div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Loại đối tượng:</div>
-                <div style={detailValueStyle}>{record.geometryType === 'POINT' ? 'Đối tượng điểm' : record.geometryType === 'LINE' ? 'Đối tượng đường' : record.geometryType === 'POLYGON' ? 'Đối tượng vùng' : '—'}</div>
+                <div style={detailValueStyle}>{record.geometryType === 'POINT' ? 'Đối tượng điểm' : record.geometryType === 'LINE' ? 'Đối tượng đường' : record.geometryType === 'POLYGON' ? 'Đối tượng vùng' : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Biểu tượng bản đồ:</div>
-                <div style={detailValueStyle}>{record.symbolId || '—'}</div>
+                <div style={detailValueStyle}>{record.symbolId || null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Hệ quy chiếu:</div>
-                <div style={detailValueStyle}>{(record.geometryType || record.coordinates) ? 'WGS-84' : '—'}</div>
+                <div style={detailValueStyle}>{(record.geometryType || record.coordinates) ? 'WGS-84' : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Quy tắc hiển thị:</div>
-                <div style={detailValueStyle}>{(record.geometryType || record.coordinates) ? 'Độ, phút, giây (DMS)' : '—'}</div>
+                <div style={detailValueStyle}>{(record.geometryType || record.coordinates) ? 'Độ, phút, giây (DMS)' : null}</div>
               </div>
               <div style={{ ...detailRowStyle, gridColumn: '1 / -1' }}>
                 <div style={detailLabelColStyle}>Tọa độ:</div>
-                <div style={detailValueStyle}>{record.coordinates ? `${(record.coordinates.match(/[-\d.]+[ ]+[-\d.]+/g) || []).length} điểm` : '—'}</div>
+                <div style={detailValueStyle}>{record.coordinates ? `${(record.coordinates.match(/[-\d.]+[ ]+[-\d.]+/g) || []).length} điểm` : null}</div>
               </div>
             </div>
           )}
@@ -648,6 +619,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
     <Form
       form={form}
       layout="vertical"
+      initialValues={{ status: '1' }}
       onFinish={handleSubmitForm}
       autoComplete="off"
     >
@@ -702,7 +674,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       </Form.Item>
 
       <Form.Item {...labelProps('Địa điểm chi tiết')} name="locationDetail" style={formFieldStyle}>
-        <Input placeholder="Nhập địa điểm chi tiết" style={inputStyle} />
+        <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
       </Form.Item>
 
       <Form.Item
@@ -715,6 +687,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           placeholder="Nhập tên đê kè"
           autoSize={{ minRows: 1, maxRows: 2 }}
           maxLength={255}
+          showCount
           style={{ ...inputStyle, height: 'auto', minHeight: 40, lineHeight: '22px', paddingTop: 9, paddingBottom: 9 }}
         />
       </Form.Item>
@@ -725,6 +698,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         style={formFieldStyle}
         getValueFromEvent={getValueFromEvent20}
         rules={[
+          decimalNumberRule,
           {
             validator: (_, value) => {
               if (!value && value !== 0) return Promise.resolve();
@@ -738,7 +712,6 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           min={0}
           placeholder="0"
           style={numberInputStyle}
-          precision={2}
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
@@ -750,11 +723,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         name="crestElevation"
         style={formFieldStyle}
         getValueFromEvent={getValueFromEvent20}
+        rules={[decimalNumberRule]}
       >
         <NumberInputWithCount
           placeholder="0"
           style={numberInputStyle}
-          precision={2}
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
@@ -770,9 +743,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       >
         <DatePicker
           picker="year"
-          placeholder="Chọn năm..."
-          style={{ width: '100%', ...selectStyle }}
-          format="YYYY"
+          {...getDatePickerProps({
+            picker: 'year',
+            placeholder: 'Chọn năm...',
+            format: 'YYYY',
+          })}
         />
       </Form.Item>
 
@@ -784,9 +759,10 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         normalize={(value) => value ? value.format('YYYY-MM-DD') : null}
       >
         <DatePicker
-          placeholder="Chọn ngày..."
-          style={{ width: '100%', ...selectStyle }}
-          format="DD/MM/YYYY"
+          {...getDatePickerProps({
+            placeholder: 'Chọn ngày...',
+            format: 'DD/MM/YYYY',
+          })}
         />
       </Form.Item>
 
@@ -799,8 +775,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       >
         <DatePicker
           picker="year"
-          placeholder="Chọn năm..."
-          style={{ width: '100%', ...selectStyle }}
+          {...getDatePickerProps({
+            picker: 'year',
+            placeholder: 'Chọn năm...',
+            format: 'YYYY',
+          })}
         />
       </Form.Item>
 
@@ -810,6 +789,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         style={formFieldStyle}
         getValueFromEvent={getValueFromEvent20}
         rules={[
+          decimalNumberRule,
           {
             validator: (_, value) => {
               if (!value && value !== 0) return Promise.resolve();
@@ -823,14 +803,13 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           min={0}
           placeholder="0"
           style={numberInputStyle}
-          precision={2}
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
         />
       </Form.Item>
 
-      <Form.Item {...labelProps('Tình trạng')} name="status" style={formFieldStyle}>
+      <Form.Item {...labelProps('Tình trạng')} name="status" initialValue="1" style={formFieldStyle}>
         <Select
           placeholder="Chọn tình trạng"
           style={selectStyle}
@@ -888,6 +867,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         <Input.TextArea
           placeholder="Nhập ghi chú"
           maxLength={500}
+          showCount
           rows={4}
           styles={{ textarea: { borderRadius: radiusPill, minHeight: 40 } }}
         />

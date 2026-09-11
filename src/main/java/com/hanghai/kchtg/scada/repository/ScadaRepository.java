@@ -41,7 +41,7 @@ public interface ScadaRepository extends JpaRepository<Scada, UUID> {
      * So sánh theo SỐ, không so sánh chuỗi (tránh 'SCA-000010' < 'SCA-000002' theo từ điển).
      */
     @Query(value = "SELECT MAX(CAST(SUBSTRING(device_code FROM 5) AS INTEGER)) " +
-            "FROM scada WHERE device_code ~ '^SCA-[0-9]+$'", nativeQuery = true)
+            "FROM scada WHERE device_code LIKE 'SCA-%'", nativeQuery = true)
     Optional<Integer> findMaxDeviceCodeSequence();
 
     /**
@@ -68,7 +68,8 @@ public interface ScadaRepository extends JpaRepository<Scada, UUID> {
     @Query("SELECT c FROM Scada c WHERE c.deletedAt IS NULL ORDER BY c.deviceName ASC")
     List<Scada> findAllActiveForCache();
 
-    @Query("SELECT c FROM Scada c WHERE c.deletedAt IS NULL " +
+    @Query("SELECT c FROM Scada c WHERE " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (c.deletedAt IS NOT NULL OR c.deletedBy IS NOT NULL)) OR (:isDeleted = false AND c.deletedAt IS NULL AND c.deletedBy IS NULL)) " +
             "AND (:includeAll = true OR c.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR c.orgUnitId IN :filterOrgUnitIds) " +
             "AND (CAST(:deviceCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(c.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string)) " +
@@ -83,6 +84,7 @@ public interface ScadaRepository extends JpaRepository<Scada, UUID> {
             "AND (:attachedInfrastructureId IS NULL OR c.attachedInfrastructureId = :attachedInfrastructureId) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(c.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(c.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))")
     Page<Scada> searchScada(
+            @Param("isDeleted") Boolean isDeleted,
             @Param("includeAll") boolean includeAll,
             @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("filterEnabled") boolean filterEnabled,

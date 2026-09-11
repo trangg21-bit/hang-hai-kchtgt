@@ -44,10 +44,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
+
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,6 +78,8 @@ public class DikeRevetmentService {
     private final PortCacheService portCacheService;
     private final UserResolverService userResolverService;
     private final InfrastructureAttachmentRepository attachmentRepository;
+    private final UserRepository userRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -90,15 +98,22 @@ public class DikeRevetmentService {
     private static final String DIKE_REVETMENT_CODE_PREFIX = "DK-";
     private static final int MAX_CODE_GENERATION_ATTEMPTS = 5;
 
-    private Scope resolveEffectiveScope(UUID explicitOrgUnitId) {
+    private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
-        if (explicitOrgUnitId == null) {
+        if (selectedOrgUnitId == null) {
             return userScope;
         }
-        if (!userScope.allows(explicitOrgUnitId)) {
-            throw new org.springframework.security.access.AccessDeniedException("Bạn không có quyền truy cập dữ liệu của đơn vị này");
+        if (!userScope.unrestricted() && !userScope.allows(selectedOrgUnitId)) {
+            return Scope.restricted(List.of());
         }
-        return userScope;
+        List<UUID> selectedSubtree = orgUnitScopeService.resolveSubtreeIds(selectedOrgUnitId);
+        if (userScope.unrestricted()) {
+            return Scope.restricted(selectedSubtree);
+        }
+        List<UUID> intersected = selectedSubtree.stream()
+                .filter(userScope::allows)
+                .toList();
+        return Scope.restricted(intersected);
     }
 
     private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -175,8 +190,9 @@ public class DikeRevetmentService {
         Scope scope = resolveEffectiveScope(null);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"));
         return repo.searchPaged(
+                false,
                 !scope.unrestricted(), scope.orgUnitIds(),
-                null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null, null, null, null,
                 pageable)
                 .map(this::toResponse)
@@ -186,11 +202,24 @@ public class DikeRevetmentService {
     @Transactional(readOnly = true)
     public Page<DikeRevetmentResponse> searchPaged(UUID orgUnitId, String keyword, String dikeRevetmentName, UUID seaportId,
                                                    DikeRevetmentType dikeRevetmentType, String conditionStatus,
-                                                   ApprovalStatus approvalStatus, UUID updatedBy,
+                                                   String approvalStatus, UUID updatedBy,
                                                    LocalDateTime updatedFrom, LocalDateTime updatedTo,
                                                    String code, String location, Integer commissioningYear,
                                                    Pageable pageable) {
         Scope scope = resolveEffectiveScope(orgUnitId);
+        Boolean isDeleted = null;
+        ApprovalStatus statusEnum = null;
+        if (approvalStatus != null && !approvalStatus.isBlank()) {
+            String upper = approvalStatus.trim().toUpperCase();
+            if ("DELETED".equals(upper) || "ARCHIVED".equals(upper) || "DA_XOA".equals(upper)) {
+                isDeleted = Boolean.TRUE;
+            } else {
+                isDeleted = Boolean.FALSE;
+                try {
+                    statusEnum = ApprovalStatus.fromString(approvalStatus);
+                } catch (Exception ignored) {}
+            }
+        }
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(keyword) + "%"
                 : null;
@@ -208,8 +237,9 @@ public class DikeRevetmentService {
             commissioningTo = LocalDate.of(commissioningYear, 12, 31);
         }
         return repo.searchPaged(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, namePattern,
-                seaportId, dikeRevetmentType, conditionStatus, approvalStatus,
+                isDeleted,
+                !scope.unrestricted(), scope.orgUnitIds(), keywordPattern, namePattern,
+                seaportId, dikeRevetmentType, conditionStatus, statusEnum,
                 updatedBy, updatedFrom, updatedTo,
                 codePattern, locationValue, commissioningFrom, commissioningTo, pageable)
                 .map(this::toResponse);
@@ -223,7 +253,7 @@ public class DikeRevetmentService {
                                                    String code, String location, Integer commissioningYear,
                                                    Pageable pageable) {
         return searchPaged(orgUnitId, keyword, null, seaportId, dikeRevetmentType, conditionStatus,
-                approvalStatus, updatedBy, updatedFrom, updatedTo, code, location, commissioningYear, pageable);
+                approvalStatus != null ? approvalStatus.name() : null, updatedBy, updatedFrom, updatedTo, code, location, commissioningYear, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -236,7 +266,7 @@ public class DikeRevetmentService {
                 ? "%" + normalizeSearchKeyword(dikeRevetmentName) + "%"
                 : null;
         List<Object[]> rows = repo.countByApprovalStatus(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId, keywordPattern, namePattern, conditionStatus);
+                !scope.unrestricted(), scope.orgUnitIds(), keywordPattern, namePattern, conditionStatus);
 
         Map<String, Long> counts = new HashMap<>();
         counts.put("", 0L);
@@ -245,6 +275,7 @@ public class DikeRevetmentService {
         counts.put("APPROVED_LEVEL1", 0L);
         counts.put("REJECTED", 0L);
         counts.put("APPROVED", 0L);
+        counts.put("ARCHIVED", 0L);
 
         long total = 0L;
         for (Object[] row : rows) {
@@ -258,6 +289,7 @@ public class DikeRevetmentService {
                 case APPROVED_LEVEL1 -> counts.put("APPROVED_LEVEL1", counts.get("APPROVED_LEVEL1") + count);
                 case REJECTED_LEVEL1, REJECTED_LEVEL2, REJECTED -> counts.put("REJECTED", counts.get("REJECTED") + count);
                 case APPROVED, APPROVED_LEVEL2 -> counts.put("APPROVED", counts.get("APPROVED") + count);
+                case ARCHIVED -> counts.put("ARCHIVED", counts.get("ARCHIVED") + count);
                 default -> {}
             }
         }
@@ -385,8 +417,8 @@ public class DikeRevetmentService {
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
                         .changedField(fieldName)
-                        .previousValue(oldVal)
-                        .newValue(newVal)
+                        .previousValue(formatDisplayValue(field, oldVal))
+                        .newValue(formatDisplayValue(field, newVal))
                         .reason("Cập nhật thông tin " + fieldName)
                         .build());
             }
@@ -410,6 +442,10 @@ public class DikeRevetmentService {
     public void delete(UUID id, UUID userId) {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+
+        if (dr.getDeletedAt() != null || dr.getDeletedBy() != null) {
+            throw new IllegalStateException("Bản ghi đã bị xóa");
+        }
 
         validateAllowedOrgUnit(dr.getOrgUnitId());
 
@@ -496,46 +532,217 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize) {
-        return getHistory(id, page, pageSize, null, null, null);
+        return getHistory(id, page, pageSize, null, (LocalDateTime) null, (LocalDateTime) null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
+            String fromDate, String toDate) {
+        LocalDateTime from = parseFromDate(fromDate);
+        LocalDateTime to = parseToDate(toDate);
+        return getHistory(id, page, pageSize, keyword, from, to);
     }
 
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
             LocalDateTime fromDate, LocalDateTime toDate) {
+        DikeRevetment parent = repo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        validateAllowedOrgUnit(parent.getOrgUnitId());
+
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
+        boolean paged = page != null && pageSize != null && pageSize > 0;
         List<InfrastructureHistory> historyList;
-        if (page != null && pageSize != null && pageSize > 0) {
-            Pageable pageable = PageRequest.of(page, pageSize);
-            String normalizedKeyword = normalizeSearchKeyword(keyword);
-            if (normalizedKeyword == null && fromDate == null && toDate == null) {
-                historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                        InfrastructureType.DIKE_REVETMENT, id, pageable);
-            } else {
-                historyList = approvalHistoryRepo.searchHistory(InfrastructureType.DIKE_REVETMENT, id, normalizedKeyword,
-                        fromDate, toDate, pageable);
-            }
+        if (normalizedKeyword == null && fromDate == null && toDate == null) {
+            historyList = paged
+                    ? approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.DIKE_REVETMENT, id, PageRequest.of(page, pageSize))
+                    : approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.DIKE_REVETMENT, id);
         } else {
-            historyList = approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(
-                    InfrastructureType.DIKE_REVETMENT, id);
+            historyList = approvalHistoryRepo.searchHistory(
+                    InfrastructureType.DIKE_REVETMENT, id, normalizedKeyword, fromDate, toDate,
+                    paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
         }
-        Map<UUID, String> userNameMap = new HashMap<>();
-        for (InfrastructureHistory h : historyList) {
-            if (h.getApprovedBy() != null) {
-                userNameMap.putIfAbsent(h.getApprovedBy(), userResolverService.resolveName(h.getApprovedBy()));
+
+        Set<UUID> userIds = historyList.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllByIdInWithOrgUnit(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
+        return historyList.stream().map(h -> {
+            User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+            String userName = u != null
+                    ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
+                            : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
+                    : (h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null);
+            String orgUnitName = null;
+            if (u != null) {
+                if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+                    orgUnitName = u.getOrgUnit().getName();
+                } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
+                    orgUnitName = u.getDepartment();
+                } else {
+                    orgUnitName = "Cục Hàng hải Việt Nam";
+                }
+            }
+            if (orgUnitName == null) {
+                orgUnitName = "Cục Hàng hải Việt Nam";
+            }
+            return HistoryEntry.builder()
+                    .id(h.getId())
+                    .approvalLevel(h.getApprovalLevel())
+                    .status(h.getStatus() != null ? h.getStatus().getCode() : null)
+                    .approvedBy(userName)
+                    .orgUnitName(orgUnitName)
+                    .approvedDate(h.getApprovedDate())
+                    .reason(h.getReason())
+                    .changedField(h.getChangedField())
+                    .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
+                    .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
+                    .build();
+        }).toList();
+    }
+
+    private LocalDateTime parseFromDate(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            String v = value.trim();
+            if (v.length() == 10) {
+                return LocalDate.parse(v).atStartOfDay();
+            }
+            return LocalDateTime.parse(v.replace(" ", "T"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime parseToDate(String value) {
+        if (value == null || value.trim().isEmpty()) return null;
+        try {
+            String v = value.trim();
+            if (v.length() == 10) {
+                return LocalDate.parse(v).atTime(LocalTime.MAX);
+            }
+            return LocalDateTime.parse(v.replace(" ", "T"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public String formatDisplayValue(String field, String rawValue) {
+        if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
+            return "Chưa có";
+        }
+        if ("symbolId".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field)) {
+            try {
+                UUID symId = UUID.fromString(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM map_symbols WHERE id = ?", String.class, symId);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
             }
         }
-        return historyList.stream().map(h -> HistoryEntry.builder()
-                .id(h.getId())
-                .approvalLevel(h.getApprovalLevel())
-                .status(h.getStatus() != null ? h.getStatus().getCode() : null)
-                .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
-                .orgUnitName(null)
-                .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
-                .changedField(h.getChangedField())
-                .previousValue(h.getPreviousValue())
-                .newValue(h.getNewValue())
-                .build())
-                .toList();
+        if ("orgUnitId".equals(field) || "Đơn vị quản lý".equals(field)) {
+            try {
+                String name = orgUnitCacheService.getName(UUID.fromString(rawValue));
+                return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("seaportId".equals(field) || "Thuộc cảng biển".equals(field)) {
+            try {
+                String name = portCacheService.getName(UUID.fromString(rawValue));
+                return name != null ? name : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("operatingUnitId".equals(field) || "Đơn vị vận hành".equals(field) || "Đơn vị khai thác".equals(field)) {
+            try {
+                UUID uid = UUID.fromString(rawValue);
+                String name = orgUnitCacheService.getName(uid);
+                if (name != null && !name.equals(rawValue)) {
+                    return name;
+                }
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM operating_units WHERE id = ?", String.class, uid);
+                if (!names.isEmpty() && names.get(0) != null) {
+                    return names.get(0);
+                }
+                names = jdbcTemplate.queryForList("SELECT name FROM operating_organizations WHERE id = ?", String.class, uid);
+                if (!names.isEmpty() && names.get(0) != null) {
+                    return names.get(0);
+                }
+                return rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("location".equals(field) || "provinceId".equals(field) || "Địa điểm (Tỉnh/TP)".equals(field) || "Tỉnh / Thành phố".equals(field)) {
+            try {
+                int pid = Integer.parseInt(rawValue);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM provinces WHERE id = ?", String.class, pid);
+                return (!names.isEmpty() && names.get(0) != null) ? names.get(0) : rawValue;
+            } catch (Exception e) {
+                return rawValue;
+            }
+        }
+        if ("dikeRevetmentType".equals(field) || "Loại kết cấu công trình".equals(field) || "Phân loại đê kè".equals(field)) {
+            if ("RIVER_DIKE".equalsIgnoreCase(rawValue) || "1".equals(rawValue)) return "Đê chắn sóng";
+            if ("SAND_DIKE".equalsIgnoreCase(rawValue) || "2".equals(rawValue)) return "Đê chắn cát";
+            if ("FLOW_GUIDE_REVETMENT".equalsIgnoreCase(rawValue) || "3".equals(rawValue)) return "Kè hướng dòng";
+            if ("BANK_PROTECTION_REVETMENT".equalsIgnoreCase(rawValue) || "4".equals(rawValue)) return "Kè bảo vệ bờ";
+            if ("TRAFFIC".equalsIgnoreCase(rawValue) || "5".equals(rawValue)) return "Giao thông";
+            if ("WAVE_BREAK_REVETMENT".equalsIgnoreCase(rawValue) || "6".equals(rawValue)) return "Kè chắn sóng";
+            if ("SAND_BREAK_REVETMENT".equalsIgnoreCase(rawValue) || "7".equals(rawValue)) return "Kè chắn cát";
+            return rawValue;
+        }
+        if ("status".equals(field) || "Tình trạng".equals(field) || "Tình trạng hoạt động".equals(field) || "conditionStatus".equals(field)) {
+            if ("1".equals(rawValue)) return "Chưa khai thác/vận hành";
+            if ("2".equals(rawValue)) return "Đang khai thác/vận hành";
+            if ("3".equals(rawValue)) return "Dừng khai thác/vận hành";
+            return rawValue;
+        }
+        if ("geometryType".equals(field) || "Loại đối tượng (GIS)".equals(field) || "Loại đối tượng GIS".equals(field)) {
+            if (GisGeometryType.POINT.name().equalsIgnoreCase(rawValue)) return "Đối tượng điểm";
+            if (GisGeometryType.LINE.name().equalsIgnoreCase(rawValue) || "LINESTRING".equalsIgnoreCase(rawValue)) return "Đối tượng đường";
+            if (GisGeometryType.POLYGON.name().equalsIgnoreCase(rawValue)) return "Đối tượng vùng";
+            return rawValue;
+        }
+        if ("approvalStatus".equals(field) || "Trạng thái phê duyệt".equals(field)) {
+            if (ApprovalStatus.DRAFT.name().equalsIgnoreCase(rawValue) || "DRAFT".equalsIgnoreCase(rawValue)) return "Lưu tạm";
+            if (ApprovalStatus.PROPOSED.name().equalsIgnoreCase(rawValue) || ApprovalStatus.PENDING_APPROVAL.name().equalsIgnoreCase(rawValue) || "PENDING_APPROVAL".equalsIgnoreCase(rawValue)) return "Chờ Cảng vụ duyệt";
+            if (ApprovalStatus.APPROVED_LEVEL1.name().equalsIgnoreCase(rawValue) || "APPROVED_LEVEL1".equalsIgnoreCase(rawValue)) return "Chờ Cục duyệt";
+            if (ApprovalStatus.APPROVED.name().equalsIgnoreCase(rawValue) || ApprovalStatus.APPROVED_LEVEL2.name().equalsIgnoreCase(rawValue) || "APPROVED".equalsIgnoreCase(rawValue)) return "Đã duyệt";
+            if (ApprovalStatus.REJECTED_LEVEL1.name().equalsIgnoreCase(rawValue) || "REJECTED_LEVEL1".equalsIgnoreCase(rawValue)) return "Bị Cảng vụ trả về";
+            if (ApprovalStatus.REJECTED_LEVEL2.name().equalsIgnoreCase(rawValue) || ApprovalStatus.REJECTED.name().equalsIgnoreCase(rawValue) || "REJECTED".equalsIgnoreCase(rawValue)) return "Bị Cục trả về";
+            return rawValue;
+        }
+        if ("coordinateSystem".equals(field) || "Hệ tọa độ".equals(field) || "Hệ quy chiếu".equals(field)) {
+            if ("1".equals(rawValue) || "4326".equals(rawValue)) return "WGS 84";
+            if ("2".equals(rawValue)) return "VN-2000";
+            return rawValue;
+        }
+        if ("commissioningDate".equals(field) || "Thời điểm đưa vào khai thác".equals(field)) {
+            try {
+                if (rawValue.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
+                    String[] parts = rawValue.split("-");
+                    return parts[2] + "/" + parts[1] + "/" + parts[0];
+                }
+            } catch (Exception ignored) {}
+            return rawValue;
+        }
+        if ("coordinates".equals(field) || "Tọa độ GIS".equals(field)) {
+            if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
+                return "Chưa có";
+            }
+            return rawValue.trim();
+        }
+        return rawValue;
     }
 
     private static String normalizeSearchKeyword(String keyword) {

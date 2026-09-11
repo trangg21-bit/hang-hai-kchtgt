@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallba
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
-  Button, Space, DatePicker, Modal, type InputNumberProps,
+  Button, Space, DatePicker, Modal,
 } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import {
   colors, DRAWER_TABLE_SCROLL_Y,
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, textAreaStyle,
@@ -44,25 +44,16 @@ import {
   serializeCoordinatesToWkt,
   ddToDms,
 } from '../../utils/gisGeometry';
+import {
+  parseNumber20,
+  getValueFromEvent20,
+  decimalNumberRule,
+  safeNumber,
+  safeDecimal,
+} from './beaconStationRules';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 
 const fontSizeMd = 13.5;
-
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-/** Hiển thị số ký tự đã nhập để giới hạn 5/20 chữ số dễ nhận biết (chuẩn màn /port). */
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 const parseNumber5 = (value: unknown): any => {
   if (!value) return '' as any;
@@ -74,25 +65,6 @@ const getValueFromEvent5 = (val: unknown): number | null => {
   if (val === null || val === undefined || val === '') return null;
   const str = String(val).replace(/\D/g, '');
   return str.length > 5 ? Number(str.slice(0, 5)) : Number(str);
-};
-
-const parseNumber20 = (value: unknown): any => {
-  if (!value) return '' as any;
-  const str = String(value).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  return (normalized.length > 20 ? normalized.slice(0, 20) : normalized) as any;
-};
-
-const getValueFromEvent20 = (val: unknown): any => {
-  if (val === null || val === undefined || val === '') return null;
-  const str = String(val).replace(/[^0-9.]/g, '');
-  const parts = str.split('.');
-  const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : str;
-  const sliced = normalized.length > 20 ? normalized.slice(0, 20) : normalized;
-  if (sliced.endsWith('.')) return sliced;
-  const num = Number(sliced);
-  return isNaN(num) ? null : num;
 };
 
 const labelProps = (text: string) => ({
@@ -305,8 +277,8 @@ export default forwardRef(function BeaconStationForm(
   // Load catalogs
   useEffect(() => {
     setLoadingOrgs(true);
-    organizationService.list({ pageSize: 1000 })
-      .then((r) => setOrganizations(r.data || []))
+    organizationService.getTree()
+      .then((r) => setOrganizations(r || []))
       .catch(() => {})
       .finally(() => setLoadingOrgs(false));
 
@@ -339,7 +311,10 @@ export default forwardRef(function BeaconStationForm(
         .catch(() => {})
         .finally(() => setCodeLoading(false));
 
-      if (!isSystemAdmin) {
+      const currentOrgUnitId = currentUser?.orgUnitId;
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ unitId: currentOrgUnitId });
+      } else {
         api.get('/users/me')
           .then((r) => {
             const p = r.data?.data ?? r.data;
@@ -348,7 +323,7 @@ export default forwardRef(function BeaconStationForm(
           .catch(() => {});
       }
     }
-  }, [isEdit, isSystemAdmin, form]);
+  }, [isEdit, form, currentUser]);
 
   // Load data for edit mode
   useEffect(() => {
@@ -565,20 +540,20 @@ export default forwardRef(function BeaconStationForm(
         code: stationCode || undefined,
         name: values.name ? String(values.name).trim() : undefined,
         type: values.type,
-        lightRange: values.lightRange != null ? Number(values.lightRange) : undefined,
+        lightRange: safeDecimal(values.lightRange),
         towerColor: values.towerColor,
         location: values.location,
         shape: values.shape,
         structure: values.structure,
-        towerHeight: values.towerHeight != null ? Number(values.towerHeight) : undefined,
-        lightHeight: values.lightHeight != null ? Number(values.lightHeight) : undefined,
+        towerHeight: safeDecimal(values.towerHeight),
+        lightHeight: safeDecimal(values.lightHeight),
         geographicRange: values.geographicRange,
         backupLightModel: values.backupLightModel,
         powerSupply: values.powerSupply,
         staffCount: values.staffCount != null ? Number(values.staffCount) : undefined,
-        stationArea: values.stationArea != null ? Number(values.stationArea) : undefined,
+        stationArea: safeDecimal(values.stationArea),
         primaryLightModel: values.primaryLightModel,
-        area: values.area != null ? Number(values.area) : undefined,
+        area: safeDecimal(values.area),
         lastRepairDate: toDate(values.lastRepairDate),
         commissionedDate: toDate(values.commissionedDate),
         unitId: values.unitId,
@@ -698,7 +673,7 @@ export default forwardRef(function BeaconStationForm(
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue={1}>
+                <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]} initialValue={0}>
                   <Select placeholder="Chọn tình trạng..." allowClear options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
                 </Form.Item>
               </Col>
@@ -757,10 +732,10 @@ export default forwardRef(function BeaconStationForm(
                   {...labelProps('Tầm hiệu lực ánh sáng (hải lý)')}
                   required
                   style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Vui lòng nhập tầm hiệu lực' }]}
+                  rules={[{ required: true, message: 'Vui lòng nhập tầm hiệu lực' }, decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0.01} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
+                  <NumberInputWithCount min={0.01} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -794,9 +769,10 @@ export default forwardRef(function BeaconStationForm(
                   name="towerHeight"
                   {...labelProps('Chiều cao tháp đèn (m)')}
                   style={{ marginBottom: spaceFormField }}
+                  rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -804,9 +780,10 @@ export default forwardRef(function BeaconStationForm(
                   name="lightHeight"
                   {...labelProps('Chiều cao tâm sáng (m)')}
                   style={{ marginBottom: spaceFormField }}
+                  rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -869,9 +846,10 @@ export default forwardRef(function BeaconStationForm(
                   name="area"
                   {...labelProps('Diện tích (m²)')}
                   style={{ marginBottom: spaceFormField }}
+                  rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -879,9 +857,10 @@ export default forwardRef(function BeaconStationForm(
                   name="stationArea"
                   {...labelProps('Diện tích sử dụng trạm đèn (m²)')}
                   style={{ marginBottom: spaceFormField }}
+                  rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} precision={2} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>

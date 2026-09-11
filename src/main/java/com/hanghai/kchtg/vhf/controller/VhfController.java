@@ -160,14 +160,14 @@ public class VhfController {
   }
 
   @GetMapping("/{id}/history")
-  @PreAuthorize("@auth.check(authentication, 'vhf:history')")
+  @PreAuthorize("@auth.check(authentication, 'vhf:history') or @auth.check(authentication, 'vhf:read') or @auth.check(authentication, 'data:read')")
   public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
       @PathVariable UUID id,
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer pageSize,
       @RequestParam(required = false) String keyword,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
-      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+      @RequestParam(required = false) String fromDate,
+      @RequestParam(required = false) String toDate) {
     log.info("Getting history for VHF: id={}", id);
     List<HistoryEntry> history = approvalService.getHistory(id, page, pageSize, keyword, fromDate, toDate);
     return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thay đổi thành công", history));
@@ -195,8 +195,8 @@ public class VhfController {
     return ResponseEntity.ok(ApiResponse.success("Lấy danh mục tùy chọn VHF thành công", options));
   }
 
-  @GetMapping("/history")
-  @PreAuthorize("@auth.check(authentication, 'vhf:history')")
+  @GetMapping({"/history", "/history/all"})
+  @PreAuthorize("@auth.check(authentication, 'vhf:history') or @auth.check(authentication, 'vhf:read') or @auth.check(authentication, 'data:read')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> getAllHistory() {
     log.info("Getting all history for VHF");
     Map<String, Object> history = approvalService.getAllHistory();

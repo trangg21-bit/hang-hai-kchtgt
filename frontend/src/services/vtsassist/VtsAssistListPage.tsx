@@ -26,8 +26,11 @@ import {
   Drawer,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { organizationService } from "../organizationService";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
+import NumberInputWithCount from "../../components/shared/NumberInputWithCount";
+import { parseNumber5, getValueFromEvent5, integer5Rule } from "../../utils/numberRuleHelper";
 import { DetailTable } from "../../components/shared/DetailTable";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
@@ -125,6 +128,7 @@ import {
   outlineButtonStyle,
   selectStyle,
   readonlyInputStyle,
+  getSidebarDatePickerProps,
   DRAWER_TABLE_SCROLL_Y,
   requiredMarkStyle,
   historyGroupGridStyle,
@@ -219,6 +223,8 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp cục',
+  DELETED: 'Đã xóa',
+  ARCHIVED: 'Đã xóa',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -228,6 +234,8 @@ const APPROVAL_COLOR: Record<string, string> = {
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
+  DELETED: statusCritical,
+  ARCHIVED: statusCritical,
 };
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
@@ -655,6 +663,139 @@ function VtsAssistGisTab({
   );
 }
 
+// ── History helpers (module-level exports) ───────────────────────────
+export const historyFieldLabels: Record<string, string> = {
+  deviceCode: 'Mã thiết bị',
+  deviceName: 'Tên thiết bị',
+  manufacturer: 'Hãng sản xuất',
+  model: 'Model',
+  quantity: 'Số lượng',
+  orgUnitId: 'Đơn vị quản lý',
+  operatingUnitId: 'Đơn vị khai thác',
+  provinceName: 'Tỉnh/Thành phố',
+  provinceId: 'Tỉnh/Thành phố',
+  detailedLocation: 'Địa điểm chi tiết',
+  attachedInfrastructureType: 'Loại hạ tầng',
+  attachedInfrastructureId: 'Thuộc hạ tầng',
+  unitOfMeasure: 'Đơn vị tính',
+  yearOfUse: 'Năm đưa vào sử dụng',
+  operationalStatus: 'Trạng thái hoạt động',
+  approvalStatus: 'Trạng thái phê duyệt',
+  specifications: 'Thông số kỹ thuật',
+  maintenanceInformation: 'Thông tin bảo trì',
+  note: 'Ghi chú',
+  objectType: 'Loại đối tượng',
+  mapSymbolId: 'Biểu tượng',
+  coordinateSystem: 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
+  departmentApprovalContent: 'Nội dung phê duyệt cấp Cục',
+  portAuthorityApprovalContent: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+  approvalContentLevel1: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+  approvalContentLevel2: 'Nội dung phê duyệt cấp Cục',
+  rejectionReason: 'Lý do từ chối',
+  'Lý do từ chối': 'Lý do từ chối',
+  'Trạng thái': 'Hành động',
+};
+
+export function historyFieldName(fn: string): string {
+  return historyFieldLabels[fn] || fn;
+}
+
+export function historyFieldValue(
+  fn: string,
+  val: string | null,
+  orgMap?: Map<string, string>,
+  symbolMap?: Map<string, string>,
+  vtsMap?: Map<string, string>,
+  radarMap?: Map<string, string>,
+  opUnitMap?: Map<string, string>
+): string {
+  if (!val || val === '(null)' || val === 'null') return '(trống)';
+  if ((fn === 'orgUnitId' || fn === 'Đơn vị quản lý') && orgMap) {
+    const full = orgMap.get(val);
+    return full ? full.split(' - ').pop() || full : val;
+  }
+  if (fn === 'operatingUnitId' || fn === 'Đơn vị khai thác') {
+    if (opUnitMap?.has(val)) return opUnitMap.get(val)!;
+    if (orgMap?.has(val)) {
+      const full = orgMap.get(val);
+      return full ? full.split(' - ').pop() || full : val;
+    }
+    return val;
+  }
+  if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'Biểu tượng bản đồ') && symbolMap) {
+    return symbolMap.get(val) || val;
+  }
+  if (fn === 'attachedInfrastructureType' || fn === 'Loại hạ tầng' || fn === 'Thuộc loại hạ tầng') {
+    if (val === '1' || val === 'TTDH VTS') return 'TTDH VTS';
+    if (val === '2' || val === 'Trạm Radar') return 'Trạm Radar';
+    return val;
+  }
+  if (fn === 'attachedInfrastructureId' || fn === 'Thuộc hạ tầng' || fn === 'Hạ tầng phụ thuộc') {
+    if (vtsMap?.has(val)) return vtsMap.get(val)!;
+    if (radarMap?.has(val)) return radarMap.get(val)!;
+    return val;
+  }
+  if (fn === 'objectType' || fn === 'Loại đối tượng') {
+    const m: Record<string, string> = {
+      POINT: 'Đối tượng điểm',
+      LINE: 'Đối tượng đường',
+      LINESTRING: 'Đối tượng đường',
+      POLYGON: 'Đối tượng vùng',
+    };
+    return m[String(val).toUpperCase()] || val;
+  }
+  if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val) - 1] || val;
+  if (fn === 'approvalStatus' || fn === 'Trạng thái phê duyệt') {
+    const ALIAS: Record<string, string> = {
+      NHAP: 'DRAFT',
+      PROPOSED: 'PENDING_APPROVAL',
+      PENDING: 'PENDING_APPROVAL',
+      CHO_PHE_DUYET: 'PENDING_APPROVAL',
+      CHO_PD_CAP_CUC: 'APPROVED_LEVEL1',
+      APPROVED_L1: 'APPROVED_LEVEL1',
+      APPROVED_LEVEL2: 'APPROVED',
+      APPROVED_L2: 'APPROVED',
+      DA_PHE_DUYET: 'APPROVED',
+      DUC_PHI_DUYET: 'APPROVED',
+      REJECTED: 'REJECTED_LEVEL1',
+      TU_CHOI: 'REJECTED_LEVEL1',
+    };
+    const m: Record<string, string> = {
+      DRAFT: 'Lưu tạm',
+      PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+      APPROVED_LEVEL1: 'Chờ Cục duyệt',
+      APPROVED: 'Đã duyệt',
+      REJECTED_LEVEL1: 'Bị Cảng vụ trả về',
+      REJECTED_LEVEL2: 'Bị Cục trả về',
+    };
+    const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
+    return m[norm] || val;
+  }
+  if (fn === 'operationalStatus' || fn === 'Trạng thái hoạt động' || fn === 'Tình trạng hoạt động') {
+    const m: Record<string, string> = {
+      '0': 'Chưa khai thác/vận hành',
+      '1': 'Đang khai thác/vận hành',
+      '2': 'Dừng khai thác/vận hành',
+      NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+      OPERATIONAL: 'Đang khai thác/vận hành',
+      SUSPENDED: 'Dừng khai thác/vận hành',
+    };
+    return m[val] || val;
+  }
+  if (fn === 'unitOfMeasure' || fn === 'Đơn vị tính') {
+    return formatUnitOfMeasure(Number(val));
+  }
+  if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[String(val)] || val;
+  }
+  if (fn === 'changedAt' || fn === 'createdAt') {
+    try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
+  }
+  return val;
+}
+
 const VtsAssistListPage = () => {
   const [searchParams] = useSearchParams();
   const linkedAction = searchParams.get("action");
@@ -694,6 +835,10 @@ const VtsAssistListPage = () => {
     updatedTo: "" as string | undefined,
   });
 
+  const defaultOrgUnitId = useRef<string | undefined>(undefined);
+  const defaultOrgApplied = useRef(false);
+  const [orgUnitReady, setOrgUnitReady] = useState(false);
+
   // Tab counts for approval status filter
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [totalAll, setTotalAll] = useState(0);
@@ -705,6 +850,7 @@ const VtsAssistListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
+      { key: "DELETED", status: "DELETED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -724,20 +870,20 @@ const VtsAssistListPage = () => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa
     setTotalAll(
       counts.DRAFT +
         counts.PENDING_APPROVAL +
         counts.APPROVED_LEVEL1 +
         counts.APPROVED +
         counts.REJECTED_LEVEL1 +
-        counts.REJECTED_LEVEL2
+        counts.REJECTED_LEVEL2 +
+        (counts.DELETED || 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
-  // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
-  // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
-  const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
+  // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const orgUnitOptions = orgUnits;
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
@@ -745,14 +891,6 @@ const VtsAssistListPage = () => {
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [, setLoadingSymbols] = useState(false);
 
-  // Year options for "Năm đưa vào sử dụng" (current year - 30 to current year)
-  const yearOfUseOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 31 }, (_, i) => ({
-      label: String(currentYear - i),
-      value: currentYear - i,
-    }));
-  }, []);
 
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
@@ -1232,9 +1370,11 @@ const VtsAssistListPage = () => {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyEntityName, setHistoryEntityName] = useState('');
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
+  const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   const historyFieldCount = useMemo(() => (Array.isArray(historyRecords) ? historyRecords : []).length, [historyRecords]);
   const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
@@ -1269,6 +1409,24 @@ const VtsAssistListPage = () => {
     build(orgUnits || []);
     return m;
   }, [orgUnits]);
+
+  const vtsCenterMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (vtsOperationCenterOptions || []).forEach((c) => m.set(c.value, c.label));
+    return m;
+  }, [vtsOperationCenterOptions]);
+
+  const radarStationMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (radarStationOptions || []).forEach((r) => m.set(r.value, r.label));
+    return m;
+  }, [radarStationOptions]);
+
+  const operatingUnitMap = useMemo(() => {
+    const m = new Map<string, string>();
+    (operatingOrganizationOptions || []).forEach((o) => m.set(o.value, o.label));
+    return m;
+  }, [operatingOrganizationOptions]);
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
@@ -1476,7 +1634,10 @@ const VtsAssistListPage = () => {
         dataIndex: "approvalStatus",
         width: 180,
         type: "status" as const,
-        render: (val: string) => renderApprovalBadge(val),
+        render: (val: string, record: VtsAssistResponse) => {
+          const isDeleted = Boolean(record.deletedAt || record.deletedBy || val === "DELETED" || val === "ARCHIVED");
+          return renderApprovalBadge(isDeleted ? "DELETED" : val);
+        },
       },
     ];
     },
@@ -1484,106 +1645,7 @@ const VtsAssistListPage = () => {
   );
 
   // ── History helpers ────────────────────────────────────────────────
-  const historyFieldLabels: Record<string, string> = {
-    deviceCode: 'Mã thiết bị',
-    deviceName: 'Tên thiết bị',
-    manufacturer: 'Hãng sản xuất',
-    model: 'Model',
-    quantity: 'Số lượng',
-    orgUnitId: 'Đơn vị quản lý',
-    operatingUnitId: 'Đơn vị khai thác',
-    provinceName: 'Tỉnh/Thành phố',
-    provinceId: 'Tỉnh/Thành phố',
-    detailedLocation: 'Địa điểm chi tiết',
-    attachedInfrastructureType: 'Loại hạ tầng',
-    attachedInfrastructureId: 'Thuộc hạ tầng',
-    unitOfMeasure: 'Đơn vị tính',
-    yearOfUse: 'Năm đưa vào sử dụng',
-    operationalStatus: 'Trạng thái hoạt động',
-    approvalStatus: 'Trạng thái phê duyệt',
-    specifications: 'Thông số kỹ thuật',
-    maintenanceInformation: 'Thông tin bảo trì',
-    note: 'Ghi chú',
-    objectType: 'Loại đối tượng',
-    mapSymbolId: 'Biểu tượng',
-    coordinateSystem: 'Hệ quy chiếu',
-    displayRule: 'Quy tắc hiển thị',
-    departmentApprovalContent: 'Nội dung phê duyệt cấp Cục',
-    portAuthorityApprovalContent: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
-    approvalContentLevel1: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
-    approvalContentLevel2: 'Nội dung phê duyệt cấp Cục',
-    rejectionReason: 'Lý do từ chối',
-    'Lý do từ chối': 'Lý do từ chối',
-    'Trạng thái': 'Hành động',
-  };
 
-  function historyFieldName(fn: string): string {
-    return historyFieldLabels[fn] || fn;
-  }
-
-  function historyFieldValue(
-    fn: string,
-    val: string | null,
-    orgMap?: Map<string, string>,
-    symbolMap?: Map<string, string>
-  ): string {
-    if (!val || val === '(null)' || val === 'null') return '(trống)';
-    if (fn === 'orgUnitId' && orgMap) {
-      const full = orgMap.get(val);
-      return full ? full.split(' - ').pop() || full : '';
-    }
-    if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-    if (fn === 'provinceId') return VIETNAM_PROVINCES[Number(val) - 1] || val;
-    if (fn === 'approvalStatus') {
-      // Mã legacy (dữ liệu cũ) quy đổi về mã chuẩn 7 trạng thái rồi tra nhãn dùng chung.
-      const ALIAS: Record<string, string> = {
-        NHAP: 'DRAFT',
-        PROPOSED: 'PENDING_APPROVAL',
-        PENDING: 'PENDING_APPROVAL',
-        CHO_PHE_DUYET: 'PENDING_APPROVAL',
-        CHO_PD_CAP_CUC: 'APPROVED_LEVEL1',
-        APPROVED_L1: 'APPROVED_LEVEL1',
-        APPROVED_LEVEL2: 'APPROVED',
-        APPROVED_L2: 'APPROVED',
-        DA_PHE_DUYET: 'APPROVED',
-        DUC_PHI_DUYET: 'APPROVED',
-        REJECTED: 'REJECTED_LEVEL1',
-        TU_CHOI: 'REJECTED_LEVEL1',
-      };
-      const m: Record<string, string> = {
-        DRAFT: 'Lưu tạm',
-        PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
-        APPROVED: 'Đã phê duyệt',
-        REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-        REJECTED_LEVEL2: 'Từ chối cấp cục',
-      };
-      const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
-      return m[norm] || val;
-    }
-    if (fn === 'operationalStatus') {
-      const m: Record<string, string> = {
-        '0': 'Chưa khai thác/vận hành',
-        '1': 'Đang khai thác/vận hành',
-        '2': 'Dừng khai thác/vận hành',
-    NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-    OPERATIONAL: 'Đang khai thác/vận hành',
-    SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[val] || val;
-    }
-    if (fn === 'unitOfMeasure') {
-      return formatUnitOfMeasure(Number(val));
-    }
-    if (fn === 'coordinateSystem') {
-      const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
-      return m[String(val)] || val;
-    }
-    if (fn === 'changedAt' || fn === 'createdAt') {
-try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
-    }
-    return val;
-  }
 
   const historyTimestamp = (item: any): string =>
     item.approvedDate || item.changedAt || item.createdAt || '';
@@ -1683,8 +1745,8 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
   };
 
-  const openHistory = useCallback(async (r: VtsAssistResponse) => {
-    if (!hasPerm?.("vtsassist:history")) {
+  const openHistory = useCallback((r: VtsAssistResponse) => {
+    if (!hasPerm?.("vtsassist:history") && !hasPerm?.("vtsassist:read") && !hasPerm?.("data:read")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống phụ trợ VTS");
       return;
     }
@@ -1692,20 +1754,39 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     setSelectedRecord(r);
     setHistoryEntityName(r.deviceName || '');
     setHistoryOpen(true);
-    setHistoryLoading(true);
     setHistoryRecords([]);
+    setHistorySearchInput('');
     setHistorySearch('');
     setHistoryFrom('');
     setHistoryTo('');
-    try {
-      const list = await fetchVtsAssistHistory(r.id);
-      setHistoryRecords(Array.isArray(list) ? list : []);
-    } catch {
-      toast.error('Không thể tải lịch sử');
-    } finally {
-      setHistoryLoading(false);
-    }
+    setHistoryReloadToken((t) => t + 1);
   }, [hasPerm]);
+
+  // Load history khi mở Drawer hoặc thay đổi bộ lọc tìm kiếm/ngày
+  useEffect(() => {
+    if (!historyOpen || !historyTarget) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setHistoryLoading(true);
+      try {
+        const list = await fetchVtsAssistHistory(historyTarget.id, undefined, undefined, {
+          keyword: historySearch,
+          fromDate: historyFrom,
+          toDate: historyTo,
+        });
+        if (cancelled) return;
+        setHistoryRecords(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử');
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }, historySearch.trim() ? 300 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [historyOpen, historyTarget, historySearch, historyFrom, historyTo, historyReloadToken]);
 
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
@@ -1714,6 +1795,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     'unitOfMeasure', 'yearOfUse', 'operationalStatus',
     'specifications', 'maintenanceInformation', 'note',
     'objectType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+    'geometryType', 'coordinates',
   ];
 
   const renderVtsAssistHistoryTimeline = (records: any[]) => {
@@ -1731,8 +1813,8 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
         const ov = (historyOldValue(r) || '').toLowerCase();
         const nv = (historyNewValue(r) || '').toLowerCase();
         const lb = historyFieldName(historyField(r) || '').toLowerCase();
-        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap).toLowerCase();
-        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap).toLowerCase();
+        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap).toLowerCase();
+        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap).toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
       if (historyFrom || historyTo) {
@@ -1814,7 +1896,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
             if (/^-?\d+(\.\d+)?$/.test(t)) {
               return fmtNum(t);
             }
-            return historyFieldValue(fn, raw, orgMap, symbolMap);
+            return historyFieldValue(fn, raw, orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap);
           };
 
           if (orderedChanges.length === 0) return null;
@@ -2019,6 +2101,34 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: VtsAssistResponse) => {
+      const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === "DELETED" || record.approvalStatus === "ARCHIVED");
+      if (isDeleted) {
+        const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+        if (hasPerm?.("vtsassist:read")) {
+          actions.push({
+            key: "view",
+            label: "Xem chi tiết",
+            icon: icons.view,
+            onClick: () => {
+              setSelectedRecord(record);
+              setDetailDrawerOpen(true);
+              void fetchVtsAssistAttachments(record.id).then((list: any[]) => {
+                setDetailFiles((Array.isArray(list) ? list : []).map(normalizeAttachmentItem));
+              }).catch(() => setDetailFiles([]));
+            },
+          });
+        }
+        if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("data:read")) {
+          actions.push({
+            key: "history",
+            label: "Lịch sử",
+            icon: icons.history,
+            onClick: () => openHistory(record),
+          });
+        }
+        return actions;
+      }
+
       const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
 
       if (hasPerm?.("vtsassist:read")) {
@@ -2047,7 +2157,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
       }
 
       // Lịch sử thay đổi (mở từ menu dòng, không nằm trong drawer chi tiết)
-      if (hasPerm?.("vtsassist:history")) {
+      if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("data:read")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -2190,23 +2300,48 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     }
   }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
-  const fetchOrgUnits = useCallback(async () => {
-    setLoadingOrgs(true);
-    try {
-      const res = await api.get("/common/options/org-units");
-      const items = res.data?.data;
-      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
-        id: String(o.id),
-        name: o.name || "Đơn vị",
-        code: o.code || undefined,
-        parentId: o.parentId ? String(o.parentId) : undefined,
-      }));
+  // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
+  useEffect(() => {
+    const loadOrgDefault = async () => {
+      setLoadingOrgs(true);
+      const isIframe = window.self !== window.top;
+      const data = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+      const orgs: any[] = data && data.length > 0
+        ? data
+        : ((await organizationService.getTree()) || []);
       setOrgUnits(orgs);
-    } catch (error) {
-      console.error("Lỗi tải danh sách đơn vị:", error);
-    } finally {
+      if (orgs.length > 0 && !defaultOrgApplied.current) {
+        defaultOrgApplied.current = true;
+        const found = data && data.length > 0
+          ? data[0]
+          : null;
+        if (found) {
+          defaultOrgUnitId.current = found.id;
+          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
+        } else {
+          // lấy đơn vị của user đang đăng nhập
+          try {
+            const profileRes = await api.get('/users/me');
+            const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+            const userOrgId = profile?.orgUnitId;
+            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
+            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
+            defaultOrgUnitId.current = defaultId;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+          } catch {
+            defaultOrgUnitId.current = orgs[0].id;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+          }
+        }
+      }
+      setOrgUnitReady(true);
       setLoadingOrgs(false);
-    }
+    };
+    loadOrgDefault().catch(() => {
+      console.error('Không tải được cây đơn vị quản lý', 'Failed to load organizations');
+      setOrgUnitReady(true);
+      setLoadingOrgs(false);
+    });
   }, []);
 
   const fetchSymbols = useCallback(async () => {
@@ -2223,11 +2358,14 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
   }, []);
 
   useEffect(() => {
-    fetchData();
-    fetchOrgUnits();
     fetchSymbols();
+  }, [fetchSymbols]);
+
+  useEffect(() => {
+    if (!orgUnitReady) return;
+    fetchData();
     fetchTabCounts();
-  }, [fetchData, fetchOrgUnits, fetchSymbols, fetchTabCounts]);
+  }, [orgUnitReady, fetchData, fetchTabCounts]);
 
   const handleFilterApply = useCallback(() => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
@@ -2245,8 +2383,9 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     setInputDeviceCode("");
     setFilterDeviceName("");
     setFilterDeviceCode("");
+    const defaultOrg = defaultOrgUnitId.current;
     setFilterValues({
-      orgUnitId: "",
+      orgUnitId: defaultOrg === '__all__' ? "" : (defaultOrg || ""),
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -2760,8 +2899,11 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
                   }
                   setUploadFileList([]);
                   setCreateModalOpen(true);
-                  // Mặc định Tình trạng = 'Đang khai thác/vận hành' (1) khi mở drawer Tạo mới — người dùng có thể đổi sau đó
-                  createForm.setFieldsValue({ operationalStatus: 1 });
+                  // Mặc định Tình trạng = 'Chưa khai thác/vận hành' (0) khi mở drawer Tạo mới — người dùng có thể đổi sau đó
+                  createForm.setFieldsValue({
+                    operationalStatus: 0,
+                    orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+                  });
                   // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
                   setDeviceCodeLoading(true);
                   generateVtsAssistCode()
@@ -2792,20 +2934,21 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
             >
               <OrgUnitTreeSelect
                 organizations={orgUnitOptions}
-                placeholder="Chọn đơn vị"
+                placeholder="Chọn đơn vị..."
                 allowClear
                 showPath
                 allLabel="Tất cả"
                 treeDefaultExpandAll={false}
+                showSearch
                 value={filterValues.orgUnitId || undefined}
                 onChange={(val) =>
                   setFilterValues((prev) => ({
                     ...prev,
-                    orgUnitId: val as string,
+                    orgUnitId: (val as string) || "",
                   }))
                 }
                 loading={loadingOrgs}
-                style={{ borderRadius: radiusPill, height: 40 }}
+                style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
             </SidebarFilterField>
 
@@ -2877,16 +3020,17 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Năm đưa vào sử dụng" labelGap={spaceSm}>
-                  <Select placeholder="Chọn năm" allowClear
-                    value={filterValues.yearOfUse}
-                    onChange={(val) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        yearOfUse: val as number | undefined,
-                      }))
-                    }
-                    options={yearOfUseOptions}
-                    style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
+                  <DatePicker
+                    picker="year"
+                    {...getSidebarDatePickerProps({
+                      picker: 'year',
+                      placeholder: 'Chọn năm',
+                      format: 'YYYY',
+                      allowClear: true,
+                      value: filterValues.yearOfUse ? dayjs(String(filterValues.yearOfUse), 'YYYY') : null,
+                      onChange: (d: any) => setFilterValues((prev) => ({ ...prev, yearOfUse: d ? d.year() : undefined })),
+                    })}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Ngày cập nhật" labelGap={spaceSm}>
@@ -2983,6 +3127,13 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
             count: tabCounts["REJECTED_LEVEL2"] ?? 0,
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+          },
+          {
+            key: "DELETED",
+            label: "Đã xóa",
+            count: tabCounts["DELETED"] ?? 0,
+            color: statusCritical,
+            active: filterValues.approvalStatus === "DELETED" || filterValues.approvalStatus === "ARCHIVED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -3164,7 +3315,13 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
                         {(() => {
                           let colIndex = 0;
                           return ([
-                            { label: 'Trạng thái phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus) },
+                            {
+                              label: 'Trạng thái phê duyệt',
+                              value: (() => {
+                                const isDeleted = Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy || selectedRecord.approvalStatus === 'DELETED' || selectedRecord.approvalStatus === 'ARCHIVED');
+                                return renderApprovalBadge(isDeleted ? 'DELETED' : selectedRecord.approvalStatus);
+                              })(),
+                            },
                             { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName || null}</span> },
                             { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName || null}</span> },
                             { label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : null },
@@ -3943,6 +4100,7 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
                           <Form.Item
                             name="operationalStatus"
                             {...labelProps('Tình trạng')}
+                            initialValue={0}
                             rules={[
                               { required: true, message: "Vui lòng chọn tình trạng" },
                             ]}
@@ -4025,17 +4183,22 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
                           <Form.Item
                             name="quantity"
                             {...labelProps('Số lượng')}
+                            getValueFromEvent={getValueFromEvent5}
                             rules={[
                               { required: true, message: "Vui lòng nhập số lượng" },
-                              { type: 'number', min: 1, message: "Số lượng phải > 0" },
+                              integer5Rule,
                             ]}
+                            initialValue={1}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber
+                            <NumberInputWithCount
                               min={1}
-                              formatter={fmtInputNumber}
+                              step={1}
+                              precision={0}
+                              placeholder="Nhập số lượng..."
                               style={{ width: "100%", ...pillStyle }}
-                              placeholder="0"
+                              maxLength={5}
+                              parser={parseNumber5}
                             />
                           </Form.Item>
                         </Col>
@@ -4519,17 +4682,22 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
                           <Form.Item
                             name="quantity"
                             {...labelProps('Số lượng')}
+                            getValueFromEvent={getValueFromEvent5}
                             rules={[
                               { required: true, message: "Vui lòng nhập số lượng" },
-                              { type: 'number', min: 1, message: "Số lượng phải > 0" },
+                              integer5Rule,
                             ]}
+                            initialValue={1}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <InputNumber
+                            <NumberInputWithCount
                               min={1}
-                              formatter={fmtInputNumber}
+                              step={1}
+                              precision={0}
+                              placeholder="Nhập số lượng..."
                               style={{ width: "100%", ...pillStyle }}
-                              placeholder="0"
+                              maxLength={5}
+                              parser={parseNumber5}
                             />
                           </Form.Item>
                         </Col>
@@ -4737,20 +4905,30 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
         }}>
         <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
         <div style={{ flexShrink: 0 }}>
-        {!historyLoading && (
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
             <Input
               placeholder="Tìm kiếm nội dung thay đổi..."
               allowClear
-              value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)}
+              value={historySearchInput}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHistorySearchInput(val);
+                if (!val) setHistorySearch('');
+              }}
+              onPressEnter={() => {
+                setHistorySearch(historySearchInput.trim());
+                setHistoryReloadToken((t) => t + 1);
+              }}
               style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
             />
             <DatePicker
               placeholder="Từ ngày"
               classNames={{ popup: { root: 'history-dt-popup' } }}
               value={historyFrom ? dayjs(historyFrom) : null}
-              onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+              onChange={(d) => {
+                setHistoryFrom(d ? d.format('YYYY-MM-DD') : '');
+                setHistoryReloadToken((t) => t + 1);
+              }}
               style={{ width: 140, borderRadius: radiusPill, height: 40 }}
               format="DD/MM/YYYY"
             />
@@ -4758,31 +4936,46 @@ try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
               placeholder="Đến ngày"
               classNames={{ popup: { root: 'history-dt-popup' } }}
               value={historyTo ? dayjs(historyTo) : null}
-              onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+              onChange={(d) => {
+                setHistoryTo(d ? d.format('YYYY-MM-DD') : '');
+                setHistoryReloadToken((t) => t + 1);
+              }}
               style={{ width: 140, borderRadius: radiusPill, height: 40 }}
               format="DD/MM/YYYY"
             />
             <Button
               type="primary"
               icon={<SearchOutlined />}
-              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}
+              loading={historyLoading}
+              onClick={() => {
+                setHistorySearch(historySearchInput.trim());
+                setHistoryReloadToken((t) => t + 1);
+              }}
+              style={{
+                borderRadius: radiusPill,
+                height: 40,
+                fontSize: fontSizeMd,
+                background: actionPrimary,
+                borderColor: actionPrimary,
+              }}
             >
               Tìm kiếm
             </Button>
           </div>
-        )}
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-        {historyLoading ? (
-          <LoadingSkeleton rows={5} />
-        ) : historyRecords.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-            <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-            <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
-          </div>
-        ) : (
-          renderVtsAssistHistoryTimeline(historyRecords)
-        )}
+          {historyLoading && historyRecords.length === 0 ? (
+            <LoadingSkeleton rows={5} />
+          ) : historyRecords.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
+                {historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
+              </div>
+            </div>
+          ) : (
+            renderVtsAssistHistoryTimeline(historyRecords)
+          )}
         </div>
       </AppDrawer>
       {/* Modal bản đồ GIS — Chọn tọa độ (Thêm mới/Sửa) / Xem vị trí (Chi tiết) */}

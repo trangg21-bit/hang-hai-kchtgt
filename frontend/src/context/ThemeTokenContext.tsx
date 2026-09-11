@@ -68,7 +68,7 @@ export function ThemeTokenProvider({ tokens, theme, children }: ThemeTokenProvid
         antd tự vẽ, React không chạm được style — cũng dùng màu và font của bộ
         token này. Giá trị lấy nguyên từ file theme, ở đây không khai gì thêm.
       */}
-      <ConfigProvider theme={activeTokens?.antdTheme}>
+      <ConfigProvider locale={activeTokens?.appLocale || activeTokens?.locale} theme={activeTokens?.antdTheme}>
         {activeTokens?.themeScopedCss && <style>{activeTokens.themeScopedCss(SCOPE_CLASS)}</style>}
         <div className={SCOPE_CLASS} style={style}>
           {children}

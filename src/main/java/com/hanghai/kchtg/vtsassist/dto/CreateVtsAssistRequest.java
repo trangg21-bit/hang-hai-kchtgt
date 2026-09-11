@@ -36,6 +36,7 @@ public class CreateVtsAssistRequest {
     @Size(max = 255, message = "Model tối đa 255 ký tự")
     private String model;
 
+    @NotNull(message = "Đơn vị quản lý không được để trống")
     private UUID orgUnitId;
 
     @NotNull(message = "Đơn vị khai thác không được để trống")

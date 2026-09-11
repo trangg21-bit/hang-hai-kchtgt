@@ -20,7 +20,7 @@
  * ============================================================
  */
 import type { ReactNode } from 'react';
-import {
+import Icon, {
   DashboardOutlined, SettingOutlined, CompassOutlined, ContainerOutlined,
   BankOutlined, EnvironmentOutlined, GlobalOutlined, ApiOutlined,
   BuildOutlined, BulbOutlined, ToolOutlined, AimOutlined, ExportOutlined, SafetyOutlined,
@@ -32,6 +32,14 @@ import {
 } from '@ant-design/icons';
 
 import { landingGroupIcons } from '../themetokenchk';
+
+const RadioSvg = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 512 512" width="1em" height="1em" fill="currentColor" {...props}>
+    <path d="M448 96c35.3 0 64 28.7 64 64l0 256c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 160c0-35.3 28.7-64 64-64l246.7 0L174.4 20.3c-7-9.3-5-22.5 4.3-29.5s22.5-5 29.5 4.3L323.7 96 448 96zM176 208a112 112 0 1 0 0 224 112 112 0 1 0 0-224zm16 112a16 16 0 1 1 -32 0 16 16 0 1 1 32 0zm192-80l-64 0c-8.8 0-16 7.2-16 16s7.2 16 16 16l64 0c8.8 0 16-7.2 16-16s-7.2-16-16-16zm-64 80l64 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-64 0c-8.8 0-16 7.2-16 16s7.2 16 16 16zm64 48l-64 0c-8.8 0-16 7.2-16 16s7.2 16 16 16l64 0c8.8 0 16-7.2 16-16s-7.2-16-16-16z" />
+  </svg>
+);
+
+export const RadioIcon = (props: any) => <Icon component={RadioSvg} {...props} />;
 
 export type GroupId = 'kcht' | 'asset' | 'plan' | 'gis' | 'report' | 'admin';
 
@@ -80,6 +88,7 @@ const icons = {
   file: <FileTextOutlined />,
   pie: <PieChartOutlined />,
   radar: <RadarChartOutlined />,
+  radio: <RadioIcon />,
   plusCircle: <PlusCircleOutlined />,
   minusCircle: <MinusCircleOutlined />,
   audit: <AuditOutlined />,
@@ -135,6 +144,7 @@ const kchtTree: NavNode[] = [
       },
       { key: '/beacon-stations', route: '/beacon-stations', label: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển', icon: icons.bulb },
       { key: '/dike-revetment', route: '/dike-revetment', label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: icons.deployment },
+      { key: '/vhf', route: '/vhf', label: 'Quản lý hệ thống thông tin liên lạc VHF', icon: icons.radio },
     ],
   },
   { key: '/dry-port', route: '/dry-port', label: 'Quản lý cảng cạn', icon: icons.truck },
@@ -166,7 +176,6 @@ const kchtTree: NavNode[] = [
     icon: icons.apartment,
     children: [
       { key: '/dai-ttdh', route: '/dai-ttdh', label: 'Quản lý đài TTDH', icon: icons.aim },
-      { key: 'vhf-disabled', label: 'VHF', disabled: true, hidden: true, note: 'Chức năng đang được xây dựng', icon: icons.radar },
       { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat', icon: icons.global },
       { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat', icon: icons.safety },
       { key: '/station/lrit', route: '/station/lrit', label: 'Đài LRIT', icon: icons.compass },

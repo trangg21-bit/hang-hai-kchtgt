@@ -29,6 +29,7 @@ import {
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   textAreaStyle, colors, radiusPill,
   getRangePickerProps,
+  getSidebarDatePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -1089,12 +1090,14 @@ export function AisSystemList() {
                     <div style={filterLabelStyle}>Năm đưa vào sử dụng</div>
                     <DatePicker
                       picker="year"
-                      format="YYYY"
-                      placeholder="Chọn năm"
-                      allowClear
-                      value={filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null}
-                      onChange={(date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined }))}
-                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                      {...getSidebarDatePickerProps({
+                        picker: 'year',
+                        format: 'YYYY',
+                        placeholder: 'Chọn năm',
+                        allowClear: true,
+                        value: filterValues.commissioningYear ? dayjs(String(filterValues.commissioningYear), 'YYYY') : null,
+                        onChange: (date: any) => setFilterValues((prev) => ({ ...prev, commissioningYear: date ? date.year() : undefined })),
+                      })}
                     />
                   </div>
 

@@ -14,6 +14,7 @@ import {
   Typography,
 } from "antd";
 import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { organizationService } from "../organizationService";
 import {
   PlusOutlined,
   SearchOutlined,
@@ -104,7 +105,7 @@ const UOM_LABELS: Record<number, string> = {
 };
 
 function formatUnitOfMeasure(code: number | null | undefined): string {
-  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '—';
+  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
 }
 
 import {
@@ -141,6 +142,7 @@ import {
   outlineButtonStyle,
   requiredMarkStyle,
   statusBadgeStyle,
+  getSidebarDatePickerProps,
   icons,
   statusInfo,
   historyGroupGridStyle,
@@ -160,6 +162,19 @@ import dayjs from "dayjs";
 
 
 // ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
+export function isTransmissionDeleted(record?: Partial<TransmissionResponse> | null): boolean {
+  if (!record) return false;
+  const anyRec = record as any;
+  return Boolean(
+    record.deletedAt ||
+    record.deletedBy ||
+    anyRec.deleted_at ||
+    anyRec.deleted_by ||
+    record.approvalStatus === 'DELETED' ||
+    record.approvalStatus === 'ARCHIVED'
+  );
+}
+
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
   PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
@@ -167,6 +182,8 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp cục',
+  DELETED: 'Đã xóa',
+  ARCHIVED: 'Đã xóa',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -176,6 +193,8 @@ const APPROVAL_COLOR: Record<string, string> = {
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
+  DELETED: statusCritical,
+  ARCHIVED: statusCritical,
 };
 
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
@@ -188,7 +207,7 @@ const pillStyle: React.CSSProperties = {
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return null;
   try {
     const d = new Date(dateStr);
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -206,7 +225,10 @@ function renderTransmissionStatusBadge(b: { color: string; label: string }) {
 }
 
 /** Badge trạng thái phê duyệt 2 cấp — dùng APPROVAL_STATUS_MAP + APPROVAL_COLOR (quy chuẩn AGENTS.md) */
-function renderApprovalBadge(status: string | null | undefined) {
+function renderApprovalBadge(status: string | null | undefined, record?: Partial<TransmissionResponse> | null) {
+  if (isTransmissionDeleted(record) || status === 'DELETED' || status === 'ARCHIVED') {
+    return <span className="kcht-cell-badge" style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+  }
   if (!status) return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
   const display = APPROVAL_STATUS_MAP[status] || status;
   const color = APPROVAL_COLOR[status] || textTertiary;
@@ -302,6 +324,10 @@ const TransmissionListPage = () => {
     updatedTo: "" as string | undefined,
   });
 
+  const defaultOrgUnitId = useRef<string | undefined>(undefined);
+  const defaultOrgApplied = useRef(false);
+  const [orgUnitReady, setOrgUnitReady] = useState(false);
+
   // Tab counts for approval status filter
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [totalAll, setTotalAll] = useState(0);
@@ -313,6 +339,7 @@ const TransmissionListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
+      { key: "DELETED", status: "DELETED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -332,20 +359,20 @@ const TransmissionListPage = () => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa
     setTotalAll(
-      counts.DRAFT +
-        counts.PENDING_APPROVAL +
-        counts.APPROVED_LEVEL1 +
-        counts.APPROVED +
-        counts.REJECTED_LEVEL1 +
-        counts.REJECTED_LEVEL2
+      (counts.DRAFT ?? 0) +
+        (counts.PENDING_APPROVAL ?? 0) +
+        (counts.APPROVED_LEVEL1 ?? 0) +
+        (counts.APPROVED ?? 0) +
+        (counts.REJECTED_LEVEL1 ?? 0) +
+        (counts.REJECTED_LEVEL2 ?? 0) +
+        (counts.DELETED ?? 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
-  // Org units — danh sách đã được backend lọc theo phạm vi phân quyền
-  // (GET /common/options/org-units), hiển thị thẳng như màn /vts-system.
-  const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; parentId?: string; children?: { id: string; name: string }[] }[]>([]);
+  // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const orgUnitOptions = orgUnits;
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
@@ -353,14 +380,6 @@ const TransmissionListPage = () => {
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [, setLoadingSymbols] = useState(false);
 
-  // Year options for "Năm đưa vào sử dụng" (current year - 30 to current year)
-  const yearOfUseOptions = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    return Array.from({ length: 31 }, (_, i) => ({
-      label: String(currentYear - i),
-      value: currentYear - i,
-    }));
-  }, []);
 
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
@@ -488,7 +507,10 @@ const TransmissionListPage = () => {
       return;
     }
     createForm.resetFields();
-    createForm.setFieldsValue({ operationalStatus: 1 });
+    createForm.setFieldsValue({
+      operationalStatus: 0,
+      orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+    });
     setCreateModalOpen(true);
     void generateTransmissionCode()
       .then((code) => {
@@ -544,36 +566,57 @@ const TransmissionListPage = () => {
   const [historyTarget, setHistoryTarget] = useState<TransmissionResponse | null>(null);
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
+  const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   const historyFieldCount = useMemo(
     () => (Array.isArray(historyRecords) ? historyRecords : []).length,
     [historyRecords]
   );
 
-  const openHistory = useCallback(async (r: TransmissionResponse) => {
-    if (!hasPerm?.("transmission:history")) {
+  const openHistory = useCallback((r: TransmissionResponse) => {
+    if (!hasPerm?.("transmission:history") && !hasPerm?.("transmission:read") && !hasPerm?.("data:read")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống truyền dẫn");
       return;
     }
     setHistoryTarget(r);
     setHistoryOpen(true);
-    setHistoryLoading(true);
     setHistoryRecords([]);
+    setHistorySearchInput('');
     setHistorySearch('');
     setHistoryFrom('');
     setHistoryTo('');
-    try {
-      const list = await fetchTransmissionHistory(r.id);
-      setHistoryRecords(Array.isArray(list) ? list : []);
-    } catch {
-      toast.error('Không thể tải lịch sử');
-    } finally {
-      setHistoryLoading(false);
-    }
+    setHistoryReloadToken((t) => t + 1);
   }, [hasPerm]);
+
+  // Load history khi mở Drawer hoặc thay đổi bộ lọc tìm kiếm/ngày
+  useEffect(() => {
+    if (!historyOpen || !historyTarget) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setHistoryLoading(true);
+      try {
+        const list = await fetchTransmissionHistory(historyTarget.id, undefined, undefined, {
+          keyword: historySearch,
+          fromDate: historyFrom,
+          toDate: historyTo,
+        });
+        if (cancelled) return;
+        setHistoryRecords(Array.isArray(list) ? list : []);
+      } catch {
+        if (!cancelled) toast.error('Không thể tải lịch sử');
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }, historySearch.trim() ? 300 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [historyOpen, historyTarget, historySearch, historyFrom, historyTo, historyReloadToken]);
 
   const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
   const [detailApprovalOpen, setDetailApprovalOpen] = useState(true);
@@ -607,6 +650,49 @@ const TransmissionListPage = () => {
     build(orgUnits || []);
     return m;
   }, [orgUnits]);
+
+  // Danh mục VTS & Trạm radar cho historyFieldValue
+  const [vtsOperationCenters, setVtsOperationCenters] = useState<Array<{ id: string; name?: string }>>([]);
+  const [radarStations, setRadarStations] = useState<Array<{ id: string; stationName?: string; name?: string }>>([]);
+
+  useEffect(() => {
+    let disposed = false;
+    api.get('/common/options/vts-operation-centers')
+      .then((r) => {
+        if (disposed) return;
+        const items = r.data?.data;
+        setVtsOperationCenters(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {});
+
+    api.get('/common/options/radar-stations')
+      .then((r) => {
+        if (disposed) return;
+        const items = r.data?.data;
+        setRadarStations(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {});
+
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const vtsCenterMap = useMemo(() => {
+    const m = new Map<string, string>();
+    vtsOperationCenters.forEach((v) => {
+      if (v.id) m.set(v.id, v.name || v.id);
+    });
+    return m;
+  }, [vtsOperationCenters]);
+
+  const radarStationMap = useMemo(() => {
+    const m = new Map<string, string>();
+    radarStations.forEach((r) => {
+      if (r.id) m.set(r.id, r.stationName || r.name || r.id);
+    });
+    return m;
+  }, [radarStations]);
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
@@ -810,7 +896,10 @@ const TransmissionListPage = () => {
         dataIndex: "approvalStatus",
         width: 180,
         type: "status" as const,
-        render: (val: string) => renderApprovalBadge(val),
+        render: (val: string, record: TransmissionResponse) => {
+          const isDeleted = isTransmissionDeleted(record);
+          return renderApprovalBadge(val, isDeleted);
+        },
       },
     ];
     },
@@ -848,20 +937,37 @@ const TransmissionListPage = () => {
   function historyFieldName(fn: string): string {
     return historyFieldLabels[fn] || fn;
   }
-
   function historyFieldValue(
     fn: string,
     val: string | null,
     orgMap?: Map<string, string>,
-    symbolMap?: Map<string, string>
+    symbolMap?: Map<string, string>,
+    vtsMap?: Map<string, string>,
+    radarMap?: Map<string, string>
   ): string {
     if (!val || val === '(null)' || val === 'null') return '(trống)';
-    if (fn === 'orgUnitId' && orgMap) {
+    if ((fn === 'orgUnitId' || fn === 'Đơn vị quản lý') && orgMap) {
       const full = orgMap.get(val);
       return full ? full.split(' - ').pop() || full : val;
     }
-    if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-    if (fn === 'approvalStatus') {
+    if ((fn === 'operatingUnitId' || fn === 'Đơn vị khai thác') && orgMap) {
+      const full = orgMap.get(val);
+      return full ? full.split(' - ').pop() || full : val;
+    }
+    if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'Biểu tượng bản đồ') && symbolMap) {
+      return symbolMap.get(val) || val;
+    }
+    if (fn === 'attachedInfrastructureType' || fn === 'Loại hạ tầng' || fn === 'Thuộc loại hạ tầng') {
+      if (val === '1' || val === 'TTDH VTS') return 'TTDH VTS';
+      if (val === '2' || val === 'Trạm Radar') return 'Trạm Radar';
+      return val;
+    }
+    if (fn === 'attachedInfrastructureId' || fn === 'Thuộc hạ tầng' || fn === 'Hạ tầng phụ thuộc') {
+      if (vtsMap?.has(val)) return vtsMap.get(val)!;
+      if (radarMap?.has(val)) return radarMap.get(val)!;
+      return val;
+    }
+    if (fn === 'approvalStatus' || fn === 'Trạng thái phê duyệt') {
       // Mã legacy (dữ liệu cũ) quy đổi về mã chuẩn 7 trạng thái rồi tra nhãn dùng chung.
       const ALIAS: Record<string, string> = {
         NHAP: 'DRAFT',
@@ -879,55 +985,44 @@ const TransmissionListPage = () => {
       };
       const m: Record<string, string> = {
         DRAFT: 'Lưu tạm',
-        PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
-        APPROVED: 'Đã phê duyệt',
-        REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-        REJECTED_LEVEL2: 'Từ chối cấp cục',
+        PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+        APPROVED_LEVEL1: 'Chờ Cục duyệt',
+        APPROVED: 'Đã duyệt',
+        REJECTED_LEVEL1: 'Bị Cảng vụ trả về',
+        REJECTED_LEVEL2: 'Bị Cục trả về',
       };
       const norm = ALIAS[String(val || '').trim().toUpperCase()] || String(val || '').trim().toUpperCase();
       return m[norm] || val;
     }
-    if (fn === 'operationalStatus') {
+    if (fn === 'operationalStatus' || fn === 'Trạng thái hoạt động' || fn === 'Tình trạng hoạt động') {
       const m: Record<string, string> = {
         '0': 'Chưa khai thác/vận hành',
         '1': 'Đang khai thác/vận hành',
         '2': 'Dừng khai thác/vận hành',
-    NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-    OPERATIONAL: 'Đang khai thác/vận hành',
-    SUSPENDED: 'Dừng khai thác/vận hành',
+        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+        OPERATIONAL: 'Đang khai thác/vận hành',
+        SUSPENDED: 'Dừng khai thác/vận hành',
       };
       return m[val] || val;
     }
-    if (fn === 'unitOfMeasure') {
+    if (fn === 'unitOfMeasure' || fn === 'Đơn vị tính') {
       return formatUnitOfMeasure(Number(val));
     }
-    if (fn === 'coordinateSystem') {
-      const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
+      const m: Record<string, string> = { '1': 'WGS 84', '2': 'VN-2000', '4326': 'WGS 84' };
       return m[String(val)] || val;
     }
+    if (fn === 'objectType' || fn === 'geometryType' || fn === 'Loại đối tượng' || fn === 'Loại đối tượng GIS') {
+      if (val === 'POINT' || val === '1') return 'Đối tượng điểm';
+      if (val === 'LINE' || val === 'LINESTRING' || val === '2') return 'Đối tượng đường';
+      if (val === 'POLYGON' || val === '3') return 'Đối tượng vùng';
+      return val;
+    }
     if (fn === 'changedAt' || fn === 'createdAt') {
-  try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
+      try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     }
     return val;
   }
-
-  const historyTimestamp = (item: any): string =>
-    item.approvedDate || item.changedAt || item.createdAt || '';
-
-  const historyField = (item: any): string =>
-    item.changedField || item.fieldName || '';
-
-  const historyOldValue = (item: any): string | null =>
-    item.previousValue ?? item.oldValue ?? null;
-
-  const historyNewValue = (item: any): string | null =>
-    item.newValue ?? null;
-
-  const historyActor = (item: any): string => {
-    const raw = item?.approvedBy || item?.changedBy || '';
-    return raw || '—';
-  };
 
   const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
     const item = group.items?.[0] || {};
@@ -954,29 +1049,19 @@ const TransmissionListPage = () => {
     if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
       return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
     }
-    if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
+    if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc') || rawReason.includes('cục phê duyệt') || rawReason.includes('cuc phe duyet')) {
       return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
     }
     if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
       return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
     }
-    if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
+    if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc') || rawReason.includes('cục từ chối') || rawReason.includes('cuc tu choi')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
 
-    const approvalChange = changes.find((c: any) => {
-      const k = (c.field || '').toLowerCase();
-      return k === 'approvalstatus' || k === 'trang thai phe duyet';
-    });
-
-    if (approvalChange) {
-      const nv = String(approvalChange.newValue || '').toLowerCase();
-      if (nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
-        return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-      }
-      if (nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
-        return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-      }
+    const stChange = changes.find((c: any) => c.field === 'Trạng thái' || c.field === 'approvalStatus');
+    if (stChange) {
+      const nv = String(stChange.newValue || '').toLowerCase();
       if (nv.includes('approved_level1') || nv.includes('cuc duyet') || nv === 'cho cuc duyet') {
         return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
       }
@@ -1010,15 +1095,6 @@ const TransmissionListPage = () => {
     return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
   };
 
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'deviceCode', 'deviceName', 'manufacturer', 'model',
-    'quantity', 'operatingUnitId', 'provinceName', 'detailedLocation',
-    'attachedInfrastructureType', 'attachedInfrastructureId',
-    'unitOfMeasure', 'yearOfUse', 'operationalStatus',
-    'specifications', 'maintenanceInformation', 'note',
-    'objectType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
-  ];
-
   const renderTransmissionHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...records].sort(
@@ -1035,14 +1111,14 @@ const TransmissionListPage = () => {
         const ov = (historyOldValue(r) || '').toLowerCase();
         const nv = (historyNewValue(r) || '').toLowerCase();
         const lb = historyFieldName(historyField(r) || '').toLowerCase();
-        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap).toLowerCase();
-        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap).toLowerCase();
+        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap).toLowerCase();
+        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap).toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
       }
-      if (historyDateFrom || historyDateTo) {
+      if (historyFrom || historyTo) {
         const cd = historyTimestamp(r);
-        if (historyDateFrom && cd.substring(0, 10) < historyDateFrom) continue;
-        if (historyDateTo && cd.substring(0, 10) > historyDateTo) continue;
+        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
+        if (historyTo && cd.substring(0, 10) > historyTo) continue;
       }
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
@@ -1060,7 +1136,7 @@ const TransmissionListPage = () => {
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
           <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-            {q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
+            {q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
           </div>
         </div>
       );
@@ -1078,9 +1154,10 @@ const TransmissionListPage = () => {
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
           const unitName =
-            (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) ||
+            (rec0.orgUnitName || rec0.unitName) ||
+            (orgName ? (orgName.split(' - ').pop() || orgName) : undefined) ||
             selectedRecord?.orgUnitName ||
-            '—';
+            'Cục Hàng hải Việt Nam';
           const changes = deduplicateAttachmentHistoryChanges(
             g.items.flatMap((item: any) => {
               const fn = historyField(item);
@@ -1121,7 +1198,7 @@ const TransmissionListPage = () => {
             if (/^-?\d+(\.\d+)?$/.test(t)) {
               return fmtNum(t);
             }
-            return historyFieldValue(fn, raw, orgMap, symbolMap);
+            return historyFieldValue(fn, raw, orgMap, symbolMap, vtsCenterMap, radarStationMap);
           };
 
           if (orderedChanges.length === 0) return null;
@@ -1133,7 +1210,7 @@ const TransmissionListPage = () => {
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
-                    {g.ts ? fmtTime(g.ts) : '—'}
+                    {g.ts ? fmtTime(g.ts) : null}
                   </Typography.Text>
                   <span style={{ flexShrink: 0 }}>
                     <span
@@ -1154,7 +1231,7 @@ const TransmissionListPage = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
                   <Typography.Text style={historyMetaRowStyle}>
-                    Người cập nhật: {g.actor || '—'}
+                    Người cập nhật: {g.actor || null}
                   </Typography.Text>
                   <Typography.Text style={historyMetaRowStyle}>
                     Đơn vị: {unitName}
@@ -1187,20 +1264,20 @@ const TransmissionListPage = () => {
                       };
                       return isCreate ? (
                         <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                          <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                          <span title={nv ?? '—'} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
-                            {renderCell(change.newValue) ?? (nv ?? '—')}
+                          <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : null}</div>
+                          <span title={nv ?? null} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                            {renderCell(change.newValue) ?? (nv ?? null)}
                           </span>
                         </div>
                       ) : (
                         <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                          <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                          <span title={ov ?? '—'} style={{ ...historyOldValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
-                            {renderCell(change.oldValue) ?? (ov ?? '—')}
+                          <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : null}</div>
+                          <span title={ov ?? null} style={{ ...historyOldValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                            {renderCell(change.oldValue) ?? (ov ?? null)}
                           </span>
                           <span style={historyArrowStyle}>→</span>
-                          <span title={nv ?? '—'} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
-                            {renderCell(change.newValue) ?? (nv ?? '—')}
+                          <span title={nv ?? null} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                            {renderCell(change.newValue) ?? (nv ?? null)}
                           </span>
                         </div>
                       );
@@ -1265,6 +1342,30 @@ const TransmissionListPage = () => {
   const rowActions = useCallback(
     (record: TransmissionResponse) => {
       const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
+
+      // Nếu bản ghi đã xóa, chỉ còn Xem chi tiết và Lịch sử
+      if (isTransmissionDeleted(record)) {
+        if (hasPerm?.("transmission:read")) {
+          actions.push({
+            key: "view",
+            label: "Xem chi tiết",
+            icon: icons.view,
+            onClick: () => {
+              setSelectedRecord(record);
+              setDetailDrawerOpen(true);
+            },
+          });
+        }
+        if (hasPerm?.("transmission:history") || hasPerm?.("transmission:read") || hasPerm?.("data:read")) {
+          actions.push({
+            key: "history",
+            label: "Lịch sử",
+            icon: icons.history,
+            onClick: () => openHistory(record),
+          });
+        }
+        return actions;
+      }
 
       if (hasPerm?.("transmission:read")) {
         actions.push({
@@ -1432,23 +1533,48 @@ const TransmissionListPage = () => {
     }
   }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
-  const fetchOrgUnits = useCallback(async () => {
-    setLoadingOrgs(true);
-    try {
-      const res = await api.get("/common/options/org-units");
-      const items = res.data?.data;
-      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
-        id: String(o.id),
-        name: o.name || "Đơn vị",
-        code: o.code || undefined,
-        parentId: o.parentId ? String(o.parentId) : undefined,
-      }));
+  // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
+  useEffect(() => {
+    const loadOrgDefault = async () => {
+      setLoadingOrgs(true);
+      const isIframe = window.self !== window.top;
+      const data = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+      const orgs: any[] = data && data.length > 0
+        ? data
+        : ((await organizationService.getTree()) || []);
       setOrgUnits(orgs);
-    } catch (error) {
-      console.error("Lỗi tải danh sách đơn vị:", error);
-    } finally {
+      if (orgs.length > 0 && !defaultOrgApplied.current) {
+        defaultOrgApplied.current = true;
+        const found = data && data.length > 0
+          ? data[0]
+          : null;
+        if (found) {
+          defaultOrgUnitId.current = found.id;
+          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
+        } else {
+          // lấy đơn vị của user đang đăng nhập
+          try {
+            const profileRes = await api.get('/users/me');
+            const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+            const userOrgId = profile?.orgUnitId;
+            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
+            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
+            defaultOrgUnitId.current = defaultId;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+          } catch {
+            defaultOrgUnitId.current = orgs[0].id;
+            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+          }
+        }
+      }
+      setOrgUnitReady(true);
       setLoadingOrgs(false);
-    }
+    };
+    loadOrgDefault().catch(() => {
+      console.error('Không tải được cây đơn vị quản lý', 'Failed to load organizations');
+      setOrgUnitReady(true);
+      setLoadingOrgs(false);
+    });
   }, []);
 
   const fetchSymbols = useCallback(async () => {
@@ -1465,11 +1591,14 @@ const TransmissionListPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchData();
-    fetchOrgUnits();
     fetchSymbols();
+  }, [fetchSymbols]);
+
+  useEffect(() => {
+    if (!orgUnitReady) return;
+    fetchData();
     fetchTabCounts();
-  }, [fetchData, fetchOrgUnits, fetchSymbols, fetchTabCounts]);
+  }, [orgUnitReady, fetchData, fetchTabCounts]);
 
   const handleFilterApply = useCallback(() => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
@@ -1487,8 +1616,9 @@ const TransmissionListPage = () => {
     setInputDeviceCode("");
     setFilterDeviceName("");
     setFilterDeviceCode("");
+    const defaultOrg = defaultOrgUnitId.current;
     setFilterValues({
-      orgUnitId: "",
+      orgUnitId: defaultOrg === '__all__' ? "" : (defaultOrg || ""),
       operationalStatus: undefined,
       approvalStatus: "",
       province: "",
@@ -1597,7 +1727,7 @@ const TransmissionListPage = () => {
           Array.isArray(list)
             ? list.map((a: any) => ({
                 id: String(a.id),
-                fileName: a.fileName || a.name || '—',
+                fileName: a.fileName || a.name || null,
                 fileSize: a.fileSize,
                 uploadedByName: a.uploadedByName || a.uploadedBy,
                 uploadedDate: a.uploadedDate || a.createdAt,
@@ -1909,20 +2039,21 @@ const TransmissionListPage = () => {
             >
               <OrgUnitTreeSelect
                 organizations={orgUnitOptions}
-                placeholder="Chọn đơn vị"
+                placeholder="Chọn đơn vị..."
                 allowClear
                 showPath
                 allLabel="Tất cả"
                 treeDefaultExpandAll={false}
+                showSearch
                 value={filterValues.orgUnitId || undefined}
                 onChange={(val) =>
                   setFilterValues((prev) => ({
                     ...prev,
-                    orgUnitId: val as string,
+                    orgUnitId: (val as string) || "",
                   }))
                 }
                 loading={loadingOrgs}
-                style={{ borderRadius: radiusPill, height: 40 }}
+                style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
             </SidebarFilterField>
 
@@ -1994,16 +2125,17 @@ const TransmissionListPage = () => {
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Năm đưa vào sử dụng" labelGap={spaceSm}>
-                  <Select placeholder="Chọn năm" allowClear
-                    value={filterValues.yearOfUse}
-                    onChange={(val) =>
-                      setFilterValues((prev) => ({
-                        ...prev,
-                        yearOfUse: val as number | undefined,
-                      }))
-                    }
-                    options={yearOfUseOptions}
-                    style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
+                  <DatePicker
+                    picker="year"
+                    {...getSidebarDatePickerProps({
+                      picker: 'year',
+                      placeholder: 'Chọn năm',
+                      format: 'YYYY',
+                      allowClear: true,
+                      value: filterValues.yearOfUse ? dayjs(String(filterValues.yearOfUse), 'YYYY') : null,
+                      onChange: (d: any) => setFilterValues((prev) => ({ ...prev, yearOfUse: d ? d.year() : undefined })),
+                    })}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Ngày cập nhật" labelGap={spaceSm}>
@@ -2100,6 +2232,13 @@ const TransmissionListPage = () => {
             count: tabCounts["REJECTED_LEVEL2"] ?? 0,
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+          },
+          {
+            key: "DELETED",
+            label: "Đã xóa",
+            count: tabCounts["DELETED"] ?? 0,
+            color: statusCritical,
+            active: filterValues.approvalStatus === "DELETED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -2309,7 +2448,7 @@ const TransmissionListPage = () => {
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
                             <span className="chk-detail-value">
-                              {renderApprovalBadge(selectedRecord.approvalStatus)}
+                              {renderApprovalBadge(selectedRecord.approvalStatus, selectedRecord)}
                             </span>
                           </div>
                           <div className="chk-detail-row">
@@ -3058,7 +3197,7 @@ const TransmissionListPage = () => {
         destroyOnClose
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 1 }}>
+        <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 0 }}>
           <TransmissionForm
             ref={createFormRef}
             form={createForm}
@@ -3241,15 +3380,22 @@ const TransmissionListPage = () => {
               <Input
                 placeholder="Tìm kiếm nội dung thay đổi..."
                 allowClear
-                value={historySearch}
-                onChange={(e) => setHistorySearch(e.target.value)}
+                value={historySearchInput}
+                onChange={(e) => setHistorySearchInput(e.target.value)}
+                onPressEnter={() => {
+                  setHistorySearch(historySearchInput);
+                  setHistoryReloadToken((t) => t + 1);
+                }}
                 style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
               />
               <DatePicker
                 placeholder="Từ ngày"
                 classNames={{ popup: { root: 'history-dt-popup' } }}
                 value={historyFrom ? dayjs(historyFrom) : null}
-                onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                onChange={(d) => {
+                  setHistoryFrom(d ? d.format('YYYY-MM-DD') : '');
+                  setHistoryReloadToken((t) => t + 1);
+                }}
                 style={{ width: 140, borderRadius: radiusPill, height: 40 }}
                 format="DD/MM/YYYY"
               />
@@ -3257,13 +3403,20 @@ const TransmissionListPage = () => {
                 placeholder="Đến ngày"
                 classNames={{ popup: { root: 'history-dt-popup' } }}
                 value={historyTo ? dayjs(historyTo) : null}
-                onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                onChange={(d) => {
+                  setHistoryTo(d ? d.format('YYYY-MM-DD') : '');
+                  setHistoryReloadToken((t) => t + 1);
+                }}
                 style={{ width: 140, borderRadius: radiusPill, height: 40 }}
                 format="DD/MM/YYYY"
               />
               <Button
                 type="primary"
                 icon={<SearchOutlined />}
+                onClick={() => {
+                  setHistorySearch(historySearchInput);
+                  setHistoryReloadToken((t) => t + 1);
+                }}
                 style={{
                   borderRadius: radiusPill,
                   height: 40,

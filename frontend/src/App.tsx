@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, App as AntApp, theme } from 'antd';
 import { metronicTheme } from './theme';
-import viVN from 'antd/locale/vi_VN';
+import { appLocale } from './themetokenchk';
 import { setStaticMessage, setStaticModal } from './components/ToastNotification';
 import { useAuthStore } from './store/authStore';
 import AppLayout from './components/AppLayout';
@@ -62,6 +62,7 @@ const TransferAreaList = lazy(() => import('./pages/transfer-area/TransferAreaLi
 const StormShelterList = lazy(() => import('./pages/storm-shelter/StormShelterListPage'));
 const BuoyBerthList = lazy(() => import('./pages/buoy-berth/BuoyBerthListPage'));
 const DaiTtdhList = lazy(() => import('./pages/dai-ttdh/DaiTtdhListPage'));
+const VhfListPage = lazy(() => import('./services/vhf/VhfListPage'));
 const ShipRepairYardList = lazy(() => import('./pages/ship-repair-yard/ShipRepairYardListPage'));
 
 const PierListPage = lazy(() => import('./pages/port/PierListPage'));
@@ -131,7 +132,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ConfigProvider
-        locale={viVN}
+        locale={appLocale}
         theme={{
           algorithm: theme.defaultAlgorithm,
           ...metronicTheme,
@@ -233,6 +234,7 @@ export default function App() {
                 <Route path="/buoy-berth" element={<PermissionGuard permission="buoyberth:read"><BuoyBerthList /></PermissionGuard>} />
 
                 <Route path="/dai-ttdh" element={<PermissionGuard permission="daittdh:read"><DaiTtdhList /></PermissionGuard>} />
+                <Route path="/vhf" element={<PermissionGuard permission={['vhf:read', 'daittdh:read', 'specialstation:read', 'data:read']}><VhfListPage /></PermissionGuard>} />
 
                 <Route path="/ship-repair-yard" element={<PermissionGuard permission="shiprepairyard:read"><ShipRepairYardList /></PermissionGuard>} />
 

@@ -66,6 +66,9 @@ public class RadarStationResponse {
     private UUID updatedBy;
     private String updatedByName;
     private LocalDateTime updatedDate;
+    private UUID deletedBy;
+    private String deletedByName;
+    private LocalDateTime deletedAt;
     private List<RadarStationAttachmentResponse> attachments;
 
     private UUID spatialId;

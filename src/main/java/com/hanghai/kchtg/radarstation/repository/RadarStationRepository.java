@@ -31,10 +31,19 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
 
     @Query("""
         SELECT t FROM RadarStation t
-        WHERE t.deletedAt IS NULL
-          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
+        WHERE (
+            (:deletedOnly = true AND (t.deletedAt IS NOT NULL OR t.deletedBy IS NOT NULL))
+            OR
+            (:deletedOnly = false AND :approvalStatus IS NULL)
+            OR
+            (:deletedOnly = false AND :approvalStatus IS NOT NULL AND t.deletedAt IS NULL AND t.deletedBy IS NULL AND (
+                t.approvalStatus = :approvalStatus
+                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
+                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)
+            ))
+        )
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:seaportId IS NULL OR t.seaportId = :seaportId)
           AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
           AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
@@ -48,10 +57,6 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
           AND (:code IS NULL OR CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
           AND (:stationName IS NULL OR CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:stationName AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED))
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) <= :updatedTo)
@@ -60,7 +65,6 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
     Page<RadarStation> searchPaged(
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
-        @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
         @Param("stationName") String stationName,
         @Param("code") String code,
@@ -71,6 +75,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") String conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
+        @Param("deletedOnly") boolean deletedOnly,
         @Param("updatedBy") UUID updatedBy,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo,
@@ -79,10 +84,8 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
 
     @Query("""
         SELECT t.approvalStatus, COUNT(t) FROM RadarStation t
-        WHERE t.deletedAt IS NULL
-          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
+        WHERE t.deletedAt IS NULL AND t.deletedBy IS NULL
           AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR (
                 CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
@@ -96,7 +99,27 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
     List<Object[]> countByApprovalStatus(
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
-        @Param("orgUnitId") UUID orgUnitId,
+        @Param("keyword") String keyword,
+        @Param("stationName") String stationName,
+        @Param("conditionStatus") String conditionStatus
+    );
+
+    @Query("""
+        SELECT COUNT(t) FROM RadarStation t
+        WHERE (t.deletedAt IS NOT NULL OR t.deletedBy IS NOT NULL)
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (CAST(:keyword AS string) IS NULL OR (
+                CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:keyword AS string) OR
+                CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+                CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string)
+              ))
+          AND (:stationName IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:stationName AS string))
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+    """)
+    long countDeleted(
+        @Param("scopeEnabled") boolean scopeEnabled,
+        @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("keyword") String keyword,
         @Param("stationName") String stationName,
         @Param("conditionStatus") String conditionStatus
