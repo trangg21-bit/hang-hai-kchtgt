@@ -177,10 +177,32 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
     [config, currentValues, filterList, onChange]
   );
 
-  // Xử lý tìm kiếm
+  // Tự động trim tất cả các trường string khi tìm kiếm
+  const trimStringValues = useCallback((vals: T): T => {
+    const next = { ...vals } as Record<string, unknown>;
+    let changed = false;
+    Object.keys(next).forEach((k) => {
+      const v = next[k];
+      if (typeof v === 'string') {
+        const trimmed = v.trim();
+        if (trimmed !== v) {
+          next[k] = trimmed;
+          changed = true;
+        }
+      }
+    });
+    return changed ? (next as T) : vals;
+  }, []);
+
+  // Xử lý tìm kiếm (mặc định tự động trim toàn bộ chuỗi)
   const handleSearch = useCallback(() => {
-    searchCallback?.(currentValues);
-  }, [currentValues, searchCallback]);
+    const trimmedValues = trimStringValues(currentValues);
+    if (trimmedValues !== currentValues) {
+      setDraftValues(trimmedValues);
+      onChange?.(trimmedValues);
+    }
+    searchCallback?.(trimmedValues);
+  }, [currentValues, onChange, searchCallback, trimStringValues]);
 
   // Xử lý làm mới
   const handleReset = useCallback(() => {
@@ -207,14 +229,14 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
   useImperativeHandle(
     ref,
     () => ({
-      getValues: () => currentValues,
+      getValues: () => trimStringValues(currentValues),
       setValues: (values: Partial<T>) => {
         setDraftValues((prev) => ({ ...prev, ...values }));
       },
       reset: handleReset,
       submit: handleSearch,
     }),
-    [currentValues, handleReset, handleSearch]
+    [currentValues, handleReset, handleSearch, trimStringValues]
   );
 
   // Render từng trường lọc
@@ -278,10 +300,30 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
           <Input
             value={(value as string) ?? ''}
             onChange={(e) => handleFieldChange(key, e.target.value)}
+            onBlur={(e) => {
+              const rawVal = e.target.value;
+              if (typeof rawVal === 'string') {
+                const trimmed = rawVal.trim();
+                if (trimmed !== rawVal) {
+                  handleFieldChange(key, trimmed);
+                }
+              }
+              const inputProps = filter.inputProps as React.ComponentProps<typeof Input> | undefined;
+              inputProps?.onBlur?.(e);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
+                const rawVal = (e.target as HTMLInputElement).value;
+                if (typeof rawVal === 'string') {
+                  const trimmed = rawVal.trim();
+                  if (trimmed !== rawVal) {
+                    handleFieldChange(key, trimmed);
+                  }
+                }
                 handleSearch();
               }
+              const inputProps = filter.inputProps as React.ComponentProps<typeof Input> | undefined;
+              inputProps?.onKeyDown?.(e);
             }}
             placeholder={
               (filter.placeholder as string) || `Tìm theo ${filter.label.toLowerCase()}`
