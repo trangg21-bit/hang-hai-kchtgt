@@ -438,8 +438,9 @@ function PortTerminalAssetList({
             cleanPath = `/${cleanPath}`;
           }
           const res = await api.get(cleanPath, { responseType: "blob" });
-          const contentType =
-            res.headers?.["content-type"] || "application/octet-stream";
+          const contentType = String(
+            res.headers?.["content-type"] || "application/octet-stream",
+          );
           const blob = new Blob([res.data], { type: contentType });
           triggerBlobDownload(blob, fileName || "tai-lieu");
           toast.success(`Đã tải xuống tệp: ${fileName}`);
