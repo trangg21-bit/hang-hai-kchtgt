@@ -51,12 +51,18 @@ public class CoastalStationCospasSarsatController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Get a Cospas-Sarsat station by ID")
-    public ResponseEntity<CoastalStationCospasSarsatResponse> getStationById(@PathVariable UUID id) {
-        CoastalStationCospasSarsat entity = service.getStationById(id);
-        CoastalStationCospasSarsatResponse response = service.buildResponse(entity);
-        return ResponseEntity.ok(response);
+    @GetMapping({"", "/"})
+    @Operation(summary = "Get all active Cospas-Sarsat stations (root)")
+    public ResponseEntity<List<CoastalStationCospasSarsat>> getAllStationsRoot() {
+        List<CoastalStationCospasSarsat> stations = service.getAllStations();
+        return ResponseEntity.ok(stations);
+    }
+
+    @GetMapping("/options")
+    @Operation(summary = "Get Cospas-Sarsat stations for dropdown options")
+    public ResponseEntity<List<CoastalStationCospasSarsatResponse>> getOptions(
+            @RequestParam(required = false) UUID orgUnitId) {
+        return ResponseEntity.ok(service.getOptions(orgUnitId));
     }
 
     @GetMapping("/list")
@@ -64,6 +70,14 @@ public class CoastalStationCospasSarsatController {
     public ResponseEntity<List<CoastalStationCospasSarsat>> getAllStations() {
         List<CoastalStationCospasSarsat> stations = service.getAllStations();
         return ResponseEntity.ok(stations);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a Cospas-Sarsat station by ID")
+    public ResponseEntity<CoastalStationCospasSarsatResponse> getStationById(@PathVariable UUID id) {
+        CoastalStationCospasSarsat entity = service.getStationById(id);
+        CoastalStationCospasSarsatResponse response = service.buildResponse(entity);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/search")

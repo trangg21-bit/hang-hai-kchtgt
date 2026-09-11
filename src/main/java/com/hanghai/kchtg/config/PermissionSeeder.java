@@ -834,6 +834,14 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Kiểm kê chi tiết hiện trạng tài sản kết cấu hạ tầng");
                 seedPermission(definitions, "infraasset", "manage", "Quản lý tài sản KCHT",
                                 "Quản trị danh mục và hồ sơ tài sản kết cấu hạ tầng");
+                seedPermission(definitions, "infraasset", "read", "Xem tài sản KCHT",
+                                "Tra cứu danh mục và hồ sơ tài sản kết cấu hạ tầng");
+                seedPermission(definitions, "infraasset", "create", "Thêm tài sản KCHT",
+                                "Tạo mới hồ sơ tài sản kết cấu hạ tầng");
+                seedPermission(definitions, "infraasset", "update", "Cập nhật tài sản KCHT",
+                                "Chỉnh sửa hồ sơ tài sản kết cấu hạ tầng");
+                seedPermission(definitions, "infraasset", "delete", "Xóa tài sản KCHT",
+                                "Xóa hồ sơ tài sản kết cấu hạ tầng");
                 seedPermission(definitions, "assetdecrease", "manage", "Quản lý giảm tài sản",
                                 "Lập và xử lý hồ sơ giảm/thanh lý tài sản");
                 seedPermission(definitions, "assetincrease", "manage", "Quản lý tăng tài sản",

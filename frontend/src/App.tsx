@@ -101,7 +101,12 @@ const TransmissionAssetList = lazy(() => import('./pages/transmissionasset/Trans
 const VtsAssistAssetList = lazy(() => import('./pages/vtsassistasset/VtsAssistAssetList'));
 const VhfAssetList = lazy(() => import('./pages/vhfasset/VhfAssetList'));
 const DaiTtdhAssetList = lazy(() => import('./pages/daittdhasset/DaiTtdhAssetList'));
-const InmarsatAssetList = lazy(() => import('./pages/inmarsatasset/InmarsatAssetList'));
+const DryPortAssetList = lazy(() => import('./pages/assetmovement/DryPortAssetList'));
+const LritAssetList = lazy(() => import('./pages/assetmovement/LritAssetList'));
+const TtdhAssetList = lazy(() => import('./pages/assetmovement/TtdhAssetList'));
+const InmarsatAssetList = lazy(() => import('./pages/assetmovement/InmarsatAssetList'));
+const CospasSarsatAssetList = lazy(() => import('./pages/assetmovement/CospasSarsatAssetList'));
+const TtxlttAssetList = lazy(() => import('./pages/assetmovement/TtxlttAssetList'));
 const TransferAreaAssetList = lazy(() => import('./pages/assetmovement/TransferAreaAssetList'));
 const StormShelterAssetList = lazy(() => import('./pages/assetmovement/StormShelterAssetList'));
 const BuoyBerthAssetList = lazy(() => import('./pages/assetmovement/BuoyBerthAssetList'));
@@ -308,11 +313,21 @@ export default function App() {
                 <Route path="/asset/vhf" element={<PermissionGuard permission="infraasset:manage"><VhfAssetList /></PermissionGuard>} />
                 <Route path="/asset/dai-ttdh" element={<PermissionGuard permission="infraasset:manage"><DaiTtdhAssetList /></PermissionGuard>} />
                 <Route path="/asset/inmarsat" element={<PermissionGuard permission="infraasset:manage"><InmarsatAssetList /></PermissionGuard>} />
+<<<<<<< HEAD
+                <Route path="/asset/cang-can" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'dryport:read', 'data:read']}><DryPortAssetList /></PermissionGuard>} />
+                <Route path="/asset/dry-port" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'dryport:read', 'data:read']}><DryPortAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttdh" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'daittdh:read', 'coastalstation:read', 'data:read']}><TtdhAssetList /></PermissionGuard>} />
+                <Route path="/asset/inmarsat" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationinmarsat:read', 'coastalstation:read', 'data:read']}><InmarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/lrit" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'coastalstationhaiphong:read', 'coastalstation:read', 'data:read']}><TtxlttAssetList /></PermissionGuard>} />
+=======
                 <Route path="/asset/vts-system" element={<PermissionGuard permission="infraasset:manage"><VtsSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/radar-station" element={<PermissionGuard permission="infraasset:manage"><RadarStationAssetList /></PermissionGuard>} />
                 <Route path="/asset/ais-system" element={<PermissionGuard permission="infraasset:manage"><AisSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/cctv-system" element={<PermissionGuard permission="infraasset:manage"><CctvSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/scada-system" element={<PermissionGuard permission="infraasset:manage"><ScadaSystemAssetList /></PermissionGuard>} />
+>>>>>>> main
                 <Route path="/asset/transfer-area" element={<PermissionGuard permission="infraasset:manage"><TransferAreaAssetList /></PermissionGuard>} />
                 <Route path="/asset/storm-shelter" element={<PermissionGuard permission="infraasset:manage"><StormShelterAssetList /></PermissionGuard>} />
                 <Route path="/asset/buoy-berth" element={<PermissionGuard permission="infraasset:manage"><BuoyBerthAssetList /></PermissionGuard>} />

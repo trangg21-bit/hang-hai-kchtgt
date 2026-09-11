@@ -38,4 +38,7 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
     List<CoastalStationCospasSarsat> searchGis(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
+
+    @Query("SELECT c FROM CoastalStationCospasSarsat c WHERE c.deletedAt IS NULL AND (:orgUnitId IS NULL OR c.unitId = :orgUnitId) ORDER BY c.name ASC")
+    List<CoastalStationCospasSarsat> findOptions(@Param("orgUnitId") UUID orgUnitId);
 }

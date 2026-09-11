@@ -201,6 +201,11 @@ public class CoastalStationCospasSarsatService {
         return repository.findAllActive();
     }
 
+    public List<CoastalStationCospasSarsatResponse> getOptions(UUID orgUnitId) {
+        List<CoastalStationCospasSarsat> list = repository.findOptions(orgUnitId);
+        return list.stream().map(this::buildResponse).toList();
+    }
+
     public List<CoastalStationCospasSarsat> searchStations(String keyword) {
         return repository.search(keyword);
     }

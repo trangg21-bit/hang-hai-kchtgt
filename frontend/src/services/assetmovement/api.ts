@@ -35,6 +35,12 @@ import type {
   ChannelAssetFilters,
   ChannelAsset,
   ChannelAssetPayload,
+  StationAsset,
+  StationAssetFilters,
+  StationAssetPayload,
+  DryPortAsset,
+  DryPortAssetFilters,
+  DryPortAssetPayload,
 } from "./types";
 
 // ==========================================
@@ -685,7 +691,106 @@ export async function deleteChannelAsset(id: string): Promise<void> {
 }
 
 // ==========================================
-// 10. File đính kèm tài sản KCHT (Attachments)
+// 9. Tài sản trạm bờ (LRIT, TTDH, Inmarsat, Cospas-Sarsat, TTXLTT)
+// ==========================================
+export async function fetchStationAssets(
+  params: StationAssetFilters,
+  assetType: InfrastructureAssetType = "LRIT_STATION",
+): Promise<PageResponse<StationAsset>> {
+  const sp = new URLSearchParams();
+  const merged: Record<string, unknown> = {
+    ...params,
+    assetType,
+  };
+  Object.entries(merged).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") sp.set(key, String(value));
+  });
+  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  return res.data.data;
+}
+
+export async function fetchStationAsset(id: string): Promise<StationAsset> {
+  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  return res.data.data;
+}
+
+export async function createStationAsset(
+  payload: StationAssetPayload,
+  assetType: InfrastructureAssetType = "LRIT_STATION",
+): Promise<StationAsset> {
+  const res = await api.post("/v1/asset/infra-assets", {
+    ...payload,
+    assetType,
+  });
+  return res.data.data;
+}
+
+export async function updateStationAsset(
+  id: string,
+  payload: StationAssetPayload,
+  assetType: InfrastructureAssetType = "LRIT_STATION",
+): Promise<StationAsset> {
+  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+    ...payload,
+    assetType,
+  });
+  return res.data.data;
+}
+
+export async function deleteStationAsset(id: string): Promise<void> {
+  await api.delete(`/v1/asset/infra-assets/${id}`);
+}
+
+// ==========================================
+// 10. Tài sản cảng cạn
+// ==========================================
+export async function fetchDryPortAssets(
+  params: DryPortAssetFilters,
+): Promise<PageResponse<DryPortAsset>> {
+  const sp = new URLSearchParams();
+  const merged: Record<string, unknown> = {
+    ...params,
+    assetType: "DRY_PORT",
+  };
+  Object.entries(merged).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") sp.set(key, String(value));
+  });
+  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  return res.data.data;
+}
+
+export async function fetchDryPortAsset(id: string): Promise<DryPortAsset> {
+  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  return res.data.data;
+}
+
+export async function createDryPortAsset(
+  payload: DryPortAssetPayload,
+): Promise<DryPortAsset> {
+  const res = await api.post("/v1/asset/infra-assets", {
+    ...payload,
+    assetType: "DRY_PORT",
+  });
+  return res.data.data;
+}
+
+export async function updateDryPortAsset(
+  id: string,
+  payload: DryPortAssetPayload,
+): Promise<DryPortAsset> {
+  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+    ...payload,
+    assetType: "DRY_PORT",
+  });
+  return res.data.data;
+}
+
+export async function deleteDryPortAsset(id: string): Promise<void> {
+  await api.delete(`/v1/asset/infra-assets/${id}`);
+}
+
+// ==========================================
+// 11. File đính kèm tài sản KCHT (Attachments)
 // ==========================================
 export interface InfraAssetAttachmentResponse {
   id: string;

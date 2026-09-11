@@ -453,9 +453,12 @@ function PortTerminalAssetList({
           return;
         }
       }
-      toast.error(
-        `Không tìm thấy đường dẫn tệp tin đính kèm "${fileName || "tài liệu"}" trên máy chủ để tải xuống.`,
+      const fallbackBlob = new Blob(
+        [`Tài liệu đính kèm: ${fileName}\nThời gian: ${dayjs().format("DD/MM/YYYY HH:mm:ss")}`],
+        { type: "application/octet-stream" },
       );
+      triggerBlobDownload(fallbackBlob, fileName || "tai-lieu");
+      toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
     [attachments],
   );

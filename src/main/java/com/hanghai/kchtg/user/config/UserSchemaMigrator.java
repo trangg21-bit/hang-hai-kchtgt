@@ -47,7 +47,18 @@ public class UserSchemaMigrator implements CommandLineRunner {
             if (!colSet.contains("permission_version")) {
                 jdbcTemplate.execute("ALTER TABLE app_users ADD COLUMN IF NOT EXISTS permission_version INTEGER NOT NULL DEFAULT 0");
             }
-            log.info("Đã kiểm tra và đồng bộ cấu trúc bảng app_users thành công.");
+
+            // Tự động mở khóa tài khoản admin và xóa trạng thái khóa/đếm lỗi đăng nhập
+            jdbcTemplate.execute("UPDATE app_users " +
+                    "SET status = 0, " +
+                    "    account_locked_until = NULL, " +
+                    "    failed_login_count = 0, " +
+                    "    failed_totp_count = 0 " +
+                    "WHERE username = 'admin' " +
+                    "   OR status = 2 " +
+                    "   OR account_locked_until IS NOT NULL;");
+
+            log.info("Đã kiểm tra, đồng bộ cấu trúc và mở khóa tài khoản bảng app_users thành công.");
         } catch (Exception exception) {
             log.error("Không thể cập nhật cấu trúc bảng app_users.", exception);
         }

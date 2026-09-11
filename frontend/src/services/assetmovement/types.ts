@@ -10,7 +10,14 @@ export type InfrastructureAssetType =
   | "PORT_TERMINAL"
   | "ANCHORAGE"
   | "LIGHTHOUSE"
-  | "DIKE_REVETMENT";
+  | "DIKE_REVETMENT"
+  | "LRIT_STATION"
+  | "TTDH_STATION"
+  | "INMARSAT_STATION"
+  | "COSPAS_SARSAT_STATION"
+  | "TTXLTT_STATION"
+  | "DRY_PORT"
+  | (string & {});
 
 export interface PortTerminalAsset {
   [key: string]: unknown;
@@ -750,3 +757,22 @@ export interface ChannelAssetFilters {
   sortDir?: "ASC" | "DESC";
   [key: string]: unknown;
 }
+
+// ==========================================
+// Trạm bờ (LRIT, TTDH, Inmarsat, Cospas-Sarsat, TTXLTT)
+// ==========================================
+export type StationAsset = PortTerminalAsset;
+export type StationAssetPayload = PortTerminalAssetPayload;
+export type StationAssetFilters = PortTerminalAssetFilters;
+
+export type LritAsset = PortTerminalAsset;
+export type LritAssetPayload = PortTerminalAssetPayload;
+export type LritAssetFilters = PortTerminalAssetFilters;
+
+// ==========================================
+// Tài sản cảng cạn
+// ==========================================
+export type DryPortAsset = PortTerminalAsset;
+export type DryPortAssetPayload = PortTerminalAssetPayload;
+export type DryPortAssetFilters = PortTerminalAssetFilters;
+

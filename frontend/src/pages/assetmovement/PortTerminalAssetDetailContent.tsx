@@ -13,6 +13,7 @@ import type {
   AssetExploitationResponse,
   AssetIncreaseResponse,
   AssetDecreaseResponse,
+  AssetValueAdjustmentDetails,
 } from "../../services/assetmovement/types";
 import {
   PORT_TERMINAL_ASSET_SCREEN,
@@ -52,6 +53,27 @@ export interface PortTerminalAssetDetailContentProps {
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
   decreaseRows: AssetDecreaseResponse[];
+}
+
+export interface AdjustmentRowItem {
+  id: string;
+  assetId: string;
+  assetName: string;
+  quantity: number;
+  unitOfMeasure: string;
+  reason: string;
+  status: string;
+  changeType: "Tăng nguyên giá" | "Giảm nguyên giá";
+  icon: React.ReactNode;
+  increaseCode?: string;
+  decreaseCode?: string;
+  decreaseReason?: string;
+  decreaseType?: string;
+  adjustmentDetails?: AssetValueAdjustmentDetails;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const sectionBoxStyle: React.CSSProperties = {
@@ -130,12 +152,12 @@ export default function PortTerminalAssetDetailContent({
     return [
       ...increaseRows.map((row) => ({
         ...row,
-        changeType: "Tăng nguyên giá",
+        changeType: "Tăng nguyên giá" as const,
         icon: <PlusCircleOutlined style={{ color: statusOperational }} />,
       })),
       ...decreaseRows.map((row) => ({
         ...row,
-        changeType: "Giảm nguyên giá",
+        changeType: "Giảm nguyên giá" as const,
         icon: <MinusCircleOutlined style={{ color: statusCritical }} />,
       })),
     ];
@@ -209,6 +231,8 @@ export default function PortTerminalAssetDetailContent({
     };
   }, [r]);
 
+
+
   const viewTabs = useMemo<ViewTabConfig<PortTerminalAsset>[]>(() => {
     if (!r) return [];
 
@@ -222,10 +246,11 @@ export default function PortTerminalAssetDetailContent({
       {
         key: "general",
         label: "Thông tin chung",
+        icon: <BankOutlined />,
         sections: [
           {
             key: "basic_info",
-            title: "Thông tin cơ bản & Quản lý vận hành",
+            title: "1. Thông tin cơ bản & Quản lý vận hành",
             icon: <BankOutlined />,
             fields: [
               {
@@ -369,13 +394,15 @@ export default function PortTerminalAssetDetailContent({
               },
               {
                 name: "landArea",
-                label: "Diện tích đất, sàn (m²)",
+                label: "Diện tích đất, sàn sử dụng (m²)",
                 type: ViewFieldType.Number,
+                suffix: "m²",
               },
               {
                 name: "floorArea",
                 label: "Diện tích sàn sử dụng (m²)",
                 type: ViewFieldType.Number,
+                suffix: "m²",
               },
               {
                 name: "assetLocation",
@@ -397,7 +424,7 @@ export default function PortTerminalAssetDetailContent({
         sections: [
           {
             key: "depreciation_info",
-            title: "Thông tin giá trị & Khấu hao tài sản",
+            title: "2. Thông tin giá trị & Khấu hao tài sản",
             icon: <SlidersOutlined />,
             fields: [
               {
@@ -418,7 +445,7 @@ export default function PortTerminalAssetDetailContent({
               },
               {
                 name: "remainingValue",
-                label: "Giá trị còn lại",
+                label: "Giá trị còn lại (VNĐ)",
                 type: ViewFieldType.Number,
                 suffix: "VNĐ",
               },
@@ -428,7 +455,7 @@ export default function PortTerminalAssetDetailContent({
               },
               {
                 name: "assignmentDecisionNumber",
-                label: "Số quyết định giao",
+                label: "Số quyết định giao (bao gồm cả tăng vốn)",
               },
               {
                 name: "depreciationStartDate",
@@ -447,13 +474,13 @@ export default function PortTerminalAssetDetailContent({
               },
               {
                 name: "accumulatedDepreciation",
-                label: "Khấu hao lũy kế",
+                label: "Khấu hao lũy kế (VNĐ)",
                 type: ViewFieldType.Number,
                 suffix: "VNĐ",
               },
               {
                 name: "monthlyDepreciation",
-                label: "Khấu hao tháng",
+                label: "Khấu hao tháng (VNĐ)",
                 type: ViewFieldType.Number,
                 suffix: "VNĐ",
               },
@@ -560,6 +587,7 @@ export default function PortTerminalAssetDetailContent({
       {
         key: "exploitation",
         label: `Khai thác tài sản (${exploitationRows.length})`,
+        icon: <RocketOutlined />,
         customContent: () => (
           <div
             style={{
@@ -686,7 +714,8 @@ export default function PortTerminalAssetDetailContent({
       },
       {
         key: "adjustments",
-        label: `Thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
+        icon: <AuditOutlined />,
         customContent: () => (
           <div
             style={{
