@@ -250,7 +250,7 @@ export default function PortTerminalAssetForm({
                 label: "",
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customRender: () => (
+                customContent: () => (
                   <div style={{ display: "flex", gap: spaceSm }}>
                     <div style={{ flex: 1 }}>
                       <Form.Item

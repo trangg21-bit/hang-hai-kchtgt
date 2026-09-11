@@ -353,7 +353,7 @@ export default function VtsAssistAssetForm({
                 name: 'remainingValue',
                 label: 'Giá trị còn lại (VNĐ)',
                 type: FormFieldType.Custom,
-                customRender: () => {
+                customContent: () => {
                   const original =
                     Form.useWatch('originalValue', form) ?? 0;
                   const accumulated =
@@ -431,7 +431,7 @@ export default function VtsAssistAssetForm({
                 name: 'monthlyDepreciation',
                 label: 'Khấu hao tháng (VNĐ)',
                 type: FormFieldType.Custom,
-                customRender: () => {
+                customContent: () => {
                   const original =
                     Form.useWatch('originalValue', form) ?? 0;
                   const months =

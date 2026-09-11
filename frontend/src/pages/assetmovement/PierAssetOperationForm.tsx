@@ -343,7 +343,6 @@ export function PierAssetOperationForm({
       footerActions={actions}
       actions={actions}
       onClose={onClose}
-      width={780}
       rootClassName="pier-operation-scope"
     />
   );

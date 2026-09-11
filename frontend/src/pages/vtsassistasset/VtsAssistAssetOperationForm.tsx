@@ -360,7 +360,6 @@ export default function VtsAssistAssetOperationForm({
       form={form}
       sections={sections}
       footerActions={footerActions}
-      width={720}
       rootClassName="vts-assist-operation-drawer"
       className="vts-assist-operation-drawer"
     />

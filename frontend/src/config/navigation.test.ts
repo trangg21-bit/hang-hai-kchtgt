@@ -172,8 +172,9 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     expect(byKey.get('/vhf')?.ancestors).toEqual(['/navigation-channel']);
     // Luồng hàng hải → Nhà trạm phao tiêu → Phao tiêu
     expect(byKey.get('/buoys')?.ancestors).toEqual(['/navigation-channel', '/buoy-station']);
-    // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS → Trạm Radar
-    expect(byKey.get('/radar-station')?.ancestors).toEqual(['/vts-system', '/vts-operation-center']);
+    // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS, Trạm Radar (cùng cấp con trực tiếp của /vts-system)
+    expect(byKey.get('/vts-operation-center')?.ancestors).toEqual(['/vts-system']);
+    expect(byKey.get('/radar-station')?.ancestors).toEqual(['/vts-system']);
     expect(byKey.get('/dai-ttdh')?.ancestors).toEqual(['kcht-vienthong']);
   });
 });
@@ -491,8 +492,8 @@ describe('navigation.normalizeSearchText — landing search chuẩn hóa (R-1)',
 describe('navigation.collectNavLabels — label-collector của searchNavGroups', () => {
   it('collects parent and child labels across the whole tree', () => {
     const labels = collectNavLabels(kchtTree);
-    expect(labels).toContain('Quản lý cảng biển'); // cha
-    expect(labels).toContain('Quản lý cầu cảng'); // lá sâu
+    expect(labels).toContain('Cảng biển'); // cha
+    expect(labels).toContain('Cầu cảng'); // lá sâu
     expect(labels).toContain('Đài viễn thông hàng hải'); // nhánh root riêng
   });
 });

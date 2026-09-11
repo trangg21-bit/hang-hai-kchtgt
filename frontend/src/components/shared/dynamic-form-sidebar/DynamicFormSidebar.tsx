@@ -28,6 +28,7 @@ import {
   drawerTabBarStyle,
   drawerFormScrollStyle,
   getDatePickerProps,
+  DRAWER_FORM_WIDTH,
 } from "../../../themetokenchk";
 import {
   type DynamicFormSidebarProps,
@@ -497,12 +498,7 @@ export function DynamicFormSidebar<
       title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{title}</span>}
       open={open}
       onClose={onClose}
-      width={
-        width ||
-        (typeof window !== "undefined"
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000)
-      }
+      width={width || DRAWER_FORM_WIDTH}
       size={size}
       destroyOnHidden={destroyOnClose}
       rootClassName={rootClassName}

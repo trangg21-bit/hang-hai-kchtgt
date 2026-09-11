@@ -300,7 +300,7 @@ export default function InmarsatAssetForm({
                 label: '',
                 type: FormFieldType.Custom,
                 colSpan: 24,
-                customRender: () => (
+                customContent: () => (
                   <InfrastructureAttachmentTab
                     attachments={attachments}
                     onUpload={onUploadAttachment}

@@ -360,7 +360,6 @@ export default function VhfAssetOperationForm({
       form={form}
       sections={sections}
       footerActions={footerActions}
-      width={720}
       rootClassName="vhf-operation-drawer"
       className="vhf-operation-drawer"
     />

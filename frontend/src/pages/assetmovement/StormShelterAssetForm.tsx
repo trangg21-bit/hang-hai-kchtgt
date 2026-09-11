@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Form, Select, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -268,7 +268,7 @@ export default function StormShelterAssetForm({
                 label: '',
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customRender: () => (
+                customContent: () => (
                   <div style={{ display: 'flex', gap: spaceSm }}>
                     <div style={{ flex: 1 }}>
                       <Form.Item

@@ -267,14 +267,13 @@ export default function PierAssetForm({
               {
                 name: 'constructionYear',
                 label: 'Năm xây dựng',
-                type: FormFieldType.DatePicker,
-                picker: 'year',
+                type: FormFieldType.Year,
                 placeholder: 'Chọn năm',
               },
               {
                 name: 'useDate',
                 label: 'Ngày sử dụng tài sản',
-                type: FormFieldType.DatePicker,
+                type: FormFieldType.Date,
                 placeholder: 'Chọn ngày bắt đầu sử dụng',
               },
               {
@@ -329,7 +328,7 @@ export default function PierAssetForm({
               {
                 name: 'declarationDate',
                 label: 'Ngày kê khai tài sản',
-                type: FormFieldType.DatePicker,
+                type: FormFieldType.Date,
                 placeholder: 'Chọn ngày kê khai',
               },
               {
@@ -371,7 +370,7 @@ export default function PierAssetForm({
               {
                 name: 'depreciationStartDate',
                 label: 'Ngày tính khấu hao',
-                type: FormFieldType.DatePicker,
+                type: FormFieldType.Date,
                 placeholder: 'Chọn ngày bắt đầu tính khấu hao',
               },
               {
@@ -384,7 +383,7 @@ export default function PierAssetForm({
               {
                 name: 'depreciationEndDate',
                 label: 'Ngày hết khấu hao',
-                type: FormFieldType.DatePicker,
+                type: FormFieldType.Date,
                 placeholder: 'Chọn ngày kết thúc khấu hao',
               },
               {

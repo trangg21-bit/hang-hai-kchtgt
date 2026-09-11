@@ -1066,7 +1066,6 @@ function PortTerminalAssetList({
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
