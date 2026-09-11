@@ -46,6 +46,7 @@ import {
   ToolOutlined,
   RadarChartOutlined,
   GlobalOutlined,
+  CompassOutlined,
   SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
@@ -267,6 +268,11 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
         canAccessMenu('/asset/dike-revetment') ? { key: '/asset/dike-revetment', icon: <BlockOutlined />, label: 'Tài sản đê/kè' } : null,
         canAccessMenu('/asset/buoy') ? { key: '/asset/buoy', icon: <AimOutlined />, label: 'Tài sản phao, tiêu và nhà trạm' } : null,
         canAccessMenu('/asset/channel') ? { key: '/asset/channel', icon: <DeploymentUnitOutlined />, label: 'Tài sản luồng hàng hải' } : null,
+        canAccessMenu('/asset/vts-system') ? { key: '/asset/vts-system', icon: <CompassOutlined />, label: 'Tài sản hệ thống VTS' } : null,
+        canAccessMenu('/asset/radar-station') ? { key: '/asset/radar-station', icon: <CompassOutlined />, label: 'Tài sản trạm radar' } : null,
+        canAccessMenu('/asset/ais-system') ? { key: '/asset/ais-system', icon: <CompassOutlined />, label: 'Tài sản hệ thống AIS' } : null,
+        canAccessMenu('/asset/cctv-system') ? { key: '/asset/cctv-system', icon: <CompassOutlined />, label: 'Tài sản HT CCTV' } : null,
+        canAccessMenu('/asset/scada-system') ? { key: '/asset/scada-system', icon: <CompassOutlined />, label: 'Tài sản HT SCADA' } : null,
         canAccessMenu('/asset/increase') ? { key: '/asset/increase', icon: <PlusCircleOutlined />, label: 'Yêu cầu tăng tài sản' } : null,
         canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', icon: <MinusCircleOutlined />, label: 'Yêu cầu giảm tài sản' } : null,
         canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', icon: <AuditOutlined />, label: 'Kiểm kê tài sản' } : null,
