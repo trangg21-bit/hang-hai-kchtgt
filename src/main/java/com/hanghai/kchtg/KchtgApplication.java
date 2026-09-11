@@ -22,6 +22,14 @@ public class KchtgApplication {
     }
 
     @Bean
+    public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy() {
+        return flyway -> {
+            flyway.repair();
+            flyway.migrate();
+        };
+    }
+
+    @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         return new LocalNoOpRedisConnectionFactory();
     }

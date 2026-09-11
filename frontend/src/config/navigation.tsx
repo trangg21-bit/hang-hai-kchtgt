@@ -218,6 +218,11 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: landingGroupIcons.asset,
     tree: [
       { key: '/asset/berth', route: '/asset/berth', label: 'Tài sản bến cảng', icon: icons.bank },
+      { key: '/asset/vts-system', route: '/asset/vts-system', label: 'Tài sản hệ thống VTS', icon: icons.compass },
+      { key: '/asset/radar-station', route: '/asset/radar-station', label: 'Tài sản trạm radar', icon: icons.compass },
+      { key: '/asset/ais-system', route: '/asset/ais-system', label: 'Tài sản hệ thống AIS', icon: icons.compass },
+      { key: '/asset/cctv-system', route: '/asset/cctv-system', label: 'Tài sản HT CCTV', icon: icons.compass },
+      { key: '/asset/scada-system', route: '/asset/scada-system', label: 'Tài sản HT SCADA', icon: icons.compass },
       { key: '/asset/transmission', route: '/asset/transmission', label: 'Tài sản HT truyền dẫn', icon: icons.deployment },
       { key: '/asset/vts-assist', route: '/asset/vts-assist', label: 'Tài sản hệ thống phụ trợ VTS', icon: icons.tool },
       { key: '/asset/vhf', route: '/asset/vhf', label: 'Tài sản HTTT liên lạc VHF', icon: icons.api },
