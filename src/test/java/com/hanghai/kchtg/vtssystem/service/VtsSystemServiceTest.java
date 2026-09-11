@@ -64,6 +64,9 @@ class VtsSystemServiceTest {
     @Mock
     private VtsZoneRepository zoneRepository;
 
+    @Mock
+    private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
     private com.hanghai.kchtg.common.service.InfrastructureApprovalService approvalService;
 
     @InjectMocks
@@ -510,9 +513,8 @@ class VtsSystemServiceTest {
                 .id(UUID.randomUUID())
                 .status(InfrastructureHistoryStatus.fromValue("APPROVED")).approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now())
-                .reason("Duyệt")
                 .build();
-        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_SYSTEM, TEST_ID)).thenReturn(Arrays.asList(history));
 
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
@@ -586,7 +588,7 @@ class VtsSystemServiceTest {
 
     @Test
     void testGetZones() {
-        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(zoneRepository.findByVtsSystemIdOrderByCreatedAtAsc(TEST_ID))
                 .thenReturn(List.of());
 
@@ -777,7 +779,7 @@ class VtsSystemServiceTest {
                 .name("Zone 1")
                 .conditionStatus(ConditionStatus.OPERATIONAL)
                 .build();
-        when(repository.existsById(TEST_ID)).thenReturn(true);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(zoneRepository.findByVtsSystemId(eq(TEST_ID), any(org.springframework.data.domain.Pageable.class)))
                 .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(zone)));
 
@@ -906,7 +908,7 @@ class VtsSystemServiceTest {
         InfrastructureHistory savedHistory = historyCaptor.getValue();
 
         assertEquals(InfrastructureType.VTS_SYSTEM, savedHistory.getRefType());
-        assertTrue(savedHistory.getChangedField().contains("Vùng VTS"));
+        assertTrue(savedHistory.getChangedField().contains("zones"));
         // Check that unchanged zone VZ-01 is NOT in the history diff
         assertFalse(savedHistory.getPreviousValue().contains("VZ-01"));
         assertFalse(savedHistory.getNewValue().contains("VZ-01"));
@@ -944,9 +946,9 @@ class VtsSystemServiceTest {
 
         assertEquals(InfrastructureType.VTS_SYSTEM, savedHistory.getRefType());
         // Verify changedField contains all 3 areas
-        assertTrue(savedHistory.getChangedField().contains("Tên hệ thống"));
-        assertTrue(savedHistory.getChangedField().contains("Vùng VTS"));
-        assertTrue(savedHistory.getChangedField().contains("Tài liệu đính kèm"));
+        assertTrue(savedHistory.getChangedField().contains("systemName"));
+        assertTrue(savedHistory.getChangedField().contains("zones"));
+        assertTrue(savedHistory.getChangedField().contains("attachments"));
 
         // Verify previousValue contains old field, old zone, and removed attachment
         assertTrue(savedHistory.getPreviousValue().contains("VTS Cũ"));
@@ -1028,5 +1030,142 @@ class VtsSystemServiceTest {
         assertNull(newlyAddedZone.getId());
         assertEquals("VZ-BRAND-NEW", newlyAddedZone.getCode());
         assertEquals("Vùng Mới", newlyAddedZone.getName());
+    }
+
+    @Test
+    void testUpdate_WhenOnlyCoordinatesChanged_RecordsHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject existingSpatial = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject.builder()
+                .coordinates("POINT(106.1 20.1)")
+                .geometryType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT)
+                .build();
+        existingSpatial.setId(spatialId);
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(existingSpatial));
+        when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(existingSpatial);
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .coordinates("POINT(106.9 20.9)")
+                .build();
+
+        service.update(TEST_ID, updateReq, UUID.randomUUID());
+
+        org.mockito.ArgumentCaptor<InfrastructureHistory> historyCaptor = org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, atLeastOnce()).save(historyCaptor.capture());
+
+        InfrastructureHistory recorded = historyCaptor.getAllValues().stream()
+                .filter(h -> h.getChangedField() != null && h.getChangedField().contains("coordinates"))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(recorded, "Lịch sử phải ghi nhận trường coordinates");
+        assertEquals(InfrastructureHistoryStatus.UPDATED, recorded.getStatus());
+        assertTrue(recorded.getPreviousValue().contains("106.1 20.1"));
+        assertTrue(recorded.getNewValue().contains("106.9 20.9"));
+    }
+
+    @Test
+    void testUpdate_WhenZoneCoordinatesChanged_RecordsHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        UUID zoneId = UUID.randomUUID();
+        UUID zoneSpatialId = UUID.randomUUID();
+
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject zoneSpatial = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject.builder()
+                .coordinates("POINT(106.1 20.1)")
+                .geometryType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT)
+                .build();
+        zoneSpatial.setId(zoneSpatialId);
+        when(gisSpatialObjectService.findById(zoneSpatialId)).thenReturn(Optional.of(zoneSpatial));
+
+        com.hanghai.kchtg.vtssystem.entity.VtsZone existingZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(zoneId)
+                .code("Z1")
+                .name("Vùng 1")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .spatialId(zoneSpatialId)
+                .vtsSystem(entity)
+                .build();
+        entity.setZones(new java.util.ArrayList<>(List.of(existingZone)));
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VtsZoneDto modZoneDto = VtsZoneDto.builder()
+                .id(zoneId)
+                .code("Z1")
+                .name("Vùng 1")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .coordinates("POINT(106.9 20.9)")
+                .geometryType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT)
+                .build();
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .zones(List.of(modZoneDto))
+                .build();
+
+        service.update(TEST_ID, updateReq, UUID.randomUUID());
+
+        org.mockito.ArgumentCaptor<InfrastructureHistory> historyCaptor = org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, atLeastOnce()).save(historyCaptor.capture());
+
+        InfrastructureHistory recorded = historyCaptor.getAllValues().stream()
+                .filter(h -> h.getChangedField() != null && h.getChangedField().contains("zones"))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(recorded, "Lịch sử phải ghi nhận trường zones khi tọa độ vùng thay đổi");
+        assertTrue(recorded.getPreviousValue().contains("Tọa độ: POINT(106.1 20.1)"));
+        assertTrue(recorded.getNewValue().contains("Tọa độ: POINT(106.9 20.9)"));
+    }
+
+    @Test
+    void testUpdateZone_WhenCoordinatesChanged_RecordsHistory() {
+        UUID zoneId = UUID.randomUUID();
+        UUID zoneSpatialId = UUID.randomUUID();
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject zoneSpatial = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject.builder()
+                .coordinates("POINT(106.1 20.1)")
+                .geometryType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT)
+                .build();
+        zoneSpatial.setId(zoneSpatialId);
+        when(gisSpatialObjectService.findById(zoneSpatialId)).thenReturn(Optional.of(zoneSpatial));
+
+        com.hanghai.kchtg.vtssystem.entity.VtsZone existingZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
+                .id(zoneId)
+                .code("Z-OLD")
+                .name("Zone Old")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .spatialId(zoneSpatialId)
+                .vtsSystem(entity)
+                .build();
+        when(zoneRepository.findByIdAndVtsSystemId(zoneId, TEST_ID)).thenReturn(Optional.of(existingZone));
+        when(zoneRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        VtsZoneDto updateDto = VtsZoneDto.builder()
+                .code("Z-OLD")
+                .name("Zone Old")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .coordinates("POINT(107.5 21.5)")
+                .build();
+
+        VtsZoneDto result = service.updateZone(TEST_ID, zoneId, updateDto, UUID.randomUUID());
+        assertNotNull(result);
+
+        org.mockito.ArgumentCaptor<InfrastructureHistory> historyCaptor = org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, atLeastOnce()).save(historyCaptor.capture());
+
+        InfrastructureHistory recorded = historyCaptor.getAllValues().stream()
+                .filter(h -> h.getChangedField() != null && h.getChangedField().contains("Z-OLD"))
+                .findFirst()
+                .orElse(null);
+        assertNotNull(recorded, "Lịch sử phải ghi nhận thay đổi tọa độ vùng");
+        assertTrue(recorded.getPreviousValue().contains("POINT(106.1 20.1)"));
+        assertTrue(recorded.getNewValue().contains("POINT(107.5 21.5)"));
     }
 }

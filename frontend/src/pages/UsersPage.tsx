@@ -605,6 +605,7 @@ export default function UsersPage() {
                             <Form.Item name="orgUnitId" {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: !editingUser, message: 'Vui lòng chọn đơn vị' }]}>
                               <OrgUnitTreeSelect
                                 organizations={organizations}
+                                currentOrgName={editingUser?.orgUnitName}
                                 placeholder="Chọn đơn vị"
                                 allowClear
                                 disabled={Boolean(editingUser)}

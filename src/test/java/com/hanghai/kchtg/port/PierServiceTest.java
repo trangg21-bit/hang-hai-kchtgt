@@ -154,7 +154,7 @@ class PierServiceTest {
     void update_appliesMutableFields_resetsApproval() {
         testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(pierRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(pierRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(pierRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdatePierRequest request = new UpdatePierRequest();
         request.setId(testId);

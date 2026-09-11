@@ -90,7 +90,6 @@ export interface BeaconStation {
   isActive: boolean;
   status: BeaconStatus;
   approvalStatus: string;
-  approvalLevel?: number;
   approvedBy?: number;
   approvedDate?: string;
   rejectionReason?: string;
@@ -274,7 +273,6 @@ export interface Buoy {
   isActive: boolean;
   status: BeaconStatus;
   approvalStatus: string;
-  approvalLevel?: number;
   approvedBy?: number;
   approvedDate?: string;
   level1ApprovedBy?: number;
@@ -404,7 +402,6 @@ export interface BeaconHistoryResponse {
   entityId: string;
   actionType: BeaconHistoryActionType;
   changedField?: string;
-  reason?: string;
   newValue?: string;
   previousValue?: string;
   changedBy: number;

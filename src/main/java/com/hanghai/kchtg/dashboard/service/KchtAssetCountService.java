@@ -33,15 +33,13 @@ public class KchtAssetCountService {
 
     public static final String[] KCHT_TABLES = {
             "ports", "berths", "piers", "dry_ports",
-            "water_zones_anchorage", "water_zones_pilot_boarding",
-            "water_zones_turning_basin", "water_zones_mooring_buoy", "water_zones_transshipment", "water_zones_storm_shelter",
-            "beacon_light", "buoy",
-            "navigation_channel", "dike_revetment",
-            "radar_station", "vts_system", "ship_repair_facility",
-            "buoy_station",
-            "coastal_station_vts", "coastal_station_lrit",
-            "coastal_station_inmarsat", "coastal_station_haiphong",
-            "coastal_station_cospas_sarsat"
+            "anchorages", "transfer_areas", "storm_shelter_areas", "buoy_berths",
+            "ship_repair_facility", "navigation_channel", "beacon_light", "buoy",
+            "buoy_station", "dike_revetment", "vts_system", "vts_operation_center",
+            "radar_station", "ais_system", "cctv", "scada",
+            "transmission", "vts_assist", "dai_ttdh", "vhf",
+            "coastal_station_inmarsat", "coastal_station_lrit",
+            "coastal_station_cospas_sarsat", "coastal_station_haiphong"
     };
 
     static final Map<String, String> LABELS = new LinkedHashMap<>();
@@ -50,25 +48,30 @@ public class KchtAssetCountService {
         LABELS.put("berths", "Bến cảng");
         LABELS.put("piers", "Cầu cảng");
         LABELS.put("dry_ports", "Cảng cạn");
-        LABELS.put("water_zones_anchorage", "Khu neo đậu");
-        LABELS.put("water_zones_pilot_boarding", "Khu đón trả hoa tiêu");
-        LABELS.put("water_zones_turning_basin", "Khu quay trở tàu");
-        LABELS.put("water_zones_mooring_buoy", "Bến phao");
-        LABELS.put("water_zones_transshipment", "Khu chuyển tải");
-        LABELS.put("water_zones_storm_shelter", "Khu tránh bão");
-        LABELS.put("beacon_light", "Đèn biển");
-        LABELS.put("buoy", "Phao tiêu");
+        LABELS.put("anchorages", "Khu neo đậu");
+        LABELS.put("transfer_areas", "Khu chuyển tải");
+        LABELS.put("storm_shelter_areas", "Khu tránh, trú bão");
+        LABELS.put("buoy_berths", "Bến phao");
+        LABELS.put("ship_repair_facility", "Cơ sở sửa chữa, đóng tàu");
         LABELS.put("navigation_channel", "Luồng hàng hải");
-        LABELS.put("dike_revetment", "Đê kè");
-        LABELS.put("radar_station", "Trạm Radar");
+        LABELS.put("beacon_light", "Đèn biển và nhà trạm gắn với Đèn biển");
+        LABELS.put("buoy", "Phao, tiêu");
+        LABELS.put("buoy_station", "Nhà trạm quản lý vận hành phao tiêu");
+        LABELS.put("dike_revetment", "Đê chắn sóng, đê chắn cát, kè");
         LABELS.put("vts_system", "Hệ thống VTS");
-        LABELS.put("ship_repair_facility", "Cơ sở sửa chữa tàu");
-        LABELS.put("buoy_station", "Trạm phao");
-        LABELS.put("coastal_station_vts", "Đài VTS");
-        LABELS.put("coastal_station_lrit", "Đài LRIT");
-        LABELS.put("coastal_station_inmarsat", "Đài Inmarsat");
-        LABELS.put("coastal_station_haiphong", "Đài Hải Phòng");
-        LABELS.put("coastal_station_cospas_sarsat", "Đài Cospas-Sarsat");
+        LABELS.put("vts_operation_center", "Trung tâm điều hành VTS");
+        LABELS.put("radar_station", "Trạm Radar");
+        LABELS.put("ais_system", "Hệ thống trạm bờ AIS");
+        LABELS.put("cctv", "Hệ thống camera giám sát CCTV");
+        LABELS.put("scada", "Hệ thống điều khiển SCADA");
+        LABELS.put("transmission", "Hệ thống truyền dẫn");
+        LABELS.put("vts_assist", "Hệ thống phụ trợ VTS");
+        LABELS.put("dai_ttdh", "Đài Thông tin duyên hải");
+        LABELS.put("vhf", "Hệ thống VHF");
+        LABELS.put("coastal_station_inmarsat", "Đài Thông tin vệ tinh Inmarsat");
+        LABELS.put("coastal_station_lrit", "Đài Nhận dạng và truy theo tầm xa (LRIT)");
+        LABELS.put("coastal_station_cospas_sarsat", "Đài Thông tin vệ tinh Cospas-Sarsat");
+        LABELS.put("coastal_station_haiphong", "Đài TTXL thông tin hàng hải Hà Nội / Hải Phòng");
     }
 
     private final Map<String, String> schemaCols = new ConcurrentHashMap<>();
@@ -89,7 +92,7 @@ public class KchtAssetCountService {
     public void initSchemaMap() {
         try {
             for (String tableItem : KCHT_TABLES) {
-                String table = tableItem.startsWith("water_zones_") ? "water_zones" : tableItem;
+                String table = physicalTable(tableItem);
                 List<String> cols = jdbc.queryForList("SELECT column_name FROM information_schema.columns WHERE table_name = ?", String.class, table);
                 String created = cols.contains("created_at") ? "created_at" : (cols.contains("created_date") ? "created_date" : null);
                 String deleted = cols.contains("deleted_at") ? "deleted_at" : (cols.contains("is_deleted") ? "is_deleted" : null);
@@ -97,8 +100,10 @@ public class KchtAssetCountService {
                                   (cols.contains("condition_status") ? "condition_status" :
                                   (cols.contains("status") ? "status" : null));
                 String approvalStatus = cols.contains("approval_status") ? "approval_status" : null;
-                // NO org_unit_id fallback! Only province_id and province_code
-                String provCol = cols.contains("province_id") ? "province_id" : (cols.contains("province_code") ? "province_code" : null);
+                String provCol = cols.contains("province_id") ? "province_id" :
+                                 (cols.contains("province_code") ? "province_code" :
+                                 (cols.contains("province_name") ? "province_name" :
+                                 (cols.contains("province") ? "province" : null)));
 
                 schemaCols.put(tableItem + "_created", created != null ? created : "");
                 schemaCols.put(tableItem + "_deleted", deleted != null ? deleted : "");
@@ -128,14 +133,24 @@ public class KchtAssetCountService {
     public long countTotal(Integer year, Integer provinceId) {
         Optional<DashboardSnapshot> snap = getSnapshot(year, provinceId);
         if (snap.isPresent()) return snap.get().getTotalCount();
-        return queryAll("deleted", year, provinceId);
+        return getInfraTableData(year, provinceId).stream()
+                .map(row -> row.get("total"))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .mapToLong(Number::longValue)
+                .sum();
     }
 
     @Cacheable(value = CACHE_NAME, key = "#root.methodName + '_' + #year + '_' + #provinceId")
     public long countOperating(Integer year, Integer provinceId) {
         Optional<DashboardSnapshot> snap = getSnapshot(year, provinceId);
         if (snap.isPresent()) return snap.get().getOperatingCount();
-        return queryAll("operating", year, provinceId);
+        return getInfraTableData(year, provinceId).stream()
+                .map(row -> row.get("operating"))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .mapToLong(Number::longValue)
+                .sum();
     }
 
     /**
@@ -170,14 +185,12 @@ public class KchtAssetCountService {
             Integer provinceId,
             Collection<String> tableItems
     ) {
-        // Cache chung với các bộ đếm KCHT và hỗ trợ nhiều quy ước ordinal.
         StringBuilder sql = new StringBuilder();
         List<Object> args = new ArrayList<>();
         List<String> selectedTables = new ArrayList<>(tableItems);
 
         for (int i = 0; i < selectedTables.size(); i++) {
             String tableItem = selectedTables.get(i);
-            String table = physicalTable(tableItem);
             String approvalCol = schemaCols.getOrDefault(tableItem + "_approvalStatus", "");
             String deletedCol = schemaCols.getOrDefault(tableItem + "_deleted", "");
             String createdCol = schemaCols.getOrDefault(tableItem + "_created", "");
@@ -188,21 +201,10 @@ public class KchtAssetCountService {
                 sql.append("0 AS approval_pending_cnt, 0 AS approval_approved_cnt, 0 AS approval_rejected_cnt ");
             } else {
                 String normalizedStatus = "UPPER(CAST(" + approvalCol + " AS VARCHAR))";
-                boolean basicApproval = usesBasicApprovalWorkflow(tableItem);
-                String pendingOrdinals = basicApproval ? "'0'" : "'0', '1'";
-                String approvedOrdinal = basicApproval ? "'1'" : "'2'";
-                String rejectedOrdinal = basicApproval ? "'2'" : "'3'";
-
                 sql.append("SUM(CASE WHEN ").append(approvalCol).append(" IS NULL OR ")
-                        .append(normalizedStatus).append(" IN (")
-                        .append(pendingOrdinals)
-                        .append(", 'PENDING', 'PROPOSED', 'UNDER_REVIEW', 'APPROVED_L1') THEN 1 ELSE 0 END) AS approval_pending_cnt, ");
-                sql.append("SUM(CASE WHEN ").append(normalizedStatus).append(" IN (")
-                        .append(approvedOrdinal)
-                        .append(", 'APPROVED', 'APPROVED_L2') THEN 1 ELSE 0 END) AS approval_approved_cnt, ");
-                sql.append("SUM(CASE WHEN ").append(normalizedStatus).append(" IN (")
-                        .append(rejectedOrdinal)
-                        .append(", 'REJECTED') THEN 1 ELSE 0 END) AS approval_rejected_cnt ");
+                        .append(normalizedStatus).append(" IN ('0', '1', '2', '3', 'DRAFT', 'PROPOSED', 'PENDING', 'PENDING_APPROVAL', 'UNDER_REVIEW', 'APPROVED_L1', 'APPROVED_LEVEL1') THEN 1 ELSE 0 END) AS approval_pending_cnt, ");
+                sql.append("SUM(CASE WHEN ").append(normalizedStatus).append(" IN ('4', '5', 'APPROVED', 'APPROVED_L2', 'APPROVED_LEVEL2', 'PUBLISHED') THEN 1 ELSE 0 END) AS approval_approved_cnt, ");
+                sql.append("SUM(CASE WHEN ").append(normalizedStatus).append(" IN ('6', '8', '9', 'REJECTED', 'REJECTED_L1', 'REJECTED_LEVEL1', 'REJECTED_L2', 'REJECTED_LEVEL2') THEN 1 ELSE 0 END) AS approval_rejected_cnt ");
             }
 
             appendScopeFilters(sql, args, tableItem, deletedCol, createdCol, provCol, year, provinceId);
@@ -276,7 +278,6 @@ public class KchtAssetCountService {
 
         for (int i = 0; i < KCHT_TABLES.length; i++) {
             String tableItem = KCHT_TABLES[i];
-            String table = physicalTable(tableItem);
             String deletedCol = schemaCols.getOrDefault(tableItem + "_deleted", "");
             String opCol = schemaCols.getOrDefault(tableItem + "_opStatus", "");
             String createdCol = schemaCols.getOrDefault(tableItem + "_created", "");
@@ -285,34 +286,14 @@ public class KchtAssetCountService {
             sql.append("SELECT '").append(tableItem).append("' as tbl_name, ");
 
             if (!opCol.isEmpty()) {
-                sql.append("SUM(CASE WHEN ").append(opCol).append(" IS NULL OR ").append(opCol).append(" = '2' THEN 1 ELSE 0 END) as pending_cnt, ");
-                sql.append("SUM(CASE WHEN ").append(opCol).append(" = '1' THEN 1 ELSE 0 END) as operating_cnt, ");
-                sql.append("SUM(CASE WHEN ").append(opCol).append(" = '0' THEN 1 ELSE 0 END) as suspended_cnt ");
+                sql.append("SUM(CASE WHEN ").append(opCol).append(" IS NULL OR UPPER(CAST(").append(opCol).append(" AS VARCHAR)) IN ('2', 'PENDING', 'INACTIVE') THEN 1 ELSE 0 END) as pending_cnt, ");
+                sql.append("SUM(CASE WHEN UPPER(CAST(").append(opCol).append(" AS VARCHAR)) IN ('1', 'PUBLISHED', 'OPERATIONAL', 'ACTIVE') THEN 1 ELSE 0 END) as operating_cnt, ");
+                sql.append("SUM(CASE WHEN UPPER(CAST(").append(opCol).append(" AS VARCHAR)) = '0' THEN 1 ELSE 0 END) as suspended_cnt ");
             } else {
-                sql.append("0 as pending_cnt, 0 as operating_cnt, 0 as suspended_cnt ");
+                sql.append("COUNT(*) as pending_cnt, 0 as operating_cnt, 0 as suspended_cnt ");
             }
 
-            sql.append("FROM ").append(table).append(" WHERE 1=1 ");
-
-            if (tableItem.startsWith("water_zones_")) {
-                Integer type = getWaterZoneType(tableItem);
-                if (type != null) {
-                    sql.append("AND water_zone_type = ").append(type).append(" ");
-                }
-            }
-
-            if (!deletedCol.isEmpty()) {
-                sql.append("AND ").append(deletedCol).append(" IS NULL ");
-            }
-
-            if (year != null && !createdCol.isEmpty()) {
-                sql.append("AND EXTRACT(YEAR FROM ").append(createdCol).append(") <= ? ");
-                args.add(year);
-            }
-            if (provinceId != null && !provCol.isEmpty()) {
-                sql.append("AND ").append(provCol).append(" = ? ");
-                args.add(provinceId);
-            }
+            appendScopeFilters(sql, args, tableItem, deletedCol, createdCol, provCol, year, provinceId);
 
             if (i < KCHT_TABLES.length - 1) {
                 sql.append(" UNION ALL ");
@@ -320,8 +301,8 @@ public class KchtAssetCountService {
         }
 
         String finalSql = sql.toString();
-        log.info("=====SONPN Executing KCHT Dashboard Query: {}", finalSql);
-        log.info("=====SONPN With arguments: {}", args);
+        log.info("Executing KCHT Dashboard Query: {}", finalSql);
+        log.info("With arguments: {}", args);
 
         List<Map<String, Object>> dbResults = jdbc.queryForList(finalSql, args.toArray());
         Map<String, Map<String, Object>> rsMap = new LinkedHashMap<>();
@@ -341,7 +322,6 @@ public class KchtAssetCountService {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("sequenceNo", seq++);
             row.put("code", table);
-            // Keep type as string to prevent React error 'Objects are not valid as a React child'
             row.put("type", LABELS.getOrDefault(table, table));
             row.put("total", total);
             row.put("pending", pending);
@@ -350,47 +330,6 @@ public class KchtAssetCountService {
             rows.add(row);
         }
         return rows;
-    }
-
-    private long queryAll(String mode, Integer year, Integer provinceId) {
-        long total = 0;
-        for (String tableItem : KCHT_TABLES) {
-            String table = physicalTable(tableItem);
-            String deletedCol = schemaCols.getOrDefault(tableItem + "_deleted", "");
-            String opCol = schemaCols.getOrDefault(tableItem + "_opStatus", "");
-            String createdCol = schemaCols.getOrDefault(tableItem + "_created", "");
-            String provCol = schemaCols.getOrDefault(tableItem + "_prov", "");
-
-            StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM ").append(table).append(" WHERE 1=1 ");
-            List<Object> args = new ArrayList<>();
-
-            if (tableItem.startsWith("water_zones_")) {
-                Integer type = getWaterZoneType(tableItem);
-                if (type != null) {
-                    sql.append("AND water_zone_type = ").append(type).append(" ");
-                }
-            }
-
-            if (!deletedCol.isEmpty()) {
-                sql.append("AND ").append(deletedCol).append(" IS NULL ");
-            }
-            if ("operating".equals(mode) && !opCol.isEmpty()) {
-                sql.append("AND ").append(opCol).append(" = '1' ");
-            }
-
-            if (year != null && !createdCol.isEmpty()) {
-                sql.append("AND EXTRACT(YEAR FROM ").append(createdCol).append(") <= ? ");
-                args.add(year);
-            }
-            if (provinceId != null && !provCol.isEmpty()) {
-                sql.append("AND ").append(provCol).append(" = ? ");
-                args.add(provinceId);
-            }
-
-            Long result = jdbc.queryForObject(sql.toString(), Long.class, args.toArray());
-            total += (result != null ? result : 0);
-        }
-        return total;
     }
 
     private String physicalTable(String tableItem) {
@@ -402,6 +341,9 @@ public class KchtAssetCountService {
             return Arrays.asList(KCHT_TABLES);
         }
         String normalizedType = infraType.trim();
+        if ("water_zones".equals(normalizedType)) {
+            return List.of("anchorages", "transfer_areas", "storm_shelter_areas", "buoy_berths");
+        }
         return Arrays.stream(KCHT_TABLES)
                 .filter(normalizedType::equals)
                 .toList();
@@ -413,16 +355,6 @@ public class KchtAssetCountService {
                 .map(Map.Entry::getKey)
                 .findFirst()
                 .orElse("");
-    }
-
-    private boolean usesBasicApprovalWorkflow(String tableItem) {
-        return tableItem.equals("ports")
-                || tableItem.equals("berths")
-                || tableItem.equals("piers")
-                || tableItem.equals("dry_ports")
-                || tableItem.startsWith("water_zones_")
-                || tableItem.equals("beacon_light")
-                || tableItem.equals("buoy");
     }
 
     private void appendScopeFilters(
@@ -451,8 +383,13 @@ public class KchtAssetCountService {
             args.add(year);
         }
         if (provinceId != null && !provCol.isEmpty()) {
-            sql.append("AND ").append(provCol).append(" = ? ");
-            args.add(provinceId);
+            if ("province_id".equals(provCol) || "province_code".equals(provCol)) {
+                sql.append("AND ").append(provCol).append(" = ? ");
+                args.add(provinceId);
+            } else {
+                sql.append("AND ").append(provCol).append(" = (SELECT name FROM provinces WHERE id = ?) ");
+                args.add(provinceId);
+            }
         }
     }
 

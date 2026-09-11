@@ -40,6 +40,7 @@ import {
   statusCritical, statusOperational, actionPrimary,
   readonlyInputStyle, inputStyle, selectStyle, spaceSm,
   spaceXs,
+  textAreaStyle,
 } from '../../../themetokenchk';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
@@ -409,7 +410,24 @@ export default function InmarsatStationForm({
         });
         setCoordinateList(dmsPoints);
 
-        const orgId = data.orgUnitId || (initialData as any)?.orgUnitId;
+        let serviceList: string[] = [];
+        if (Array.isArray(data.services)) {
+          serviceList = data.services;
+        } else if (typeof data.services === 'string' && (data.services as string).trim()) {
+          const trimmed = (data.services as string).trim();
+          if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (Array.isArray(parsed)) {
+                serviceList = parsed.map((s) => String(s).trim()).filter(Boolean);
+              }
+            } catch {}
+          }
+          if (serviceList.length === 0) {
+            serviceList = trimmed.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+          }
+        }
+
         form.setFieldsValue({
           code: data.code || data.deviceCode,
           name: data.name || data.stationName,
@@ -418,7 +436,7 @@ export default function InmarsatStationForm({
           provinceId: data.provinceId,
           conditionStatus: data.conditionStatus || data.status,
           locationDetail: data.locationDetail || data.locationAddress,
-          services: data.services,
+          services: serviceList,
           coverageZone: data.coverageZone || data.coverageArea,
           frequency: data.frequency,
           notes: data.notes || data.description,
@@ -675,8 +693,8 @@ export default function InmarsatStationForm({
 
   return (
     <AppDrawer
-      rootClassName="inmarsat-drawer-scope berth-drawer-scope"
-      className="inmarsat-drawer-scope berth-drawer-scope"
+      rootClassName="inmarsat-drawer-scope"
+      className="inmarsat-drawer-scope"
       style={{ maxWidth: '96vw' }}
       width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
       open={Boolean(open)}
@@ -819,19 +837,7 @@ export default function InmarsatStationForm({
               .inmarsat-drawer-scope .ant-btn,
               .inmarsat-drawer-scope .ant-select,
               .inmarsat-drawer-scope .ant-input,
-              .inmarsat-drawer-scope .ant-form-item-label > label,
-              .berth-drawer-scope,
-              .berth-drawer-scope .ant-drawer-content,
-              .berth-drawer-scope .ant-tabs-tab,
-              .berth-drawer-scope .chk-detail-label,
-              .berth-drawer-scope .chk-detail-value,
-              .berth-drawer-scope .ant-table,
-              .berth-drawer-scope .ant-table-cell,
-              .berth-drawer-scope .ant-table-thead > tr > th,
-              .berth-drawer-scope .ant-btn,
-              .berth-drawer-scope .ant-select,
-              .berth-drawer-scope .ant-input,
-              .berth-drawer-scope .ant-form-item-label > label {
+              .inmarsat-drawer-scope .ant-form-item-label > label {
                 font-size: 13.5px !important;
               }
             `}</style>
@@ -978,7 +984,7 @@ export default function InmarsatStationForm({
                               name="coverageZone"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập vùng phủ sóng" maxLength={4000} showCount style={inputStyle} />
+                              <Input.TextArea placeholder="Nhập vùng phủ sóng" rows={3} maxLength={4000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -996,7 +1002,7 @@ export default function InmarsatStationForm({
                               name="notes"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập ghi chú" maxLength={2000} showCount style={inputStyle} />
+                              <Input.TextArea placeholder="Nhập ghi chú" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                         </Row>

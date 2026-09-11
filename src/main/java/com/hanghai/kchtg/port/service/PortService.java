@@ -1313,7 +1313,6 @@ public class PortService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(portId)
                 .refType(InfrastructureType.SEAPORT)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(status)
                 .approvedBy(userId)
                 .approvedDate(java.time.LocalDateTime.now())

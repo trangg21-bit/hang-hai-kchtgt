@@ -42,9 +42,8 @@ public final class InfrastructureHistoryUtils {
                 .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.DELETED)
                 .approvedBy(userId)
-                .reason(reason != null && !reason.isBlank() ? reason : "Xóa bản ghi")
                 .changedField(EntityFields.DELETED_AT)
-                .previousValue("null")
+                .previousValue(null)
                 .newValue("đã xóa mềm")
                 .build());
     }
@@ -54,6 +53,6 @@ public final class InfrastructureHistoryUtils {
             UUID refId,
             InfrastructureType refType,
             UUID userId) {
-        recordSoftDelete(repository, refId, refType, userId, "Xóa bản ghi");
+        recordSoftDelete(repository, refId, refType, userId, null);
     }
 }

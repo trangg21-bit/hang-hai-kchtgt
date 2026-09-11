@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TreeSelect } from 'antd';
 import type { TreeSelectProps } from 'antd';
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { useThemeToken } from '../../context/ThemeTokenContext';
+import { organizationService } from '../../services/organizationService';
 
 /** Dữ liệu tối thiểu để hiển thị một đơn vị trong cây. */
 export interface OrgUnitTreeOption {
@@ -16,6 +17,7 @@ export interface OrgUnitTreeNode {
   key: string;
   value: string;
   title: string;
+  code?: string;
   /** Nhãn hiển thị trên thanh select khi bật showPath (đường dẫn đầy đủ). */
   label?: string;
   children?: OrgUnitTreeNode[];
@@ -116,7 +118,10 @@ export function resolveOrgSubtreeIds(orgUnits: readonly OrgUnitTreeOption[] = []
  * các component khác cần cùng một cấu trúc đơn vị.
  */
 export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[] = []): OrgUnitTreeNode[] {
-  const safeOptions = Array.isArray(options) ? options : [];
+  // Ẩn đơn vị gốc G17 (Bộ GTVT) nếu có — G17 chỉ dùng làm container phân quyền ngầm cho admin
+  const safeOptions = (Array.isArray(options) ? options : []).filter(
+    (o) => o && o.code !== 'G17' && o.id !== '00000000-0000-0000-0000-000000000017'
+  );
   const nodes = new Map<string, OrgUnitTreeNode>();
 
   safeOptions.forEach((option) => {
@@ -126,6 +131,7 @@ export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[] = [])
       key: strId,
       value: strId,
       title: option.code ? `${option.code} - ${option.name}` : (option.name || strId),
+      code: option.code,
       children: [],
     });
   });
@@ -146,6 +152,20 @@ export function buildOrgUnitTreeData(options: readonly OrgUnitTreeOption[] = [])
       roots.push(node);
     }
   });
+
+  // Sắp xếp thứ tự ưu tiên chuẩn cho 3 khối đơn vị to cấp cao nhất:
+  // 1: Cục Hàng hải và Đường thủy Việt Nam (G17.43)
+  // 2: Tổng công ty Bảo đảm an toàn hàng hải Việt Nam (G17.72)
+  // 3: Công ty TNHH MTV Thông tin điện tử hàng hải Việt Nam (VISHIPEL) (G17.74)
+  const getRootPriority = (node: OrgUnitTreeNode): number => {
+    const code = (node.code || '').toUpperCase();
+    const title = (node.title || '').toLowerCase();
+    if (code === 'G17.43' || title.includes('cục hàng hải')) return 1;
+    if (code === 'G17.72' || title.includes('bảo đảm an toàn')) return 2;
+    if (code === 'G17.74' || title.includes('vishipel') || title.includes('thông tin điện tử')) return 3;
+    return 99;
+  };
+  roots.sort((a, b) => getRootPriority(a) - getRootPriority(b));
 
   const removeEmptyChildren = (items: OrgUnitTreeNode[]): OrgUnitTreeNode[] =>
     items.map((item) => {
@@ -168,6 +188,8 @@ export interface OrgUnitTreeSelectProps
   showPath?: boolean;
   /** Hiển thị item đầu tiên "Tất cả" (value = '__all__') cùng cấp với cấp ngoài cùng — dùng cho bộ lọc. */
   allLabel?: string;
+  /** Tên hiển thị dự phòng khi giá trị đã chọn chưa nằm trong cây danh mục (vd: đơn vị Bộ GTVT của tài khoản admin) */
+  currentOrgName?: string;
 }
 
 /**
@@ -175,16 +197,17 @@ export interface OrgUnitTreeSelectProps
  * Hỗ trợ 2 chế độ chuẩn hóa:
  * - variant="filter": placeholder="Tất cả", menu dropdown tối thiểu 380px hiển thị rõ tên đơn vị dài.
  * - variant="form": placeholder="Chọn đơn vị quản lý", menu dropdown co giãn 100% theo ô nhập trong Drawer/Modal.
+ * Tự động nạp dữ liệu từ organizationService.getAll() nếu prop organizations không truyền hoặc rỗng.
  */
-export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
+function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const {
-    organizations = [],
+    organizations: propOrganizations,
     variant = 'filter',
     style,
     placeholder,
     allowClear,
     showSearch = true,
-    treeDefaultExpandAll = true,
+    treeDefaultExpandAll = false,
     treeLine = false,
     treeNodeFilterProp = 'title',
     showPath = false,
@@ -192,6 +215,7 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     dropdownStyle,
     popupMatchSelectWidth,
     listHeight,
+    currentOrgName,
     ...restProps
   } = props;
 
@@ -207,11 +231,37 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const defaultAllowClear = allowClear !== undefined ? allowClear : true;
   const defaultListHeight = listHeight !== undefined ? listHeight : isForm ? 300 : 256;
   const defaultMatchWidth = popupMatchSelectWidth !== undefined ? popupMatchSelectWidth : (isForm ? true : false);
+  const defaultExpandAll = treeDefaultExpandAll !== undefined ? treeDefaultExpandAll : false;
   const baseDropdownStyle = isForm ? formTreeSelectDropdownStyle : filterTreeSelectDropdownStyle;
   const baseControlStyle = isForm ? formTreeSelectStyle : filterTreeSelectStyle;
 
+  // Tự động nạp danh mục đơn vị qua cache nếu không được truyền từ props
+  const [internalOrgs, setInternalOrgs] = useState<readonly OrgUnitTreeOption[]>([]);
+
+  useEffect(() => {
+    if (Array.isArray(propOrganizations) && propOrganizations.length > 0) {
+      return;
+    }
+    let cancelled = false;
+    organizationService.getAll()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data) && data.length > 0) {
+          setInternalOrgs(data);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [propOrganizations]);
+
+  const effectiveOrganizations = useMemo(() => {
+    if (Array.isArray(propOrganizations) && propOrganizations.length > 0) {
+      return propOrganizations;
+    }
+    return internalOrgs;
+  }, [propOrganizations, internalOrgs]);
+
   const treeData = useMemo(() => {
-    const list = Array.isArray(organizations) ? organizations : [];
+    const list = Array.isArray(effectiveOrganizations) ? effectiveOrganizations : [];
     const built = buildOrgUnitTreeData(list);
     let base = allLabel
       ? [{ key: '__all__', value: '__all__', title: allLabel }, ...built]
@@ -220,15 +270,27 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     const byId = new Map<string, OrgUnitTreeOption>(list.map((o) => [String(o.id), o]));
 
     const currentValue = restProps.value ? String(restProps.value) : undefined;
-    if (currentValue && currentValue !== '__all__' && !byId.has(currentValue)) {
+    const findNode = (nodes: OrgUnitTreeNode[], val: string): boolean => {
+      for (const n of nodes) {
+        if (n.value === val) return true;
+        if (n.children && findNode(n.children, val)) return true;
+      }
+      return false;
+    };
+
+    if (currentValue && currentValue !== '__all__' && !findNode(base, currentValue)) {
+      const org = byId.get(currentValue);
+      const title = org
+        ? (org.name || (org.code ? `${org.code} - ${org.name}` : org.name))
+        : (currentOrgName || (currentValue === '00000000-0000-0000-0000-000000000017' ? 'Bộ Giao thông Vận tải' : 'Đơn vị quản lý'));
       base = [
-        ...base,
         {
           key: currentValue,
           value: currentValue,
-          title: 'Đơn vị quản lý',
-          label: 'Đơn vị quản lý',
+          title,
+          label: org?.name || title,
         },
+        ...base,
       ];
     }
 
@@ -256,16 +318,18 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
         };
       });
     return annotate(base);
-  }, [organizations, showPath, allLabel, restProps.value]);
+  }, [effectiveOrganizations, showPath, allLabel, restProps.value]);
 
   return (
     <TreeSelect
       {...restProps}
+      virtual={false}
       placeholder={defaultPlaceholder}
       allowClear={defaultAllowClear}
       treeData={treeData}
       showSearch={showSearch}
-      treeDefaultExpandAll={treeDefaultExpandAll}
+      treeDefaultExpandAll={defaultExpandAll}
+
       treeLine={treeLine}
       treeNodeFilterProp={treeNodeFilterProp}
       treeNodeLabelProp={showPath ? 'label' : undefined}
@@ -295,6 +359,8 @@ export default function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     />
   );
 }
+
+export default OrgUnitTreeSelect;
 
 /** Component Dropdown đơn vị chuẩn hóa dành riêng cho Thanh Lọc Sidebar / Header */
 export function FilterOrgUnitTreeSelect(props: Omit<OrgUnitTreeSelectProps, 'variant'>) {

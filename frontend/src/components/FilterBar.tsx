@@ -16,24 +16,44 @@ import {
 const YEAR_OPTIONS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
 const INFRA_TYPE_OPTIONS = [
+  // Cảng & Bến cảng
   { value: 'ports', label: 'Cảng biển' },
   { value: 'berths', label: 'Bến cảng' },
   { value: 'piers', label: 'Cầu cảng' },
   { value: 'dry_ports', label: 'Cảng cạn' },
-  { value: 'water_zones', label: 'Vùng nước' },
-  { value: 'beacon_light', label: 'Đèn biển' },
-  { value: 'buoy', label: 'Phao tiêu' },
+
+  // Vùng nước hàng hải
+  { value: 'water_zones', label: 'Vùng nước (Tất cả)' },
+  { value: 'anchorages', label: 'Khu neo đậu' },
+  { value: 'transfer_areas', label: 'Khu chuyển tải' },
+  { value: 'storm_shelter_areas', label: 'Khu tránh, trú bão' },
+  { value: 'buoy_berths', label: 'Bến phao' },
+
+  // Công trình luồng, báo hiệu & phụ trợ
   { value: 'navigation_channel', label: 'Luồng hàng hải' },
-  { value: 'dike_revetment', label: 'Đê, kè' },
-  { value: 'radar_station', label: 'Trạm Radar' },
-  { value: 'vts_system', label: 'Hệ thống VTS' },
-  { value: 'ship_repair_facility', label: 'Cơ sở sửa chữa, đóng tàu' },
+  { value: 'beacon_light', label: 'Đèn biển và nhà trạm gắn với Đèn biển' },
+  { value: 'buoy', label: 'Phao, tiêu' },
   { value: 'buoy_station', label: 'Nhà trạm quản lý vận hành phao tiêu' },
-  { value: 'coastal_station_vts', label: 'Đài Thông tin Duyên hải' },
-  { value: 'coastal_station_lrit', label: 'Đài Nhận dạng và truy theo tầm xa (LRIT)' },
+  { value: 'dike_revetment', label: 'Đê chắn sóng, đê chắn cát, kè' },
+  { value: 'ship_repair_facility', label: 'Cơ sở sửa chữa, đóng tàu' },
+
+  // Hệ thống VTS & phân hệ kỹ thuật
+  { value: 'vts_system', label: 'Hệ thống VTS' },
+  { value: 'vts_operation_center', label: 'Trung tâm điều hành VTS' },
+  { value: 'radar_station', label: 'Trạm Radar' },
+  { value: 'ais_system', label: 'Hệ thống trạm bờ AIS' },
+  { value: 'cctv', label: 'Hệ thống camera giám sát CCTV' },
+  { value: 'scada', label: 'Hệ thống điều khiển SCADA' },
+  { value: 'transmission', label: 'Hệ thống truyền dẫn' },
+  { value: 'vts_assist', label: 'Hệ thống phụ trợ VTS' },
+
+  // Thông tin duyên hải & viễn thông
+  { value: 'dai_ttdh', label: 'Đài Thông tin duyên hải' },
+  { value: 'vhf', label: 'Hệ thống VHF' },
   { value: 'coastal_station_inmarsat', label: 'Đài Thông tin vệ tinh Inmarsat' },
-  { value: 'coastal_station_haiphong', label: 'Đài TTXL thông tin hàng hải Hải Phòng' },
+  { value: 'coastal_station_lrit', label: 'Đài Nhận dạng và truy theo tầm xa (LRIT)' },
   { value: 'coastal_station_cospas_sarsat', label: 'Đài Thông tin vệ tinh Cospas-Sarsat' },
+  { value: 'coastal_station_haiphong', label: 'Đài TTXL thông tin hàng hải Hà Nội / Hải Phòng' },
 ];
 
 const ALL_VALUE = 'Tất cả';

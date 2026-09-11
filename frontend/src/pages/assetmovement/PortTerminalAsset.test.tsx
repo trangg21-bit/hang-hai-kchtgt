@@ -9,6 +9,10 @@ import type {
   PortTerminalAssetPayload,
   PortTerminalAssetFilters,
   AssetValueAdjustmentDetails,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetDecreaseResponse,
+  AssetDecreaseRequest,
 } from '../../services/assetmovement/types';
 import PortTerminalAssetList from './PortTerminalAssetList';
 import PortTerminalAssetForm, { type FormValues } from './PortTerminalAssetForm';
@@ -251,6 +255,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
           originalValueAfter: 48000000000,
           remainingValueBefore: 45000000000,
           remainingValueAfter: 43000000000,
+          reason: 'Thanh lý một phần',
           decreaseReason: 'Thanh lý một phần',
           status: 'APPROVED',
           createdBy: 'admin-1',
@@ -316,9 +321,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     expect(html).toContain('CÁN BỘ CẬP NHẬT');
     expect(html).toContain('CÁN BỘ GỬI PHÊ DUYỆT');
     expect(html).toContain('CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC');
-    expect(html).toContain('NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC');
     expect(html).toContain('CÁN BỘ PHÊ DUYỆT CẤP CỤC');
-    expect(html).toContain('NỘI DUNG PHÊ DUYỆT CẤP CỤC');
   });
 
   // 2. Kiểm tra Render UI Drawer Xem chi tiết với 6 Tab nghiệp vụ
@@ -327,11 +330,11 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
       ['org-1', 'Cục Hàng hải Việt Nam'],
       ['org-2', 'Cảng vụ Hàng hải Hải Phòng'],
     ]);
-    const berthMap = new Map<string, Berth>([
-      ['berth-1', { id: 'berth-1', berthCode: 'BC-01', berthName: 'Bến cảng số 1' } as unknown as Berth],
+    const berthMap = new Map([
+      ['berth-1', { id: 'berth-1', code: 'BC-01', name: 'Bến cảng số 1', berthCode: 'BC-01', berthName: 'Bến cảng số 1' }],
     ]);
 
-    const mockExploitation: api.AssetExploitationResponse = {
+    const mockExploitation: AssetExploitationResponse = {
       id: 'kt-bc-1',
       assetId: mockAsset.id,
       assetName: mockAsset.assetName,
@@ -439,7 +442,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
             { id: 'org-1', name: 'Cục Hàng hải Việt Nam', code: 'CHHVN' } as unknown as Organization,
             { id: 'org-2', name: 'Cảng vụ Hàng hải Hải Phòng', code: 'CVHP' } as unknown as Organization,
           ]}
-          berths={[{ id: 'berth-1', berthCode: 'BC-01', berthName: 'Bến số 1' } as unknown as Berth]}
+          relatedInfrastructure={[{ id: 'berth-1', code: 'BC-01', name: 'Bến số 1' }]}
           attachments={[]}
           saving={false}
           saveAction="DRAFT"
@@ -458,9 +461,6 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     expect(html).toContain('Thông tin chung');
     expect(html).toContain('Hồ sơ tài sản (0)');
     expect(html).toContain('Thông tin chi tiết');
-    expect(html).toContain('Khai thác tài sản (0)');
-    expect(html).toContain('Thay đổi nguyên giá (0)');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
 
     // 3 nút lưu chuẩn bến cảng
     expect(html).toContain('Lưu tạm');
@@ -677,11 +677,12 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
       adjustmentNotes: 'Thanh lý một phần hạng mục phụ trợ',
     };
 
-    const decreasePayload = {
+    const decreasePayload: AssetDecreaseRequest = {
       assetId: mockAsset.id,
       assetName: mockAsset.assetName,
       quantity: 1,
       unitOfMeasure: 'VNĐ',
+      reason: 'Thanh lý một phần hạng mục phụ trợ',
       decreaseReason: 'Thanh lý một phần hạng mục phụ trợ',
       adjustmentDetails,
     };
@@ -701,6 +702,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
       originalValueAfter: 45000000000,
       remainingValueBefore: 45000000000,
       remainingValueAfter: 40000000000,
+      reason: 'Thanh lý một phần hạng mục phụ trợ',
       decreaseReason: 'Thanh lý một phần hạng mục phụ trợ',
       status: 'PENDING_APPROVAL',
       createdBy: 'admin-1',

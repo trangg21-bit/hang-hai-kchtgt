@@ -40,6 +40,7 @@ import {
   textSecondary, textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary,
   readonlyInputStyle, surfaceCard, spaceSm, spaceXs,
+  textAreaStyle,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -370,6 +371,16 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         toast.error(err?.message || 'Không thể tải xuống tệp đính kèm');
       }
     }
+  };
+
+  const clearGpsPoint = (i: number) => {
+    setCoordinateList((p) => {
+      const next = [...p];
+      if (!next[i]) return p;
+      next[i] = { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null };
+      return next;
+    });
+    setGpsError(null);
   };
 
   const removeCoordinate = (i: number) => {
@@ -1028,7 +1039,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                               name="coverage"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập vùng phủ sóng" maxLength={4000} showCount style={inputStyle} />
+                              <Input.TextArea placeholder="Nhập vùng phủ sóng" rows={3} maxLength={4000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -1037,7 +1048,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                               name="note"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập ghi chú" maxLength={2000} showCount style={inputStyle} />
+                              <Input.TextArea placeholder="Nhập ghi chú" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1264,23 +1275,63 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                               width: 50,
                               align: 'center' as const,
                               onCell: () => ({ style: { verticalAlign: 'middle' } }),
-                              render: (_v: any, record: any) => (
-                                <Button
-                                  type="text"
-                                  danger
-                                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                                  onClick={() => removeCoordinate(record._idx)}
-                                  style={{
-                                    width: 32,
-                                    height: 32,
-                                    padding: 0,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                  }}
-                                  title="Xóa tọa độ"
-                                />
-                              ),
+                              render: (_v: any, record: any) => {
+                                const isPoint = watchedGeometryType === 'POINT';
+                                const minPoints = isPoint ? 1 : watchedGeometryType === 'LINE' ? 2 : 3;
+                                const canDelete = coordinateList.length > minPoints;
+
+                                if (isPoint) {
+                                  const hasValue =
+                                    record.latD != null ||
+                                    record.latM != null ||
+                                    record.latS != null ||
+                                    record.lngD != null ||
+                                    record.lngM != null ||
+                                    record.lngS != null;
+                                  return (
+                                    <Button
+                                      type="text"
+                                      disabled={!hasValue}
+                                      icon={<DeleteOutlined style={{ fontSize: 16, color: hasValue ? statusCritical : undefined }} />}
+                                      onClick={() => clearGpsPoint(record._idx)}
+                                      style={{
+                                        width: 32,
+                                        height: 32,
+                                        padding: 0,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                      }}
+                                      title={hasValue ? 'Xóa trắng giá trị tọa độ' : 'Chưa có dữ liệu'}
+                                    />
+                                  );
+                                }
+
+                                return (
+                                  <Button
+                                    type="text"
+                                    danger={canDelete}
+                                    disabled={!canDelete}
+                                    icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                                    onClick={() => canDelete && removeCoordinate(record._idx)}
+                                    style={{
+                                      width: 32,
+                                      height: 32,
+                                      padding: 0,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                    }}
+                                    title={
+                                      !canDelete
+                                        ? watchedGeometryType === 'LINE'
+                                          ? 'Đối tượng đường phải có tối thiểu 2 tọa độ'
+                                          : 'Đối tượng vùng phải có tối thiểu 3 tọa độ'
+                                        : 'Xóa tọa độ'
+                                    }
+                                  />
+                                );
+                              },
                             },
                           ]}
                         />

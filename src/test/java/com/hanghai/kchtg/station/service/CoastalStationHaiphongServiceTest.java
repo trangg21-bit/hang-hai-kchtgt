@@ -13,6 +13,7 @@ import com.hanghai.kchtg.station.entity.CoastalStationHaiphong;
 import com.hanghai.kchtg.station.repository.CoastalStationHaiphongRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +26,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -57,12 +59,17 @@ class CoastalStationHaiphongServiceTest {
     @InjectMocks
     private CoastalStationHaiphongService service;
 
+    @BeforeEach
+    void setUp() {
+        lenient().when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+    }
+
     @Test
     void autoFillsLevel1ApprovalWhenDirectlyApprovedByLevel2() {
         UUID stationId = UUID.randomUUID();
         CoastalStationHaiphong station = station(stationId, ApprovalStatus.PENDING_APPROVAL);
 
-        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(repository.findByIdAndDeletedAtIsNull(stationId)).thenReturn(Optional.of(station));
         when(repository.save(any(CoastalStationHaiphong.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         CoastalStationHaiphong approved = service.approveLevel2(stationId);

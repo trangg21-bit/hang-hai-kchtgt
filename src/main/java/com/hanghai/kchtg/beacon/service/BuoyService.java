@@ -555,18 +555,15 @@ public class BuoyService {
                             newWkt, actorId);
                 }
                 if (typeChanged) {
-                    changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Loại đối tượng GIS",
-                            geometryTypeLabel(oldGeomType),
-                            geometryTypeLabel(newGeomType), actorId);
+                    changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "geometryType",
+                            oldGeomType != null ? oldGeomType.name() : null,
+                            newGeomType != null ? newGeomType.name() : null, actorId);
                 }
             }
         }
 
         // Only record history when the record is already approved
-        String newJson = toJson(entity);
-        if (wasApproved && !compareJsonNodes(oldJson, newJson)) {
-            logHistory(entity, BeaconHistoryActionType.UPDATE,
-                    getChangedFields(oldJson, newJson), oldJson, newJson);
+        if (wasApproved) {
             changeHistoryService.recordChanges("Buoy", entity.getId().toString(),
                     actorId, snapshot, entity);
         }
@@ -769,7 +766,6 @@ public class BuoyService {
                 .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
                 .changedBy(legacyUserId)
                 .changedAt(LocalDateTime.now())
-                .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
                 .build();
         // TODO (2026-08-26): tạm ẩn ghi beacon_history — DB đang chạy chưa có bảng này
         // (ERROR: relation "beacon_history" does not exist; migration
@@ -778,10 +774,9 @@ public class BuoyService {
         //     historyRepo.save(entry);
         // }
 
-        if (infraHistoryRepo != null && entity.getId() != null) {
+        if (infraHistoryRepo != null && entity.getId() != null && action != BeaconHistoryActionType.UPDATE) {
             InfrastructureHistoryStatus status = switch (action) {
                 case CREATE -> InfrastructureHistoryStatus.CREATED;
-                case UPDATE -> InfrastructureHistoryStatus.UPDATED;
                 case SOFT_DELETE -> InfrastructureHistoryStatus.DELETED;
                 case APPROVE_L1, APPROVE_L2 -> InfrastructureHistoryStatus.APPROVED;
                 case REJECT -> InfrastructureHistoryStatus.REJECTED;
@@ -799,9 +794,8 @@ public class BuoyService {
                     .approvedBy(currentUserId)
                     .approvedDate(LocalDateTime.now())
                     .changedField(fields)
-                    .previousValue(previousJson)
-                    .newValue(newJson)
-                    .reason(action == BeaconHistoryActionType.REJECT ? newJson : null)
+                    .previousValue(action == BeaconHistoryActionType.CREATE ? null : previousJson)
+                    .newValue(action == BeaconHistoryActionType.CREATE ? null : newJson)
                     .build());
         }
     }

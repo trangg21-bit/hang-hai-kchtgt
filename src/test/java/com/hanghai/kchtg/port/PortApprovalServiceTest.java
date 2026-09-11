@@ -100,12 +100,12 @@ class PortApprovalServiceTest {
     @DisplayName("F-011: approve — sets status to APPROVED and persists ApprovalLog")
     void approve_setsApprovedStatus() {
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(portRepository.save(any())).thenReturn(testEntity);
+        when(portRepository.saveAndFlush(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", null); // null reason = approve
 
         assertEquals(ApprovalStatus.APPROVED, testEntity.getApprovalStatus());
-        verify(portRepository).save(testEntity);
+        verify(portRepository).saveAndFlush(testEntity);
         verify(approvalWorkflowService).approve(eq("PENDING_APPROVAL"), eq("Port"), eq(testId.toString()), eq("user-1"));
         verify(notificationService).sendApprovalNotification(eq("Port"), eq(testId.toString()), eq("user-1"), eq(null));
     }
@@ -114,7 +114,7 @@ class PortApprovalServiceTest {
     @DisplayName("F-011: approve — blank reason also treated as approve")
     void approve_blankReason_treatedAsApprove() {
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(portRepository.save(any())).thenReturn(testEntity);
+        when(portRepository.saveAndFlush(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", "  "); // blank = approve
 
@@ -126,12 +126,12 @@ class PortApprovalServiceTest {
     @DisplayName("F-011: reject — sets status to REJECTED and persists ApprovalLog")
     void reject_setsTuChoiStatus() {
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(portRepository.save(any())).thenReturn(testEntity);
+        when(portRepository.saveAndFlush(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", "Thiếu tài liệu"); // non-blank reason = reject
 
         assertEquals(ApprovalStatus.REJECTED, testEntity.getApprovalStatus());
-        verify(portRepository).save(testEntity);
+        verify(portRepository).saveAndFlush(testEntity);
         verify(approvalWorkflowService).reject(eq("PENDING_APPROVAL"), eq("Port"), eq(testId.toString()),
                 eq("user-1"), eq("Thiếu tài liệu"));
     }
@@ -197,7 +197,6 @@ class PortApprovalServiceTest {
         HistoryEntry approve = result.stream().filter(e -> e.getChangedField() == null).findFirst().orElse(null);
         assertNotNull(approve);
         assertEquals(InfrastructureHistoryStatus.APPROVED.name(), approve.getStatus());
-        assertEquals(ApprovalLevel.LEVEL_2, approve.getApprovalLevel());
     }
 
     @Test

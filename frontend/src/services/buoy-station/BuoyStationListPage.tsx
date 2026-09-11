@@ -97,7 +97,7 @@ import {
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
@@ -1101,13 +1101,10 @@ export default function BuoyStationListPage() {
         filterContent={<>
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
-            <OrgUnitTreeSelect
+            <FilterOrgUnitTreeSelect
               organizations={organizations}
-              placeholder="Chọn đơn vị..."
+              placeholder="Tất cả"
               allowClear
-              showPath
-              allLabel="Tất cả"
-              treeDefaultExpandAll={false}
               value={filterValues.managingUnitId || undefined}
               onChange={(val) => setFilterValues((prev) => ({ ...prev, managingUnitId: val }))}
             />

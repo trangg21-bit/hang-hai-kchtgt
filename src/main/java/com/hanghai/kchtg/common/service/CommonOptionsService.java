@@ -65,11 +65,13 @@ public class CommonOptionsService {
     public List<OrgUnitResponse> getOrgUnitOptions() {
         OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
         List<OrgUnitResponse> all = orgUnitCacheService.getList();
-        if (scope.unrestricted()) {
-            return all;
-        }
-        return all.stream()
-                .filter(unit -> scope.allows(unit.getId()))
+        List<OrgUnitResponse> inScope = scope.unrestricted()
+                ? all
+                : all.stream().filter(unit -> scope.allows(unit.getId())).toList();
+
+        // Ẩn đơn vị gốc G17 (Bộ GTVT) khỏi danh sách chọn - G17 chỉ đóng vai trò container phân quyền ngầm cho admin
+        return inScope.stream()
+                .filter(unit -> !"G17".equalsIgnoreCase(unit.getCode()) && (unit.getLevel() == null || unit.getLevel() > 0))
                 .toList();
     }
 

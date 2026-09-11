@@ -246,7 +246,8 @@ public class CoastalStationLRITService {
         long rejectedL1 = countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL1, 0L)
                 + countsByStatus.getOrDefault(ApprovalStatus.REJECTED, 0L);
         long rejectedL2 = countsByStatus.getOrDefault(ApprovalStatus.REJECTED_LEVEL2, 0L);
-        long all = draft + pending + approvedL1 + approved + rejectedL1 + rejectedL2;
+        long archived = countsByStatus.getOrDefault(ApprovalStatus.ARCHIVED, 0L);
+        long all = draft + pending + approvedL1 + approved + rejectedL1 + rejectedL2 + archived;
 
         // Chuẩn tên Enum (khớp hoàn toàn với VTS)
         result.put("ALL", all);
@@ -256,6 +257,7 @@ public class CoastalStationLRITService {
         result.put(ApprovalStatus.APPROVED.name(), approved);
         result.put(ApprovalStatus.REJECTED_LEVEL1.name(), rejectedL1);
         result.put(ApprovalStatus.REJECTED_LEVEL2.name(), rejectedL2);
+        result.put(ApprovalStatus.ARCHIVED.name(), archived);
 
         // Backward compatibility keys
         result.put("all", all);
@@ -266,14 +268,17 @@ public class CoastalStationLRITService {
         result.put("rejectedLevel1", rejectedL1);
         result.put("rejectedLevel2", rejectedL2);
         result.put("rejected", rejectedL1 + rejectedL2);
+        result.put("archived", archived);
 
         return result;
     }
 
     @Transactional(readOnly = true)
     public CoastalStationLRIT getStationById(UUID id) {
-        return repository.findById(id)
+        CoastalStationLRIT entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Đài LRIT với ID: " + id));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        return entity;
     }
 
     @Transactional(readOnly = true)
@@ -351,8 +356,13 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT updateStation(UUID id, CoastalStationLRITUpdateRequest request) {
         FieldWriteGuard.validateObject(request);
-        CoastalStationLRIT entity = repository.findById(id)
+        CoastalStationLRIT entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Đài LRIT với ID: " + id));
+
+        validateAllowedOrgUnit(entity.getOrgUnitId());
+        if (request.getOrgUnitId() != null && !request.getOrgUnitId().equals(entity.getOrgUnitId())) {
+            validateAllowedOrgUnit(request.getOrgUnitId());
+        }
 
         approvalService.assertEditable(entity);
 
@@ -372,82 +382,82 @@ public class CoastalStationLRITService {
         Map<String, String> oldValues = new LinkedHashMap<>();
         if (wasApproved) {
             if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
-                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
+                oldValues.put("name", entity.getName() != null ? entity.getName() : null);
             }
             if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
                 String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
-                oldValues.put("Đơn vị quản lý", oldName != null ? oldName : "—");
+                oldValues.put("orgUnitId", oldName != null ? oldName : null);
             }
             if (request.getOperatingOrgId() != null && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
                 String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
-                oldValues.put("Đơn vị khai thác", oldName != null ? oldName : "—");
+                oldValues.put("operatingOrgId", oldName != null ? oldName : null);
             }
             if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
-                oldValues.put("Địa điểm (Tỉnh/TP)", formatProvinceDisplay(entity.getProvinceId()));
+                oldValues.put("provinceId", formatProvinceDisplay(entity.getProvinceId()));
             }
             if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
-                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
+                oldValues.put("locationAddress", entity.getLocationAddress() != null ? entity.getLocationAddress() : null);
             }
             if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
-                oldValues.put("Tình trạng", formatConditionStatusDisplay(entity.getConditionStatus()));
+                oldValues.put("conditionStatus", formatConditionStatusDisplay(entity.getConditionStatus()));
             }
             if (request.getTerminalId() != null && !Objects.equals(request.getTerminalId(), entity.getTerminalId())) {
-                oldValues.put("Mã Terminal", entity.getTerminalId() != null ? entity.getTerminalId() : "—");
+                oldValues.put("terminalId", entity.getTerminalId() != null ? entity.getTerminalId() : null);
             }
             if (request.getImoNumber() != null && !Objects.equals(request.getImoNumber(), entity.getImoNumber())) {
-                oldValues.put("Số IMO", entity.getImoNumber() != null ? entity.getImoNumber() : "—");
+                oldValues.put("imoNumber", entity.getImoNumber() != null ? entity.getImoNumber() : null);
             }
             if (request.getReportingInterval() != null && !Objects.equals(request.getReportingInterval(), entity.getReportingInterval())) {
-                oldValues.put("Chu kỳ báo cáo", entity.getReportingInterval() != null ? String.valueOf(entity.getReportingInterval()) : "—");
+                oldValues.put("reportingInterval", entity.getReportingInterval() != null ? String.valueOf(entity.getReportingInterval()) : null);
             }
             if (request.getAntennaHeight() != null && !Objects.equals(request.getAntennaHeight(), entity.getAntennaHeight())) {
-                oldValues.put("Chiều cao anten", entity.getAntennaHeight() != null ? String.valueOf(entity.getAntennaHeight()) : "—");
+                oldValues.put("antennaHeight", entity.getAntennaHeight() != null ? String.valueOf(entity.getAntennaHeight()) : null);
             }
             if (request.getPowerOutput() != null && !Objects.equals(request.getPowerOutput(), entity.getPowerOutput())) {
-                oldValues.put("Công suất phát", entity.getPowerOutput() != null ? String.valueOf(entity.getPowerOutput()) : "—");
+                oldValues.put("powerOutput", entity.getPowerOutput() != null ? String.valueOf(entity.getPowerOutput()) : null);
             }
             if (request.getAntennaType() != null && !Objects.equals(request.getAntennaType(), entity.getAntennaType())) {
-                oldValues.put("Loại anten", entity.getAntennaType() != null ? entity.getAntennaType() : "—");
+                oldValues.put("antennaType", entity.getAntennaType() != null ? entity.getAntennaType() : null);
             }
             if (request.getDataFormat() != null && !Objects.equals(request.getDataFormat(), entity.getDataFormat())) {
-                oldValues.put("Định dạng dữ liệu", entity.getDataFormat() != null ? entity.getDataFormat() : "—");
+                oldValues.put("dataFormat", entity.getDataFormat() != null ? entity.getDataFormat() : null);
             }
             if (request.getCommunicationChannel() != null && !Objects.equals(request.getCommunicationChannel(), entity.getCommunicationChannel())) {
-                oldValues.put("Kênh liên lạc", entity.getCommunicationChannel() != null ? entity.getCommunicationChannel() : "—");
+                oldValues.put("communicationChannel", entity.getCommunicationChannel() != null ? entity.getCommunicationChannel() : null);
             }
             if (request.getCoverageArea() != null && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
-                oldValues.put("Vùng phủ sóng", entity.getCoverageArea() != null ? entity.getCoverageArea() : "—");
+                oldValues.put("coverageArea", entity.getCoverageArea() != null ? entity.getCoverageArea() : null);
             }
             if (request.getServicesProvided() != null && !Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
-                oldValues.put("Dịch vụ cung cấp", entity.getServicesProvided() != null ? entity.getServicesProvided() : "—");
+                oldValues.put("servicesProvided", entity.getServicesProvided() != null ? entity.getServicesProvided() : null);
             }
             if (request.getDescription() != null && !Objects.equals(request.getDescription(), entity.getDescription())) {
-                oldValues.put("Ghi chú", entity.getDescription() != null ? entity.getDescription() : "—");
+                oldValues.put("description", entity.getDescription() != null ? entity.getDescription() : null);
             }
             if (request.getContactPerson() != null && !Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
-                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
+                oldValues.put("contactPerson", entity.getContactPerson() != null ? entity.getContactPerson() : null);
             }
             if (request.getContactPhone() != null && !Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
-                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+                oldValues.put("contactPhone", entity.getContactPhone() != null ? entity.getContactPhone() : null);
             }
 
             // GIS fields
             String reqGeom = request.getGeometryType() != null ? request.getGeometryType() : request.getObjectType();
             if (reqGeom != null && !Objects.equals(reqGeom, currentGeomType)) {
-                oldValues.put("Loại đối tượng GIS", formatObjectTypeDisplay(currentGeomType));
+                oldValues.put("geometryType", formatObjectTypeDisplay(currentGeomType));
             }
             UUID targetSymbolId = resolveSymbolId(request.getSymbolId(), request.getSymbol());
             if ((request.getSymbolId() != null || request.getSymbol() != null) && !Objects.equals(targetSymbolId, entity.getSymbolId())) {
                 String oldSymDisplay = entity.getSymbolId() != null
                         ? (gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString()) : entity.getSymbolId().toString())
                         : "—";
-                oldValues.put("Biểu tượng", oldSymDisplay);
+                oldValues.put("symbolId", oldSymDisplay);
             }
             if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
-                oldValues.put("Hệ quy chiếu", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—");
+                oldValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : null);
             }
             if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
-                oldValues.put("Quy tắc hiển thị", entity.getDisplayRule() != null ? entity.getDisplayRule() : "—");
+                oldValues.put("displayRule", entity.getDisplayRule() != null ? entity.getDisplayRule() : null);
             }
             boolean latChanged = (request.getLatitude() != null && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
                     || (request.getLatitude() == null && entity.getLatitude() != null);
@@ -458,7 +468,7 @@ public class CoastalStationLRITService {
             if (oldCoord == null || oldCoord.isBlank()) {
                 oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
-                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : null));
             }
             String newCoord = request.getCoordinates();
             if (newCoord == null || newCoord.isBlank()) {
@@ -468,7 +478,7 @@ public class CoastalStationLRITService {
             }
             boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged || lngChanged;
             if (coordsChanged) {
-                oldValues.put("Tọa độ GIS", oldCoord != null ? oldCoord : "—");
+                oldValues.put("coordinates", oldCoord != null ? oldCoord : null);
             }
         }
 
@@ -593,35 +603,35 @@ public class CoastalStationLRITService {
     private String getNewValueDisplay(String fieldName, CoastalStationLRIT entity) {
         if (entity == null || fieldName == null) return "—";
         return switch (fieldName) {
-            case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
-            case "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
-            case "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
-            case "Địa điểm (Tỉnh/TP)" -> formatProvinceDisplay(entity.getProvinceId());
-            case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
-            case "Tình trạng" -> formatConditionStatusDisplay(entity.getConditionStatus());
-            case "Mã Terminal" -> entity.getTerminalId() != null ? entity.getTerminalId() : "—";
-            case "Số IMO" -> entity.getImoNumber() != null ? entity.getImoNumber() : "—";
-            case "Chu kỳ báo cáo" -> entity.getReportingInterval() != null ? String.valueOf(entity.getReportingInterval()) : "—";
-            case "Chiều cao anten" -> entity.getAntennaHeight() != null ? String.valueOf(entity.getAntennaHeight()) : "—";
-            case "Công suất phát" -> entity.getPowerOutput() != null ? String.valueOf(entity.getPowerOutput()) : "—";
-            case "Loại anten" -> entity.getAntennaType() != null ? entity.getAntennaType() : "—";
-            case "Định dạng dữ liệu" -> entity.getDataFormat() != null ? entity.getDataFormat() : "—";
-            case "Kênh liên lạc" -> entity.getCommunicationChannel() != null ? entity.getCommunicationChannel() : "—";
-            case "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
-            case "Dịch vụ cung cấp" -> entity.getServicesProvided() != null ? entity.getServicesProvided() : "—";
-            case "Ghi chú" -> entity.getDescription() != null ? entity.getDescription() : "—";
-            case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
-            case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
-            case "Loại đối tượng", "Loại đối tượng GIS" -> formatObjectTypeDisplay(entity.getGeometryType());
-            case "Biểu tượng" -> gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : "—");
-            case "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
-            case "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
-            case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> {
+            case "name", "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
+            case "orgUnitId", "Đơn vị quản lý" -> entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+            case "operatingOrgId", "Đơn vị khai thác" -> entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+            case "provinceId", "Địa điểm (Tỉnh/TP)" -> formatProvinceDisplay(entity.getProvinceId());
+            case "locationAddress", "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
+            case "conditionStatus", "Tình trạng" -> formatConditionStatusDisplay(entity.getConditionStatus());
+            case "terminalId", "Mã Terminal" -> entity.getTerminalId() != null ? entity.getTerminalId() : "—";
+            case "imoNumber", "Số IMO" -> entity.getImoNumber() != null ? entity.getImoNumber() : "—";
+            case "reportingInterval", "Chu kỳ báo cáo" -> entity.getReportingInterval() != null ? String.valueOf(entity.getReportingInterval()) : "—";
+            case "antennaHeight", "Chiều cao anten" -> entity.getAntennaHeight() != null ? String.valueOf(entity.getAntennaHeight()) : "—";
+            case "powerOutput", "Công suất phát" -> entity.getPowerOutput() != null ? String.valueOf(entity.getPowerOutput()) : "—";
+            case "antennaType", "Loại anten" -> entity.getAntennaType() != null ? entity.getAntennaType() : "—";
+            case "dataFormat", "Định dạng dữ liệu" -> entity.getDataFormat() != null ? entity.getDataFormat() : "—";
+            case "communicationChannel", "Kênh liên lạc" -> entity.getCommunicationChannel() != null ? entity.getCommunicationChannel() : "—";
+            case "coverageArea", "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
+            case "servicesProvided", "Dịch vụ cung cấp" -> entity.getServicesProvided() != null ? entity.getServicesProvided() : "—";
+            case "description", "Ghi chú" -> entity.getDescription() != null ? entity.getDescription() : "—";
+            case "contactPerson", "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
+            case "contactPhone", "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "geometryType", "Loại đối tượng", "Loại đối tượng GIS" -> formatObjectTypeDisplay(entity.getGeometryType());
+            case "symbolId", "Biểu tượng" -> gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbol()) : (entity.getSymbol() != null ? entity.getSymbol() : null);
+            case "coordinateSystem", "Hệ quy chiếu" -> entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : "—";
+            case "displayRule", "Quy tắc hiển thị" -> entity.getDisplayRule() != null ? entity.getDisplayRule() : "—";
+            case "coordinates", "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> {
                 String c = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
                 if (c != null && !c.isBlank()) yield c;
                 yield (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
-                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : null));
             }
             default -> "—";
         };
@@ -675,7 +685,7 @@ public class CoastalStationLRITService {
     }
 
     public void deleteStation(UUID id) {
-        CoastalStationLRIT entity = repository.findById(id)
+        CoastalStationLRIT entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Đài LRIT với ID: " + id));
 
         approvalService.assertDeletable(entity);
@@ -860,8 +870,6 @@ public class CoastalStationLRITService {
                     r.setChangedField(h.getChangedField());
                     r.setPreviousValue(h.getPreviousValue());
                     r.setNewValue(h.getNewValue());
-                    r.setReason(h.getReason());
-                    r.setApprovalLevel(h.getApprovalLevel());
                     r.setChangedBy(h.getChangedBy());
                     r.setChangedAt(h.getChangedAt());
                     return r;

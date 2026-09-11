@@ -27,7 +27,7 @@ import {
 } from './dry-port';
 import DryPortDetailContent from './DryPortDetailContent';
 import DryPortForm, { type DryPortFormHandle } from './DryPortForm';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { OrgUnitTreeSelect, FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { userService } from '../../services/userService';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
@@ -882,16 +882,11 @@ export default function DryPortListPage() {
                 <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
                   Đơn vị quản lý
                 </div>
-                <OrgUnitTreeSelect
-                  organizations={organizations}
-                  placeholder="Chọn đơn vị..."
-                  allowClear
-                  showPath
-                  allLabel="Tất cả"
-                  treeDefaultExpandAll={false}
-                  value={filterOrgUnitId}
-                  onChange={(val) => { setFilterOrgUnitId(val); setPage(1); }}
-                />
+                <FilterOrgUnitTreeSelect
+                organizations={organizations}
+                value={filterOrgUnitId}
+                onChange={(val) => { setFilterOrgUnitId(val); setPage(1); }}
+              />
               </div>
               <div style={{ marginBottom: 12 }}>
                 <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>

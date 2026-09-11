@@ -7,6 +7,7 @@ import { symbolService } from '../../../services/symbolService';
 import { organizationService } from '../../../services/organizationService';
 import type { HanoiStationItem } from '../../../types/hanoiStation';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../../types/vtsSystem';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../../components/list-view';
@@ -32,8 +33,7 @@ import {
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
-import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
-import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
@@ -56,6 +56,107 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
+
+const HanoiStationGlobalStyles = React.memo(() => (
+  <style>{`
+    .hanoi-station-page-wrapper,
+    .hanoi-station-page-wrapper .ant-table,
+    .hanoi-station-page-wrapper .ant-table-cell,
+    .hanoi-station-page-wrapper .ant-input,
+    .hanoi-station-page-wrapper .ant-select,
+    .hanoi-station-page-wrapper .ant-select-selection-item,
+    .hanoi-station-page-wrapper .ant-select-selection-placeholder,
+    .hanoi-station-page-wrapper .ant-picker,
+    .hanoi-station-page-wrapper .ant-picker-input > input,
+    .hanoi-station-page-wrapper .ant-btn,
+    .hanoi-station-page-wrapper .ant-pagination,
+    .hanoi-station-page-wrapper .ant-breadcrumb,
+    .hanoi-station-page-wrapper .filter-label,
+    .hanoi-drawer-scope,
+    .hanoi-drawer-scope .ant-drawer-content,
+    .hanoi-drawer-scope .ant-tabs-tab,
+    .hanoi-drawer-scope .chk-detail-label,
+    .hanoi-drawer-scope .chk-detail-value,
+    .hanoi-drawer-scope .ant-table,
+    .hanoi-drawer-scope .ant-table-cell,
+    .hanoi-drawer-scope .ant-table-thead > tr > th,
+    .hanoi-drawer-scope .ant-btn,
+    .hanoi-drawer-scope .ant-select,
+    .hanoi-drawer-scope .ant-input,
+    .hanoi-drawer-scope .ant-form-item-label > label {
+      font-size: 13.5px !important;
+    }
+    .hanoi-station-page-wrapper .screen-header {
+      flex-wrap: wrap !important;
+      gap: 10px !important;
+    }
+
+    /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+    .hanoi-station-page-wrapper div:has(> button[aria-pressed]) {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      justify-content: center !important;
+      justify-content: safe center !important;
+      align-items: center !important;
+      scrollbar-width: thin !important;
+      scrollbar-color: #cbd5e1 #f8fafc !important;
+      scroll-behavior: smooth !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 2px 16px 6px 16px !important;
+      gap: 20px !important;
+    }
+    .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+      height: 6px !important;
+      display: block !important;
+    }
+    .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+      background: #f1f5f9 !important;
+      border-radius: 999px !important;
+    }
+    .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+      background: #cbd5e1 !important;
+      border-radius: 999px !important;
+    }
+    .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8 !important;
+    }
+    .hanoi-station-page-wrapper div:has(> button[aria-pressed]) > button {
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      cursor: pointer !important;
+    }
+
+    /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+    .hanoi-drawer-scope .ant-drawer-content-wrapper {
+      max-width: 100vw !important;
+    }
+    @media (max-width: 1024px) {
+      .hanoi-drawer-scope .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .hanoi-drawer-scope .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+    }
+    @media (max-width: 640px) {
+      .hanoi-drawer-scope .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        padding: 8px 0 !important;
+      }
+      .hanoi-drawer-scope .chk-detail-label {
+        width: 100% !important;
+      }
+      .hanoi-drawer-scope .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
 
 const HANOI_FIELD_MAP: Record<string, string> = {
   code: 'Mã đài',
@@ -149,6 +250,7 @@ export default function HanoiStationList() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const statusCountFilterKey = useRef<string | null>(null);
 
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [filterKeyword, setFilterKeyword] = useState('');
   const [sortField, setSortField] = useState<string | undefined>();
@@ -194,6 +296,12 @@ export default function HanoiStationList() {
     organizationService.getAll().then((res) => {
       const items = Array.isArray(res) ? res : ((res as any)?.data || []);
       setOrgUnits(items);
+      const resolvedDefault = resolveDefaultOrgUnitId(currentUser, items);
+      defaultOrgUnitRef.current = resolvedDefault;
+      if (resolvedDefault) {
+        setFilterOrgUnitId(resolvedDefault);
+        setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
+      }
     }).catch(() => {});
 
     symbolService.getOptions().then((res) => {
@@ -433,9 +541,10 @@ export default function HanoiStationList() {
   };
 
   const handleFilterReset = () => {
-    setFilterValues({});
+    const defaultOrg = defaultOrgUnitRef.current;
+    setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setFilterKeyword('');
-    setFilterOrgUnitId(undefined);
+    setFilterOrgUnitId(defaultOrg);
     setFilterOperatingOrgId(undefined);
     setFilterStationCode(undefined);
     setFilterConditionStatus(undefined);
@@ -852,117 +961,7 @@ export default function HanoiStationList() {
   return (
     <ThemeTokenProvider tokens={customTokens}>
       <div className="hanoi-station-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        <style>{`
-          .hanoi-station-page-wrapper,
-          .hanoi-station-page-wrapper .ant-table,
-          .hanoi-station-page-wrapper .ant-table-cell,
-          .hanoi-station-page-wrapper .ant-input,
-          .hanoi-station-page-wrapper .ant-select,
-          .hanoi-station-page-wrapper .ant-select-selection-item,
-          .hanoi-station-page-wrapper .ant-select-selection-placeholder,
-          .hanoi-station-page-wrapper .ant-picker,
-          .hanoi-station-page-wrapper .ant-picker-input > input,
-          .hanoi-station-page-wrapper .ant-btn,
-          .hanoi-station-page-wrapper .ant-pagination,
-          .hanoi-station-page-wrapper .ant-breadcrumb,
-          .hanoi-station-page-wrapper .filter-label,
-          .hanoi-drawer-scope,
-          .hanoi-drawer-scope .ant-drawer-content,
-          .hanoi-drawer-scope .ant-tabs-tab,
-          .hanoi-drawer-scope .chk-detail-label,
-          .hanoi-drawer-scope .chk-detail-value,
-          .hanoi-drawer-scope .ant-table,
-          .hanoi-drawer-scope .ant-table-cell,
-          .hanoi-drawer-scope .ant-table-thead > tr > th,
-          .hanoi-drawer-scope .ant-btn,
-          .hanoi-drawer-scope .ant-select,
-          .hanoi-drawer-scope .ant-input,
-          .hanoi-drawer-scope .ant-form-item-label > label,
-          .berth-drawer-scope,
-          .berth-drawer-scope .ant-drawer-content,
-          .berth-drawer-scope .ant-tabs-tab,
-          .berth-drawer-scope .chk-detail-label,
-          .berth-drawer-scope .chk-detail-value,
-          .berth-drawer-scope .ant-table,
-          .berth-drawer-scope .ant-table-cell,
-          .berth-drawer-scope .ant-table-thead > tr > th,
-          .berth-drawer-scope .ant-btn,
-          .berth-drawer-scope .ant-select,
-          .berth-drawer-scope .ant-input,
-          .berth-drawer-scope .ant-form-item-label > label {
-            font-size: 13.5px !important;
-          }
-          .hanoi-station-page-wrapper .screen-header {
-            flex-wrap: wrap !important;
-            gap: 10px !important;
-          }
-
-          /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
-          .hanoi-station-page-wrapper div:has(> button[aria-pressed]) {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            overflow-y: hidden !important;
-            justify-content: center !important;
-            justify-content: safe center !important;
-            align-items: center !important;
-            scrollbar-width: thin !important;
-            scrollbar-color: #cbd5e1 #f8fafc !important;
-            scroll-behavior: smooth !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
-          }
-          .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
-            display: block !important;
-          }
-          .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
-            background: #f1f5f9 !important;
-            border-radius: 999px !important;
-          }
-          .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
-            background: #cbd5e1 !important;
-            border-radius: 999px !important;
-          }
-          .hanoi-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8 !important;
-          }
-          .hanoi-station-page-wrapper div:has(> button[aria-pressed]) > button {
-            white-space: nowrap !important;
-            flex-shrink: 0 !important;
-            cursor: pointer !important;
-          }
-
-          /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
-          .hanoi-drawer-scope .ant-drawer-content-wrapper,
-          .berth-drawer-scope .ant-drawer-content-wrapper {
-            max-width: 100vw !important;
-          }
-          @media (max-width: 1024px) {
-            .hanoi-drawer-scope .chk-detail-grid {
-              grid-template-columns: 1fr !important;
-              column-gap: 0 !important;
-            }
-            .hanoi-drawer-scope .chk-detail-row--full {
-              grid-column: 1 !important;
-            }
-          }
-          @media (max-width: 640px) {
-            .hanoi-drawer-scope .chk-detail-row {
-              flex-direction: column !important;
-              align-items: flex-start !important;
-              gap: 4px !important;
-              padding: 8px 0 !important;
-            }
-            .hanoi-drawer-scope .chk-detail-label {
-              width: 100% !important;
-            }
-            .hanoi-drawer-scope .chk-detail-value {
-              width: 100% !important;
-            }
-          }
-        `}</style>
+        <HanoiStationGlobalStyles />
 
         <ScreenHeader
           breadcrumb={[
@@ -987,7 +986,6 @@ export default function HanoiStationList() {
           onToggleCollapse={() => setFilterCollapsed((value) => !value)}
           onFilterApply={() => handleFilterSearch(filterValues)}
           onFilterReset={() => {
-            setFilterValues({});
             handleFilterReset();
           }}
           loading={loading}
@@ -1001,12 +999,10 @@ export default function HanoiStationList() {
               {/* ── BỘ LỌC CƠ BẢN (LUÔN HIỂN THỊ) ── */}
               <div style={{ marginBottom: 12, marginTop: spaceMd }}>
                 <div style={filterLabelStyle}>Đơn vị quản lý</div>
-                <OrgUnitTreeSelect
+                <FilterOrgUnitTreeSelect
                   organizations={orgUnits}
-                  placeholder="Chọn đơn vị..."
+                  placeholder="Tất cả"
                   allowClear
-                  treeDefaultExpandAll={true}
-                  listHeight={256}
                   value={filterValues.orgUnitId as string | undefined}
                   onChange={(value) => {
                     setFilterValues((prev) => ({ ...prev, orgUnitId: value }));

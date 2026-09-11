@@ -1,33 +1,31 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.navigationchannel.dto.*;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelCoordinate;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
-import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
-import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,18 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -161,7 +149,6 @@ public class NavigationChannelService {
                 .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.CREATED)
                 .approvedBy(userId)
-                .reason("Tạo mới luồng hàng hải")
                 .build());
 
         return toResponse(nc);
@@ -304,7 +291,7 @@ public class NavigationChannelService {
                 nc.getCoordinates().clear();
                 List<NavigationChannelCoordinate> coords = req.getCoordinateList().stream()
                         .map(c -> toCoordinate(c, nc))
-                        .collect(Collectors.toList());
+                        .toList();
                 nc.getCoordinates().addAll(coords);
             }
         }
@@ -416,7 +403,6 @@ public class NavigationChannelService {
                 .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.UPDATED)
                 .approvedBy(updatedBy)
-                .reason("Cập nhật thông tin")
                 .changedField(formatChangedFields(previousValues))
                 .previousValue(formatPreviousValues(previousValues))
                 .newValue(formatNewValues(saved, previousValues, manualNewValues))
@@ -509,7 +495,6 @@ public class NavigationChannelService {
                 .status(nc.getApprovalStatus().name())
                 .approvedBy(cap == 1 ? nc.getApproverLevel1() : nc.getApproverLevel2())
                 .approvedDate(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2())
-                .reason(nc.getRejectionReason())
                 .build();
     }
 
@@ -532,13 +517,11 @@ public class NavigationChannelService {
             HistoryEntry entry = new HistoryEntry();
             entry.setId(h.getId());
             entry.setNavigationChannelId(h.getRefId());
-            entry.setApprovalLevel(h.getApprovalLevel());
             entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
             entry.setApprovedBy(h.getApprovedBy() != null
                     ? userNames.getOrDefault(h.getApprovedBy(), null)
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
-            entry.setReason(h.getReason());
             return entry;
         }).collect(Collectors.toList());
     }
@@ -638,11 +621,9 @@ public class NavigationChannelService {
                         .map(h -> ApprovalResponse.builder()
                                 .id(String.valueOf(h.getId()))
                                 .navigationChannelId(h.getRefId())
-                                .approvalLevel(h.getApprovalLevel())
                                 .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                                 .approvedBy(h.getApprovedBy())
                                 .approvedDate(h.getApprovedDate())
-                                .reason(h.getReason())
                                 .build())
                         .collect(Collectors.toList());
             } catch (Exception e) {
@@ -962,35 +943,35 @@ public class NavigationChannelService {
 
     private String getFieldDisplayName(String field) {
         if (field == null) return "";
-        if (NavigationChannelUpdateRequest.Fields.channelName.equals(field)) return "Tên luồng hàng hải";
-        if (NavigationChannelUpdateRequest.Fields.conditionStatus.equals(field)) return "Tình trạng";
-        if (NavigationChannelUpdateRequest.Fields.orgUnitId.equals(field)) return "Đơn vị quản lý";
-        if (NavigationChannelUpdateRequest.Fields.detailedLocation.equals(field)) return "Vị trí chi tiết";
-        if (NavigationChannelUpdateRequest.Fields.managementStation.equals(field)) return "Trạm quản lý";
-        if (NavigationChannelUpdateRequest.Fields.notes.equals(field)) return "Ghi chú";
-        if (NavigationChannelUpdateRequest.Fields.routeDetails.equals(field)) return "Chi tiết tuyến luồng";
-        if (NavigationChannelUpdateRequest.Fields.coordinateList.equals(field)) return "Danh sách tọa độ";
-        if (NavigationChannelUpdateRequest.Fields.attachments.equals(field)) return "Tài liệu đính kèm";
-        if (NavigationChannelUpdateRequest.Fields.coordinates.equals(field)) return "Tọa độ GIS";
-        return field;
+      return switch (field) {
+        case NavigationChannelUpdateRequest.Fields.channelName -> "Tên luồng hàng hải";
+        case NavigationChannelUpdateRequest.Fields.conditionStatus -> "Tình trạng";
+        case NavigationChannelUpdateRequest.Fields.orgUnitId -> "Đơn vị quản lý";
+        case NavigationChannelUpdateRequest.Fields.detailedLocation -> "Vị trí chi tiết";
+        case NavigationChannelUpdateRequest.Fields.managementStation -> "Trạm quản lý";
+        case NavigationChannelUpdateRequest.Fields.notes -> "Ghi chú";
+        case NavigationChannelUpdateRequest.Fields.routeDetails -> "Chi tiết tuyến luồng";
+        case NavigationChannelUpdateRequest.Fields.coordinateList -> "Danh sách tọa độ";
+        case NavigationChannelUpdateRequest.Fields.attachments -> "Tài liệu đính kèm";
+        case NavigationChannelUpdateRequest.Fields.coordinates -> "Tọa độ GIS";
+        default -> field;
+      };
     }
 
     private String formatChangedFields(Map<String, String> previousValues) {
-        return previousValues.keySet().stream()
-                .map(this::getFieldDisplayName)
-                .collect(Collectors.joining(", "));
+        return String.join(", ", previousValues.keySet());
     }
 
     private String formatPreviousValues(Map<String, String> previousValues) {
         return previousValues.entrySet().stream()
-                .map(entry -> getFieldDisplayName(entry.getKey()) + "=" + entry.getValue())
+                .map(entry -> entry.getKey() + "=" + (entry.getValue() != null ? entry.getValue() : ""))
                 .collect(Collectors.joining("; "));
     }
 
     private String formatNewValues(NavigationChannel entity, Map<String, String> previousValues,
             Map<String, String> manualNewValues) {
         return previousValues.keySet().stream()
-                .map(field -> getFieldDisplayName(field) + "="
+                .map(field -> field + "="
                         + (manualNewValues.containsKey(field)
                                 ? manualNewValues.get(field)
                                 : currentFieldValue(entity, field)))

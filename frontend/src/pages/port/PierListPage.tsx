@@ -14,7 +14,7 @@ import type { Pier } from '../../types/port';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ShipRepairYardDetailContent from '../ship-repair-yard/ShipRepairYardDetailContent';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { OrgUnitTreeSelect, FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
@@ -725,7 +725,18 @@ export default function PierListPage() {
   };
 
   useEffect(() => {
-    (async () => { try { const r = await organizationService.list({ pageSize: 1000 }); const data = r.data || []; setOrganizations(data); if (data.length > 0) { try { const p = await api.get('/users/me'); const uOrgId = (p.data?.data ?? p.data)?.orgUnitId; const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__'; setOrgUnit(matchedOrgId); defaultOrgUnitRef.current = matchedOrgId; appliedFiltersRef.current = { ...appliedFiltersRef.current, orgUnit: matchedOrgId }; setPierNameInput(''); setPierCodeInput(''); } catch { setOrgUnit(data[0].id); defaultOrgUnitRef.current = data[0].id; appliedFiltersRef.current = { ...appliedFiltersRef.current, orgUnit: data[0].id }; setPierNameInput(''); setPierCodeInput(''); } } } catch {} })();
+    (async () => { try { const r = await organizationService.list({ pageSize: 1000 });
+        const data = r.data || [];
+        setOrganizations(data);
+        if (data.length > 0) {
+          const defaultId = resolveDefaultOrgUnitId(useAuthStore.getState().user, data);
+          setOrgUnit(defaultId);
+          defaultOrgUnitRef.current = defaultId;
+          appliedFiltersRef.current = { ...appliedFiltersRef.current, orgUnit: defaultId };
+          setPierNameInput('');
+          setPierCodeInput('');
+        }
+      } catch {} })();
     (async () => { try { const r = await userService.list({ pageSize: 1000 }); const u = r.data || (r as any).content || []; const m = new Map<string, string>(); u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id)); setUserMap(m); } catch {} })();
     (async () => { try { const r = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' }); const s = r.data || (r as any).content || []; const m = new Map<string, string>(); const imgMap = new Map<string, string>(); s.forEach((x: any) => { m.set(x.id, x.name); if (x.image) imgMap.set(x.id, x.image); }); setSymbolMap(m); setSymbolImageMap(imgMap); } catch {} })();
     (async () => { try { const r = await portCRUD.findAll({ page: 1, size: 1000 }); (r.data || []).forEach((p: any) => portMap.set(p.id, p.portName)); } catch {} })();

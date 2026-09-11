@@ -429,7 +429,10 @@ CREATE TABLE public.org_units (
     id UUID PRIMARY KEY,
     status VARCHAR(50),
     unit_type VARCHAR(50),
-    type VARCHAR(50)
+    type VARCHAR(50),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
 );
 
 -- === Tables needed by V106 dashboard indexes (non-duplicate tables only) ===

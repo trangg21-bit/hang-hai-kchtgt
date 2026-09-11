@@ -1,10 +1,8 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -34,14 +32,11 @@ public class VtsZone extends BaseEntity {
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
     private ConditionStatus conditionStatus;
 
-    @Column(name = "geometry_type")
-    private GisGeometryType geometryType;
-
-    @Column(name = "coordinates", columnDefinition = "TEXT")
-    private String coordinates;
-
     @Column(name = "spatial_id")
     private UUID spatialId;
+
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vts_system_id", nullable = false)

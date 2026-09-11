@@ -10,7 +10,6 @@ interface HistoryEntry {
   approvedBy?: string;
   approvedDate?: string;
   approvalLevel?: number | string;
-  reason?: string;
   changedField?: string;
   previousValue?: string;
   newValue?: string;
@@ -240,7 +239,7 @@ export default function HistoryTimeline({ history, loading, error, onRetry }: Hi
     const status = entry.status || entry.trangThai || '';
     const approver = entry.approver || entry.approvedBy || entry.nguoiPheDuyet || '';
     const date = entry.approvalDate || entry.approvedDate || entry.ngayPheDuyet;
-    const reason = entry.reason || entry.lyDo || '';
+    const reason = entry.lyDo || '';
 
     const statusColor = STATUS_COLOR_MAP[status] || 'gray';
     const formattedDate = date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : 'N/A';

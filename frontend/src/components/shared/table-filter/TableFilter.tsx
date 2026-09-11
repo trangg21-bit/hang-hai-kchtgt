@@ -35,6 +35,8 @@ import {
 } from '../../../tokens';
 import { getRangePickerProps, getSidebarDatePickerProps } from '../../../themetokenchk';
 import OrgUnitTreeSelect from '../../org-unit/OrgUnitTreeSelect';
+import { resolveDefaultOrgUnitId } from '../../org-unit/useUserDefaultOrgUnit';
+import { useAuthStore } from '../../../store/authStore';
 import type {
   FilterOption,
   FilterControlOption,
@@ -124,10 +126,16 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
 
   // Tính toán giá trị mặc định ban đầu từ filterList
   const defaultValuesFromConfig = useMemo(() => {
+    const currentUser = useAuthStore.getState().user;
     const res: Record<string, unknown> = {};
     filterList.forEach((filter) => {
       if (filter.defaultValue !== undefined) {
         res[filter.key] = filter.defaultValue;
+      } else if (filter.key === 'orgUnitId' && filter.type === 'treeSelect') {
+        const defaultOrg = resolveDefaultOrgUnitId(currentUser, filter.organizations);
+        if (defaultOrg) {
+          res[filter.key] = defaultOrg;
+        }
       }
     });
     return res as T;
@@ -363,38 +371,24 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
         );
 
       case 'treeSelect':
-        if (filter.organizations) {
-          return (
-            <OrgUnitTreeSelect
-              organizations={filter.organizations}
-              value={(value as string) || undefined}
-              onChange={(val) => {
-                const nextVal = val === '__all__' ? undefined : val;
-                handleFieldChange(key, nextVal);
-              }}
-              placeholder={(filter.placeholder as string) || 'Chọn đơn vị...'}
-              allowClear={allowClear}
-              disabled={disabled}
-              showPath
-              allLabel="Tất cả"
-              treeDefaultExpandAll={false}
-              {...(filter.treeSelectProps as Record<string, unknown>)}
-            />
-          );
-        }
         return (
-          <Select
-            value={value as string | number | undefined}
-            onChange={(val) => handleFieldChange(key, val)}
-            placeholder={(filter.placeholder as string) || 'Chọn...'}
+          <OrgUnitTreeSelect
+            variant="filter"
+            organizations={filter.organizations}
+            value={(value as string) || undefined}
+            onChange={(val) => {
+              const nextVal = val === '__all__' ? undefined : val;
+              handleFieldChange(key, nextVal);
+            }}
+            placeholder={(filter.placeholder as string) || 'Tất cả'}
             allowClear={allowClear}
-            showSearch={showSearch}
             disabled={disabled}
-            options={filter.options as any}
-            style={{ width: '100%', borderRadius: radiusPill, height: controlHeight }}
-            {...(filter.selectProps as React.ComponentProps<typeof Select>)}
+            treeDefaultExpandAll={false}
+            listHeight={256}
+            {...(filter.treeSelectProps as Record<string, unknown>)}
           />
         );
+
 
       case 'dateRange': {
         const { popupClassName, ...rangeProps } = getRangePickerProps({

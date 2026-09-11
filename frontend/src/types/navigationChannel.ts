@@ -214,27 +214,22 @@ export interface UpdateNavigationChannelRequest extends CreateNavigationChannelR
 // ── Approval ──────────────────────────────────────────────────────────────
 export interface ApprovalRequest {
   status: 'APPROVED' | 'REJECTED';
-  reason?: string;
 }
 
 export interface ApprovalResponse {
   id: string;
   navigationChannelId?: string;
-  approvalLevel?: number;
   status: string;
   approvedBy: string;
   approvedDate: string;
-  reason?: string;
 }
 
 export interface HistoryEntry {
   id: string;
   navigationChannelId?: string;
-  approvalLevel?: number;
   status: string;
   approvedBy: string;
   approvedDate: string;
-  reason?: string;
 }
 
 // ── List params (DS/Lọc: #1/#2/#4/#5/#6/#8/#47/#48) ──────────────────────

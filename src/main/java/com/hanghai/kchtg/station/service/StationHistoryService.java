@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -71,7 +70,6 @@ public class StationHistoryService {
 
         InfrastructureType refType = resolveType(stationType);
         InfrastructureHistoryStatus status = actionType != null ? toStatus(actionType) : null;
-        ApprovalLevel level = actionType != null ? toLevel(actionType) : null;
 
         Specification<InfrastructureHistory> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -83,9 +81,6 @@ public class StationHistoryService {
             }
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));
-            }
-            if (level != null) {
-                predicates.add(cb.equal(root.get("approvalLevel"), level));
             }
             if (changedBy != null) {
                 predicates.add(cb.equal(root.get("approvedBy"), changedBy));
@@ -114,7 +109,7 @@ public class StationHistoryService {
                 .id(h.getId())
                 .stationType(stationType)
                 .entityId(h.getRefId())
-                .actionType(toActionType(h.getStatus(), h.getApprovalLevel()).name())
+                .actionType(toActionType(h.getStatus()).name())
                 .changedField(h.getChangedField())
                 .previousValue(h.getPreviousValue())
                 .newValue(h.getNewValue())
@@ -123,7 +118,6 @@ public class StationHistoryService {
                         ? "Hệ thống"
                         : userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()))
                 .changedAt(h.getApprovedDate())
-                .reason(h.getReason())
                 .build();
     }
 
@@ -155,19 +149,7 @@ public class StationHistoryService {
         };
     }
 
-    /** Chỉ APPROVE_L1 / APPROVE_L2 mới cần lọc thêm theo vòng duyệt. */
-    private ApprovalLevel toLevel(String actionType) {
-        String key = actionType.trim().toUpperCase(Locale.ROOT);
-        if ("APPROVE_L1".equals(key)) {
-            return ApprovalLevel.LEVEL_1;
-        }
-        if ("APPROVE_L2".equals(key)) {
-            return ApprovalLevel.LEVEL_2;
-        }
-        return null;
-    }
-
-    private StationHistoryActionType toActionType(InfrastructureHistoryStatus status, ApprovalLevel level) {
+    private StationHistoryActionType toActionType(InfrastructureHistoryStatus status) {
         if (status == null) {
             return StationHistoryActionType.UPDATE;
         }
@@ -175,9 +157,7 @@ public class StationHistoryService {
             case CREATED, DRAFT_SAVED -> StationHistoryActionType.CREATE;
             case DELETED -> StationHistoryActionType.DELETE;
             case REJECTED -> StationHistoryActionType.REJECT;
-            case APPROVED -> level == ApprovalLevel.LEVEL_2
-                    ? StationHistoryActionType.APPROVE_L2
-                    : StationHistoryActionType.APPROVE_L1;
+            case APPROVED -> StationHistoryActionType.APPROVE_L2;
             default -> StationHistoryActionType.UPDATE;
         };
     }

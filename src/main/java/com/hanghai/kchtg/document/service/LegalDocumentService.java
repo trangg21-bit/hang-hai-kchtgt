@@ -451,7 +451,6 @@ public class LegalDocumentService {
                 .status(status)
                 .approvedBy(SecurityUtils.getCurrentUserId())
                 .approvedDate(LocalDateTime.now())
-                .reason(note != null ? note : action.name())
                 .changedField(document.getDocumentName())
                 .newValue(document.getDocumentNumber())
                 .build());
@@ -515,8 +514,6 @@ public class LegalDocumentService {
                 .applicationArea(doc != null ? doc.getApplicationArea() : null)
                 .validityStatus(doc != null ? doc.getValidityStatus() : null)
                 .signer(doc != null ? doc.getSigner() : null)
-                .description(history.getReason())
-                .note(history.getReason())
                 .build();
     }
 

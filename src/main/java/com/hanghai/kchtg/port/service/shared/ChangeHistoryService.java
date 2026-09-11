@@ -12,16 +12,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
- * Service for inserting change history records.
+ * Service that records field-level change history into the
+ * {@code infrastructure_history} table.
  * <p>
- * INSERT-only — no update or delete operations. Each call persists
- * a change record into the infrastructure_history table.
+ * Writes one {@link InfrastructureHistory} record per changed field.
  * Called within the same @Transactional as the entity mutation.
  * </p>
  */
@@ -34,7 +31,7 @@ public class ChangeHistoryService {
 
     public static InfrastructureType resolveInfrastructureType(String entityName) {
         if (entityName == null) return InfrastructureType.SEAPORT;
-        return switch (entityName.toUpperCase()) {
+        return switch (entityName.toUpperCase().trim()) {
             case "PORT", "CANG_BIEN", "SEAPORT" -> InfrastructureType.SEAPORT;
             case "BERTH", "BEN_CANG", "PORT_TERMINAL" -> InfrastructureType.PORT_TERMINAL;
             case "PIER", "CAU_CANG" -> InfrastructureType.PIER;
@@ -59,6 +56,14 @@ public class ChangeHistoryService {
             case "TRANSFERAREA", "TRANSFER_AREA", "TRANSSHIPMENT_AREA", "KHU_CHUYEN_TAI" -> InfrastructureType.TRANSSHIPMENT_AREA;
             case "ANCHORAGE", "KHU_NEO_DAU", "ANCHORAGE_AREA" -> InfrastructureType.ANCHORAGE_AREA;
             case "BUOYBERTH", "BUOY_BERTH", "BEN_PHAO" -> InfrastructureType.BUOY_BERTH;
+            case "VTS_ZONE", "VTSZONE", "VUNG_VTS" -> InfrastructureType.VTS_ZONE;
+            case "VHF" -> InfrastructureType.VHF;
+            case "SEAPORT_THROUGHPUT", "SAN_LUONG" -> InfrastructureType.SEAPORT_THROUGHPUT;
+            case "LEGAL_DOCUMENT", "VAN_BAN" -> InfrastructureType.LEGAL_DOCUMENT;
+            case "LRIT", "LRIT_STATION" -> InfrastructureType.LRIT_STATION;
+            case "INMARSAT", "INMARSAT_STATION" -> InfrastructureType.INMARSAT_STATION;
+            case "COSPAS_SARSAT", "COSPAS_SARSAT_STATION" -> InfrastructureType.COSPAS_SARSAT_STATION;
+            case "HAIPHONG", "HANOI_STATION" -> InfrastructureType.HANOI_STATION;
             default -> InfrastructureType.SEAPORT;
         };
     }

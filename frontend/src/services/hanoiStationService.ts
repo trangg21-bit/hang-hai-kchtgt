@@ -137,19 +137,19 @@ export const hanoiStationService = {
     return item;
   },
 
-  async approveL1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+  async approveL1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     return this.approveC1(id, statusOrContent, maybeContent);
   },
 
-  async approveL2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+  async approveL2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     return this.approveC2(id, statusOrContent, maybeContent);
   },
 
-  async approveLevel1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+  async approveLevel1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     return this.approveC1(id, statusOrContent, maybeContent);
   },
 
-  async approveLevel2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem> {
+  async approveLevel2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     return this.approveC2(id, statusOrContent, maybeContent);
   },
 

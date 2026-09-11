@@ -96,7 +96,6 @@ public class BeaconHistoryService {
                 .changedBy(entity.getChangedBy())
                 .changedByName(userName)
                 .changedAt(entity.getChangedAt())
-                .reason(entity.getReason())
                 .diffData(entity.getDiffData())
                 .build();
     }

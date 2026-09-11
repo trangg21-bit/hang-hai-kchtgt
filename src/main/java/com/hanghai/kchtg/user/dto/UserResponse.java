@@ -1,11 +1,13 @@
 package com.hanghai.kchtg.user.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.Hibernate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,6 +33,7 @@ public class UserResponse {
     private String note;
     private UUID orgUnitId;
     private String orgUnitName;
+    private String orgUnitCode;
     private List<UUID> groupIds;
     private List<String> groupNames;
     private List<String> permissionCodes;
@@ -49,12 +52,14 @@ public class UserResponse {
         return from(user, null);
     }
 
-    public static UserResponse from(User user, com.hanghai.kchtg.orgunit.service.OrgUnitCacheService orgUnitCacheService) {
+    public static UserResponse from(User user, OrgUnitCacheService orgUnitCacheService) {
         UUID oId = null;
         String oName = null;
+        String oCode = null;
         if (user.getOrgUnit() != null) {
             oId = user.getOrgUnit().getId();
             oName = user.getOrgUnit().getName();
+            oCode = user.getOrgUnit().getCode();
         }
 
         if (oId != null && orgUnitCacheService != null) {
@@ -66,7 +71,7 @@ public class UserResponse {
 
         List<UUID> gIds = null;
         List<String> gNames = null;
-        if (org.hibernate.Hibernate.isInitialized(user.getGroups()) && user.getGroups() != null && !user.getGroups().isEmpty()) {
+        if (Hibernate.isInitialized(user.getGroups()) && user.getGroups() != null && !user.getGroups().isEmpty()) {
             gIds = user.getGroups().stream().map(g -> g.getId()).toList();
             gNames = user.getGroups().stream().map(g -> g.getName()).toList();
         }
@@ -83,6 +88,7 @@ public class UserResponse {
                 user.getNote(),
                 oId,
                 oName,
+                oCode,
                 gIds,
                 gNames,
                 user.getAllPermissions().stream().sorted().toList(),

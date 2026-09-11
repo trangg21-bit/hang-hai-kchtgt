@@ -12,7 +12,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,8 +44,7 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
         LEFT JOIN RadarStation rs ON rs.id = t.radarStationId
         LEFT JOIN User u ON u.id = t.updatedBy
         LEFT JOIN User uCreate ON uCreate.id = t.createdBy
-        WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+        WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
           AND (:radarStationId IS NULL OR t.radarStationId = :radarStationId)
@@ -55,10 +53,13 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:commissioningYear IS NULL OR t.commissioningYear = :commissioningYear)
           AND (:approvalStatus IS NULL
-               OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED))
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED))
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)))
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
+               OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
+                    t.approvalStatus = :approvalStatus
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED))
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED))
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2))
+               )))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:name AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
@@ -121,9 +122,8 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
     }
 
     @Query("""
-        SELECT t.approvalStatus, COUNT(t) FROM AisSystem t
-        WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+        SELECT CASE WHEN (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE t.approvalStatus END, COUNT(t) FROM AisSystem t
+        WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
           AND (:radarStationId IS NULL OR t.radarStationId = :radarStationId)
@@ -142,7 +142,7 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
                 CAST(function('immutable_unaccent', LOWER(t.manufacturer)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.detailedLocation)) AS string) LIKE CAST(:keyword AS string)
               ))
-        GROUP BY t.approvalStatus
+        GROUP BY CASE WHEN (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE t.approvalStatus END
     """)
     List<Object[]> countByApprovalStatus(
         @Param("scopeEnabled") boolean scopeEnabled,
@@ -204,11 +204,11 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
           AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
-          AND (:orgFiltered = false OR t.orgUnitId IN :targetOrgUnitIds)
-        ORDER BY t.name ASC
+          AND (:scopeEnabled = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
+        ORDER BY LOWER(t.name) ASC
     """)
-    List<com.hanghai.kchtg.aissystem.dto.AisSystemOptionResponse> findOptions(
+    List<AisSystemOptionResponse> findOptions(
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgFiltered") boolean orgFiltered,

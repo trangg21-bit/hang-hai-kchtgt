@@ -15,7 +15,7 @@ import { transferAreaCRUD, transferAreaApproval, portCRUD } from '../../services
 import type { TransferArea } from '../../types/port';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
@@ -1201,13 +1201,10 @@ export default function TransferAreaListPage() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý
         </div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
           value={orgUnit}
           onChange={(v) => { setOrgUnit(v); setPage(1); }}
         />

@@ -29,7 +29,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldNameConstants
-@SQLRestriction("deleted_at IS NULL")
+@SQLRestriction("1=1")
 @Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class CoastalStationHaiphong extends BaseEntity implements ApprovableEntity {
 

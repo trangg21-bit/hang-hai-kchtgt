@@ -77,25 +77,25 @@ public class CoastalStationVTSService {
         java.util.Map<String, String> oldValues = new java.util.LinkedHashMap<>();
         if (wasApproved) {
             if (request.getStationName() != null && !java.util.Objects.equals(request.getStationName(), entity.getName())) {
-                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
+                oldValues.put("name", entity.getName() != null ? entity.getName() : null);
             }
             if (request.getFrequencyBand() != null && !java.util.Objects.equals(request.getFrequencyBand(), entity.getFrequencyBand())) {
-                oldValues.put("Băng tần", entity.getFrequencyBand() != null ? entity.getFrequencyBand() : "—");
+                oldValues.put("frequencyBand", entity.getFrequencyBand() != null ? entity.getFrequencyBand() : null);
             }
             if (request.getTransmitPower() != null && !java.util.Objects.equals(request.getTransmitPower(), entity.getTransmitPower())) {
-                oldValues.put("Công suất phát", entity.getTransmitPower() != null ? String.valueOf(entity.getTransmitPower()) : "—");
+                oldValues.put("transmitPower", entity.getTransmitPower() != null ? String.valueOf(entity.getTransmitPower()) : null);
             }
             if (request.getEquipmentType() != null && !java.util.Objects.equals(request.getEquipmentType(), entity.getEquipmentType())) {
-                oldValues.put("Loại thiết bị", entity.getEquipmentType() != null ? entity.getEquipmentType() : "—");
+                oldValues.put("equipmentType", entity.getEquipmentType() != null ? entity.getEquipmentType() : null);
             }
             if (request.getLocationAddress() != null && !java.util.Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
-                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
+                oldValues.put("locationAddress", entity.getLocationAddress() != null ? entity.getLocationAddress() : null);
             }
             if (request.getContactPerson() != null && !java.util.Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
-                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
+                oldValues.put("contactPerson", entity.getContactPerson() != null ? entity.getContactPerson() : null);
             }
             if (request.getContactPhone() != null && !java.util.Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
-                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+                oldValues.put("contactPhone", entity.getContactPhone() != null ? entity.getContactPhone() : null);
             }
 
             boolean latChanged = (request.getLatitude() != null && !java.util.Objects.equals(request.getLatitude(), entity.getLatitude()));
@@ -103,8 +103,8 @@ public class CoastalStationVTSService {
             if (latChanged || lngChanged) {
                 String oldCoord = (entity.getLatitude() != null && entity.getLongitude() != null)
                         ? entity.getLatitude() + ", " + entity.getLongitude()
-                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
-                oldValues.put("Tọa độ GIS", oldCoord);
+                        : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : null));
+                oldValues.put("coordinates", oldCoord);
             }
         }
 
@@ -154,16 +154,16 @@ public class CoastalStationVTSService {
     private String getNewValueDisplay(String fieldName, CoastalStationVTS entity) {
         if (entity == null || fieldName == null) return "—";
         return switch (fieldName) {
-            case "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
-            case "Băng tần" -> entity.getFrequencyBand() != null ? entity.getFrequencyBand() : "—";
-            case "Công suất phát" -> entity.getTransmitPower() != null ? String.valueOf(entity.getTransmitPower()) : "—";
-            case "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
-            case "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
-            case "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
-            case "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
-            case "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
+            case "name", "Tên đài" -> entity.getName() != null ? entity.getName() : "—";
+            case "frequencyBand", "Băng tần" -> entity.getFrequencyBand() != null ? entity.getFrequencyBand() : "—";
+            case "transmitPower", "Công suất phát" -> entity.getTransmitPower() != null ? String.valueOf(entity.getTransmitPower()) : "—";
+            case "equipmentType", "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
+            case "locationAddress", "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
+            case "contactPerson", "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
+            case "contactPhone", "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
+            case "coordinates", "Tọa độ", "Tọa độ GIS", "Tọa độ GPS" -> (entity.getLatitude() != null && entity.getLongitude() != null)
                     ? entity.getLatitude() + ", " + entity.getLongitude()
-                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : "—"));
+                    : (entity.getLatitude() != null ? "Vĩ độ: " + entity.getLatitude() : (entity.getLongitude() != null ? "Kinh độ: " + entity.getLongitude() : null));
             default -> "—";
         };
     }

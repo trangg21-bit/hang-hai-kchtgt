@@ -171,7 +171,7 @@ const renderServicesBadges = (services?: string[] | string) => {
             borderRadius: radiusPill,
             background: '#eef3fb',
             border: '1px solid #c6d9f5',
-            color: '#12468C',
+            color: colors.sidebarBg,
             fontSize: '12px',
             fontWeight: 500,
             whiteSpace: 'nowrap',
@@ -208,12 +208,161 @@ export interface InmarsatStationDetailContentProps {
   onClose?: () => void;
 }
 
+const InmarsatStationDetailStyles = React.memo(() => (
+  <style>{`
+    .inmarsat-detail-content-wrapper {
+      overflow: hidden !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .inmarsat-detail-content-wrapper,
+    .inmarsat-detail-content-wrapper .chk-detail-label,
+    .inmarsat-detail-content-wrapper .chk-detail-value,
+    .inmarsat-detail-content-wrapper .ant-table,
+    .inmarsat-detail-content-wrapper .ant-table-cell,
+    .inmarsat-detail-content-wrapper .ant-table-thead > tr > th,
+    .inmarsat-detail-content-wrapper .ant-tabs-tab,
+    .inmarsat-detail-content-wrapper .ant-btn,
+    .inmarsat-detail-content-wrapper .ant-select,
+    .inmarsat-detail-content-wrapper .ant-select-selection-item,
+    .inmarsat-detail-content-wrapper .ant-select-item {
+      font-size: 13.5px !important;
+    }
+
+    .inmarsat-detail-content-wrapper .chk-detail-grid {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      column-gap: 28px !important;
+      row-gap: 0 !important;
+    }
+
+    .inmarsat-detail-content-wrapper .chk-detail-row {
+      display: flex !important;
+      align-items: flex-start !important;
+      min-height: 36px !important;
+      padding: 7px 0 !important;
+      border-bottom: 1px solid #f1f5f9 !important;
+      line-height: 1.5 !important;
+      gap: 10px !important;
+    }
+
+    .inmarsat-detail-content-wrapper .chk-detail-row:last-child {
+      border-bottom: none !important;
+    }
+
+    .inmarsat-detail-content-wrapper .ant-table-placeholder > td,
+    .inmarsat-detail-content-wrapper .ant-table-placeholder .ant-table-cell,
+    .inmarsat-detail-content-wrapper .ant-table-tbody > tr.ant-table-placeholder > td {
+      border-bottom: none !important;
+    }
+
+    .inmarsat-detail-content-wrapper .chk-detail-row--full {
+      grid-column: 1 / -1 !important;
+    }
+
+    .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .chk-detail-label,
+    .inmarsat-detail-content-wrapper .chk-detail-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+      color: ${colors.sidebarBg} !important;
+      font-weight: 600 !important;
+      font-size: 13.5px !important;
+      text-align: left !important;
+      line-height: 1.5 !important;
+    }
+
+    .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .sec-col1-label,
+    .inmarsat-detail-content-wrapper .sec-col1-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .sec-col2-label,
+    .inmarsat-detail-content-wrapper .sec-col2-label {
+      width: 250px !important;
+      min-width: 250px !important;
+      max-width: 250px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .sec-full-label,
+    .inmarsat-detail-content-wrapper .sec-full-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .inmarsat-detail-content-wrapper .chk-detail-label::after {
+      content: ':' !important;
+      margin-left: 1px !important;
+      margin-right: 4px !important;
+    }
+
+    .inmarsat-detail-content-wrapper .chk-detail-value {
+      color: #1e293b !important;
+      font-size: 13.5px !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+      text-align: left !important;
+      line-height: 1.5 !important;
+      word-break: break-word !important;
+    }
+
+    @media (max-width: 960px) {
+      .inmarsat-detail-content-wrapper .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .inmarsat-detail-content-wrapper .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+      .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .chk-detail-label,
+      .inmarsat-detail-content-wrapper .chk-detail-label,
+      .inmarsat-detail-content-wrapper .sec-col1-label,
+      .inmarsat-detail-content-wrapper .sec-col2-label,
+      .inmarsat-detail-content-wrapper .sec-full-label {
+        width: 250px !important;
+        min-width: 250px !important;
+        max-width: 250px !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .inmarsat-detail-content-wrapper .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 3px !important;
+        padding: 6px 0 !important;
+      }
+      .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .chk-detail-label,
+      .inmarsat-detail-content-wrapper .chk-detail-label,
+      .inmarsat-detail-content-wrapper .sec-col1-label,
+      .inmarsat-detail-content-wrapper .sec-col2-label,
+      .inmarsat-detail-content-wrapper .sec-full-label {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+      }
+      .inmarsat-detail-content-wrapper .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
+
 export default function InmarsatStationDetailContent({
   selectedRecord,
   symbols = [],
   attachments = [],
 }: InmarsatStationDetailContentProps) {
   const [record, setRecord] = useState<CoastalStationInmarsatResponse>(selectedRecord);
+  const [activeTab, setActiveTab] = useState('general');
   const [approvalOpen, setApprovalOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
@@ -236,7 +385,7 @@ export default function InmarsatStationDetailContent({
       setAttachmentList(attachments);
       return;
     }
-    if (!selectedRecord?.id) return;
+    if (activeTab !== 'files' || !selectedRecord?.id) return;
 
     let active = true;
     setIsLoadingFiles(true);
@@ -253,7 +402,7 @@ export default function InmarsatStationDetailContent({
     return () => {
       active = false;
     };
-  }, [selectedRecord?.id, attachments]);
+  }, [selectedRecord?.id, attachments, activeTab]);
 
   const handlePreviewImage = async (file: any) => {
     try {
@@ -324,158 +473,11 @@ export default function InmarsatStationDetailContent({
 
   return (
     <div className="inmarsat-detail-content-wrapper">
-      <style>{`
-        .inmarsat-detail-content-wrapper {
-          overflow: hidden !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
-        }
-
-        .inmarsat-detail-content-wrapper,
-        .inmarsat-detail-content-wrapper .chk-detail-label,
-        .inmarsat-detail-content-wrapper .chk-detail-value,
-        .inmarsat-detail-content-wrapper .ant-table,
-        .inmarsat-detail-content-wrapper .ant-table-cell,
-        .inmarsat-detail-content-wrapper .ant-table-thead > tr > th,
-        .inmarsat-detail-content-wrapper .ant-tabs-tab,
-        .inmarsat-detail-content-wrapper .ant-btn,
-        .inmarsat-detail-content-wrapper .ant-select,
-        .inmarsat-detail-content-wrapper .ant-select-selection-item,
-        .inmarsat-detail-content-wrapper .ant-select-item {
-          font-size: 13.5px !important;
-        }
-
-        .inmarsat-detail-content-wrapper .chk-detail-grid {
-          display: grid !important;
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
-          column-gap: 28px !important;
-          row-gap: 0 !important;
-        }
-
-        .inmarsat-detail-content-wrapper .chk-detail-row {
-          display: flex !important;
-          align-items: flex-start !important;
-          min-height: 36px !important;
-          padding: 7px 0 !important;
-          border-bottom: 1px solid #f1f5f9 !important;
-          line-height: 1.5 !important;
-          gap: 10px !important;
-        }
-
-        .inmarsat-detail-content-wrapper .chk-detail-row:last-child {
-          border-bottom: none !important;
-        }
-
-        .inmarsat-detail-content-wrapper .ant-table-placeholder > td,
-        .inmarsat-detail-content-wrapper .ant-table-placeholder .ant-table-cell,
-        .inmarsat-detail-content-wrapper .ant-table-tbody > tr.ant-table-placeholder > td {
-          border-bottom: none !important;
-        }
-
-        .inmarsat-detail-content-wrapper .chk-detail-row--full {
-          grid-column: 1 / -1 !important;
-        }
-
-        .berth-drawer-scope .chk-detail-label,
-        .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .chk-detail-label,
-        .inmarsat-detail-content-wrapper .chk-detail-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-          color: ${colors.sidebarBg} !important;
-          font-weight: 600 !important;
-          font-size: 13.5px !important;
-          text-align: left !important;
-          line-height: 1.5 !important;
-        }
-
-        .berth-drawer-scope .sec-col1-label,
-        .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .inmarsat-detail-content-wrapper .sec-col1-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .berth-drawer-scope .sec-col2-label,
-        .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .sec-col2-label,
-        .inmarsat-detail-content-wrapper .sec-col2-label {
-          width: 250px !important;
-          min-width: 250px !important;
-          max-width: 250px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .berth-drawer-scope .sec-full-label,
-        .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .sec-full-label,
-        .inmarsat-detail-content-wrapper .sec-full-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .inmarsat-detail-content-wrapper .chk-detail-label::after {
-          content: ':' !important;
-          margin-left: 1px !important;
-          margin-right: 4px !important;
-        }
-
-        .inmarsat-detail-content-wrapper .chk-detail-value {
-          color: #1e293b !important;
-          font-size: 13.5px !important;
-          flex: 1 !important;
-          min-width: 0 !important;
-          text-align: left !important;
-          line-height: 1.5 !important;
-          word-break: break-word !important;
-        }
-
-        @media (max-width: 960px) {
-          .inmarsat-detail-content-wrapper .chk-detail-grid {
-            grid-template-columns: 1fr !important;
-            column-gap: 0 !important;
-          }
-          .inmarsat-detail-content-wrapper .chk-detail-row--full {
-            grid-column: 1 !important;
-          }
-          .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .chk-detail-label,
-          .inmarsat-detail-content-wrapper .chk-detail-label,
-          .inmarsat-detail-content-wrapper .sec-col1-label,
-          .inmarsat-detail-content-wrapper .sec-col2-label,
-          .inmarsat-detail-content-wrapper .sec-full-label {
-            width: 250px !important;
-            min-width: 250px !important;
-            max-width: 250px !important;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .inmarsat-detail-content-wrapper .chk-detail-row {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 3px !important;
-            padding: 6px 0 !important;
-          }
-          .inmarsat-drawer-scope .inmarsat-detail-content-wrapper .chk-detail-row .chk-detail-label,
-          .inmarsat-detail-content-wrapper .chk-detail-label,
-          .inmarsat-detail-content-wrapper .sec-col1-label,
-          .inmarsat-detail-content-wrapper .sec-col2-label,
-          .inmarsat-detail-content-wrapper .sec-full-label {
-            width: 100% !important;
-            min-width: 100% !important;
-            max-width: 100% !important;
-          }
-          .inmarsat-detail-content-wrapper .chk-detail-value {
-            width: 100% !important;
-          }
-        }
-      `}</style>
+      <InmarsatStationDetailStyles />
 
       <Tabs
-        defaultActiveKey="general"
+        activeKey={activeTab}
+        onChange={setActiveTab}
         tabBarStyle={{
           marginBottom: 0,
           paddingTop: 0,

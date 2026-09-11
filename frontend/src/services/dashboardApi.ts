@@ -46,17 +46,24 @@ const PROCESSING_TYPE_LABEL: Record<string, string> = {
 // ============================================================
 
 /**
+ * Fetch raw annual cargo aggregates (size: 200) once for year-over-year & annual totals.
+ */
+async function fetchCargoAnnualRaw(province?: string | null): Promise<CargoAggregate[]> {
+  const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
+    `${DASHBOARD_BASE}/cargo/summary`,
+    { params: { periodType: 'ANNUAL', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
+  );
+  if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
+  return res.data.data.content;
+}
+
+/**
  * Fetch annual cargo totals (E1: ports/cargo-total)
  * Returns: Page<CargoAggregate> with periodType=ANNUAL
  */
 async function fetchCargoTotal(year: number, province?: string | null): Promise<CargoAggregate[]> {
-  const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${DASHBOARD_BASE}/ports/cargo-total`,
-    { params: { page: 0, size: 50, ...(province ? { province: province.trim() } : {}) } },
-  );
-  if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
-  const data = res.data.data;
-  return data.content.filter((c) => c.periodStart.startsWith(String(year)));
+  const content = await fetchCargoAnnualRaw(province);
+  return content.filter((c) => c.periodStart.startsWith(String(year)));
 }
 
 /**
@@ -78,13 +85,8 @@ async function fetchCargoMonthly(year: number, province?: string | null): Promis
  * Returns: Page<CargoAggregate> with periodType=ANNUAL
  */
 async function fetchCargoAnnual(year: number, province?: string | null): Promise<CargoAggregate[]> {
-  const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${DASHBOARD_BASE}/cargo/summary`,
-    { params: { periodType: 'ANNUAL', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
-  );
-  if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
-  const data = res.data.data;
-  return data.content.filter((c) => c.periodStart.startsWith(String(year)));
+  const content = await fetchCargoAnnualRaw(province);
+  return content.filter((c) => c.periodStart.startsWith(String(year)));
 }
 
 /**
@@ -239,8 +241,8 @@ async function fetchYearOverYear(
     c.periodStart.startsWith(String(year - 1))
   );
 
-  const currentTotal = currentData.reduce((sum, c) => sum + c.totalTons, 0);
-  const previousTotal = previousData.reduce((sum, c) => sum + c.totalTons, 0);
+  const currentTotal = currentData.reduce((sum, c) => sum + Number(c.totalTons || 0), 0);
+  const previousTotal = previousData.reduce((sum, c) => sum + Number(c.totalTons || 0), 0);
 
   const deltaPercent =
     previousTotal > 0
@@ -270,8 +272,8 @@ function transformCargoTotals(
   aggregates: CargoAggregate[],
   year: number
 ): { heroKpi: KpiWithSparkline; kpiCard1: KpiCardData } {
-  const totalTons = aggregates.reduce((sum, c) => sum + c.totalTons, 0);
-  const vesselCount = aggregates.reduce((sum, c) => sum + c.vesselCount, 0);
+  const totalTons = aggregates.reduce((sum, c) => sum + Number(c.totalTons || 0), 0);
+  const vesselCount = aggregates.reduce((sum, c) => sum + Number(c.vesselCount || 0), 0);
 
   return {
     heroKpi: {
@@ -476,93 +478,146 @@ function transformApprovalData(
 // ============================================================
 // Core: fetchAll with Promise.allSettled
 // ============================================================
+// In-memory caching & in-flight deduplication
+// ============================================================
+interface CacheEntry {
+  timestamp: number;
+  result: {
+    data: DashboardData;
+    states: Record<string, BlockState>;
+    assetStatus?: AssetStatusDto;
+  };
+}
+
+const DASHBOARD_CACHE = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60_000;
+const IN_FLIGHT_REQUESTS = new Map<string, Promise<{
+  data: DashboardData;
+  states: Record<string, BlockState>;
+  assetStatus?: AssetStatusDto;
+}>>();
+
+export function clearDashboardCache() {
+  DASHBOARD_CACHE.clear();
+}
 
 /**
- * Fetch all dashboard data in parallel with per-block fallback to mock data.
+ * Fetch all dashboard data in parallel with consolidated queries and in-memory cache.
  * Each API call is independent — failure in one block does not affect others.
  */
 async function fetchAll(
-  filters: { year: number; province: string | null; infraType: string | null }
+  filters: { year: number; province: string | null; infraType: string | null },
+  forceRefresh: boolean = false
 ): Promise<{
   data: DashboardData;
   states: Record<string, BlockState>;
   assetStatus?: AssetStatusDto;
 }> {
   const { year, province, infraType } = filters;
-  const states: Record<string, BlockState> = {};
+  const cacheKey = `${year}_${province || 'ALL'}_${infraType || 'ALL'}`;
 
-  const [
-    cargoTotal,
-    cargoMonthly,
-    cargoAnnual,
-    cargoPassenger,
-    cargoDomestic,
-    cargoManagedArea,
-    assetStatus,
-    approvals,
-    yearOverYear,
-  ] = await Promise.allSettled([
-    fetchCargoTotal(year, province),
-    fetchCargoMonthly(year, province),
-    fetchCargoAnnual(year, province),
-    fetchCargoPassenger(year, province),
-    fetchCargoDomestic(year, province),
-    fetchCargoManagedArea(year, province),
-    fetchAssetStatus(year, province, infraType),
-    fetchApprovals(0, 500),
-    fetchYearOverYear(year, 'ANNUAL', province),
-  ]);
+  if (!forceRefresh) {
+    const cached = DASHBOARD_CACHE.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.result;
+    }
+    const inFlight = IN_FLIGHT_REQUESTS.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+  }
 
-  const data: Partial<DashboardData> = {};
+  const fetchPromise = (async () => {
+    const states: Record<string, BlockState> = {};
 
-  // Hero KPI + KPI Card 1 (from cargoTotal or cargoAnnual)
-  if (cargoTotal.status === 'fulfilled') {
-    const transformResult = transformCargoTotals(cargoTotal.value, year);
-    if (yearOverYear.status === 'fulfilled') {
+    // Consolidated: fetchCargoAnnualRaw lấy dữ liệu ANNUAL một lần duy nhất,
+    // dùng chung cho cả Hero KPI, KPI Card 1 và Year-over-Year (giảm 3 network calls).
+    const [
+      cargoAnnualRaw,
+      cargoMonthly,
+      cargoPassenger,
+      cargoDomestic,
+      cargoManagedArea,
+      assetStatus,
+      approvals,
+    ] = await Promise.allSettled([
+      fetchCargoAnnualRaw(province),
+      fetchCargoMonthly(year, province),
+      fetchCargoPassenger(year, province),
+      fetchCargoDomestic(year, province),
+      fetchCargoManagedArea(year, province),
+      fetchAssetStatus(year, province, infraType),
+      fetchApprovals(0, 500),
+    ]);
+
+    // Trích xuất dữ liệu ANNUAL cho năm hiện tại và năm trước
+    let cargoAnnualRecords: CargoAggregate[] = [];
+    let previousYearRecords: CargoAggregate[] = [];
+    let yoyDelta: YearOverYearDelta = {
+      currentYear: year,
+      previousYear: year - 1,
+      currentValue: 0,
+      previousValue: 0,
+      deltaPercent: 0,
+      deltaDirection: 'flat',
+    };
+
+    if (cargoAnnualRaw.status === 'fulfilled') {
+      cargoAnnualRecords = cargoAnnualRaw.value.filter((c) => c.periodStart.startsWith(String(year)));
+      previousYearRecords = cargoAnnualRaw.value.filter((c) => c.periodStart.startsWith(String(year - 1)));
+      const currentTotal = cargoAnnualRecords.reduce((sum, c) => sum + Number(c.totalTons || 0), 0);
+      const previousTotal = previousYearRecords.reduce((sum, c) => sum + Number(c.totalTons || 0), 0);
+      const deltaPercent = previousTotal > 0 ? ((currentTotal - previousTotal) / previousTotal) * 100 : 0;
+      yoyDelta = {
+        currentYear: year,
+        previousYear: year - 1,
+        currentValue: currentTotal,
+        previousValue: previousTotal,
+        deltaPercent: Math.round(deltaPercent * 10) / 10,
+        deltaDirection: deltaPercent > 0 ? 'up' : deltaPercent < 0 ? 'down' : 'flat',
+      };
+    }
+
+    const data: Partial<DashboardData> = {};
+
+    // Hero KPI + KPI Card 1 (từ cargoAnnualRaw)
+    if (cargoAnnualRaw.status === 'fulfilled') {
+      const transformResult = transformCargoTotals(cargoAnnualRecords, year);
       data.heroKpi = {
         ...transformResult.heroKpi,
-        deltaPercent: yearOverYear.value.deltaPercent,
-        deltaDirection: yearOverYear.value.deltaDirection === 'flat' ? 'up' : yearOverYear.value.deltaDirection,
-        previousYearValue: yearOverYear.value.previousValue,
+        deltaPercent: yoyDelta.deltaPercent,
+        deltaDirection: yoyDelta.deltaDirection === 'flat' ? 'up' : yoyDelta.deltaDirection,
+        previousYearValue: yoyDelta.previousValue,
       };
+      states.heroKpi = { state: 'data', isMockFallback: false };
     } else {
-      data.heroKpi = transformResult.heroKpi;
+      data.heroKpi = MOCK_DATA.heroKpi;
+      states.heroKpi = {
+        state: 'error',
+        isMockFallback: true,
+        lastError: cargoAnnualRaw.reason?.message || 'API unavailable',
+      };
     }
-    states.heroKpi = { state: 'data', isMockFallback: false };
-  } else {
-    data.heroKpi = MOCK_DATA.heroKpi;
-    states.heroKpi = {
-      state: 'error',
-      isMockFallback: true,
-      lastError: cargoTotal.reason?.message || 'API unavailable',
-    };
-    console.warn(
-      `[Dashboard] Block 'heroKpi' falling back to mock data: ${cargoTotal.reason?.message || 'API unavailable'}`
-    );
-  }
 
-  // KPI Cards
-  const kpiCards: KpiCardData[] = [];
+    // KPI Cards
+    const kpiCards: KpiCardData[] = [];
 
-  if (cargoAnnual.status === 'fulfilled') {
-    const transformResult = transformCargoTotals(cargoAnnual.value, year);
-    kpiCards.push(transformResult.kpiCard1);
-    states.kpiCard1 = { state: 'data', isMockFallback: false };
-  } else {
-    kpiCards.push(MOCK_DATA.kpiCards[0]);
-    states.kpiCard1 = {
-      state: 'error',
-      isMockFallback: true,
-      lastError: cargoAnnual.reason?.message || 'API unavailable',
-    };
-    console.warn(
-      `[Dashboard] Block 'kpiCard1' falling back to mock data: ${cargoAnnual.reason?.message || 'API unavailable'}`
-    );
-  }
+    if (cargoAnnualRaw.status === 'fulfilled') {
+      const transformResult = transformCargoTotals(cargoAnnualRecords, year);
+      kpiCards.push(transformResult.kpiCard1);
+      states.kpiCard1 = { state: 'data', isMockFallback: false };
+    } else {
+      kpiCards.push(MOCK_DATA.kpiCards[0]);
+      states.kpiCard1 = {
+        state: 'error',
+        isMockFallback: true,
+        lastError: cargoAnnualRaw.reason?.message || 'API unavailable',
+      };
+    }
 
   // KPI Card 2 (Passenger)
   if (cargoPassenger.status === 'fulfilled') {
-    const totalVessels = cargoPassenger.value.reduce((sum, c) => sum + c.vesselCount, 0);
+    const totalVessels = cargoPassenger.value.reduce((sum, c) => sum + Number(c.vesselCount || 0), 0);
     kpiCards.push({
       label: 'Lượt hành khách',
       value: totalVessels > 0 ? totalVessels.toLocaleString('vi-VN') : MOCK_DATA.kpiCards[1].value,
@@ -613,7 +668,7 @@ async function fetchAll(
 
   // KPI Card 4 (Domestic vessels)
   if (cargoDomestic.status === 'fulfilled') {
-    const totalVessels = cargoDomestic.value.reduce((sum, c) => sum + c.vesselCount, 0);
+    const totalVessels = cargoDomestic.value.reduce((sum, c) => sum + Number(c.vesselCount || 0), 0);
     kpiCards.push({
       label: 'Tổng lượt tàu & PT thủy',
       value: totalVessels > 0 ? totalVessels.toLocaleString('vi-VN') : MOCK_DATA.kpiCards[3].value,
@@ -672,13 +727,13 @@ async function fetchAll(
 
   // Donut Phuong Tien
   if (
-    cargoAnnual.status === 'fulfilled' &&
+    cargoAnnualRaw.status === 'fulfilled' &&
     cargoPassenger.status === 'fulfilled' &&
     cargoDomestic.status === 'fulfilled' &&
     cargoManagedArea.status === 'fulfilled'
   ) {
     data.donutPhuongTien = transformVesselComposition(
-      cargoAnnual.value,
+      cargoAnnualRecords,
       cargoPassenger.value,
       cargoDomestic.value,
       cargoManagedArea.value
@@ -769,11 +824,21 @@ async function fetchAll(
     );
   }
 
-  return {
-    data: data as DashboardData,
-    states,
-    assetStatus: assetStatus.status === 'fulfilled' ? assetStatus.value : undefined,
-  };
+    const result = {
+      data: data as DashboardData,
+      states,
+      assetStatus: assetStatus.status === 'fulfilled' ? assetStatus.value : undefined,
+    };
+    DASHBOARD_CACHE.set(cacheKey, { timestamp: Date.now(), result });
+    return result;
+  })();
+
+  IN_FLIGHT_REQUESTS.set(cacheKey, fetchPromise);
+  try {
+    return await fetchPromise;
+  } finally {
+    IN_FLIGHT_REQUESTS.delete(cacheKey);
+  }
 }
 
 // ============================================================
@@ -785,14 +850,15 @@ async function fetchAll(
  */
 async function fetchWithFallback(
   filters: { year: number; province: string | null; infraType: string | null },
-  mockData: DashboardData
+  mockData: DashboardData,
+  forceRefresh: boolean = false
 ): Promise<{
   data: DashboardData;
   states: Record<string, BlockState>;
   assetStatus?: AssetStatusDto;
 }> {
   try {
-    return await fetchAll(filters);
+    return await fetchAll(filters, forceRefresh);
   } catch (error) {
     console.warn('[Dashboard] Global fetchAll error — falling back to mock data:', error);
     const states: Record<string, BlockState> = {};
@@ -814,6 +880,7 @@ async function fetchWithFallback(
 export const dashboardApi = {
   fetchAll,
   fetchWithFallback,
+  clearDashboardCache,
   fetchCargoTotal,
   fetchCargoMonthly,
   fetchCargoAnnual,

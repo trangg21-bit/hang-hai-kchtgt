@@ -6,6 +6,7 @@ import { symbolService } from '../../../services/symbolService';
 import { organizationService } from '../../../services/organizationService';
 import type { CoastalStationInmarsatResponse } from '../../../services/station/types';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../../types/vtsSystem';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../../components/list-view';
@@ -31,8 +32,7 @@ import {
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
-import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
-import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
@@ -55,6 +55,115 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
+
+const InmarsatStationGlobalStyles = React.memo(() => (
+  <style>{`
+    /* ── Cỡ chữ 13.5px chuẩn toàn màn Inmarsat & các popup/drawer con (chuẩn VTS Operation Center / Bến cảng) ── */
+    .inmarsat-page-wrapper,
+    .inmarsat-page-wrapper .ant-table,
+    .inmarsat-page-wrapper .ant-table-cell,
+    .inmarsat-page-wrapper .ant-table-thead > tr > th,
+    .inmarsat-page-wrapper .ant-table-tbody > tr > td,
+    .inmarsat-page-wrapper .ant-input,
+    .inmarsat-page-wrapper .ant-select,
+    .inmarsat-page-wrapper .ant-select-selection-item,
+    .inmarsat-page-wrapper .ant-select-selection-placeholder,
+    .inmarsat-page-wrapper .ant-select-item-option-content,
+    .inmarsat-page-wrapper .ant-picker,
+    .inmarsat-page-wrapper .ant-picker-input > input,
+    .inmarsat-page-wrapper .ant-btn,
+    .inmarsat-page-wrapper .ant-pagination,
+    .inmarsat-page-wrapper .ant-pagination-item,
+    .inmarsat-page-wrapper .ant-pagination-total-text,
+    .inmarsat-page-wrapper .ant-breadcrumb,
+    .inmarsat-page-wrapper .filter-label,
+    .inmarsat-page-wrapper .ant-form-item-label > label,
+    .inmarsat-drawer-scope,
+    .inmarsat-drawer-scope .ant-drawer-content,
+    .inmarsat-drawer-scope .ant-tabs-tab,
+    .inmarsat-drawer-scope .chk-detail-label,
+    .inmarsat-drawer-scope .chk-detail-value,
+    .inmarsat-drawer-scope .ant-table,
+    .inmarsat-drawer-scope .ant-table-cell,
+    .inmarsat-drawer-scope .ant-table-thead > tr > th,
+    .inmarsat-drawer-scope .ant-btn,
+    .inmarsat-drawer-scope .ant-select,
+    .inmarsat-drawer-scope .ant-input,
+    .inmarsat-drawer-scope .ant-form-item-label > label {
+      font-size: 13.5px !important;
+    }
+
+    .inmarsat-page-wrapper .screen-header {
+      flex-wrap: wrap !important;
+      gap: 10px !important;
+    }
+
+    /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+    .inmarsat-page-wrapper div:has(> button[aria-pressed]) {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      justify-content: center !important;
+      justify-content: safe center !important;
+      align-items: center !important;
+      scrollbar-width: thin !important;
+      scrollbar-color: #cbd5e1 #f8fafc !important;
+      scroll-behavior: smooth !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 2px 16px 6px 16px !important;
+      gap: 20px !important;
+    }
+    .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+      height: 6px !important;
+      display: block !important;
+    }
+    .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+      background: #f1f5f9 !important;
+      border-radius: 999px !important;
+    }
+    .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+      background: #cbd5e1 !important;
+      border-radius: 999px !important;
+    }
+    .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8 !important;
+    }
+    .inmarsat-page-wrapper div:has(> button[aria-pressed]) > button {
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      cursor: pointer !important;
+    }
+
+    /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+    .inmarsat-drawer-scope .ant-drawer-content-wrapper {
+      max-width: 100vw !important;
+    }
+    @media (max-width: 1024px) {
+      .inmarsat-drawer-scope .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .inmarsat-drawer-scope .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+    }
+    @media (max-width: 640px) {
+      .inmarsat-drawer-scope .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        padding: 8px 0 !important;
+      }
+      .inmarsat-drawer-scope .chk-detail-label {
+        width: 100% !important;
+      }
+      .inmarsat-drawer-scope .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
 
 const INMARSAT_FIELD_MAP: Record<string, string> = {
   code: 'Mã đài',
@@ -134,6 +243,7 @@ export default function InmarsatStationList() {
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
@@ -232,13 +342,20 @@ export default function InmarsatStationList() {
           symbolService.getOptions().catch(() => []),
         ]);
         const list = Array.isArray(orgs) ? orgs : ((orgs as any)?.content || (orgs as any)?.data || []);
-        setOrgUnitOptions((list || []).map((o: any) => ({
+        const mappedOrgs = (list || []).map((o: any) => ({
           id: String(o.id),
           name: o.name || o.unitName || o.tenDonVi || 'Đơn vị',
           code: o.code || o.maDonVi,
           parentId: o.parentId ? String(o.parentId) : undefined,
-        })));
+        }));
+        setOrgUnitOptions(mappedOrgs);
         setSymbols(Array.isArray(syms) ? syms : []);
+        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, mappedOrgs);
+        defaultOrgUnitRef.current = resolvedDefault;
+        if (resolvedDefault) {
+          setFilterOrgUnitId(resolvedDefault);
+          setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
+        }
       } catch (e) {
         console.error('Failed to fetch lookup options', e);
       }
@@ -320,15 +437,6 @@ export default function InmarsatStationList() {
     void fetchData();
   }, [fetchData]);
 
-  const handleDelete = useCallback(async (id: string) => {
-    try {
-      await inmarsatStationService.delete(id);
-      toast.success('Xóa thành công');
-      refreshList();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Lỗi xóa');
-    }
-  }, [refreshList]);
 
   // ── Delete confirmation modal (Chuẩn Bến cảng) ───────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -483,14 +591,16 @@ export default function InmarsatStationList() {
   };
 
   const handleFilterReset = () => {
+    const defaultOrg = defaultOrgUnitRef.current;
     setFilterName('');
     setFilterCode('');
     setFilterConditionStatus(undefined);
-    setFilterOrgUnitId(undefined);
+    setFilterOrgUnitId(defaultOrg);
     setFilterOperatingOrgId(undefined);
     setFilterProvinceId(undefined);
     setFilterUpdatedFrom(undefined);
     setFilterUpdatedTo(undefined);
+    setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setPage(1);
   };
 
@@ -769,129 +879,7 @@ export default function InmarsatStationList() {
   return (
     <ThemeTokenProvider tokens={customTokens}>
       <div className="inmarsat-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        <style>{`
-          /* ── Cỡ chữ 13.5px chuẩn toàn màn Inmarsat & các popup/drawer con (chuẩn VTS Operation Center / Bến cảng) ── */
-          .inmarsat-page-wrapper,
-          .inmarsat-page-wrapper .ant-table,
-          .inmarsat-page-wrapper .ant-table-cell,
-          .inmarsat-page-wrapper .ant-table-thead > tr > th,
-          .inmarsat-page-wrapper .ant-table-tbody > tr > td,
-          .inmarsat-page-wrapper .ant-input,
-          .inmarsat-page-wrapper .ant-select,
-          .inmarsat-page-wrapper .ant-select-selection-item,
-          .inmarsat-page-wrapper .ant-select-selection-placeholder,
-          .inmarsat-page-wrapper .ant-select-item-option-content,
-          .inmarsat-page-wrapper .ant-picker,
-          .inmarsat-page-wrapper .ant-picker-input > input,
-          .inmarsat-page-wrapper .ant-btn,
-          .inmarsat-page-wrapper .ant-pagination,
-          .inmarsat-page-wrapper .ant-pagination-item,
-          .inmarsat-page-wrapper .ant-pagination-total-text,
-          .inmarsat-page-wrapper .ant-breadcrumb,
-          .inmarsat-page-wrapper .filter-label,
-          .inmarsat-page-wrapper .ant-form-item-label > label,
-          .inmarsat-drawer-scope,
-          .inmarsat-drawer-scope .ant-drawer-content,
-          .inmarsat-drawer-scope .ant-tabs-tab,
-          .inmarsat-drawer-scope .chk-detail-label,
-          .inmarsat-drawer-scope .chk-detail-value,
-          .inmarsat-drawer-scope .ant-table,
-          .inmarsat-drawer-scope .ant-table-cell,
-          .inmarsat-drawer-scope .ant-table-thead > tr > th,
-          .inmarsat-drawer-scope .ant-btn,
-          .inmarsat-drawer-scope .ant-select,
-          .inmarsat-drawer-scope .ant-input,
-          .inmarsat-drawer-scope .ant-form-item-label > label,
-          .berth-drawer-scope,
-          .berth-drawer-scope .ant-drawer-content,
-          .berth-drawer-scope .ant-tabs-tab,
-          .berth-drawer-scope .chk-detail-label,
-          .berth-drawer-scope .chk-detail-value,
-          .berth-drawer-scope .ant-table,
-          .berth-drawer-scope .ant-table-cell,
-          .berth-drawer-scope .ant-table-thead > tr > th,
-          .berth-drawer-scope .ant-btn,
-          .berth-drawer-scope .ant-select,
-          .berth-drawer-scope .ant-input,
-          .berth-drawer-scope .ant-form-item-label > label {
-            font-size: 13.5px !important;
-          }
-
-          .inmarsat-page-wrapper .screen-header {
-            flex-wrap: wrap !important;
-            gap: 10px !important;
-          }
-
-          /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
-          .inmarsat-page-wrapper div:has(> button[aria-pressed]) {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            overflow-y: hidden !important;
-            justify-content: center !important;
-            justify-content: safe center !important;
-            align-items: center !important;
-            scrollbar-width: thin !important;
-            scrollbar-color: #cbd5e1 #f8fafc !important;
-            scroll-behavior: smooth !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
-          }
-          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
-            display: block !important;
-          }
-          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
-            background: #f1f5f9 !important;
-            border-radius: 999px !important;
-          }
-          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
-            background: #cbd5e1 !important;
-            border-radius: 999px !important;
-          }
-          .inmarsat-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8 !important;
-          }
-          .inmarsat-page-wrapper div:has(> button[aria-pressed]) > button {
-            white-space: nowrap !important;
-            flex-shrink: 0 !important;
-            cursor: pointer !important;
-          }
-
-          .inmarsat-page-wrapper .screen-header {
-            flex-wrap: wrap !important;
-            gap: 10px !important;
-          }
-
-          /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
-          .inmarsat-drawer-scope .ant-drawer-content-wrapper {
-            max-width: 100vw !important;
-          }
-          @media (max-width: 1024px) {
-            .inmarsat-drawer-scope .chk-detail-grid {
-              grid-template-columns: 1fr !important;
-              column-gap: 0 !important;
-            }
-            .inmarsat-drawer-scope .chk-detail-row--full {
-              grid-column: 1 !important;
-            }
-          }
-          @media (max-width: 640px) {
-            .inmarsat-drawer-scope .chk-detail-row {
-              flex-direction: column !important;
-              align-items: flex-start !important;
-              gap: 4px !important;
-              padding: 8px 0 !important;
-            }
-            .inmarsat-drawer-scope .chk-detail-label {
-              width: 100% !important;
-            }
-            .inmarsat-drawer-scope .chk-detail-value {
-              width: 100% !important;
-            }
-          }
-        `}</style>
+        <InmarsatStationGlobalStyles />
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
@@ -934,12 +922,10 @@ export default function InmarsatStationList() {
               {/* ── BỘ LỌC CƠ BẢN (LUÔN HIỂN THỊ) ── */}
               <div style={{ marginBottom: 12, marginTop: spaceMd }}>
                 <div style={filterLabelStyle}>Đơn vị quản lý</div>
-                <OrgUnitTreeSelect
+                <FilterOrgUnitTreeSelect
                   organizations={orgUnitOptions}
-                  placeholder="Chọn đơn vị..."
+                  placeholder="Tất cả"
                   allowClear
-                  treeDefaultExpandAll={true}
-                  listHeight={256}
                   value={filterValues.orgUnitId as string | undefined}
                   onChange={(value) => {
                     setFilterValues((prev) => ({ ...prev, orgUnitId: value }));
@@ -1127,8 +1113,8 @@ export default function InmarsatStationList() {
           onConfirm={handleConfirmDelete}
           loading={deleteLoading}
           itemType="đài thông tin vệ tinh Inmarsat"
-          itemName={deletingRecord?.stationName || deletingRecord?.stationCode}
-          itemCode={deletingRecord?.stationCode}
+          itemName={deletingRecord?.stationName || deletingRecord?.code}
+          itemCode={deletingRecord?.code}
         />
       </div>
     </ThemeTokenProvider>

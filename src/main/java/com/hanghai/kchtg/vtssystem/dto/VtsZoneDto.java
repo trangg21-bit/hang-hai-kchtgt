@@ -19,13 +19,17 @@ public class VtsZoneDto {
     private GisGeometryType geometryType;
     private String coordinates;
     private UUID spatialId;
+    private UUID symbolId;
+    private String symbolName;
+    private String symbolCode;
+    private String symbolImage;
 
     public static VtsZoneDto of(UUID id, String code, String name, ConditionStatus conditionStatus) {
-        return new VtsZoneDto(id, code, name, conditionStatus, null, null, null);
+        return new VtsZoneDto(id, code, name, conditionStatus, null, null, null, null, null, null, null);
     }
 
     public static VtsZoneDto of(UUID id, String code, String name, ConditionStatus conditionStatus, GisGeometryType geometryType, String coordinates) {
-        return new VtsZoneDto(id, code, name, conditionStatus, geometryType, coordinates, null);
+        return new VtsZoneDto(id, code, name, conditionStatus, geometryType, coordinates, null, null, null, null, null);
     }
 
     public static Builder builder() {
@@ -40,6 +44,10 @@ public class VtsZoneDto {
         private GisGeometryType geometryType;
         private String coordinates;
         private UUID spatialId;
+        private UUID symbolId;
+        private String symbolName;
+        private String symbolCode;
+        private String symbolImage;
 
         public Builder id(UUID id) {
             this.id = id;
@@ -76,8 +84,28 @@ public class VtsZoneDto {
             return this;
         }
 
+        public Builder symbolId(UUID symbolId) {
+            this.symbolId = symbolId;
+            return this;
+        }
+
+        public Builder symbolName(String symbolName) {
+            this.symbolName = symbolName;
+            return this;
+        }
+
+        public Builder symbolCode(String symbolCode) {
+            this.symbolCode = symbolCode;
+            return this;
+        }
+
+        public Builder symbolImage(String symbolImage) {
+            this.symbolImage = symbolImage;
+            return this;
+        }
+
         public VtsZoneDto build() {
-            return new VtsZoneDto(id, code, name, conditionStatus, geometryType, coordinates, spatialId);
+            return new VtsZoneDto(id, code, name, conditionStatus, geometryType, coordinates, spatialId, symbolId, symbolName, symbolCode, symbolImage);
         }
     }
 }

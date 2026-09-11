@@ -40,6 +40,7 @@ import {
   borderDefault,
   statusCritical, statusOperational, actionPrimary,
   readonlyInputStyle, inputStyle, selectStyle, spaceSm, spaceXs, textTertiary,
+  textAreaStyle,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { fmtInputNumber } from '../../../utils/numFmt';
@@ -709,8 +710,8 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
 
   return (
     <AppDrawer
-      rootClassName="lrit-drawer-scope berth-drawer-scope"
-      className="lrit-drawer-scope berth-drawer-scope"
+      rootClassName="lrit-drawer-scope"
+      className="lrit-drawer-scope"
       style={{ maxWidth: '96vw' }}
       width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
       open={Boolean(open)}
@@ -980,11 +981,12 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                               rules={[{ max: 4000, message: 'Vùng phủ sóng tối đa 4000 ký tự' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input
+                              <Input.TextArea
                                 placeholder="Nhập vùng phủ sóng"
+                                rows={3}
                                 maxLength={4000}
                                 showCount
-                                style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                                style={textAreaStyle}
                               />
                             </Form.Item>
                           </Col>
@@ -1098,11 +1100,12 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                               rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input
+                              <Input.TextArea
                                 placeholder="Nhập ghi chú"
+                                rows={3}
                                 maxLength={2000}
                                 showCount
-                                style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }}
+                                style={textAreaStyle}
                               />
                             </Form.Item>
                           </Col>

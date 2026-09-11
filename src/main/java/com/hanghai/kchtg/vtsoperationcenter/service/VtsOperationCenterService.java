@@ -319,14 +319,12 @@ public class VtsOperationCenterService {
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(saved.getId())
                         .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                        .approvalLevel(ApprovalLevel.LEVEL_2)
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
                         .approvedDate(now)
-                        .changedField(fieldName)
+                        .changedField(field)
                         .previousValue(oldVal)
                         .newValue(newVal)
-                        .reason("Cập nhật thông tin " + fieldName)
                         .build());
             }
         }
@@ -569,6 +567,7 @@ public class VtsOperationCenterService {
     public void submit(UUID id, UUID userId) {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.submit(entity, InfrastructureType.VTS_OPERATION_CENTER, userId);
         repository.save(entity);
     }
@@ -577,6 +576,7 @@ public class VtsOperationCenterService {
     public void approveC1(UUID id, String decision, String reason, UUID userId) {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.approveC1(entity, InfrastructureType.VTS_OPERATION_CENTER, decision, reason, userId);
         repository.save(entity);
     }
@@ -585,6 +585,7 @@ public class VtsOperationCenterService {
     public void approveC2(UUID id, String decision, String reason, UUID userId) {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.approveC2(entity, InfrastructureType.VTS_OPERATION_CENTER, decision, reason, userId);
         repository.save(entity);
     }
@@ -593,6 +594,7 @@ public class VtsOperationCenterService {
     public void reject(UUID id, String reason, UUID userId) {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new IllegalArgumentException("Trung tâm điều hành VTS không tồn tại"));
+        validateAllowedOrgUnit(entity.getOrgUnitId());
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus == ApprovalStatus.APPROVED_LEVEL1) {
             approvalService.approveC2(entity, InfrastructureType.VTS_OPERATION_CENTER, ApprovalStatus.REJECTED.name(), reason, userId);
@@ -680,12 +682,10 @@ public class VtsOperationCenterService {
                     }
                     HistoryEntry entry = new HistoryEntry();
                     entry.setId(h.getId());
-                    entry.setApprovalLevel(h.getApprovalLevel());
                     entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
                     entry.setApprovedBy(userName);
                     entry.setOrgUnitName(orgUnitName);
                     entry.setApprovedDate(h.getApprovedDate());
-                    entry.setReason(h.getReason());
                     entry.setChangedField(h.getChangedField());
                     entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
                     entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
@@ -766,13 +766,11 @@ public class VtsOperationCenterService {
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(id)
                         .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                        .approvalLevel(ApprovalLevel.LEVEL_0)
                         .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(batchNow)
-                        .reason("Tải lên tài liệu đính kèm: " + originalFilename)
-                        .changedField("Tài liệu đính kèm")
-                        .previousValue("—")
+                        .changedField("attachments")
+                        .previousValue(null)
                         .newValue(originalFilename)
                         .build());
             }
@@ -872,18 +870,18 @@ public class VtsOperationCenterService {
 
         attachmentRepository.delete(att);
 
-        if (historyRepository != null) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (historyRepository != null && wasApproved) {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.VTS_OPERATION_CENTER)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
-                    .reason("Xóa tài liệu đính kèm: " + att.getFileName())
-                    .changedField("Tài liệu đính kèm")
+                    .changedField("attachments")
                     .previousValue(att.getFileName())
-                    .newValue("—")
+                    .newValue(null)
                     .build());
         }
     }

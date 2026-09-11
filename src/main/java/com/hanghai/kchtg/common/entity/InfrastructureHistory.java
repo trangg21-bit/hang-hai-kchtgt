@@ -27,24 +27,22 @@ public class InfrastructureHistory {
     @Column(name = "ref_id", nullable = false)
     private UUID refId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "ref_type", nullable = false, length = 64)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "ref_type", nullable = false)
     private InfrastructureType refType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "approval_level", length = 32)
+    @Transient
     private ApprovalLevel approvalLevel;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 32)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "status", nullable = false)
     private InfrastructureHistoryStatus status;
 
     @Column(name = "approved_by")
     private UUID approvedBy;
 
     @CreatedDate
-    @Column(name = "approved_date", nullable = false, updatable = false,
-            columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "approved_date", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime approvedDate;
 
     @Column(name = "reason", length = 500)
@@ -66,11 +64,12 @@ public class InfrastructureHistory {
         }
     }
 
-    public InfrastructureHistory() {}
+    public InfrastructureHistory() {
+    }
 
     public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType, ApprovalLevel approvalLevel,
-                                 InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
-                                 String reason, String changedField, String previousValue, String newValue) {
+            InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
+            String reason, String changedField, String previousValue, String newValue) {
         this.id = id;
         this.refId = refId;
         this.refType = refType;
@@ -82,6 +81,24 @@ public class InfrastructureHistory {
         this.changedField = changedField;
         this.previousValue = previousValue;
         this.newValue = newValue;
+    }
+
+    public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType, ApprovalLevel approvalLevel,
+            InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
+            String changedField, String previousValue, String newValue) {
+        this(id, refId, refType, approvalLevel, status, approvedBy, approvedDate, null, changedField, previousValue, newValue);
+    }
+
+    public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType,
+            InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
+            String reason, String changedField, String previousValue, String newValue) {
+        this(id, refId, refType, null, status, approvedBy, approvedDate, reason, changedField, previousValue, newValue);
+    }
+
+    public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType,
+            InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
+            String changedField, String previousValue, String newValue) {
+        this(id, refId, refType, null, status, approvedBy, approvedDate, null, changedField, previousValue, newValue);
     }
 
     public static Builder builder() {
@@ -101,53 +118,153 @@ public class InfrastructureHistory {
         private String previousValue;
         private String newValue;
 
-        public Builder id(UUID id) { this.id = id; return this; }
-        public Builder refId(UUID refId) { this.refId = refId; return this; }
-        public Builder refType(InfrastructureType refType) { this.refType = refType; return this; }
-        public Builder approvalLevel(ApprovalLevel approvalLevel) { this.approvalLevel = approvalLevel; return this; }
-        public Builder status(InfrastructureHistoryStatus status) { this.status = status; return this; }
-        public Builder approvedBy(UUID approvedBy) { this.approvedBy = approvedBy; return this; }
-        public Builder approvedDate(LocalDateTime approvedDate) { this.approvedDate = approvedDate; return this; }
-        public Builder reason(String reason) { this.reason = reason; return this; }
-        public Builder changedField(String changedField) { this.changedField = changedField; return this; }
-        public Builder previousValue(String previousValue) { this.previousValue = previousValue; return this; }
-        public Builder newValue(String newValue) { this.newValue = newValue; return this; }
+        public Builder id(UUID id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder refId(UUID refId) {
+            this.refId = refId;
+            return this;
+        }
+
+        public Builder refType(InfrastructureType refType) {
+            this.refType = refType;
+            return this;
+        }
+
+        public Builder approvalLevel(ApprovalLevel approvalLevel) {
+            this.approvalLevel = approvalLevel;
+            return this;
+        }
+
+        public Builder status(InfrastructureHistoryStatus status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder approvedBy(UUID approvedBy) {
+            this.approvedBy = approvedBy;
+            return this;
+        }
+
+        public Builder approvedDate(LocalDateTime approvedDate) {
+            this.approvedDate = approvedDate;
+            return this;
+        }
+
+        public Builder reason(String reason) {
+            this.reason = reason;
+            return this;
+        }
+
+        public Builder changedField(String changedField) {
+            this.changedField = changedField;
+            return this;
+        }
+
+        public Builder previousValue(String previousValue) {
+            this.previousValue = previousValue;
+            return this;
+        }
+
+        public Builder newValue(String newValue) {
+            this.newValue = newValue;
+            return this;
+        }
 
         public InfrastructureHistory build() {
-            return new InfrastructureHistory(id, refId, refType, approvalLevel, status, approvedBy, approvedDate, reason, changedField, previousValue, newValue);
+            return new InfrastructureHistory(id, refId, refType, approvalLevel, status, approvedBy, approvedDate,
+                    reason, changedField, previousValue, newValue);
         }
     }
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public UUID getId() {
+        return id;
+    }
 
-    public UUID getRefId() { return refId; }
-    public void setRefId(UUID refId) { this.refId = refId; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public InfrastructureType getRefType() { return refType; }
-    public void setRefType(InfrastructureType refType) { this.refType = refType; }
+    public UUID getRefId() {
+        return refId;
+    }
 
-    public ApprovalLevel getApprovalLevel() { return approvalLevel; }
-    public void setApprovalLevel(ApprovalLevel approvalLevel) { this.approvalLevel = approvalLevel; }
+    public void setRefId(UUID refId) {
+        this.refId = refId;
+    }
 
-    public InfrastructureHistoryStatus getStatus() { return status; }
-    public void setStatus(InfrastructureHistoryStatus status) { this.status = status; }
+    public InfrastructureType getRefType() {
+        return refType;
+    }
 
-    public UUID getApprovedBy() { return approvedBy; }
-    public void setApprovedBy(UUID approvedBy) { this.approvedBy = approvedBy; }
+    public void setRefType(InfrastructureType refType) {
+        this.refType = refType;
+    }
 
-    public LocalDateTime getApprovedDate() { return approvedDate; }
-    public void setApprovedDate(LocalDateTime approvedDate) { this.approvedDate = approvedDate; }
+    public ApprovalLevel getApprovalLevel() {
+        return approvalLevel;
+    }
 
-    public String getReason() { return reason; }
-    public void setReason(String reason) { this.reason = reason; }
+    public void setApprovalLevel(ApprovalLevel approvalLevel) {
+        this.approvalLevel = approvalLevel;
+    }
 
-    public String getChangedField() { return changedField; }
-    public void setChangedField(String changedField) { this.changedField = changedField; }
+    public InfrastructureHistoryStatus getStatus() {
+        return status;
+    }
 
-    public String getPreviousValue() { return previousValue; }
-    public void setPreviousValue(String previousValue) { this.previousValue = previousValue; }
+    public void setStatus(InfrastructureHistoryStatus status) {
+        this.status = status;
+    }
 
-    public String getNewValue() { return newValue; }
-    public void setNewValue(String newValue) { this.newValue = newValue; }
+    public UUID getApprovedBy() {
+        return approvedBy;
+    }
+
+    public void setApprovedBy(UUID approvedBy) {
+        this.approvedBy = approvedBy;
+    }
+
+    public LocalDateTime getApprovedDate() {
+        return approvedDate;
+    }
+
+    public void setApprovedDate(LocalDateTime approvedDate) {
+        this.approvedDate = approvedDate;
+    }
+
+    public String getChangedField() {
+        return changedField;
+    }
+
+    public void setChangedField(String changedField) {
+        this.changedField = changedField;
+    }
+
+    public String getPreviousValue() {
+        return previousValue;
+    }
+
+    public void setPreviousValue(String previousValue) {
+        this.previousValue = previousValue;
+    }
+
+    public String getNewValue() {
+        return newValue;
+    }
+
+    public void setNewValue(String newValue) {
+        this.newValue = newValue;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+
 }

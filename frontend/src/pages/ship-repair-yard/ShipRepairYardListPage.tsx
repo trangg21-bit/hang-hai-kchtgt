@@ -15,7 +15,7 @@ import {
 } from '../../services/portService';
 import type { ShipRepairYard } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
@@ -330,8 +330,9 @@ export default function ShipRepairYardList() {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        defaultOrgUnitId.current = parentOrgUnits[0].id;
-        setManagingUnitId(parentOrgUnits[0].id);
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, parentOrgUnits);
+        defaultOrgUnitId.current = resolvedDefault;
+        setManagingUnitId(resolvedDefault);
       }
       setOrgUnitReady(true);
     } else {
@@ -340,20 +341,11 @@ export default function ShipRepairYardList() {
           const resp = await organizationService.list({ pageSize: 1000 });
           const data = resp.data || [];
           setOrganizations(data);
-          if (data.length > 0 && !defaultOrgApplied.current) {
+          if (!defaultOrgApplied.current) {
             defaultOrgApplied.current = true;
-            try {
-              const profileRes = await api.get('/users/me');
-              const profile = profileRes.data?.data ?? profileRes.data;
-              const userOrgId = profile?.orgUnitId;
-              const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
-              defaultOrgUnitId.current = defaultId;
-              setManagingUnitId(defaultId === '__all__' ? undefined : defaultId);
-            } catch {
-              defaultOrgUnitId.current = data[0].id;
-              setManagingUnitId(data[0].id);
-            }
+            const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+            defaultOrgUnitId.current = resolvedDefault;
+            setManagingUnitId(resolvedDefault);
           }
           setOrgUnitReady(true);
         } catch (err) {
@@ -600,13 +592,10 @@ export default function ShipRepairYardList() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý
         </div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
           value={managingUnitId}
           onChange={(v) => { setManagingUnitId(v); setPage(1); }}
         />

@@ -355,7 +355,7 @@ public class InfrastructureApprovalService {
 
         recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
                 InfrastructureHistoryStatus.UPDATED, userId, changeDescription,
-                "Hồ sơ đã duyệt cập nhật", "Đã duyệt", "Đã duyệt");
+                "approvalStatus", "Đã duyệt", "Đã duyệt");
     }
 
     /**
@@ -436,7 +436,6 @@ public class InfrastructureApprovalService {
                     .approvalLevel(level)
                     .status(status)
                     .approvedBy(userId)
-                    .reason(reason)
                     .changedField(changedField)
                     .previousValue(previousValue)
                     .newValue(newValue)

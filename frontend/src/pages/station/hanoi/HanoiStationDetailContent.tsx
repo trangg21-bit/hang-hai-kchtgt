@@ -171,7 +171,7 @@ export const renderServicesBadges = (services?: string[] | string) => {
               fontWeight: fontWeightMedium,
               background: '#eef3fb',
               border: '1px solid #c6d9f5',
-              color: '#12468C',
+              color: colors.sidebarBg,
             }}
           >
             {label}
@@ -193,8 +193,126 @@ export const getOperatingOrgName = (idOrCode?: string | null, name?: string | nu
   if (name && name.trim()) return name;
   if (!idOrCode) return '—';
   const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === idOrCode || o.code === idOrCode);
-  return found ? found.name : idOrCode;
 };
+
+const HanoiStationDetailStyles = React.memo(() => (
+  <style>{`
+    .hanoi-detail-content-root {
+      overflow: hidden !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .hanoi-drawer-scope .chk-detail-card,
+    .hanoi-detail-content-root .chk-detail-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 18px 8px 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+    .hanoi-drawer-scope .chk-detail-card-header,
+    .hanoi-detail-content-root .chk-detail-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .hanoi-drawer-scope .chk-detail-card-title,
+    .hanoi-detail-content-root .chk-detail-card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: ${colors.sidebarBg};
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .hanoi-drawer-scope .chk-detail-grid,
+    .hanoi-detail-content-root .chk-detail-grid {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      column-gap: 28px !important;
+      row-gap: 0 !important;
+    }
+    .hanoi-drawer-scope .chk-detail-row,
+    .hanoi-detail-content-root .chk-detail-row {
+      display: flex !important;
+      align-items: flex-start !important;
+      min-height: 36px !important;
+      padding: 7px 0 !important;
+      border-bottom: 1px solid #f1f5f9 !important;
+      line-height: 1.5 !important;
+      gap: 10px !important;
+    }
+    .hanoi-drawer-scope .chk-detail-row:last-child,
+    .hanoi-detail-content-root .chk-detail-row:last-child {
+      border-bottom: none !important;
+    }
+    .hanoi-drawer-scope .chk-detail-row--full,
+    .hanoi-detail-content-root .chk-detail-row--full {
+      grid-column: 1 / -1 !important;
+    }
+    .hanoi-drawer-scope .chk-detail-label,
+    .hanoi-detail-content-root .chk-detail-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+      color: ${colors.sidebarBg} !important;
+      font-weight: 600 !important;
+      font-size: 13.5px !important;
+      text-align: left !important;
+      line-height: 1.5 !important;
+    }
+    .hanoi-drawer-scope .sec-col1-label,
+    .hanoi-detail-content-root .sec-col1-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+    }
+    .hanoi-drawer-scope .sec-col2-label,
+    .hanoi-detail-content-root .sec-col2-label {
+      width: 250px !important;
+      min-width: 250px !important;
+      max-width: 250px !important;
+      flex-shrink: 0 !important;
+    }
+    .hanoi-drawer-scope .chk-detail-label::after,
+    .hanoi-detail-content-root .chk-detail-label::after {
+      content: ':' !important;
+      margin-left: 1px !important;
+      margin-right: 4px !important;
+    }
+    .hanoi-drawer-scope .chk-detail-value,
+    .hanoi-detail-content-root .chk-detail-value {
+      color: #0F172A;
+      font-size: 13.5px;
+      font-weight: 500;
+      line-height: 1.5;
+      flex: 1;
+      word-break: break-word;
+      display: flex;
+      align-items: center;
+    }
+    .hanoi-detail-content-root,
+    .hanoi-detail-content-root .chk-detail-label,
+    .hanoi-detail-content-root .chk-detail-value,
+    .hanoi-detail-content-root .ant-table,
+    .hanoi-detail-content-root .ant-table-cell,
+    .hanoi-detail-content-root .ant-table-thead > tr > th,
+    .hanoi-detail-content-root .ant-tabs-tab,
+    .hanoi-detail-content-root .ant-btn,
+    .hanoi-detail-content-root .ant-select,
+    .hanoi-detail-content-root .ant-select-selection-item,
+    .hanoi-detail-content-root .ant-select-item {
+      font-size: 13.5px !important;
+    }
+  `}</style>
+));
 
 export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps> = ({
   selectedRecord,
@@ -223,12 +341,12 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
       setAttachmentList(attachments);
       return;
     }
-    if (!selectedRecord?.id) return;
+    if (activeTab !== 'attachments' || !selectedRecord?.id) return;
     hanoiStationService.getAttachments(selectedRecord.id).then((res: any) => {
       const items = Array.isArray(res) ? res : (res?.data || []);
       setAttachmentList(items);
     }).catch(() => {});
-  }, [selectedRecord?.id, attachments]);
+  }, [selectedRecord?.id, attachments, activeTab]);
 
   const effectiveRecord = record || selectedRecord;
   const points = parseWktToPoints(effectiveRecord);
@@ -259,134 +377,7 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
 
   return (
     <div className="hanoi-detail-content-root">
-      <style>{`
-        .hanoi-detail-content-root {
-          overflow: hidden !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
-        }
-
-        .hanoi-drawer-scope .chk-detail-card,
-        .berth-drawer-scope .chk-detail-card,
-        .hanoi-detail-content-root .chk-detail-card {
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 8px;
-          padding: 12px 18px 8px 18px;
-          margin-bottom: 14px;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-        }
-        .hanoi-drawer-scope .chk-detail-card-header,
-        .berth-drawer-scope .chk-detail-card-header,
-        .hanoi-detail-content-root .chk-detail-card-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-bottom: 1px solid #f1f5f9;
-          padding-bottom: 8px;
-          margin-bottom: 10px;
-        }
-        .hanoi-drawer-scope .chk-detail-card-title,
-        .berth-drawer-scope .chk-detail-card-title,
-        .hanoi-detail-content-root .chk-detail-card-title {
-          font-size: 13.5px;
-          font-weight: 700;
-          color: #12468C;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-        }
-
-        .hanoi-drawer-scope .chk-detail-grid,
-        .berth-drawer-scope .chk-detail-grid,
-        .hanoi-detail-content-root .chk-detail-grid {
-          display: grid !important;
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
-          column-gap: 28px !important;
-          row-gap: 0 !important;
-        }
-        .hanoi-drawer-scope .chk-detail-row,
-        .berth-drawer-scope .chk-detail-row,
-        .hanoi-detail-content-root .chk-detail-row {
-          display: flex !important;
-          align-items: flex-start !important;
-          min-height: 36px !important;
-          padding: 7px 0 !important;
-          border-bottom: 1px solid #f1f5f9 !important;
-          line-height: 1.5 !important;
-          gap: 10px !important;
-        }
-        .hanoi-drawer-scope .chk-detail-row:last-child,
-        .berth-drawer-scope .chk-detail-row:last-child,
-        .hanoi-detail-content-root .chk-detail-row:last-child {
-          border-bottom: none !important;
-        }
-        .hanoi-drawer-scope .chk-detail-row--full,
-        .berth-drawer-scope .chk-detail-row--full,
-        .hanoi-detail-content-root .chk-detail-row--full {
-          grid-column: 1 / -1 !important;
-        }
-        .hanoi-drawer-scope .chk-detail-label,
-        .berth-drawer-scope .chk-detail-label,
-        .hanoi-detail-content-root .chk-detail-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-          color: #12468C !important;
-          font-weight: 600 !important;
-          font-size: 13.5px !important;
-          text-align: left !important;
-          line-height: 1.5 !important;
-        }
-        .hanoi-drawer-scope .sec-col1-label,
-        .berth-drawer-scope .sec-col1-label,
-        .hanoi-detail-content-root .sec-col1-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-        }
-        .hanoi-drawer-scope .sec-col2-label,
-        .berth-drawer-scope .sec-col2-label,
-        .hanoi-detail-content-root .sec-col2-label {
-          width: 250px !important;
-          min-width: 250px !important;
-          max-width: 250px !important;
-          flex-shrink: 0 !important;
-        }
-        .hanoi-drawer-scope .chk-detail-label::after,
-        .berth-drawer-scope .chk-detail-label::after,
-        .hanoi-detail-content-root .chk-detail-label::after {
-          content: ':' !important;
-          margin-left: 1px !important;
-          margin-right: 4px !important;
-        }
-        .hanoi-drawer-scope .chk-detail-value,
-        .berth-drawer-scope .chk-detail-value,
-        .hanoi-detail-content-root .chk-detail-value {
-          color: #0F172A;
-          font-size: 13.5px;
-          font-weight: 500;
-          line-height: 1.5;
-          flex: 1;
-          word-break: break-word;
-          display: flex;
-          align-items: center;
-        }
-        .hanoi-detail-content-root,
-        .hanoi-detail-content-root .chk-detail-label,
-        .hanoi-detail-content-root .chk-detail-value,
-        .hanoi-detail-content-root .ant-table,
-        .hanoi-detail-content-root .ant-table-cell,
-        .hanoi-detail-content-root .ant-table-thead > tr > th,
-        .hanoi-detail-content-root .ant-tabs-tab,
-        .hanoi-detail-content-root .ant-btn,
-        .hanoi-detail-content-root .ant-select,
-        .hanoi-detail-content-root .ant-select-selection-item,
-        .hanoi-detail-content-root .ant-select-item {
-          font-size: 13.5px !important;
-        }
-      `}</style>
+      <HanoiStationDetailStyles />
 
       <Tabs
         activeKey={activeTab}

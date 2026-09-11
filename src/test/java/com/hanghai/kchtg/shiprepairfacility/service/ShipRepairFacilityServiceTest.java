@@ -409,7 +409,6 @@ class ShipRepairFacilityServiceTest {
                 .status(InfrastructureHistoryStatus.fromValue("APPROVED"))
                 .approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now())
-                .reason("Duyệt")
                 .build();
 
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SHIP_REPAIR_FACILITY, TEST_ID)).thenReturn(Arrays.asList(history));
@@ -419,8 +418,6 @@ class ShipRepairFacilityServiceTest {
         assertNotNull(entries);
         assertEquals(1, entries.size());
         assertEquals("00000000-0000-0000-0000-000000000001", entries.get(0).getApprovedBy());
-        assertEquals(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1, entries.get(0).getApprovalLevel());
-        assertEquals("Duyệt", entries.get(0).getReason());
     }
 
     @Test

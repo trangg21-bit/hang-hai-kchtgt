@@ -708,8 +708,6 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   <Input.TextArea rows={3} placeholder="Nhập quyết định" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
               <Col span={24}>
                 <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}>
                   <Input.TextArea rows={3} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={textAreaStyle} />

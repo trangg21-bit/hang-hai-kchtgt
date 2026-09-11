@@ -172,13 +172,11 @@ public class BuoyBerthApprovalService {
         String actorName = h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null;
         return HistoryEntry.builder()
                 .id(h.getId())
-                .approvalLevel(h.getApprovalLevel())
                 .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                 .approvedBy(actorName)
                 .approvedByName(actorName)
                 .approvedDate(h.getApprovedDate())
                 .changedAt(h.getApprovedDate())
-                .reason(h.getReason())
                 .changedField(h.getChangedField())
                 .fieldName(h.getChangedField())
                 .previousValue(h.getPreviousValue())

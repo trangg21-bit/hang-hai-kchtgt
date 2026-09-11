@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Tabs, Button, Tooltip, Modal, Space } from 'antd';
 import {
   BankOutlined,
@@ -177,7 +177,7 @@ const renderApprovalBadge = (status?: ApprovalStatus | string) => {
     APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
     REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
     REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
-    ARCHIVED: { label: 'Đã xóa', color: textTertiary },
+    ARCHIVED: { label: 'Đã xóa', color: statusCritical },
   };
   const item = map[String(status).toUpperCase()] || { label: String(status), color: colors.sidebarBg };
   return (
@@ -186,6 +186,155 @@ const renderApprovalBadge = (status?: ApprovalStatus | string) => {
     </span>
   );
 };
+
+const AisSystemDetailStyles = React.memo(() => (
+  <style>{`
+    .ais-detail-content-wrapper {
+      overflow: hidden !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .ais-detail-content-wrapper,
+    .ais-detail-content-wrapper .chk-detail-label,
+    .ais-detail-content-wrapper .chk-detail-value,
+    .ais-detail-content-wrapper .ant-table,
+    .ais-detail-content-wrapper .ant-table-cell,
+    .ais-detail-content-wrapper .ant-table-thead > tr > th,
+    .ais-detail-content-wrapper .ant-tabs-tab,
+    .ais-detail-content-wrapper .ant-btn,
+    .ais-detail-content-wrapper .ant-select,
+    .ais-detail-content-wrapper .ant-select-selection-item,
+    .ais-detail-content-wrapper .ant-select-item {
+      font-size: 13.5px !important;
+    }
+
+    .ais-detail-content-wrapper .chk-detail-grid {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      column-gap: 28px !important;
+      row-gap: 0 !important;
+    }
+
+    .ais-detail-content-wrapper .chk-detail-row {
+      display: flex !important;
+      align-items: flex-start !important;
+      min-height: 36px !important;
+      padding: 7px 0 !important;
+      border-bottom: 1px solid #f1f5f9 !important;
+      line-height: 1.5 !important;
+      gap: 10px !important;
+    }
+
+    .ais-detail-content-wrapper .chk-detail-row:last-child {
+      border-bottom: none !important;
+    }
+
+    /* Loại bỏ hoàn toàn đường kẻ gạch ngang dưới ô bảng khi không có dữ liệu */
+    .ais-detail-content-wrapper .ant-table-placeholder > td,
+    .ais-detail-content-wrapper .ant-table-placeholder .ant-table-cell,
+    .ais-detail-content-wrapper .ant-table-tbody > tr.ant-table-placeholder > td {
+      border-bottom: none !important;
+    }
+
+    .ais-detail-content-wrapper .chk-detail-row--full {
+      grid-column: 1 / -1 !important;
+    }
+
+    .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .chk-detail-label,
+    .ais-detail-content-wrapper .chk-detail-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+      color: ${colors.sidebarBg} !important;
+      font-weight: 600 !important;
+      font-size: 13.5px !important;
+      text-align: left !important;
+      line-height: 1.5 !important;
+    }
+
+    .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col1-label,
+    .ais-detail-content-wrapper .sec-col1-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col2-label,
+    .ais-detail-content-wrapper .sec-col2-label {
+      width: 250px !important;
+      min-width: 250px !important;
+      max-width: 250px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-full-label,
+    .ais-detail-content-wrapper .sec-full-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .ais-detail-content-wrapper .chk-detail-label::after {
+      content: ':' !important;
+      margin-left: 1px !important;
+      margin-right: 4px !important;
+    }
+
+    .ais-detail-content-wrapper .chk-detail-value {
+      color: #1e293b !important;
+      font-size: 13.5px !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+      text-align: left !important;
+      line-height: 1.5 !important;
+      word-break: break-word !important;
+    }
+
+    @media (max-width: 960px) {
+      .ais-detail-content-wrapper .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .ais-detail-content-wrapper .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+      .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .chk-detail-label,
+      .ais-detail-content-wrapper .chk-detail-label,
+      .ais-detail-content-wrapper .sec-col1-label,
+      .ais-detail-content-wrapper .sec-col2-label,
+      .ais-detail-content-wrapper .sec-full-label {
+        width: 250px !important;
+        min-width: 250px !important;
+        max-width: 250px !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .ais-detail-content-wrapper .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 3px !important;
+        padding: 6px 0 !important;
+      }
+      .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .chk-detail-label,
+      .ais-detail-content-wrapper .chk-detail-label,
+      .ais-detail-content-wrapper .sec-col1-label,
+      .ais-detail-content-wrapper .sec-col2-label,
+      .ais-detail-content-wrapper .sec-full-label {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+      }
+      .ais-detail-content-wrapper .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
 
 export interface AisSystemDetailContentProps {
   selectedRecord: AisSystemResponse;
@@ -230,30 +379,26 @@ export default function AisSystemDetailContent({
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  // Tải chi tiết đầy đủ và tệp đính kèm khi mount
+  // Tải chi tiết đầy đủ khi mount, đính kèm được nạp nếu đã có sẵn trong response
   useEffect(() => {
     if (!selectedRecord?.id) return;
     let mounted = true;
-    setIsLoadingFiles(true);
-    Promise.allSettled([
-      aisSystemService.getById(selectedRecord.id),
-      aisSystemService.listAttachments(selectedRecord.id),
-    ]).then(([detailRes, filesRes]) => {
-      if (!mounted) return;
-      if (detailRes.status === 'fulfilled' && detailRes.value) {
-        setRecord(detailRes.value);
-      }
-      if (filesRes.status === 'fulfilled') {
-        setAttachmentList(filesRes.value || []);
-        setFilesLoaded(true);
-      }
-      setIsLoadingFiles(false);
-    });
+    setFilesLoaded(Boolean(detailFiles && detailFiles.length > 0));
+    aisSystemService.getById(selectedRecord.id)
+      .then((data) => {
+        if (!mounted || !data) return;
+        setRecord(data);
+        if (Array.isArray(data.attachments) && data.attachments.length > 0 && (!detailFiles || detailFiles.length === 0)) {
+          setAttachmentList(data.attachments);
+          setFilesLoaded(true);
+        }
+      })
+      .catch(() => {});
     return () => { mounted = false; };
-  }, [selectedRecord?.id]);
+  }, [selectedRecord?.id, detailFiles]);
 
-  // Lazy load fallback nếu chưa tải
-  const handleTabChange = (key: string) => {
+  // Lazy load tệp đính kèm khi chuyển sang tab files
+  const handleTabChange = useCallback((key: string) => {
     if (key === 'files' && !filesLoaded && selectedRecord?.id) {
       setIsLoadingFiles(true);
       aisSystemService.listAttachments(selectedRecord.id)
@@ -264,7 +409,7 @@ export default function AisSystemDetailContent({
         .catch(() => {})
         .finally(() => setIsLoadingFiles(false));
     }
-  };
+  }, [filesLoaded, selectedRecord?.id]);
 
   const handlePreviewImage = async (file: any) => {
     setPreviewImageFile(file);
@@ -320,158 +465,7 @@ export default function AisSystemDetailContent({
 
   return (
     <div className="ais-detail-content-wrapper">
-      <style>{`
-        .ais-detail-content-wrapper {
-          overflow: hidden !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
-        }
-
-        .ais-detail-content-wrapper,
-        .ais-detail-content-wrapper .chk-detail-label,
-        .ais-detail-content-wrapper .chk-detail-value,
-        .ais-detail-content-wrapper .ant-table,
-        .ais-detail-content-wrapper .ant-table-cell,
-        .ais-detail-content-wrapper .ant-table-thead > tr > th,
-        .ais-detail-content-wrapper .ant-tabs-tab,
-        .ais-detail-content-wrapper .ant-btn,
-        .ais-detail-content-wrapper .ant-select,
-        .ais-detail-content-wrapper .ant-select-selection-item,
-        .ais-detail-content-wrapper .ant-select-item {
-          font-size: 13.5px !important;
-        }
-
-        .ais-detail-content-wrapper .chk-detail-grid {
-          display: grid !important;
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
-          column-gap: 28px !important;
-          row-gap: 0 !important;
-        }
-
-        .ais-detail-content-wrapper .chk-detail-row {
-          display: flex !important;
-          align-items: flex-start !important;
-          min-height: 36px !important;
-          padding: 7px 0 !important;
-          border-bottom: 1px solid #f1f5f9 !important;
-          line-height: 1.5 !important;
-          gap: 10px !important;
-        }
-
-        .ais-detail-content-wrapper .chk-detail-row:last-child {
-          border-bottom: none !important;
-        }
-
-        /* Loại bỏ hoàn toàn đường kẻ gạch ngang dưới ô bảng khi không có dữ liệu */
-        .ais-detail-content-wrapper .ant-table-placeholder > td,
-        .ais-detail-content-wrapper .ant-table-placeholder .ant-table-cell,
-        .ais-detail-content-wrapper .ant-table-tbody > tr.ant-table-placeholder > td {
-          border-bottom: none !important;
-        }
-
-        .ais-detail-content-wrapper .chk-detail-row--full {
-          grid-column: 1 / -1 !important;
-        }
-
-        .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .chk-detail-label,
-        .ais-detail-content-wrapper .chk-detail-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-          color: ${colors.sidebarBg} !important;
-          font-weight: 600 !important;
-          font-size: 13.5px !important;
-          text-align: left !important;
-          line-height: 1.5 !important;
-        }
-
-        .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .vts-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .berth-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .ais-detail-content-wrapper .sec-col1-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col2-label,
-        .vts-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col2-label,
-        .berth-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-col2-label,
-        .ais-detail-content-wrapper .sec-col2-label {
-          width: 250px !important;
-          min-width: 250px !important;
-          max-width: 250px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-full-label,
-        .vts-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-full-label,
-        .berth-drawer-scope .ais-detail-content-wrapper .chk-detail-row .sec-full-label,
-        .ais-detail-content-wrapper .sec-full-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .ais-detail-content-wrapper .chk-detail-label::after {
-          content: ':' !important;
-          margin-left: 1px !important;
-          margin-right: 4px !important;
-        }
-
-        .ais-detail-content-wrapper .chk-detail-value {
-          color: #1e293b !important;
-          font-size: 13.5px !important;
-          flex: 1 !important;
-          min-width: 0 !important;
-          text-align: left !important;
-          line-height: 1.5 !important;
-          word-break: break-word !important;
-        }
-
-        @media (max-width: 960px) {
-          .ais-detail-content-wrapper .chk-detail-grid {
-            grid-template-columns: 1fr !important;
-            column-gap: 0 !important;
-          }
-          .ais-detail-content-wrapper .chk-detail-row--full {
-            grid-column: 1 !important;
-          }
-          .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .chk-detail-label,
-          .ais-detail-content-wrapper .chk-detail-label,
-          .ais-detail-content-wrapper .sec-col1-label,
-          .ais-detail-content-wrapper .sec-col2-label,
-          .ais-detail-content-wrapper .sec-full-label {
-            width: 250px !important;
-            min-width: 250px !important;
-            max-width: 250px !important;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .ais-detail-content-wrapper .chk-detail-row {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 3px !important;
-            padding: 6px 0 !important;
-          }
-          .ais-drawer-scope .ais-detail-content-wrapper .chk-detail-row .chk-detail-label,
-          .ais-detail-content-wrapper .chk-detail-label,
-          .ais-detail-content-wrapper .sec-col1-label,
-          .ais-detail-content-wrapper .sec-col2-label,
-          .ais-detail-content-wrapper .sec-full-label {
-            width: 100% !important;
-            min-width: 100% !important;
-            max-width: 100% !important;
-          }
-          .ais-detail-content-wrapper .chk-detail-value {
-            width: 100% !important;
-          }
-        }
-      `}</style>
+      <AisSystemDetailStyles />
 
       <Tabs
         defaultActiveKey="general"

@@ -23,7 +23,6 @@ export interface HistoryEntry {
   approvedBy?: string;
   orgUnitName?: string;
   approvedDate?: string;
-  reason?: string;
   changedField?: string;
   previousValue?: string;
   newValue?: string;
@@ -232,7 +231,7 @@ function resolveHistoryActionMeta(
   changes: Array<{ field: string; oldValue: string | null; newValue: string | null }>,
 ): { label: string; color: string; bg: string } {
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
+  const rawReason = String(item.ghiChu ?? item.note ?? '').toLowerCase();
   const level = Number(item.approvalLevel || 0);
 
   if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
@@ -512,7 +511,7 @@ export default function HistoryDrawer({
                     if (ov === nv) return false;
                     return true;
                   });
-                  const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
+                  const reasons = g.items.map((i: any) => i.ghiChu || i.note).filter(Boolean);
                   if (validChanges.length > 0) {
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>

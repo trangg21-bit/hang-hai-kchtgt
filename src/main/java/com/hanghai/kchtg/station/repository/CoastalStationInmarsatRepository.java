@@ -27,6 +27,8 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
     @Query("SELECT c FROM CoastalStationInmarsat c WHERE c.code = :code AND c.deletedAt IS NULL")
     Optional<CoastalStationInmarsat> findByCode(@Param("code") String code);
 
+    Optional<CoastalStationInmarsat> findByIdAndDeletedAtIsNull(UUID id);
+
     boolean existsByCodeAndDeletedAtIsNull(String code);
 
     boolean existsByCodeAndIdNotAndDeletedAtIsNull(String code, UUID id);
@@ -49,9 +51,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
         LEFT JOIN User uu ON uu.id = t.updatedBy
-        WHERE t.deletedAt IS NULL
-          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+        WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:operatingOrgId IS NULL OR t.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
@@ -64,10 +64,14 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED))
+          AND (:approvalStatus IS NULL
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
+               OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
+                    t.approvalStatus = :approvalStatus
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)
+               )))
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
@@ -90,10 +94,8 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
     );
 
     @Query("""
-        SELECT t.approvalStatus, COUNT(t) FROM CoastalStationInmarsat t
-        WHERE t.deletedAt IS NULL
-          AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+        SELECT CASE WHEN (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE t.approvalStatus END, COUNT(t) FROM CoastalStationInmarsat t
+        WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (CAST(:keyword AS string) IS NULL OR (
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:keyword AS string) OR
@@ -108,7 +110,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
-        GROUP BY t.approvalStatus
+        GROUP BY CASE WHEN (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE t.approvalStatus END
     """)
     List<Object[]> countByApprovalStatus(
         @Param("scopeEnabled") boolean scopeEnabled,
@@ -127,11 +129,16 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
         SELECT t FROM CoastalStationInmarsat t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+          AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
+          AND (:scopeEnabled = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL OR t.conditionStatus IS NULL)
-        ORDER BY t.name ASC
+        ORDER BY LOWER(t.name) ASC
     """)
-    List<CoastalStationInmarsat> findAllApprovedOptions(@Param("orgUnitId") UUID orgUnitId);
+    List<CoastalStationInmarsat> findApprovedOptions(
+        @Param("scopeEnabled") boolean scopeEnabled,
+        @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
+        @Param("orgUnitId") UUID orgUnitId
+    );
 
     @Query("SELECT c FROM CoastalStationInmarsat c WHERE " +
             "c.deletedAt IS NULL AND " +

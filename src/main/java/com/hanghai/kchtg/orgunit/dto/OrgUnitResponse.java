@@ -23,6 +23,7 @@ public class OrgUnitResponse {
 
     private UUID id;
     private String name;
+    private String code;
     private UUID parentId;
     private OperationalStatus operationalStatus;
     private OrgUnitRank rank;
@@ -49,6 +50,7 @@ public class OrgUnitResponse {
         return OrgUnitResponse.builder()
                 .id(entity.getId())
                 .name(entity.getName())
+                .code(entity.getCode())
                 .parentId(entity.getParentId())
                 .operationalStatus(entity.getOperationalStatus())
                 .rank(entity.getRank())

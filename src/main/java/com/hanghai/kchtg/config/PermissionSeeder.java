@@ -1000,7 +1000,7 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 DELETE FROM user_permission_override
                                                 WHERE permission_code IN (
                                                     'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
                                                 );
                                             END IF;
 
@@ -1008,7 +1008,7 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 DELETE FROM user_group_permissions
                                                 WHERE permission IN (
                                                     'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
                                                 );
                                             END IF;
 
@@ -1019,7 +1019,7 @@ public class PermissionSeeder implements CommandLineRunner {
                                                     FROM permissions
                                                     WHERE code IN (
                                                         'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                        'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                        'group:manage', 'orgunit:manage', 'orgunit:approve'
                                                     )
                                                 );
                                             END IF;
@@ -1028,7 +1028,7 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 DELETE FROM permissions
                                                 WHERE code IN (
                                                     'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve', 'orgunit:scope_all'
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
                                                 );
                                             END IF;
                                         END $$;

@@ -270,7 +270,7 @@ class RadarStationServiceTest {
                 .approvalLevel(ApprovalLevel.LEVEL_1)
                 .status(InfrastructureHistoryStatus.APPROVED)
                 .approvedBy(UUID.fromString("00000000-0000-0000-0000-000000000001"))
-                .approvedDate(LocalDateTime.now()).reason("Duyệt").build();
+                .approvedDate(LocalDateTime.now()).build();
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))
                 .thenReturn(List.of(history));
 

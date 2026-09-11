@@ -96,6 +96,7 @@ export interface RadarStationResponse {
   spatialId?: string;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
+  coordinateSystem?: number;
   mapIcon?: string;
   deletedBy?: string;
   deletedByName?: string;
@@ -195,5 +196,3 @@ export const UNIT_OF_MEASURE_OPTIONS = [
   { value: 'Bộ', label: 'Bộ' },
   { value: 'Hệ thống', label: 'Hệ thống' },
 ];
-
-

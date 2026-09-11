@@ -188,10 +188,8 @@ public class PierApprovalService {
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
                     m.put("decision", h.getStatus().name());
-                    m.put("reason", h.getReason() != null ? h.getReason() : "");
                     m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("decidedAt", h.getApprovedDate());
-                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
                     return m;
                 })
                 .toList();
@@ -242,13 +240,11 @@ public class PierApprovalService {
                     m.put("refId", h.getRefId());
                     m.put("entityId", h.getRefId() != null ? h.getRefId().toString() : null);
                     m.put("refType", h.getRefType());
-                    m.put("approvalLevel", h.getApprovalLevel());
                     m.put("status", h.getStatus());
                     m.put("approvedBy", h.getApprovedBy() != null
                             ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
                             : null);
                     m.put("approvedDate", h.getApprovedDate());
-                    m.put("reason", h.getReason());
                     m.put("changedField", h.getChangedField());
                     m.put("previousValue", h.getPreviousValue());
                     m.put("newValue", h.getNewValue());

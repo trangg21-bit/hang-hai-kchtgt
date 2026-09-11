@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Tabs, Button, Select, Tooltip, Modal, Space } from 'antd';
 import {
   BankOutlined,
@@ -179,7 +179,7 @@ const renderApprovalBadge = (status?: ApprovalStatus | string) => {
     APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
     REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
     REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
-    ARCHIVED: { label: 'Đã xóa', color: textTertiary },
+    ARCHIVED: { label: 'Đã xóa', color: statusCritical },
   };
   const item = map[String(status).toUpperCase()] || { label: String(status), color: textSecondary };
   return (
@@ -198,6 +198,159 @@ export interface VtsOperationCenterDetailContentProps {
   maintenancePlanList?: any[];
   incidentList?: any[];
 }
+
+const VtsOperationCenterDetailStyles = React.memo(() => (
+  <style>{`
+    .vts-opcenter-detail-content-wrapper {
+      overflow: hidden !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .vts-opcenter-detail-content-wrapper,
+    .vts-opcenter-detail-content-wrapper .chk-detail-label,
+    .vts-opcenter-detail-content-wrapper .chk-detail-value,
+    .vts-opcenter-detail-content-wrapper .ant-table,
+    .vts-opcenter-detail-content-wrapper .ant-table-cell,
+    .vts-opcenter-detail-content-wrapper .ant-table-thead > tr > th,
+    .vts-opcenter-detail-content-wrapper .ant-tabs-tab,
+    .vts-opcenter-detail-content-wrapper .ant-btn,
+    .vts-opcenter-detail-content-wrapper .ant-select,
+    .vts-opcenter-detail-content-wrapper .ant-select-selection-item,
+    .vts-opcenter-detail-content-wrapper .ant-select-item {
+      font-size: 13.5px !important;
+    }
+
+    .vts-opcenter-detail-content-wrapper .chk-detail-grid {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+      column-gap: 28px !important;
+      row-gap: 0 !important;
+    }
+
+    .vts-opcenter-detail-content-wrapper .chk-detail-row {
+      display: flex !important;
+      align-items: flex-start !important;
+      min-height: 36px !important;
+      padding: 7px 0 !important;
+      border-bottom: 1px solid #f1f5f9 !important;
+      line-height: 1.5 !important;
+      gap: 10px !important;
+    }
+
+    .vts-opcenter-detail-content-wrapper .chk-detail-row:last-child {
+      border-bottom: none !important;
+    }
+
+    /* Loại bỏ hoàn toàn đường kẻ gạch ngang dưới ô bảng khi không có dữ liệu */
+    .vts-opcenter-detail-content-wrapper .ant-table-placeholder > td,
+    .vts-opcenter-detail-content-wrapper .ant-table-placeholder .ant-table-cell,
+    .vts-opcenter-detail-content-wrapper .ant-table-tbody > tr.ant-table-placeholder > td {
+      border-bottom: none !important;
+    }
+
+    .vts-opcenter-detail-content-wrapper .chk-detail-row--full {
+      grid-column: 1 / -1 !important;
+    }
+
+    .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
+    .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
+    .vts-opcenter-detail-content-wrapper .chk-detail-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+      color: ${colors.sidebarBg} !important;
+      font-weight: 600 !important;
+      font-size: 13.5px !important;
+      text-align: left !important;
+      line-height: 1.5 !important;
+    }
+
+    .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col1-label,
+    .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col1-label,
+    .vts-opcenter-detail-content-wrapper .sec-col1-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col2-label,
+    .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col2-label,
+    .vts-opcenter-detail-content-wrapper .sec-col2-label {
+      width: 250px !important;
+      min-width: 250px !important;
+      max-width: 250px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-full-label,
+    .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-full-label,
+    .vts-opcenter-detail-content-wrapper .sec-full-label {
+      width: 215px !important;
+      min-width: 215px !important;
+      max-width: 215px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .vts-opcenter-detail-content-wrapper .chk-detail-label::after {
+      content: ':' !important;
+      margin-left: 1px !important;
+      margin-right: 4px !important;
+    }
+
+    .vts-opcenter-detail-content-wrapper .chk-detail-value {
+      color: #1e293b !important;
+      font-size: 13.5px !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+      text-align: left !important;
+      line-height: 1.5 !important;
+      word-break: break-word !important;
+    }
+
+    @media (max-width: 960px) {
+      .vts-opcenter-detail-content-wrapper .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .vts-opcenter-detail-content-wrapper .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+      .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
+      .vts-opcenter-detail-content-wrapper .chk-detail-label,
+      .vts-opcenter-detail-content-wrapper .sec-col1-label,
+      .vts-opcenter-detail-content-wrapper .sec-col2-label,
+      .vts-opcenter-detail-content-wrapper .sec-full-label {
+        width: 250px !important;
+        min-width: 250px !important;
+        max-width: 250px !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .vts-opcenter-detail-content-wrapper .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 3px !important;
+        padding: 6px 0 !important;
+      }
+      .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
+      .vts-opcenter-detail-content-wrapper .chk-detail-label,
+      .vts-opcenter-detail-content-wrapper .sec-col1-label,
+      .vts-opcenter-detail-content-wrapper .sec-col2-label,
+      .vts-opcenter-detail-content-wrapper .sec-full-label {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+      }
+      .vts-opcenter-detail-content-wrapper .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
 
 export default function VtsOperationCenterDetailContent({
   selectedRecord,
@@ -225,6 +378,7 @@ export default function VtsOperationCenterDetailContent({
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
   const [loadedInfra, setLoadedInfra] = useState<any[]>([]);
   const [isLoadingInfra, setIsLoadingInfra] = useState(false);
+  const [infraLoaded, setInfraLoaded] = useState(false);
   const [selectedChildInfra, setSelectedChildInfra] = useState<{
     id: string;
     type: 'RADAR_STATION' | 'AIS_SYSTEM';
@@ -244,6 +398,9 @@ export default function VtsOperationCenterDetailContent({
 
   useEffect(() => {
     let mounted = true;
+    setFilesLoaded(false);
+    setInfraLoaded(false);
+    setLoadedInfra([]);
     vtsOperationCenterService.getById(selectedRecord.id)
       .then((data) => {
         if (!mounted || !data) return;
@@ -257,47 +414,28 @@ export default function VtsOperationCenterDetailContent({
     return () => { mounted = false; };
   }, [selectedRecord?.id]);
 
-  // Lazy load attachments
-  const handleTabChange = (key: string) => {
-    if (key === 'files' && !filesLoaded && selectedRecord?.id) {
-      setIsLoadingFiles(true);
-      vtsOperationCenterService.listAttachments(selectedRecord.id)
-        .then((files: any) => {
-          setAttachmentList(files || []);
-          setFilesLoaded(true);
-        })
-        .catch(() => {})
-        .finally(() => setIsLoadingFiles(false));
-    }
-  };
-
-  // Tải danh sách KCHT khác thuộc trung tâm điều hành (Trạm Radar & Trạm AIS) — chuẩn Bến cảng
-  useEffect(() => {
-    if (!selectedRecord?.id) {
-      setLoadedInfra([]);
-      return;
-    }
-    let cancelled = false;
+  // Tải danh sách KCHT khác thuộc trung tâm điều hành (Trạm Radar & Trạm AIS) — Lazy load chuẩn Bến cảng
+  const loadOtherInfra = useCallback((recordId: string) => {
+    if (!recordId) return;
     setIsLoadingInfra(true);
 
     Promise.all([
       radarStationCRUD
         .search({
-          vtsOperationCenterId: selectedRecord.id,
+          vtsOperationCenterId: recordId,
           page: 1,
           pageSize: 100,
         } as any)
         .catch(() => ({ data: [] })),
       aisSystemService
         .search({
-          vtsOperationCenterId: selectedRecord.id,
+          vtsOperationCenterId: recordId,
           page: 1,
           pageSize: 100,
         } as any)
         .catch(() => ({ data: [] })),
     ])
       .then(([radarRes, aisRes]: [any, any]) => {
-        if (cancelled) return;
         const radarList = (radarRes?.data || radarRes?.items || []).map((x: any) => ({
           id: x.id,
           infraName: x.stationName || x.name || x.code || '',
@@ -313,18 +451,32 @@ export default function VtsOperationCenterDetailContent({
           raw: x,
         }));
         setLoadedInfra([...radarList, ...aisList]);
+        setInfraLoaded(true);
       })
       .catch(() => {
-        if (!cancelled) setLoadedInfra([]);
+        setLoadedInfra([]);
       })
       .finally(() => {
-        if (!cancelled) setIsLoadingInfra(false);
+        setIsLoadingInfra(false);
       });
+  }, []);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedRecord?.id]);
+  // Lazy load attachments & other infra
+  const handleTabChange = (key: string) => {
+    if (key === 'files' && !filesLoaded && selectedRecord?.id) {
+      setIsLoadingFiles(true);
+      vtsOperationCenterService.listAttachments(selectedRecord.id)
+        .then((files: any) => {
+          setAttachmentList(files || []);
+          setFilesLoaded(true);
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingFiles(false));
+    }
+    if (key === 'other_infra' && !infraLoaded && selectedRecord?.id) {
+      loadOtherInfra(selectedRecord.id);
+    }
+  };
 
   const infraRows = useMemo(() => {
     if (!infraTypeFilter || infraTypeFilter === 'ALL') return loadedInfra;
@@ -429,160 +581,7 @@ export default function VtsOperationCenterDetailContent({
 
   return (
     <div className="vts-opcenter-detail-content-wrapper">
-      <style>{`
-        .vts-opcenter-detail-content-wrapper {
-          overflow: hidden !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
-        }
-
-        .vts-opcenter-detail-content-wrapper,
-        .vts-opcenter-detail-content-wrapper .chk-detail-label,
-        .vts-opcenter-detail-content-wrapper .chk-detail-value,
-        .vts-opcenter-detail-content-wrapper .ant-table,
-        .vts-opcenter-detail-content-wrapper .ant-table-cell,
-        .vts-opcenter-detail-content-wrapper .ant-table-thead > tr > th,
-        .vts-opcenter-detail-content-wrapper .ant-tabs-tab,
-        .vts-opcenter-detail-content-wrapper .ant-btn,
-        .vts-opcenter-detail-content-wrapper .ant-select,
-        .vts-opcenter-detail-content-wrapper .ant-select-selection-item,
-        .vts-opcenter-detail-content-wrapper .ant-select-item {
-          font-size: 13.5px !important;
-        }
-
-        .vts-opcenter-detail-content-wrapper .chk-detail-grid {
-          display: grid !important;
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
-          column-gap: 28px !important;
-          row-gap: 0 !important;
-        }
-
-        .vts-opcenter-detail-content-wrapper .chk-detail-row {
-          display: flex !important;
-          align-items: flex-start !important;
-          min-height: 36px !important;
-          padding: 7px 0 !important;
-          border-bottom: 1px solid #f1f5f9 !important;
-          line-height: 1.5 !important;
-          gap: 10px !important;
-        }
-
-        .vts-opcenter-detail-content-wrapper .chk-detail-row:last-child {
-          border-bottom: none !important;
-        }
-
-        /* Loại bỏ hoàn toàn đường kẻ gạch ngang dưới ô bảng khi không có dữ liệu */
-        .vts-opcenter-detail-content-wrapper .ant-table-placeholder > td,
-        .vts-opcenter-detail-content-wrapper .ant-table-placeholder .ant-table-cell,
-        .vts-opcenter-detail-content-wrapper .ant-table-tbody > tr.ant-table-placeholder > td {
-          border-bottom: none !important;
-        }
-
-        .vts-opcenter-detail-content-wrapper .chk-detail-row--full {
-          grid-column: 1 / -1 !important;
-        }
-
-        .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
-        .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
-        .berth-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
-        .vts-opcenter-detail-content-wrapper .chk-detail-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-          color: ${colors.sidebarBg} !important;
-          font-weight: 600 !important;
-          font-size: 13.5px !important;
-          text-align: left !important;
-          line-height: 1.5 !important;
-        }
-
-        .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .berth-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .vts-opcenter-detail-content-wrapper .sec-col1-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col2-label,
-        .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col2-label,
-        .berth-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-col2-label,
-        .vts-opcenter-detail-content-wrapper .sec-col2-label {
-          width: 250px !important;
-          min-width: 250px !important;
-          max-width: 250px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .vts-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-full-label,
-        .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-full-label,
-        .berth-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .sec-full-label,
-        .vts-opcenter-detail-content-wrapper .sec-full-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
-        }
-
-        .vts-opcenter-detail-content-wrapper .chk-detail-label::after {
-          content: ':' !important;
-          margin-left: 1px !important;
-          margin-right: 4px !important;
-        }
-
-        .vts-opcenter-detail-content-wrapper .chk-detail-value {
-          color: #1e293b !important;
-          font-size: 13.5px !important;
-          flex: 1 !important;
-          min-width: 0 !important;
-          text-align: left !important;
-          line-height: 1.5 !important;
-          word-break: break-word !important;
-        }
-
-        @media (max-width: 960px) {
-          .vts-opcenter-detail-content-wrapper .chk-detail-grid {
-            grid-template-columns: 1fr !important;
-            column-gap: 0 !important;
-          }
-          .vts-opcenter-detail-content-wrapper .chk-detail-row--full {
-            grid-column: 1 !important;
-          }
-          .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
-          .vts-opcenter-detail-content-wrapper .chk-detail-label,
-          .vts-opcenter-detail-content-wrapper .sec-col1-label,
-          .vts-opcenter-detail-content-wrapper .sec-col2-label,
-          .vts-opcenter-detail-content-wrapper .sec-full-label {
-            width: 250px !important;
-            min-width: 250px !important;
-            max-width: 250px !important;
-          }
-        }
-
-        @media (max-width: 640px) {
-          .vts-opcenter-detail-content-wrapper .chk-detail-row {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 3px !important;
-            padding: 6px 0 !important;
-          }
-          .vts-opcenter-drawer-scope .vts-opcenter-detail-content-wrapper .chk-detail-row .chk-detail-label,
-          .vts-opcenter-detail-content-wrapper .chk-detail-label,
-          .vts-opcenter-detail-content-wrapper .sec-col1-label,
-          .vts-opcenter-detail-content-wrapper .sec-col2-label,
-          .vts-opcenter-detail-content-wrapper .sec-full-label {
-            width: 100% !important;
-            min-width: 100% !important;
-            max-width: 100% !important;
-          }
-          .vts-opcenter-detail-content-wrapper .chk-detail-value {
-            width: 100% !important;
-          }
-        }
-      `}</style>
+      <VtsOperationCenterDetailStyles />
 
       <Tabs
         defaultActiveKey="general"

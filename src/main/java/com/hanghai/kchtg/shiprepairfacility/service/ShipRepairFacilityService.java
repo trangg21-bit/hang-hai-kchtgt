@@ -209,11 +209,9 @@ public class ShipRepairFacilityService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.UPDATED)
                 .approvedBy(updatedBy)
                 .approvedDate(LocalDateTime.now())
-                .reason("Cập nhật cơ sở sửa chữa, đóng tàu")
                 .changedField(formatChangedFields(previousValues))
                 .previousValue(formatPreviousValues(previousValues))
                 .newValue(formatNewValues(saved, previousValues))
@@ -236,11 +234,9 @@ public class ShipRepairFacilityService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(entity.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.DELETED)
                 .approvedBy(deletedBy)
                 .approvedDate(LocalDateTime.now())
-                .reason("Xóa cơ sở sửa chữa, đóng tàu")
                 .build());
 
         attachmentRepository.deleteByRefIdAndRefType(id, InfrastructureType.SHIP_REPAIR_FACILITY);
@@ -280,22 +276,18 @@ public class ShipRepairFacilityService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .approvalLevel(ApprovalLevel.LEVEL_1)
                 .status(InfrastructureHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
-                .reason(request.getReason())
                 .build());
 
         if (autoApproved) {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(saved.getId())
                     .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
                     .status(InfrastructureHistoryStatus.fromValue(request.getDecision()))
                     .approvedBy(approvedBy)
                     .approvedDate(LocalDateTime.now())
-                    .reason(request.getReason())
                     .build());
         }
 
@@ -332,11 +324,9 @@ public class ShipRepairFacilityService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(saved.getId())
                 .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .approvalLevel(ApprovalLevel.LEVEL_2)
                 .status(InfrastructureHistoryStatus.fromValue(request.getDecision()))
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
-                .reason(request.getReason())
                 .build());
 
         return toResponse(saved);
@@ -355,13 +345,11 @@ public class ShipRepairFacilityService {
         return historyList.stream().map(h -> {
             HistoryEntry entry = new HistoryEntry();
             entry.setId(h.getId());
-            entry.setApprovalLevel(h.getApprovalLevel());
             entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
             entry.setApprovedBy(h.getApprovedBy() != null
                     ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
-            entry.setReason(h.getReason());
             return entry;
         }).toList();
     }
@@ -494,21 +482,19 @@ public class ShipRepairFacilityService {
     }
 
     private String formatChangedFields(java.util.Map<String, String> previousValues) {
-        return previousValues.keySet().stream()
-                .map(this::getFieldDisplayName)
-                .collect(java.util.stream.Collectors.joining(", "));
+        return String.join(", ", previousValues.keySet());
     }
 
     private String formatPreviousValues(java.util.Map<String, String> previousValues) {
         return previousValues.entrySet().stream()
-                .map(entry -> getFieldDisplayName(entry.getKey()) + "="
+                .map(entry -> entry.getKey() + "="
                         + formatDisplayValue(entry.getKey(), entry.getValue()))
                 .collect(java.util.stream.Collectors.joining("; "));
     }
 
     private String formatNewValues(ShipRepairFacility entity, java.util.Map<String, String> previousValues) {
         return previousValues.keySet().stream()
-                .map(field -> getFieldDisplayName(field) + "="
+                .map(field -> field + "="
                         + formatDisplayValue(field, currentFieldValue(entity, field)))
                 .collect(java.util.stream.Collectors.joining("; "));
     }

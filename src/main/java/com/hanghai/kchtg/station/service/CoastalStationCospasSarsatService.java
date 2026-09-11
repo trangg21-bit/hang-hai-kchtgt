@@ -78,37 +78,37 @@ public class CoastalStationCospasSarsatService {
         java.util.Map<String, String> oldValues = new java.util.LinkedHashMap<>();
         if (wasApproved) {
             if (request.getStationName() != null && !java.util.Objects.equals(request.getStationName(), entity.getName())) {
-                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : "—");
+                oldValues.put("Tên đài", entity.getName() != null ? entity.getName() : null);
             }
             if (request.getFrequency() != null && !java.util.Objects.equals(request.getFrequency(), entity.getFrequency())) {
-                oldValues.put("Tần số", entity.getFrequency() != null ? entity.getFrequency() : "—");
+                oldValues.put("Tần số", entity.getFrequency() != null ? entity.getFrequency() : null);
             }
             if (request.getCoverageArea() != null && !java.util.Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
-                oldValues.put("Vùng phủ sóng", entity.getCoverageArea() != null ? entity.getCoverageArea() : "—");
+                oldValues.put("Vùng phủ sóng", entity.getCoverageArea() != null ? entity.getCoverageArea() : null);
             }
             if (request.getBeaconProtocol() != null && !java.util.Objects.equals(request.getBeaconProtocol(), entity.getBeaconProtocol())) {
-                oldValues.put("Giao thức phát", entity.getBeaconProtocol() != null ? entity.getBeaconProtocol() : "—");
+                oldValues.put("Giao thức phát", entity.getBeaconProtocol() != null ? entity.getBeaconProtocol() : null);
             }
             if (request.getEmergencyChannel() != null && !java.util.Objects.equals(request.getEmergencyChannel(), entity.getEmergencyChannel())) {
-                oldValues.put("Kênh khẩn cấp", entity.getEmergencyChannel() != null ? entity.getEmergencyChannel() : "—");
+                oldValues.put("Kênh khẩn cấp", entity.getEmergencyChannel() != null ? entity.getEmergencyChannel() : null);
             }
             if (request.getAntennaType() != null && !java.util.Objects.equals(request.getAntennaType(), entity.getAntennaType())) {
-                oldValues.put("Loại anten", entity.getAntennaType() != null ? entity.getAntennaType() : "—");
+                oldValues.put("Loại anten", entity.getAntennaType() != null ? entity.getAntennaType() : null);
             }
             if (request.getLocationAddress() != null && !java.util.Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
-                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : "—");
+                oldValues.put("Địa điểm chi tiết", entity.getLocationAddress() != null ? entity.getLocationAddress() : null);
             }
             if (request.getContactPerson() != null && !java.util.Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
-                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : "—");
+                oldValues.put("Người liên hệ", entity.getContactPerson() != null ? entity.getContactPerson() : null);
             }
             if (request.getContactPhone() != null && !java.util.Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
-                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : "—");
+                oldValues.put("Số điện thoại liên hệ", entity.getContactPhone() != null ? entity.getContactPhone() : null);
             }
             if (request.getSignalRange() != null && !java.util.Objects.equals(request.getSignalRange(), entity.getSignalRange())) {
-                oldValues.put("Cự ly tín hiệu", entity.getSignalRange() != null ? String.valueOf(entity.getSignalRange()) : "—");
+                oldValues.put("Cự ly tín hiệu", entity.getSignalRange() != null ? String.valueOf(entity.getSignalRange()) : null);
             }
             if (request.getOperatingMode() != null && !java.util.Objects.equals(request.getOperatingMode(), entity.getOperatingMode())) {
-                oldValues.put("Chế độ hoạt động", entity.getOperatingMode() != null ? entity.getOperatingMode() : "—");
+                oldValues.put("Chế độ hoạt động", entity.getOperatingMode() != null ? entity.getOperatingMode() : null);
             }
         }
 

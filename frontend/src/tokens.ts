@@ -316,19 +316,22 @@ export const filterTreeSelectStyle: React.CSSProperties = {
 
 /** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Sidebar bộ lọc */
 export const filterTreeSelectDropdownStyle: React.CSSProperties = {
-  minWidth: 380,
-  maxWidth: 520,
-  maxHeight: 320,
+  minWidth: 420,
+  maxWidth: 580,
+  maxHeight: 360,
+  overflow: 'hidden',
   borderRadius: radiusMd,
   padding: '6px',
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
 };
+
 
 /** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Form (Drawer / Modal) */
 export const formTreeSelectDropdownStyle: React.CSSProperties = {
   minWidth: '100%',
   maxWidth: 650,
   maxHeight: 320,
+  overflow: 'hidden',
   borderRadius: radiusMd,
   padding: '6px',
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',

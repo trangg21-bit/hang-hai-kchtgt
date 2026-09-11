@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Input, Select, DatePicker, Drawer, Modal, Alert, Space, Typography, Button } from 'antd';
 import dayjs from 'dayjs';
 import { message } from '../../components/ToastNotification';
@@ -9,8 +9,9 @@ import { userService } from '../../services/userService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import type { NavigationChannelResponse, ListParams, ApprovalStatus } from '../../types/navigationChannel';
 import { CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/navigationChannel';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -124,7 +125,6 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   const item = group.items?.[0] || {};
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
 
   if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
@@ -184,7 +184,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+  if (rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
@@ -370,9 +370,11 @@ const HISTORY_PAGE_SIZE = 10;
 
 export default function NavigationChannelList() {
   const isInIframe = window.self !== window.top;
+  const authUser = useAuthStore((s) => s.user);
   const hasPerm = useCallback((key: string) => usePermissionStore.getState().hasPermission(key), []);
 
   // ── Filters (DS/Lọc: #1/#2/#4/#5/#6/#8/#47/#48) ────────────────────
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterChannelCode, setFilterChannelCode] = useState('');
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
@@ -437,6 +439,9 @@ export default function NavigationChannelList() {
       try {
         const orgs = await organizationService.getTree();
         setOrganizations(orgs || []);
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, orgs || []);
+        defaultOrgUnitRef.current = resolvedDefault;
+        setFilterOrgUnitId(resolvedDefault);
       } catch (err) {
         console.error('Không tải được cây đơn vị quản lý', err);
       }
@@ -520,7 +525,7 @@ export default function NavigationChannelList() {
   const handleFilterReset = useCallback(() => {
     setFilterKeyword('');
     setFilterChannelCode('');
-    setFilterOrgUnitId(undefined);
+    setFilterOrgUnitId(defaultOrgUnitRef.current);
     setFilterSeaportId(undefined);
     setFilterProvinceId(undefined);
     setFilterConditionStatus(undefined);
@@ -707,16 +712,16 @@ export default function NavigationChannelList() {
     const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status ) {
         prev.items.push(r);
       } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+        groups.push({ tsSec: sec, ts, actor, status: r.status, items: [r] });
       }
     }
     if (groups.length === 0) return null;
@@ -985,11 +990,10 @@ export default function NavigationChannelList() {
       `}</style>
       <div style={{ marginBottom: spaceFormField, marginTop: 16 }}>
         <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showSearch
           value={filterOrgUnitId}
           onChange={(v) => { setFilterOrgUnitId(v || undefined); setPage(1); }}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}

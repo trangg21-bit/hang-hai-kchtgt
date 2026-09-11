@@ -110,6 +110,10 @@ export interface VtsZoneDto {
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | string;
   coordinates?: string;
   spatialId?: string;
+  symbolId?: string;
+  symbolName?: string;
+  symbolCode?: string;
+  symbolImage?: string;
 }
 
 export interface CreateVtsSystemRequest {
@@ -138,7 +142,7 @@ export interface CreateVtsSystemRequest {
 export interface UpdateVtsSystemRequest extends CreateVtsSystemRequest {}
 
 export interface ApprovalRequest {
-  decision: 'APPROVED' | 'REJECTED';
+  decision: 'APPROVED' | 'REJECTED' | string;
   reason?: string;
 }
 
@@ -150,12 +154,10 @@ export interface HistoryEntry {
   actor: string;
   actorName?: string;
   timestamp: string;
-  reason?: string;
   changedField?: string;
   oldValue?: string;
   newValue?: string;
   status?: string;
-  approvalLevel?: string;
 }
 
 export interface ListParams {

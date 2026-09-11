@@ -6,7 +6,7 @@
  * Drawer tạo/sửa/xem chi tiết; phê duyệt 2 cấp + từ chối (lý do bắt buộc); lịch sử tập trung.
  * EN identifiers, VI labels/messages.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DatePicker, Input, Modal, Form } from 'antd';
 import {
   PlusOutlined,
@@ -21,9 +21,10 @@ import {
 import dayjs, { type Dayjs } from 'dayjs';
 import { ScreenHeader, FilterTableLayout, DataTable, Pagination } from '../../components/list-view';
 import { SidebarFilterField } from '../../components/list-view';
-import { FilterOrgUnitTreeSelect } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import toast from '../../components/ToastNotification';
+import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import seaportThroughputService, {
   type SeaportThroughputRecord,
@@ -116,18 +117,32 @@ const SeaportThroughputPage: React.FC = () => {
     return m;
   }, [organizations]);
 
+  const currentUser = useAuthStore((s) => s.user);
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
+  const defaultOrgApplied = useRef(false);
+
   useEffect(() => {
     let cancelled = false;
     organizationService
       .list({ pageSize: 1000 })
       .then((resp) => {
-        if (!cancelled) setOrganizations(resp.data || []);
+        if (!cancelled) {
+          const list = resp.data || [];
+          setOrganizations(list);
+          if (list.length > 0 && !defaultOrgApplied.current) {
+            defaultOrgApplied.current = true;
+            const defId = resolveDefaultOrgUnitId(currentUser, list);
+            defaultOrgUnitRef.current = defId;
+            setOrgFilter(defId);
+            setFilters((prev) => ({ ...prev, orgUnitId: defId }));
+          }
+        }
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser]);
 
   // ── Filters & list state ─────────────────────────────────────────
   const [filters, setFilters] = useState<ListFilters>({ keyword: '' });
@@ -228,11 +243,12 @@ const SeaportThroughputPage: React.FC = () => {
   };
 
   const resetFilters = () => {
+    const defaultOrg = defaultOrgUnitRef.current;
     setKeywordInput('');
-    setOrgFilter(undefined);
+    setOrgFilter(defaultOrg);
     setMonthFilter(null);
     setRangeFilter(null);
-    setFilters({ keyword: '' });
+    setFilters({ keyword: '', orgUnitId: defaultOrg });
     setPage(1);
   };
 
