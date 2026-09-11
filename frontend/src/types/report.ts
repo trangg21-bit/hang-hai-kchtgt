@@ -6,12 +6,14 @@ export interface ReportRequest {
   format?: 'PREVIEW' | 'EXCEL' | 'PDF';
   bcNoiDung?: string;
   portGroup?: number;
+  dataSource?: string;
+  processingMethods?: string[];
 }
 
 export interface ReportResponse {
   reportCode: string;
   reportName: string;
   headers: string[];
-  rows: Record<string, any>[];
-  summary?: Record<string, any>;
+  rows: Record<string, string | number | boolean | null>[];
+  summary?: Record<string, number>;
 }

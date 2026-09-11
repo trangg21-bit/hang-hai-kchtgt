@@ -23,6 +23,9 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
 
     boolean existsByBerthCode(String berthCode);
 
+    @Query(value = "SELECT berth_code FROM berths WHERE berth_code LIKE CONCAT(:prefix, '%')", nativeQuery = true)
+    List<String> findAllBerthCodesStartingWith(@Param("prefix") String prefix);
+
     @Query("SELECT b FROM Berth b WHERE b.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR b.orgUnitId = :orgUnitId)")
     Page<Berth> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);

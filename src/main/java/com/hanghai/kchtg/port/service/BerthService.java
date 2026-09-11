@@ -130,7 +130,7 @@ public class BerthService {
         if (operatorId != null) {
             entity.setUpdatedBy(operatorId);
         }
-        Berth saved = berthRepository.saveAndFlush(entity);
+        Berth saved = berthRepository.save(entity);
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -154,7 +154,7 @@ public class BerthService {
                     InfrastructureType.PORT_TERMINAL);
             saved.setSpatialId(spatialObj.getId());
             saved.setUpdatedAt(LocalDateTime.now());
-            saved = berthRepository.saveAndFlush(saved);
+            saved = berthRepository.save(saved);
         }
 
         log.info("Created Berth [{}] code={}", saved.getId(), saved.getBerthCode());
@@ -647,19 +647,25 @@ public class BerthService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển"));
         String portCode = port.getPortCode();
         String prefix = portCode + "-B";
-        List<Berth> existing = berthRepository.findByPortIdAndDeletedAtIsNull(portId);
+        List<String> existingCodes = berthRepository.findAllBerthCodesStartingWith(prefix);
         int maxNum = 0;
-        for (Berth b : existing) {
-            if (b.getBerthCode() != null && b.getBerthCode().startsWith(prefix)) {
+        for (String c : existingCodes) {
+            if (c != null && c.startsWith(prefix)) {
                 try {
-                    int n = Integer.parseInt(b.getBerthCode().substring(prefix.length()));
+                    int n = Integer.parseInt(c.substring(prefix.length()));
                     if (n > maxNum)
                         maxNum = n;
                 } catch (NumberFormatException ignored) {
                 }
             }
         }
-        return prefix + String.format("%02d", maxNum + 1);
+        int nextNum = maxNum + 1;
+        String candidate = prefix + String.format("%02d", nextNum);
+        while (berthRepository.existsByBerthCode(candidate)) {
+            nextNum++;
+            candidate = prefix + String.format("%02d", nextNum);
+        }
+        return candidate;
     }
 
     private void applySaveAction(Berth entity, String action) {

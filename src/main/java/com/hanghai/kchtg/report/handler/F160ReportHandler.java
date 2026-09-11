@@ -38,7 +38,9 @@ public class F160ReportHandler extends BaseReportHandler {
                 .stream()
                 .sorted(Comparator.comparing(DikeRevetment::getId))
                 .filter(d -> skipFilter || targetUnitId.equals(d.getOrgUnitId()))
-                .filter(d -> d.getUpdatedAt() == null || d.getUpdatedAt().getYear() <= reportYear)
+                .filter(d -> (d.getCommissioningDate() != null
+                        ? d.getCommissioningDate().getYear() <= reportYear
+                        : (d.getCreatedAt() == null || d.getCreatedAt().getYear() <= reportYear)))
                 .toList();
 
         List<String> headers = List.of(
@@ -89,7 +91,9 @@ public class F160ReportHandler extends BaseReportHandler {
                 .stream()
                 .sorted(Comparator.comparing(DikeRevetment::getId))
                 .filter(d -> skipFilter || targetUnitId.equals(d.getOrgUnitId()))
-                .filter(d -> d.getUpdatedAt() == null || d.getUpdatedAt().getYear() <= reportYear)
+                .filter(d -> (d.getCommissioningDate() != null
+                        ? d.getCommissioningDate().getYear() <= reportYear
+                        : (d.getCreatedAt() == null || d.getCreatedAt().getYear() <= reportYear)))
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();

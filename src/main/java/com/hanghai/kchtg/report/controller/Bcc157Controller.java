@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.controller;
 
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.report.dto.Bcc157CreateRequest;
 import com.hanghai.kchtg.report.dto.Bcc157Response;
@@ -85,6 +87,19 @@ public class Bcc157Controller {
         }
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'report:update')")
+    public ResponseEntity<ApiResponse<Bcc157Response>> update(@PathVariable UUID id,
+            @Valid @RequestBody Bcc157CreateRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật báo cáo thành công", bcc157Service.update(id, request)));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'report:read')")
+    public ResponseEntity<ApiResponse<List<InfrastructureHistory>>> history(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(bcc157Service.history(id)));
+    }
+
     /**
      * DELETE /api/v1/bcc157/{id} — Delete a BCC_157 report by id.
      */
@@ -99,4 +114,10 @@ public class Bcc157Controller {
                     .body(ApiResponse.error(e.getMessage()));
         }
     }
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> conflict() {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(
+                "Báo cáo đã được người khác cập nhật. Hãy đóng và mở lại để tải phiên bản mới trước khi sửa."));
+    }
+
 }

@@ -373,9 +373,9 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).not.toContain('Quay lại Danh mục chức năng'); // back-row is kcht-group only
     expect(html).not.toContain('Tìm loại KCHT'); // kcht-specific search only inside kcht group
     expect(html).toContain('Cục Hàng Hải và Đường Thủy'); // sidebar footer
-    // full-access user: only report block is underDevelopment (disabled)
-    expect(countOf(html, 'disabled=""')).toBe(1);
-    expect(countOf(html, 'aria-disabled="true"')).toBe(1);
+    // full-access user: all 6 blocks have routes and accessible
+    expect(countOf(html, 'disabled=""')).toBe(0);
+    expect(countOf(html, 'aria-disabled="true"')).toBe(0);
   });
 
   // AC-024-01f / AC-024-05 (render seam): no-permission blocks render dimmed (disabled), per-card.
@@ -383,9 +383,9 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     const html = renderAt('/', ['port:read', 'report:read']);
     expect(html).toContain('Quản lý KCHT hàng hải'); // port:read granted -> kcht enabled
     expect(html).toContain('Báo cáo thống kê'); // report:read granted -> report enabled
-    // asset/report/plan/gis/admin are disabled (report is underDevelopment; asset/plan/gis/admin lack permission)
-    expect(countOf(html, 'disabled=""')).toBe(5);
-    expect(countOf(html, 'aria-disabled="true"')).toBe(5);
+    // asset/plan/gis/admin lack permission (4 disabled)
+    expect(countOf(html, 'disabled=""')).toBe(4);
+    expect(countOf(html, 'aria-disabled="true"')).toBe(4);
     // and the 4 un-granted labels still render (dimmed, not removed)
     expect(html).toContain('Quản lý tài sản KCHT hàng hải');
     expect(html).toContain('Quản trị hệ thống');
@@ -465,7 +465,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(groupOfPath('/dashboard')).toBeUndefined();
     const reportGroup = NAV_GROUPS.find((g) => g.id === 'report');
     expect(reportGroup?.tree?.some((n) => n.key === '/dashboard' || n.route === '/dashboard')).toBe(false);
-    expect(reportGroup?.tree?.some((n) => n.key === '/reports' || n.route === '/reports')).toBe(true);
+    expect(reportGroup?.tree?.some((n) => n.key.startsWith('reports-'))).toBe(true);
   });
 
   // M-024 follow-up (2026-09-06, Item 2): header khi sidebarHidden — trái CHỈ còn nút

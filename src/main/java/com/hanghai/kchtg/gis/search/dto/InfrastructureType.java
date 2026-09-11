@@ -34,5 +34,6 @@ public enum InfrastructureType {
     SCADA,
     TRANSMISSION,
     VTS_ASSIST,
-    SEAPORT_THROUGHPUT
+    SEAPORT_THROUGHPUT,
+    REPORT_BCC157
 }

@@ -44,6 +44,8 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Service core cho quản lý báo cáo M-016 (Báo cáo & Tổng hợp).
@@ -54,6 +56,9 @@ import java.util.*;
 @Transactional(readOnly = true)
 @Slf4j
 public class ReportService {
+    private final BccGeneralReportService bccGeneralReports;
+    private final BccWordRenderer bccWordRenderer;
+    private final BccTemplateRenderer bccTemplateRenderer;
     private final ReportRepository reportRepo;
     private final ReportEntityRepository reportEntityRepo;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
@@ -167,6 +172,7 @@ public class ReportService {
      * Xem trước dữ liệu báo cáo động.
      */
     public ReportResponse getPreview(ReportPreviewRequest request) {
+        if (bccGeneralReports.supports(request.getReportCode())) return bccGeneralReports.load(request).preview();
         String reportCodeStr = request.getReportCode() != null ? request.getReportCode() : "F-141";
 
         if ("F-141".equalsIgnoreCase(reportCodeStr)) {
@@ -201,6 +207,21 @@ public class ReportService {
      * Xuất file báo cáo động (Excel / PDF).
      */
     public byte[] exportReport(ReportPreviewRequest request) {
+        if (bccGeneralReports.supports(request.getReportCode())) {
+            if (!"EXCEL".equalsIgnoreCase(request.getFormat()) && !"PDF".equalsIgnoreCase(request.getFormat())
+                    && !"WORD".equalsIgnoreCase(request.getFormat())) {
+                throw new IllegalArgumentException("Định dạng xuất báo cáo phải là EXCEL, PDF hoặc WORD");
+            }
+            var dataset = bccGeneralReports.load(request);
+            try (Workbook workbook = bccTemplateRenderer.render(dataset)) {
+                byte[] bytes = "EXCEL".equalsIgnoreCase(request.getFormat())
+                        ? outputWorkbook(workbook, workbook.getSheetAt(0), true)
+                        : convertExcelToPdf(workbook.getSheetAt(0), true);
+                return "WORD".equalsIgnoreCase(request.getFormat()) ? bccWordRenderer.render(bytes) : bytes;
+            } catch (Exception error) {
+                throw new IllegalStateException("Không thể xuất báo cáo thống kê chung: " + error.getMessage(), error);
+            }
+        }
         String reportCodeStr = request.getReportCode() != null ? request.getReportCode() : "F-141";
         String templateName = resolveTemplateName(reportCodeStr);
         String pathTemplate = "public/template_export/" + templateName + ".xlsx";
@@ -3854,6 +3875,9 @@ public class ReportService {
                                                             }
 
                                                             continue;
+                                                        } else {
+                                                            destCell.setCellValue("");
+                                                            continue;
                                                         }
                                                     }
                                                 }
@@ -4040,7 +4064,9 @@ public class ReportService {
                                     String expr = srcCell.getStringCellValue();
 
                                     if (expr != null && (expr.contains("table.")
-                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+                                            || expr.contains("this.getCateOtherText") || expr.contains("item.")
+                                            || expr.contains("zobjComReport") || expr.contains("zobjDataDefault")
+                                            || expr.contains("thiz.") || expr.contains("jrf."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(0);
 
@@ -4055,6 +4081,9 @@ public class ReportService {
                                                 destCell.setCellValue(val.toString());
                                             }
 
+                                            processed = true;
+                                        } else {
+                                            destCell.setCellValue("");
                                             processed = true;
                                         }
                                     }
@@ -4093,7 +4122,9 @@ public class ReportService {
                                             }
 
                                             if (expr.contains("item.") || expr.contains("table.")
-                                                    || expr.contains("this.getCateOtherText")) {
+                                                    || expr.contains("this.getCateOtherText")
+                                                    || expr.contains("zobjComReport") || expr.contains("zobjDataDefault")
+                                                    || expr.contains("thiz.") || expr.contains("jrf.")) {
                                                 Object val = resolveExpression(expr, item);
 
                                                 if (val != null) {
@@ -4105,6 +4136,9 @@ public class ReportService {
                                                         destCell.setCellValue(val.toString());
                                                     }
 
+                                                    continue;
+                                                } else {
+                                                    destCell.setCellValue("");
                                                     continue;
                                                 }
                                             }
@@ -4140,7 +4174,9 @@ public class ReportService {
                                     String expr = srcCell.getStringCellValue();
 
                                     if (expr != null && (expr.contains("table.")
-                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+                                            || expr.contains("this.getCateOtherText") || expr.contains("item.")
+                                            || expr.contains("zobjComReport") || expr.contains("zobjDataDefault")
+                                            || expr.contains("thiz.") || expr.contains("jrf."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(arrResult.size() - 1);
 
@@ -4155,6 +4191,9 @@ public class ReportService {
                                                 destCell.setCellValue(val.toString());
                                             }
 
+                                            processed = true;
+                                        } else {
+                                            destCell.setCellValue("");
                                             processed = true;
                                         }
                                     }
@@ -4380,25 +4419,232 @@ public class ReportService {
                     }
                 }
 
+                // F-156: ensure header cell "Ngày nhận báo cáo" is cleanly resolved, and ensure Col G (Tổng số = 1+2+3+4) and Col L (Tổng cộng = 6+7+8+9) are evaluated and purely numeric
+                if ("F-156".equalsIgnoreCase(request.getReportCode())) {
+                    for (int r = 0; r < Math.min(10, destSheet.getLastRowNum() + 1); r++) {
+                        Row headerRow = destSheet.getRow(r);
+                        if (headerRow != null) {
+                            for (int c = 0; c < headerRow.getLastCellNum(); c++) {
+                                Cell cell = headerRow.getCell(c);
+                                if (cell != null && cell.getCellType() == CellType.STRING) {
+                                    String str = cell.getStringCellValue();
+                                    if (str != null && str.contains("objInput.getEnumBcKy()")) {
+                                        cell.setCellValue("Ngày 15 tháng 6 hàng năm");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    boolean dataStarted = false;
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null)
+                            continue;
+                        if (!dataStarted) {
+                            Cell cellA = row.getCell(0);
+                            if (cellA != null && cellA.getCellType() == CellType.STRING
+                                    && "A".equals(cellA.getStringCellValue().trim())) {
+                                dataStarted = true;
+                            }
+                            continue;
+                        }
+
+                        // Check if row has data (e.g. column B or STT is present)
+                        Cell cellB = row.getCell(1);
+                        Cell cellA = row.getCell(0);
+                        if ((cellB == null || cellB.getCellType() == CellType.BLANK)
+                                && (cellA == null || cellA.getCellType() == CellType.BLANK)) {
+                            continue;
+                        }
+
+                        // Skip footer rows (e.g. "Người lập báo cáo")
+                        if (cellB != null && cellB.getCellType() == CellType.STRING) {
+                            String bVal = cellB.getStringCellValue().trim();
+                            if (bVal.startsWith("Người lập") || bVal.startsWith("Thủ trưởng")) {
+                                break;
+                            }
+                        }
+                        if (cellA != null && cellA.getCellType() == CellType.STRING) {
+                            String aVal = cellA.getStringCellValue().trim();
+                            if (aVal.startsWith("Người lập") || aVal.startsWith("Thủ trưởng")) {
+                                break;
+                            }
+                        }
+
+                        // Column G (col index 6) = Col C(2) + Col D(3) + Col E(4) + Col F(5)
+                        double valC = getCellNumericValue(destSheet, r, 2);
+                        double valD = getCellNumericValue(destSheet, r, 3);
+                        double valE = getCellNumericValue(destSheet, r, 4);
+                        double valF = getCellNumericValue(destSheet, r, 5);
+                        double tongSo = valC + valD + valE + valF;
+
+                        Cell cellG = row.getCell(6);
+                        if (cellG == null)
+                            cellG = row.createCell(6);
+                        cellG.removeFormula();
+                        cellG.setCellValue(tongSo);
+                        setNumericCellFormat(cellG, tongSo);
+
+                        // Column L (col index 11) = Col H(7) + Col I(8) + Col J(9) + Col K(10)
+                        double valH = getCellNumericValue(destSheet, r, 7);
+                        double valI = getCellNumericValue(destSheet, r, 8);
+                        double valJ = getCellNumericValue(destSheet, r, 9);
+                        double valK = getCellNumericValue(destSheet, r, 10);
+                        double tongCong = valH + valI + valJ + valK;
+
+                        Cell cellL = row.getCell(11);
+                        if (cellL == null)
+                            cellL = row.createCell(11);
+                        cellL.removeFormula();
+                        cellL.setCellValue(tongCong);
+                        setNumericCellFormat(cellL, tongCong);
+                    }
+                }
+
+                // F-157: Thong ke phao tieu, bao hieu tren luong
+                // Fix: Danh so STT o Cot A (index 0), xoa cot phu Col N (index 13), va xoa dong template rac thua (${entry.key}, charAt(idx))
+                if ("F-157".equalsIgnoreCase(request.getReportCode())) {
+                    boolean dataStarted = false;
+                    int stt = 1;
+                    List<Integer> templateRowsToRemove = new ArrayList<>();
+                    CellStyle sttStyle = null;
+
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null)
+                            continue;
+
+                        if (!dataStarted) {
+                            Cell cellA = row.getCell(0);
+                            if (cellA != null && cellA.getCellType() == CellType.STRING
+                                    && "A".equals(cellA.getStringCellValue().trim())) {
+                                dataStarted = true;
+                            }
+                            continue;
+                        }
+
+                        Cell cellA = row.getCell(0);
+                        Cell cellB = row.getCell(1);
+                        String aVal = (cellA != null && cellA.getCellType() == CellType.STRING) ? cellA.getStringCellValue().trim() : "";
+                        String bVal = (cellB != null && cellB.getCellType() == CellType.STRING) ? cellB.getStringCellValue().trim() : "";
+
+                        // Dừng lại khi chạm tới phần chữ ký footer
+                        if (bVal.startsWith("Người lập") || bVal.startsWith("Thủ trưởng")
+                                || aVal.startsWith("Người lập") || aVal.startsWith("Thủ trưởng")) {
+                            break;
+                        }
+
+                        // Kiểm tra dòng template rác chưa phân giải (${entry.key}, charAt(idx))
+                        if (aVal.contains("${") || aVal.contains("charAt") || bVal.contains("${") || bVal.contains("entry.key")) {
+                            templateRowsToRemove.add(r);
+                            continue;
+                        }
+
+                        // Bỏ qua dòng trống hoàn toàn
+                        if ((cellB == null || cellB.getCellType() == CellType.BLANK || bVal.isEmpty())
+                                && (cellA == null || cellA.getCellType() == CellType.BLANK || aVal.isEmpty())) {
+                            continue;
+                        }
+
+                        // Dòng dữ liệu phao tiêu: gán STT vào cột A
+                        if (cellA == null) {
+                            cellA = row.createCell(0);
+                        }
+                        if (sttStyle == null && cellB != null && cellB.getCellStyle() != null) {
+                            sttStyle = workbook.createCellStyle();
+                            sttStyle.cloneStyleFrom(cellB.getCellStyle());
+                            sttStyle.setAlignment(HorizontalAlignment.CENTER);
+                        }
+                        cellA.setCellValue(stt++);
+                        if (sttStyle != null) {
+                            cellA.setCellStyle(sttStyle);
+                        }
+
+                        // Xóa cột phụ N (index 13)
+                        Cell cellN = row.getCell(13);
+                        if (cellN != null) {
+                            row.removeCell(cellN);
+                        }
+                    }
+
+                    // Xóa các dòng template rác từ dưới lên để không làm lệch chỉ mục hàng
+                    for (int i = templateRowsToRemove.size() - 1; i >= 0; i--) {
+                        int rowIdx = templateRowsToRemove.get(i);
+                        Row r = destSheet.getRow(rowIdx);
+                        if (r != null) {
+                            destSheet.removeRow(r);
+                        }
+                        if (rowIdx < destSheet.getLastRowNum()) {
+                            destSheet.shiftRows(rowIdx + 1, destSheet.getLastRowNum(), -1);
+                        }
+                    }
+
+                    // Quét toàn bộ sheet dọn sạch nếu còn sót placeholder chưa phân giải và xóa triệt để cột N (index 13)
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null) continue;
+                        Cell cellN = row.getCell(13);
+                        if (cellN != null) {
+                            row.removeCell(cellN);
+                        }
+                        for (int c = 0; c < row.getLastCellNum(); c++) {
+                            Cell cell = row.getCell(c);
+                            if (cell != null && cell.getCellType() == CellType.STRING) {
+                                String val = cell.getStringCellValue();
+                                if (val != null && (val.contains("${entry.key}") || val.contains("charAt(idx)")
+                                        || val.contains("${zobjComReport") || val.contains("${zobjDataDefault")
+                                        || val.contains("${item.") || val.contains("${thiz."))) {
+                                    cell.setCellValue("");
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return outputWorkbook(workbook, destSheet, isExcel);
             }
         }
     }
 
     private Object resolveExpression(String expr, Map<String, Object> item) {
-        if (expr == null)
+        if (expr == null || item == null)
             return null;
+
+        // If multiple placeholders exist in one cell e.g. "${item.a} / ${item.b}"
+        if (expr.contains("${") && expr.indexOf("${") != expr.lastIndexOf("${")) {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\$\\{([^}]+)\\}").matcher(expr);
+            StringBuilder sb = new StringBuilder();
+            while (matcher.find()) {
+                String sub = matcher.group(1);
+                Object val = resolveExpression("${" + sub + "}", item);
+                matcher.appendReplacement(sb, val != null ? java.util.regex.Matcher.quoteReplacement(val.toString()) : "");
+            }
+            matcher.appendTail(sb);
+            return sb.toString();
+        }
 
         String cleanExpr = expr.replace("${", "").replace("}", "").trim();
 
+        if (item.containsKey(cleanExpr)) {
+            return item.get(cleanExpr);
+        }
+
         // Sort keys by length in descending order to avoid prefix conflicts
 
-        java.util.List<String> keys = new java.util.ArrayList<>(item.keySet());
+        List<String> keys = new ArrayList<>(item.keySet());
 
         keys.sort((a, b) -> Integer.compare(b.length(), a.length()));
 
         for (String key : keys) {
             if (cleanExpr.contains(key)) {
+                return item.get(key);
+            }
+        }
+
+        // Case-insensitive fallback
+        for (String key : keys) {
+            if (cleanExpr.toLowerCase().contains(key.toLowerCase())) {
                 return item.get(key);
             }
         }
@@ -4585,6 +4831,14 @@ public class ReportService {
         replacements.put("${fkDonViBcText}", orgName);
         replacements.put("${fkDonViBcCapTrenText}", "CỤC HÀNG HẢI VIỆT NAM");
         replacements.put("${bcMaText}", String.valueOf(reportYear));
+
+        // Format tháng cho các báo cáo tháng BCDL (F-165, F-167, F-168, F-169)
+        String repCode = request.getReportCode() != null ? request.getReportCode().toUpperCase() : "";
+        if (repCode.equals("F-165") || repCode.equals("F-167") || repCode.equals("F-168") || repCode.equals("F-169")
+                || repCode.equals("BCDL_180") || repCode.equals("BCDL_182") || repCode.equals("BCDL_183") || repCode.equals("BCDL_184")) {
+            int m = request.getStartDate() != null ? request.getStartDate().getMonthValue() : LocalDate.now().getMonthValue();
+            replacements.put("${bcMaText}", String.format("%02d năm %d", m, reportYear));
+        }
         replacements.put("${dateReportText}", "ngày " + LocalDate.now().getDayOfMonth() + " tháng "
                 + LocalDate.now().getMonthValue() + " năm " + LocalDate.now().getYear());
         replacements.put("${bcThoiGian}", periodText);
@@ -4606,6 +4860,30 @@ public class ReportService {
                 bcNoiDungLabel);
         replacements.put("${idx+1}", "1");
         replacements.put("${idx + 1}", "1");
+
+        // Determine whether this report is 6-month (H1) or annual
+        boolean isH1 = false;
+        if ("F-156".equalsIgnoreCase(request.getReportCode())) {
+            // BCKCHT_171 (Biểu 09-6T/N) template header is hardcoded as "6 Tháng, năm: ..."
+            isH1 = true;
+        } else if (request.getEndDate() != null && request.getEndDate().getMonthValue() <= 6) {
+            isH1 = true;
+        }
+        replacements.put("__isH1", String.valueOf(isH1));
+
+        // F-156 (BCKCHT_171): Ngày nhận báo cáo
+        String f156Deadline = isH1 ? "Ngày 15 tháng 6 hàng năm" : "Ngày 01 tháng 3 hàng năm";
+        replacements.put("${(\"YYYY_H1\".equals(objInput.getEnumBcKy().name()) ? \"Ngày 15 tháng 6 hàng năm\" : \"Ngày 01 tháng 3 hàng năm\")}",
+                f156Deadline);
+
+        // BCDN_189: Ngày nhận báo cáo & Kỳ báo cáo
+        String bcdn189Deadline = isH1 ? "Ngày 01 tháng 6  hàng năm" : "Ngày 01 tháng 12 hàng năm";
+        replacements.put("${(\"YYYY_H1\".equals(objInput.getEnumBcKy().name()) ? \"Ngày 01 tháng 6  hàng năm\" : \"Ngày 01 tháng 12 hàng năm\")}",
+                bcdn189Deadline);
+
+        String bcdn189Period = (isH1 ? "6 Tháng đầu năm " : "năm ") + reportYear;
+        replacements.put("${(\"YYYY_H1\".equals(objInput.getEnumBcKy().name()) ? \"6 Tháng đầu năm \" : \"năm \") + bcMaText}",
+                bcdn189Period);
 
         return replacements;
     }
@@ -5203,46 +5481,129 @@ public class ReportService {
     }
 
     /**
+     * Expands SUM(...) function into arithmetic additions e.g.:
+     * SUM(C13, D13) -> (C13 + D13)
+     * SUM(VALUE(C13), VALUE(D13)) -> (VALUE(C13) + VALUE(D13))
+     * SUM(C13:E13) -> (C13 + D13 + E13)
+     */
+    private String expandSumFunctions(String formula) {
+        if (formula == null || !formula.toUpperCase().contains("SUM(")) {
+            return formula;
+        }
+
+        java.util.regex.Pattern sumPattern = java.util.regex.Pattern.compile("SUM\\(([^)]+)\\)",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher matcher = sumPattern.matcher(formula);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String inner = matcher.group(1);
+            String[] args = inner.split(",");
+            List<String> terms = new ArrayList<>();
+            for (String arg : args) {
+                arg = arg.trim();
+                if (arg.matches("[A-Za-z]+\\d+:[A-Za-z]+\\d+")) {
+                    String[] rangeParts = arg.split(":");
+                    java.util.regex.Matcher m1 = java.util.regex.Pattern.compile("([A-Za-z]+)(\\d+)").matcher(rangeParts[0]);
+                    java.util.regex.Matcher m2 = java.util.regex.Pattern.compile("([A-Za-z]+)(\\d+)").matcher(rangeParts[1]);
+                    if (m1.matches() && m2.matches()) {
+                        int col1 = CellReference.convertColStringToIndex(m1.group(1).toUpperCase());
+                        int row1 = Integer.parseInt(m1.group(2));
+                        int col2 = CellReference.convertColStringToIndex(m2.group(1).toUpperCase());
+                        int row2 = Integer.parseInt(m2.group(2));
+                        int minCol = Math.min(col1, col2);
+                        int maxCol = Math.max(col1, col2);
+                        int minRow = Math.min(row1, row2);
+                        int maxRow = Math.max(row1, row2);
+                        for (int r = minRow; r <= maxRow; r++) {
+                            for (int c = minCol; c <= maxCol; c++) {
+                                terms.add(CellReference.convertNumToColString(c) + r);
+                            }
+                        }
+                    } else {
+                        terms.add(arg);
+                    }
+                } else {
+                    terms.add(arg);
+                }
+            }
+            String replacement = "(" + String.join(" + ", terms) + ")";
+            matcher.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    /**
      * Resolves a formula cell by computing its value in Java and replacing the
-     * formula
-     * with the computed result. This handles formulas like
-     * =VALUE(D14)+VALUE(D15)-VALUE(D16)
-     * where POI's built-in evaluator may not support the VALUE() function.
+     * formula with the computed result. This handles formulas like
+     * =VALUE(D14)+VALUE(D15)-VALUE(D16) or SUM(VALUE(C13),VALUE(D13))
+     * where POI's built-in evaluator may not support the VALUE() or dynamic SUM() functions.
+     * Crucially removes the formula so the cell becomes CellType.NUMERIC.
      */
     private void resolveFormulaCell(Cell cell) {
-        if (cell.getCellType() != CellType.FORMULA)
+        if (cell == null || cell.getCellType() != CellType.FORMULA)
             return;
         String formula = cell.getCellFormula();
-        if (formula == null)
+        if (formula == null || formula.isBlank())
             return;
 
         try {
-            // Replace VALUE(X99) with just the numeric reference X99
-            // Since referenced cells already contain numbers, VALUE() is redundant
-            String simplified = formula.replaceAll("VALUE\\(([A-Z]+\\d+)\\)", "$1");
+            if (formula.startsWith("=")) {
+                formula = formula.substring(1).trim();
+            }
 
-            // Parse cell references and read values
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("([A-Z]+)(\\d+)").matcher(simplified);
+            // 1. Replace VALUE(X99) with just the numeric reference X99 first
+            // to avoid nested parentheses when expanding SUM(...)
+            String simplified = formula.replaceAll("VALUE\\(([^)]+)\\)", "$1");
+
+            // 2. Expand SUM(...) functions
+            simplified = expandSumFunctions(simplified);
+
+            // 3. Check if all referenced cells share a single template row
+            int currentRowNum = cell.getRowIndex() + 1; // 1-indexed
+            java.util.regex.Pattern cellRefPattern = java.util.regex.Pattern.compile("([A-Z]+)(\\d+)");
+            java.util.regex.Matcher m = cellRefPattern.matcher(simplified);
+
+            java.util.Set<Integer> referencedRows = new java.util.HashSet<>();
+            while (m.find()) {
+                referencedRows.add(Integer.parseInt(m.group(2)));
+            }
+
+            // If all referenced cells are on a single row that is NOT the current row,
+            // and this is a data row, the template author intended to reference the current row.
+            boolean shouldMapToCurrentRow = (referencedRows.size() == 1)
+                    && (!referencedRows.contains(currentRowNum))
+                    && (cell.getRowIndex() >= 10);
+
+            m.reset();
             String expr = simplified;
             while (m.find()) {
                 String colLetters = m.group(1);
-                int rowNum = Integer.parseInt(m.group(2)) - 1; // 0-indexed
+                int refRow1Based = Integer.parseInt(m.group(2));
+                int targetRowNum0Based = shouldMapToCurrentRow
+                        ? cell.getRowIndex()
+                        : (refRow1Based - 1);
                 int colNum = CellReference.convertColStringToIndex(colLetters);
 
-                Row refRow = cell.getSheet().getRow(rowNum);
+                Row refRow = cell.getSheet().getRow(targetRowNum0Based);
                 double val = 0;
                 if (refRow != null) {
                     Cell refCell = refRow.getCell(colNum);
                     if (refCell != null) {
                         try {
-                            val = refCell.getNumericCellValue();
-                        } catch (Exception e) {
-                            try {
+                            if (refCell.getCellType() == CellType.NUMERIC) {
+                                val = refCell.getNumericCellValue();
+                            } else {
                                 DataFormatter formatter = new DataFormatter();
                                 String s = formatter.formatCellValue(refCell);
-                                val = Double.parseDouble(s.replaceAll("[^\\d.-]", ""));
-                            } catch (Exception ignored) {
+                                if (s != null && !s.isBlank()) {
+                                    String clean = s.replaceAll("[^\\d.-]", "");
+                                    if (!clean.isEmpty() && !clean.equals("-") && !clean.equals(".")) {
+                                        val = Double.parseDouble(clean);
+                                    }
+                                }
                             }
+                        } catch (Exception ignored) {
                         }
                     }
                 }
@@ -5252,6 +5613,7 @@ public class ReportService {
 
             // Evaluate arithmetic expression (only + and - needed)
             double result = evaluateSimpleArithmetic(expr);
+            cell.removeFormula();
             cell.setCellValue(result);
             setNumericCellFormat(cell, result);
         } catch (Exception e) {
@@ -5263,12 +5625,12 @@ public class ReportService {
      * Simple left-to-right evaluation for arithmetic expressions with + and - only.
      */
     private double evaluateSimpleArithmetic(String expr) {
-        String[] parts = expr.split("(?=[+-])|(?<=[+-])");
+        String[] parts = expr.split("(?=[+-,])|(?<=[+-,])");
         double result = 0;
         char op = '+';
         for (String part : parts) {
-            part = part.trim();
-            if (part.equals("+")) {
+            part = part.trim().replace("(", "").replace(")", "");
+            if (part.equals("+") || part.equals(",")) {
                 op = '+';
             } else if (part.equals("-")) {
                 op = '-';
@@ -5628,6 +5990,50 @@ public class ReportService {
         }
     }
 
+    private static final Pattern ENUM_BC_KY_PATTERN = Pattern.compile(
+            "\\$\\{\\(\\s*\"YYYY_H1\"\\.equals\\(objInput\\.getEnumBcKy\\(\\)\\.name\\(\\)\\)\\s*\\?\\s*\"([^\"]*)\"\\s*:\\s*\"([^\"]*)\"\\s*\\)(\\s*\\+\\s*bcMaText)?\\}"
+    );
+
+    private String resolveEnumBcKyExpression(String val, Map<String, String> replacements) {
+        if (val == null || !val.contains("objInput.getEnumBcKy()")) {
+            return val;
+        }
+        for (Map.Entry<String, String> entry : replacements.entrySet()) {
+            if (entry.getKey().contains("objInput.getEnumBcKy()") && val.contains(entry.getKey())) {
+                val = val.replace(entry.getKey(), entry.getValue() != null ? entry.getValue() : "");
+            }
+        }
+        if (!val.contains("objInput.getEnumBcKy()")) {
+            return val;
+        }
+
+        boolean isH1 = "true".equalsIgnoreCase(replacements.get("__isH1"));
+        String bcMa = replacements.getOrDefault("${bcMaText}", "");
+
+        Matcher matcher = ENUM_BC_KY_PATTERN.matcher(val);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String trueBranch = matcher.group(1);
+            String falseBranch = matcher.group(2);
+            boolean hasBcMa = matcher.group(3) != null;
+            String result = (isH1 ? trueBranch : falseBranch) + (hasBcMa ? bcMa : "");
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(result));
+        }
+        matcher.appendTail(sb);
+        String result = sb.toString();
+
+        if (result.contains("objInput.getEnumBcKy()")) {
+            if (result.contains("Ngày 15 tháng 6")) {
+                result = "Ngày 15 tháng 6 hàng năm";
+            } else if (result.contains("Ngày 01 tháng 6")) {
+                result = "Ngày 01 tháng 6 hàng năm";
+            } else if (result.contains("Ngày 01 tháng 3")) {
+                result = "Ngày 01 tháng 3 hàng năm";
+            }
+        }
+        return result;
+    }
+
     private void copyCell(Cell srcCell, Cell destCell, Map<String, String> replacements) {
         if (srcCell == null)
             return;
@@ -5640,6 +6046,10 @@ public class ReportService {
                 String val = srcCell.getStringCellValue();
 
                 if (val != null) {
+                    if (val.contains("objInput.getEnumBcKy()")) {
+                        val = resolveEnumBcKyExpression(val, replacements);
+                    }
+
                     String trimVal = val.trim();
 
                     if (trimVal.startsWith("${") && trimVal.endsWith("}")) {
@@ -6085,6 +6495,10 @@ public class ReportService {
     }
 
     private byte[] convertExcelToPdf(Sheet sheet) {
+        return convertExcelToPdf(sheet, false);
+    }
+
+    private byte[] convertExcelToPdf(Sheet sheet, boolean preservePageSetup) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
 
@@ -6149,11 +6563,11 @@ public class ReportService {
 
             // Force landscape and Tabloid size for wide reports
 
-            if (maxCols > 7) {
+            if (!preservePageSetup && maxCols > 7) {
                 isLandscape = true;
             }
 
-            if (maxCols > 10) {
+            if (!preservePageSetup && maxCols > 10) {
                 pdfPageSize = new com.itextpdf.kernel.geom.PageSize(792, 1224); // Tabloid
             }
 
@@ -6189,6 +6603,11 @@ public class ReportService {
                     bottomMargin = excelBottom;
             }
 
+            if (isLandscape && maxCols >= 8) {
+                leftMargin = Math.min(leftMargin, 20f);
+                rightMargin = Math.min(rightMargin, 20f);
+            }
+
             doc.setMargins(topMargin, rightMargin, bottomMargin, leftMargin);
 
             byte[] fontBytes = null;
@@ -6208,6 +6627,11 @@ public class ReportService {
             }
 
             float fontScale = 1.0f;
+            if (maxCols >= 10) {
+                fontScale = 0.85f;
+            } else if (maxCols >= 8) {
+                fontScale = 0.9f;
+            }
 
             doc.setFontSize(10f);
 

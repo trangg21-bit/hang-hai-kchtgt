@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.repository;
 
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.hanghai.kchtg.report.entity.Bcc157Report;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -12,7 +13,7 @@ import java.util.UUID;
  * Repository for BCC_157 (F-142) reports.
  */
 @Repository
-public interface Bcc157ReportRepository extends JpaRepository<Bcc157Report, UUID> {
+public interface Bcc157ReportRepository extends JpaRepository<Bcc157Report, UUID>, JpaSpecificationExecutor<Bcc157Report> {
 
     Optional<Bcc157Report> findByOrgUnitIdAndReportYearAndNguonDuLieu(
             UUID orgUnitId, Integer reportYear, String nguonDuLieu);

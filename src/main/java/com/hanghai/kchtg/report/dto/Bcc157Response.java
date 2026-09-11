@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.dto;
 
+import lombok.experimental.FieldNameConstants;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,7 @@ import java.util.UUID;
 /**
  * Response DTO for BCC_157 (F-142) report.
  */
+@FieldNameConstants
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,9 +22,11 @@ public class Bcc157Response {
 
     private UUID id;
     private UUID orgUnitId;
+    private String orgUnitName;
     private Integer reportYear;
     private String nguonDuLieu;
     private String status;
+    private Long version;
 
     // --- Section 1: Nguyên giá ---
 

@@ -13,8 +13,16 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
+/**
+ * Handler xử lý báo cáo F-151: Biểu 04-N Thống kê luồng hàng hải.
+ */
 @Component
 public class F151ReportHandler extends BaseReportHandler {
 
@@ -96,7 +104,6 @@ public class F151ReportHandler extends BaseReportHandler {
             parentRow.put("Thời điểm SC", nc.getLatestStationRepairMonth() != null
                     ? nc.getLatestStationRepairMonth().toString() : "");
             parentRow.put("Nhân sự", nc.getStationStaffCount() != null ? nc.getStationStaffCount() : "");
-            parentRow.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffCount() != null ? nc.getStationStaffCount() : "");
             parentRow.put("Chiều cao tĩnh không", children.isEmpty() ? ""
                     : String.valueOf(children.get(0).getVerticalClearanceMeters()));
             parentRow.put("ĐVQL vận hành", donVi);
@@ -114,6 +121,9 @@ public class F151ReportHandler extends BaseReportHandler {
                 childRow.put("Mái dốc", child.getDesignSlope() != null ? child.getDesignSlope() : "");
                 childRow.put("Độ sâu hiện tại", child.getCurrentDepthMeters() != null ? child.getCurrentDepthMeters() : "");
                 childRow.put("KL nạo vét (m3)", child.getRouteLatestDredgingVolumeCubicMeters() != null ? child.getRouteLatestDredgingVolumeCubicMeters() : "");
+                boolean isChuyenDung = child.getRouteType() != null && child.getRouteType() == 2;
+                childRow.put("Công cộng", isChuyenDung ? "" : "X");
+                childRow.put("Chuyên dùng", isChuyenDung ? "X" : "");
                 childRow.put("Tên trạm QL luồng", "");
                 childRow.put("Số lượng trạm", "");
                 childRow.put("Diện tích (m2)", "");
@@ -223,6 +233,9 @@ public class F151ReportHandler extends BaseReportHandler {
                 childItem.put("doSauHienTai", child.getCurrentDepthMeters() != null ? child.getCurrentDepthMeters() : "");
                 childItem.put("khoiLuongNaoVetDuyTu", child.getRouteLatestDredgingVolumeCubicMeters() != null
                         ? child.getRouteLatestDredgingVolumeCubicMeters().doubleValue() : 0.0);
+                boolean isChuyenDung = child.getRouteType() != null && child.getRouteType() == 2;
+                childItem.put("congCong", isChuyenDung ? "" : "X");
+                childItem.put("chuyenDung", isChuyenDung ? "X" : "");
                 // Parent context for template back-reference
                 childItem.put("tenTram", nc.getManagementStation() != null ? nc.getManagementStation() : "");
                 childItem.put("soLuongTramParent", nc.getStationCount() != null ? nc.getStationCount().doubleValue() : 0.0);

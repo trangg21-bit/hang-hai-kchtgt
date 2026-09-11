@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.entity;
 
+import lombok.experimental.FieldNameConstants;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import java.util.UUID;
  * BCC_157 (F-142) — Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng
  * đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng.
  */
+@FieldNameConstants
 @Entity
 @Table(name = "bcc157_report", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"org_unit_id", "report_year", "nguon_du_lieu"})
@@ -29,6 +31,10 @@ public class Bcc157Report {
     @GeneratedValue
     @Column(name = "id", columnDefinition = "UUID")
     private UUID id;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @Column(name = "org_unit_id", nullable = false)
     private UUID orgUnitId;

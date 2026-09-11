@@ -523,7 +523,7 @@ export default function PierDetailContent({
                     {(() => {
                       const isPendingPortAuthority = r.approvalStatus === 'PENDING_APPROVAL' || r.approvalStatus === 'CHO_PHE_DUYET' || approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục';
                       return (
-                        <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
+                        <div className={`chk-detail-row chk-detail-row--full ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                           <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                           <span className="chk-detail-value">
                             {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
@@ -536,12 +536,16 @@ export default function PierDetailContent({
                       );
                     })()}
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                      <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                       <span className="chk-detail-value">
                         {userMap.get(r.updatedBy || '') || r.updatedBy ? (
                           <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy}</span>
                         ) : ''}
                       </span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                      <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>

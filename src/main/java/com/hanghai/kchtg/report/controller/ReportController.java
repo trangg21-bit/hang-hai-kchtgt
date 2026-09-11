@@ -1,5 +1,19 @@
 package com.hanghai.kchtg.report.controller;
 
+import java.util.Locale;
+
+import java.nio.charset.StandardCharsets;
+
+import java.time.LocalDate;
+
+import java.time.format.DateTimeFormatter;
+
+import org.springframework.http.ContentDisposition;
+
+import org.springframework.http.MediaType;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportRequest;
@@ -34,7 +48,7 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 public class ReportController {
 
     private final ReportService reportService;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     /**
      * Tạo báo cáo mới với status = PENDING, sau đó sinh báo cáo.
@@ -100,11 +114,11 @@ public class ReportController {
         byte[] data = fileUrl.getBytes();
 
         String reportName = getReportNameVietnamese(code);
-        String dateSuffix = java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy").format(java.time.LocalDate.now());
+        String dateSuffix = DateTimeFormatter.ofPattern("ddMMyyyy").format(LocalDate.now());
         String filename = reportName + "___" + dateSuffix + ".pdf";
 
-        org.springframework.http.ContentDisposition contentDisposition = org.springframework.http.ContentDisposition.builder("attachment")
-                .filename(filename, java.nio.charset.StandardCharsets.UTF_8)
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
                 .build();
 
         HttpHeaders headers = new HttpHeaders();
@@ -113,7 +127,7 @@ public class ReportController {
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .contentType(MediaType.APPLICATION_PDF)
                 .body(data);
     }
 
@@ -152,13 +166,15 @@ public class ReportController {
 
         String reportCodeStr = request.getReportCode() != null ? request.getReportCode() : "F-141";
         boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+        boolean isWord = "WORD".equalsIgnoreCase(request.getFormat())
+                && reportCodeStr.trim().toUpperCase(Locale.ROOT).matches("(?:F-14[1-7]|BCC_15[6-9]|BCC_16[0-2])");
 
         String reportName = getReportNameVietnamese(reportCodeStr);
-        String dateSuffix = java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy").format(java.time.LocalDate.now());
-        String filename = reportName + "___" + dateSuffix + (isExcel ? ".xlsx" : ".pdf");
+        String dateSuffix = DateTimeFormatter.ofPattern("ddMMyyyy").format(LocalDate.now());
+        String filename = reportName + "___" + dateSuffix + (isExcel ? ".xlsx" : isWord ? ".docx" : ".pdf");
 
-        org.springframework.http.ContentDisposition contentDisposition = org.springframework.http.ContentDisposition.builder("attachment")
-                .filename(filename, java.nio.charset.StandardCharsets.UTF_8)
+        ContentDisposition contentDisposition = ContentDisposition.builder("attachment")
+                .filename(filename, StandardCharsets.UTF_8)
                 .build();
 
         HttpHeaders headers = new HttpHeaders();
@@ -167,8 +183,9 @@ public class ReportController {
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .contentType(isExcel ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM
-                                    : org.springframework.http.MediaType.APPLICATION_PDF)
+                .contentType(isExcel ? MediaType.APPLICATION_OCTET_STREAM
+                                    : isWord ? MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                                    : MediaType.APPLICATION_PDF)
                 .body(fileBytes);
     }
 

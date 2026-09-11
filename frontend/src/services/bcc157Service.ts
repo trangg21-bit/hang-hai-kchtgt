@@ -1,6 +1,7 @@
 import api from './api';
 
 export interface Bcc157CreateRequest {
+  version?: number;
   orgUnitId: string;
   reportYear: number;
   nguonDuLieu?: string;
@@ -33,6 +34,8 @@ export interface Bcc157CreateRequest {
 }
 
 export interface Bcc157Response {
+  version: number;
+  orgUnitName?: string;
   id: string;
   orgUnitId: string;
   reportYear: number;
@@ -72,7 +75,23 @@ export interface Bcc157SearchParams {
   nguonDuLieu?: string;
 }
 
+export interface Bcc157History {
+  id: string;
+  status: string;
+  approvedDate: string;
+  previousValue?: string;
+  newValue?: string;
+}
+
 export const bcc157Service = {
+  async history(id: string): Promise<Bcc157History[]> {
+    const res = await api.get(`/v1/bcc157/${id}/history`);
+    return res.data.data;
+  },
+  async update(id: string, data: Bcc157CreateRequest): Promise<Bcc157Response> {
+    const res = await api.put(`/v1/bcc157/${id}`, data);
+    return res.data.data;
+  },
   /**
    * Create a new BCC_157 report
    */

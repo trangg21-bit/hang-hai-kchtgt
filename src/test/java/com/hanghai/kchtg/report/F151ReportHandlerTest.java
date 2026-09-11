@@ -72,11 +72,12 @@ class F151ReportHandlerTest {
                 .stationStaffCount(2)
                 .build();
 
-        // Two ChannelRouteDetail children
+        // Two ChannelRouteDetail children (child1 = Công cộng, child2 = Chuyên dùng)
         ChannelRouteDetail child1 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
                 .routeName("Tuyến 1")
                 .routeCode("TL.01")
+                .routeType(1)
                 .channelLengthKilometers(new BigDecimal("15.5"))
                 .maximumDesignWidthMeters(new BigDecimal("100"))
                 .minimumDesignWidthMeters(new BigDecimal("80"))
@@ -90,6 +91,7 @@ class F151ReportHandlerTest {
                 .id(UUID.randomUUID())
                 .routeName("Tuyến 2")
                 .routeCode("TL.02")
+                .routeType(2)
                 .channelLengthKilometers(new BigDecimal("8.3"))
                 .maximumDesignWidthMeters(new BigDecimal("90"))
                 .minimumDesignWidthMeters(new BigDecimal("70"))
@@ -138,17 +140,23 @@ class F151ReportHandlerTest {
         assertEquals(new BigDecimal("23.8"), p.get("Dài (km)"));
         // Sum of child dredgingVolume: 5000 + 3000 = 8000
         assertEquals(new BigDecimal("8000"), p.get("KL nạo vét (m3)"));
+        assertEquals("", p.get("Công cộng"), "Parent row Công cộng must be empty");
+        assertEquals("", p.get("Chuyên dùng"), "Parent row Chuyên dùng must be empty");
 
         // ---- Child row 1 (index 1) ----
         Map<String, Object> c1 = rows.get(1);
         assertEquals("", c1.get("STT"));
         assertEquals("Tuyến 1", c1.get("Chỉ tiêu"));
         assertEquals(new BigDecimal("15.5"), c1.get("Dài (km)"));
+        assertEquals("X", c1.get("Công cộng"), "Child 1 (routeType=1) Công cộng must be 'X'");
+        assertEquals("", c1.get("Chuyên dùng"), "Child 1 (routeType=1) Chuyên dùng must be empty");
 
         // ---- Child row 2 (index 2) ----
         Map<String, Object> c2 = rows.get(2);
         assertEquals("", c2.get("STT"));
         assertEquals("Tuyến 2", c2.get("Chỉ tiêu"));
+        assertEquals("", c2.get("Công cộng"), "Child 2 (routeType=2) Công cộng must be empty");
+        assertEquals("X", c2.get("Chuyên dùng"), "Child 2 (routeType=2) Chuyên dùng must be 'X'");
 
         // ---- Summary ----
         Map<String, Object> summary = response.getSummary();
@@ -177,6 +185,7 @@ class F151ReportHandlerTest {
                 .id(UUID.randomUUID())
                 .routeName("Tuyến 1")
                 .routeCode("TL.01")
+                .routeType(1)
                 .channelLengthKilometers(new BigDecimal("15.5"))
                 .maximumDesignWidthMeters(new BigDecimal("100"))
                 .minimumDesignWidthMeters(new BigDecimal("80"))
@@ -190,6 +199,7 @@ class F151ReportHandlerTest {
                 .id(UUID.randomUUID())
                 .routeName("Tuyến 2")
                 .routeCode("TL.02")
+                .routeType(2)
                 .channelLengthKilometers(new BigDecimal("8.3"))
                 .maximumDesignWidthMeters(new BigDecimal("90"))
                 .minimumDesignWidthMeters(new BigDecimal("70"))
@@ -230,6 +240,8 @@ class F151ReportHandlerTest {
         assertTrue(parent.containsKey("nhanSuBoTriTaiTramQlLuong"),
                 "Parent row must contain key 'nhanSuBoTriTaiTramQlLuong'");
         assertEquals("Cục Hàng hải", parent.get("donViQuanLyVanHanh"));
+        assertEquals("", parent.get("congCong"), "Parent row congCong must be empty");
+        assertEquals("", parent.get("chuyenDung"), "Parent row chuyenDung must be empty");
 
         // Child row 1 (index 1) — template field checks
         Map<String, Object> r1 = result.get(1);
@@ -237,6 +249,8 @@ class F151ReportHandlerTest {
                 "Child row should have maTuyenLuong = TL.01");
         assertTrue(r1.containsKey("daiLuong"),
                 "Child row must contain key 'daiLuong'");
+        assertEquals("X", r1.get("congCong"), "Child 1 (routeType=1) congCong must be 'X'");
+        assertEquals("", r1.get("chuyenDung"), "Child 1 (routeType=1) chuyenDung must be empty");
 
         // Child row 2 (index 2) — template field checks
         Map<String, Object> r2 = result.get(2);
@@ -244,6 +258,8 @@ class F151ReportHandlerTest {
                 "Child row should have maTuyenLuong = TL.02");
         assertTrue(r2.containsKey("daiLuong"),
                 "Child row must contain key 'daiLuong'");
+        assertEquals("", r2.get("congCong"), "Child 2 (routeType=2) congCong must be empty");
+        assertEquals("X", r2.get("chuyenDung"), "Child 2 (routeType=2) chuyenDung must be 'X'");
     }
 
     // ---------------------------------------------------------------
@@ -343,5 +359,49 @@ class F151ReportHandlerTest {
                 "supports(null) must be false");
         assertFalse(handler.supports(""),
                 "supports('') must be false");
+    }
+
+    // ---------------------------------------------------------------
+    // Test 6: Route type defaults to Cong cong when routeType is null
+    // ---------------------------------------------------------------
+    @Test
+    void testPreviewAndExport_defaultPublicWhenRouteTypeNull() {
+        NavigationChannel nc = NavigationChannel.builder()
+                .id(ncId)
+                .channelName("Luồng C")
+                .orgUnitId(orgUnitId)
+                .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
+                .build();
+
+        ChannelRouteDetail childNull = ChannelRouteDetail.builder()
+                .id(UUID.randomUUID())
+                .routeName("Tuyến mặc định")
+                .routeType(null)
+                .build();
+
+        when(navigationChannelRepository.findByDeletedAtIsNull(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(nc));
+        when(channelRouteDetailRepository.findByNavigationChannelIdOrderBySequenceNoAsc(ncId))
+                .thenReturn(List.of(childNull));
+
+        ReportPreviewRequest request = ReportPreviewRequest.builder()
+                .reportCode("F-151")
+                .orgUnitId(null)
+                .startDate(LocalDate.of(2025, 1, 1))
+                .build();
+
+        ReportResponse previewResponse = handler.getPreview(request);
+        assertNotNull(previewResponse);
+        assertEquals(2, previewResponse.getRows().size());
+        Map<String, Object> childPreview = previewResponse.getRows().get(1);
+        assertEquals("X", childPreview.get("Công cộng"), "Null routeType must default to Công cộng 'X'");
+        assertEquals("", childPreview.get("Chuyên dùng"), "Null routeType must have empty Chuyên dùng");
+
+        List<Map<String, Object>> exportData = handler.getExportData(request, 2025);
+        assertNotNull(exportData);
+        assertEquals(2, exportData.size());
+        Map<String, Object> childExport = exportData.get(1);
+        assertEquals("X", childExport.get("congCong"), "Null routeType export must default to congCong 'X'");
+        assertEquals("", childExport.get("chuyenDung"), "Null routeType export must have empty chuyenDung");
     }
 }
