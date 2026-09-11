@@ -44,7 +44,7 @@ const sectionHeaderStyle: React.CSSProperties = {
 const sectionTitleStyle: React.CSSProperties = {
   color: colors.sidebarBg,
   fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
+  fontSize: fontSizeMd,
   display: "flex",
   alignItems: "center",
   gap: 8,

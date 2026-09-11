@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import { Table } from 'antd';
 import type { ColumnsType, TableProps } from 'antd/es/table';
-import dayjs from 'dayjs';
 import Pagination from '../list-view/Pagination';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 
-export interface DetailTableProps<T = any> extends Omit<TableProps<T>, 'pagination'> {
+export interface DetailTableProps<T = Record<string, unknown>> extends Omit<TableProps<T>, 'pagination'> {
   columns: ColumnsType<T>;
   dataSource: T[];
   total?: number;
@@ -23,7 +22,7 @@ export interface DetailTableProps<T = any> extends Omit<TableProps<T>, 'paginati
 }
 
 /** Tự động suy luận độ rộng tối ưu cho cột nếu chưa được khai báo */
-const getSmartColumnWidth = (col: any): number | undefined => {
+const getSmartColumnWidth = (col: Record<string, unknown>): number | undefined => {
   if (col.width && typeof col.width === 'number') {
     return col.width;
   }
@@ -34,7 +33,7 @@ const getSmartColumnWidth = (col: any): number | undefined => {
   if (col.width === '100%') {
     return undefined;
   }
-  if (col.width !== undefined) return col.width;
+  if (col.width !== undefined) return col.width as number | undefined;
   const key = String(col.dataIndex || col.key || col.title || '').toLowerCase();
   if (key === 'stt' || col.title === 'STT') return 60;
   if (key.includes('code') || key.includes('mã')) return 140;
@@ -49,8 +48,8 @@ const getSmartColumnWidth = (col: any): number | undefined => {
 };
 
 /** Tự động suy luận căn lề tối ưu cho cột nếu chưa được khai báo */
-const getSmartColumnAlign = (col: any): 'left' | 'center' | 'right' => {
-  if (col.align) return col.align;
+const getSmartColumnAlign = (col: Record<string, unknown>): 'left' | 'center' | 'right' => {
+  if (col.align) return col.align as 'left' | 'center' | 'right';
   const key = String(col.dataIndex || col.key || col.title || '').toLowerCase();
   if (key === 'stt' || col.title === 'STT') return 'center';
   if (key.includes('date') || key.includes('time') || key.includes('ngày') || key.includes('thời gian') || key.includes('năm') || key.includes('year')) return 'center';
@@ -59,25 +58,25 @@ const getSmartColumnAlign = (col: any): 'left' | 'center' | 'right' => {
 };
 
 /** Tự động sinh hàm so sánh Client-Side khi cột được cấu hình sorter: true */
-const getSmartSorter = (col: any) => {
+const getSmartSorter = (col: Record<string, unknown>) => {
   if (!col.sorter) return undefined;
   if (typeof col.sorter === 'function') return col.sorter;
-  const field = col.dataIndex || col.key;
+  const field = (col.dataIndex || col.key) as string;
   if (!field) return undefined;
   const key = String(field).toLowerCase();
 
   // Cột ngày tháng
   if (key.includes('date') || key.includes('time') || key.includes('ngày') || key.includes('thời gian') || key.includes('at')) {
-    return (a: any, b: any) => {
-      const timeA = a[field] ? new Date(a[field]).getTime() : 0;
-      const timeB = b[field] ? new Date(b[field]).getTime() : 0;
+    return (a: Record<string, unknown>, b: Record<string, unknown>) => {
+      const timeA = a[field] ? new Date(a[field] as string | number | Date).getTime() : 0;
+      const timeB = b[field] ? new Date(b[field] as string | number | Date).getTime() : 0;
       return timeA - timeB;
     };
   }
 
   // Cột số liệu
   if (key.includes('cost') || key.includes('price') || key.includes('amount') || key.includes('tiền') || key.includes('count') || key.includes('số lượng') || key.includes('stt')) {
-    return (a: any, b: any) => {
+    return (a: Record<string, unknown>, b: Record<string, unknown>) => {
       const valA = Number(a[field]) || 0;
       const valB = Number(b[field]) || 0;
       return valA - valB;
@@ -85,9 +84,9 @@ const getSmartSorter = (col: any) => {
   }
 
   // Cột chuỗi tiếng Việt có dấu
-  return (a: any, b: any) => {
-    const valA = a[field] ?? '';
-    const valB = b[field] ?? '';
+  return (a: Record<string, unknown>, b: Record<string, unknown>) => {
+    const valA = String(a[field] ?? '');
+    const valB = String(b[field] ?? '');
     return String(valA).localeCompare(String(valB), 'vi');
   };
 };
@@ -103,7 +102,7 @@ const getSmartSorter = (col: any) => {
  * 5. Tự động gắn bộ sắp xếp Client-Side tiếng Việt mượt mà.
  * 6. Tự động co giãn theo số lượng bản ghi và neo thanh phân trang ngay dưới dòng cuối, không tạo khoảng trống thừa.
  */
-export const DetailTable = <T extends object = any>({
+export const DetailTable = <T extends object = Record<string, unknown>>({
   columns,
   dataSource = [],
   pageSize: propPageSize,
@@ -170,7 +169,11 @@ export const DetailTable = <T extends object = any>({
 
   // Chuẩn hóa và làm giàu cấu hình cột tự động
   const enhancedColumns = useMemo(() => {
-    const enhanced = columns.map((col: any) => {
+    const enhanced = columns.map((colItem) => {
+      const col = colItem as Record<string, unknown> & {
+        render?: (val: unknown, rec: T, idx: number) => React.ReactNode;
+        title?: React.ReactNode;
+      };
       const originalRender = col.render;
       const width = getSmartColumnWidth(col);
       const align = getSmartColumnAlign(col);
@@ -181,8 +184,9 @@ export const DetailTable = <T extends object = any>({
         ...(width !== undefined ? { width } : {}),
         align,
         sorter,
-        render: (value: any, record: any, index: number) => {
-          if (record && record.__isPlaceholder) {
+        render: (value: unknown, record: T, index: number) => {
+          const rec = record as Record<string, unknown>;
+          if (rec && rec.__isPlaceholder) {
             return <span style={{ display: 'inline-block', height: 22, color: 'transparent', userSelect: 'none' }}>&nbsp;</span>;
           }
           if (col.title === 'STT') {
@@ -228,24 +232,25 @@ export const DetailTable = <T extends object = any>({
     return enhanced;
   }, [columns, activePage, pageSize]);
 
-  const resolveRowKey = (record: any, idx: number = 0) => {
-    if (record && record.__isPlaceholder) {
-      return record.__placeholderKey;
+  const resolveRowKey = (record: T, idx: number = 0): React.Key => {
+    const rec = record as Record<string, unknown>;
+    if (rec && rec.__isPlaceholder) {
+      return rec.__placeholderKey as React.Key;
     }
-    if (typeof rowKey === 'string' && record && record[rowKey] !== undefined) {
-      return record[rowKey];
+    if (typeof rowKey === 'string' && rec && rec[rowKey] !== undefined) {
+      return rec[rowKey] as React.Key;
     }
     if (typeof rowKey === 'function') {
       return rowKey(record, idx);
     }
-    if (record && (record.id || record.code || record.planCode || record.maintCode || record.incidentCode || record.fileName)) {
-      return record.id || record.code || record.planCode || record.maintCode || record.incidentCode || record.fileName;
+    if (rec && (rec.id || rec.code || rec.planCode || rec.maintCode || rec.incidentCode || rec.fileName)) {
+      return (rec.id || rec.code || rec.planCode || rec.maintCode || rec.incidentCode || rec.fileName) as React.Key;
     }
     return `p${activePage}-r${idx}`;
   };
 
-
-  const instanceId = useMemo(() => `chk-dt-${Math.random().toString(36).substring(2, 9)}`, []);
+  const rawId = useId();
+  const instanceId = useMemo(() => `chk-dt-${rawId.replace(/:/g, '')}`, [rawId]);
   const currentRowCount = Array.isArray(dataSource) ? dataSource.length : 0;
   const isAutoHeightForEmpty = currentRowCount === 0 && emptyHeightAuto;
   const effectiveScrollY = isAutoHeightForEmpty ? 'auto' : (scrollY || DRAWER_TABLE_SCROLL_Y.detailView);
@@ -336,11 +341,23 @@ export const DetailTable = <T extends object = any>({
         .ant-drawer:has(.ant-drawer-footer) .${instanceId} .chk-detail-table-pagination {
           bottom: 68px !important;
         }
+        /* ── Cỡ chữ 13.5px chuẩn toàn bộ DetailTable ── */
+        .${instanceId},
+        .${instanceId} .ant-table,
+        .${instanceId} .ant-table-cell,
+        .${instanceId} .ant-table-thead > tr > th,
+        .${instanceId} .ant-table-tbody > tr > td,
+        .${instanceId} .chk-detail-table-pagination,
+        .${instanceId} .ant-pagination,
+        .${instanceId} .ant-pagination-item,
+        .${instanceId} .ant-pagination-total-text {
+          font-size: 13.5px !important;
+        }
       `}</style>
       {headerNode}
-      <Table<any>
+      <Table<T>
         size={size}
-        tableLayout="fixed"
+        tableLayout={tableLayout}
         pagination={false}
         showSorterTooltip={false}
         dataSource={pagedData}
@@ -348,7 +365,7 @@ export const DetailTable = <T extends object = any>({
         columns={enhancedColumns}
         locale={{
           emptyText: (
-            <div style={{ padding: '24px 0', textAlign: 'center', color: '#7E6B3F', fontSize: 13 }}>
+            <div style={{ padding: '24px 0', textAlign: 'center', color: '#7E6B3F', fontSize: 13.5 }}>
               {emptyText}
             </div>
           ),
@@ -358,8 +375,9 @@ export const DetailTable = <T extends object = any>({
           y: isAutoHeightForEmpty ? undefined : effectiveScrollY,
           ...scroll,
         }}
-        onRow={(record: any) => {
-          if (record && record.__isPlaceholder) {
+        onRow={(record: T) => {
+          const rec = record as Record<string, unknown>;
+          if (rec && rec.__isPlaceholder) {
             return {
               className: 'ant-table-row-placeholder',
             };

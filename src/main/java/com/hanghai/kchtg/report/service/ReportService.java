@@ -1189,7 +1189,8 @@ public class ReportService {
                         .orElse("");
             }
 
-            String berthLocation = berth.getProvinceId() != null ? String.valueOf(berth.getProvinceId())
+            String berthLocation = (berth.getDetailedLocation() != null && !berth.getDetailedLocation().isBlank())
+                    ? berth.getDetailedLocation()
                     : (port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
 
             String thoiDiemBerth = f148FormatThoiDiem(berth.getOpeningAnnouncementDate());

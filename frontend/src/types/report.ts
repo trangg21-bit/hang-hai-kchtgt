@@ -8,6 +8,7 @@ export interface ReportRequest {
   portGroup?: number;
   dataSource?: string;
   processingMethods?: string[];
+  reportPeriod?: string;
 }
 
 export interface ReportResponse {

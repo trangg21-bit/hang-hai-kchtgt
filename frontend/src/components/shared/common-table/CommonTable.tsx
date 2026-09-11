@@ -197,18 +197,20 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   );
 
   // Đồng bộ trạng thái sort với bộ lọc ngoài nếu được truyền
-  useEffect(() => {
-    if (filters && ("sortBy" in filters || "sortDir" in filters)) {
-      setSortField(filters.sortBy as string | undefined);
-      setSortOrder(
-        filters.sortDir === "ASC"
-          ? "ascend"
-          : filters.sortDir === "DESC"
-            ? "descend"
-            : null,
-      );
-    }
-  }, [filters?.sortBy, filters?.sortDir]);
+  const [prevSortBy, setPrevSortBy] = useState(filters?.sortBy);
+  const [prevSortDir, setPrevSortDir] = useState(filters?.sortDir);
+  if (filters && (filters.sortBy !== prevSortBy || filters.sortDir !== prevSortDir)) {
+    setPrevSortBy(filters.sortBy);
+    setPrevSortDir(filters.sortDir);
+    setSortField(filters.sortBy as string | undefined);
+    setSortOrder(
+      filters.sortDir === "ASC"
+        ? "ascend"
+        : filters.sortDir === "DESC"
+          ? "descend"
+          : null,
+    );
+  }
   const [filterOverrides, setFilterOverrides] = useState<
     Record<string, unknown>
   >({});
@@ -968,6 +970,17 @@ function CommonTableInternal<T extends Record<string, unknown>>(
           padding-left: 0 !important;
           padding-right: 0 !important;
           padding-inline: 0 !important;
+        }
+        /* ── Cỡ chữ 13.5px chuẩn toàn bảng ── */
+        .common-table-shell,
+        .common-table-shell .ant-table,
+        .common-table-shell .ant-table-cell,
+        .common-table-shell .ant-table-thead > tr > th,
+        .common-table-shell .ant-table-tbody > tr > td,
+        .common-table-shell .ant-pagination,
+        .common-table-shell .ant-pagination-item,
+        .common-table-shell .ant-pagination-total-text {
+          font-size: 13.5px !important;
         }
         .common-table-shell .ant-table-column-sorter-tooltip,
         .common-table-shell .ant-table-thead .ant-tooltip,

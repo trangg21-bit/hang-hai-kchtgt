@@ -55,7 +55,6 @@ import {
 } from '../../components/shared/InfrastructureAttachmentTab';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold } from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import TransferAreaAssetForm, { type FormValues } from './TransferAreaAssetForm';
 import TransferAreaAssetDetailContent from './TransferAreaAssetDetailContent';
@@ -797,7 +796,38 @@ export default function TransferAreaAssetList() {
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 12 }}>
+      <div
+        className="transfer-area-page-wrapper"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          minHeight: 0,
+          gap: 12,
+        }}
+      >
+        <style>{`
+          /* ── Cỡ chữ 13.5px chuẩn toàn màn Tài sản khu chuyển tải & các popup/drawer con ── */
+          .transfer-area-page-wrapper,
+          .transfer-area-page-wrapper .ant-table,
+          .transfer-area-page-wrapper .ant-table-cell,
+          .transfer-area-page-wrapper .ant-table-thead > tr > th,
+          .transfer-area-page-wrapper .ant-table-tbody > tr > td,
+          .transfer-area-page-wrapper .ant-input,
+          .transfer-area-page-wrapper .ant-select,
+          .transfer-area-page-wrapper .ant-select-selection-item,
+          .transfer-area-page-wrapper .ant-select-item-option-content,
+          .transfer-area-page-wrapper .ant-picker,
+          .transfer-area-page-wrapper .ant-picker-input > input,
+          .transfer-area-page-wrapper .ant-btn,
+          .transfer-area-page-wrapper .ant-pagination,
+          .transfer-area-page-wrapper .ant-pagination-item,
+          .transfer-area-page-wrapper .ant-pagination-total-text,
+          .transfer-area-page-wrapper .ant-breadcrumb,
+          .transfer-area-page-wrapper .ant-form-item-label > label {
+            font-size: 13.5px !important;
+          }
+        `}</style>
         <ScreenHeader
           breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: 'Tài sản khu chuyển tải' }]}
           actions={headerActions}

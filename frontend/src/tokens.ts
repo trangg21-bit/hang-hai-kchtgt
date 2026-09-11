@@ -113,7 +113,7 @@ export const spaceXxl = 48;
 
 // Font size: 7 values — stronger hierarchy
 export const fontSizeSm = 10;   // metadata, captions — clearly subordinate
-export const fontSizeMd = 13;   // labels, body
+export const fontSizeMd = 13.5; // labels, body chuẩn 13.5px
 export const fontSizeLg = 15;   // card titles, section headers
 export const fontSizeXl = 18;   // page titles
 export const fontSizeHeading = 22;
@@ -380,8 +380,8 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
     [key: string]: unknown;
   };
   return {
-    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
-    getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
+    format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
+    getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || document.body),
     popupClassName: [
       'chk-form-datepicker-popup',
       typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
@@ -406,14 +406,21 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
 };
 
 export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) => {
-  const { classNames: extraClassNames, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
+  const { classNames: extraClassNames, popupClassName: extraPopupClassName, style: extraStyle, format: extraFormat, ...rest } = (extraProps || {}) as {
     classNames?: { popup?: string | { root?: string } };
+    popupClassName?: string;
     style?: React.CSSProperties;
     format?: string | string[];
     [key: string]: unknown;
   };
   return {
-    format: extraFormat || ['DD/MM/YYYY', 'YYYY-MM-DD'],
+    format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
+    popupClassName: [
+      'chk-sidebar-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {
@@ -422,6 +429,7 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) 
           'chk-sidebar-datepicker-popup',
           typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
           typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+          extraPopupClassName,
         ].filter(Boolean).join(' '),
       },
     },
