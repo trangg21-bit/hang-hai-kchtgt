@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   Layout,
@@ -10,6 +10,7 @@ import {
   Drawer,
   Typography,
   Space,
+  type MenuProps,
 } from 'antd';
 import {
   UserOutlined,
@@ -41,7 +42,6 @@ import {
   DeploymentUnitOutlined,
   BlockOutlined,
   ApartmentOutlined,
-  PieChartOutlined,
   BuildOutlined,
   ToolOutlined,
   SafetyCertificateOutlined,
@@ -53,7 +53,6 @@ import * as themeTokenChk from '../themetokenchk';
 import { actionPrimary } from '../themetokenchk';
 import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import LogoutConfirmModal from './shared/LogoutConfirmModal';
-import type { MenuProps } from 'antd';
 import {
   MENU_PERMISSION_MAP,
   collectOpenableKeys,
@@ -70,6 +69,8 @@ import {
   type NavGroup,
   type NavNode,
 } from '../config/navigation';
+import { REPORT_TEMPLATES, CATEGORY_MAP } from '../config/reports';
+import { CATEGORY_ICONS, REPORT_ICONS } from '../config/reportIcons';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -77,7 +78,10 @@ const { useBreakpoint } = Grid;
 export { MENU_PERMISSION_MAP };
 
 const canAccessMenu = (path: string): boolean => {
-  const required = MENU_PERMISSION_MAP[path];
+  let required = MENU_PERMISSION_MAP[path];
+  if (!required && path.startsWith('/reports/')) {
+    required = 'report:read';
+  }
   if (!required) return true;
   
   if (Array.isArray(required)) {
@@ -120,8 +124,11 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const collapsed = false;
   const location = useLocation();
-  const activeGroup = groupOfPath(location.pathname);
-  const navHit = activeGroup ? locateRoute(activeGroup.tree, location.pathname) : undefined;
+  const activeGroup = useMemo(() => groupOfPath(location.pathname), [location.pathname]);
+  const navHit = useMemo(
+    () => (activeGroup ? locateRoute(activeGroup.tree, location.pathname) : undefined),
+    [activeGroup, location.pathname]
+  );
 
   const [sidebarState, setSidebarState] = useState(() => ({
     pathname: location.pathname,
@@ -195,7 +202,14 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
         : selectedKey.startsWith('/gis') || selectedKey === '/symbols' || selectedKey === '/water-zone'
           ? ['gis-management']
           : selectedKey.startsWith('/reports')
-            ? ['reports-parent', 'reports-chung', 'reports-kcht']
+            ? [
+                'reports-parent',
+                (() => {
+                  const reportCode = selectedKey.replace('/reports/', '');
+                  const report = REPORT_TEMPLATES.find((r) => r.code === reportCode);
+                  return report ? `reports-${report.category}` : 'reports-bckcht';
+                })(),
+              ]
             : ['/users', '/organizations', '/groups', '/logs', '/history', '/interconnect', '/connections', '/settings'].includes(selectedKey)
               ? ['system-admin']
               : []
@@ -268,109 +282,24 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       icon: <BarChartOutlined />,
       label: 'Báo cáo thống kê',
       children: [
-        { key: '/reports', icon: <PieChartOutlined />, label: 'Tất cả báo cáo' },
-        {
-          key: 'reports-chung',
-          label: 'Báo cáo thống kê chung',
-          children: [
-            { key: '/reports/F-141', label: 'Báo cáo thống kê tăng giảm tài sản' },
-            { key: '/reports/F-142', label: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng' },
-            { key: '/reports/F-143', label: 'Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải' },
-            { key: '/reports/F-144', label: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải' },
-            { key: '/reports/F-145', label: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải' },
-            { key: '/reports/F-146', label: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải' },
-            { key: '/reports/F-147', label: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý' }
-          ]
-        },
-        {
-          key: 'reports-kcht',
-          label: 'Nhóm chỉ tiêu kết cấu hạ tầng',
-          children: [
-            { key: '/reports/F-148', label: 'Biểu 01-N: Năng lực thông qua cảng biển, cầu cảng, cảng bến thủy nội địa' },
-            { key: '/reports/F-149', label: 'Biểu 02-N: Năng lực thông qua cảng biển' },
-            { key: '/reports/F-150', label: 'Biểu 03-N: Thống kê cầu cảng' },
-            { key: '/reports/F-151', label: 'Biểu 04-N: Thống kê luồng hàng hải' },
-            { key: '/reports/F-152', label: <span style={{ color: themeTokenChk.statusCritical }}>Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão</span> },
-            { key: '/reports/F-153', label: <span style={{ color: themeTokenChk.statusCritical }}>Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu</span> },
-            { key: '/reports/F-154', label: <span style={{ color: themeTokenChk.statusCritical }}>Biểu 07-N: Thống kê bến phao, khu neo đậu</span> },
-            { key: '/reports/F-155', label: 'Biểu 08-N: Thống kê hệ thống đèn biển' },
-            { key: '/reports/F-156', label: <span style={{ color: themeTokenChk.statusCritical }}>Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng</span> },
-            { key: '/reports/F-157', label: <span style={{ color: themeTokenChk.statusCritical }}>Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng</span> },
-            { key: '/reports/F-158', label: 'Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)' },
-            { key: '/reports/F-159', label: <span style={{ color: themeTokenChk.statusCritical }}>Biểu 12-N: Hệ thống các đài thông tin duyên hải</span> },
-            { key: '/reports/F-160', label: 'Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát' }
-          ]
-        },
-        {
-          key: 'reports-dl',
-          label: 'Nhóm chỉ tiêu đo lường',
-          children: [
-            { key: '/reports/F-161', label: 'Biểu 14-T: Báo cáo chi tiết tàu biển ra, vào cảng biển' },
-            { key: '/reports/F-162', label: 'Biểu 15-T: Báo cáo chi tiết phương tiện thủy nội địa ra, vào cảng biển' },
-            { key: '/reports/F-163', label: 'Biểu 16-Q: Thống kê tàu biển nước ngoài đến, rời tại khu vực cảng biển' },
-            { key: '/reports/F-164', label: 'Biểu 17-Q: Thống kê tàu biển Việt Nam vận tải quốc tế tại khu vực cảng biển' },
-            { key: '/reports/F-165', label: 'Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng' },
-            { key: '/reports/F-166', label: 'Biểu 12-N: Khối lượng hàng hóa, hành khách thông qua cảng biển theo năm' },
-            { key: '/reports/F-167', label: 'Biểu 13-T: Lượt tàu thuyền ra, vào cảng' },
-            { key: '/reports/F-168', label: 'Biểu 14-T: Khối lượng hàng hóa thông qua cảng biển bằng đội tàu biển Việt Nam và phương tiện thủy nội địa' },
-            { key: '/reports/F-169', label: 'Biểu 15-T: Khối lượng hàng hóa, lượt tàu thông qua cảng biển, bến trong khu vực quản lý' }
-          ]
-        },
-        {
-          key: 'reports-pttv',
-          label: 'Nhóm chỉ tiêu phương tiện và thuyền viên',
-          children: [
-            { key: '/reports/F-170', label: 'Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải' },
-            { key: '/reports/F-171', label: 'Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam' },
-            { key: '/reports/F-172', label: 'Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt' }
-          ]
-        },
-        {
-          key: 'reports-dn',
-          label: 'Nhóm chỉ tiêu về doanh nghiệp',
-          children: [
-            { key: '/reports/F-173', label: 'Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển' },
-            { key: '/reports/F-174', label: 'Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển' }
-          ]
-        },
-        {
-          key: 'reports-tt48',
-          label: 'Nhóm báo cáo thông tư 48/2017/TT-BGTVT',
-          children: [
-            { key: '/reports/F-175', label: 'Biểu số 06-N: Năng lực thông qua bến cảng, cầu cảng thông tư 48/2017/TT-BGTVT' },
-            { key: '/reports/F-176', label: 'Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý' },
-            { key: '/reports/F-177', label: 'Biểu 28-T: Khối lượng hàng hóa thông qua cảng' },
-            { key: '/reports/F-178', label: 'Biểu 29-N: Khối lượng hàng hóa thông qua cảng' },
-            { key: '/reports/F-179', label: 'Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển' }
-          ]
-        },
-        {
-          key: 'reports-ccndb',
-          label: 'Nhóm chỉ tiêu chuyên ngành bảo đảm',
-          children: [
-            { key: '/reports/F-180', label: 'Biểu Tổng hợp thông tin chung' },
-            { key: '/reports/F-181', label: 'Biểu Tổng hợp thông tin kết cấu hạ tầng giao thông hàng hải' },
-            { key: '/reports/F-182', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải' },
-            { key: '/reports/F-183', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Cầu cảng' },
-            { key: '/reports/F-184', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Luồng hàng hải' },
-            { key: '/reports/F-185', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Phao tiêu báo hiệu và nhà trạm quản lý vận hành' },
-            { key: '/reports/F-186', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đèn biển và nhà trạm gắn với đèn biển' },
-            { key: '/reports/F-187', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đê, kè' },
-            { key: '/reports/F-188', label: 'Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải' },
-            { key: '/reports/F-189', label: 'Báo cáo tình hình hoạt động của báo hiệu hàng hải và công trình đê, kè' }
-          ]
-        },
-        {
-          key: 'reports-thtn',
-          label: 'Báo cáo tổng hợp theo ngày',
-          children: [
-            { key: '/reports/F-180N', label: 'Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng biển theo ngày' },
-            { key: '/reports/F-182N', label: 'Biểu 13-T: Lượt tàu thuyền vào, rời cảng biển theo ngày' },
-            { key: '/reports/F-183N', label: 'Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu thông qua cảng biển bằng đội tàu Việt Nam theo ngày' },
-            { key: '/reports/F-184N', label: 'Biểu 15-T: Khối lượng hàng hóa, hành khách thông qua qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý theo ngày' }
-          ]
-        }
-      ]
+        ...Object.entries(CATEGORY_MAP).map(([catKey, catInfo]) => {
+          const isEnabled = catKey === 'bckcht' || catKey === 'bcdl';
+          return {
+            key: `reports-${catKey}`,
+            label: catInfo.label,
+            icon: CATEGORY_ICONS[catKey],
+            disabled: !isEnabled,
+            children: REPORT_TEMPLATES
+              .filter((r) => r.category === catKey)
+              .map((r) => ({
+                key: `/reports/${r.code}`,
+                label: `${r.code} - ${r.name}`,
+                icon: REPORT_ICONS[r.code],
+                disabled: !isEnabled || r.status !== 'active',
+              })),
+          };
+        }),
+      ],
     } : null,
     { type: 'divider' as const },
     // Nhóm 6 — Quản trị hệ thống

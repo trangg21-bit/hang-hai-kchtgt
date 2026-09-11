@@ -109,7 +109,7 @@ export default function PortTerminalAssetForm({
   selected,
   form,
   organizations,
-  relatedInfrastructure,
+  relatedInfrastructure = [],
   screenConfig = PORT_TERMINAL_ASSET_SCREEN,
   attachments,
   exploitationRows = [],

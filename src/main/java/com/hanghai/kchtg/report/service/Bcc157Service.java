@@ -1,5 +1,20 @@
 package com.hanghai.kchtg.report.service;
 
+import java.util.Objects;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import java.util.ArrayList;
+import java.math.BigDecimal;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.springframework.beans.BeanWrapperImpl;
+import org.springframework.beans.BeanUtils;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import jakarta.persistence.criteria.Predicate;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.report.dto.Bcc157CreateRequest;
 import com.hanghai.kchtg.report.dto.Bcc157Response;
@@ -26,25 +41,28 @@ import java.util.UUID;
 public class Bcc157Service {
 
     private final Bcc157ReportRepository repository;
+    private final BccReportScope reportScope;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final ObjectMapper objectMapper;
+    private final OrgUnitCacheService orgUnits;
 
     /**
      * Create a new BCC_157 report.
      * Validates for duplicates (same orgUnitId + reportYear + nguonDuLieu).
      */
-    // TODO(SECURITY): Enforce OrgUnitScope and RecordSecurityLevel before every
-    // BCC_157
-    // create/search/read query; repository access is currently unscoped.
     @Transactional
     public Bcc157Response create(Bcc157CreateRequest request) {
         FieldWriteGuard.validateObject(request);
+        reportScope.require(request.getOrgUnitId());
+        normalize(request);
         log.info("Creating BCC_157 report for orgUnitId={}, year={}, nguonDuLieu={}",
                 request.getOrgUnitId(), request.getReportYear(), request.getNguonDuLieu());
 
         if (request.getOrgUnitId() == null) {
-            throw new IllegalArgumentException("orgUnitId must not be null");
+            throw new IllegalArgumentException("Đơn vị báo cáo không được để trống");
         }
         if (request.getReportYear() == null) {
-            throw new IllegalArgumentException("reportYear must not be null");
+            throw new IllegalArgumentException("Năm báo cáo không được để trống");
         }
 
         String nguonDuLieu = request.getNguonDuLieu() != null ? request.getNguonDuLieu() : "1";
@@ -86,7 +104,8 @@ public class Bcc157Service {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        entity = repository.save(entity);
+        entity = repository.saveAndFlush(entity);
+        recordHistory(entity, null, InfrastructureHistoryStatus.CREATED);
         log.info("Created BCC_157 report id={}", entity.getId());
         return toResponse(entity);
     }
@@ -98,23 +117,17 @@ public class Bcc157Service {
         log.info("Searching BCC_157 reports: orgUnitId={}, year={}, nguonDuLieu={}",
                 request.getOrgUnitId(), request.getReportYear(), request.getNguonDuLieu());
 
-        List<Bcc157Report> results;
-
-        if (request.getOrgUnitId() != null && request.getReportYear() != null && request.getNguonDuLieu() != null) {
-            var opt = repository.findByOrgUnitIdAndReportYearAndNguonDuLieu(
-                    request.getOrgUnitId(), request.getReportYear(), request.getNguonDuLieu());
-            results = opt.map(List::of).orElse(List.of());
-        } else if (request.getOrgUnitId() != null && request.getReportYear() != null) {
-            results = repository.findByOrgUnitIdAndReportYear(request.getOrgUnitId(), request.getReportYear());
-        } else if (request.getReportYear() != null) {
-            results = repository.findByReportYear(request.getReportYear());
-        } else if (request.getOrgUnitId() != null) {
-            results = repository.findByOrgUnitId(request.getOrgUnitId());
-        } else if (request.getNguonDuLieu() != null) {
-            results = repository.findByNguonDuLieu(request.getNguonDuLieu());
-        } else {
-            results = repository.findAll();
-        }
+        var units = reportScope.resolve(request.getOrgUnitId());
+        List<Bcc157Report> results = repository.findAll((root, query, cb) -> {
+            var filters = new ArrayList<Predicate>();
+            if (units != null) filters.add(units.isEmpty() ? cb.disjunction()
+                    : root.get(Bcc157Report.Fields.orgUnitId).in(units));
+            if (request.getReportYear() != null) filters.add(cb.equal(
+                    root.get(Bcc157Report.Fields.reportYear), request.getReportYear()));
+            if (request.getNguonDuLieu() != null) filters.add(cb.equal(
+                    root.get(Bcc157Report.Fields.nguonDuLieu), request.getNguonDuLieu()));
+            return cb.and(filters.toArray(Predicate[]::new));
+        });
 
         return results.stream().map(this::toResponse).toList();
     }
@@ -124,7 +137,8 @@ public class Bcc157Service {
      */
     public Bcc157Response getById(UUID id) {
         Bcc157Report entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("BCC_157 report not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo BCC157: " + id));
+        reportScope.require(entity.getOrgUnitId());
         return toResponse(entity);
     }
 
@@ -133,10 +147,11 @@ public class Bcc157Service {
      */
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("BCC_157 report not found: " + id);
-        }
-        repository.deleteById(id);
+        Bcc157Report entity = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo BCC157: " + id));
+        reportScope.require(entity.getOrgUnitId());
+        recordHistory(entity, snapshot(entity), InfrastructureHistoryStatus.DELETED);
+        repository.delete(entity);
         log.info("Deleted BCC_157 report id={}", id);
     }
 
@@ -145,18 +160,107 @@ public class Bcc157Service {
      */
     public Bcc157Response findByOrgUnitIdAndReportYearAndNguonDuLieu(
             UUID orgUnitId, Integer reportYear, String nguonDuLieu) {
+        reportScope.require(orgUnitId);
         return repository.findByOrgUnitIdAndReportYearAndNguonDuLieu(orgUnitId, reportYear, nguonDuLieu)
                 .map(this::toResponse)
                 .orElse(null);
+    }
+
+    @Transactional
+    public Bcc157Response update(UUID id, Bcc157CreateRequest request) {
+        Bcc157Report entity = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo BCC157: " + id));
+        reportScope.require(entity.getOrgUnitId());
+        FieldWriteGuard.validateObject(request);
+        if (request.getVersion() == null || !request.getVersion().equals(entity.getVersion())) {
+            throw new ObjectOptimisticLockingFailureException(Bcc157Report.class, id);
+        }
+        if (!entity.getOrgUnitId().equals(request.getOrgUnitId()) || !entity.getReportYear().equals(request.getReportYear())
+                || !Objects.equals(entity.getNguonDuLieu(), request.getNguonDuLieu())) {
+            throw new IllegalArgumentException("Không được đổi đơn vị, năm hoặc nguồn của báo cáo đã lưu");
+        }
+        FieldWriteGuard.validateUpdate(request, entity);
+        normalize(request);
+        String previous = snapshot(entity);
+        BeanUtils.copyProperties(request, entity, Bcc157Report.Fields.version);
+        entity.setUpdatedAt(LocalDateTime.now());
+        entity = repository.saveAndFlush(entity);
+        recordHistory(entity, previous, InfrastructureHistoryStatus.UPDATED);
+        return toResponse(entity);
+    }
+
+    public List<InfrastructureHistory> history(UUID id) {
+        getById(id); // validates scope before querying the unscoped shared history table
+        return historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                InfrastructureType.REPORT_BCC157, id);
+    }
+
+    private void normalize(Bcc157CreateRequest request) {
+        if (request.getReportYear() == null || request.getReportYear() < 1900 || request.getReportYear() > 9999) {
+            throw new IllegalArgumentException("Năm báo cáo phải từ 1900 đến 9999");
+        }
+        if (request.getNguonDuLieu() == null) request.setNguonDuLieu("1");
+        if (!List.of("1", "2").contains(request.getNguonDuLieu())) throw new IllegalArgumentException("Nguồn dữ liệu không hợp lệ");
+        var bean = new BeanWrapperImpl(request);
+        for (var field : bean.getPropertyDescriptors()) {
+            String name = field.getName();
+            if (name.endsWith("Code")) {
+                Object value = bean.getPropertyValue(name);
+                if (value instanceof String text) {
+                    if (text.trim().length() > 20) throw new IllegalArgumentException("Mã số chỉ tiêu tối đa 20 ký tự");
+                    bean.setPropertyValue(name, text.trim());
+                }
+            }
+            if (name.startsWith("asset")) {
+                Object value = bean.getPropertyValue(name);
+                if (value instanceof BigDecimal amount && (amount.signum() < 0 || amount.scale() > 4
+                        || amount.precision() - amount.scale() > 16)) {
+                    throw new IllegalArgumentException("Số liệu phải không âm, tối đa 16 chữ số nguyên và 4 chữ số thập phân");
+                }
+            }
+        }
+        request.setAssetClosingOriginalCost(value(request.getAssetOpeningOriginalCost()).add(value(request.getAssetOriginalCostIncrease()))
+                .subtract(value(request.getAssetOriginalCostDecrease())));
+        request.setAssetClosingDepreciation(value(request.getAssetOpeningAccumulatedDepreciation()).add(value(request.getAssetDepreciationIncrease()))
+                .subtract(value(request.getAssetDepreciationDecrease())));
+        request.setAssetOpeningResidualValue(value(request.getAssetOpeningOriginalCost()).subtract(value(request.getAssetOpeningAccumulatedDepreciation())));
+        request.setAssetClosingResidualValue(request.getAssetClosingOriginalCost().subtract(request.getAssetClosingDepreciation()));
+        if (request.getAssetClosingOriginalCost().signum() < 0 || request.getAssetClosingDepreciation().signum() < 0
+                || request.getAssetOpeningResidualValue().signum() < 0 || request.getAssetClosingResidualValue().signum() < 0) {
+            throw new IllegalArgumentException("Số liệu không hợp lệ: số dư hoặc giá trị còn lại âm");
+        }
+    }
+
+    private BigDecimal value(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO : amount;
+    }
+
+    private String snapshot(Bcc157Report report) {
+        try { return objectMapper.writeValueAsString(toResponse(report)); }
+        catch (JsonProcessingException error) {
+            throw new IllegalStateException("Không thể ghi lịch sử báo cáo", error);
+        }
+    }
+
+    private void recordHistory(Bcc157Report entity, String previous,
+            InfrastructureHistoryStatus status) {
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId()).refType(InfrastructureType.REPORT_BCC157)
+                .status(status).approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now()).changedField("report")
+                .previousValue(previous).newValue(status == InfrastructureHistoryStatus.DELETED ? null : snapshot(entity))
+                .build());
     }
 
     private Bcc157Response toResponse(Bcc157Report entity) {
         return Bcc157Response.builder()
                 .id(entity.getId())
                 .orgUnitId(entity.getOrgUnitId())
+                .orgUnitName(orgUnits.getName(entity.getOrgUnitId()))
                 .reportYear(entity.getReportYear())
                 .nguonDuLieu(entity.getNguonDuLieu())
                 .status(entity.getStatus())
+                .version(entity.getVersion())
                 .openingOriginalCostCode(entity.getOpeningOriginalCostCode())
                 .assetOpeningOriginalCost(entity.getAssetOpeningOriginalCost())
                 .originalCostIncreaseCode(entity.getOriginalCostIncreaseCode())

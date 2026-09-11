@@ -26,8 +26,7 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
     @Override
     public boolean supports(String reportCode) {
         return "F-152".equalsIgnoreCase(reportCode)
-                || "F-153".equalsIgnoreCase(reportCode)
-                || "F-154".equalsIgnoreCase(reportCode);
+                || "F-153".equalsIgnoreCase(reportCode);
     }
 
     private Set<WaterZoneType> getWaterZoneTypeFilter(String reportCode) {
@@ -39,9 +38,6 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             filterSet.add(WaterZoneType.STORM_SHELTER);
         } else if ("F-153".equalsIgnoreCase(reportCode)) {
             filterSet.add(WaterZoneType.TRANSSHIPMENT);
-            filterSet.add(WaterZoneType.ANCHORAGE);
-        } else if ("F-154".equalsIgnoreCase(reportCode)) {
-            filterSet.add(WaterZoneType.MOORING_BUOY);
             filterSet.add(WaterZoneType.ANCHORAGE);
         }
         return filterSet;

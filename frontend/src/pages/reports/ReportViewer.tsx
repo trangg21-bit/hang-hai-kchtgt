@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Card,
-  Row,
-  Col,
+  Modal,
   DatePicker,
   Button,
   Table,
@@ -12,36 +11,39 @@ import {
   Badge,
   Alert,
   Select,
+  TreeSelect,
   Tooltip,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
 import {
   FileTextOutlined,
   FileExcelOutlined,
-  DeleteOutlined,
   ReloadOutlined,
   SearchOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { isAxiosError } from 'axios';
+import Bcc157Form from './Bcc157Form';
+import { bcc157Service, type Bcc157History } from '../../services/bcc157Service';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { reportService } from '../../services/reportService';
-import { bcc157Service } from '../../services/bcc157Service';
 import type { ReportRequest, ReportResponse } from '../../types/report';
 import { REPORT_TEMPLATES } from './ReportList';
-import { organizationService } from '../../services/organizationService';
+import { organizationService, type Organization } from '../../services/organizationService';
 import {
   actionPrimary,
   statusOperational,
   cardStyle,
   borderDefault,
-  textSecondary, textTertiary, textPrimary,
-  spaceXs, spaceSm, spaceMd, spaceLg, spaceXxl,
+  textSecondary, textPrimary,
+  spaceSm, spaceMd, spaceLg, spaceXxl,
   fontSizeMd, fontSizeLg, fontSizeDisplay,
   radiusPill,
-  fontWeightMedium, fontWeightBold,
+  fontWeightBold,
 } from '../../tokens';
 import { colors } from '../../theme';
-import { ScreenHeader } from '../../components/list-view';
+import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 
 const {
@@ -50,7 +52,6 @@ const {
 const { RangePicker } = DatePicker;
 export default function ReportViewer() {
   const { code } = useParams<{ code: string }>();
-  const navigate = useNavigate();
 
   const reportCode = code || '';
   const template = REPORT_TEMPLATES.find((t) => t.code === reportCode);
@@ -60,23 +61,65 @@ export default function ReportViewer() {
     dayjs(),
   ]);
   const [loadingPreview, setLoadingPreview] = useState<boolean>(false);
-  const [loadingExport, setLoadingExport] = useState<'EXCEL' | 'PDF' | null>(null);
+  const [, setLoadingExport] = useState<'EXCEL' | 'PDF' | null>(null);
   const [reportData, setReportData] = useState<ReportResponse | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
 
   // Filter states
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string | undefined>(undefined);
-  const [selectedPeriod, setSelectedPeriod] = useState<string | undefined>(undefined);
+  const [selectedPeriod, setSelectedPeriod] = useState<string | undefined>('MONTHLY');
   const [selectedHtxl, setSelectedHtxl] = useState<string[]>([]);
   const [selectedYear, setSelectedYear] = useState<dayjs.Dayjs | null>(dayjs());
   const [nguonDuLieu, setNguonDuLieu] = useState<string>('1');
   const [selectedBcNoiDung, setSelectedBcNoiDung] = useState<string | undefined>('1');
-  const [selectedPortGroup, setSelectedPortGroup] = useState<string | undefined>(undefined);
+  const [selectedPortGroup, setSelectedPortGroup] = useState<number | undefined>(undefined);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewSequence = useRef(0);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string>();
+  const hasPermission = usePermissionStore((state: PermissionState) => state.hasPermission);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRows, setHistoryRows] = useState<Bcc157History[]>([]);
+  const editReport = async (action: 'edit' | 'delete' | 'history' = 'edit') => {
+    if (!selectedOrgId || !selectedYear) { message.error('Chọn đơn vị và năm báo cáo cần sửa'); return; }
+    try {
+      const reports = await bcc157Service.search({ orgUnitId: selectedOrgId,
+        reportYear: selectedYear.year(), nguonDuLieu: '1' });
+      const report = reports.find(item => item.orgUnitId === selectedOrgId);
+      if (!report) { message.error('Đơn vị chưa nhập báo cáo cho năm đã chọn'); return; }
+      if (action === 'history') {
+        setHistoryRows(await bcc157Service.history(report.id)); setHistoryOpen(true);
+      } else if (action === 'delete') {
+        Modal.confirm({ title: 'Xóa báo cáo BCC157 đã nhập?',
+          content: `Báo cáo năm ${report.reportYear} của ${report.orgUnitName ?? 'đơn vị đã chọn'} sẽ bị xóa.`,
+          okText: 'Xóa', cancelText: 'Hủy', okButtonProps: { danger: true },
+          onOk: async () => {
+            try { await bcc157Service.delete(report.id); message.success('Xóa báo cáo thành công'); void fetchPreview(); }
+            catch { message.error('Không thể xóa báo cáo'); throw new Error('Không thể xóa báo cáo'); }
+          },
+        });
+      } else { setEditingId(report.id); setFormOpen(true); }
+    } catch { message.error('Không thể tải báo cáo để sửa'); }
+  };
+
+  const organizationTree = useMemo(() => {
+    type Node = { value: string; title: string; children: Node[] };
+    const nodes = new Map<string, Node>();
+    organizations.forEach(org => nodes.set(org.id, { value: org.id,
+      title: org.code ? `${org.code} - ${org.name}` : org.name, children: [] }));
+    const roots: Node[] = [];
+    organizations.forEach(org => {
+      const node = nodes.get(org.id)!;
+      const parent = org.parentId ? nodes.get(org.parentId) : undefined;
+      if (parent && parent !== node) parent.children.push(node); else roots.push(node);
+    });
+    return roots;
+  }, [organizations]);
 
   const isYearReport = useMemo(() => {
-    if (reportCode === 'F-142') return true;
+    if (reportCode === 'F-142' || reportCode === 'F-166') return true;
     if (reportCode.startsWith('F-')) {
       const numStr = reportCode.substring(2);
       const num = parseInt(numStr, 10);
@@ -110,7 +153,7 @@ export default function ReportViewer() {
 
         setOrganizations(list);
 
-        const defaultOrg = list.find((o: any) => o.code === 'G17.43');
+        const defaultOrg = list.find((o: Organization) => o.code === 'G17.43');
         if (defaultOrg) {
           setSelectedOrgId(defaultOrg.id);
         } else if (list.length > 0) {
@@ -132,19 +175,22 @@ export default function ReportViewer() {
     };
 
     loadOrgs();
-    setSelectedPeriod('MONTHLY');
   }, [reportCode]);
 
-  const fetchPreview = async (silent = false) => {
+  const fetchPreview = useCallback(async () => {
     if (!reportCode) return;
 
     setCurrentPage(1);
-    if (!silent) setLoadingPreview(true);
+    const sequence = ++previewSequence.current;
+    setLoadingPreview(true);
+    setPreviewError(null);
     try {
       const request: ReportRequest = {
         reportCode,
         orgUnitId: selectedOrgId,
         portGroup: selectedPortGroup,
+        dataSource: reportCode === 'F-142' ? nguonDuLieu : undefined,
+        processingMethods: reportCode === 'F-147' ? selectedHtxl : undefined,
       };
 
       if (isYearReport) {
@@ -165,101 +211,28 @@ export default function ReportViewer() {
         if (dateRange[1]) request.endDate = dateRange[1].format('YYYY-MM-DD');
       }
 
-      let data: any;
-
-      // For F-142 with nguonDuLieu='2', fetch from CRUD data source
-      if (reportCode === 'F-142' && nguonDuLieu === '2') {
-        try {
-          const year = selectedYear ? selectedYear.year() : dayjs().year();
-          const savedReports = await bcc157Service.search({
-            orgUnitId: selectedOrgId,
-            reportYear: year,
-            nguonDuLieu: '2',
-          });
-          if (savedReports && savedReports.length > 0) {
-            const report = savedReports[0];
-            // Build preview response from saved CRUD data
-            data = {
-              reportCode,
-              headers: ['STT', 'Chỉ tiêu', 'Mã số', 'TSHT hàng hải', 'Tổng cộng'],
-              rows: [
-                { 'STT': '1', 'Chỉ tiêu': 'Nguyên giá - Số dư đầu năm', 'Mã số': report.openingOriginalCostCode || '1.1', 'TSHT hàng hải': report.assetOpeningOriginalCost ?? 0, 'Tổng cộng': report.assetOpeningOriginalCost ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Tăng trong năm', 'Mã số': report.originalCostIncreaseCode || '1.2', 'TSHT hàng hải': report.assetOriginalCostIncrease ?? 0, 'Tổng cộng': report.assetOriginalCostIncrease ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Giảm trong năm', 'Mã số': report.originalCostDecreaseCode || '1.3', 'TSHT hàng hải': report.assetOriginalCostDecrease ?? 0, 'Tổng cộng': report.assetOriginalCostDecrease ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Số dư cuối năm', 'Mã số': report.closingOriginalCostCode || '1.4', 'TSHT hàng hải': report.assetClosingOriginalCost ?? 0, 'Tổng cộng': report.assetClosingOriginalCost ?? 0 },
-                { 'STT': '2', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư đầu năm', 'Mã số': report.openingAccumulatedDepreciationCode || '2.1', 'TSHT hàng hải': report.assetOpeningAccumulatedDepreciation ?? 0, 'Tổng cộng': report.assetOpeningAccumulatedDepreciation ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Tăng trong năm', 'Mã số': report.depreciationIncreaseCode || '2.2', 'TSHT hàng hải': report.assetDepreciationIncrease ?? 0, 'Tổng cộng': report.assetDepreciationIncrease ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Giảm trong năm', 'Mã số': report.depreciationDecreaseCode || '2.3', 'TSHT hàng hải': report.assetDepreciationDecrease ?? 0, 'Tổng cộng': report.assetDepreciationDecrease ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư cuối năm', 'Mã số': report.closingDepreciationCode || '2.4', 'TSHT hàng hải': report.assetClosingDepreciation ?? 0, 'Tổng cộng': report.assetClosingDepreciation ?? 0 },
-                { 'STT': '3', 'Chỉ tiêu': 'Giá trị còn lại - Đầu năm', 'Mã số': report.openingResidualValueCode || '3.1', 'TSHT hàng hải': report.assetOpeningResidualValue ?? 0, 'Tổng cộng': report.assetOpeningResidualValue ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị còn lại - Cuối năm', 'Mã số': report.closingResidualValueCode || '3.2', 'TSHT hàng hải': report.assetClosingResidualValue ?? 0, 'Tổng cộng': report.assetClosingResidualValue ?? 0 },
-              ],
-              summary: {},
-            };
-          } else {
-            data = null;
-          }
-        } catch (err) {
-          console.warn('Failed to load BCC_157 data:', err);
-        }
-      }
-
-      // Fall back to auto-generated preview if no CRUD data
-      if (!data) {
-        try {
-          data = await reportService.getPreview(request);
-        } catch (err: any) {
-          console.warn('API error:', err);
-          // [COMMENTED] Hardcoded F-141 mock data block — use real API
-          if (reportCode !== 'F-141') {
-            data = {
-              reportCode,
-              headers: ['STT', 'Mã chỉ tiêu', 'Tên chỉ tiêu', 'Giá trị báo cáo'],
-              rows: [
-                { 'STT': 1, 'Mã chỉ tiêu': 'CT-001', 'Tên chỉ tiêu': 'Số lượng tài sản', 'Giá trị báo cáo': 120 },
-                { 'STT': 2, 'Mã chỉ tiêu': 'CT-002', 'Tên chỉ tiêu': 'Tổng giá trị (VNĐ)', 'Giá trị báo cáo': 58500000000 },
-              ],
-              summary: { 'Tổng số dòng': 2 }
-            };
-          }
-        }
-      }
-
+      const data = await reportService.getPreview(request);
+      if (sequence !== previewSequence.current) return;
       setReportData(data);
-    } catch (err: any) {
-      console.error(err);
-      message.error(err.response?.data?.message || 'Không thể tải dữ liệu xem trước');
-    } finally {
-      if (!silent) setLoadingPreview(false);
-    }
-  };
-
-  useEffect(() => {
-    setCurrentPage(1);
-    setPageSize(20);
-    if (template && template.status === 'active') {
-      fetchPreview(true);
-    } else {
+    } catch (err: unknown) {
+      if (sequence !== previewSequence.current) return;
       setReportData(null);
+      setPreviewError((isAxiosError<{ message?: string }>(err) && err.response?.data?.message) || 'Không thể tải dữ liệu xem trước');
+    } finally {
+      if (sequence === previewSequence.current) setLoadingPreview(false);
     }
-  }, [reportCode, selectedOrgId, selectedBcNoiDung, selectedYear, nguonDuLieu, dateRange, selectedPortGroup]);
+  }, [reportCode, selectedOrgId, selectedPortGroup, nguonDuLieu, selectedHtxl,
+    isYearReport, selectedYear, isSpecialContentReport, selectedBcNoiDung, isPeriodReport, dateRange]);
 
-  // Inject CSS for report section header rows
   useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .report-section-row td {
-        background-color: #D9E2F3 !important;
-        font-weight: bold !important;
-        font-size: 13px !important;
-      }
-      .report-section-row td:first-child {
-        text-align: center !important;
-      }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
+    const timer = window.setTimeout(() => {
+      setCurrentPage(1);
+      setPageSize(20);
+      if (template?.status === 'active') void fetchPreview();
+      else setReportData(null);
+    }, 0);
+    return () => { window.clearTimeout(timer); previewSequence.current += 1; };
+  }, [fetchPreview, template]);
 
   const handleExport = async (format: 'EXCEL' | 'PDF') => {
     setLoadingExport(format);
@@ -269,6 +242,8 @@ export default function ReportViewer() {
         format,
         orgUnitId: selectedOrgId,
         portGroup: selectedPortGroup,
+        dataSource: reportCode === 'F-142' ? nguonDuLieu : undefined,
+        processingMethods: reportCode === 'F-147' ? selectedHtxl : undefined,
       };
 
       if (isYearReport) {
@@ -291,7 +266,7 @@ export default function ReportViewer() {
 
       await reportService.exportReport(request);
       message.success(`Xuất ${format === 'EXCEL' ? 'Excel' : 'PDF'} thành công!`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       message.error('Không thể xuất báo cáo');
     } finally {
@@ -322,13 +297,11 @@ export default function ReportViewer() {
       onCell: () => ({
         style: { fontSize: fontSizeMd, color: textPrimary },
       }),
-      render: (value: any) => {
+      render: (value: unknown) => {
         if (value === null || value === undefined) return '-';
         if (typeof value === 'number') return value.toLocaleString('vi-VN');
         if (typeof value === 'boolean') return value ? <Badge status="success" text="Đúng" /> : <Badge status="error" text="Sai" />;
-        const num = Number(value);
-        if (!isNaN(num) && typeof value === 'string' && value.trim() !== '') return Number(value).toLocaleString('vi-VN');
-        return value.toString();
+        return String(value);
       },
     }));
   };
@@ -337,7 +310,7 @@ export default function ReportViewer() {
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      .report-section-row td { background-color: #D9E2F3 !important; font-weight: ${fontWeightBold} !important; }
+      .report-section-row td { background-color: ${colors.bodyBg} !important; font-weight: ${fontWeightBold} !important; }
       .report-port-row td { font-weight: ${fontWeightBold} !important; }
     `;
     document.head.appendChild(style);
@@ -362,14 +335,34 @@ export default function ReportViewer() {
           { label: `${template.code} - ${template.name}` },
         ]}
         actions={[
-          ...(reportCode === 'F-142'
-            ? [{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => navigate(`/reports/F-142/create`) }]
+          ...(reportCode === 'F-142' && hasPermission('report:create')
+            ? [{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => { setEditingId(undefined); setFormOpen(true); } }]
             : []),
+          ...(reportCode === 'F-142' && nguonDuLieu === '1' && hasPermission('report:update')
+            ? [{ key: 'edit', label: 'Chỉnh sửa', variant: 'subtle' as const, onClick: () => void editReport() }] : []),
+          ...(reportCode === 'F-142' && nguonDuLieu === '1'
+            ? [{ key: 'history', label: 'Lịch sử', variant: 'subtle' as const, onClick: () => void editReport('history') }] : []),
+          ...(reportCode === 'F-142' && nguonDuLieu === '1' && hasPermission('report:delete')
+            ? [{ key: 'delete', label: 'Xóa', variant: 'subtle' as const, onClick: () => void editReport('delete') }] : []),
           { key: 'export-pdf', label: '', variant: 'subtle' as const, icon: <Tooltip title="Xuất PDF" placement="bottom"><FileTextOutlined style={{ color: colors.error, fontSize: fontSizeLg }} /></Tooltip>, borderColor: `${colors.error}80`, color: colors.error, onClick: () => handleExport('PDF') },
           { key: 'export-excel', label: '', variant: 'subtle' as const, icon: <Tooltip title="Xuất Excel" placement="bottom"><FileExcelOutlined style={{ color: statusOperational, fontSize: fontSizeLg }} /></Tooltip>, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => handleExport('EXCEL') },
         ]}
       />
 
+      <Modal open={formOpen} width="90%" footer={null} destroyOnHidden
+        onCancel={() => setFormOpen(false)} title={editingId ? 'Chỉnh sửa BCC157' : 'Thêm mới BCC157'}>
+        {formOpen && <Bcc157Form key={editingId ?? 'create'} reportId={editingId}
+          onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); void fetchPreview(); }} />}
+      </Modal>
+      <Modal open={historyOpen} title="Lịch sử báo cáo BCC157" footer={null}
+        onCancel={() => setHistoryOpen(false)} width={720}>
+        <DataTable dataSource={historyRows} rowKey="id" fill={false} scroll={{ y: 320 }} columns={[
+          { key: 'approvedDate', label: 'Thời gian', width: 240,
+            render: (value: string) => dayjs(value).format('DD/MM/YYYY HH:mm:ss') },
+          { key: 'status', label: 'Thao tác', width: 240,
+            render: (value: string) => ({ CREATED: 'Tạo báo cáo', UPDATED: 'Cập nhật báo cáo', DELETED: 'Xóa báo cáo' }[value] ?? value) },
+        ]} />
+      </Modal>
       {/* Proposed State Warn */}
       {template.status === 'proposed' && (
         <Card style={{ ...cardStyle }}>
@@ -393,6 +386,7 @@ export default function ReportViewer() {
 
       {template.status === 'active' && (
         <>
+          {previewError && <Alert type="error" showIcon message={previewError} style={{ marginBottom: spaceSm }} />}
           {/* Horizontal Filter Bar */}
           <Card
             style={{ ...cardStyle, marginBottom: 4 }}
@@ -401,17 +395,14 @@ export default function ReportViewer() {
             <div style={{ display: 'flex', gap: spaceSm, alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 160px', minWidth: 140 }}>
                 <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Đơn vị báo cáo <span style={{ color: 'red' }}>*</span></div>
-                <Select
+                <TreeSelect
                   placeholder="Chọn đơn vị báo cáo"
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                   value={selectedOrgId}
-                  onChange={(val) => setSelectedOrgId(val)}
-                  options={organizations.map((org) => ({
-                    value: org.id,
-                    label: org.code ? `${org.code} - ${org.name}` : org.name,
-                  }))}
+                  onChange={setSelectedOrgId}
+                  treeData={organizationTree}
                   showSearch
-                  optionFilterProp="label"
+                  treeNodeFilterProp="title"
                 />
               </div>
 
@@ -457,8 +448,8 @@ export default function ReportViewer() {
                     value={nguonDuLieu}
                     onChange={(val) => setNguonDuLieu(val)}
                     options={[
-                      { value: '1', label: 'Nguồn báo cáo' },
-                      { value: '2', label: 'Nguồn dữ liệu chi tiết' }
+                      { value: '1', label: 'Báo cáo đã nhập' },
+                      { value: '2', label: 'Tổng hợp từ tài sản' }
                     ]}
                   />
                 </div>
@@ -528,10 +519,10 @@ export default function ReportViewer() {
                     value={selectedHtxl}
                     onChange={(val) => setSelectedHtxl(val)}
                     options={[
-                      { value: 'THU_HOI', label: 'Thu hồi' },
-                      { value: 'BAN', label: 'Bán' },
-                      { value: 'THANH_LY', label: 'Thanh lý' },
-                      { value: 'DIEU_CHUYEN', label: 'Điều chuyển' }
+                      { value: '1', label: 'Bàn giao' },
+                      { value: '3', label: 'Phá dỡ' },
+                      { value: '2', label: 'Thanh lý' },
+                      { value: '0', label: 'Điều chuyển' }
                     ]}
                     allowClear
                   />
@@ -547,41 +538,7 @@ export default function ReportViewer() {
 
           {/* Full Width Preview Panel */}
           <div style={{ ...cardStyle, padding: '8px 16px' }}>
-            {['F-154', 'F-156', 'F-157', 'F-159'].includes(reportCode) ? (
-              <div style={{ padding: `${spaceSm}px 0` }}>
-                <Alert
-                  message="Lưu ý về nguồn dữ liệu báo cáo"
-                  description={
-                    reportCode === 'F-151' ? (
-                      <div>
-                        <p>Dữ liệu được lấy từ bảng <strong>Luồng hàng hải</strong> (<code>navigation_channel</code>) kết hợp với dữ liệu không gian từ <strong>GIS</strong> (<code>gis_spatial_objects</code>) qua liên kết <code>spatial_id</code>.</p>
-                        <p>Một số thông số kỹ thuật chi tiết (chiều rộng, độ sâu, mái dốc, khối lượng nạo vét) hiện chưa có trong cấu trúc dữ liệu hiện tại và sẽ hiển thị trống trên báo cáo.</p>
-                      </div>
-                    ) : reportCode === 'F-155' ? (
-                      <div>
-                        <p>Hệ thống hiện tại chưa cấu hình đầy đủ các bảng thuộc tính hạ tầng kỹ thuật chi tiết của đèn biển như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường hình dáng, kết cấu, chiều cao tháp đèn, chiều cao tâm sáng, chủng loại thiết bị đèn chính/phụ,...).</p>
-                        <p>Toàn bộ dữ liệu đèn biển hiện tại được lấy từ bảng thực thể <strong>Đèn biển</strong> (<code>beacon_light</code>) tại màn hình <strong>Đèn biển</strong> (<code>/beacons</code>).</p>
-                        <p>Do cấu trúc dữ liệu hiện tại chỉ lưu trữ các trường cơ bản (tên, mã, tầm hiệu lực ánh sáng, màu sắc ánh sáng, ngày bảo trì) nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
-                      </div>
-                    ) : ['F-156', 'F-157', 'F-159'].includes(reportCode) ? (
-                      <div>
-                        <p>Hệ thống hiện tại chưa cấu hình các bảng thực thể nghiệp vụ chi tiết cho nhóm hạ tầng kỹ thuật tương ứng như phao tiêu báo hiệu, trạm VTS, đài thông tin duyên hải, hay công trình đê kè như dự án gốc <strong>hh.csdl</strong>.</p>
-                        <p>Toàn bộ thông tin hạ tầng này hiện tại được lấy từ các đối tượng hình học dạng điểm (<strong>PointObject</strong>) tại màn hình <strong>Đối tượng điểm</strong> (<code>/gis/points</code>).</p>
-                        <p>Do cấu trúc dữ liệu GIS hiện tại chỉ lưu trữ các trường tọa độ cơ bản, tên và mã nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p>Hệ thống hiện tại chưa cấu hình các bảng thực thể nghiệp vụ chi tiết cho các vùng (neo đậu, quay trở, tránh trú bão,...) như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường kích thước hình dạng, độ sâu thiết kế, cỡ tàu thiết kế,...).</p>
-                        <p>Toàn bộ thông tin các vùng này hiện tại được lấy từ các đối tượng hình học dạng vùng (<strong>PolygonObject</strong>) tại màn hình <strong>Đối tượng vùng</strong> (<code>/gis/polygons</code>).</p>
-                        <p>Do cấu trúc dữ liệu GIS hiện tại chỉ lưu trữ các trường cơ bản như tên, mã và tọa độ đa giác nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
-                      </div>
-                    )
-                  }
-                  type="info"
-                  showIcon
-                />
-              </div>
-            ) : loadingPreview ? (
+            {loadingPreview ? (
               <div style={{ padding: `${spaceXxl}px 0`, textAlign: 'center' }}>
                 <SearchOutlined spin style={{ fontSize: fontSizeDisplay, color: actionPrimary, marginBottom: spaceMd }} />
                 <div style={{ color: textSecondary, fontSize: fontSizeMd }}>Đang tính toán số liệu thống kê...</div>
@@ -595,9 +552,9 @@ export default function ReportViewer() {
                     pagination={false}
                     className="list-view-table"
                     scroll={{ x: 'max-content' }}
-                    onRow={(record: any) => {
+                    onRow={(record: Record<string, string | number | boolean | null>) => {
                       const sequenceNo = record['STT'];
-                      if (sequenceNo === 'I' || sequenceNo === 'II') return { className: 'report-section-row' };
+                      if (record._rowType === 'section' || sequenceNo === 'I' || sequenceNo === 'II') return { className: 'report-section-row' };
                       if (sequenceNo && sequenceNo !== '' && !isNaN(Number(sequenceNo))) return { className: 'report-port-row' };
                       return {};
                     }}

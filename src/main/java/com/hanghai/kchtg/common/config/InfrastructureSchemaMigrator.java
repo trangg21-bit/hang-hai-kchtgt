@@ -178,6 +178,7 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
                     "new_value TEXT, " +
                     "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                     ");");
+            jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS approval_level VARCHAR(32);");
         } catch (Exception e) {
             log.warn("Could not ensure infrastructure_history table: {}", e.getMessage());
         }

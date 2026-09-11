@@ -203,7 +203,7 @@ export default function App() {
                 <Route path="/interconnect" element={<PermissionGuard permission="connection:read"><InterconnectPage /></PermissionGuard>} />
 
                 {/* Reports & Statistics */}
-                <Route path="/reports" element={<PermissionGuard permission="report:read"><ReportList /></PermissionGuard>} />
+                <Route path="/reports" element={<Navigate to="/reports/F-148" replace />} />
                 <Route path="/reports/:code" element={<PermissionGuard permission="report:read"><ReportViewer /></PermissionGuard>} />
                 <Route path="/reports/F-142/create" element={<PermissionGuard permission="report:create"><Bcc157Form /></PermissionGuard>} />
 

@@ -306,6 +306,38 @@ public class F150ReportHandler extends BaseReportHandler {
         }
 
         Map<String, Object> item = new HashMap<>();
+
+        // CauCang keys matching BCKCHT_165.xlsx template placeholders
+        item.put("soLuongCauCangContainerNamBaoCao", containerNam);
+        item.put("soLuongCauCangTongHopNamBaoCao", generalPierCount);
+        item.put("soLuongCauCangChuyenDungHangRoiQuangNamBaoCao", bulkOrePierCount);
+        item.put("soLuongCauCangChuyenDungXangDauKhiHoaLongNamBaoCao", petroleumPierCount);
+        item.put("soLuongCauCangChuyenDungKhacNamBaoCao", khacNam);
+        item.put("soLuongCauCangHanhKhachNamBaoCao", passengerPierCount);
+
+        item.put("soLuongCauCangContainerThayDoi", containerPierCountChange);
+        item.put("soLuongCauCangTongHopThayDoi", generalPierCountChange);
+        item.put("soLuongCauCangChuyenDungHangRoiQuangThayDoi", bulkOrePierCountChange);
+        item.put("soLuongCauCangChuyenDungXangDauKhiHoaLongThayDoi", petroleumPierCountChange);
+        item.put("soLuongCauCangChuyenDungKhacThayDoi", otherPierCountChange);
+        item.put("soLuongCauCangHanhKhachThayDoi", passengerPierCountChange);
+
+        item.put("chieuDaiCauCangContainerNamBaoCao", containerPierLength);
+        item.put("chieuDaiCauCangTongHopNamBaoCao", generalPierLength);
+        item.put("chieuDaiCauCangChuyenDungHangRoiQuangNamBaoCao", bulkOrePierLength);
+        item.put("chieuDaiCauCangChuyenDungXangDauKhiHoaLongNamBaoCao", petroleumPierLength);
+        item.put("chieuDaiCauCangChuyenDungKhacNamBaoCao", otherPierLength);
+        item.put("chieuDaiCauCangHanhKhachNamBaoCao", passengerPierLength);
+
+        item.put("chieuDaiCauCangContainerThayDoi", containerPierLengthChange);
+        item.put("chieuDaiCauCangTongHopThayDoi", generalPierLengthChange);
+        item.put("chieuDaiCauCangChuyenDungHangRoiQuangThayDoi", bulkOrePierLengthChange);
+        item.put("chieuDaiCauCangChuyenDungXangDauKhiHoaLongThayDoi", petroleumPierLengthChange);
+        item.put("chieuDaiCauCangChuyenDungKhacThayDoi", otherPierLengthChange);
+        item.put("chieuDaiCauCangHanhKhachNamThayDoi", passengerPierLengthChange);
+        item.put("chieuDaiCauCangHanhKhachThayDoi", passengerPierLengthChange);
+
+        // Also retain Pier keys for backwards compatibility
         item.put("soLuongPierContainerNamBaoCao", containerNam);
         item.put("soLuongPierTongHopNamBaoCao", generalPierCount);
         item.put("soLuongPierChuyenDungHangRoiQuangNamBaoCao", bulkOrePierCount);
@@ -333,6 +365,7 @@ public class F150ReportHandler extends BaseReportHandler {
         item.put("chieuDaiPierChuyenDungXangDauKhiHoaLongThayDoi", petroleumPierLengthChange);
         item.put("chieuDaiPierChuyenDungKhacThayDoi", otherPierLengthChange);
         item.put("chieuDaiPierHanhKhachNamThayDoi", passengerPierLengthChange);
+        item.put("chieuDaiPierHanhKhachThayDoi", passengerPierLengthChange);
 
         item.put("nangLucContainerNamBaoCao", "-");
         item.put("nangLucTongHopNamBaoCao", "-");

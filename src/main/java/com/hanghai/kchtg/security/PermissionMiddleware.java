@@ -385,6 +385,10 @@ public class PermissionMiddleware extends OncePerRequestFilter {
                 return ACTION_UPDATE;
             }
         }
+        if (normalizedPath.contains("/preview") || normalizedPath.contains("/export")
+                || normalizedPath.contains("/download")) {
+            return ACTION_READ;
+        }
         if (normalizedPath.contains("submit")) {
             return ACTION_CREATE;
         }

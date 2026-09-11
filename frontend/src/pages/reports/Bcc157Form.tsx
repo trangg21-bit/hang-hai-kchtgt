@@ -5,39 +5,36 @@ import {
   Input,
   InputNumber,
   Select,
+  TreeSelect,
+  Spin,
+  Alert,
   DatePicker,
   Table,
-  Button,
   Card,
-  Typography,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
 import { SaveOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { isAxiosError } from 'axios';
+import { getDatePickerProps } from '../../themetokenchk';
 import { ScreenHeader } from '../../components/list-view';
-import { organizationService } from '../../services/organizationService';
-import { bcc157Service } from '../../services/bcc157Service';
+import { organizationService, type Organization } from '../../services/organizationService';
+import { bcc157Service, type Bcc157CreateRequest } from '../../services/bcc157Service';
 import {
-  actionPrimary,
-  spaceSm,
   spaceMd,
   spaceFormField,
-  spaceXl,
   radiusPill,
+  radiusMd,
   cardStyle,
   borderDefault,
-  textSecondary,
   textPrimary,
-  textTertiary,
   surfacePage,
   fontWeightBold,
   fontWeightMedium,
-  fontSizeMd,
   fontSizeLg,
 } from '../../tokens';
 import { colors } from '../../theme';
 
-const { Text } = Typography;
 
 /**
  * Field name constants matching the backend Bcc157CreateRequest field names.
@@ -101,11 +98,35 @@ const TABLE_ROWS: TableRow[] = [
   { key: 'cl3', sequenceNo: '', chiTieu: 'Tại ngày cuối năm', maSoField: F.closingResidualValueCode, taiSanField: F.assetClosingResidualValue, tongCongField: F.assetClosingResidualValue, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
 ];
 
-export default function Bcc157Form() {
+interface Bcc157FormProps {
+  reportId?: string;
+  onClose?: () => void;
+  onSaved?: () => void;
+}
+
+export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormProps = {}) {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+
+  const [version, setVersion] = useState<number>();
+  const [loadError, setLoadError] = useState(false);
+  useEffect(() => {
+    if (!reportId) return;
+    let active = true;
+    void bcc157Service.getById(reportId).then(report => {
+      if (!active) return;
+      form.setFieldsValue({ ...report, reportYear: dayjs().year(report.reportYear) });
+      setVersion(report.version);
+    }).catch(() => { if (active) setLoadError(true); message.error('Không thể tải báo cáo để sửa'); });
+    return () => { active = false; };
+  }, [reportId, form]);
+
+  const orgTree = useMemo(() => organizations.map(org => ({
+    id: org.id, pId: org.parentId, value: org.id,
+    title: org.code ? `${org.code} - ${org.name}` : org.name,
+  })), [organizations]);
 
   // Load organizations
   useEffect(() => {
@@ -114,10 +135,10 @@ export default function Bcc157Form() {
         const resp = await organizationService.list();
         const list = [...(resp.data || [])];
         setOrganizations(list);
-        const defaultOrg = list.find((o: any) => o.code === 'G17.43');
-        if (defaultOrg) {
+        const defaultOrg = list.find((o: Organization) => o.code === 'G17.43');
+        if (!reportId && defaultOrg) {
           form.setFieldValue('orgUnitId', defaultOrg.id);
-        } else if (list.length > 0) {
+        } else if (!reportId && list.length > 0) {
           form.setFieldValue('orgUnitId', list[0].id);
         }
       } catch (err) {
@@ -125,7 +146,7 @@ export default function Bcc157Form() {
       }
     };
     loadOrgs();
-  }, [form]);
+  }, [form, reportId]);
 
   /**
    * Auto-calculate fields matching V1 logic:
@@ -137,7 +158,7 @@ export default function Bcc157Form() {
   const autoCalculate = useCallback(() => {
     const values = form.getFieldsValue();
 
-    const toNum = (val: any): number => {
+    const toNum = (val: unknown): number => {
       if (val === undefined || val === null || val === '') return 0;
       const n = Number(val);
       return isNaN(n) ? 0 : n;
@@ -172,6 +193,7 @@ export default function Bcc157Form() {
   }, [autoCalculate]);
 
   const handleSave = async () => {
+    if (reportId && version === undefined) { message.error('Chưa tải được báo cáo để sửa'); return; }
     try {
       await form.validateFields();
       setLoading(true);
@@ -179,28 +201,33 @@ export default function Bcc157Form() {
       const values = form.getFieldsValue();
       const reportYear = values.reportYear ? dayjs(values.reportYear).year() : dayjs().year();
 
-      const payload: any = {
+      const payload: Bcc157CreateRequest & Record<string, unknown> = {
+        version,
         orgUnitId: values.orgUnitId,
         reportYear,
         nguonDuLieu: values.nguonDuLieu || '1',
       };
 
       // Map all field values
-      const fieldKeys = Object.values(F);
+      const computed = new Set([F.assetClosingOriginalCost, F.assetClosingDepreciation,
+        F.assetOpeningResidualValue, F.assetClosingResidualValue]);
+      const fieldKeys = Object.values(F).filter(key => !computed.has(key));
       for (const key of fieldKeys) {
         const val = values[key];
         if (val !== undefined && val !== null && val !== '') {
-          payload[key] = val;
+          payload[key] = typeof val === 'string' ? val.trim() : val;
         }
       }
 
-      await bcc157Service.create(payload);
-      message.success('Thêm mới báo cáo thành công!');
-      navigate('/reports/F-142');
-    } catch (err: any) {
-      if (err.response?.data?.message) {
+      if (reportId) await bcc157Service.update(reportId, payload);
+      else await bcc157Service.create(payload);
+      message.success('Lưu báo cáo thành công!');
+      if (onSaved) onSaved();
+      else navigate('/reports/F-142');
+    } catch (err: unknown) {
+      if (isAxiosError<{ message?: string }>(err) && err.response?.data?.message) {
         message.error(err.response.data.message);
-      } else if (err.message) {
+      } else if (err instanceof Error) {
         message.error(err.message);
       }
       console.error('Save error:', err);
@@ -210,7 +237,8 @@ export default function Bcc157Form() {
   };
 
   const handleCancel = () => {
-    navigate('/reports/F-142');
+    if (onClose) onClose();
+    else navigate('/reports/F-142');
   };
 
   const columns = [
@@ -245,7 +273,7 @@ export default function Bcc157Form() {
       key: 'maSo',
       width: 120,
       align: 'center' as const,
-      render: (_: any, record: TableRow) => {
+      render: (_: unknown, record: TableRow) => {
         if (record.isSectionHeader) return null;
         if (!record.maSoField) return null;
         return (
@@ -257,7 +285,7 @@ export default function Bcc157Form() {
               maxLength={20}
               style={{
                 borderRadius: radiusPill,
-                height: 36,
+                height: 40,
                 textAlign: 'center',
               }}
               disabled={record.isCalcField}
@@ -274,7 +302,7 @@ export default function Bcc157Form() {
       key: 'taiSan',
       width: 200,
       align: 'right' as const,
-      render: (_: any, record: TableRow) => {
+      render: (_: unknown, record: TableRow) => {
         if (record.isSectionHeader) return null;
         if (!record.taiSanField) return null;
         return (
@@ -293,7 +321,7 @@ export default function Bcc157Form() {
               style={{
                 width: '100%',
                 borderRadius: radiusPill,
-                height: 36,
+                height: 40,
               }}
               disabled={record.isCalcField || record.isReadOnly}
               onChange={handleFieldChange}
@@ -318,7 +346,7 @@ export default function Bcc157Form() {
       key: 'tongCong',
       width: 200,
       align: 'right' as const,
-      render: (_: any, record: TableRow) => {
+      render: (_: unknown, record: TableRow) => {
         if (record.isSectionHeader) return null;
         if (!record.tongCongField) return null;
         return (
@@ -330,7 +358,7 @@ export default function Bcc157Form() {
               style={{
                 width: '100%',
                 borderRadius: radiusPill,
-                height: 36,
+                height: 40,
               }}
               disabled={true}
               formatter={(value) => {
@@ -351,12 +379,12 @@ export default function Bcc157Form() {
   ];
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -8 }}>
+    <div style={{ minHeight: '100%', marginTop: -spaceMd }}>
       <ScreenHeader
         breadcrumb={[
           { label: 'Danh sách báo cáo', path: '/reports' },
           { label: 'F-142 - Mẫu B04a/BCTC' },
-          { label: 'Thêm mới' },
+          { label: reportId ? 'Chỉnh sửa' : 'Thêm mới' },
         ]}
         actions={[
           {
@@ -376,7 +404,8 @@ export default function Bcc157Form() {
         ]}
       />
 
-      <Card style={{ ...cardStyle }}>
+      <Spin spinning={loading || Boolean(reportId && version === undefined && !loadError)}><Card style={{ ...cardStyle }}>
+        {loadError && <Alert type="error" showIcon message="Không thể tải báo cáo. Hãy đóng và mở lại để thử lại." />}
         <Form
           form={form}
           layout="vertical"
@@ -393,15 +422,14 @@ export default function Bcc157Form() {
                 rules={[{ required: true, message: 'Vui lòng chọn đơn vị báo cáo' }]}
                 style={{ marginBottom: spaceFormField }}
               >
-                <Select
+                <TreeSelect
+                  disabled={Boolean(reportId)}
+                  treeDataSimpleMode
+                  treeData={orgTree}
                   placeholder="Chọn đơn vị báo cáo"
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  options={organizations.map((org) => ({
-                    value: org.id,
-                    label: org.code ? `${org.code} - ${org.name}` : org.name,
-                  }))}
                   showSearch
-                  optionFilterProp="label"
+                  treeNodeFilterProp="title"
                 />
               </Form.Item>
             </div>
@@ -414,6 +442,8 @@ export default function Bcc157Form() {
                 style={{ marginBottom: spaceFormField }}
               >
                 <DatePicker
+                  {...getDatePickerProps()}
+                  disabled={Boolean(reportId)}
                   picker="year"
                   placeholder="Chọn năm"
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -428,10 +458,11 @@ export default function Bcc157Form() {
                 style={{ marginBottom: spaceFormField }}
               >
                 <Select
+                  disabled={Boolean(reportId)}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                   options={[
-                    { value: '1', label: 'Nguồn báo cáo' },
-                    { value: '2', label: 'Nguồn dữ liệu chi tiết' },
+                    { value: '1', label: 'Báo cáo đã nhập' },
+                    ...(reportId ? [{ value: '2', label: 'Dữ liệu nhập cũ (nguồn 2)' }] : []),
                   ]}
                 />
               </Form.Item>
@@ -439,7 +470,7 @@ export default function Bcc157Form() {
           </div>
 
           <div style={{ fontSize: fontSizeLg, fontWeight: fontWeightBold, color: textPrimary, marginBottom: spaceMd }}>
-            Chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng
+            Chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng (đơn vị: tỷ đồng)
           </div>
 
           <Table
@@ -448,10 +479,10 @@ export default function Bcc157Form() {
             dataSource={TABLE_ROWS}
             pagination={false}
             rowKey="key"
-            style={{ border: `1px solid ${borderDefault}`, borderRadius: 8 }}
+            style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd }}
           />
         </Form>
-      </Card>
+      </Card></Spin>
     </div>
   );
 }

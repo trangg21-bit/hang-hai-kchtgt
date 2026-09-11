@@ -28,6 +28,7 @@ import {
   collectNavLabels,
   collectParentKeys,
   collectRoutes,
+  findGroup,
   firstAccessibleRoute,
   groupOfPath,
   locateRoute,
@@ -511,10 +512,10 @@ describe('navigation.searchNavGroups — lọc 6 khối landing (R-2..R-7)', () 
   });
 
   it('matches a group via a deep child label inside group.tree', () => {
-    // '/pier' — Quản lý cầu cảng (kcht) và '/asset/pier' — Tài sản cầu cảng (asset)
+    // '/pier' — Quản lý cầu cảng (kcht), '/asset/pier' — Tài sản cầu cảng (asset), và nhóm report có biểu mẫu đăng ký bến/cầu cảng
     const hits = searchNavGroups('cau cang', NAV_GROUPS);
-    expect(hits.map((g) => g.id)).toEqual(['kcht', 'asset']);
-    expect(searchNavGroups('cầu cảng', NAV_GROUPS).map((g) => g.id)).toEqual(['kcht', 'asset']);
+    expect(hits.map((g) => g.id)).toEqual(['kcht', 'asset', 'report']);
+    expect(searchNavGroups('cầu cảng', NAV_GROUPS).map((g) => g.id)).toEqual(['kcht', 'asset', 'report']);
   });
 
   it('matches a group by its desc text', () => {
@@ -535,3 +536,77 @@ describe('navigation.searchNavGroups — lọc 6 khối landing (R-2..R-7)', () 
     expect(searchNavGroups('cang', NAV_GROUPS)[0]).toBe(NAV_GROUPS[0]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// report group tree — 8 categories and 49 report templates in sidebar menu
+// ---------------------------------------------------------------------------
+
+describe('navigation.reportTree — 8 report categories & 49 report templates', () => {
+  const reportGroup = findGroup('report');
+
+  it('declares the report group with 8 category submenus', () => {
+    expect(reportGroup).toBeDefined();
+    expect(reportGroup?.tree).toBeDefined();
+    // 8 categories
+    expect(reportGroup?.tree.length).toBe(8);
+    expect(reportGroup?.tree[0].key).toBe('reports-bcc');
+  });
+
+  it('covers all 53 report templates across the 8 categories', () => {
+    const categories = reportGroup?.tree ?? [];
+    expect(categories.length).toBe(8);
+    const totalReports = categories.reduce((sum, cat) => sum + (cat.children?.length ?? 0), 0);
+    expect(totalReports).toBe(53);
+  });
+
+  it('locates specific report routes with ancestor category openKeys (e.g. F-160 under reports-bckcht)', () => {
+    const hit = locateRoute(reportGroup!.tree, '/reports/F-160');
+    expect(hit).toEqual({
+      key: '/reports/F-160',
+      openKeys: ['reports-bckcht'],
+    });
+  });
+
+  it('disables all categories except bckcht and bcdl', () => {
+    const categories = reportGroup?.tree ?? [];
+    const bckchtNode = categories.find((c) => c.key === 'reports-bckcht');
+    expect(bckchtNode).toBeDefined();
+    expect(bckchtNode?.disabled).toBeFalsy();
+    bckchtNode?.children?.forEach((child) => {
+      expect(child.disabled).toBeFalsy();
+    });
+
+    const bcdlNode = categories.find((c) => c.key === 'reports-bcdl');
+    expect(bcdlNode).toBeDefined();
+    expect(bcdlNode?.disabled).toBeFalsy();
+    bcdlNode?.children?.forEach((child) => {
+      expect(child.disabled).toBeFalsy();
+    });
+
+    const otherCategories = categories.filter((c) => c.key !== 'reports-bckcht' && c.key !== 'reports-bcdl');
+    expect(otherCategories.length).toBe(6);
+    otherCategories.forEach((cat) => {
+      expect(cat.disabled).toBe(true);
+      cat.children?.forEach((child) => {
+        expect(child.disabled).toBe(true);
+      });
+    });
+  });
+
+  it('returns first accessible route as /reports/F-148 (first active KCHT report)', () => {
+    const firstRoute = firstAccessibleRoute(reportGroup!, () => true);
+    expect(firstRoute).toBe('/reports/F-148');
+  });
+
+  it('skips disabled reports in locateRoute (F-141 disabled → undefined)', () => {
+    const hit = locateRoute(reportGroup!.tree, '/reports/F-141');
+    expect(hit).toBeUndefined();
+  });
+
+  it('maps /reports and /reports/F-160 to report group via groupOfPath', () => {
+    expect(groupOfPath('/reports')?.id).toBe('report');
+    expect(groupOfPath('/reports/F-160')?.id).toBe('report');
+    expect(groupOfPath('/reports/F-141')?.id).toBe('report');
+  });
+});
+

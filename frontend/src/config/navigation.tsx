@@ -28,10 +28,12 @@ import Icon, {
   MonitorOutlined, FileTextOutlined, PieChartOutlined, RadarChartOutlined, DeploymentUnitOutlined,
   PlusCircleOutlined, MinusCircleOutlined, AuditOutlined, AppstoreOutlined,
   WarningOutlined, FileProtectOutlined, PictureOutlined, UserOutlined, TeamOutlined,
-  HistoryOutlined, SyncOutlined, SwapOutlined,
+  HistoryOutlined, SyncOutlined, FolderOutlined, SwapOutlined,
 } from '@ant-design/icons';
 
 import { landingGroupIcons } from '../themetokenchk';
+import { REPORT_TEMPLATES, CATEGORY_MAP } from './reports';
+import { CATEGORY_ICONS, REPORT_ICONS } from './reportIcons';
 
 const RadioSvg = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 512 512" width="1em" height="1em" fill="currentColor" {...props}>
@@ -100,8 +102,31 @@ const icons = {
   team: <TeamOutlined />,
   history: <HistoryOutlined />,
   sync: <SyncOutlined />,
+  folder: <FolderOutlined />,
   swap: <SwapOutlined />,
 };
+
+/* ============ CÂY BÁO CÁO THỐNG KÊ — 8 nhóm biểu mẫu chuyên ngành ============ */
+const reportTree: NavNode[] = [
+  ...Object.entries(CATEGORY_MAP).map(([catKey, catInfo]) => {
+    const isEnabled = catKey === 'bckcht' || catKey === 'bcdl';
+    return {
+      key: `reports-${catKey}`,
+      label: catInfo.label,
+      icon: CATEGORY_ICONS[catKey] ?? icons.folder,
+      disabled: !isEnabled,
+      children: REPORT_TEMPLATES
+        .filter((r) => r.category === catKey)
+        .map((r) => ({
+          key: `/reports/${r.code}`,
+          route: `/reports/${r.code}`,
+          label: `${r.code} - ${r.name}`,
+          icon: REPORT_ICONS[r.code] ?? icons.file,
+          disabled: !isEnabled || r.status !== 'active',
+        })),
+    };
+  }),
+];
 
 /* ============ CÂY KCHT — 28 loại theo ma trận cha–con ============ */
 const kchtTree: NavNode[] = [
@@ -247,13 +272,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Báo cáo thống kê',
     desc: 'Dashboard KPI và báo cáo thống kê định kỳ',
     icon: landingGroupIcons.report,
-    underDevelopment: true,
-    tree: [
-      // 2026-09-06 (M-024 rework): node '/dashboard' ĐÃ GỠ — nội dung KPI không còn trong
-      // code (chỉ còn orphan services/dashboardApi của M-022, không có page). Route
-      // '/dashboard' trong App.tsx redirect về '/' (quyết định ghi lean-spec mục 3 / F-292).
-      { key: '/reports', route: '/reports', label: 'Tất cả báo cáo', icon: icons.pie },
-    ],
+    tree: reportTree,
   },
   {
     id: 'admin',
@@ -298,6 +317,9 @@ export function findGroup(groupId: GroupId): NavGroup | undefined {
 export function groupOfPath(pathname: string): NavGroup | undefined {
   const norm = pathname.split('?')[0].replace(/\/+$/, '') || '/';
   if (norm === '/') return undefined;
+  if (norm === '/reports' || norm.startsWith('/reports/')) {
+    return NAV_GROUPS.find((g) => g.id === 'report');
+  }
   const hit: { g: NavGroup; best: string } | undefined = NAV_GROUPS.reduce<
     { g: NavGroup; best: string } | undefined
   >((acc, g) => {

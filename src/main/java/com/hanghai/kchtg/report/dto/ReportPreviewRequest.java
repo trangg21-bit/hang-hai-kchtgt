@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.dto;
 
+import java.util.List;
+import lombok.experimental.FieldNameConstants;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+@FieldNameConstants
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,4 +22,6 @@ public class ReportPreviewRequest {
     private String format;
     private String bcNoiDung;
     private Integer portGroup;
+    private String dataSource;
+    private List<String> processingMethods;
 }

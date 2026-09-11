@@ -46,7 +46,8 @@ export interface PortTerminalAssetDetailContentProps {
   selectedRecord?: PortTerminalAsset;
   onClose: () => void;
   orgName: Map<string, string>;
-  relatedInfrastructureMap: Map<string, InfrastructureReferenceOption>;
+  relatedInfrastructureMap?: Map<string, InfrastructureReferenceOption>;
+  berthMap?: Map<string, any>;
   screenConfig?: InfrastructureAssetScreenConfig;
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
@@ -124,11 +125,13 @@ export default function PortTerminalAssetDetailContent({
   onClose,
   orgName,
   relatedInfrastructureMap,
+  berthMap,
   screenConfig = PORT_TERMINAL_ASSET_SCREEN,
   exploitationRows,
   increaseRows,
   decreaseRows,
 }: PortTerminalAssetDetailContentProps) {
+  const infraMap = relatedInfrastructureMap || berthMap || new Map();
   const combinedAdjustments = useMemo(() => {
     return [
       ...increaseRows.map((row) => ({
@@ -263,13 +266,17 @@ export default function PortTerminalAssetDetailContent({
               },
               {
                 label: screenConfig.relationCodeLabel,
-                value: (rec) =>
-                  relatedInfrastructureMap.get(rec[screenConfig.relationField] || "")?.code || "—",
+                value: (rec) => {
+                  const target: any = infraMap.get(rec[screenConfig.relationField] || "");
+                  return target?.code || target?.berthCode || "—";
+                },
               },
               {
                 label: screenConfig.relationNameLabel,
-                value: (rec) =>
-                  relatedInfrastructureMap.get(rec[screenConfig.relationField] || "")?.name || "—",
+                value: (rec) => {
+                  const target: any = infraMap.get(rec[screenConfig.relationField] || "");
+                  return target?.name || target?.berthName || "—";
+                },
               },
               {
                 name: "assetType",
