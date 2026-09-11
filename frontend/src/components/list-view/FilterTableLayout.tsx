@@ -36,6 +36,8 @@ export interface FilterTableLayoutProps {
   errorMessage?: string;
   /** Called when retry button clicked */
   onRetry?: () => void;
+  /** Nhãn nút tìm kiếm (mặc định: 'Tìm kiếm', có thể đổi thành 'Tổng hợp') */
+  applyLabel?: string;
   /** Table content or any children to render in the main area */
   children: React.ReactNode;
 }
@@ -60,6 +62,7 @@ export default function FilterTableLayout({
   error,
   errorMessage,
   onRetry,
+  applyLabel = 'Tìm kiếm',
   children,
 }: FilterTableLayoutProps) {
   const { cardStyle, borderDefault, textSecondary, actionPrimary, buttonRadius, fontSizeMd, statusTabsPadding } = useThemeToken();
@@ -99,7 +102,7 @@ export default function FilterTableLayout({
             onClick={handleApply}
             style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: buttonRadius, height: 40, fontSize: fontSizeMd, padding: '0 16px', fontWeight: 500 }}
           >
-            Tìm kiếm
+            {applyLabel}
           </Button>
           {!hideFilterToggle && (
             <Button

@@ -118,30 +118,52 @@ Mỗi mã có template `template_export/<mã VMD>.xlsx`. “Default” là cờ 
   - `BcdlReportHandlerTest.java`: 5/5 bài test pass (Preview, Data, Xuất Excel, Xuất PDF cho toàn bộ 9 báo cáo).
   - Frontend: 100% pass `tsc --noEmit` và `eslint` (0 errors, 0 warnings).
 
-### 3.4. BCPTTV — Phương tiện và thuyền viên (3 mã)
+### 3.4. BCPTTV — Phương tiện và thuyền viên (3 mã) [HOÀN THÀNH]
 
-| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default |
-| --- | --- | --- | --- | --- |
-| `BCPTTV_185` | `F-170` | Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải | Có | Không |
-| `BCPTTV_186` | `F-171` | Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam | Có | Có |
-| `BCPTTV_187` | `F-172` | Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt | Có | Không |
+| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| `BCPTTV_185` | `F-170` | Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải | Có | Không | Hoàn thành |
+| `BCPTTV_186` | `F-171` | Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam | Có | Có | Hoàn thành |
+| `BCPTTV_187` | `F-172` | Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt | Có | Không | Hoàn thành |
 
-### 3.5. BCDN — Doanh nghiệp (2 mã)
+### 3.5. BCDN — Doanh nghiệp (2 mã) [HOÀN THÀNH]
 
-| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default |
-| --- | --- | --- | --- | --- |
-| `BCDN_188` | `F-173` | Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển | Có | Không |
-| `BCDN_189` | `F-174` | Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển | Có | Không |
+| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| `BCDN_188` | `F-173` | Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển | Có | Không | Hoàn thành |
+| `BCDN_189` | `F-174` | Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển | Có | Không | Hoàn thành |
 
-### 3.6. BCTT48 — Thông tư 48 (5 mã)
+### 3.6. BCTT48 — Thông tư 48 (5 mã) [HOÀN THÀNH]
 
-| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default |
-| --- | --- | --- | --- | --- |
-| `BCTT48_190` | `F-175` | Biểu số 06-N: Năng lực thông qua bến cảng, cầu cảng thông tư 48/2017/TT-BGTVT | Có | Không |
-| `BCTT48_191` | `F-176` | Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý | Có | Không |
-| `BCTT48_192` | `F-177` | Biểu 28-T: Khối lượng hàng hóa thông qua cảng | Có | Có |
-| `BCTT48_193` | `F-178` | Biểu 29-N: Khối lượng hàng hóa thông qua cảng | Có | Có |
-| `BCTT48_194` | `F-179` | Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển | Có | Có |
+| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| `BCTT48_190` | `F-175` | Biểu số 06-N: Năng lực thông qua bến cảng, cầu cảng thông tư 48/2017/TT-BGTVT | Có | Không | Hoàn thành |
+| `BCTT48_191` | `F-176` | Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý | Có | Không | Hoàn thành |
+| `BCTT48_192` | `F-177` | Biểu 28-T: Khối lượng hàng hóa thông qua cảng | Có | Có | Hoàn thành |
+| `BCTT48_193` | `F-178` | Biểu 29-N: Khối lượng hàng hóa thông qua cảng | Có | Có | Hoàn thành |
+| `BCTT48_194` | `F-179` | Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển | Có | Có | Hoàn thành |
+
+**Chi tiết triển khai kỹ thuật cho nhóm Nhập/Lưu (F-170 đến F-179) & Chuẩn hóa Form theo mẫu `asset/transfer-area`**:
+- **Backend**:
+  - Flyway migration `V20260911140000__create_report_record.sql`: Tạo bảng snapshot đa năng `report_record` kế thừa `BaseEntity` (`created_at`, `updated_at`, `deleted_at`, JSON `report_data`, `version`).
+  - Entity `ReportRecord`, Repository `ReportRecordRepository`, DTO `ReportRecordDto`, Service `ReportRecordService` (tự động phân giải tên đơn vị qua `OrgUnitCacheService.getName()`), Controller `ReportRecordController` (`/api/v1/report-records`).
+  - 10 Handlers: `F170ReportHandler` .. `F179ReportHandler` ưu tiên đọc dữ liệu snapshot từ `report_record`, fallback dữ liệu mặc định chuẩn VMD khi chưa có bản ghi đã lưu.
+  - Hỗ trợ tham số `reportPeriod` trên `ReportPreviewRequest` và `ReportExportRequest`.
+  - Kiểm thử `ReportRecordHandlerTest.java`: 3/3 test suites pass 100%.
+- **Frontend**:
+  - Chuẩn hóa `ReportViewer.tsx` theo mẫu `TransferAreaAssetList.tsx`:
+    - Tích hợp `<TableFilter mode="fieldsOnly" filters={filterConfigs} values={draftFilters} onChange={setDraftFilters} />`.
+    - Thay thế Modal popups thành Drawers trượt bên phải dùng component chuẩn `DynamicFormSidebar`:
+      - `Bcc157Form.tsx`: Refactor sang `DynamicFormSidebar` Drawer (bố cục 2 cột, pill tokens, auto-calculate, 2 nút footer Lưu tạm / Lưu và phê duyệt căn giữa).
+      - `CommonReportFormDrawer.tsx`: Form nhập/lưu số liệu đa năng dạng `DynamicFormSidebar` Drawer cho `F-170`..`F-179` hỗ trợ bảng nhập liệu động, tính tổng tự động, pill controls và centered footer actions.
+  - `ScreenHeader`: Tích hợp các nút hành động đồng bộ: `+ Thêm mới` (pill primary), `Chỉnh sửa` (subtle), `Lịch sử` (subtle), `Xóa` (subtle), `Xuất Excel`, `Xuất PDF`.
+  - `reports.ts`: Kích hoạt `active` cho toàn bộ 10 mã `F-170` - `F-179` và `F-142`.
+  - `ReportList.tsx`: Mở khóa các nhóm danh mục `bcc`, `bckcht`, `bcdl`, `bcpttv`, `bcdn`, `bctt48`.
+- **Kiểm thử**:
+  - Backend: `mvn test -Dtest=ReportRecordHandlerTest` BUILD SUCCESS (3/3 tests passed).
+  - Frontend: `npx tsc --noEmit` 0 errors.
+  - Frontend: `npx eslint` 0 errors, 0 warnings.
+  - Frontend: `npm test` 32/32 test files passed, 343/343 tests passed.
 
 ### 3.7. BCCNDB — Chuyên ngành bảo đảm (10 mã)
 

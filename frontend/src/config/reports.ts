@@ -27,7 +27,7 @@ export type ReportCategoryKey = keyof typeof CATEGORY_MAP;
 export const REPORT_TEMPLATES: ReportTemplate[] = [
   // bcc: Báo cáo thống kê chung
   { code: 'F-141', name: 'Báo cáo thống kê tăng giảm tài sản', category: 'bcc', status: 'proposed' },
-  { code: 'F-142', name: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng', category: 'bcc', status: 'proposed' },
+  { code: 'F-142', name: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng', category: 'bcc', status: 'active' },
   { code: 'F-143', name: 'Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'proposed' },
   { code: 'F-144', name: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'proposed' },
   { code: 'F-145', name: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'proposed' },
@@ -61,20 +61,20 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
   { code: 'F-169', name: 'Biểu 15-T: Khối lượng hàng hóa, lượt tàu thông qua cảng biển, bến trong khu vực quản lý', category: 'bcdl', status: 'active' },
 
   // bcpttv: Nhóm chỉ tiêu phương tiện và thuyền viên
-  { code: 'F-170', name: 'Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải', category: 'bcpttv', status: 'proposed' },
-  { code: 'F-171', name: 'Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam', category: 'bcpttv', status: 'proposed' },
-  { code: 'F-172', name: 'Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt', category: 'bcpttv', status: 'proposed' },
+  { code: 'F-170', name: 'Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải', category: 'bcpttv', status: 'active' },
+  { code: 'F-171', name: 'Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam', category: 'bcpttv', status: 'active' },
+  { code: 'F-172', name: 'Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt', category: 'bcpttv', status: 'active' },
 
   // bcdn: Nhóm chỉ tiêu về doanh nghiệp
-  { code: 'F-173', name: 'Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển', category: 'bcdn', status: 'proposed' },
-  { code: 'F-174', name: 'Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển', category: 'bcdn', status: 'proposed' },
+  { code: 'F-173', name: 'Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển', category: 'bcdn', status: 'active' },
+  { code: 'F-174', name: 'Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển', category: 'bcdn', status: 'active' },
 
   // bctt48: Nhóm báo cáo thông tư 48/2017/TT-BGTVT
-  { code: 'F-175', name: 'Biểu số 06-N: Năng lực thông qua bến cảng, cầu cảng thông tư 48/2017/TT-BGTVT', category: 'bctt48', status: 'proposed' },
-  { code: 'F-176', name: 'Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý', category: 'bctt48', status: 'proposed' },
-  { code: 'F-177', name: 'Biểu 28-T: Khối lượng hàng hóa thông qua cảng', category: 'bctt48', status: 'proposed' },
-  { code: 'F-178', name: 'Biểu 29-N: Khối lượng hàng hóa thông qua cảng', category: 'bctt48', status: 'proposed' },
-  { code: 'F-179', name: 'Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển', category: 'bctt48', status: 'proposed' },
+  { code: 'F-175', name: 'Biểu số 06-N: Năng lực thông qua bến cảng, cầu cảng thông tư 48/2017/TT-BGTVT', category: 'bctt48', status: 'active' },
+  { code: 'F-176', name: 'Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý', category: 'bctt48', status: 'active' },
+  { code: 'F-177', name: 'Biểu 28-T: Khối lượng hàng hóa thông qua cảng', category: 'bctt48', status: 'active' },
+  { code: 'F-178', name: 'Biểu 29-N: Khối lượng hàng hóa thông qua cảng', category: 'bctt48', status: 'active' },
+  { code: 'F-179', name: 'Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển', category: 'bctt48', status: 'active' },
 
   // bccndb: Nhóm chỉ tiêu chuyên ngành bảo đảm
   { code: 'F-180', name: 'Biểu Tổng hợp thông tin chung', category: 'bccndb', status: 'proposed' },

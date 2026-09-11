@@ -147,7 +147,7 @@ export const spaceXxl = 48;
 
 // Font size
 export const fontSizeSm = 11;
-export const fontSizeMd = 13;   // .p-datatable font-size: 13px
+export const fontSizeMd = 13.5;   // Cỡ chữ chuẩn 13.5px toàn hệ thống theo mẫu Quản lý bến cảng
 export const fontSizeLg = 15;
 export const fontSizeXl = 16;   // fs-4 1.25rem
 export const fontSizeHeading = 22;
@@ -656,14 +656,14 @@ export const themeScopedCss = (scope: string): string => `
 }
 .${scope} .ant-input-affix-wrapper > input.ant-input {
   padding: 0 !important;
-  font-size: 13px !important;
+  font-size: ${fontSizeMd}px !important;
   height: 38px !important;
   line-height: 38px !important;
 }
 .${scope} .ant-input:not(.ant-input-affix-wrapper):not(textarea):not(.ant-input-affix-wrapper input) {
   padding: 0 12px !important;
   height: 40px !important;
-  font-size: 13px !important;
+  font-size: ${fontSizeMd}px !important;
   line-height: 38px !important;
 }
 .${scope} .ant-input-textarea,
@@ -688,7 +688,7 @@ textarea.ant-input {
   left: 12px !important;
   padding: 0 !important;
   line-height: 38px !important;
-  font-size: 13px !important;
+  font-size: ${fontSizeMd}px !important;
 }
 .${scope} .ant-picker {
   border-radius: 999px !important;
@@ -835,7 +835,7 @@ textarea.ant-input {
 .${scope} .ant-select-multiple .ant-select-selection-placeholder,
 .ant-select-multiple .ant-select-selection-placeholder {
   left: 12px !important;
-  font-size: 13px !important;
+  font-size: ${fontSizeMd}px !important;
 }
 
 .${scope} .ant-select-multiple .ant-select-selection-item,
@@ -976,7 +976,7 @@ textarea.ant-input {
 /* ── Menu danh sách chọn trong Dropdown (lùi sâu 16px chuẩn đồng bộ) ── */
 .ant-select-dropdown .ant-select-item {
   padding: 8px 16px !important;
-  font-size: 13px !important;
+  font-size: ${fontSizeMd}px !important;
 }
 .ant-select-dropdown .ant-select-item-option-content {
   padding-left: 2px !important;
@@ -2303,6 +2303,12 @@ export const getDatePickerProps = (extraProps?: Record<string, unknown>) => {
   return {
     format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
     getPopupContainer: getPopupContainer || ((trigger: HTMLElement) => trigger.closest('.ant-form-item-control-input-content') || trigger.parentElement || document.body),
+    popupClassName: [
+      'chk-form-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {

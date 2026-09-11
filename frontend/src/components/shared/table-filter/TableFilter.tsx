@@ -1,6 +1,5 @@
 import React, {
   useState,
-  useEffect,
   useImperativeHandle,
   forwardRef,
   useMemo,
@@ -34,7 +33,7 @@ import {
   actionPrimary,
   controlHeight,
 } from '../../../tokens';
-import { getRangePickerProps, getDatePickerProps } from '../../../themetokenchk';
+import { getRangePickerProps, getSidebarDatePickerProps } from '../../../themetokenchk';
 import OrgUnitTreeSelect from '../../org-unit/OrgUnitTreeSelect';
 import { resolveDefaultOrgUnitId } from '../../org-unit/useUserDefaultOrgUnit';
 import { useAuthStore } from '../../../store/authStore';
@@ -159,12 +158,11 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
     return filterList.some((f) => f.isAdvanced);
   }, [filterList]);
 
-  // Đồng bộ draftValues khi controlledValues thay đổi từ bên ngoài (hỗ trợ Reset bộ lọc hoàn toàn)
-  useEffect(() => {
-    if (controlledValues !== undefined) {
-      setDraftValues((controlledValues || {}) as T);
-    }
-  }, [controlledValues]);
+  const [prevControlled, setPrevControlled] = useState(controlledValues);
+  if (controlledValues !== prevControlled) {
+    setPrevControlled(controlledValues);
+    setDraftValues((controlledValues || {}) as T);
+  }
 
   // Giá trị hiện hành: Ưu tiên controlledValues khi ở chế độ Controlled Component
   const currentValues = useMemo(() => {
@@ -452,15 +450,16 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
             onChange={(date) => handleFieldChange(key, date)}
             disabled={disabled}
             allowClear={allowClear}
+            {...getSidebarDatePickerProps({
+              placeholder: (filter.placeholder as string) || 'Chọn ngày',
+              ...(filter.dateProps as Record<string, unknown>),
+            })}
             style={{
               width: '100%',
               borderRadius: radiusPill,
               height: controlHeight,
+              ...((filter.dateProps as Record<string, unknown>)?.style as React.CSSProperties),
             }}
-            {...getDatePickerProps({
-              placeholder: (filter.placeholder as string) || 'Chọn ngày',
-              ...(filter.dateProps as Record<string, unknown>),
-            })}
           />
         );
       }
@@ -735,7 +734,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
   if (mode === 'fieldsOnly') {
     return (
       <div
-        className={className}
+        className={`table-filter-fields ${className || ''}`}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -743,6 +742,18 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
           ...style,
         }}
       >
+        <style>{`
+          .table-filter-fields,
+          .table-filter-fields .ant-input,
+          .table-filter-fields .ant-select,
+          .table-filter-fields .ant-select-selection-item,
+          .table-filter-fields .ant-select-item-option-content,
+          .table-filter-fields .ant-picker,
+          .table-filter-fields .ant-picker-input > input,
+          .table-filter-fields .ant-btn {
+            font-size: 13.5px !important;
+          }
+        `}</style>
         {filterList.map((filter, index) => renderFilterItem(filter, index))}
       </div>
     );
@@ -751,7 +762,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
   // Chế độ 'panel' mặc định (toàn bộ cột Sidebar có cuộn dọc và footer cố định)
   return (
     <div
-      className={className}
+      className={`table-filter-panel ${className || ''}`}
       style={{
         ...cardStyle,
         width,
@@ -763,6 +774,18 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
         ...style,
       }}
     >
+      <style>{`
+        .table-filter-panel,
+        .table-filter-panel .ant-input,
+        .table-filter-panel .ant-select,
+        .table-filter-panel .ant-select-selection-item,
+        .table-filter-panel .ant-select-item-option-content,
+        .table-filter-panel .ant-picker,
+        .table-filter-panel .ant-picker-input > input,
+        .table-filter-panel .ant-btn {
+          font-size: 13.5px !important;
+        }
+      `}</style>
       {/* Vùng cuộn dọc các trường lọc */}
       <div
         style={{

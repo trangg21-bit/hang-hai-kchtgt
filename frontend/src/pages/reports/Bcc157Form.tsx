@@ -1,40 +1,31 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Form,
   Input,
   InputNumber,
-  Select,
-  TreeSelect,
-  Spin,
-  Alert,
-  DatePicker,
   Table,
-  Card,
 } from 'antd';
+import { BankOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { message } from '../../components/ToastNotification';
-import { SaveOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { isAxiosError } from 'axios';
-import { getDatePickerProps } from '../../themetokenchk';
-import { ScreenHeader } from '../../components/list-view';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { bcc157Service, type Bcc157CreateRequest } from '../../services/bcc157Service';
 import {
-  spaceMd,
-  spaceFormField,
   radiusPill,
   radiusMd,
-  cardStyle,
   borderDefault,
-  textPrimary,
   surfacePage,
   fontWeightBold,
   fontWeightMedium,
-  fontSizeLg,
 } from '../../tokens';
 import { colors } from '../../theme';
-
+import {
+  DynamicFormSidebar,
+  FormFieldType,
+  type FormTabConfig,
+  type FormSidebarAction,
+} from '../../components/shared/dynamic-form-sidebar';
 
 /**
  * Field name constants matching the backend Bcc157CreateRequest field names.
@@ -98,35 +89,45 @@ const TABLE_ROWS: TableRow[] = [
   { key: 'cl3', sequenceNo: '', chiTieu: 'Tại ngày cuối năm', maSoField: F.closingResidualValueCode, taiSanField: F.assetClosingResidualValue, tongCongField: F.assetClosingResidualValue, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
 ];
 
-interface Bcc157FormProps {
+export interface Bcc157FormProps {
+  open: boolean;
   reportId?: string;
   onClose?: () => void;
   onSaved?: () => void;
 }
 
-export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormProps = {}) {
-  const navigate = useNavigate();
+export default function Bcc157Form({ open, reportId, onClose, onSaved }: Bcc157FormProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveAction, setSaveAction] = useState('DRAFT');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-
   const [version, setVersion] = useState<number>();
-  const [loadError, setLoadError] = useState(false);
+
   useEffect(() => {
-    if (!reportId) return;
+    if (!open) return;
+    if (!reportId) {
+      form.resetFields();
+      form.setFieldsValue({
+        reportYear: dayjs(),
+        nguonDuLieu: '1',
+      });
+      return;
+    }
     let active = true;
-    void bcc157Service.getById(reportId).then(report => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu khi reportId thay đổi
+    setLoading(true);
+    void bcc157Service.getById(reportId).then((report) => {
       if (!active) return;
       form.setFieldsValue({ ...report, reportYear: dayjs().year(report.reportYear) });
       setVersion(report.version);
-    }).catch(() => { if (active) setLoadError(true); message.error('Không thể tải báo cáo để sửa'); });
+    }).catch(() => {
+      message.error('Không thể tải báo cáo để sửa');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
     return () => { active = false; };
-  }, [reportId, form]);
-
-  const orgTree = useMemo(() => organizations.map(org => ({
-    id: org.id, pId: org.parentId, value: org.id,
-    title: org.code ? `${org.code} - ${org.name}` : org.name,
-  })), [organizations]);
+  }, [open, reportId, form]);
 
   // Load organizations
   useEffect(() => {
@@ -145,8 +146,10 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
         console.error('Failed to load organizations', err);
       }
     };
-    loadOrgs();
-  }, [form, reportId]);
+    if (open) {
+      void loadOrgs();
+    }
+  }, [open, form, reportId]);
 
   /**
    * Auto-calculate fields matching V1 logic:
@@ -192,11 +195,15 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
     autoCalculate();
   }, [autoCalculate]);
 
-  const handleSave = async () => {
-    if (reportId && version === undefined) { message.error('Chưa tải được báo cáo để sửa'); return; }
+  const handleSave = useCallback(async (targetAction: string) => {
+    if (reportId && version === undefined) {
+      message.error('Chưa tải được báo cáo để sửa');
+      return;
+    }
     try {
       await form.validateFields();
-      setLoading(true);
+      setSaving(true);
+      setSaveAction(targetAction);
 
       const values = form.getFieldsValue();
       const reportYear = values.reportYear ? dayjs(values.reportYear).year() : dayjs().year();
@@ -209,9 +216,13 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
       };
 
       // Map all field values
-      const computed = new Set([F.assetClosingOriginalCost, F.assetClosingDepreciation,
-        F.assetOpeningResidualValue, F.assetClosingResidualValue]);
-      const fieldKeys = Object.values(F).filter(key => !computed.has(key));
+      const computed = new Set([
+        F.assetClosingOriginalCost,
+        F.assetClosingDepreciation,
+        F.assetOpeningResidualValue,
+        F.assetClosingResidualValue,
+      ]);
+      const fieldKeys = Object.values(F).filter((key) => !computed.has(key));
       for (const key of fieldKeys) {
         const val = values[key];
         if (val !== undefined && val !== null && val !== '') {
@@ -219,11 +230,17 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
         }
       }
 
-      if (reportId) await bcc157Service.update(reportId, payload);
-      else await bcc157Service.create(payload);
-      message.success('Lưu báo cáo thành công!');
+      if (reportId) {
+        await bcc157Service.update(reportId, payload);
+      } else {
+        await bcc157Service.create(payload);
+      }
+      message.success(
+        targetAction === 'APPROVED'
+          ? 'Đã lưu và phê duyệt báo cáo thành công!'
+          : 'Đã lưu tạm báo cáo thành công!'
+      );
       if (onSaved) onSaved();
-      else navigate('/reports/F-142');
     } catch (err: unknown) {
       if (isAxiosError<{ message?: string }>(err) && err.response?.data?.message) {
         message.error(err.response.data.message);
@@ -232,16 +249,11 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
       }
       console.error('Save error:', err);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  };
+  }, [reportId, version, form, onSaved]);
 
-  const handleCancel = () => {
-    if (onClose) onClose();
-    else navigate('/reports/F-142');
-  };
-
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: 'STT',
       dataIndex: 'sequenceNo',
@@ -259,7 +271,7 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
       title: 'Chỉ tiêu',
       dataIndex: 'chiTieu',
       key: 'chiTieu',
-      width: 300,
+      width: 320,
       onCell: (record: TableRow) => ({
         style: {
           fontWeight: record.isBold ? fontWeightBold : fontWeightMedium,
@@ -271,16 +283,12 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
       title: 'Mã số',
       dataIndex: 'maSoField',
       key: 'maSo',
-      width: 120,
+      width: 130,
       align: 'center' as const,
       render: (_: unknown, record: TableRow) => {
-        if (record.isSectionHeader) return null;
-        if (!record.maSoField) return null;
+        if (record.isSectionHeader || !record.maSoField) return null;
         return (
-          <Form.Item
-            name={record.maSoField}
-            style={{ margin: 0 }}
-          >
+          <Form.Item name={record.maSoField} style={{ margin: 0 }}>
             <Input
               maxLength={20}
               style={{
@@ -300,11 +308,10 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
       title: <>TSHT hàng hải <span style={{ color: colors.error }}>*</span></>,
       dataIndex: 'taiSanField',
       key: 'taiSan',
-      width: 200,
+      width: 220,
       align: 'right' as const,
       render: (_: unknown, record: TableRow) => {
-        if (record.isSectionHeader) return null;
-        if (!record.taiSanField) return null;
+        if (record.isSectionHeader || !record.taiSanField) return null;
         return (
           <Form.Item
             name={record.taiSanField}
@@ -344,16 +351,12 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
       title: 'Tổng cộng',
       dataIndex: 'tongCongField',
       key: 'tongCong',
-      width: 200,
+      width: 220,
       align: 'right' as const,
       render: (_: unknown, record: TableRow) => {
-        if (record.isSectionHeader) return null;
-        if (!record.tongCongField) return null;
+        if (record.isSectionHeader || !record.tongCongField) return null;
         return (
-          <Form.Item
-            name={record.tongCongField}
-            style={{ margin: 0 }}
-          >
+          <Form.Item name={record.tongCongField} style={{ margin: 0 }}>
             <InputNumber
               style={{
                 width: '100%',
@@ -376,113 +379,122 @@ export default function Bcc157Form({ reportId, onClose, onSaved }: Bcc157FormPro
         );
       },
     },
-  ];
+  ], [handleFieldChange]);
+
+  const formTabs = useMemo<FormTabConfig[]>(() => {
+    return [
+      {
+        key: 'general',
+        label: 'Thông tin chung',
+        sections: [
+          {
+            key: 'report_info',
+            title: 'Thông tin báo cáo',
+            icon: <BankOutlined />,
+            fields: [
+              {
+                name: 'orgUnitId',
+                label: 'Đơn vị báo cáo',
+                type: FormFieldType.TreeSelect,
+                organizations,
+                required: true,
+                disabled: Boolean(reportId),
+                rules: [{ required: true, message: 'Đơn vị báo cáo là bắt buộc' }],
+              },
+              {
+                name: 'reportYear',
+                label: 'Năm báo cáo',
+                type: FormFieldType.Year,
+                required: true,
+                disabled: Boolean(reportId),
+                rules: [{ required: true, message: 'Năm báo cáo là bắt buộc' }],
+              },
+              {
+                name: 'nguonDuLieu',
+                label: 'Nguồn dữ liệu',
+                type: FormFieldType.Select,
+                disabled: Boolean(reportId),
+                options: [
+                  { value: '1', label: 'Báo cáo đã nhập' },
+                  ...(reportId ? [{ value: '2', label: 'Dữ liệu nhập cũ (nguồn 2)' }] : []),
+                ],
+              },
+            ],
+          },
+          {
+            key: 'financial_data',
+            title: 'Chi tiết số liệu tài sản KCHT (đơn vị: tỷ đồng)',
+            icon: <AppstoreOutlined />,
+            fields: [
+              {
+                name: 'tableGrid',
+                label: '',
+                type: FormFieldType.Custom,
+                colSpan: 24,
+                customRender: () => (
+                  <Table
+                    bordered
+                    columns={columns}
+                    dataSource={TABLE_ROWS}
+                    pagination={false}
+                    rowKey="key"
+                    style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd }}
+                  />
+                ),
+              },
+            ],
+          },
+        ],
+      },
+    ];
+  }, [organizations, reportId, columns]);
+
+  const footerActions = useMemo<FormSidebarAction[]>(() => [
+    {
+      key: 'cancel',
+      label: 'Hủy',
+      variant: 'subtle',
+      onClick: () => {
+        if (onClose) onClose();
+      },
+    },
+    {
+      key: 'draft',
+      label: 'Lưu tạm',
+      variant: 'outline',
+      loading: saving && saveAction === 'DRAFT',
+      onClick: () => void handleSave('DRAFT'),
+    },
+    {
+      key: 'approve',
+      label: 'Lưu và phê duyệt',
+      variant: 'success',
+      loading: saving && saveAction === 'APPROVED',
+      onClick: () => void handleSave('APPROVED'),
+    },
+  ], [saving, saveAction, onClose, handleSave]);
+
+  const title = reportId
+    ? 'Chỉnh sửa báo cáo BCC157 (Mẫu B04a/BCTC)'
+    : 'Thêm mới báo cáo BCC157 (Mẫu B04a/BCTC)';
 
   return (
-    <div style={{ minHeight: '100%', marginTop: -spaceMd }}>
-      <ScreenHeader
-        breadcrumb={[
-          { label: 'Danh sách báo cáo', path: '/reports' },
-          { label: 'F-142 - Mẫu B04a/BCTC' },
-          { label: reportId ? 'Chỉnh sửa' : 'Thêm mới' },
-        ]}
-        actions={[
-          {
-            key: 'save',
-            label: 'Lưu',
-            variant: 'primary',
-            icon: <SaveOutlined />,
-            onClick: handleSave,
-          },
-          {
-            key: 'cancel',
-            label: 'Hủy',
-            variant: 'subtle',
-            icon: <CloseOutlined />,
-            onClick: handleCancel,
-          },
-        ]}
-      />
-
-      <Spin spinning={loading || Boolean(reportId && version === undefined && !loadError)}><Card style={{ ...cardStyle }}>
-        {loadError && <Alert type="error" showIcon message="Không thể tải báo cáo. Hãy đóng và mở lại để thử lại." />}
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{
-            reportYear: dayjs(),
-            nguonDuLieu: '1',
-          }}
-        >
-          <div style={{ display: 'flex', gap: spaceMd, flexWrap: 'wrap', marginBottom: spaceMd }}>
-            <div style={{ flex: '1 1 280px', minWidth: 200 }}>
-              <Form.Item
-                label={<span style={{ fontWeight: fontWeightMedium }}>Đơn vị báo cáo <span style={{ color: colors.error }}>*</span></span>}
-                name="orgUnitId"
-                rules={[{ required: true, message: 'Vui lòng chọn đơn vị báo cáo' }]}
-                style={{ marginBottom: spaceFormField }}
-              >
-                <TreeSelect
-                  disabled={Boolean(reportId)}
-                  treeDataSimpleMode
-                  treeData={orgTree}
-                  placeholder="Chọn đơn vị báo cáo"
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  showSearch
-                  treeNodeFilterProp="title"
-                />
-              </Form.Item>
-            </div>
-
-            <div style={{ flex: '1 1 160px', minWidth: 140 }}>
-              <Form.Item
-                label={<span style={{ fontWeight: fontWeightMedium }}>Năm báo cáo <span style={{ color: colors.error }}>*</span></span>}
-                name="reportYear"
-                rules={[{ required: true, message: 'Vui lòng chọn năm báo cáo' }]}
-                style={{ marginBottom: spaceFormField }}
-              >
-                <DatePicker
-                  {...getDatePickerProps()}
-                  disabled={Boolean(reportId)}
-                  picker="year"
-                  placeholder="Chọn năm"
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </Form.Item>
-            </div>
-
-            <div style={{ flex: '1 1 200px', minWidth: 140 }}>
-              <Form.Item
-                label={<span style={{ fontWeight: fontWeightMedium }}>Nguồn dữ liệu <span style={{ color: colors.error }}>*</span></span>}
-                name="nguonDuLieu"
-                style={{ marginBottom: spaceFormField }}
-              >
-                <Select
-                  disabled={Boolean(reportId)}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                  options={[
-                    { value: '1', label: 'Báo cáo đã nhập' },
-                    ...(reportId ? [{ value: '2', label: 'Dữ liệu nhập cũ (nguồn 2)' }] : []),
-                  ]}
-                />
-              </Form.Item>
-            </div>
-          </div>
-
-          <div style={{ fontSize: fontSizeLg, fontWeight: fontWeightBold, color: textPrimary, marginBottom: spaceMd }}>
-            Chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng (đơn vị: tỷ đồng)
-          </div>
-
-          <Table
-            bordered
-            columns={columns}
-            dataSource={TABLE_ROWS}
-            pagination={false}
-            rowKey="key"
-            style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd }}
-          />
-        </Form>
-      </Card></Spin>
-    </div>
+    <DynamicFormSidebar
+      open={open}
+      title={title}
+      loading={loading}
+      onClose={() => {
+        if (onClose) onClose();
+      }}
+      form={form}
+      tabs={formTabs}
+      footerActions={footerActions}
+      footerAlign="center"
+      width={
+        typeof window !== 'undefined'
+          ? Math.min(1150, Math.floor(window.innerWidth * 0.95))
+          : 1150
+      }
+    />
   );
 }

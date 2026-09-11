@@ -60,7 +60,7 @@ const sectionHeaderStyle: React.CSSProperties = {
 const sectionTitleStyle: React.CSSProperties = {
   color: colors.sidebarBg,
   fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
+  fontSize: fontSizeMd,
   display: "flex",
   alignItems: "center",
   gap: 8,
@@ -516,6 +516,19 @@ export function DynamicFormSidebar<
         },
       }}
     >
+      <style>{`
+        .ant-drawer .ant-form-item-label > label,
+        .ant-drawer .ant-input,
+        .ant-drawer .ant-select,
+        .ant-drawer .ant-select-selection-item,
+        .ant-drawer .ant-select-item-option-content,
+        .ant-drawer .ant-picker,
+        .ant-drawer .ant-picker-input > input,
+        .ant-drawer .ant-btn,
+        .ant-drawer .ant-tabs-tab {
+          font-size: 13.5px !important;
+        }
+      `}</style>
       <Spin spinning={loading}>
         <Form<T>
           form={form}

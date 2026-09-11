@@ -24,4 +24,5 @@ public class ReportPreviewRequest {
     private Integer portGroup;
     private String dataSource;
     private List<String> processingMethods;
+    private String reportPeriod;
 }
