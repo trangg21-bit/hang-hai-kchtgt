@@ -27,12 +27,12 @@ flowchart TD
 
     VTS["🛰 Hệ thống VTS"]:::root
     VTS --> TTDH["Trung tâm điều hành VTS"]
-    TTDH --> RADAR["Trạm Radar"]
-    TTDH --> AIS["Hệ thống AIS"]
-    TTDH --> CCTV["Hệ thống CCTV"]
-    TTDH --> SCA["Hệ thống SCADA"]
-    TTDH --> TRD["Hệ thống truyền dẫn"]
-    TTDH --> PTVTS["Hệ thống phụ trợ VTS"]
+    VTS --> RADAR["Trạm radar"]
+    VTS --> AIS["Hệ thống trạm bờ AIS"]
+    VTS --> CCTV["Hệ thống CCTV"]
+    VTS --> SCA["Hệ thống SCADA"]
+    VTS --> TRD["Hệ thống truyền dẫn"]
+    VTS --> PTVTS["Hệ thống phụ trợ VTS"]
 
     CCAN["🚚 Cảng cạn"]:::root
 
@@ -57,7 +57,7 @@ Các chuỗi cha–con nhiều lớp (đã xác minh):
 | Cảng biển → **Luồng hàng hải** → **Nhà trạm phao tiêu** → **Phao tiêu** | 4 lớp |
 | Cảng biển → **Luồng hàng hải** → **Đèn biển / Đê kè** | 3 lớp |
 | Cảng biển → **Luồng hàng hải** → **Bến phao** | 3 lớp |
-| Hệ thống VTS → **Trung tâm điều hành VTS** → **Radar / AIS / CCTV / SCADA / Truyền dẫn / Phụ trợ** | 3 lớp |
+| Hệ thống VTS → **Trung tâm điều hành VTS / Trạm radar / AIS / CCTV / SCADA / Truyền dẫn / Phụ trợ** | 2 lớp (cùng cấp con của Hệ thống VTS) |
 
 ---
 
@@ -79,12 +79,12 @@ Cột **"Trường bắt buộc nhập"** = trường phải chọn/nhập khi t
 | 10 | Cảng cạn | 0 | — (đỉnh) | Đơn vị quản lý (`FK_DON_VI_QL`) |
 | 11 | Hệ thống VTS | 0 | — (đỉnh) | Đơn vị quản lý (`FK_DON_VI_QL`) |
 | 12 | Trung tâm điều hành VTS | 1 | Hệ thống VTS | **Hệ thống VTS** (`FK_HT_VTS`) |
-| 13 | Trạm Radar | 2 | Trung tâm điều hành VTS | **Trung tâm điều hành VTS** (`FK_TT_DH_VTS`) |
-| 14 | Hệ thống AIS | 2 | Trung tâm điều hành VTS | **Trung tâm điều hành VTS** (`FK_TT_DH_VTS`) |
-| 15 | Hệ thống CCTV | 2 | Trung tâm điều hành VTS | **Trung tâm điều hành VTS** (`FK_TT_DH_VTS`) |
-| 16 | Hệ thống SCADA | 2 | Trung tâm điều hành VTS | **Trung tâm điều hành VTS** (`FK_TT_DH_VTS`) |
-| 17 | Hệ thống truyền dẫn | 2 | Trung tâm điều hành VTS | **Trung tâm điều hành VTS** (`FK_TT_DH_VTS`) |
-| 18 | Hệ thống phụ trợ VTS | 2 | Trung tâm điều hành VTS | **Trung tâm điều hành VTS** (`FK_TT_DH_VTS`) |
+| 13 | Trạm radar | 1 | Hệ thống VTS | **Hệ thống VTS** (`FK_HT_VTS`) |
+| 14 | Hệ thống trạm bờ AIS | 1 | Hệ thống VTS | **Hệ thống VTS** (`FK_HT_VTS`) |
+| 15 | Hệ thống CCTV | 1 | Hệ thống VTS | **Hệ thống VTS** (`FK_HT_VTS`) |
+| 16 | Hệ thống SCADA | 1 | Hệ thống VTS | **Hệ thống VTS** (`FK_HT_VTS`) |
+| 17 | Hệ thống truyền dẫn | 1 | Hệ thống VTS | **Hệ thống VTS** (`FK_HT_VTS`) |
+| 18 | Hệ thống phụ trợ VTS | 1 | Hệ thống VTS | **Hệ thống VTS** (`FK_HT_VTS`) |
 | 19 | Đèn biển & nhà trạm | 2 | Luồng hàng hải | **Luồng hàng hải** (`FK_LUONG_HH`) |
 | 20 | Phao, tiêu | 2 | Nhà trạm phao tiêu | **Nhà trạm** (`FK_NHA_TRAM`) |
 | 21 | Nhà trạm quản lý vận hành phao tiêu | 1 | Luồng hàng hải | **Luồng hàng hải** (`FK_LUONG_HH`) |

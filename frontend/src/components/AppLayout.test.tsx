@@ -355,10 +355,10 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     // 6 blocks, exact label + desc from config/navigation.tsx NAV_GROUPS
     for (const [label, desc] of [
       ['Quản lý KCHT hàng hải', '28 loại KCHT theo phân cấp cha – con'],
-      ['Quản lý tài sản KCHT hàng hải', 'Quản lý hồ sơ, biến động, kiểm kê và khai thác tài sản'],
-      ['Quản lý quy hoạch &amp; vận hành', 'Quy hoạch, văn bản pháp lý và sự cố'],
+      ['Tài sản KCHT hàng hải', 'Quản lý hồ sơ, biến động, kiểm kê và khai thác tài sản'],
+      ['Quy hoạch &amp; vận hành', 'Quy hoạch, văn bản pháp lý và sự cố'],
       // note: raw '&' is HTML-escaped to '&amp;' by react-dom/server
-      ['Quản lý KCHT trên nền bản đồ (GIS)', 'Danh mục đối tượng, lớp bản đồ và biểu tượng'],
+      ['KCHT trên nền bản đồ (GIS)', 'Danh mục đối tượng, lớp bản đồ và biểu tượng'],
       ['Báo cáo thống kê', 'Dashboard KPI và báo cáo thống kê định kỳ'],
       ['Quản trị hệ thống', 'Người dùng, đơn vị, nhóm, tích hợp và cấu hình'],
     ] as const) {
@@ -387,7 +387,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(countOf(html, 'disabled=""')).toBe(4);
     expect(countOf(html, 'aria-disabled="true"')).toBe(4);
     // and the 4 un-granted labels still render (dimmed, not removed)
-    expect(html).toContain('Quản lý tài sản KCHT hàng hải');
+    expect(html).toContain('Tài sản KCHT hàng hải');
     expect(html).toContain('Quản trị hệ thống');
   });
 
@@ -410,7 +410,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).not.toContain('Thu gọn tất cả');
     expect(html).toContain('placeholder="Tìm loại KCHT');
     // kcht tree (real config) rendered in sidebar
-    expect(html).toContain('Quản lý cảng biển');
+    expect(html).toContain('Cảng biển');
     expect(html).toContain('Hệ thống VTS');
     expect(html).toContain('Đài viễn thông hàng hải');
     // AC-024-07: PHÊ DUYỆT group/word gone from this menu
@@ -426,9 +426,9 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     const html = renderAt('/pier', ['*']);
     // sidebar is the kcht group (breadcrumb header present) for a deep kcht route
     expect(html).toContain('aria-label="Về Danh mục chức năng"');
-    expect(html).toContain('Quản lý cảng biển');
-    expect(html).toContain('Quản lý bến cảng');
-    expect(html).toContain('Quản lý cầu cảng'); // depth-3 leaf present in the opened chain
+    expect(html).toContain('Cảng biển');
+    expect(html).toContain('Bến cảng');
+    expect(html).toContain('Cầu cảng'); // depth-3 leaf present in the opened chain
     expect(html).toContain('ant-menu-item-selected'); // active leaf highlighted
   });
 
@@ -438,7 +438,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     const html = renderAt('/dai-ttdh', ['*']);
     expect(html).toContain('aria-label="Về Danh mục chức năng"');
     expect(html).toContain('Đài viễn thông hàng hải');
-    expect(html).toContain('Quản lý đài TTDH');
+    expect(html).toContain('Đài TTDH');
     expect(html).not.toContain('VHF');
   });
 
@@ -449,10 +449,10 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
   // thị mờ, không ẩn) — a restricted user must still see the disabled placeholder.
   it('AC-05: "/port" restricted (port:read only) — unauthorized branches absent', () => {
     const html = renderAt('/port', ['port:read']);
-    expect(html).toContain('Quản lý cảng biển');
-    expect(html).not.toContain('Quản lý bến cảng'); // berth:read not granted
-    expect(html).not.toContain('Quản lý cầu cảng');
-    expect(html).not.toContain('Quản lý cảng cạn'); // dry-port:read not granted
+    expect(html).toContain('Cảng biển');
+    expect(html).not.toContain('Bến cảng'); // berth:read not granted
+    expect(html).not.toContain('Cầu cảng');
+    expect(html).not.toContain('Cảng cạn'); // dry-port:read not granted
     expect(html).not.toContain('Hệ thống VTS'); // whole subtree denied -> pruned
     expect(html).not.toContain('VHF');
   });
