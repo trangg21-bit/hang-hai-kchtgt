@@ -4,18 +4,30 @@ import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.service.InfraAssetService;
 import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.annotation.DataScope;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -125,5 +137,66 @@ public class InfraAssetController {
             @PathVariable UUID id) {
         infraAssetService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được xóa", null));
+    }
+
+    // ── Attachment endpoints ─────────────────────────────────────────────
+
+    @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
+        }
+        UUID userId = SecurityUtils.getCurrentUserId();
+        List<InfraAssetAttachmentResponse> result = infraAssetService.uploadAttachments(id, files, userId);
+        return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> listAttachments(
+            @PathVariable UUID id) {
+        List<InfraAssetAttachmentResponse> result = infraAssetService.listAttachments(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        infraAssetService.deleteAttachment(id, attId, userId);
+        return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        Attachment attachment = infraAssetService.getAttachment(id, attId);
+        Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        Resource resource = new FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + attachment.getFileName().replace("\"", "") + "\"")
+                .body(resource);
     }
 }

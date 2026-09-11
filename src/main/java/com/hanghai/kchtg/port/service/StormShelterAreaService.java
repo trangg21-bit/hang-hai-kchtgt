@@ -493,6 +493,15 @@ public class StormShelterAreaService {
         deleteAttachment(entityType, entityId, attachmentId, userId, null);
     }
 
+    public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId) || !attachment.getEntityType().equalsIgnoreCase(entityType)) {
+            throw new IllegalArgumentException("File không thuộc entity này");
+        }
+        return attachment;
+    }
+
     /**
      * Summary đọc được của bảng con "Khu nước neo buộc tàu" (storm_shelter_mooring_water_areas + điểm neo),
      * dùng cho lịch sử thay đổi — không ghi Java toString rác của reflection.

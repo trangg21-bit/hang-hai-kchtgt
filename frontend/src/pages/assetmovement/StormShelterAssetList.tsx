@@ -38,7 +38,11 @@ import {
   fetchKhaiThacList,
   fetchStormShelterAssetList,
   updateStormShelterAsset,
+  uploadInfraAssetAttachments,
+  fetchInfraAssetAttachments,
+  deleteInfraAssetAttachment,
 } from '../../services/assetmovement/api';
+import api from '../../services/api';
 import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
@@ -187,19 +191,49 @@ export default function StormShelterAssetList() {
       depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
     } as unknown as FormValues);
 
-    if (record.attachmentName) {
-      setAttachments(
-        record.attachmentName.split(',').map((name, i) => ({
-          id: `att-${i}`,
-          fileName: name.trim(),
-          fileSize: 1024 * 1024,
-          uploadedByName: record.updatedByName || record.submittedByName || 'Cán bộ quản lý',
-          uploadedDate: record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString(),
-        })),
-      );
-    } else {
-      setAttachments([]);
-    }
+    fetchInfraAssetAttachments(record.id)
+      .then((realAtts) => {
+        if (realAtts && realAtts.length > 0) {
+          setAttachments(
+            realAtts.map((att) => ({
+              id: att.id,
+              fileName: att.fileName,
+              fileSize: att.fileSize,
+              fileType: att.contentType,
+              uploadedByName: att.uploadedByName || record.updatedByName || record.submittedByName || 'Cán bộ quản lý',
+              uploadedDate: att.uploadedAt || (record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString()),
+              filePath: `/v1/asset/infra-assets/${record.id}/attachments/${att.id}/download`,
+            }))
+          );
+        } else if (record.attachmentName) {
+          setAttachments(
+            record.attachmentName.split(',').map((name, i) => ({
+              id: `att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: record.updatedByName || record.submittedByName || 'Cán bộ quản lý',
+              uploadedDate: record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setAttachments([]);
+        }
+      })
+      .catch(() => {
+        if (record.attachmentName) {
+          setAttachments(
+            record.attachmentName.split(',').map((name, i) => ({
+              id: `att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: record.updatedByName || record.submittedByName || 'Cán bộ quản lý',
+              uploadedDate: record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setAttachments([]);
+        }
+      });
 
     try {
       const [expRes, incRes, decRes] = await Promise.all([
@@ -247,22 +281,33 @@ export default function StormShelterAssetList() {
       id: `new-${Date.now()}`,
       fileName: file.name,
       fileSize: file.size,
-      uploadedByName: currentUser?.fullName || 'Tôi',
+      fileType: file.type,
+      uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
       uploadedDate: dayjs().toISOString(),
+      originFileObj: file,
+      file: file,
     };
     setAttachments((prev) => [...prev, newItem]);
     toast.success(`Đã thêm tệp đính kèm: ${file.name}`);
   };
 
   const handleDeleteAttachment = (id: string) => {
+    if (selected?.id && id.includes('-')) {
+      deleteInfraAssetAttachment(selected.id, id).catch(() => {});
+    }
     setAttachments((prev) => prev.filter((item) => item.id !== id));
     toast.success('Đã xóa tệp đính kèm');
   };
 
-  const handleDownloadAttachment = (id: string, fileName: string) => {
+  const handleDownloadAttachment = async (id: string, fileName: string) => {
     const att = attachments.find((a) => a.id === id);
     if (att?.originFileObj) {
       triggerBlobDownload(att.originFileObj, fileName || att.originFileObj.name);
+      toast.success(`Đã tải xuống tệp: ${fileName}`);
+      return;
+    }
+    if (att?.file) {
+      triggerBlobDownload(att.file, fileName || att.file.name);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
       return;
     }
@@ -271,7 +316,27 @@ export default function StormShelterAssetList() {
       toast.success(`Đã tải xuống tệp: ${fileName}`);
       return;
     }
-    toast.error(`Không tìm thấy tệp tin đính kèm "${fileName || 'tài liệu'}" để tải xuống.`);
+    if (att?.filePath) {
+      try {
+        let cleanPath = att.filePath;
+        if (cleanPath.startsWith('/api/')) {
+          cleanPath = cleanPath.replace(/^\/api/, '');
+        } else if (!cleanPath.startsWith('/')) {
+          cleanPath = `/${cleanPath}`;
+        }
+        const res = await api.get(cleanPath, { responseType: 'blob' });
+        const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+        const blob = new Blob([res.data], { type: contentType });
+        triggerBlobDownload(blob, fileName || 'tai-lieu');
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      } catch (err) {
+        console.error('Download error:', err);
+        toast.error(`Không thể tải xuống tệp tin "${fileName}": Lỗi máy chủ hoặc tệp không tồn tại.`);
+        return;
+      }
+    }
+    toast.error(`Không tìm thấy đường dẫn tệp tin đính kèm "${fileName || 'tài liệu'}" trên máy chủ để tải xuống.`);
   };
 
   const handleSaveForm = async (action: 'draft' | 'submit' | 'approve') => {
@@ -299,8 +364,10 @@ export default function StormShelterAssetList() {
         attachmentName: attachments.map((a) => a.fileName).join(', '),
       };
 
+      let savedId = selected?.id;
       if (drawerMode === 'create') {
-        await createStormShelterAsset(payload);
+        const created = await createStormShelterAsset(payload);
+        savedId = created?.id;
         toast.success(
           action === 'approve'
             ? 'Đã tạo mới và phê duyệt tài sản khu tránh, trú bão'
@@ -317,6 +384,17 @@ export default function StormShelterAssetList() {
               ? 'Đã cập nhật và gửi phê duyệt tài sản khu tránh, trú bão'
               : 'Đã cập nhật tài sản khu tránh, trú bão',
         );
+      }
+
+      const filesToUpload = attachments
+        .map((a) => a.originFileObj || a.file)
+        .filter((f): f is File => f instanceof File);
+      if (filesToUpload.length > 0 && savedId) {
+        try {
+          await uploadInfraAssetAttachments(savedId, filesToUpload);
+        } catch (uploadErr) {
+          console.error('Upload attachments error:', uploadErr);
+        }
       }
 
       closeDrawer();

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -15,6 +15,7 @@ import type {
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
+import { fetchInfraAssetAttachments } from '../../services/assetmovement/api';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
@@ -136,17 +137,62 @@ export default function BuoyBerthAssetDetailContent({
     ];
   }, [increaseRows, decreaseRows]);
 
-  const detailAttachments: InfrastructureAttachmentItem[] = useMemo(() => {
-    if (!r?.attachmentName) return [];
-    return r.attachmentName.split(',').map((name, i) => ({
-      id: `detail-att-${i}`,
-      fileName: name.trim(),
-      fileSize: 1024 * 1024,
-      uploadedByName: r.updatedByName || '—',
-      uploadedDate: r.updatedAt
-        ? dayjs(r.updatedAt).toISOString()
-        : dayjs().toISOString(),
-    }));
+  const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+
+  useEffect(() => {
+    if (!r?.id) {
+      setDetailAttachments([]);
+      return;
+    }
+    let isMounted = true;
+    fetchInfraAssetAttachments(r.id)
+      .then((realAtts) => {
+        if (!isMounted) return;
+        if (realAtts && realAtts.length > 0) {
+          setDetailAttachments(
+            realAtts.map((att) => ({
+              id: att.id,
+              fileName: att.fileName,
+              fileSize: att.fileSize,
+              fileType: att.contentType,
+              uploadedByName: att.uploadedByName || r.updatedByName || '—',
+              uploadedDate: att.uploadedAt || (r.updatedAt ? dayjs(r.updatedAt).toISOString() : dayjs().toISOString()),
+              filePath: `/v1/asset/infra-assets/${r.id}/attachments/${att.id}/download`,
+            }))
+          );
+        } else if (r.attachmentName) {
+          setDetailAttachments(
+            r.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: r.updatedByName || '—',
+              uploadedDate: r.updatedAt ? dayjs(r.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        if (r.attachmentName) {
+          setDetailAttachments(
+            r.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: r.updatedByName || '—',
+              uploadedDate: r.updatedAt ? dayjs(r.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
   }, [r]);
 
   const viewTabs = useMemo<ViewTabConfig<BuoyBerthAsset>[]>(() => {

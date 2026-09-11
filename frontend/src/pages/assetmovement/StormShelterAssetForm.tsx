@@ -721,11 +721,38 @@ export default function StormShelterAssetForm({
   ]);
 
   const actions = useMemo<FormSidebarAction[]>(() => {
+    if (drawerMode === 'edit') {
+      const isDraft =
+        !selected?.approvalStatus ||
+        ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase());
+      const res: FormSidebarAction[] = [];
+
+      if (isDraft) {
+        res.push({
+          key: 'draft',
+          label: 'Lưu tạm',
+          variant: 'outline',
+          loading: saving && saveAction === 'draft',
+          onClick: () => onSave('draft'),
+        });
+      }
+
+      res.push({
+        key: 'approve',
+        label: 'Lưu và phê duyệt',
+        variant: 'success',
+        loading: saving && saveAction === 'approve',
+        onClick: () => onSave('approve'),
+      });
+
+      return res;
+    }
+
     return [
       {
         key: 'draft',
         label: 'Lưu tạm',
-        variant: 'default',
+        variant: 'outline',
         loading: saving && saveAction === 'draft',
         onClick: () => onSave('draft'),
       },
@@ -739,22 +766,23 @@ export default function StormShelterAssetForm({
       {
         key: 'approve',
         label: 'Lưu và phê duyệt',
-        variant: 'primary',
+        variant: 'success',
         loading: saving && saveAction === 'approve',
         onClick: () => onSave('approve'),
       },
     ];
-  }, [saving, saveAction, onSave]);
+  }, [drawerMode, selected, saving, saveAction, onSave]);
 
   return (
     <DynamicFormSidebar<FormValues>
       open={open}
-      title={drawerMode === 'create' ? 'Thêm mới tài sản khu tránh, trú bão' : 'Chỉnh sửa tài sản khu tránh, trú bão'}
+      title={drawerMode === 'create' ? 'Thêm mới tài sản khu tránh, trú bão' : `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản khu tránh, trú bão'}`}
       form={form}
       tabs={formTabs}
-      actions={actions}
+      footerActions={actions}
+      footerAlign="center"
       onClose={onClose}
-      width={980}
+      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
     />
   );
 }

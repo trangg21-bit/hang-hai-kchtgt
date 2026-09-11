@@ -683,3 +683,74 @@ export async function updateChannelAsset(
 export async function deleteChannelAsset(id: string): Promise<void> {
   await api.delete(`/v1/asset/infra-assets/${id}`);
 }
+
+// ==========================================
+// 10. File đính kèm tài sản KCHT (Attachments)
+// ==========================================
+export interface InfraAssetAttachmentResponse {
+  id: string;
+  entityType: string;
+  entityId: string;
+  fileName: string;
+  filePath?: string;
+  fileSize?: number;
+  contentType?: string;
+  uploadedBy?: string;
+  uploadedByName?: string;
+  uploadedAt?: string;
+}
+
+export async function fetchInfraAssetAttachments(
+  assetId: string,
+): Promise<InfraAssetAttachmentResponse[]> {
+  const res = await api.get(`/v1/asset/infra-assets/${assetId}/attachments`);
+  return res.data.data;
+}
+
+export async function uploadInfraAssetAttachments(
+  assetId: string,
+  files: File[],
+): Promise<InfraAssetAttachmentResponse[]> {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  const res = await api.post(
+    `/v1/asset/infra-assets/${assetId}/attachments`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    },
+  );
+  return res.data.data;
+}
+
+export async function deleteInfraAssetAttachment(
+  assetId: string,
+  attId: string,
+): Promise<void> {
+  await api.delete(`/v1/asset/infra-assets/${assetId}/attachments/${attId}`);
+}
+
+export async function downloadInfraAssetAttachment(
+  assetId: string,
+  attId: string,
+  fileName: string,
+): Promise<void> {
+  const res = await api.get(
+    `/v1/asset/infra-assets/${assetId}/attachments/${attId}/download`,
+    {
+      responseType: "blob",
+    },
+  );
+  const blob = new Blob([res.data], {
+    type: res.headers["content-type"] || "application/octet-stream",
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName || "attachment";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+

@@ -18,11 +18,22 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +41,10 @@ import java.util.UUID;
 public class InfraAssetService {
     private final InfraAssetRepository repository;
     private final UserResolverService userResolverService;
+    private final AttachmentRepository attachmentRepository;
+
+    @Value("${app.upload.attachment-path:uploads/attachments}")
+    private String attachmentPath;
 
     @Transactional
     public InfraAssetResponse create(InfraAssetRequest request) {
@@ -234,5 +249,95 @@ public class InfraAssetService {
         response.setPortAuthorityApprovedByName(userResolverService.resolveName(entity.getPortAuthorityApprovedBy()));
         response.setDepartmentApprovedByName(userResolverService.resolveName(entity.getDepartmentApprovedBy()));
         return response;
+    }
+
+    @Transactional
+    public List<InfraAssetAttachmentResponse> uploadAttachments(UUID assetId, List<MultipartFile> files, UUID userId) {
+        InfraAsset asset = requireAsset(assetId);
+        Path basePath = Paths.get(attachmentPath).toAbsolutePath().normalize();
+
+        for (MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
+            try {
+                Path dir = basePath.resolve("INFRA_ASSET").resolve(assetId.toString());
+                Files.createDirectories(dir);
+                Path filePath = dir.resolve(storageFileName);
+                file.transferTo(filePath.toFile());
+            } catch (Exception e) {
+                throw new RuntimeException("Không thể lưu file: " + originalFilename, e);
+            }
+            String storagePath = basePath.resolve("INFRA_ASSET").resolve(assetId.toString()).resolve(storageFileName).toString();
+
+            Attachment attachment = new Attachment();
+            attachment.setEntityType("INFRA_ASSET");
+            attachment.setEntityId(assetId);
+            attachment.setFileName(originalFilename);
+            attachment.setFilePath(storagePath);
+            attachment.setFileSize(file.getSize());
+            attachment.setContentType(file.getContentType());
+            attachment.setUploadedBy(userId);
+            attachmentRepository.save(attachment);
+        }
+
+        List<Attachment> allAttachments = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("INFRA_ASSET", assetId);
+        String mergedNames = allAttachments.stream()
+                .map(Attachment::getFileName)
+                .collect(Collectors.joining(", "));
+        asset.setAttachmentName(mergedNames);
+        repository.save(asset);
+
+        return allAttachments.stream().map(this::toAttachmentResponse).collect(Collectors.toList());
+    }
+
+    public List<InfraAssetAttachmentResponse> listAttachments(UUID assetId) {
+        return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("INFRA_ASSET", assetId)
+                .stream().map(this::toAttachmentResponse).collect(Collectors.toList());
+    }
+
+    public Attachment getAttachment(UUID assetId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(assetId) || !"INFRA_ASSET".equalsIgnoreCase(attachment.getEntityType())) {
+            throw new IllegalArgumentException("File không thuộc tài sản này");
+        }
+        return attachment;
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID assetId, UUID attachmentId, UUID userId) {
+        InfraAsset asset = requireAsset(assetId);
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(assetId)) {
+            throw new IllegalArgumentException("File không thuộc tài sản này");
+        }
+        try {
+            Files.deleteIfExists(Paths.get(attachment.getFilePath()));
+        } catch (Exception ignored) {
+        }
+        attachmentRepository.delete(attachment);
+
+        List<Attachment> remaining = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("INFRA_ASSET", assetId);
+        String mergedNames = remaining.isEmpty() ? null : remaining.stream()
+                .map(Attachment::getFileName)
+                .collect(Collectors.joining(", "));
+        asset.setAttachmentName(mergedNames);
+        repository.save(asset);
+    }
+
+    private InfraAssetAttachmentResponse toAttachmentResponse(Attachment entity) {
+        return InfraAssetAttachmentResponse.builder()
+                .id(entity.getId())
+                .entityType(entity.getEntityType())
+                .entityId(entity.getEntityId())
+                .fileName(entity.getFileName())
+                .filePath(entity.getFilePath())
+                .fileSize(entity.getFileSize())
+                .contentType(entity.getContentType())
+                .uploadedBy(entity.getUploadedBy())
+                .uploadedByName(userResolverService.resolveName(entity.getUploadedBy()))
+                .uploadedAt(entity.getUploadedAt())
+                .build();
     }
 }

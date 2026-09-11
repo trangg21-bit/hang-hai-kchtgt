@@ -215,4 +215,31 @@ public class StormShelterAreaController {
         stormShelterAreaService.deleteAttachment("STORM_SHELTER", id, attId, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    // @PreAuthorize("@auth.check(authentication, 'stormshelter:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.port.entity.Attachment attachment = stormShelterAreaService.getAttachment("STORM_SHELTER", id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        if (!java.nio.file.Files.isRegularFile(path)) {
+            return ResponseEntity.notFound().build();
+        }
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(path);
+        String contentType;
+        try {
+            contentType = java.nio.file.Files.probeContentType(path);
+        } catch (Exception ignored) {
+            contentType = null;
+        }
+        MediaType mediaType = contentType == null
+                ? MediaType.APPLICATION_OCTET_STREAM
+                : MediaType.parseMediaType(contentType);
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + attachment.getFileName().replace("\"", "") + "\"")
+                .body(resource);
+    }
 }

@@ -38,7 +38,11 @@ import {
   fetchKhaiThacList,
   fetchBuoyBerthAssets,
   updateBuoyBerthAsset,
+  uploadInfraAssetAttachments,
+  fetchInfraAssetAttachments,
+  deleteInfraAssetAttachment,
 } from '../../services/assetmovement/api';
+import api from '../../services/api';
 import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
@@ -173,17 +177,45 @@ export default function BuoyBerthAssetList() {
       depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
       attachmentName: record.attachmentName,
     });
-    if (record.attachmentName) {
-      setAttachments(record.attachmentName.split(',').map((name, i) => ({
-        id: `att-${i}-${Date.now()}`,
-        fileName: name.trim(),
-        fileSize: 1024 * 512,
-        uploadedByName: record.updatedByName || record.submittedByName || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-        uploadedDate: record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString(),
-      })));
-    } else {
-      setAttachments([]);
-    }
+    fetchInfraAssetAttachments(record.id)
+      .then((realAtts) => {
+        if (realAtts && realAtts.length > 0) {
+          setAttachments(
+            realAtts.map((att) => ({
+              id: att.id,
+              fileName: att.fileName,
+              fileSize: att.fileSize,
+              fileType: att.contentType,
+              uploadedByName: att.uploadedByName || record.updatedByName || record.submittedByName || 'Cán bộ quản lý',
+              uploadedDate: att.uploadedAt || (record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString()),
+              filePath: `/v1/asset/infra-assets/${record.id}/attachments/${att.id}/download`,
+            }))
+          );
+        } else if (record.attachmentName) {
+          setAttachments(record.attachmentName.split(',').map((name, i) => ({
+            id: `att-${i}-${Date.now()}`,
+            fileName: name.trim(),
+            fileSize: 1024 * 512,
+            uploadedByName: record.updatedByName || record.submittedByName || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+            uploadedDate: record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString(),
+          })));
+        } else {
+          setAttachments([]);
+        }
+      })
+      .catch(() => {
+        if (record.attachmentName) {
+          setAttachments(record.attachmentName.split(',').map((name, i) => ({
+            id: `att-${i}-${Date.now()}`,
+            fileName: name.trim(),
+            fileSize: 1024 * 512,
+            uploadedByName: record.updatedByName || record.submittedByName || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+            uploadedDate: record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString(),
+          })));
+        } else {
+          setAttachments([]);
+        }
+      });
     try {
       const [exploitation, increases, decreases] = await Promise.all([
         fetchKhaiThacList({ assetId: record.id, page: 0, size: 100 }),
@@ -216,10 +248,13 @@ export default function BuoyBerthAssetList() {
   }, [currentUser]);
 
   const handleDeleteAttachment = useCallback((id: string) => {
+    if (selected?.id && id.includes('-')) {
+      deleteInfraAssetAttachment(selected.id, id).catch(() => {});
+    }
     setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+  }, [selected?.id]);
 
-  const handleDownloadAttachment = useCallback((id: string, fileName: string) => {
+  const handleDownloadAttachment = useCallback(async (id: string, fileName: string) => {
     const att = attachments.find((a) => a.id === id);
     if (att?.originFileObj) {
       triggerBlobDownload(att.originFileObj, fileName || att.originFileObj.name);
@@ -231,7 +266,27 @@ export default function BuoyBerthAssetList() {
       toast.success(`Đã tải xuống tệp: ${fileName}`);
       return;
     }
-    toast.error(`Không tìm thấy tệp tin đính kèm "${fileName || 'tài liệu'}" để tải xuống.`);
+    if (att?.filePath) {
+      try {
+        let cleanPath = att.filePath;
+        if (cleanPath.startsWith('/api/')) {
+          cleanPath = cleanPath.replace(/^\/api/, '');
+        } else if (!cleanPath.startsWith('/')) {
+          cleanPath = `/${cleanPath}`;
+        }
+        const res = await api.get(cleanPath, { responseType: 'blob' });
+        const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+        const blob = new Blob([res.data], { type: contentType });
+        triggerBlobDownload(blob, fileName || 'tai-lieu');
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      } catch (err) {
+        console.error('Download error:', err);
+        toast.error(`Không thể tải xuống tệp tin "${fileName}": Lỗi máy chủ hoặc tệp không tồn tại.`);
+        return;
+      }
+    }
+    toast.error(`Không tìm thấy đường dẫn tệp tin đính kèm "${fileName || 'tài liệu'}" trên máy chủ để tải xuống.`);
   }, [attachments]);
 
   const openDetail = useCallback(async (record: BuoyBerthAsset) => {
@@ -275,10 +330,23 @@ export default function BuoyBerthAssetList() {
         approvalStatus: targetAction,
       };
 
+      let savedAsset: BuoyBerthAsset;
       if (drawerMode === 'edit' && selected) {
-        await updateBuoyBerthAsset(selected.id, payload);
+        savedAsset = await updateBuoyBerthAsset(selected.id, payload);
       } else {
-        await createBuoyBerthAsset(payload);
+        savedAsset = await createBuoyBerthAsset(payload);
+      }
+
+      const targetAssetId = savedAsset?.id || selected?.id;
+      const filesToUpload = attachments
+        .map((a) => a.originFileObj)
+        .filter((f): f is File => f instanceof File);
+      if (filesToUpload.length > 0 && targetAssetId) {
+        try {
+          await uploadInfraAssetAttachments(targetAssetId, filesToUpload);
+        } catch (uploadErr) {
+          console.error('Upload attachments error:', uploadErr);
+        }
       }
 
       toast.success(

@@ -342,13 +342,13 @@ export default function PierAssetForm({
         key: 'attachments',
         label: `Hồ sơ tài sản (${attachments.length})`,
         customContent: (
-          <div style={{ padding: spaceSm }}>
+          <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
-              items={attachments}
+              attachments={attachments}
+              readonly={drawerMode === 'detail'}
               onUpload={onUploadAttachment}
               onDelete={onDeleteAttachment}
               onDownload={onDownloadAttachment}
-              readOnly={drawerMode === 'detail'}
             />
           </div>
         ),
@@ -745,39 +745,63 @@ export default function PierAssetForm({
       return [{ key: 'close', label: 'Đóng', onClick: onClose }];
     }
 
+    if (drawerMode === 'edit') {
+      const isDraft =
+        !selected?.approvalStatus ||
+        ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase());
+      const res: FormSidebarAction[] = [];
+
+      if (isDraft) {
+        res.push({
+          key: 'draft',
+          label: 'Lưu tạm',
+          variant: 'outline',
+          loading: saving && saveAction === 'DRAFT',
+          onClick: () => void onSave('DRAFT'),
+        });
+      }
+
+      res.push({
+        key: 'approve',
+        label: 'Lưu và phê duyệt',
+        variant: 'success',
+        loading: saving && saveAction === 'APPROVED',
+        onClick: () => void onSave('APPROVED'),
+      });
+
+      return res;
+    }
+
     return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        onClick: onClose,
-      },
       {
         key: 'draft',
         label: 'Lưu tạm',
+        variant: 'outline',
         loading: saving && saveAction === 'DRAFT',
-        onClick: () => onSave('DRAFT'),
+        onClick: () => void onSave('DRAFT'),
       },
       {
         key: 'submit',
         label: 'Lưu và gửi phê duyệt',
+        variant: 'primary',
         loading: saving && saveAction === 'PENDING_APPROVAL',
-        onClick: () => onSave('PENDING_APPROVAL'),
+        onClick: () => void onSave('PENDING_APPROVAL'),
       },
       {
         key: 'approve',
         label: 'Lưu và phê duyệt',
-        type: 'primary',
+        variant: 'success',
         loading: saving && saveAction === 'APPROVED',
-        onClick: () => onSave('APPROVED'),
+        onClick: () => void onSave('APPROVED'),
       },
     ];
-  }, [drawerMode, onClose, saving, saveAction, onSave]);
+  }, [drawerMode, selected, onClose, saving, saveAction, onSave]);
 
   const title = useMemo(() => {
     if (drawerMode === 'create') return 'Thêm mới tài sản cầu cảng';
-    if (drawerMode === 'edit') return 'Chỉnh sửa tài sản cầu cảng';
+    if (drawerMode === 'edit') return `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản cầu cảng'}`;
     return 'Xem chi tiết tài sản cầu cảng';
-  }, [drawerMode]);
+  }, [drawerMode, selected]);
 
   return (
     <DynamicFormSidebar<FormValues>
@@ -785,9 +809,10 @@ export default function PierAssetForm({
       title={title}
       form={form}
       tabs={formTabs}
-      actions={actions}
+      footerActions={actions}
+      footerAlign="center"
       onClose={onClose}
-      width={900}
+      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
       rootClassName="pier-drawer-scope"
     />
   );

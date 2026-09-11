@@ -47,7 +47,9 @@ export interface InfrastructureAttachmentItem {
 
 export interface InfrastructureAttachmentTabProps {
   /** Danh sách tệp đính kèm */
-  attachments: InfrastructureAttachmentItem[];
+  attachments?: InfrastructureAttachmentItem[];
+  /** Danh sách tệp đính kèm (hỗ trợ alias items) */
+  items?: InfrastructureAttachmentItem[];
   /** Chế độ xem chi tiết (chỉ đọc, ẩn khung Upload.Dragger, chỉ hiện nút Tải xuống / Xem chi tiết) */
   readonly?: boolean;
   /** Bảng tra cứu tên người dùng theo UUID */
@@ -166,7 +168,8 @@ export const triggerBlobDownload = (blobOrUrl: Blob | string, fileName: string) 
  * - File khác (.pdf, .doc, .xls, ...): Chỉ tải xuống (DownloadOutlined).
  */
 export default function InfrastructureAttachmentTab({
-  attachments = [],
+  attachments,
+  items,
   readonly = false,
   userMap,
   onUpload,
@@ -182,6 +185,7 @@ export default function InfrastructureAttachmentTab({
   readonlyBerthLayout = false,
   loadReadonlyPreviewImage,
 }: InfrastructureAttachmentTabProps) {
+  const effectiveAttachments = attachments || items || [];
   const currentUser = useAuthStore((s) => s.user);
   const activeBlobUrlRef = useRef<string | null>(null);
   const uploadedFilesRef = useRef<Map<string, File>>(new Map());
@@ -320,14 +324,12 @@ export default function InfrastructureAttachmentTab({
         return;
       } catch (err) {
         console.error('onDownload error:', err);
-        toast.error(`Không thể tải tệp tin "${record.fileName || 'tài liệu'}": Lỗi trong quá trình xử lý.`);
-        return;
       }
     }
     const rawFile = resolveLocalFile(record);
     if (rawFile) {
       triggerBlobDownload(rawFile, record.fileName || (rawFile as File).name || 'tai-lieu');
-      toast.success(`Đã tải xuống tệp: ${record.fileName || rawFile.name}`);
+      toast.success(`Đã tải xuống tệp: ${record.fileName || (rawFile as File).name}`);
       return;
     }
     if (record.url && (record.url.startsWith('blob:') || record.url.startsWith('data:'))) {
@@ -352,11 +354,11 @@ export default function InfrastructureAttachmentTab({
         return;
       } catch (err) {
         console.error('Download file error:', err);
-        toast.error(`Không thể tải tệp tin "${record.fileName || 'tài liệu'}": Tệp tin không tồn tại trên máy chủ.`);
+        toast.error(`Không thể tải xuống tệp tin "${record.fileName || 'tài liệu'}": Lỗi máy chủ hoặc tệp không tồn tại.`);
         return;
       }
     }
-    toast.error(`Không tìm thấy tệp tin đính kèm "${record.fileName || 'tài liệu'}" để tải xuống.`);
+    toast.error(`Không tìm thấy đường dẫn tệp tin đính kèm "${record.fileName || 'tài liệu'}" trên máy chủ để tải xuống.`);
   };
 
   const effectiveScrollY = scrollY || (readonly ? DRAWER_TABLE_SCROLL_Y.detailView : DRAWER_TABLE_SCROLL_Y.withDragger);
@@ -637,7 +639,7 @@ export default function InfrastructureAttachmentTab({
 
       <DetailTable
         scrollY={effectiveScrollY}
-        dataSource={attachments}
+        dataSource={effectiveAttachments}
         emptyText={isLoading ? 'Đang tải tài liệu đính kèm...' : (emptyText || 'Chưa có tài liệu đính kèm')}
         rowKey={(r: any) => r.id || r.fileName}
         columns={columns}

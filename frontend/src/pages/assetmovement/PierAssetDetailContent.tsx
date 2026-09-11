@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -15,6 +15,7 @@ import type {
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
+import { fetchInfraAssetAttachments } from '../../services/assetmovement/api';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
@@ -112,23 +113,62 @@ export default function PierAssetDetailContent({
   increaseRows,
   decreaseRows,
 }: PierAssetDetailContentProps) {
-  const parsedAttachments = useMemo<InfrastructureAttachmentItem[]>(() => {
-    if (!selectedRecord?.attachmentName) return [];
-    try {
-      const parsed = JSON.parse(selectedRecord.attachmentName);
-      if (Array.isArray(parsed)) return parsed;
-    } catch {
-      // fallback
+  const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+
+  useEffect(() => {
+    if (!selectedRecord?.id) {
+      setDetailAttachments([]);
+      return;
     }
-    return [
-      {
-        id: '1',
-        fileName: selectedRecord.attachmentName,
-        fileSize: 0,
-        uploadedAt: selectedRecord.createdAt || new Date().toISOString(),
-        uploadedBy: selectedRecord.createdBy || 'Hệ thống',
-      },
-    ];
+    let isMounted = true;
+    fetchInfraAssetAttachments(selectedRecord.id)
+      .then((realAtts) => {
+        if (!isMounted) return;
+        if (realAtts && realAtts.length > 0) {
+          setDetailAttachments(
+            realAtts.map((att) => ({
+              id: att.id,
+              fileName: att.fileName,
+              fileSize: att.fileSize,
+              fileType: att.contentType,
+              uploadedByName: att.uploadedByName || selectedRecord.updatedByName || '—',
+              uploadedDate: att.uploadedAt || (selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).toISOString() : dayjs().toISOString()),
+              filePath: `/v1/asset/infra-assets/${selectedRecord.id}/attachments/${att.id}/download`,
+            }))
+          );
+        } else if (selectedRecord.attachmentName) {
+          setDetailAttachments(
+            selectedRecord.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: selectedRecord.updatedByName || '—',
+              uploadedDate: selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        if (selectedRecord.attachmentName) {
+          setDetailAttachments(
+            selectedRecord.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: selectedRecord.updatedByName || '—',
+              uploadedDate: selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).toISOString() : dayjs().toISOString(),
+            }))
+          );
+        } else {
+          setDetailAttachments([]);
+        }
+      });
+    return () => {
+      isMounted = false;
+    };
   }, [selectedRecord]);
 
   const viewTabs = useMemo<ViewTabConfig[]>(() => {
@@ -309,11 +349,11 @@ export default function PierAssetDetailContent({
       },
       {
         key: 'attachments',
-        label: `Hồ sơ tài sản (${parsedAttachments.length})`,
+        label: `Hồ sơ tài sản (${detailAttachments.length})`,
         customContent: (
           <div style={{ padding: 12 }}>
             <InfrastructureAttachmentTab
-              attachments={parsedAttachments}
+              attachments={detailAttachments}
               readonly={true}
             />
           </div>
