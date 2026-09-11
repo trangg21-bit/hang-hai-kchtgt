@@ -1,27 +1,26 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.assetmovement.entity.InfraAsset;
 import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.assetmovement.repository.InfraAssetRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.port.repository.AttachmentRepository;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
@@ -50,11 +49,24 @@ public class InfraAssetService {
     public InfraAssetResponse create(InfraAssetRequest request) {
         InfraAsset entity = new InfraAsset();
         copyEditableFields(request, entity);
-        if (entity.getAssetType() == null)
+
+        if (entity.getAssetType() == null && entity.getTypes() != null) {
+            try {
+                entity.setAssetType(InfraAssetType.fromValue(entity.getTypes()));
+            } catch (Exception ignored) {
+            }
+        }
+        if (entity.getAssetType() == null) {
             entity.setAssetType(request.getAssetType() != null ? request.getAssetType() : InfraAssetType.PORT_TERMINAL);
+        }
+        if (entity.getTypes() == null && entity.getAssetType() != null) {
+            entity.setTypes(entity.getAssetType().name());
+        }
         entity.setAssetCode(generateAssetCode(request.getAssetCode(), entity.getAssetType()));
-        if (entity.getStatus() == null)
+        if (entity.getStatus() == null) {
             entity.setStatus(AssetStatus.MANAGED);
+        }
+
         calculateValues(entity);
         return toResponse(repository.save(entity));
     }
@@ -63,63 +75,110 @@ public class InfraAssetService {
         return toResponse(requireAsset(id));
     }
 
-    public Page<InfraAssetResponse> findAll(String assetCode, String assetName, UUID parentOrgUnitId, UUID orgUnitId,
-            UUID usingOrgUnitId, UUID berthId, UUID transferAreaId, UUID stormShelterId, UUID buoyBerthId, UUID pierId,
-            UUID anchorageId,
-            UUID beaconStationId, UUID dikeRevetmentId, UUID buoyId,
-            UUID buoyStationId, UUID navigationChannelId,
-            InfraAssetType assetType, String assetCondition, String approvalStatus,
+    public Page<InfraAssetResponse> findAll(
+            String assetCode, String assetName, UUID parentOrgUnitId, UUID orgUnitId, UUID usingOrgUnitId,
+            UUID berthId, UUID lritStationId, UUID ttdhStationId, UUID inmarsatStationId, UUID cospasSarsatStationId,
+            UUID ttxlttStationId, UUID stationId, UUID dryPortId,
+            UUID transferAreaId, UUID stormShelterId, UUID buoyBerthId, UUID pierId, UUID anchorageId,
+            UUID beaconStationId, UUID dikeRevetmentId, UUID buoyId, UUID buoyStationId, UUID navigationChannelId,
+            String types, InfraAssetType assetType, String assetCondition, String approvalStatus,
             LocalDate updatedFrom, LocalDate updatedTo, Pageable pageable) {
+
         Specification<InfraAsset> specification = (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
-            if (assetCode != null && !assetCode.isBlank())
+            if (assetCode != null && !assetCode.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetCode")),
                         "%" + assetCode.trim().toLowerCase(Locale.ROOT) + "%"));
-            if (assetName != null && !assetName.isBlank())
+            }
+            if (assetName != null && !assetName.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetName")),
                         "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%"));
-            if (parentOrgUnitId != null)
+            }
+            if (parentOrgUnitId != null) {
                 predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            if (orgUnitId != null)
+            }
+            if (orgUnitId != null) {
                 predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            if (usingOrgUnitId != null)
+            }
+            if (usingOrgUnitId != null) {
                 predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
-            if (berthId != null)
+            }
+            if (berthId != null) {
                 predicates.add(cb.equal(root.get("berthId"), berthId));
-            if (transferAreaId != null)
+            }
+            if (lritStationId != null) {
+                predicates.add(cb.equal(root.get("lritStationId"), lritStationId));
+            }
+            if (ttdhStationId != null) {
+                predicates.add(cb.equal(root.get("ttdhStationId"), ttdhStationId));
+            }
+            if (inmarsatStationId != null) {
+                predicates.add(cb.equal(root.get("inmarsatStationId"), inmarsatStationId));
+            }
+            if (cospasSarsatStationId != null) {
+                predicates.add(cb.equal(root.get("cospasSarsatStationId"), cospasSarsatStationId));
+            }
+            if (ttxlttStationId != null) {
+                predicates.add(cb.equal(root.get("ttxlttStationId"), ttxlttStationId));
+            }
+            if (stationId != null) {
+                predicates.add(cb.equal(root.get("stationId"), stationId));
+            }
+            if (dryPortId != null) {
+                predicates.add(cb.equal(root.get("dryPortId"), dryPortId));
+            }
+            if (transferAreaId != null) {
                 predicates.add(cb.equal(root.get("transferAreaId"), transferAreaId));
-            if (stormShelterId != null)
+            }
+            if (stormShelterId != null) {
                 predicates.add(cb.equal(root.get("stormShelterId"), stormShelterId));
-            if (buoyBerthId != null)
+            }
+            if (buoyBerthId != null) {
                 predicates.add(cb.equal(root.get("buoyBerthId"), buoyBerthId));
-            if (pierId != null)
+            }
+            if (pierId != null) {
                 predicates.add(cb.equal(root.get("pierId"), pierId));
-            if (anchorageId != null)
+            }
+            if (anchorageId != null) {
                 predicates.add(cb.equal(root.get("anchorageId"), anchorageId));
-            if (beaconStationId != null)
+            }
+            if (beaconStationId != null) {
                 predicates.add(cb.equal(root.get("beaconStationId"), beaconStationId));
-            if (dikeRevetmentId != null)
+            }
+            if (dikeRevetmentId != null) {
                 predicates.add(cb.equal(root.get("dikeRevetmentId"), dikeRevetmentId));
-            if (buoyId != null)
+            }
+            if (buoyId != null) {
                 predicates.add(cb.equal(root.get("buoyId"), buoyId));
-            if (buoyStationId != null)
+            }
+            if (buoyStationId != null) {
                 predicates.add(cb.equal(root.get("buoyStationId"), buoyStationId));
-            if (navigationChannelId != null)
+            }
+            if (navigationChannelId != null) {
                 predicates.add(cb.equal(root.get("navigationChannelId"), navigationChannelId));
-            if (assetType != null)
+            }
+            if (types != null && !types.isBlank()) {
+                predicates.add(cb.equal(root.get("types"), types.trim()));
+            }
+            if (assetType != null) {
                 predicates.add(cb.equal(root.get("assetType"), assetType));
-            if (assetCondition != null && !assetCondition.isBlank())
+            }
+            if (assetCondition != null && !assetCondition.isBlank()) {
                 predicates.add(cb.equal(root.get("assetCondition"), assetCondition));
+            }
             if (approvalStatus != null && !approvalStatus.isBlank()) {
                 try {
                     predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.fromString(approvalStatus)));
                 } catch (IllegalArgumentException ignored) {
-                    /* unknown status returns the unfiltered page */ }
+                    /* unknown status returns the unfiltered page */
+                }
             }
-            if (updatedFrom != null)
+            if (updatedFrom != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), updatedFrom.atStartOfDay()));
-            if (updatedTo != null)
+            }
+            if (updatedTo != null) {
                 predicates.add(cb.lessThan(root.get("updatedAt"), updatedTo.plusDays(1).atStartOfDay()));
+            }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
         return repository.findAll(specification, pageable).map(this::toResponse);
@@ -131,6 +190,9 @@ public class InfraAssetService {
         String assetCode = entity.getAssetCode();
         copyEditableFields(request, entity);
         entity.setAssetCode(assetCode);
+        if (entity.getTypes() == null && entity.getAssetType() != null) {
+            entity.setTypes(entity.getAssetType().name());
+        }
         calculateValues(entity);
         return toResponse(repository.save(entity));
     }
@@ -155,6 +217,12 @@ public class InfraAssetService {
             return requestedCode.trim();
         }
         String prefix = switch (assetType) {
+            case LRIT_STATION -> "TS-LRIT-";
+            case TTDH_STATION -> "TS-TTDH-";
+            case INMARSAT_STATION -> "TS-INMARSAT-";
+            case COSPAS_SARSAT_STATION -> "TS-COSPAS-";
+            case TTXLTT_STATION -> "TS-TTXLTT-";
+            case DRY_PORT -> "TS-CC-";
             case TRANSFER_AREA -> "TS-KCT-";
             case STORM_SHELTER -> "TS-TB-";
             case BUOY_BERTH -> "TS-BP-";
@@ -191,38 +259,48 @@ public class InfraAssetService {
                 target.setApprovalStatus(status);
                 UUID currentUserId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
                 if (status == ApprovalStatus.PENDING_APPROVAL) {
-                    if (target.getSubmittedBy() == null)
+                    if (target.getSubmittedBy() == null) {
                         target.setSubmittedBy(
                                 source.getSubmittedBy() != null ? source.getSubmittedBy() : currentUserId);
-                    if (target.getSubmittedAt() == null)
+                    }
+                    if (target.getSubmittedAt() == null) {
                         target.setSubmittedAt(
                                 source.getSubmittedAt() != null ? source.getSubmittedAt() : java.time.Instant.now());
+                    }
                 } else if (status == ApprovalStatus.APPROVED) {
-                    if (target.getDepartmentApprovedBy() == null)
+                    if (target.getDepartmentApprovedBy() == null) {
                         target.setDepartmentApprovedBy(
                                 source.getDepartmentApprovedBy() != null ? source.getDepartmentApprovedBy()
                                         : currentUserId);
-                    if (target.getDepartmentApprovedAt() == null)
+                    }
+                    if (target.getDepartmentApprovedAt() == null) {
                         target.setDepartmentApprovedAt(
                                 source.getDepartmentApprovedAt() != null ? source.getDepartmentApprovedAt()
                                         : java.time.Instant.now());
+                    }
                 }
             } catch (Exception ignored) {
                 target.setApprovalStatus(ApprovalStatus.DRAFT);
             }
         }
-        if (source.getPortAuthorityApprovedBy() != null)
+        if (source.getPortAuthorityApprovedBy() != null) {
             target.setPortAuthorityApprovedBy(source.getPortAuthorityApprovedBy());
-        if (source.getPortAuthorityApprovedAt() != null)
+        }
+        if (source.getPortAuthorityApprovedAt() != null) {
             target.setPortAuthorityApprovedAt(source.getPortAuthorityApprovedAt());
-        if (source.getDepartmentApprovedBy() != null)
+        }
+        if (source.getDepartmentApprovedBy() != null) {
             target.setDepartmentApprovedBy(source.getDepartmentApprovedBy());
-        if (source.getDepartmentApprovedAt() != null)
+        }
+        if (source.getDepartmentApprovedAt() != null) {
             target.setDepartmentApprovedAt(source.getDepartmentApprovedAt());
-        if (source.getSubmittedBy() != null)
+        }
+        if (source.getSubmittedBy() != null) {
             target.setSubmittedBy(source.getSubmittedBy());
-        if (source.getSubmittedAt() != null)
+        }
+        if (source.getSubmittedAt() != null) {
             target.setSubmittedAt(source.getSubmittedAt());
+        }
     }
 
     private void calculateValues(InfraAsset entity) {

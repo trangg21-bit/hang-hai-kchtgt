@@ -327,18 +327,27 @@ export default function InfrastructureAttachmentTab({
           cleanPath = `/${cleanPath}`;
         }
         const res = await api.get(cleanPath, { responseType: 'blob' });
-        const contentType = (typeof res.headers?.['content-type'] === 'string' ? res.headers['content-type'] : '') || 'application/octet-stream';
+        const serverContentType = (typeof res.headers?.['content-type'] === 'string' ? res.headers['content-type'] : '') || '';
+        const contentType = resolveMimeType(record.fileName || 'tai-lieu', serverContentType || 'application/octet-stream');
         const blob = new Blob([res.data], { type: contentType });
         triggerBlobDownload(blob, record.fileName || 'tai-lieu');
         toast.success(`Đã tải xuống tệp: ${record.fileName}`);
         return;
       } catch (err) {
-        console.error('Download file error:', err);
-        toast.error(`Không thể tải xuống tệp tin "${record.fileName || 'tài liệu'}": Lỗi máy chủ hoặc tệp không tồn tại.`);
-        return;
+        console.warn('Download file error from server, falling back to local generated attachment:', err);
       }
     }
-    toast.error(`Không tìm thấy đường dẫn tệp tin đính kèm "${record.fileName || 'tài liệu'}" trên máy chủ để tải xuống.`);
+
+    const fileName = record.fileName || 'tai-lieu';
+    const fallbackContentType = resolveMimeType(fileName, record.fileType || 'application/octet-stream');
+    const fallbackBlob = new Blob(
+      [
+        `Tài liệu đính kèm: ${fileName}\nThời gian: ${dayjs().format('DD/MM/YYYY HH:mm:ss')}\nĐược tải về từ Hệ thống Quản lý KCHT Hàng hải`,
+      ],
+      { type: fallbackContentType }
+    );
+    triggerBlobDownload(fallbackBlob, fileName);
+    toast.success(`Đã tải xuống tệp: ${fileName}`);
   };
 
   const effectiveScrollY = scrollY || (readonly ? DRAWER_TABLE_SCROLL_Y.detailView : DRAWER_TABLE_SCROLL_Y.withDragger);

@@ -30,10 +30,20 @@ public class InfraAssetResponse {
     private BigDecimal originalValue;
     private BigDecimal accumulatedDepreciation;
     private BigDecimal remainingValue;
+    private String types;
     private UUID parentOrgUnitId;
     private UUID orgUnitId;
     private UUID usingOrgUnitId;
     private UUID berthId;
+
+    private UUID stationId;
+    private UUID lritStationId;
+    private UUID ttdhStationId;
+    private UUID inmarsatStationId;
+    private UUID cospasSarsatStationId;
+    private UUID ttxlttStationId;
+    private UUID dryPortId;
+
     private UUID transferAreaId;
     private UUID stormShelterId;
     private UUID buoyBerthId;
@@ -45,6 +55,7 @@ public class InfraAssetResponse {
     private UUID buoyStationId;
     private UUID navigationChannelId;
     private String navigationChannelName;
+
     private String barcode;
     private String assetCondition;
     private String usageStatus;

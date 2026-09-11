@@ -74,6 +74,41 @@ class InfraAssetServiceTest {
     }
 
     @Test
+    void createDryPortAssetGeneratesPrefixAndKeepsDryPortId() {
+        UUID dryPortId = UUID.randomUUID();
+        UUID orgUnitId = UUID.randomUUID();
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Kho bãi cảng cạn Tân Cảng");
+        request.setAssetType(InfraAssetType.DRY_PORT);
+        request.setDryPortId(dryPortId);
+        request.setOrgUnitId(orgUnitId);
+        request.setAssetCondition("Tốt");
+        request.setOriginalValue(new BigDecimal("500000000"));
+        request.setAccumulatedDepreciation(new BigDecimal("100000000"));
+        request.setDepreciationMonths(50);
+
+        when(repository.findByAssetCode(any())).thenReturn(Optional.empty());
+        when(repository.save(any(InfraAsset.class))).thenAnswer(invocation -> {
+            InfraAsset entity = invocation.getArgument(0);
+            entity.setId(UUID.randomUUID());
+            entity.setCreatedAt(LocalDateTime.now());
+            entity.setUpdatedAt(LocalDateTime.now());
+            return entity;
+        });
+
+        InfraAssetResponse response = service.create(request);
+
+        assertNotNull(response.getId());
+        assertEquals(InfraAssetType.DRY_PORT.name(), response.getAssetType());
+        assertEquals(dryPortId, response.getDryPortId());
+        assertEquals(orgUnitId, response.getOrgUnitId());
+        assertNotNull(response.getAssetCode());
+        assertTrue(response.getAssetCode().startsWith("TS-CC-"));
+        assertEquals(new BigDecimal("400000000"), response.getRemainingValue());
+        assertEquals(new BigDecimal("10000000.00"), response.getMonthlyDepreciation());
+    }
+
+    @Test
     void createAnchorageAssetKeepsAnchorageRelationAndUsesAnchorageCodePrefix() {
         UUID anchorageId = UUID.randomUUID();
         InfraAssetRequest request = new InfraAssetRequest();
@@ -93,6 +128,7 @@ class InfraAssetServiceTest {
 
         InfraAssetResponse response = service.create(request);
 
+        assertNotNull(response.getId());
         assertEquals(InfraAssetType.ANCHORAGE.name(), response.getAssetType());
         assertEquals(anchorageId, response.getAnchorageId());
         assertTrue(response.getAssetCode().startsWith("TS-ND-"));

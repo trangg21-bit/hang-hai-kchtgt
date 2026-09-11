@@ -3,8 +3,8 @@ package com.hanghai.kchtg.report.service;
 import com.hanghai.kchtg.report.dto.CargoThroughputReport;
 import com.hanghai.kchtg.report.dto.MaintenanceReport;
 import com.hanghai.kchtg.report.entity.ReportStatus;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -14,9 +14,9 @@ import java.math.BigDecimal;
  * Chứa các phương thức sinh CargoThroughputReport, MaintenanceReport.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class CargoMaintenanceReportService {
+
+    private static final Logger log = LoggerFactory.getLogger(CargoMaintenanceReportService.class);
 
     /**
      * Sinh báo cáo lưu lượng hàng hóa cho cảng, tháng, năm.

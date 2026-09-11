@@ -50,8 +50,95 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
         patchCctvTable();
         patchCoastalStationsTables();
         patchAisSystemTable();
+        patchInfraAssetsTable();
 
         log.info("InfrastructureSchemaMigrator finished successfully.");
+    }
+
+    private void patchInfraAssetsTable() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS types VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS parent_org_unit_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS org_unit_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS using_org_unit_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS berth_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS station_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS lrit_station_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS ttdh_station_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS inmarsat_station_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS cospas_sarsat_station_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS ttxltt_station_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS dry_port_id UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS asset_condition VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS usage_status VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS asset_group VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS asset_subgroup VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS address VARCHAR(2000);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS origin VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS quantity NUMERIC(15,3);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS quantity_unit VARCHAR(50);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS model VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS serial_number VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS country_of_origin VARCHAR(100);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS manufacturer VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS construction_year INTEGER;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS use_date DATE;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS land_area NUMERIC(15,3);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS floor_area NUMERIC(15,3);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS asset_location VARCHAR(2000);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(500);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS declaration_date DATE;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS depreciation_rate NUMERIC(7,4);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS assignment_decision_number VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS depreciation_start_date DATE;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS depreciation_months INTEGER;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS depreciation_end_date DATE;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS monthly_depreciation NUMERIC(15,2);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS disposal_method VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS location VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS technical_specs VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS funding_source VARCHAR(200);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS original_value NUMERIC(15,2);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS accumulated_depreciation NUMERIC(15,2) DEFAULT 0;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS remaining_value NUMERIC(15,2) DEFAULT 0;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS status VARCHAR(50);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS approval_status SMALLINT DEFAULT 0;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS submitted_by UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS port_authority_approved_by UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS port_authority_approved_at TIMESTAMP;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS port_authority_approval_content VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS department_approved_by UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS department_approved_at TIMESTAMP;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS department_approval_content VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS approved_by UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS approved_remarks VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS unapproved_by UUID;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS unapproved_at TIMESTAMP;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS unapproved_remarks VARCHAR(1000);");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS lock_version INTEGER DEFAULT 0;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;");
+            jdbcTemplate.execute("ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS deleted_by UUID;");
+
+            try {
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_infra_assets_types ON infra_assets(types);");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_infra_assets_station_id ON infra_assets(station_id);");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_infra_assets_ttdh_station_id ON infra_assets(ttdh_station_id);");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_infra_assets_inmarsat_station_id ON infra_assets(inmarsat_station_id);");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_infra_assets_cospas_sarsat_station_id ON infra_assets(cospas_sarsat_station_id);");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_infra_assets_ttxltt_station_id ON infra_assets(ttxltt_station_id);");
+                jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_infra_assets_dry_port_id ON infra_assets(dry_port_id);");
+            } catch (Exception ignored) {}
+
+            jdbcTemplate.execute("UPDATE infra_assets SET types = CASE " +
+                    "WHEN asset_type = 4 THEN 'PORT_TERMINAL' " +
+                    "WHEN asset_type = 5 THEN 'LRIT_STATION' " +
+                    "ELSE types END WHERE types IS NULL AND asset_type IS NOT NULL;");
+        } catch (Exception e) {
+            log.warn("Could not patch infra_assets table: {}", e.getMessage());
+        }
     }
 
     private void patchAisSystemTable() {

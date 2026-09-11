@@ -35,16 +35,28 @@ public class InfraAsset extends BaseEntity {
     @Column(unique = true, nullable = false, length = 50)
     private String assetCode;
 
-    @Column(nullable = false, length = 200)
+    @Column(nullable = false, length = 2000)
     private String assetName;
 
     @Column(length = 50)
     private InfraAssetType assetType;
 
+    @Column(length = 100)
+    private String types;
+
     private UUID parentOrgUnitId;
     private UUID orgUnitId;
     private UUID usingOrgUnitId;
     private UUID berthId;
+
+    private UUID stationId;
+    private UUID lritStationId;
+    private UUID ttdhStationId;
+    private UUID inmarsatStationId;
+    private UUID cospasSarsatStationId;
+    private UUID ttxlttStationId;
+    private UUID dryPortId;
+
     private UUID transferAreaId;
     private UUID stormShelterId;
     private UUID buoyBerthId;
@@ -55,6 +67,7 @@ public class InfraAsset extends BaseEntity {
     private UUID buoyId;
     private UUID buoyStationId;
     private UUID navigationChannelId;
+
 
     @Column(length = 100)
     private String barcode;
@@ -71,7 +84,7 @@ public class InfraAsset extends BaseEntity {
     @Column(length = 200)
     private String assetSubgroup;
 
-    @Column(length = 500)
+    @Column(length = 2000)
     private String address;
 
     @Column(length = 200)
@@ -104,7 +117,7 @@ public class InfraAsset extends BaseEntity {
     @Column(precision = 15, scale = 3)
     private BigDecimal floorArea;
 
-    @Column(length = 500)
+    @Column(length = 2000)
     private String assetLocation;
 
     @Column(length = 500)
