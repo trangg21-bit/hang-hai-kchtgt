@@ -1159,10 +1159,57 @@ public class ReportService {
                     .orElse("");
         }
 
+        // ── Pre-calculate Port aggregates from child berths and wharves ──
+        List<Berth> berths = berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
+        double totalPortLength = 0.0;
+        double maxPortDwt = port.getMaxVesselCapacity() != null
+                ? port.getMaxVesselCapacity().doubleValue()
+                : 0.0;
+
+        Map<UUID, List<Pier>> berthWharvesMap = new HashMap<>();
+        for (Berth berth : berths) {
+            List<Pier> wharves = pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
+            berthWharvesMap.put(berth.getId(), wharves);
+
+            // Compute effective berth length
+            double bLen = berth.getLength() != null ? berth.getLength().doubleValue() : 0.0;
+            if (bLen == 0.0 && !wharves.isEmpty()) {
+                for (Pier w : wharves) {
+                    if (w.getLength() != null) {
+                        bLen += w.getLength().doubleValue();
+                    }
+                }
+            }
+            totalPortLength += bLen;
+
+            // Check berth DWT
+            double bDwt = berth.getMaxVesselSize() != null
+                    ? berth.getMaxVesselSize().doubleValue()
+                    : 0.0;
+            if (bDwt > maxPortDwt) {
+                maxPortDwt = bDwt;
+            }
+
+            for (Pier w : wharves) {
+                double wDwt = w.getDesignLoad() != null ? w.getDesignLoad().doubleValue() : 0.0;
+                if (wDwt == 0.0 && w.getPublishedVesselDWT() != null && !w.getPublishedVesselDWT().isBlank()) {
+                    try {
+                        String numStr = w.getPublishedVesselDWT().replaceAll("[^0-9.]", "");
+                        if (!numStr.isEmpty()) {
+                            wDwt = Double.parseDouble(numStr);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                if (wDwt > maxPortDwt) {
+                    maxPortDwt = wDwt;
+                }
+            }
+        }
+
         // ── Port (Cảng biển) row ──
         Map<String, Object> portRow = new LinkedHashMap<>();
         portRow.put("STT", String.valueOf(sequenceNo++));
-        portRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", port.getPortName());
+        portRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", port.getPortName() != null ? port.getPortName() : "");
         portRow.put("Đơn vị quản lý khai thác cảng", donViPort);
         portRow.put("Địa điểm, vị trí cảng", port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
         portRow.put("Thời điểm công bố mở", f148FormatThoiDiem(port.getCreatedAt()));
@@ -1170,17 +1217,13 @@ public class ReportService {
         portRow.put("Năng lực năm trước", "");
         portRow.put("Năng lực năm báo cáo", "");
         portRow.put("Đơn vị tính", "tấn/năm");
-        portRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", "");
-        double portDwt = port.getMaxVesselCapacity() != null
-                ? port.getMaxVesselCapacity().doubleValue()
-                : 0.0;
-        portRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", portDwt);
+        portRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", totalPortLength > 0 ? totalPortLength : "");
+        portRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", maxPortDwt > 0 ? maxPortDwt : "");
         portRow.put("Ghi chú", "");
         portRow.put("_rowType", "port");
         rows.add(portRow);
 
         // ── Berths (Bến cảng) under this port ──
-        List<Berth> berths = berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
         for (Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
@@ -1198,50 +1241,82 @@ public class ReportService {
                 thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
             }
 
+            List<Pier> wharves = berthWharvesMap.getOrDefault(berth.getId(), Collections.emptyList());
+
+            double bLen = berth.getLength() != null ? berth.getLength().doubleValue() : 0.0;
+            if (bLen == 0.0 && !wharves.isEmpty()) {
+                for (Pier w : wharves) {
+                    if (w.getLength() != null) {
+                        bLen += w.getLength().doubleValue();
+                    }
+                }
+            }
+
             double dwtBerth = berth.getMaxVesselSize() != null
                     ? berth.getMaxVesselSize().doubleValue()
                     : 0.0;
+            if (dwtBerth == 0.0 && !wharves.isEmpty()) {
+                for (Pier w : wharves) {
+                    double wDwt = w.getDesignLoad() != null ? w.getDesignLoad().doubleValue() : 0.0;
+                    if (wDwt == 0.0 && w.getPublishedVesselDWT() != null && !w.getPublishedVesselDWT().isBlank()) {
+                        try {
+                            String numStr = w.getPublishedVesselDWT().replaceAll("[^0-9.]", "");
+                            if (!numStr.isEmpty()) {
+                                wDwt = Double.parseDouble(numStr);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    if (wDwt > dwtBerth) dwtBerth = wDwt;
+                }
+            }
 
             Map<String, Object> berthRow = new LinkedHashMap<>();
             berthRow.put("STT", "");
             berthRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa",
-                    "\u00A0\u00A0\u00A0\u00A0" + berth.getBerthName());
+                    berth.getBerthName() != null ? berth.getBerthName() : "");
             berthRow.put("Đơn vị quản lý khai thác cảng", donViBerth);
             berthRow.put("Địa điểm, vị trí cảng", berthLocation);
             berthRow.put("Thời điểm công bố mở", thoiDiemBerth);
             berthRow.put("Công năng khai thác",
                     berth.getOperationalFunction() != null ? berth.getOperationalFunction() : "");
             // Năng lực từ Berth extended fields
-            // Năm báo cáo = currentThroughput
             double reportYearCapacity = berth.getCurrentThroughput() != null
                     ? berth.getCurrentThroughput().doubleValue()
                     : 0.0;
-            berthRow.put("Năng lực năm báo cáo", reportYearCapacity);
-            // Năm trước = currentThroughput if updatedAt.year == reportYear - 1
+            berthRow.put("Năng lực năm báo cáo", reportYearCapacity > 0 ? reportYearCapacity : "");
             double nlTruoc = (berth.getCurrentThroughput() != null
                     && berth.getUpdatedAt() != null
                     && berth.getUpdatedAt().getYear() == reportYear - 1)
                             ? berth.getCurrentThroughput().doubleValue()
                             : 0.0;
-            berthRow.put("Năng lực năm trước", nlTruoc);
+            berthRow.put("Năng lực năm trước", nlTruoc > 0 ? nlTruoc : "");
             berthRow.put("Đơn vị tính", "tấn/năm");
             berthRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
-                    berth.getLength() != null ? berth.getLength().doubleValue() : 0.0);
-            berthRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtBerth);
+                    bLen > 0 ? bLen : "");
+            berthRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtBerth > 0 ? dwtBerth : "");
             berthRow.put("Ghi chú", "");
             rows.add(berthRow);
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<Pier> wharves = pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
             for (Pier wharf : wharves) {
                 double dwtWharf = wharf.getDesignLoad() != null
                         ? wharf.getDesignLoad().doubleValue()
                         : 0.0;
+                if (dwtWharf == 0.0 && wharf.getPublishedVesselDWT() != null && !wharf.getPublishedVesselDWT().isBlank()) {
+                    try {
+                        String numStr = wharf.getPublishedVesselDWT().replaceAll("[^0-9.]", "");
+                        if (!numStr.isEmpty()) {
+                            dwtWharf = Double.parseDouble(numStr);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                double wLen = wharf.getLength() != null ? wharf.getLength().doubleValue() : 0.0;
 
                 Map<String, Object> wharfRow = new LinkedHashMap<>();
                 wharfRow.put("STT", "");
                 wharfRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa",
-                        "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getPierName());
+                        wharf.getPierName() != null ? wharf.getPierName() : "");
                 wharfRow.put("Đơn vị quản lý khai thác cảng", "");
                 wharfRow.put("Địa điểm, vị trí cảng", "");
                 wharfRow.put("Thời điểm công bố mở", "");
@@ -1251,8 +1326,8 @@ public class ReportService {
                 wharfRow.put("Năng lực năm báo cáo", "");
                 wharfRow.put("Đơn vị tính", "tấn/năm");
                 wharfRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
-                        wharf.getLength() != null ? wharf.getLength().doubleValue() : 0.0);
-                wharfRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtWharf);
+                        wLen > 0 ? wLen : "");
+                wharfRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtWharf > 0 ? dwtWharf : "");
                 wharfRow.put("Ghi chú", "");
                 rows.add(wharfRow);
             }
@@ -6194,6 +6269,41 @@ public class ReportService {
                     .orElse("");
         }
 
+        // ── Pre-calculate Port aggregates from child berths and wharves ──
+        List<Berth> berths = berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
+        double totalPortLength = 0.0;
+        double maxPortDwt = port.getMaxVesselCapacity() != null
+                ? port.getMaxVesselCapacity().doubleValue()
+                : 0.0;
+
+        Map<UUID, List<Pier>> berthWharvesMap = new HashMap<>();
+        for (Berth berth : berths) {
+            List<Pier> wharves = pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
+            berthWharvesMap.put(berth.getId(), wharves);
+
+            double bLen = berth.getLength() != null ? berth.getLength().doubleValue() : 0.0;
+            if (bLen == 0.0 && !wharves.isEmpty()) {
+                for (Pier w : wharves) {
+                    if (w.getLength() != null) bLen += w.getLength().doubleValue();
+                }
+            }
+            totalPortLength += bLen;
+
+            double bDwt = berth.getMaxVesselSize() != null ? berth.getMaxVesselSize().doubleValue() : 0.0;
+            if (bDwt > maxPortDwt) maxPortDwt = bDwt;
+
+            for (Pier w : wharves) {
+                double wDwt = w.getDesignLoad() != null ? w.getDesignLoad().doubleValue() : 0.0;
+                if (wDwt == 0.0 && w.getPublishedVesselDWT() != null && !w.getPublishedVesselDWT().isBlank()) {
+                    try {
+                        String numStr = w.getPublishedVesselDWT().replaceAll("[^0-9.]", "");
+                        if (!numStr.isEmpty()) wDwt = Double.parseDouble(numStr);
+                    } catch (Exception ignored) {}
+                }
+                if (wDwt > maxPortDwt) maxPortDwt = wDwt;
+            }
+        }
+
         int numPortCols = portTemplateRow.getLastCellNum();
 
         // ── Port (Cảng biển) row ──
@@ -6223,14 +6333,18 @@ public class ReportService {
                 } else if (c == 8) {
                     destCell.setCellValue("tấn/năm");
                 } else if (c == 9) {
-                    destCell.setCellValue("");
+                    if (totalPortLength > 0) {
+                        destCell.setCellValue(totalPortLength);
+                        setNumericCellFormat(destCell, totalPortLength);
+                    } else {
+                        destCell.setCellValue("");
+                    }
                 } else if (c == 10) {
-                    double portDwt = port.getMaxVesselCapacity() != null
-                            ? port.getMaxVesselCapacity().doubleValue()
-                            : 0.0;
-                    destCell.setCellValue(portDwt);
-                    if (portDwt != 0) {
-                        setNumericCellFormat(destCell, portDwt);
+                    if (maxPortDwt > 0) {
+                        destCell.setCellValue(maxPortDwt);
+                        setNumericCellFormat(destCell, maxPortDwt);
+                    } else {
+                        destCell.setCellValue("");
                     }
                 } else if (c == 11) {
                     destCell.setCellValue("");
@@ -6242,7 +6356,6 @@ public class ReportService {
 
         // ── Berths (Bến cảng) under this port ──
         int numWharfCols = wharfTemplateRow.getLastCellNum();
-        List<Berth> berths = berthRepository.findByPortIdAndDeletedAtIsNull(port.getId());
         for (Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
@@ -6259,9 +6372,30 @@ public class ReportService {
                 thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
             }
 
+            List<Pier> wharves = berthWharvesMap.getOrDefault(berth.getId(), Collections.emptyList());
+
+            double bLen = berth.getLength() != null ? berth.getLength().doubleValue() : 0.0;
+            if (bLen == 0.0 && !wharves.isEmpty()) {
+                for (Pier w : wharves) {
+                    if (w.getLength() != null) bLen += w.getLength().doubleValue();
+                }
+            }
+
             double dwtBerth = berth.getMaxVesselSize() != null
                     ? berth.getMaxVesselSize().doubleValue()
                     : 0.0;
+            if (dwtBerth == 0.0 && !wharves.isEmpty()) {
+                for (Pier w : wharves) {
+                    double wDwt = w.getDesignLoad() != null ? w.getDesignLoad().doubleValue() : 0.0;
+                    if (wDwt == 0.0 && w.getPublishedVesselDWT() != null && !w.getPublishedVesselDWT().isBlank()) {
+                        try {
+                            String numStr = w.getPublishedVesselDWT().replaceAll("[^0-9.]", "");
+                            if (!numStr.isEmpty()) wDwt = Double.parseDouble(numStr);
+                        } catch (Exception ignored) {}
+                    }
+                    if (wDwt > dwtBerth) dwtBerth = wDwt;
+                }
+            }
 
             Row berthRow = destSheet.createRow(currentDestRow++);
             berthRow.setHeight(wharfTemplateRow.getHeight());
@@ -6273,7 +6407,7 @@ public class ReportService {
                     if (c == 0) {
                         destCell.setCellValue("");
                     } else if (c == 1) {
-                        destCell.setCellValue("    " + (berth.getBerthName() != null ? berth.getBerthName() : ""));
+                        destCell.setCellValue(berth.getBerthName() != null ? berth.getBerthName() : "");
                     } else if (c == 2) {
                         destCell.setCellValue(donViBerth);
                     } else if (c == 3) {
@@ -6284,37 +6418,42 @@ public class ReportService {
                         destCell.setCellValue(
                                 berth.getOperationalFunction() != null ? berth.getOperationalFunction() : "");
                     } else if (c == 6) {
-                        // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
                         double nlTruoc = (berth.getCurrentThroughput() != null
                                 && berth.getUpdatedAt() != null
                                 && berth.getUpdatedAt().getYear() == reportYear - 1)
                                         ? berth.getCurrentThroughput().doubleValue()
                                         : 0.0;
-                        destCell.setCellValue(nlTruoc);
-                        if (nlTruoc != 0) {
+                        if (nlTruoc > 0) {
+                            destCell.setCellValue(nlTruoc);
                             setNumericCellFormat(destCell, nlTruoc);
+                        } else {
+                            destCell.setCellValue("");
                         }
                     } else if (c == 7) {
-                        // Năm báo cáo = nangLucThongQuaHienTrang
                         double reportYearCapacity = berth.getCurrentThroughput() != null
                                 ? berth.getCurrentThroughput().doubleValue()
                                 : 0.0;
-                        destCell.setCellValue(reportYearCapacity);
-                        if (reportYearCapacity != 0) {
+                        if (reportYearCapacity > 0) {
+                            destCell.setCellValue(reportYearCapacity);
                             setNumericCellFormat(destCell, reportYearCapacity);
+                        } else {
+                            destCell.setCellValue("");
                         }
                     } else if (c == 8) {
                         destCell.setCellValue("tấn/năm");
                     } else if (c == 9) {
-                        double length = berth.getLength() != null ? berth.getLength().doubleValue() : 0.0;
-                        destCell.setCellValue(length);
-                        if (length != 0) {
-                            setNumericCellFormat(destCell, length);
+                        if (bLen > 0) {
+                            destCell.setCellValue(bLen);
+                            setNumericCellFormat(destCell, bLen);
+                        } else {
+                            destCell.setCellValue("");
                         }
                     } else if (c == 10) {
-                        destCell.setCellValue(dwtBerth);
-                        if (dwtBerth != 0) {
+                        if (dwtBerth > 0) {
+                            destCell.setCellValue(dwtBerth);
                             setNumericCellFormat(destCell, dwtBerth);
+                        } else {
+                            destCell.setCellValue("");
                         }
                     } else if (c == 11) {
                         destCell.setCellValue("");
@@ -6325,11 +6464,20 @@ public class ReportService {
             }
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<Pier> wharves = pierRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
             for (Pier wharf : wharves) {
                 double dwtWharf = wharf.getDesignLoad() != null
                         ? wharf.getDesignLoad().doubleValue()
                         : 0.0;
+                if (dwtWharf == 0.0 && wharf.getPublishedVesselDWT() != null && !wharf.getPublishedVesselDWT().isBlank()) {
+                    try {
+                        String numStr = wharf.getPublishedVesselDWT().replaceAll("[^0-9.]", "");
+                        if (!numStr.isEmpty()) {
+                            dwtWharf = Double.parseDouble(numStr);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                double wharfLength = wharf.getLength() != null ? wharf.getLength().doubleValue() : 0.0;
 
                 Row wharfRow = destSheet.createRow(currentDestRow++);
                 wharfRow.setHeight(wharfTemplateRow.getHeight());
@@ -6341,8 +6489,7 @@ public class ReportService {
                         if (c == 0) {
                             destCell.setCellValue("");
                         } else if (c == 1) {
-                            destCell.setCellValue(
-                                    "        " + (wharf.getPierName() != null ? wharf.getPierName() : ""));
+                            destCell.setCellValue(wharf.getPierName() != null ? wharf.getPierName() : "");
                         } else if (c == 2) {
                             destCell.setCellValue("");
                         } else if (c == 3) {
@@ -6359,15 +6506,18 @@ public class ReportService {
                         } else if (c == 8) {
                             destCell.setCellValue("tấn/năm");
                         } else if (c == 9) {
-                            double wharfLength = wharf.getLength() != null ? wharf.getLength().doubleValue() : 0.0;
-                            destCell.setCellValue(wharfLength);
-                            if (wharfLength != 0) {
+                            if (wharfLength > 0) {
+                                destCell.setCellValue(wharfLength);
                                 setNumericCellFormat(destCell, wharfLength);
+                            } else {
+                                destCell.setCellValue("");
                             }
                         } else if (c == 10) {
-                            destCell.setCellValue(dwtWharf);
-                            if (dwtWharf != 0) {
+                            if (dwtWharf > 0) {
+                                destCell.setCellValue(dwtWharf);
                                 setNumericCellFormat(destCell, dwtWharf);
+                            } else {
+                                destCell.setCellValue("");
                             }
                         } else if (c == 11) {
                             destCell.setCellValue("");

@@ -75,29 +75,30 @@ interface ReportColumnConfig {
 
 function getReportColumnConfig(header: string): ReportColumnConfig {
   const h = header.toLowerCase().trim();
-  // Safe min width based on header text length (uppercase bold font 13.5px ~ 9.5px per char + 32px padding)
-  const headerMinWidth = Math.ceil(header.length * 9.5) + 32;
 
-  let baseWidth = 160;
+  let width = 160;
   let align: 'left' | 'center' | 'right' = 'left';
 
   if (h === 'stt') {
-    return { width: 70, align: 'center' };
+    return { width: 65, align: 'center' };
   }
   if (h.includes('đơn vị tính') || h === 'đvt') {
-    baseWidth = 120;
+    width = 110;
     align = 'center';
   } else if (h.includes('mã')) {
-    baseWidth = 140;
+    width = 130;
     align = 'center';
   } else if (h.includes('thời điểm') || h.includes('ngày') || h.includes('năm')) {
-    baseWidth = 160;
+    width = 140;
     align = 'center';
+  } else if (h.includes('chiều dài')) {
+    width = 200;
+    align = 'right';
+  } else if (h.includes('tàu') || h.includes('dwt')) {
+    width = 185;
+    align = 'right';
   } else if (
     h.includes('năng lực') ||
-    h.includes('chiều dài') ||
-    h.includes('tàu') ||
-    h.includes('dwt') ||
     h.includes('gt') ||
     h.includes('công suất') ||
     h.includes('diện tích') ||
@@ -112,27 +113,27 @@ function getReportColumnConfig(header: string): ReportColumnConfig {
     h.includes('trọng tải') ||
     h.includes('sản lượng')
   ) {
-    baseWidth = 180;
+    width = 170;
     align = 'right';
   } else if (h.includes('danh mục') || h.includes('tên')) {
-    baseWidth = 340;
+    width = 340;
     align = 'left';
   } else if (h.includes('đơn vị') || h.includes('khai thác') || h.includes('quản lý')) {
-    baseWidth = 280;
+    width = 260;
     align = 'left';
   } else if (h.includes('địa điểm') || h.includes('vị trí') || h.includes('phạm vi')) {
-    baseWidth = 240;
+    width = 220;
     align = 'left';
   } else if (h.includes('công năng') || h.includes('chức năng') || h.includes('loại')) {
-    baseWidth = 240;
+    width = 220;
     align = 'left';
   } else if (h.includes('ghi chú')) {
-    baseWidth = 180;
+    width = 150;
     align = 'left';
   }
 
   return {
-    width: Math.max(baseWidth, headerMinWidth),
+    width,
     align,
   };
 }
@@ -678,30 +679,48 @@ export default function ReportViewer() {
             background: colors.bodyBg,
             color: colors.sidebarBg,
             fontWeight: fontWeightBold,
-            fontSize: 13.5,
-            whiteSpace: 'nowrap',
+            fontSize: 13,
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+            lineHeight: 1.35,
             textTransform: 'uppercase' as const,
-            padding: '12px 14px',
+            padding: '10px 12px',
             textAlign: colConfig.align,
+            verticalAlign: 'middle',
           },
         }),
-        onCell: () => ({
-          style: {
-            fontSize: 13.5,
-            color: textPrimary,
-            textAlign: colConfig.align,
-            padding: '10px 14px',
-          },
-        }),
+        onCell: (record: Record<string, unknown>) => {
+          const isBold = record._rowType === 'section' || record._rowType === 'port'
+            || (record['STT'] && record['STT'] !== '' && !isNaN(Number(record['STT'])));
+          return {
+            style: {
+              fontSize: 13.5,
+              fontWeight: isBold ? 700 : 400,
+              color: textPrimary,
+              textAlign: colConfig.align,
+              padding: '10px 14px',
+            },
+          };
+        },
         render: (value: unknown) => {
           if (value === null || value === undefined) return '-';
-          if (typeof value === 'number') return value.toLocaleString('vi-VN');
+          if (typeof value === 'number') {
+            if (value === 0) return '-';
+            return value.toLocaleString('vi-VN');
+          }
           if (typeof value === 'boolean') return value ? <Badge status="success" text="Đúng" /> : <Badge status="error" text="Sai" />;
-          const strVal = String(value);
-          if (strVal === '') return '';
+          let strVal = String(value);
+          // Strip leading non-breaking spaces & whitespace for catalog straight alignment
+          if (colConfig.align === 'left' && (h.includes('danh mục') || h.includes('tên'))) {
+            strVal = strVal.replace(/^[\s\u00A0]+/, '');
+          }
+          const trimmed = strVal.trim();
+          if (trimmed === '' || (colConfig.align === 'right' && (trimmed === '0' || trimmed === '0.0' || trimmed === '0,0'))) {
+            return '-';
+          }
           return (
             <span
-              title={strVal.trim()}
+              title={trimmed}
               style={{
                 display: 'inline-block',
                 maxWidth: '100%',
