@@ -61,7 +61,8 @@ import {
 import { triggerBlobDownload } from "../../components/shared/infrastructureAttachmentUtils";
 import { useAuthStore } from "../../store/authStore";
 import * as themeTokenChk from "../../themetokenchk";
-import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
+import { fontWeightBold } from "../../themetokenchk";
+import { ThemeTokenProvider, type ThemeToken } from "../../context/ThemeTokenContext";
 import PortTerminalAssetForm, {
   type FormValues,
 } from "./PortTerminalAssetForm";
@@ -426,7 +427,10 @@ function PortTerminalAssetList({
             cleanPath = `/${cleanPath}`;
           }
           const res = await api.get(cleanPath, { responseType: "blob" });
-          const contentType = res.headers?.["content-type"] || "application/octet-stream";
+          const contentType =
+            (typeof res.headers?.["content-type"] === "string"
+              ? res.headers["content-type"]
+              : "") || "application/octet-stream";
           const blob = new Blob([res.data], { type: contentType });
           triggerBlobDownload(blob, fileName || "tai-lieu");
           toast.success(`Đã tải xuống tệp: ${fileName}`);
@@ -744,11 +748,11 @@ function PortTerminalAssetList({
         render: (v) => orgName.get(v as string) || '',
       },
       {
-        title: 'MÃ BẾN CẢNG',
-        dataIndex: 'berthId',
+        title: screenConfig.relationColumnTitle,
+        dataIndex: screenConfig.relationField as keyof PortTerminalAsset,
         type: TableColumnType.Text,
-        width: 190,
-        render: (v) => berthMap.get(v as string)?.berthCode || '',
+        width: screenConfig.relationColumnWidth || 190,
+        render: (v) => relatedInfrastructureMap.get(v as string)?.code || '',
       },
       {
         title: 'LOẠI TÀI SẢN',
@@ -809,10 +813,22 @@ function PortTerminalAssetList({
         width: 340,
       },
       {
+        title: 'NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
+        dataIndex: 'portAuthorityApprovalContent',
+        type: TableColumnType.Text,
+        width: 280,
+      },
+      {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
         dataIndex: 'departmentApprovedByName',
         type: TableColumnType.TwoLine,
         subField: 'departmentApprovedAt',
+        width: 260,
+      },
+      {
+        title: 'NỘI DUNG PHÊ DUYỆT CẤP CỤC',
+        dataIndex: 'departmentApprovalContent',
+        type: TableColumnType.Text,
         width: 260,
       },
     ],
@@ -824,7 +840,7 @@ function PortTerminalAssetList({
       { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
       { key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) },
     ],
-  }), [berthMap, openDetail, openEdit, operationForm, orgName]);
+  }), [openDetail, openEdit, operationForm, orgName, relatedInfrastructureMap, screenConfig]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
@@ -839,16 +855,8 @@ function PortTerminalAssetList({
     [openCreate],
   );
 
-  const customBerthTokens = useMemo(
-    () => ({
-      ...themeTokenChk,
-      fontSizeMd: 13.5,
-    }),
-    [],
-  );
-
   return (
-    <ThemeTokenProvider tokens={customBerthTokens}>
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
       <div
         className={`berth-page-wrapper ${screenConfig.pageClassName}`}
         style={{

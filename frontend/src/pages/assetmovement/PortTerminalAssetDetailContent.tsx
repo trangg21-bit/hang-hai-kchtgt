@@ -113,15 +113,6 @@ const fmtDateTime = (v?: string | null): string =>
 const fmtDate = (v?: string | null): string =>
   v ? dayjs(v).format("DD/MM/YYYY") : "";
 
-const parseStoredDetails = (value?: string): Record<string, unknown> => {
-  if (!value) return {};
-  try {
-    return JSON.parse(value) as Record<string, unknown>;
-  } catch {
-    return { notes: value };
-  }
-};
-
 export default function PortTerminalAssetDetailContent({
   open,
   selectedRecord: r,
@@ -215,13 +206,17 @@ export default function PortTerminalAssetDetailContent({
               },
               {
                 label: "Mã bến cảng",
-                value: (rec) =>
-                  berthMap.get(rec.berthId || "")?.berthCode || "",
+                value: (rec) => {
+                  const item = infraMap.get(rec.berthId || "") as { code?: string; berthCode?: string } | undefined;
+                  return item?.code || item?.berthCode || "";
+                },
               },
               {
                 label: "Tên bến cảng",
-                value: (rec) =>
-                  berthMap.get(rec.berthId || "")?.berthName || "",
+                value: (rec) => {
+                  const item = infraMap.get(rec.berthId || "") as { name?: string; berthName?: string } | undefined;
+                  return item?.name || item?.berthName || "";
+                },
               },
               {
                 name: "assetType",
@@ -871,7 +866,6 @@ export default function PortTerminalAssetDetailContent({
     r,
     orgName,
     infraMap,
-    screenConfig,
     detailAttachments,
     exploitationRows,
     combinedAdjustments,
