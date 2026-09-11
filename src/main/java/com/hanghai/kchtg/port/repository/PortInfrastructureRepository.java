@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface PortInfrastructureRepository extends JpaRepository<PortInfrastructure, Long> {
+public interface PortInfrastructureRepository extends JpaRepository<PortInfrastructure, UUID> {
 
     List<PortInfrastructure> findByPortIdOrderByStt(UUID portId);
 

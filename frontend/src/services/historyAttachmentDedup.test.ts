@@ -51,7 +51,7 @@ describe('CommonHistoryDrawer VTS zone parsing', () => {
     expect(isZoneField('Tên hệ thống')).toBe(false);
   });
 
-  it('parses deleted zone as oldValue: zoneName, newValue: —', () => {
+  it('parses deleted zone as oldValue: zoneName, newValue: empty', () => {
     const item = {
       changedField: 'Vùng VTS',
       previousValue: 'Xóa bb (aa)',
@@ -59,11 +59,11 @@ describe('CommonHistoryDrawer VTS zone parsing', () => {
     };
     const changes = parseHistoryEntryChanges(item);
     expect(changes).toEqual([
-      { field: 'Vùng VTS', oldValue: 'bb (aa)', newValue: '—' },
+      { field: 'Vùng VTS', oldValue: 'bb (aa)', newValue: '' },
     ]);
   });
 
-  it('parses added zone as oldValue: —, newValue: zoneName', () => {
+  it('parses added zone as oldValue: empty, newValue: zoneName', () => {
     const item = {
       changedField: 'Vùng VTS',
       previousValue: '—',
@@ -71,7 +71,7 @@ describe('CommonHistoryDrawer VTS zone parsing', () => {
     };
     const changes = parseHistoryEntryChanges(item);
     expect(changes).toEqual([
-      { field: 'Vùng VTS', oldValue: '—', newValue: 'ff (ee)' },
+      { field: 'Vùng VTS', oldValue: '', newValue: 'ff (ee)' },
     ]);
   });
 
@@ -83,8 +83,8 @@ describe('CommonHistoryDrawer VTS zone parsing', () => {
     };
     const changes = parseHistoryEntryChanges(item);
     expect(changes).toEqual([
-      { field: 'Vùng VTS', oldValue: 'bb (aa)', newValue: '—' },
-      { field: 'Vùng VTS', oldValue: '—', newValue: 'ff (ee)' },
+      { field: 'Vùng VTS', oldValue: 'bb (aa)', newValue: '' },
+      { field: 'Vùng VTS', oldValue: '', newValue: 'ff (ee)' },
     ]);
   });
 
@@ -109,7 +109,7 @@ describe('CommonHistoryDrawer VTS zone parsing', () => {
     const changes = parseHistoryEntryChanges(item);
     expect(changes).toEqual([
       { field: 'Vùng VTS', oldValue: 'b (a)', newValue: 'bb (aa)' },
-      { field: 'Tài liệu đính kèm', oldValue: '—', newValue: 'Logo.png' },
+      { field: 'Tài liệu đính kèm', oldValue: '', newValue: 'Logo.png' },
     ]);
   });
 });

@@ -47,6 +47,7 @@ public class PortResponse {
     private List<PortCoordinateDto> coordinateList;
     private List<PortInfrastructureDto> infrastructureList;
     private List<PortAttachmentDto> attachments;
+    private List<PortWharfAreaDto> wharfAreas;
 
     // ── Extended fields (V53) ────────────────────────────────────────
 

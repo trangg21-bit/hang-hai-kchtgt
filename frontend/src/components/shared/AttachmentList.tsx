@@ -165,7 +165,7 @@ export default function AttachmentList({
           title="Nhấn để tải tệp xuống"
         >
           <FileOutlined style={{ color: textTertiary }} />
-          <span>{text || '—'}</span>
+          <span>{text || ''}</span>
         </a>
       ),
     },

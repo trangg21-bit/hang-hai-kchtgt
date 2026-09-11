@@ -5,6 +5,10 @@ import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperatingUnit;
 import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -37,6 +41,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -56,6 +61,7 @@ public class DaiTtdhService {
     private final AttachmentRepository attachmentRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
+    private final InfrastructureHistoryRepository historyRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -225,11 +231,13 @@ public class DaiTtdhService {
                 request.getLongitude(), request.getLatitude());
 
         // Lịch sử thay đổi (chuẩn Cảng biển / Bến cảng):
-        // Ghi nhận biến động trường khi chỉnh sửa bản ghi
-        recordGisHistory(saved, oldGeomType, oldWkt,
-                request.getGeometryType(), coordinates, actorId);
-        changeHistoryService.recordChanges("DAI_TTDH", saved.getId().toString(),
-                actorId, snapshot, saved);
+        // Chỉ ghi nhận biến động trường khi bản ghi ĐÃ ĐƯỢC PHÊ DUYỆT
+        if (wasApproved) {
+            recordGisHistory(saved, oldGeomType, oldWkt,
+                    request.getGeometryType(), coordinates, actorId);
+            changeHistoryService.recordChanges("DAI_TTDH", saved.getId().toString(),
+                    actorId, snapshot, saved);
+        }
         evictAfterCommit();
 
         return toResponse(saved);
@@ -280,12 +288,7 @@ public class DaiTtdhService {
         }
         entity.softDelete(SecurityUtils.getCurrentUserId());
         daiTtdhRepository.save(entity);
-        // Lịch sử xóa mềm (chuẩn Cảng biển): changedField "Trạng thái" → "Đã xóa", actor = user thật
-        String deleteActorId = currentActorId(null);
-        if (deleteActorId != null) {
-            changeHistoryService.insertChangeRecord("DAI_TTDH", entity.getId(), "Trạng thái",
-                    null, "Đã xóa", deleteActorId);
-        }
+        // Không ghi lịch sử khi xóa bản ghi Nháp (chuẩn Cảng biển / Bến cảng / Cầu cảng).
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -303,10 +306,18 @@ public class DaiTtdhService {
     // ── Attachment methods ──────────────────────────────────────────────
 
     @Transactional
-    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
         }
+
+        // Snapshot danh sách file TRƯỚC KHI upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         List<Attachment> savedAttachments = new java.util.ArrayList<>();
@@ -338,14 +349,28 @@ public class DaiTtdhService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
-            uploadedFileNames.add(originalFilename);
+            if (!"unknown".equals(originalFilename) && !originalFilename.isBlank()) {
+                uploadedFileNames.add(originalFilename.trim());
+            }
         }
 
-        // Lịch sử "Tài liệu đính kèm" gộp thành 1 bản ghi (chuẩn Cầu cảng PierService / Cảng biển PortService)
-        if (!uploadedFileNames.isEmpty()) {
-            recordAttachmentHistory(entityType, entityId, String.join(", ", uploadedFileNames), true, userId);
+        // Snapshot danh sách file SAU KHI upload
+        List<Attachment> allAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String newFilesSummary = allAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        if ("DAI_TTDH".equalsIgnoreCase(entityType) && !uploadedFileNames.isEmpty()) {
+            recordDaiTtdhAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, String.join(", ", uploadedFileNames),
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(Collectors.toList());
+    }
+
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+        return uploadAttachments(entityType, entityId, files, userId, null);
     }
 
     public List<AttachmentDto> listAttachments(String entityType, UUID entityId) {
@@ -354,20 +379,44 @@ public class DaiTtdhService {
     }
 
     @Transactional
-    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId, Boolean skipHistory) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
+        String fileName = attachment.getFileName();
+
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
-        // Lịch sử "Tài liệu đính kèm" (chuẩn Cảng biển)
-        recordAttachmentHistory(entityType, entityId, attachment.getFileName(), false, userId);
+
+        // Ghi lịch sử file đính kèm chỉ khi đài TTDH đã được duyệt (chuẩn Cảng biển / Bến cảng)
+        if ("DAI_TTDH".equalsIgnoreCase(entityType)) {
+            recordDaiTtdhAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, fileName,
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
+        }
+    }
+
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+        deleteAttachment(entityType, entityId, attachmentId, userId, null);
     }
 
     public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
@@ -397,7 +446,7 @@ public class DaiTtdhService {
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";
@@ -434,50 +483,52 @@ public class DaiTtdhService {
         String newWkt = coordinates.trim();
         if (oldWkt == null || !newWkt.equals(oldWkt.trim())) {
             changeHistoryService.insertChangeRecord("DAI_TTDH", saved.getId(), "Tọa độ GIS",
-                    (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                    (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                     newWkt, actorId);
         }
         GisGeometryType newGeomType = requestGeomType != null ? requestGeomType : GisGeometryType.POINT;
         if (requestGeomType != null && oldGeomType != newGeomType) {
             changeHistoryService.insertChangeRecord("DAI_TTDH", saved.getId(), "Loại đối tượng GIS",
-                    oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                    oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                     geometryTypeLabel(newGeomType), actorId);
         }
     }
 
     /**
-     * Lịch sử "Tài liệu đính kèm" (chuẩn Cảng biển ShipRepairYardService) —
-     * ghi nhận khi thêm hoặc xóa tệp đính kèm.
+     * Lịch sử "File đính kèm" (chuẩn Cảng biển / Bến cảng / Cầu cảng) —
+     * Ghi nhận dạng bảng thay đổi (oldVal -> newVal), chỉ khi đài TTDH đã được duyệt.
      */
-    private void recordAttachmentHistory(String entityType, UUID entityId, String fileName, boolean uploaded, UUID userId) {
-        try {
-            if (entityType == null || !InfrastructureType.DAI_TTDH.name().equalsIgnoreCase(entityType)) {
-                return;
-            }
-            DaiTtdh daiTtdh = daiTtdhRepository.findById(entityId).orElse(null);
-            if (daiTtdh == null) {
-                return;
-            }
-            String actorId = userId != null ? userId.toString() : currentActorId(null);
-            if (actorId == null) {
-                org.springframework.security.core.Authentication auth =
-                        org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-                if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
-                    actorId = auth.getName();
-                }
-            }
-            if (actorId == null) {
-                actorId = "system";
-            }
-            String name = fileName != null ? fileName : "không rõ tên";
-            changeHistoryService.insertChangeRecord("DAI_TTDH", entityId, "Tài liệu đính kèm",
-                    uploaded ? "—" : name,
-                    uploaded ? name : "—",
-                    actorId);
-        } catch (Exception e) {
-            log.warn("Không ghi được lịch sử file đính kèm DaiTtdh (entityType={}, entityId={}): {}",
-                    entityType, entityId, e.getMessage());
+    private void recordDaiTtdhAttachmentHistory(UUID daiTtdhId, String oldFilesSummary, String newFilesSummary,
+                                                String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
+        if (Boolean.TRUE.equals(skipHistory)) {
+            return;
         }
+        DaiTtdh entity = daiTtdhRepository.findById(daiTtdhId).orElse(null);
+        if (entity == null) return;
+        ApprovalStatus st = entity.getApprovalStatus();
+        if (st != ApprovalStatus.APPROVED && st != ApprovalStatus.APPROVED_LEVEL2) {
+            return;
+        }
+
+        String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+        String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+        if (Objects.equals(oldVal, newVal)) {
+            return;
+        }
+
+        boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(daiTtdhId)
+                .refType(InfrastructureType.DAI_TTDH)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(status)
+                .approvedBy(SecurityUtils.getCurrentUserId())
+                .approvedDate(LocalDateTime.now())
+                .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
+                .changedField("File đính kèm")
+                .previousValue(oldVal)
+                .newValue(newVal)
+                .build());
     }
 
     // ── GIS ─────────────────────────────────────────────────────────────
@@ -513,7 +564,7 @@ public class DaiTtdhService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
                 entity.setSubmittedForApprovalBy(actor);
                 break;

@@ -37,6 +37,7 @@ public class DocumentController {
             @PathVariable @NotBlank String entityType,
             @PathVariable @NotBlank String entityId,
             @RequestParam("file") MultipartFile file,
+            @RequestParam(name = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) throws IOException {
 
         if (file.isEmpty()) {
@@ -45,14 +46,14 @@ public class DocumentController {
         }
 
         String uploadedBy = authentication.getName();
-        log.info("[DocumentController] Upload file: entityType={}, entityId={}, fileName={}, size={}, uploadedBy={}",
-                entityType, entityId, file.getOriginalFilename(), file.getSize(), uploadedBy);
+        log.info("[DocumentController] Upload file: entityType={}, entityId={}, fileName={}, size={}, uploadedBy={}, skipHistory={}",
+                entityType, entityId, file.getOriginalFilename(), file.getSize(), uploadedBy, skipHistory);
 
         String contentType = file.getContentType();
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
 
         DocumentResponse response = documentService.uploadFile(
-                entityType, entityId, file, originalFilename, contentType, file.getSize(), uploadedBy);
+                entityType, entityId, file, originalFilename, contentType, file.getSize(), uploadedBy, skipHistory);
 
         return ResponseEntity.ok(ApiResponse.success("Đính kèm file thành công", response));
     }
@@ -85,11 +86,12 @@ public class DocumentController {
     @PreAuthorize("@auth.check(authentication, 'data:update')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id,
+            @RequestParam(name = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
 
         String userId = authentication.getName();
-        log.info("[DocumentController] Delete attachment: id={}, userId={}", id, userId);
-        documentService.delete(id, userId);
+        log.info("[DocumentController] Delete attachment: id={}, userId={}, skipHistory={}", id, userId, skipHistory);
+        documentService.delete(id, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa tài liệu đính kèm thành công", null));
     }
 }

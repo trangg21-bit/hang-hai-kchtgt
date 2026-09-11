@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useState, useEffect, useMemo, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
 import { Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, type InputNumberProps } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
@@ -265,6 +265,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
 
   const currentUser = useAuthStore((s) => s.user);
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
+  const initialApprovalStatusRef = useRef<string | undefined>(undefined);
 
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedPortId = Form.useWatch('portId', form);
@@ -362,7 +363,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       });
     }
   }, [watchedGeometryType, isEdit, form]);
-  useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d: Pier = await pierCRUD.findById(id); form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, navigationChannelId: d.navigationChannelId, pierCode: d.pierCode, pierName: d.pierName, length: normalizeSafeNumber(d.length), width: normalizeSafeNumber(d.width), operationalFunction: splitOperationalFunctionCodes(d.operationalFunction), operationalStatus: d.operationalStatus, province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: normalizeSafeNumber(d.currentWaterDepth), designBedElevation: normalizeSafeNumber(d.designBedElevation), publishedVesselDWT: normalizeSafeNumber(d.publishedVesselDWT), maintenanceApprovalDate: parseMonthYear(d.maintenanceApprovalDate), safetyAssessmentDate: parseMonthYear(d.safetyAssessmentDate), lastInspectionDate: parseMonthYear(d.lastInspectionDate), operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: normalizeSafeNumber(d.cargoThroughput), receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || undefined, mapSymbolId: d.mapSymbolId || d.bieuTuongId, coordinateSystem: d.geometryType ? (d as any).coordinateSystem : undefined, displayRule: (d as any).displayRule });
+  useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d: Pier = await pierCRUD.findById(id); initialApprovalStatusRef.current = d.approvalStatus; form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, navigationChannelId: d.navigationChannelId, pierCode: d.pierCode, pierName: d.pierName, length: normalizeSafeNumber(d.length), width: normalizeSafeNumber(d.width), operationalFunction: splitOperationalFunctionCodes(d.operationalFunction), operationalStatus: d.operationalStatus, province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: normalizeSafeNumber(d.currentWaterDepth), designBedElevation: normalizeSafeNumber(d.designBedElevation), publishedVesselDWT: normalizeSafeNumber(d.publishedVesselDWT), maintenanceApprovalDate: parseMonthYear(d.maintenanceApprovalDate), safetyAssessmentDate: parseMonthYear(d.safetyAssessmentDate), lastInspectionDate: parseMonthYear(d.lastInspectionDate), operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: normalizeSafeNumber(d.cargoThroughput), receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || undefined, mapSymbolId: d.mapSymbolId || d.bieuTuongId, coordinateSystem: d.geometryType ? (d as any).coordinateSystem : undefined, displayRule: (d as any).displayRule });
         const pts = d.coordinates ? parseGisCoordinates({ geometryType: d.geometryType, coordinates: d.coordinates }) : [];
         if (pts.length > 0) {
           setCoordinateList(pts.map(c => {
@@ -580,8 +581,11 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     try {
       const payload: Record<string, unknown> = { pierCode: vals.pierCode?.trim(), pierName: vals.pierName?.trim(), berthId: vals.berthId, portId: vals.portId || undefined, navigationChannelId: vals.navigationChannelId || undefined, length: vals.length != null ? Number(vals.length) : undefined, width: vals.width != null ? Number(vals.width) : undefined, operationalFunction: Array.isArray(vals.operationalFunction) ? (vals.operationalFunction.length > 0 ? vals.operationalFunction.join(',') : undefined) : (vals.operationalFunction || undefined), operationalStatus: vals.operationalStatus || undefined, province: vals.province || undefined, detailedLocation: vals.detailedLocation || undefined, constructionGrade: vals.constructionGrade ?? undefined, structureType: vals.structureType ?? undefined, currentWaterDepth: vals.currentWaterDepth || undefined, designBedElevation: vals.designBedElevation || undefined, publishedVesselDWT: vals.publishedVesselDWT || undefined, maintenanceApprovalDate: fmtMonthYear(vals.maintenanceApprovalDate), safetyAssessmentDate: fmtMonthYear(vals.safetyAssessmentDate), lastInspectionDate: fmtMonthYear(vals.lastInspectionDate), operatingPierCount: vals.operatingPierCount ?? undefined, publishedPierCount: vals.publishedPierCount ?? undefined, investmentAgreementPierCount: vals.investmentAgreementPierCount ?? undefined, cargoThroughput: vals.cargoThroughput != null ? Number(vals.cargoThroughput) : undefined, receivesLargeVessel: vals.receivesLargeVessel ?? undefined, documentNumber: vals.documentNumber || undefined, documentDate: vals.documentDate ? dayjs(vals.documentDate).format('YYYY-MM-DD') : undefined, openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DD') : undefined, openingDecision: vals.openingDecision || undefined, investmentAgreementDoc: vals.investmentAgreementDoc || undefined, waterAreaNeutralScope: vals.waterAreaNeutralScope || undefined, geometryType: vals.geometryType || undefined, mapSymbolId: vals.mapSymbolId || undefined, coordinateSystem: vals.coordinateSystem, displayRule: vals.displayRule };
       // Process GPS coordinates into WKT format (chuẩn VTS CHK — serializeCoordinatesToWkt)
-      (payload as any).latitude = validCoords.length > 0 ? validCoords[0].latitude : undefined;
-      (payload as any).longitude = validCoords.length > 0 ? validCoords[0].longitude : undefined;
+      if (validCoords.length > 0) {
+        const first = validCoords[0];
+        (payload as any).latitude = (first.latD ?? 0) + (first.latM ?? 0) / 60 + (first.latS ?? 0) / 3600;
+        (payload as any).longitude = (first.lngD ?? 0) + (first.lngM ?? 0) / 60 + (first.lngS ?? 0) / 3600;
+      }
       (payload as any).coordinates = wktCoordinates || undefined;
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
@@ -591,12 +595,13 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
         createdId = id;
       }
       else { const res = await api.post('/v1/piers', payload); createdId = res.data?.data?.id ?? res.data?.id; console.log('Created pier with id:', createdId, 'response:', res.data); }
+      const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
       if (createdId && pendingDeletedAttachmentIds.length > 0) {
-        await Promise.all(
-          pendingDeletedAttachmentIds.map((attId) =>
-            api.delete(`/v1/piers/${createdId}/attachments/${attId}`).catch(() => {})
-          )
-        );
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/piers/${createdId}/attachments/${attId}`, {
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
+        }
       }
       if (createdId && uploadedFiles.length > 0) {
         const newFiles = uploadedFiles.filter((fi: any) => fi && fi.originFileObj);
@@ -604,7 +609,10 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
           const fd = new FormData();
           newFiles.forEach((fi: any) => fd.append('files', fi.originFileObj as File));
           try {
-            await api.post(`/v1/piers/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await api.post(`/v1/piers/${createdId}/attachments`, fd, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+              params: { skipHistory: !wasApproved },
+            });
             toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
           } catch {
             toast.error('Tải lên tệp đính kèm thất bại');

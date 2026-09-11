@@ -228,13 +228,6 @@ public class BuoyStationService {
             entity = phaoRepo.save(entity);
         }
 
-        // Actor thật từ SecurityContext — lúc create() auditor chưa chạy nên getCreatedBy() null,
-        // fallback "system" trước đây khiến ChangeHistoryService lấy username (không phải UUID)
-        // → approvedBy null → drawer lịch sử hiện "—". Chỉ fallback khi không có user đăng nhập.
-        UUID creatorId = SecurityUtils.getCurrentUserId();
-        changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
-                creatorId != null ? creatorId.toString() : "system",
-                new BuoyStation(), entity);
         notificationService.sendApprovalNotificationPhao(entity);
 
         return toResponse(entity);
@@ -308,6 +301,37 @@ public class BuoyStationService {
         if (request.getLastRepairDate() != null) entity.setLastRepairDate(request.getLastRepairDate());
         if (request.getCondition() != null) entity.setCondition(request.getCondition());
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
+        boolean wasApproved = StationStatus.PUBLISHED.equals(entity.getStatus())
+                || ApprovalStatus.APPROVED.equals(entity.getApprovalStatus());
+
+        if (wasApproved) {
+            entity.setStatus(StationStatus.PUBLISHED);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if ("submit".equalsIgnoreCase(request.getAction())) {
+            entity.setStatus(StationStatus.PENDING_APPROVAL);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
+            entity.setSentApprovedBy(SecurityUtils.getCurrentUserId());
+            entity.setSentApprovedDate(LocalDateTime.now());
+            entity.setRejectionReason(null);
+        } else if ("draft".equalsIgnoreCase(request.getAction())) {
+            entity.setStatus(StationStatus.DRAFT);
+            entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        } else if ("approved".equalsIgnoreCase(request.getAction())) {
+            entity.setStatus(StationStatus.PUBLISHED);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+            UUID uid = SecurityUtils.getCurrentUserId();
+            entity.setSentApprovedBy(uid);
+            entity.setSentApprovedDate(LocalDateTime.now());
+            entity.setApprovedBy(uid);
+            entity.setApprovedDate(LocalDateTime.now());
+            entity.setLevel1ApprovedBy(uid);
+            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            entity.setLevel2ApprovedBy(uid);
+            entity.setLevel2ApprovedDate(LocalDateTime.now());
+            entity.setRejectionReason(null);
+        }
 
         phaoRepo.save(entity);
 
@@ -315,11 +339,6 @@ public class BuoyStationService {
         // auth.getName() (= username, không phải UUID) → approvedBy null → drawer lịch sử hiện "—".
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
-
-        // Hồ sơ đã duyệt hoàn toàn (PUBLISHED / APPROVED) mới ghi lịch sử thay đổi vị trí GIS
-        // (chuẩn PortService/BuoyService: chỉ ghi khi hồ sơ đã được duyệt).
-        boolean wasApproved = StationStatus.PUBLISHED.equals(entity.getStatus())
-                || ApprovalStatus.APPROVED.equals(entity.getApprovalStatus());
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -362,20 +381,22 @@ public class BuoyStationService {
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                             geometryTypeLabel(geomType), actorId);
                 }
             }
         }
 
-        changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
-                actorId, snapshot, entity);
+        if (wasApproved) {
+            changeHistoryService.recordChanges("BuoyStation", entity.getId().toString(),
+                    actorId, snapshot, entity);
+        }
 
         return toResponse(entity);
     }
@@ -397,6 +418,11 @@ public class BuoyStationService {
                     "Không thể xóa nhà trạm phao đang chờ phê duyệt");
         }
 
+        boolean wasApproved = StationStatus.PUBLISHED.equals(entity.getStatus())
+                || StationStatus.APPROVED_L2.equals(entity.getStatus())
+                || ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
+                || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus());
+
         entity.setStatus(StationStatus.DELETED);
         entity.softDelete(SecurityUtils.getCurrentUserId());
         phaoRepo.save(entity);
@@ -404,8 +430,10 @@ public class BuoyStationService {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
 
-        changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Trạng thái", null, "Đã xóa",
-                SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system");
+        if (wasApproved) {
+            changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Trạng thái", null, "Đã xóa",
+                    SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system");
+        }
 
         pointObjectSyncService.hideFromMapPhao(entity);
     }
@@ -495,8 +523,10 @@ public class BuoyStationService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus(StationStatus.REJECTED);
-        entity.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
+        boolean isL2 = entity.getStatus() == StationStatus.APPROVED_L1
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1;
+        entity.setStatus(isL2 ? StationStatus.REJECTED_L2 : StationStatus.REJECTED_L1);
+        entity.setApprovalStatus(isL2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);
 
@@ -509,7 +539,7 @@ public class BuoyStationService {
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi, mirror PortService). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";

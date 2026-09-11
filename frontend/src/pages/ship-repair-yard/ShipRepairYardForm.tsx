@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs,
+  Row, Col, Form, Input, Select, InputNumber, type InputNumberProps, Tabs,
   Button, Space, Modal,
 } from 'antd';
 import type { UploadFile } from 'antd';
@@ -10,10 +10,10 @@ import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
-  textTertiary, borderDefault, actionPrimary, statusCritical,
+  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
-  surfaceCard, sidebarBg, readonlyInputStyle,
+  surfaceCard, sidebarBg, readonlyInputStyle, textAreaStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -21,7 +21,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { shipRepairYardCRUD, portCRUD, pierCRUD } from '../../services/portService';
@@ -38,6 +38,22 @@ const labelProps = (text: string) => ({
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với BerthForm / BuoyForm
 const sectionBoxStyle: React.CSSProperties = {
@@ -257,27 +273,13 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [shipRepairYardCodeLoading, setShipRepairYardCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
+  const initialApprovalStatusRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedPortId = Form.useWatch('portId', form);
 
-  /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới. */
-  const useMaxReached = (name: string, max: number): boolean => {
-    const raw = Form.useWatch(name, form) ?? '';
-    const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
-    return len >= max;
-  };
-  const atMax = {
-    shipRepairYardName: useMaxReached('shipRepairYardName', 255),
-    detailedLocation: useMaxReached('detailedLocation', 500),
-    vesselDwt: useMaxReached('vesselDwt', 20),
-    remarks: useMaxReached('remarks', 2000),
-    workshopArea: useMaxReached('workshopArea', 20),
-    slipwayCount: useMaxReached('slipwayCount', 5),
-  };
 
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
@@ -292,7 +294,8 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
-  const [, setExistingFiles] = useState<any[]>([]);
+  const [existingFiles, setExistingFiles] = useState<any[]>([]);
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -331,11 +334,26 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     } catch { setPierOptions([]); }
   };
 
-  useEffect(() => { if (watchedOrgUnitId) { if (!isEdit || !form.getFieldValue('portId')) form.setFieldsValue({ portId: undefined, shipRepairYardCode: undefined, pierId: undefined }); loadPortOptions(watchedOrgUnitId); } }, [watchedOrgUnitId]);
+  useEffect(() => {
+    if (!watchedOrgUnitId) {
+      setPortOptions([]);
+      setPierOptions([]);
+      return;
+    }
+    if (!isEdit || !form.getFieldValue('portId')) {
+      form.setFieldsValue({ portId: undefined, shipRepairYardCode: undefined, pierId: undefined });
+    }
+    loadPortOptions(watchedOrgUnitId);
+  }, [watchedOrgUnitId]);
 
   useEffect(() => {
-    if (!watchedPortId) return;
-    form.setFieldsValue({ pierId: undefined });
+    if (!watchedPortId) {
+      setPierOptions([]);
+      return;
+    }
+    if (!isEdit || !form.getFieldValue('pierId')) {
+      form.setFieldsValue({ pierId: undefined });
+    }
     loadPierOptions(watchedPortId);
     if (isEdit && editPortIdRef.current === watchedPortId) return;
     setShipRepairYardCodeLoading(true);
@@ -344,8 +362,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       .catch(() => {})
       .finally(() => setShipRepairYardCodeLoading(false));
   }, [watchedPortId]);
-
-  useEffect(() => { if (!isSystemAdmin && !isEdit) { api.get('/users/me').then(r => { const p = r.data?.data ?? r.data; if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId }); }).catch(() => {}); } }, []);
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
   useEffect(() => {
@@ -366,6 +382,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     (async () => {
       try {
         const data: any = await shipRepairYardCRUD.findById(id);
+        initialApprovalStatusRef.current = data?.approvalStatus;
         const ec = data.coordinates ? parseGisCoordinates({ geometryType: data.geometryType, coordinates: data.coordinates }) : [];
         setCoordinateList(ec.length > 0 ? ec.map(c => {
           const latDms = ddToDms(c.latitude);
@@ -388,10 +405,10 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           provinceId: data.provinceId ? VIETNAM_PROVINCES[data.provinceId - 1] ?? undefined : undefined,
           detailedLocation: data.detailedLocation,
           operationalStatus: data.operationalStatus || undefined,
-          usageFunction: data.usageFunction, workshopArea: data.workshopArea,
+          usageFunction: data.usageFunction, workshopArea: normalizeSafeNumber(data.workshopArea),
           vesselType: data.vesselType, vesselDwt: data.vesselDwt,
           businessType: data.businessType, activity: data.activity,
-          slipwayCount: data.slipwayCount, remarks: data.remarks,
+          slipwayCount: normalizeSafeNumber(data.slipwayCount), remarks: data.remarks,
           geometryType: data.geometryType || undefined, mapSymbolId: data.mapSymbolId, coordinateSystem: data.coordinateSystem, displayRule: data.displayRule,
         });
       } catch { toast.error('Không thể tải thông tin cơ sở sửa chữa, đóng tàu'); }
@@ -437,6 +454,14 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       [field === 'lat' ? 'latS' : 'lngS']: sVal,
     }; return n; });
     setGpsError(null);
+  };
+
+  const handleOrgUnitChange = () => {
+    form.setFieldsValue({ portId: undefined, pierId: undefined, shipRepairYardCode: undefined });
+    setCoordinateList([]);
+  };
+  const handlePortChange = () => {
+    form.setFieldsValue({ pierId: undefined, shipRepairYardCode: undefined });
   };
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
@@ -491,7 +516,13 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
-      const toNumber = (v: unknown): number | undefined => (v != null && !isNaN(Number(v)) ? Number(v) : undefined);
+      const toPayloadNumber = (v: unknown): number | undefined => {
+        if (v == null) return undefined;
+        const s = String(v).trim();
+        if (s === '') return undefined;
+        const num = Number(s);
+        return isNaN(num) ? undefined : num;
+      };
       const payload: Record<string, unknown> = {
         orgUnitId: values.orgUnitId, portId: values.portId,
         shipRepairYardCode: String(values.shipRepairYardCode || '').trim() || undefined, shipRepairYardName: String(values.shipRepairYardName || '').trim(),
@@ -500,12 +531,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         detailedLocation: values.detailedLocation || undefined,
         operationalStatus: values.operationalStatus || undefined,
         usageFunction: values.usageFunction || undefined,
-        workshopArea: toNumber(values.workshopArea),
+        workshopArea: toPayloadNumber(values.workshopArea),
         vesselType: values.vesselType || undefined,
         vesselDwt: values.vesselDwt || undefined,
         businessType: values.businessType || undefined,
         activity: values.activity || undefined,
-        slipwayCount: toNumber(values.slipwayCount),
+        slipwayCount: toPayloadNumber(values.slipwayCount),
         remarks: values.remarks || undefined,
         latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
         longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
@@ -519,13 +550,25 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       let createdId: string | undefined;
       if (isEdit && id) { await shipRepairYardCRUD.update({ ...payload, id } as any); createdId = id; }
       else { const res: any = await shipRepairYardCRUD.create(payload as any); createdId = res?.id ?? res?.data?.id; }
+      const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+      if (createdId && pendingDeletedAttachmentIds.length > 0) {
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/ship-repair-yard/${createdId}/attachments/${attId}`, {
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
+        }
+      }
       if (createdId && uploadedFiles.length > 0) {
-        for (const fi of uploadedFiles) {
+        const newFiles = uploadedFiles.filter((fi: any) => !!fi.originFileObj);
+        for (const fi of newFiles) {
           const of = fi.originFileObj as File;
           if (!of) continue;
           const fd = new FormData();
           fd.append('files', of);
-          await api.post(`/v1/ship-repair-yard/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => {});
+          await api.post(`/v1/ship-repair-yard/${createdId}/attachments`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
         }
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu tạm thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : 'Gửi phê duyệt thành công');
@@ -538,7 +581,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, isEdit, id, onFinish, onSubmittingChange, coordinateList, uploadedFiles]);
+  }, [form, isEdit, id, onFinish, onSubmittingChange, coordinateList, uploadedFiles, pendingDeletedAttachmentIds, existingFiles]);
 
   const tabItems = [
     // Tab 1: Thông tin chung
@@ -554,14 +597,14 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         <Row gutter={[24, 0]}>
           <Col span={12}>
             <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý không được để trống' }]}>
-              <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} />
+              <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Thuộc cảng biển không được để trống' }]}>
               <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'}
-                loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions}
-                showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} />
+                loading={loadingPorts} disabled={isEdit || !watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions}
+                showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" onChange={handlePortChange} style={selectStyle} />
             </Form.Item>
           </Col>
         </Row>
@@ -569,7 +612,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           <Col span={12}>
             <Form.Item name="pierId" {...labelProps('Thuộc cầu cảng')} style={{ marginBottom: spaceFormField }}>
               <Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : pierOptions.length === 0 ? 'Không có cầu cảng được phê duyệt' : 'Chọn cầu cảng...'}
-                disabled={!watchedPortId || pierOptions.length === 0} options={pierOptions} showSearch allowClear optionFilterProp="label" notFoundContent="Không có cầu cảng được phê duyệt" style={selectStyle} />
+                disabled={isEdit || !watchedPortId || pierOptions.length === 0} options={pierOptions} showSearch allowClear optionFilterProp="label" notFoundContent="Không có cầu cảng được phê duyệt" style={selectStyle} />
             </Form.Item>
           </Col>
           <Col span={12}>
@@ -581,8 +624,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         <Row gutter={[24, 0]}>
           <Col span={12}>
             <Form.Item name="shipRepairYardName" {...labelProps('Tên cơ sở sửa chữa, đóng tàu')} style={{ marginBottom: spaceFormField }}
-              rules={[{ required: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-              validateStatus={atMax.shipRepairYardName ? 'error' : undefined} help={atMax.shipRepairYardName ? 'Đã đạt tối đa 255 ký tự' : undefined}>
+              rules={[{ required: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
               <Input placeholder="Nhập tên cơ sở sửa chữa, đóng tàu" maxLength={255} showCount style={inputStyle} />
             </Form.Item>
           </Col>
@@ -596,8 +638,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}>
-            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm chi tiết không được để trống' }]}
-              validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm chi tiết không được để trống' }]}>
               <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
             </Form.Item>
           </Col>
@@ -624,9 +665,8 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="workshopArea" {...labelProps('Diện tích nhà xưởng, kho bãi')} style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.workshopArea ? 'error' : undefined} help={atMax.workshopArea ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-              <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+            <Form.Item name="workshopArea" {...labelProps('Diện tích nhà xưởng, kho bãi')} style={{ marginBottom: spaceFormField }}>
+              <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
             </Form.Item>
           </Col>
         </Row>
@@ -637,8 +677,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="vesselDwt" {...labelProps('Cỡ tàu')} style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.vesselDwt ? 'error' : undefined} help={atMax.vesselDwt ? 'Đã đạt tối đa 20 ký tự' : undefined}>
+            <Form.Item name="vesselDwt" {...labelProps('Cỡ tàu')} style={{ marginBottom: spaceFormField }}>
               <Input placeholder="Nhập cỡ tàu" maxLength={20} showCount style={inputStyle} />
             </Form.Item>
           </Col>
@@ -657,17 +696,15 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}>
-            <Form.Item name="slipwayCount" {...labelProps('Số lượng triền đà')} style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.slipwayCount ? 'error' : undefined} help={atMax.slipwayCount ? 'Đã đạt tối đa 5 ký tự' : undefined}>
-              <InputNumber min={0} placeholder="0" maxLength={5} style={numberInputStyle} />
+            <Form.Item name="slipwayCount" {...labelProps('Số lượng triền đà')} style={{ marginBottom: spaceFormField }}>
+              <NumberInputWithCount min={0} step={1} precision={0} placeholder="0" maxLength={5} style={numberInputStyle} />
             </Form.Item>
           </Col>
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={24}>
-            <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}
-              validateStatus={atMax.remarks ? 'error' : undefined} help={atMax.remarks ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-              <Input.TextArea rows={2} maxLength={2000} showCount placeholder="Nhập ghi chú" style={{ borderRadius: radiusMd, height: 'auto' }} />
+            <Form.Item name="remarks" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
+              <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
             </Form.Item>
           </Col>
         </Row>
@@ -846,9 +883,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           }))}
           readonly={false}
           userMap={userMap}
-          onUpload={(file) => { handleBeforeUpload(file); return false; }}
-          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => (x.uid || (x as any).id) !== uid)); }}
-          onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
+          onDelete={(uid) => {
+            setUploadedFiles((prev) => prev.filter((x: any) => (x.uid || x.id) !== uid));
+            if (existingFiles.some((ef: any) => (ef.id || ef.uid) === uid)) {
+              setPendingDeletedAttachmentIds((prev) => [...prev, uid]);
+            }
+          }}
         />
       ),
     },

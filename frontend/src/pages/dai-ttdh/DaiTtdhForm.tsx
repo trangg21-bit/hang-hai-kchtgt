@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-refresh/only-export-components */
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Tabs, Row, Col, Input, Select, Form, Space, Button, Modal, InputNumber, type InputNumberProps } from 'antd';
+import { Tabs, Row, Col, Input, Select, Form, Space, Button, Modal } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -20,7 +20,6 @@ import { useAuthStore } from '../../store/authStore';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
-import { fmtInputNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
@@ -105,23 +104,6 @@ const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
 ];
-
-export type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-/** Cùng hiển thị bộ đếm số (0/n) và giới hạn như các chỉ số ở form Cầu cảng / Cảng biển. */
-export function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 // Parse WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON (chuẩn VTS CHK & Pier)
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
@@ -272,6 +254,7 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
   const [daiTtdhCodeLoading, setDaiTtdhCodeLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
+  const [existingData, setExistingData] = useState<any>(null);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage] = useState(1);
@@ -358,6 +341,7 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
     (async () => {
       try {
         const d: any = await daiTtdhCRUD.findById(id);
+        setExistingData(d);
         form.setFieldsValue({
           orgUnitId: d.orgUnitId,
           operatingUnitId: d.operatingUnitId,
@@ -640,12 +624,19 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
         createdId = res.data?.data?.id ?? res.data?.id;
       }
 
+      const wasApproved = isEdit && (
+        existingData?.approvalStatus === 'APPROVED' ||
+        existingData?.approvalStatus === 'APPROVED_LEVEL2' ||
+        existingData?.approvalStatus === 'PUBLISHED' ||
+        existingData?.approvalStatus === 'APPROVED_L2'
+      );
+
       if (createdId && pendingDeletedAttachmentIds.length > 0) {
-        await Promise.all(
-          pendingDeletedAttachmentIds.map((attId) =>
-            api.delete(`/v1/dai-ttdh/${createdId}/attachments/${attId}`).catch(() => {})
-          )
-        );
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/dai-ttdh/${createdId}/attachments/${attId}`, {
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
+        }
       }
 
       if (createdId && uploadedFiles.length > 0) {
@@ -654,7 +645,10 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
           const fd = new FormData();
           newFiles.forEach((fi: any) => fd.append('files', fi.originFileObj as File));
           try {
-            await api.post(`/v1/dai-ttdh/${createdId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+            await api.post(`/v1/dai-ttdh/${createdId}/attachments`, fd, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+              params: { skipHistory: !wasApproved },
+            });
             toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
           } catch {
             toast.error('Tải lên tệp đính kèm thất bại');
@@ -669,7 +663,7 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
     } finally {
       onSubmittingChange?.(false);
     }
-  }, [form, isEdit, id, uploadedFiles, pendingDeletedAttachmentIds, onFinish, coordinateList, onSubmittingChange]);
+  }, [form, isEdit, id, existingData, uploadedFiles, pendingDeletedAttachmentIds, onFinish, coordinateList, onSubmittingChange]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => handleSave(saveAction) }), [handleSave]);
 

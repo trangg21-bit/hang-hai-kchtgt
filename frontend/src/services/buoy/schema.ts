@@ -35,7 +35,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
 
 /** Trả về { color (semantic token), label (Tiếng Việt) } cho trạng thái duyệt phao tiêu. */
 export function buoyStatusBadge(status: string | null | undefined): { color: string; label: string } {
-  if (!status) return { color: textTertiary, label: '—' };
+  if (!status) return { color: textTertiary, label: '' };
   return APPROVAL_STYLE_MAP[status] || {
     color: textTertiary,
     label: BEACON_STATUS_MAP[status as BeaconStatus]?.label || status,

@@ -114,6 +114,8 @@ public class CreatePortRequest {
 
     private List<PortAttachmentDto> attachments;
 
+    private List<PortWharfAreaDto> wharfAreas;
+
     /**
      * Hành động: "draft" = lưu nháp (chỉ cần portName),
      * "submit" = gửi phê duyệt (yêu cầu đầy đủ province, portClass, tọa độ GPS).

@@ -209,7 +209,7 @@ function renderFormField<T extends Record<string, unknown>>(
         ? field.valueFormatter(computedVal)
         : computedVal != null
           ? String(computedVal)
-          : "—";
+          : "";
       controlNode = (
         <Input
           disabled

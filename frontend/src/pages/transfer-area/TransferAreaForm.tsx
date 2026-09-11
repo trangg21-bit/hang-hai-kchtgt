@@ -1068,13 +1068,11 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
 
       // Delete removed attachments
       if (createdId && pendingDeletedAttachmentIds.length > 0) {
-        await Promise.all(
-          pendingDeletedAttachmentIds.map((attId) =>
-            api.delete(`/v1/transfer-area/${createdId}/attachments/${attId}`, {
-              params: { skipHistory: !wasApproved },
-            }).catch(() => {})
-          )
-        );
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/transfer-area/${createdId}/attachments/${attId}`, {
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
+        }
       }
 
       // Upload newly added files

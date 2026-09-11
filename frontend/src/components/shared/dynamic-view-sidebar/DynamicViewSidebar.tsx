@@ -67,7 +67,7 @@ function formatFieldValue<T>(
   }
 
   if (rawValue == null || rawValue === "") {
-    return "—";
+    return "";
   }
 
   switch (field.type) {

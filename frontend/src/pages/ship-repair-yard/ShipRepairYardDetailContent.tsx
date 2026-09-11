@@ -24,10 +24,12 @@ import {
   statusOperational, statusAttention, statusCritical,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   formatUserDisplayName, isUuidString,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import type { ShipRepairYard } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { parseWktToCoordinates } from '../../utils/gisGeometry';
+import { fmtNum } from '../../utils/numFmt';
 
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
   const out = parseWktToCoordinates(record?.coordinates)
@@ -38,8 +40,8 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
   return out;
 };
 
-const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—');
-const fmtNumber = (v: number | null | undefined): string => (v != null ? Number(v).toLocaleString('vi-VN') : '—');
+const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '');
+const fmtNumber = (v: number | string | null | undefined): string => (v != null && v !== '' ? fmtNum(v) : '');
 
 export default function ShipRepairYardDetailContent({
   selectedRecord: r,
@@ -148,6 +150,21 @@ export default function ShipRepairYardDetailContent({
           margin-right: 4px !important;
         }
 
+        .ship-repair-yard-drawer-scope .ship-repair-yard-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label,
+        .ship-repair-yard-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label {
+          width: auto !important;
+          min-width: auto !important;
+          max-width: none !important;
+          flex-shrink: 0 !important;
+        }
+        .ship-repair-yard-drawer-scope .ship-repair-yard-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value,
+        .ship-repair-yard-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          justify-content: flex-start !important;
+          white-space: nowrap !important;
+        }
+
         .ship-repair-yard-detail-content-wrapper .chk-detail-value {
           color: #1e293b !important;
           font-size: 13.5px !important;
@@ -187,23 +204,28 @@ export default function ShipRepairYardDetailContent({
                     </div>
                   </div>
                   <div className="chk-detail-grid">
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Mã cơ sở sửa chữa, đóng tàu</span>
-                      <span className="chk-detail-value">
-                        {r.shipRepairYardCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.shipRepairYardCode}</span> : '—'}
-                      </span>
-                    </div>
+                    {(() => {
+                      const isLongCode = ((r.shipRepairYardCode || '').trim().length >= 18);
+                      return (
+                        <div className={`chk-detail-row ${isLongCode ? 'chk-detail-row--compact' : ''}`}>
+                          <span className="chk-detail-label sec-col1-label">Mã cơ sở sửa chữa, đóng tàu</span>
+                          <span className="chk-detail-value">
+                            {r.shipRepairYardCode ? <span style={{ ...statusBadgeStyle(actionPrimary), whiteSpace: 'nowrap' }}>{r.shipRepairYardCode}</span> : ''}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Tên cơ sở sửa chữa, đóng tàu</span>
                       <span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>
-                        {r.shipRepairYardName || '—'}
+                        {r.shipRepairYardName || ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Đơn vị quản lý</span>
                       <span className="chk-detail-value">
                         {(() => {
-                          const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '—';
+                          const name = orgMap.get(r.orgUnitId || '') || r.orgUnitId || '';
                           return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                         })()}
                       </span>
@@ -211,19 +233,19 @@ export default function ShipRepairYardDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Thuộc cảng biển</span>
                       <span className="chk-detail-value">
-                        {portOptions.find(o => o.value === r.portId)?.label || r.portId || '—'}
+                        {portOptions.find(o => o.value === r.portId)?.label || r.portId || ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Thuộc cầu cảng</span>
                       <span className="chk-detail-value">
-                        {pierOptions.find(o => o.value === r.pierId)?.label || r.pierName || r.pierId || '—'}
+                        {pierOptions.find(o => o.value === r.pierId)?.label || r.pierName || r.pierId || ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Địa điểm (Tỉnh/Thành phố)</span>
                       <span className="chk-detail-value">
-                        {r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '—' : '—'}
+                        {r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -237,13 +259,13 @@ export default function ShipRepairYardDetailContent({
                             SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/Vận hành' },
                           };
                           const b = s && m[s];
-                          return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '—';
+                          return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : '';
                         })()}
                       </span>
                     </div>
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-full-label">Địa điểm chi tiết</span>
-                      <span className="chk-detail-value">{r.detailedLocation || '—'}</span>
+                      <span className="chk-detail-value">{r.detailedLocation || ''}</span>
                     </div>
                   </div>
                 </div>
@@ -259,7 +281,7 @@ export default function ShipRepairYardDetailContent({
                   <div className="chk-detail-grid">
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Công năng sử dụng</span>
-                      <span className="chk-detail-value">{r.usageFunction || '—'}</span>
+                      <span className="chk-detail-value">{r.usageFunction || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Diện tích nhà xưởng, kho bãi (m²)</span>
@@ -267,19 +289,19 @@ export default function ShipRepairYardDetailContent({
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Loại tàu đóng mới, sửa chữa</span>
-                      <span className="chk-detail-value">{r.vesselType || '—'}</span>
+                      <span className="chk-detail-value">{r.vesselType || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Cỡ tàu</span>
-                      <span className="chk-detail-value">{r.vesselDwt || '—'}</span>
+                      <span className="chk-detail-value">{r.vesselDwt || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Loại hình doanh nghiệp</span>
-                      <span className="chk-detail-value">{r.businessType || '—'}</span>
+                      <span className="chk-detail-value">{r.businessType || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Hoạt động</span>
-                      <span className="chk-detail-value">{r.activity || '—'}</span>
+                      <span className="chk-detail-value">{r.activity || ''}</span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Số lượng triền đà</span>
@@ -288,7 +310,7 @@ export default function ShipRepairYardDetailContent({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-full-label">Ghi chú</span>
                       <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                        {r.remarks || '—'}
+                        {r.remarks || ''}
                       </span>
                     </div>
                   </div>
@@ -317,16 +339,26 @@ export default function ShipRepairYardDetailContent({
                   </div>
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
-                        <span className="chk-detail-value">
-                          {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
-                            <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
-                              {approvalStyleMap[r.approvalStatus].label}
+                      {(() => {
+                        const isPendingPortAuthority =
+                          r.approvalStatus === 'PENDING_APPROVAL' ||
+                          r.approvalStatus === 'CHO_PHE_DUYET' ||
+                          r.approvalStatus === 'PROPOSED' ||
+                          approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
+                          approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục');
+                        return (
+                          <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
+                            <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                            <span className="chk-detail-value">
+                              {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
+                                <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
+                                  {approvalStyleMap[r.approvalStatus].label}
+                                </span>
+                              ) : ''}
                             </span>
-                          ) : '—'}
-                        </span>
-                      </div>
+                          </div>
+                        );
+                      })()}
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
@@ -359,7 +391,7 @@ export default function ShipRepairYardDetailContent({
                       </div>
                       <div className="chk-detail-row chk-detail-row--full">
                         <span className="chk-detail-label sec-full-label">Nội dung duyệt Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{r.portAuthorityApprovalContent || '—'}</span>
+                        <span className="chk-detail-value">{r.portAuthorityApprovalContent || ''}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ duyệt cấp Cục</span>
@@ -373,7 +405,7 @@ export default function ShipRepairYardDetailContent({
                       </div>
                       <div className="chk-detail-row chk-detail-row--full">
                         <span className="chk-detail-label sec-full-label">Nội dung duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{r.departmentApprovalContent || '—'}</span>
+                        <span className="chk-detail-value">{r.departmentApprovalContent || ''}</span>
                       </div>
                     </div>
                   )}
@@ -393,7 +425,7 @@ export default function ShipRepairYardDetailContent({
                       {(() => {
                         const gt = (r as any).geometryType || '';
                         const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
-                        return m[gt] || gt || '—';
+                        return m[gt] || gt || '';
                       })()}
                     </span>
                   </div>
@@ -402,8 +434,9 @@ export default function ShipRepairYardDetailContent({
                     <span className="chk-detail-value">
                       {(() => {
                         const symId = r.mapSymbolId || '';
-                        const symName = symbolMap.get(symId) || symId || '—';
+                        const symName = symbolMap.get(symId) || symId || '';
                         const symImg = symbolImageMap.get(symId);
+                        if (!symName && !symImg) return '';
                         return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                             {symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}
@@ -415,12 +448,12 @@ export default function ShipRepairYardDetailContent({
                   </div>
                   <div className="chk-detail-row">
                     <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
-                    <span className="chk-detail-value">{r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'}</span>
+                    <span className="chk-detail-value">{r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem ? String(r.coordinateSystem) : '')}</span>
                   </div>
                   <div className="chk-detail-row">
                     <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
                     <span className="chk-detail-value">
-                      {((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'}
+                      {((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : ''}
                     </span>
                   </div>
                 </div>
@@ -443,6 +476,7 @@ export default function ShipRepairYardDetailContent({
                       <DetailTable
                         dataSource={pts.map((p) => ({ ...p }))}
                         emptyText="Chưa có tọa độ GPS nào"
+                        scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                         columns={[
                           { title: 'STT', width: 50 },
                           { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
@@ -482,67 +516,70 @@ export default function ShipRepairYardDetailContent({
             key: 'operationMaintenance',
             label: 'Vận hành & bảo trì',
             children: (
-              <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
-                <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
-                  <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
-                </button>
-                {operationOpen && (
-                  <div>
-                    <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
+              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+                <div style={{ ...sectionBoxStyle, padding: operationOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div onClick={() => setOperationOpen(!operationOpen)} style={{ ...sectionHeaderStyle, marginBottom: operationOpen ? spaceMd : 0, paddingBottom: operationOpen ? spaceSm : 0, borderBottom: operationOpen ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông tin vận hành khai thác</span></div>
+                    {operationOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
+                  </div>
+                  {operationOpen && (
                     <DetailTable
                       dataSource={operationPlanList}
                       emptyText="Chưa có dữ liệu"
                       rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
+                      scrollY={160}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
                         { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.startTime || rec.start || null) },
                         { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.endTime || rec.end || null) },
                       ]}
                     />
+                  )}
+                </div>
+                <div style={{ ...sectionBoxStyle, padding: maintenanceOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div onClick={() => setMaintenanceOpen(!maintenanceOpen)} style={{ ...sectionHeaderStyle, marginBottom: maintenanceOpen ? spaceMd : 0, paddingBottom: maintenanceOpen ? spaceSm : 0, borderBottom: maintenanceOpen ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông tin bảo trì</span></div>
+                    {maintenanceOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                   </div>
-                )}
-                <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
-                  <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
-                </button>
-                {maintenanceOpen && (
-                  <div>
-                    <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
+                  {maintenanceOpen && (
                     <DetailTable
                       dataSource={maintenancePlanList}
                       emptyText="Chưa có dữ liệu"
                       rowKey={(rec: any) => rec.id || rec.planCode || rec.code}
+                      scrollY={160}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '—' },
+                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
                         { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.start || rec.startDate || null) },
                         { title: 'Thời gian kết thúc', dataIndex: 'endTime', key: 'end', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.end || rec.endDate || null) },
                       ]}
                     />
+                  )}
+                </div>
+                <div style={{ ...sectionBoxStyle, padding: incidentOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                  <div onClick={() => setIncidentOpen(!incidentOpen)} style={{ ...sectionHeaderStyle, marginBottom: incidentOpen ? spaceMd : 0, paddingBottom: incidentOpen ? spaceSm : 0, borderBottom: incidentOpen ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', userSelect: 'none' }}>
+                    <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông tin sự cố</span></div>
+                    {incidentOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                   </div>
-                )}
-                <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
-                  <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
-                </button>
-                {incidentOpen && (
-                  <div>
-                    <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
+                  {incidentOpen && (
                     <DetailTable
                       dataSource={incidentList}
                       emptyText="Chưa có dữ liệu"
                       rowKey={(rec: any) => rec.id || rec.incidentCode || rec.code}
+                      scrollY={160}
                       columns={[
                         { title: 'STT', width: 50, align: 'center' as const },
-                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '—' },
-                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '—' },
-                        { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '—' },
+                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string, rec: any) => v || rec.code || '' },
+                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string, rec: any) => v || rec.type || '' },
+                        { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v: string) => v || '' },
                         { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v: string, rec: any) => fmtDateTime(v || rec.time || null) },
                       ]}
                     />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ),
           },

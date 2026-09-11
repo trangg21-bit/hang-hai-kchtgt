@@ -27,12 +27,14 @@ import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-un
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
-import { lineObjectService } from '../../services/lineObjectService';
-import { LineObject } from '../../types/lineObject';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { formatHistoryNumber } from '../../utils/numFmt';
+import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import { OPERATIONAL_FUNCTION_OPTIONS, formatOperationalFunction } from '../../constants/operationalFunction';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
@@ -98,7 +100,10 @@ const fontSizeMd = 13.5;
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Lưu tạm' },
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
   APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
@@ -115,27 +120,28 @@ const STRUCTURE_TYPE_OPTIONS = [
 
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
-  // 7 trạng thái chuẩn — approval-2-level-spec.md mục 3.1.
-  // Trước đây tab "Chờ Cảng vụ duyệt" lại truy vấn APPROVED_LEVEL1 (hồ sơ đã qua vòng 1),
-  // tab "Chờ Cục duyệt" truy vấn APPROVED_LEVEL2 (mã legacy = Đã duyệt, luôn rỗng),
-  // và thiếu hẳn tab cho hồ sơ đang chờ vòng 1.
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
-  all: undefined, DRAFT: 'DRAFT', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
-  APPROVED_LEVEL2: 'APPROVED_LEVEL2', APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  all: undefined,
+  DRAFT: 'DRAFT',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
+  APPROVED: 'APPROVED',
+  REJECTED_LEVEL1: 'REJECTED_LEVEL1',
+  REJECTED_LEVEL2: 'REJECTED_LEVEL2',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '';
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
@@ -143,7 +149,9 @@ function formatDate(dateStr: string | null | undefined): string {
 
 const historyFieldLabels: Record<string, string> = {
   berthCode: 'Mã bến cảng', berthName: 'Tên bến cảng', portId: 'Thuộc cảng biển',
-  waterway: 'Thuộc luồng hàng hải', waterwayId: 'Thuộc luồng hàng hải', operator: 'Đơn vị khai thác', provinceId: 'Tỉnh/Thành phố',
+  waterway: 'Thuộc luồng hàng hải', waterwayId: 'Thuộc luồng hàng hải', operator: 'Đơn vị khai thác',
+  operatingOrgId: 'Đơn vị khai thác', operating_org_id: 'Đơn vị khai thác',
+  provinceId: 'Tỉnh/Thành phố',
   detailedLocation: 'Địa điểm chi tiết', structureType: 'Loại kết cấu bến cảng',
   operationalFunction: 'Công năng khai thác', totalArea: 'Tổng diện tích',
   designThroughput: 'Năng lực thông qua thiết kế', currentThroughput: 'Năng lực thông qua hiện trạng',
@@ -160,6 +168,9 @@ const historyFieldLabels: Record<string, string> = {
   departmentApprovalContent: 'Nội dung phê duyệt cấp Cục',
   portAuthorityApprovalContent: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
   'Trạng thái': 'Hành động',
+  attachments: 'File đính kèm',
+  'Tài liệu đính kèm': 'File đính kèm',
+  'File đính kèm': 'File đính kèm',
 };
 function normalizeHistoryKey(value: string): string {
   return (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -174,9 +185,28 @@ export function historyFieldName(fn: string): string {
   return fn;
 }
 
-export function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>): string {
-  if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '(trống)';
+export function historyFieldValue(
+  fn: string,
+  val: string | null,
+  orgMap?: Map<string, string>,
+  symbolMap?: Map<string, string>,
+  portMap?: Map<string, string>,
+  waterwayMap?: Map<string, string>,
+  operatingOrgMap?: Map<string, string>
+): string {
+  if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
   const normKey = normalizeHistoryKey(fn);
+
+  if (normKey === 'operatingorgid' || normKey === 'operator' || normKey === 'donvikhaithac' || normKey === 'don vi khai thac') {
+    const org = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === val);
+    if (org) return org.name;
+    if (operatingOrgMap && operatingOrgMap.get(val)) return operatingOrgMap.get(val)!;
+    if (orgMap) {
+      const full = orgMap.get(val);
+      return full ? full.split(' - ').pop() || full : val;
+    }
+    return val;
+  }
 
   if ((normKey === 'orgunitid' || normKey === 'donviquanly' || normKey === 'don vi quan ly' || normKey === 'don vi') && orgMap) {
     const full = orgMap.get(val);
@@ -187,6 +217,9 @@ export function historyFieldValue(fn: string, val: string | null, orgMap?: Map<s
   }
   if ((normKey === 'portid' || normKey === 'cangbien' || normKey === 'cang bien' || normKey === 'thuoc cang bien') && portMap) {
     return portMap.get(val) || val;
+  }
+  if ((normKey === 'waterwayid' || normKey === 'waterway' || normKey === 'navigationchannelid' || normKey === 'luonghanghai' || normKey === 'luong hang hai' || normKey === 'thuoc luong hang hai') && waterwayMap) {
+    return waterwayMap.get(val) || val;
   }
   if (normKey === 'approvalstatus' || normKey === 'trangthai' || normKey === 'trang thai' || normKey === 'trang thai phe duyet') {
     const m: Record<string, string> = {
@@ -239,6 +272,9 @@ export function historyFieldValue(fn: string, val: string | null, orgMap?: Map<s
     const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
     return m[val.trim()] || val;
   }
+  if (normKey === 'operationalfunction' || normKey === 'congnangkhaithac' || normKey === 'cong nang khai thac') {
+    return formatOperationalFunction(val, '') || val;
+  }
   if (normKey === 'openingannouncementdate' || normKey.endsWith('at') || normKey.endsWith('date')) {
     try {
       return dayjs(val).format('DD/MM/YYYY HH:mm');
@@ -254,7 +290,9 @@ export function formatBerthHistoryValue(
   raw: string | null,
   orgMap?: Map<string, string>,
   symbolMap?: Map<string, string>,
-  portMap?: Map<string, string>
+  portMap?: Map<string, string>,
+  waterwayMap?: Map<string, string>,
+  operatingOrgMap?: Map<string, string>
 ): string | null {
   if (raw === null || raw === '(null)' || raw === '') return null;
   const t = raw.trim();
@@ -263,8 +301,12 @@ export function formatBerthHistoryValue(
     const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
     return `${parts.length} công trình hạ tầng`;
   }
-  const mapped = historyFieldValue(fn, raw, orgMap, symbolMap, portMap);
-  if (mapped !== raw && mapped !== '' && mapped !== '(trống)') {
+  if (fn === 'operationalFunction' || normalizeHistoryKey(fn) === 'congnangkhaithac' || normalizeHistoryKey(fn) === 'cong nang khai thac') {
+    const mapped = formatOperationalFunction(raw, '');
+    return mapped || null;
+  }
+  const mapped = historyFieldValue(fn, raw, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap);
+  if (mapped !== raw && mapped !== '') {
     return mapped;
   }
   if (/^-?\d+(\.\d+)?$/.test(t) || t === '100000000000000000000' || t === '10000000000000000000' || t.includes('100.000.000.000.000.000.000') || t.includes('100,000,000,000,000,000,000')) {
@@ -368,7 +410,7 @@ export default function BerthList() {
   const [filterCode, setFilterCode] = useState('');
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
-  const [filterOperationalFunction, setFilterOperationalFunction] = useState('');
+  const [filterOperationalFunction, setFilterOperationalFunction] = useState<string | undefined>();
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterProvince, setFilterProvince] = useState('');
@@ -396,10 +438,33 @@ export default function BerthList() {
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
+  const [operatingOrgMap, setOperatingOrgMap] = useState<Map<string, string>>(() => {
+    const m = new Map<string, string>();
+    DEFAULT_OPERATING_ORGANIZATIONS.forEach((o) => m.set(o.id, o.name));
+    return m;
+  });
 
   useEffect(() => {
-    lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 })
-      .then((r) => { const m = new Map<string, string>(); (r.data || []).forEach((l: any) => { m.set(l.id, l.name || l.code); }); setWaterwayMap(m); })
+    api.get('/common/options/operating-units').then(r => {
+      const list = r.data?.data;
+      if (Array.isArray(list) && list.length) {
+        setOperatingOrgMap(prev => {
+          const next = new Map(prev);
+          list.forEach((o: any) => { if (o.id && o.name) next.set(o.id, o.name); });
+          return next;
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — không dùng GIS LineObject (đồng bộ chuẩn Cầu cảng)
+  useEffect(() => {
+    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
+      .then((r) => {
+        const m = new Map<string, string>();
+        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        setWaterwayMap(m);
+      })
       .catch(() => {});
   }, []);
   const orgMap = useMemo(() => {
@@ -421,6 +486,7 @@ export default function BerthList() {
 
   // ── Drawer state ────────────────────────────────────────────────
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
   const [editBerthId, setEditBerthId] = useState<string | undefined>();
   const [editBerthName, setEditBerthName] = useState('');
   const [editBerthRecord, setEditBerthRecord] = useState<Berth | null>(null);
@@ -480,115 +546,76 @@ export default function BerthList() {
     finally { setHistoryLoading(false); }
   }, []);
 
-  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'berthCode', 'berthName', 'waterway', 'berthType', 'length', 'width', 'channelDepth', 'operationalFunction', 'operationalStatus', 'provinceId', 'detailedLocation', 'coordinateSystem', 'displayRule', 'mapSymbolId', 'operator', 'totalArea', 'designThroughput', 'currentThroughput', 'maxVesselSize', 'plannedThroughput', 'latestCargoVolume', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreement', 'structureType'];
+  const HISTORY_FIELD_ORDER = [
+    'orgUnitId', 'portId', 'berthCode', 'berthName', 'waterway', 'berthType', 'length', 'width', 'channelDepth',
+    'operationalFunction', 'operationalStatus', 'provinceId', 'detailedLocation', 'coordinateSystem', 'displayRule',
+    'mapSymbolId', 'operator', 'operatingOrgId', 'totalArea', 'designThroughput', 'currentThroughput', 'maxVesselSize',
+    'plannedThroughput', 'latestCargoVolume', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreement',
+    'structureType', 'File đính kèm', 'Tài liệu đính kèm', 'attachments'
+  ];
 
   const renderBerthHistoryTimeline = (records: any[]) => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-    for (const r of sorted) {
+    const filtered = (records || []).filter((r: any) => {
       if (q) {
-        const fn = (r.fieldName || '').toLowerCase();
-        const ov = (r.oldValue || '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const lb = historyFieldName(r.fieldName || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap, portMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap, portMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
+        const fn = (r.fieldName || r.changedField || '').toLowerCase();
+        const ov = (r.oldValue || r.previousValue || '').toLowerCase();
+        const nv = (r.newValue || r.value || '').toLowerCase();
+        const lb = historyFieldName(r.fieldName || r.changedField || '').toLowerCase();
+        const od = historyFieldValue(r.fieldName || r.changedField, r.oldValue || r.previousValue, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap).toLowerCase();
+        const nd = historyFieldValue(r.fieldName || r.changedField, r.newValue || r.value, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) return false;
       }
       if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '');
-        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
-        if (historyTo && cd.substring(0, 10) > historyTo) continue;
+        const cd = (r.changedAt || r.createdAt || r.approvedDate || '');
+        if (historyFrom && cd.substring(0, 10) < historyFrom) return false;
+        if (historyTo && cd.substring(0, 10) > historyTo) return false;
       }
-      const ts = r.changedAt || r.createdAt || '';
-      const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
-    }
-    if (groups.length === 0) return (
-      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-      </div>
-    );
-    const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
-    return (
-      <div>{groups.map((g, gi) => {
-        const rec0 = g.items[0] || {};
-        const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
+      return true;
+    });
+
+    return renderStandardHistoryCards({
+      records: filtered,
+      fieldLabels: historyFieldLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'mapSymbolId' && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        if ((fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') && raw) {
+          const files = String(raw)
+            .split(/\s*,\s*/)
+            .map((f) => f.trim())
+            .filter((f) => !isBlankOrDash(f));
+          if (files.length > 0) {
+            return (
+              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                {files.map((file, idx) => (
+                  <span key={idx} style={{ wordBreak: 'break-all' }}>
+                    {file}
+                  </span>
+                ))}
+              </span>
+            );
+          }
+        }
+        const formatted = historyFieldValue(fn, raw, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
-        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
-        const barColor = actionPrimary;
-        const changes = g.items.map((item: any) => ({ field: item.fieldName || '—', oldValue: item.oldValue ?? null, newValue: item.newValue ?? null }));
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-        const orderedChanges = [...changes].sort((a: any, b: any) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
-        const formatHistoryValue = (fn: string, raw: string | null) =>
-          formatBerthHistoryValue(fn, raw, orgMap, symbolMap, portMap);
-        if (orderedChanges.length === 0) return null;
-        return (
-          <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : '—'}
-                </Typography.Text>
-                <span style={{ flexShrink: 0 }}>
-                {(() => { const am = resolveHistoryActionMeta(g, changes); return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: am.bg, color: am.color, whiteSpace: 'nowrap' }}>{am.label}</span>; })()}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Người cập nhật: {g.actor || '—'}
-                </Typography.Text>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Đơn vị: {unitName}
-                </Typography.Text>
-              </div>
-            </div>
-            <div style={historyInfoCardStyle}>
-              <div style={historyAccentBarStyle(barColor)} />
-              <Typography.Text style={historyInfoTitleStyle}>
-                {informationTitle}
-              </Typography.Text>
-              {orderedChanges.length > 0 ? <div>{orderedChanges.map((change, ri: number) => {
-                const fn = change.field;
-                const ov = formatHistoryValue(fn, change.oldValue);
-                const nv = formatHistoryValue(fn, change.newValue);
-                const renderCell = (rawVal: string | null) => {
-                  if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
-                    const img = symbolImageMap.get(rawVal);
-                    const name = symbolMap.get(rawVal) || rawVal;
-                    return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}{name}</span>;
-                  }
-                  return null;
-                };
-                return isCreate ? (
-                  <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
-                  </div>
-                ) : (
-                  <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={historyOldValueStyle}>{renderCell(change.oldValue) ?? (ov ?? '—')}</span>
-                    <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{renderCell(change.newValue) ?? (nv ?? '—')}</span>
-                  </div>
-                );
-              })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
-            </div>
-          </div>
-        );
-      })}</div>
-    );
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+      emptyMessage: q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
+    });
   };
 
   // ── Load organizations ──────────────────────────────────────────
@@ -735,7 +762,7 @@ export default function BerthList() {
     const defaultOrg = defaultOrgUnitId.current;
     setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterName(''); setFilterCode(''); setFilterPortId(undefined); setFilterWaterwayId(undefined);
-    setFilterOperationalFunction('');
+    setFilterOperationalFunction(undefined);
     setFilterStructureType(undefined); setFilterOperationalStatus(undefined);
     setFilterProvince('');
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
@@ -818,6 +845,7 @@ export default function BerthList() {
           setEditBerthId(linkedRecordId);
           setEditBerthName(record.berthName || '');
           setEditBerthRecord(record);
+          setEditDrawerOpen(true);
         }
       })
       .catch((error: unknown) => {
@@ -847,12 +875,9 @@ export default function BerthList() {
   }, [notifyEmbeddedActionClosed]);
 
   const closeEditDrawer = useCallback(() => {
-    setEditBerthId(undefined);
-    setEditBerthName('');
-    setEditBerthRecord(null);
-    updateForm.resetFields();
+    setEditDrawerOpen(false);
     notifyEmbeddedActionClosed();
-  }, [notifyEmbeddedActionClosed, updateForm]);
+  }, [notifyEmbeddedActionClosed]);
 
   const ddToDms = (dd: number): { d: number; m: number; s: number } => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -877,6 +902,8 @@ export default function BerthList() {
       toast.success('Đã xóa bến cảng');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData();
       void fetchCounts();
@@ -890,10 +917,12 @@ export default function BerthList() {
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: Berth, content?: string) => {
     try {
-      const cap = record.approvalStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
+      const cap = (record.approvalStatus === 'APPROVED_LEVEL1' || record.approvalStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
       await berthApproval.approve(record.id, cap, content || 'Đã phê duyệt');
       toast.success('Đã phê duyệt bến cảng');
       setApproveModalOpen(false); setApprovingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
@@ -905,6 +934,8 @@ export default function BerthList() {
       await berthCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
       toast.success('Đã gửi phê duyệt bến cảng');
       setSubmitModalOpen(false); setSubmittingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
@@ -921,9 +952,12 @@ export default function BerthList() {
     if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
     if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
     try {
-      await berthApproval.reject(rejectingRecord.id, 'CANG_VU', reason);
+      const cap = (rejectingRecord.approvalStatus === 'APPROVED_LEVEL1' || rejectingRecord.approvalStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
+      await berthApproval.reject(rejectingRecord.id, cap, reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
@@ -937,6 +971,37 @@ export default function BerthList() {
     }
     return actions;
   }, [hasPerm]);
+
+  // ── rowActions callback (Port pattern) ──────────────────────────
+  // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
+  const rowActions = useCallback(
+    (record: Berth) => {
+      const actions: any[] = [
+        { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
+      ];
+      const st = record.approvalStatus || '';
+      // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
+      const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'berth', extraApprovePerms: ['berth:approve'] });
+      if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); setEditBerthRecord(record); setEditDrawerOpen(true); } });
+      if (['DRAFT','NHAP'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      if (['REJECTED_LEVEL1','REJECTED_LEVEL2','REJECTED','TU_CHOI'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
+      // Lịch sử — luôn hiển thị khi có quyền
+      if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      // Phê duyệt / Từ chối — theo trạng thái 2 cấp
+      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET'].includes(st) && (hasPerm('berth:approvec1') || hasPerm('berth:approve'))) {
+        actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+        actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
+      }
+      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && (hasPerm('berth:approvec2') || hasPerm('berth:approve'))) {
+        actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
+        actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
+      }
+      // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
+      if (hasPerm('berth:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+      return actions;
+    },
+    [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
+  );
 
   // ── Filter panel content ────────────────────────────────────────
   // F-018: Bộ lọc cơ bản (luôn hiển thị) + Nâng cao (toggle)
@@ -1008,9 +1073,9 @@ export default function BerthList() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
-            <Input placeholder="Tìm theo công năng..." allowClear value={filterOperationalFunction}
-              onChange={(e) => { setFilterOperationalFunction(e.target.value); setPage(1); }}
-              style={{ borderRadius: radiusPill, height: 40 }} />
+            <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} allowClear showSearch optionFilterProp="label" placeholder="Chọn công năng khai thác"
+              options={OPERATIONAL_FUNCTION_OPTIONS} value={filterOperationalFunction || undefined}
+              onChange={(v) => { setFilterOperationalFunction(v || undefined); setPage(1); }} />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
@@ -1039,78 +1104,86 @@ export default function BerthList() {
     color: tab.color, active: activeTab === tab.key,
   }));
 
-  // ── rowActions callback (Port pattern) ──────────────────────────
-  // ── rowActions callback (Port pattern) ──────────────────────────
-  // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
-  const rowActions = useCallback(
-    (record: Berth) => {
-      const actions: any[] = [
-        { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
-      ];
-      const st = record.approvalStatus || '';
-      // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
-      const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'berth', extraApprovePerms: ['berth:approve'] });
-      if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); setEditBerthRecord(record); } });
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      // Lịch sử — luôn hiển thị khi có quyền
-      if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
-      // Phê duyệt / Từ chối — theo trạng thái
-      if (hasPerm('berth:approve') && ['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st)) { actions.push({ key: 'approve', label: st === 'APPROVED_LEVEL2' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } }); actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) }); }
-      // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
-      if (hasPerm('berth:delete') && ['DRAFT','NHAP'].includes(st)) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
-      return actions;
-    },
-    [hasPerm, openDetailDrawer, openHistory, openDeleteModal, openRejectModal],
-  );
-
   // ── Table columns (F-018 section 10.2) ────────────────────────────
   // Giá trị sort theo cột hiển thị (map id → label) để click header cột nào cũng sort đúng thứ tự nhìn thấy
   const getSortValue = useCallback((r: any, field: string): string | number => {
+    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
+    if (field === 'berthName') return r.berthName ?? '';
     if (field === 'structureType') return STRUCTURE_TYPE_OPTIONS.find(o => o.value === r.structureType)?.label ?? '';
     if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label ?? r.portId ?? '';
-    if (field === 'waterwayId') return waterwayMap.get(r.waterwayId) ?? r.waterwayId ?? '';
+    if (field === 'waterwayId') return waterwayMap.get(r.waterwayId) ?? r.waterway ?? r.waterwayId ?? '';
+    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[r.provinceId - 1] || '') : '';
+    if (field === 'operationalFunction') return formatOperationalFunction(r.operationalFunction, '');
+    if (field === 'operationalStatus') {
+      const m: Record<string, string> = {
+        OPERATIONAL: 'Đang khai thác/vận hành',
+        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+        SUSPENDED: 'Dừng khai thác/vận hành',
+      };
+      return m[r.operationalStatus || ''] || r.operationalStatus || '';
+    }
+    if (field === 'approvalStatus') {
+      const s = r.approvalStatus && (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()]);
+      return s ? s.label : (r.approvalStatus || '');
+    }
+    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
     return r[field] ?? '';
-  }, [portOptions, waterwayMap]);
+  }, [organizations, orgMap, portOptions, waterwayMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       { key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span> },
-      { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 210, fixed: 'left' as const, sortable: true, sortOrder, ellipsis: false,
+      { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
         render: (v: string, record: Berth) => (
           <div>
             <a title={v} onClick={() => openDetailDrawer(record)} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</a>
-            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.berthCode || '—'}</span>
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.berthCode || ''}</span>
           </div>
         ) },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, sortable: true, sortOrder,
-        cellTitle: (record: Berth) => resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—',
+      { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, sortable: true,
+        cellTitle: (record: Berth) => resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '',
         render: (_v: string | null, record: Berth) => {
-          const name = resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '—';
+          const name = resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '';
           return <span style={{ fontWeight: fontWeightBold }} title={name}>{name}</span>;
         } },
-      { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 240, sortable: true, sortOrder,
-        cellTitle: (record: Berth) => record.structureType != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === record.structureType)?.label || record.structureType.toString()) : '—',
-        render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '—') },
-      { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 200, sortable: true, sortOrder,
-        cellTitle: (record: Berth) => portOptions.find(o => o.value === record.portId)?.label || record.portId || '—',
-        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '—' },
-      { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true, sortOrder,
-        cellTitle: (record: Berth) => record.waterwayId ? (waterwayMap.get(record.waterwayId) || record.waterwayId) : '—',
-        render: (v?: string) => (v ? (waterwayMap.get(v) || v) : '—') },
-      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250, sortable: true, sortOrder,
-        cellTitle: (record: Berth) => record.provinceId ? (VIETNAM_PROVINCES[record.provinceId - 1] || '—') : '—',
-        render: (v: number | null) => v ? VIETNAM_PROVINCES[v - 1] : '—' },
-      { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, sortable: true, sortOrder,
-        render: (v: string | null) => v || '—' },
-      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 190, sortable: true, sortOrder,
+      { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 240, sortable: true,
+        cellTitle: (record: Berth) => record.structureType != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === record.structureType)?.label || record.structureType.toString()) : '',
+        render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '') },
+      { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 200, sortable: true,
+        cellTitle: (record: Berth) => portOptions.find(o => o.value === record.portId)?.label || record.portId || '',
+        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '' },
+      { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true,
+        cellTitle: (record: Berth) => record.waterwayId ? (waterwayMap.get(record.waterwayId) || record.waterway || record.waterwayId) : (record.waterway || ''),
+        render: (v?: string, record?: Berth) => (
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            {v ? (waterwayMap.get(v) || record?.waterway || v) : (record?.waterway || '')}
+          </span>
+        ) },
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250, sortable: true,
+        cellTitle: (record: Berth) => record.provinceId ? (VIETNAM_PROVINCES[record.provinceId - 1] || '') : '',
+        render: (v: number | null) => v ? (VIETNAM_PROVINCES[v - 1] || '') : '' },
+      { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, ellipsis: true, sortable: true,
+        cellTitle: (record: Berth) => formatOperationalFunction(record.operationalFunction, ''),
+        render: (v: string | null) => (
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            {formatOperationalFunction(v, '')}
+          </span>
+        ) },
+      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 190, sortable: true,
         cellTitle: (record: Berth) => {
           const m: Record<string, string> = {
             OPERATIONAL: 'Đang khai thác/vận hành',
             NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
             SUSPENDED: 'Dừng khai thác/vận hành',
           };
-          return m[record.operationalStatus || ''] || record.operationalStatus || '—';
+          return m[record.operationalStatus || ''] || record.operationalStatus || '';
         },
         render: (v: string | null) => {
           const m: Record<string, { color: string; label: string }> = {
@@ -1118,49 +1191,63 @@ export default function BerthList() {
             NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
             SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
           };
-          const s = m[v || ''] || { color: textTertiary, label: v || '—' };
-          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+          const s = v && m[v];
+          return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         } },
     ];
 
-    // Audit columns (F-018 TKCT)
+    // Audit columns (F-018 TKCT - đồng bộ chuẩn Cầu cảng, không hiển thị cột nội dung phê duyệt trên bảng)
     const auditColumns: any[] = [
-      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-      { key: 'portAuthorityApprovalContent', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovalContent', width: 370, sortable: true, sortOrder,
-        render: (v: string | null) => v || '—' },
-      { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true, sortOrder,
-        render: (v: string | null, record: Berth) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '—'}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ) },
-      { key: 'departmentApprovalContent', label: 'Nội dung phê duyệt cấp Cục', dataIndex: 'departmentApprovalContent', width: 280, sortable: true, sortOrder,
-        render: (v: string | null) => v || '—' },
+      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true,
+        render: (v: string | null, record: Berth) => {
+          const name = userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '';
+          const date = formatDate(v);
+          if (!name && !date) return '';
+          return (
+            <div>
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && date && <br />}
+              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            </div>
+          );
+        } },
+      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true,
+        render: (v: string | null, record: Berth) => {
+          const name = userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '';
+          const date = formatDate(v);
+          if (!name && !date) return '';
+          return (
+            <div>
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && date && <br />}
+              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            </div>
+          );
+        } },
+      { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true,
+        render: (v: string | null, record: Berth) => {
+          const name = userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '';
+          const date = formatDate(v);
+          if (!name && !date) return '';
+          return (
+            <div>
+              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
+              {name && date && <br />}
+              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            </div>
+          );
+        } },
     ];
 
     const tailColumns: any[] = [
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, sortOrder, ellipsis: false,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, ellipsis: false,
         cellTitle: (record: Berth) => {
-          const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()] || { label: record.approvalStatus || '—' };
-          return s.label;
+          const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()];
+          return s ? s.label : (record.approvalStatus || '');
         },
         render: (v: string) => {
-          const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v || '—' };
-          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()]);
+          return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         } },
       {
         key: 'updatedAt',
@@ -1168,26 +1255,38 @@ export default function BerthList() {
         dataIndex: 'updatedAt',
         width: 190,
         sortable: true,
-        sortOrder,
         ellipsis: false,
-        cellTitle: (record: Berth) => `${userMap.get(record.updatedBy || '') || record.updatedBy || '—'} - ${record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}`,
-        render: (v: string | null, record: Berth) => (
-          <div style={{ lineHeight: '1.35' }}>
-            <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {userMap.get(record.updatedBy || '') || record.updatedBy || '—'}
+        cellTitle: (record: Berth) => {
+          const name = userMap.get(record.updatedBy || '') || record.updatedBy || '';
+          const date = record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '';
+          return name && date ? `${name} - ${date}` : (name || date || '');
+        },
+        render: (v: string | null, record: Berth) => {
+          const name = userMap.get(record.updatedBy || '') || record.updatedBy || '';
+          const date = v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '';
+          if (!name && !date) return '';
+          return (
+            <div style={{ lineHeight: '1.35' }}>
+              {name && (
+                <div style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {name}
+                </div>
+              )}
+              {date && (
+                <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                  {date}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        ),
+          );
+        },
       },
     ];
 
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
     return allColumns.map(col => ({
       ...col,
-      sortOrder: col.sortable && col.key === sortField ? sortOrder : undefined,
+      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
     }));
   }, [page, pageSize, portOptions, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, openDetailDrawer]);
 
@@ -1390,12 +1489,11 @@ export default function BerthList() {
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         footer={
-          <>
-
-          <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
+          <div style={drawerFooterStyle}>
+            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
             <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); berthFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); berthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: '#1BAF7A', borderColor: '#1BAF7A' }}>Lưu và phê duyệt</Button>
-          </>
+            <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); berthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+          </div>
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1415,39 +1513,100 @@ export default function BerthList() {
         rootClassName="berth-drawer-scope"
         className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
-        open={!!editBerthId}
+        open={editDrawerOpen}
         onClose={closeEditDrawer}
+        afterOpenChange={(open) => {
+          if (!open) {
+            setEditBerthId(undefined);
+            setEditBerthName('');
+            setEditBerthRecord(null);
+            updateForm.resetFields();
+          }
+        }}
         footer={
           <div style={drawerFooterStyle}>
-            {(!editBerthRecord?.approvalStatus || ['DRAFT', 'NHAP'].includes(editBerthRecord.approvalStatus.toUpperCase())) && (
-              <Button
-                onClick={() => {
-                  actionTypeRef.current = 'draft';
-                  setActionType('draft');
-                  editBerthFormRef.current?.submit('DRAFT');
-                }}
-                loading={submitting && actionType === 'draft'}
-                style={outlineButtonStyle}
-              >
-                Lưu tạm
-              </Button>
-            )}
-            <Button
-              type="primary"
-              onClick={() => {
-                actionTypeRef.current = 'approve';
-                setActionType('approve');
-                editBerthFormRef.current?.submit('APPROVED');
-              }}
-              loading={submitting && actionType === 'approve'}
-              style={{
-                ...primaryButtonStyle,
-                background: statusOperational,
-                borderColor: statusOperational,
-              }}
-            >
-              Lưu và phê duyệt
-            </Button>
+            {(() => {
+              const st = (editBerthRecord?.approvalStatus || 'DRAFT').toUpperCase();
+              if (st === 'APPROVED' || st === 'DA_PHE_DUYET') {
+                return (
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      actionTypeRef.current = 'approve';
+                      setActionType('approve');
+                      editBerthFormRef.current?.submit('APPROVED');
+                    }}
+                    loading={submitting && actionType === 'approve'}
+                    style={{
+                      ...primaryButtonStyle,
+                      background: statusOperational,
+                      borderColor: statusOperational,
+                    }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                );
+              }
+              if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'REJECTED', 'TU_CHOI'].includes(st)) {
+                return (
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      actionTypeRef.current = 'submit';
+                      setActionType('submit');
+                      editBerthFormRef.current?.submit('SUBMIT');
+                    }}
+                    loading={submitting && actionType === 'submit'}
+                    style={primaryButtonStyle}
+                  >
+                    Lưu và gửi phê duyệt
+                  </Button>
+                );
+              }
+              return (
+                <>
+                  <Button
+                    onClick={() => {
+                      actionTypeRef.current = 'draft';
+                      setActionType('draft');
+                      editBerthFormRef.current?.submit('DRAFT');
+                    }}
+                    loading={submitting && actionType === 'draft'}
+                    style={outlineButtonStyle}
+                  >
+                    Lưu tạm
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      actionTypeRef.current = 'submit';
+                      setActionType('submit');
+                      editBerthFormRef.current?.submit('SUBMIT');
+                    }}
+                    loading={submitting && actionType === 'submit'}
+                    style={primaryButtonStyle}
+                  >
+                    Lưu và gửi phê duyệt
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      actionTypeRef.current = 'approve';
+                      setActionType('approve');
+                      editBerthFormRef.current?.submit('APPROVED');
+                    }}
+                    loading={submitting && actionType === 'approve'}
+                    style={{
+                      ...primaryButtonStyle,
+                      background: statusOperational,
+                      borderColor: statusOperational,
+                    }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         }
         styles={{
