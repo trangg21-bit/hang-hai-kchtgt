@@ -259,6 +259,12 @@ export const metronicTheme: ThemeConfig = {
       defaultColor: colors.primary,
     },
 
+    Tooltip: {
+      colorBgSpotlight: colors.sidebarBg,
+      borderRadius: radius.sm,
+      fontSize: 12,
+    },
+
     Form: {
       labelColor: colors.sidebarBg,
       labelFontSize: 13,

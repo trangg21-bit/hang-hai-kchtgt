@@ -293,6 +293,17 @@ export const DRAWER_TABLE_SCROLL_Y = {
   detailGis: 'calc(100vh - 426px)',
 } as const;
 
+/**
+ * Chiều rộng chuẩn duy nhất cho toàn bộ Drawer Thêm mới, Sửa, Biến động, Xem chi tiết trên toàn hệ thống (1000px).
+ */
+export const DRAWER_WIDTH = typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000;
+export const DRAWER_FORM_WIDTH = DRAWER_WIDTH;
+
+/**
+ * Chiều rộng chuẩn duy nhất cho Modal Xác nhận Xóa trên toàn hệ thống (480px).
+ */
+export const DELETE_MODAL_WIDTH = 480;
+
 /** --info-color của chk, ghi đè --kt-info của Metronic (#7239ea tím). */
 export const statusInfo = '#0284C7';
 

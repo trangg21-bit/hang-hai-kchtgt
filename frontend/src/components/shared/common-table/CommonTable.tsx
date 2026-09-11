@@ -757,22 +757,28 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
             if (shouldEllipsis) {
               return (
-                <Tooltip title={col.showTooltip !== false ? textStr : undefined} placement="topLeft">
-                  <span
-                    style={{
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontWeight: col.bold ? fontWeightBold : undefined,
-                    }}
-                  >
-                    {textStr}
-                  </span>
-                </Tooltip>
+                <span
+                  title={col.showTooltip !== false ? textStr : undefined}
+                  style={{
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontWeight: col.bold ? fontWeightBold : undefined,
+                  }}
+                >
+                  {textStr}
+                </span>
               );
             }
-            return <span style={{ fontWeight: col.bold ? fontWeightBold : undefined }}>{textStr}</span>;
+            return (
+              <span
+                title={col.showTooltip ? textStr : undefined}
+                style={{ fontWeight: col.bold ? fontWeightBold : undefined }}
+              >
+                {textStr}
+              </span>
+            );
           }
         }
       };

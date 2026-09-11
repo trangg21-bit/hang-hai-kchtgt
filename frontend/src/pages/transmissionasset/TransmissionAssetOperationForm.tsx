@@ -360,7 +360,6 @@ export default function TransmissionAssetOperationForm({
       form={form}
       sections={sections}
       footerActions={footerActions}
-      width={720}
       rootClassName="transmission-operation-drawer"
       className="transmission-operation-drawer"
     />

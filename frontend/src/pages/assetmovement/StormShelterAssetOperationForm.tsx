@@ -318,7 +318,6 @@ export function StormShelterAssetOperationForm({
       footerActions={actions}
       actions={actions}
       onClose={onClose}
-      width={780}
     />
   );
 }

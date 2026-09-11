@@ -13,6 +13,7 @@ import {
   radiusPill,
   outlineButtonStyle,
   spaceSm,
+  DELETE_MODAL_WIDTH,
 } from '../../themetokenchk';
 
 export interface DeleteConfirmModalProps {
@@ -105,7 +106,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           Xác nhận xóa
         </Button>,
       ]}
-      width={480}
+      width={DELETE_MODAL_WIDTH}
       centered
       destroyOnHidden
     >
