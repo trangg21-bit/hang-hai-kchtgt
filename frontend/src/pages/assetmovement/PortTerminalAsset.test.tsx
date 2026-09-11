@@ -251,6 +251,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
           originalValueAfter: 48000000000,
           remainingValueBefore: 45000000000,
           remainingValueAfter: 43000000000,
+          reason: 'Thanh lý một phần',
           decreaseReason: 'Thanh lý một phần',
           status: 'APPROVED',
           createdBy: 'admin-1',
