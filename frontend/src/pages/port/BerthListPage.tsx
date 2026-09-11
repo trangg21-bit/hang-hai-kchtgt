@@ -31,7 +31,6 @@ import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
@@ -42,7 +41,6 @@ import toast from '../../components/ToastNotification';
 import BerthForm from './BerthForm';
 import BerthDetailContent from './BerthDetailContent';
 import PierDetailContent from './PierDetailContent';
-import { fmtNum } from '../../utils/numFmt';
 import {
   statusOperational,
   statusAttention,
@@ -84,7 +82,6 @@ import {
   statusBadgeStyle,
   cellTitleStyle,
   cellSubtitleStyle,
-  getRangePickerProps,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
@@ -671,14 +668,33 @@ export default function BerthList() {
     })();
   }, [managingUnitId, orgUnitReady]);
 
+  // Dùng chung toàn bộ bộ lọc nghiệp vụ cho bảng và số lượng trên status tabs.
+  // approvalStatus được thêm riêng theo tab để số đếm luôn phản ánh đúng tập dữ liệu đã lọc.
+  const getBaseSearchParams = useCallback(() => ({
+    orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
+    berthName: filterName.trim() || undefined,
+    berthCode: filterCode.trim() || undefined,
+    portId: filterPortId,
+    waterwayId: filterWaterwayId,
+    operationalFunction: filterOperationalFunction || undefined,
+    structureType: filterStructureType,
+    operationalStatus: filterOperationalStatus,
+    provinceId: filterProvince ? VIETNAM_PROVINCES.indexOf(filterProvince) + 1 : undefined,
+    updatedFrom: filterUpdatedFrom,
+    updatedTo: filterUpdatedTo,
+  }), [managingUnitId, filterName, filterCode, filterPortId, filterWaterwayId,
+    filterOperationalFunction, filterStructureType, filterOperationalStatus,
+    filterProvince, filterUpdatedFrom, filterUpdatedTo]);
+
   // ── Fetch tab counts ────────────────────────────────────────────
-  const fetchCounts = useCallback(async (orgId: string | undefined) => {
+  const fetchCounts = useCallback(async () => {
     try {
+      const baseSearchParams = getBaseSearchParams();
       const results = await Promise.allSettled(
         TAB_STATUS_LIST.map((tab) =>
           tab.key === 'all'
-            ? berthCRUD.search({ orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 })
-            : berthCRUD.search({ approvalStatus: TAB_QUERY_MAP[tab.key], orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 }),
+            ? berthCRUD.search({ ...baseSearchParams, page: 1, pageSize: 1 })
+            : berthCRUD.search({ ...baseSearchParams, approvalStatus: TAB_QUERY_MAP[tab.key], page: 1, pageSize: 1 }),
         ),
       );
       const counts: Record<string, number> = {};
@@ -688,25 +704,15 @@ export default function BerthList() {
       });
       setTabCounts(counts);
     } catch { /* silent */ }
-  }, []);
+  }, [getBaseSearchParams]);
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false); setError(null);
     try {
       const res = await berthCRUD.search({
-        orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
-        berthName: filterName.trim() || undefined,
-        berthCode: filterCode.trim() || undefined,
-        portId: filterPortId,
-        waterwayId: filterWaterwayId,
-        operationalFunction: filterOperationalFunction || undefined,
-        structureType: filterStructureType,
-        operationalStatus: filterOperationalStatus,
+        ...getBaseSearchParams(),
         approvalStatus: TAB_QUERY_MAP[activeTab],
-        provinceId: filterProvince ? VIETNAM_PROVINCES.indexOf(filterProvince) + 1 : undefined,
-        updatedFrom: filterUpdatedFrom,
-        updatedTo: filterUpdatedTo,
         page, pageSize,
       });
       setDataSource(res.data); setTotal(res.total);
@@ -714,13 +720,10 @@ export default function BerthList() {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách bến cảng'));
     } finally { setIsLoading(false); }
-  }, [managingUnitId, filterName, filterCode, filterPortId, filterWaterwayId,
-    filterOperationalFunction, filterOperationalStatus,
-    filterStructureType, filterProvince, filterUpdatedFrom, filterUpdatedTo,
-    activeTab, page, pageSize]);
+  }, [getBaseSearchParams, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(managingUnitId); }, [managingUnitId, fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
@@ -876,13 +879,13 @@ export default function BerthList() {
       setDeletingRecord(null);
       setPage(1);
       void fetchData();
-      void fetchCounts(managingUnitId);
+      void fetchCounts();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingRecord, fetchData, fetchCounts, managingUnitId]);
+  }, [deletingRecord, fetchData, fetchCounts]);
 
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: Berth, content?: string) => {
@@ -892,9 +895,9 @@ export default function BerthList() {
       toast.success('Đã phê duyệt bến cảng');
       setApproveModalOpen(false); setApprovingRecord(null);
       setPage(1);
-      void fetchData(); void fetchCounts(managingUnitId);
+      void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, managingUnitId]);
+  }, [fetchData, fetchCounts]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
@@ -903,9 +906,9 @@ export default function BerthList() {
       toast.success('Đã gửi phê duyệt bến cảng');
       setSubmitModalOpen(false); setSubmittingRecord(null);
       setPage(1);
-      void fetchData(); void fetchCounts(managingUnitId);
+      void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
-  }, [submittingRecord, fetchData, fetchCounts, managingUnitId]);
+  }, [submittingRecord, fetchData, fetchCounts]);
 
   const openRejectModal = useCallback((record: Berth) => {
     setRejectingRecord(record); setRejectReason(''); setRejectModalOpen(true);
@@ -922,9 +925,9 @@ export default function BerthList() {
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
       setPage(1);
-      void fetchData(); void fetchCounts(managingUnitId);
+      void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
-  }, [rejectingRecord, rejectReason, fetchData, fetchCounts, managingUnitId]);
+  }, [rejectingRecord, rejectReason, fetchData, fetchCounts]);
 
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
@@ -1402,7 +1405,7 @@ export default function BerthList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" initialValues={{}}>
-          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(); }} onSubmittingChange={setSubmitting} />
         </Form>
       </AppDrawer>
 
@@ -1455,7 +1458,7 @@ export default function BerthList() {
         {editBerthId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { closeEditDrawer(); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(managingUnitId); }} onSubmittingChange={setSubmitting} />
+            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { closeEditDrawer(); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </AppDrawer>
