@@ -901,7 +901,7 @@ export default function PierAssetDetailContent({
     selectedRecord,
     orgName,
     pierMap,
-    parsedAttachments,
+    detailAttachments,
     exploitationRows,
     increaseRows,
     decreaseRows,
