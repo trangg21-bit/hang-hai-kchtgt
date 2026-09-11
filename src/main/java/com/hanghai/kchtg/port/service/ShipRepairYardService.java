@@ -198,11 +198,10 @@ public class ShipRepairYardService {
         if (request.getDisplayRule() != null)
             entity.setDisplayRule(request.getDisplayRule());
 
-        if (request.getSaveAction() != null) {
+        if (wasApproved) {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
-        } else if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            // Khi chỉnh sửa: "Được phê duyệt" → quay về "Chờ cảng vụ duyệt" (APPROVED_LEVEL1)
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         }
 
         ShipRepairYard saved = shipRepairYardRepository.save(entity);
@@ -224,12 +223,12 @@ public class ShipRepairYardService {
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (wktChanged) {
                     saveShipRepairYardHistoryRow(saved.getId(), InfrastructureHistoryStatus.UPDATED, "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, null, actorId);
                 }
                 if (typeChanged) {
                     saveShipRepairYardHistoryRow(saved.getId(), InfrastructureHistoryStatus.UPDATED, "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                             geometryTypeLabel(geomType), null, actorId);
                 }
             }
@@ -257,7 +256,7 @@ public class ShipRepairYardService {
                                                 String operationalStatus, String approvalStatus,
                                                 String updatedFrom, String updatedTo) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("submittedForApprovalAt"),
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
                 Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
@@ -326,7 +325,7 @@ public class ShipRepairYardService {
     // ── Attachment methods ──────────────────────────────────────────────
 
     @Transactional
-    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
         }
@@ -334,6 +333,14 @@ public class ShipRepairYardService {
         if (existingCount + files.size() > 10) {
             throw new IllegalArgumentException("Tối đa 10 file đính kèm");
         }
+
+        // Snapshot danh sách file trước khi upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
@@ -364,11 +371,29 @@ public class ShipRepairYardService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             savedAttachments.add(attachmentRepository.save(attachment));
-            // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
-            recordAttachmentHistory(entityType, entityId, originalFilename,
-                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
         }
+
+        // Snapshot danh sách file sau khi upload
+        List<Attachment> allAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String newFilesSummary = allAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+        String uploadedNames = files.stream()
+                .map(MultipartFile::getOriginalFilename)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .collect(Collectors.joining(", "));
+
+        recordAttachmentHistory(entityType, entityId, oldFilesSummary, newFilesSummary, uploadedNames,
+                InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
+
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional
+    public List<AttachmentDto> uploadAttachments(String entityType, UUID entityId, List<MultipartFile> files, UUID userId) {
+        return uploadAttachments(entityType, entityId, files, userId, false);
     }
 
     public List<AttachmentDto> listAttachments(String entityType, UUID entityId) {
@@ -377,21 +402,41 @@ public class ShipRepairYardService {
     }
 
     @Transactional
-    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId, Boolean skipHistory) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
+
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
             log.warn("Không thể xóa file: {}", attachment.getFilePath(), e);
         }
         attachmentRepository.delete(attachment);
-        // Lịch sử "Tài liệu đính kèm" — chỉ khi hồ sơ đã duyệt (chuẩn Cảng biển)
-        recordAttachmentHistory(entityType, entityId, attachment.getFileName(),
-                InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+
+        recordAttachmentHistory(entityType, entityId, oldFilesSummary, newFilesSummary, attachment.getFileName(),
+                InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
+    }
+
+    @Transactional
+    public void deleteAttachment(String entityType, UUID entityId, UUID attachmentId, UUID userId) {
+        deleteAttachment(entityType, entityId, attachmentId, userId, false);
     }
 
     private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -581,7 +626,7 @@ public class ShipRepairYardService {
     }
 
     private static String historyFormatValue(Object value) {
-        if (value == null) return "(null)";
+        if (value == null) return null;
         if (value instanceof LocalDateTime dt) return dt.toString();
         if (value instanceof Enum<?> e) return e.name();
         return value.toString();
@@ -600,9 +645,11 @@ public class ShipRepairYardService {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(refId)
                     .refType(InfrastructureType.SHIP_REPAIR_YARD)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(status)
                     .approvedBy(actorId)
                     .approvedDate(LocalDateTime.now())
+                    .reason(reason)
                     .changedField(changedField)
                     .previousValue(previousValue)
                     .newValue(newValue)
@@ -630,7 +677,7 @@ public class ShipRepairYardService {
 
     /** Nhãn hiển thị loại hình GIS (chuẩn VTS CHK — dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";
@@ -639,11 +686,11 @@ public class ShipRepairYardService {
     }
 
     /**
-     * Ghi lịch sử "Tài liệu đính kèm" của ShipRepairYard (chuẩn Cảng biển
-     * DocumentService.recordPortAttachmentHistory) — chỉ khi hồ sơ đã duyệt.
+     * Ghi lịch sử "File đính kèm" của ShipRepairYard theo chuẩn snapshot bảng — chỉ khi hồ sơ đã duyệt.
      */
-    private void recordAttachmentHistory(String entityType, UUID entityId, String fileName,
-                                         InfrastructureHistoryStatus status) {
+    private void recordAttachmentHistory(String entityType, UUID entityId, String oldFilesSummary, String newFilesSummary,
+                                         String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
+        if (Boolean.TRUE.equals(skipHistory)) return;
         try {
             if (entityType == null || !InfrastructureType.SHIP_REPAIR_YARD.name().equalsIgnoreCase(entityType)) {
                 return;
@@ -658,12 +705,15 @@ public class ShipRepairYardService {
             if (!wasApproved) {
                 return;
             }
-            String name = fileName != null ? fileName : "không rõ tên";
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (java.util.Objects.equals(oldVal, newVal)) {
+                return;
+            }
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
-            saveShipRepairYardHistoryRow(entityId, status, "Tài liệu đính kèm",
-                    uploaded ? "—" : name,
-                    uploaded ? name : "—",
-                    (uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name,
+            saveShipRepairYardHistoryRow(entityId, status, "File đính kèm",
+                    oldVal, newVal,
+                    (uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName,
                     currentActorId());
         } catch (Exception e) {
             log.warn("Không ghi được lịch sử file đính kèm ShipRepairYard (entityType={}, entityId={}): {}",
@@ -694,7 +744,7 @@ public class ShipRepairYardService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 entity.setSubmittedForApprovalAt(LocalDateTime.now());
                 entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
                 break;

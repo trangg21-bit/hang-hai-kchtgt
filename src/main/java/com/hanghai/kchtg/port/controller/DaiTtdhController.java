@@ -147,13 +147,14 @@ public class DaiTtdhController {
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(value = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
         }
         UUID userId = SecurityUtils.getCurrentUserId();
-        List<AttachmentDto> result = daiTtdhService.uploadAttachments("DAI_TTDH", id, files, userId);
+        List<AttachmentDto> result = daiTtdhService.uploadAttachments("DAI_TTDH", id, files, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
     }
 
@@ -169,9 +170,10 @@ public class DaiTtdhController {
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,
+            @RequestParam(value = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        daiTtdhService.deleteAttachment("DAI_TTDH", id, attId, userId);
+        daiTtdhService.deleteAttachment("DAI_TTDH", id, attId, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 

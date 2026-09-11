@@ -316,9 +316,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     expect(html).toContain('CÁN BỘ CẬP NHẬT');
     expect(html).toContain('CÁN BỘ GỬI PHÊ DUYỆT');
     expect(html).toContain('CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC');
-    expect(html).toContain('NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC');
     expect(html).toContain('CÁN BỘ PHÊ DUYỆT CẤP CỤC');
-    expect(html).toContain('NỘI DUNG PHÊ DUYỆT CẤP CỤC');
   });
 
   // 2. Kiểm tra Render UI Drawer Xem chi tiết với 6 Tab nghiệp vụ

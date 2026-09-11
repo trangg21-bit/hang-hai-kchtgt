@@ -257,13 +257,13 @@ public class TransferAreaService {
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                             geometryTypeLabel(geomType), actorId);
                 }
             }
@@ -276,8 +276,8 @@ public class TransferAreaService {
                     transferAreaMooringWaterAreaRepository.findByTransferAreaId(saved.getId()));
             if (!oldMooringSummary.equals(newMooringSummary)) {
                 changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Khu nước neo buộc tàu",
-                        oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
-                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary, actorId);
+                        oldMooringSummary.isEmpty() ? null : oldMooringSummary,
+                        newMooringSummary.isEmpty() ? null : newMooringSummary, actorId);
             }
         }
         evictAfterCommit();
@@ -342,10 +342,7 @@ public class TransferAreaService {
             throw new IllegalStateException("Khu chuyển tải đã bị xóa trước đó");
         }
 
-        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cầu cảng)
-        TransferArea snapshot = buildSnapshot(entity);
         UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
 
         entity.softDelete(operatorId);
         transferAreaRepository.save(entity);
@@ -357,9 +354,7 @@ public class TransferAreaService {
             transferAreaMooringWaterAreaRepository.save(wa);
         }
 
-        // Ghi lịch sử xóa mềm vào infrastructure_history với actor thật (chuẩn Cảng biển / Cầu cảng).
-        changeHistoryService.recordChanges("TransferArea", entity.getId().toString(), actorId, snapshot, entity);
-        changeHistoryService.insertChangeRecord("TransferArea", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
+        // Không ghi lịch sử khi xóa bản ghi Nháp (chuẩn Cảng biển / Bến cảng / Cầu cảng).
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -400,6 +395,14 @@ public class TransferAreaService {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
         }
 
+        // Snapshot trước khi upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
         java.util.List<String> uploadedFilenames = new java.util.ArrayList<>();
@@ -434,8 +437,17 @@ public class TransferAreaService {
                 uploadedFilenames.add(originalFilename.trim());
             }
         }
+
+        // Snapshot sau khi upload
+        List<Attachment> allAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String newFilesSummary = allAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         if ("TRANSFER_AREA".equalsIgnoreCase(entityType) && !uploadedFilenames.isEmpty()) {
-            recordTransferAreaAttachmentHistory(entityId, String.join(", ", uploadedFilenames),
+            recordTransferAreaAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, String.join(", ", uploadedFilenames),
                     InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
@@ -467,6 +479,21 @@ public class TransferAreaService {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
         String fileName = attachment.getFileName();
+
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -474,7 +501,7 @@ public class TransferAreaService {
         }
         attachmentRepository.delete(attachment);
         if ("TRANSFER_AREA".equalsIgnoreCase(entityType)) {
-            recordTransferAreaAttachmentHistory(entityId, fileName,
+            recordTransferAreaAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, fileName,
                     InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
         }
     }
@@ -688,7 +715,7 @@ public class TransferAreaService {
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";
@@ -713,12 +740,10 @@ public class TransferAreaService {
     }
 
     /**
-     * Ghi lịch sử file đính kèm Khu chuyển tải (chuẩn Cảng biển DocumentService.recordPortAttachmentHistory:
-     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
-     * Chỉ ghi khi entityType = "TRANSFER_AREA" và hồ sơ đã duyệt. Thêm mới không ghi.
+     * Ghi lịch sử file đính kèm Khu chuyển tải theo chuẩn snapshot bảng — chỉ khi hồ sơ đã duyệt.
      */
-    private void recordTransferAreaAttachmentHistory(UUID transferAreaId, String fileName,
-                                                     InfrastructureHistoryStatus status, Boolean skipHistory) {
+    private void recordTransferAreaAttachmentHistory(UUID transferAreaId, String oldFilesSummary, String newFilesSummary,
+                                                      String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
             if (Boolean.TRUE.equals(skipHistory)) return;
             TransferArea transferArea = transferAreaRepository.findById(transferAreaId).orElse(null);
@@ -733,28 +758,36 @@ public class TransferAreaService {
                     || java.time.Duration.between(transferArea.getCreatedAt(), transferArea.getUpdatedAt()).abs().toSeconds() <= 2)) {
                 return;
             }
-            String name = fileName != null ? fileName : "không rõ tên";
+
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (java.util.Objects.equals(oldVal, newVal)) {
+                return;
+            }
+
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(transferAreaId)
                     .refType(InfrastructureType.TRANSSHIPMENT_AREA)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(uploaded ? null : name)
-                    .newValue(uploaded ? name : null)
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
+                    .changedField("File đính kèm")
+                    .previousValue(oldVal)
+                    .newValue(newVal)
                     .build());
-            log.info("Đã ghi lịch sử {} file đính kèm của Khu chuyển tải [{}]: {}",
-                    uploaded ? "tải lên" : "xóa", transferAreaId, name);
+            log.info("Đã ghi lịch sử {} file đính kèm của Khu chuyển tải [{}]: [{}] -> [{}]",
+                    uploaded ? "tải lên" : "xóa", transferAreaId, oldVal, newVal);
         } catch (Exception e) {
             log.warn("Không ghi được lịch sử file đính kèm Khu chuyển tải [{}]: {}", transferAreaId, e.getMessage());
         }
     }
 
-    private void recordTransferAreaAttachmentHistory(UUID transferAreaId, String fileName,
-                                                     InfrastructureHistoryStatus status) {
-        recordTransferAreaAttachmentHistory(transferAreaId, fileName, status, null);
+    private void recordTransferAreaAttachmentHistory(UUID transferAreaId, String oldFilesSummary, String newFilesSummary,
+                                                      String affectedFileName, InfrastructureHistoryStatus status) {
+        recordTransferAreaAttachmentHistory(transferAreaId, oldFilesSummary, newFilesSummary, affectedFileName, status, null);
     }
 
     /**

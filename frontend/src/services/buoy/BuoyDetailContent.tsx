@@ -11,6 +11,7 @@ import dayjs from 'dayjs';
 import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
+import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -22,6 +23,7 @@ import {
   spaceSm, spaceMd, spaceFormField,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   formatUserDisplayName, isUuidString,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import {
   SHAPE_LABEL_MAP,
@@ -41,7 +43,7 @@ export interface BuoyDetailContentProps {
 }
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '';
   try {
     return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss');
   } catch {
@@ -50,7 +52,7 @@ function formatDate(dateStr: string | null | undefined): string {
 }
 
 function formatDateOnly(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '';
   try {
     return dayjs(dateStr).format('DD/MM/YYYY');
   } catch {
@@ -86,11 +88,11 @@ const sectionTitleStyle: React.CSSProperties = {
   gap: 8,
 };
 
-const gridRows = (rows: Array<[string, React.ReactNode]>) => (
+const gridRows = (rows: Array<[string, React.ReactNode, boolean?, boolean?]>) => (
   <div className="chk-detail-grid">
-    {rows.map(([label, value], i) => (
-      <div key={i} className="chk-detail-row">
-        <span className="chk-detail-label">{label}</span>
+    {rows.map(([label, value, full, compact], index) => (
+      <div key={String(label)} className={`chk-detail-row ${full ? 'chk-detail-row--full' : ''} ${compact ? 'chk-detail-row--compact' : ''}`}>
+        <span className={`chk-detail-label ${full ? 'sec-full-label' : (index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label')}`}>{label}</span>
         <span className="chk-detail-value">{value}</span>
       </div>
     ))}
@@ -161,7 +163,7 @@ export default function BuoyDetailContent({
   const userName = (id: number | string | undefined | null, fallbackName?: string | null) =>
     formatUserDisplayName(id != null ? String(id) : null, fallbackName, userMap);
   const provinceName = (id: number | undefined | null) =>
-    id != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(id))?.label || String(id)) : '—';
+    id != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(id))?.label || String(id)) : '';
   const statusBadge = (() => {
     const b = buoyStatusBadge(r.status || '');
     return <span style={statusBadgeStyle(b.color)}>{b.label}</span>;
@@ -173,7 +175,114 @@ export default function BuoyDetailContent({
   };
 
   return (
-    <>
+    <div className="buoy-detail-content-wrapper">
+      <style>{`
+        .buoy-detail-content-wrapper {
+          overflow-x: hidden !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        .buoy-detail-content-wrapper,
+        .buoy-detail-content-wrapper .chk-detail-label,
+        .buoy-detail-content-wrapper .chk-detail-value,
+        .buoy-detail-content-wrapper .ant-table,
+        .buoy-detail-content-wrapper .ant-table-cell,
+        .buoy-detail-content-wrapper .ant-table-thead > tr > th,
+        .buoy-detail-content-wrapper .ant-tabs-tab,
+        .buoy-detail-content-wrapper .ant-btn,
+        .buoy-detail-content-wrapper .ant-select,
+        .buoy-detail-content-wrapper .ant-select-selection-item,
+        .buoy-detail-content-wrapper .ant-select-item {
+          font-size: 13.5px !important;
+        }
+
+        .buoy-detail-content-wrapper .chk-detail-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+          column-gap: 28px !important;
+          row-gap: 6px !important;
+          padding: 4px 0 !important;
+        }
+
+        .buoy-detail-content-wrapper .chk-detail-row {
+          display: flex !important;
+          align-items: baseline !important;
+          min-height: 28px !important;
+          line-height: 1.5 !important;
+        }
+
+        .buoy-detail-content-wrapper .chk-detail-row--full {
+          grid-column: 1 / -1 !important;
+        }
+
+        .buoy-drawer-scope .buoy-detail-content-wrapper .chk-detail-row .chk-detail-label,
+        .buoy-detail-content-wrapper .chk-detail-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+          color: ${colors.sidebarBg} !important;
+          font-weight: 600 !important;
+          font-size: 13.5px !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+        }
+
+        .buoy-drawer-scope .buoy-detail-content-wrapper .chk-detail-row .sec-col1-label,
+        .buoy-detail-content-wrapper .sec-col1-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+
+        .buoy-drawer-scope .buoy-detail-content-wrapper .chk-detail-row .sec-col2-label,
+        .buoy-detail-content-wrapper .sec-col2-label {
+          width: 250px !important;
+          min-width: 250px !important;
+          max-width: 250px !important;
+          flex-shrink: 0 !important;
+        }
+
+        .buoy-drawer-scope .buoy-detail-content-wrapper .chk-detail-row .sec-full-label,
+        .buoy-detail-content-wrapper .sec-full-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+
+        .buoy-detail-content-wrapper .chk-detail-label::after {
+          content: ':' !important;
+          margin-left: 1px !important;
+          margin-right: 4px !important;
+        }
+
+        .buoy-drawer-scope .buoy-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label,
+        .buoy-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-label {
+          width: auto !important;
+          min-width: auto !important;
+          max-width: none !important;
+          flex-shrink: 0 !important;
+        }
+        .buoy-drawer-scope .buoy-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value,
+        .buoy-detail-content-wrapper .chk-detail-row.chk-detail-row--compact .chk-detail-value {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          justify-content: flex-start !important;
+          white-space: nowrap !important;
+        }
+
+        .buoy-detail-content-wrapper .chk-detail-value {
+          color: #1e293b !important;
+          font-size: 13.5px !important;
+          flex: 1 !important;
+          min-width: 0 !important;
+          word-break: break-word !important;
+          line-height: 1.5 !important;
+        }
+      `}</style>
     <Tabs defaultActiveKey="general" tabBarStyle={{ marginBottom: 0, paddingTop: 0, position: 'sticky', top: 0, zIndex: 1, background: surfaceCard }}
       items={[
         {
@@ -188,21 +297,24 @@ export default function BuoyDetailContent({
                     <span>Thông tin cơ bản & Quản lý vận hành</span>
                   </div>
                 </div>
-                {gridRows([
-                  ['Mã phao tiêu', <span style={statusBadgeStyle(actionPrimary)}>{r.code || '—'}</span>],
-                  ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || '—'}</span>],
-                  ['Đơn vị quản lý', (() => {
-                    const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '—';
-                    return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
-                  })()],
-                  ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || '—'],
-                  ['Phân loại', r.classification || '—'],
-                  ['Phân loại phao', r.classificationBuoy || '—'],
-                  ['Phân loại tiêu', r.classificationMark || '—'],
-                  ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
-                  ['Địa điểm chi tiết', r.locationDetail || '—'],
-                  ['Tình trạng', (() => { const s = CONDITION_STYLE[r.condition || ''] || { color: textTertiary, label: r.condition || '—' }; return <span style={statusBadgeStyle(s.color)}>{s.label}</span>; })()],
-                ])}
+                {(() => {
+                  const isLongCode = ((r.code || '').trim().length >= 18);
+                  return gridRows([
+                    ['Mã phao tiêu', r.code ? <span style={{ ...statusBadgeStyle(actionPrimary), whiteSpace: 'nowrap' }}>{r.code}</span> : '', false, isLongCode],
+                    ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || ''}</span>],
+                    ['Đơn vị quản lý', (() => {
+                      const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '';
+                      return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                    })()],
+                    ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || ''],
+                    ['Phân loại', r.classification || ''],
+                    ['Phân loại phao', r.classificationBuoy || ''],
+                    ['Phân loại tiêu', r.classificationMark || ''],
+                    ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
+                    ['Tình trạng', (() => { const s = r.condition ? CONDITION_STYLE[r.condition] : null; return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : ''; })()],
+                    ['Địa điểm chi tiết', r.locationDetail || '', true],
+                  ]);
+                })()}
               </div>
 
               {/* ── Section 2: Thông số kỹ thuật & Quy mô thân phao / tháp đèn ── */}
@@ -214,20 +326,20 @@ export default function BuoyDetailContent({
                   </div>
                 </div>
                 {gridRows([
-                  ['Hình dạng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : '—'],
-                  ['Kết cấu', r.structure || '—'],
-                  ['Diện tích m²', r.area != null ? r.area : '—'],
-                  ['Chiều cao thân phao m', r.bodyHeight != null ? r.bodyHeight : '—'],
-                  ['Đường kính phao m', r.diameter != null ? r.diameter : '—'],
-                  ['Đèn biển', r.beaconLight || '—'],
-                  ['Chiều cao tháp đèn', r.towerHeight != null ? r.towerHeight : '—'],
-                  ['Chiều cao tâm sáng', r.lightHeight != null ? r.lightHeight : '—'],
-                  ['Chủng loại đèn', r.lightModel || '—'],
-                  ['Màu sắc bên ngoài tháp đèn', r.towerColor || '—'],
-                  ['Nguồn cung cấp năng lượng', r.powerSupply || '—'],
-                  ['Phạm vi chiếu sáng', r.range != null ? `${r.range} hải lý` : '—'],
+                  ['Hình dạng', r.shape ? (SHAPE_LABEL_MAP[r.shape] || r.shape) : ''],
+                  ['Diện tích m²', r.area != null ? fmtNum(r.area) : ''],
+                  ['Chiều cao thân phao m', r.bodyHeight != null ? fmtNum(r.bodyHeight) : ''],
+                  ['Đường kính phao m', r.diameter != null ? fmtNum(r.diameter) : ''],
+                  ['Đèn biển', r.beaconLight || ''],
+                  ['Chiều cao tháp đèn', r.towerHeight != null ? fmtNum(r.towerHeight) : ''],
+                  ['Chiều cao tâm sáng', r.lightHeight != null ? fmtNum(r.lightHeight) : ''],
+                  ['Chủng loại đèn', r.lightModel || ''],
+                  ['Màu sắc bên ngoài tháp đèn', r.towerColor || ''],
+                  ['Nguồn cung cấp năng lượng', r.powerSupply || ''],
+                  ['Phạm vi chiếu sáng', r.range != null ? `${fmtNum(r.range)} hải lý` : ''],
                   ['Thời điểm đưa vào sử dụng', formatDateOnly(r.commissionedDate)],
                   ['Thời điểm sửa chữa gần nhất', formatDateOnly(r.lastRepairDate)],
+                  ['Kết cấu', r.structure || '', true],
                 ])}
               </div>
 
@@ -240,9 +352,9 @@ export default function BuoyDetailContent({
                   </div>
                 </div>
                 {gridRows([
-                  ['Màu sắc', r.lightColor || r.color || '—'],
-                  ['Kiểu chớp', r.flashType || '—'],
-                  ['Chu kỳ', r.period || '—'],
+                  ['Màu sắc', r.lightColor || r.color || ''],
+                  ['Kiểu chớp', r.flashType || ''],
+                  ['Chu kỳ', r.period || ''],
                 ])}
               </div>
 
@@ -267,19 +379,28 @@ export default function BuoyDetailContent({
                     {approvalOpen ? <DownOutlined /> : <RightOutlined />}
                   </span>
                 </div>
-                {approvalOpen && gridRows([
-                  ['Trạng thái phê duyệt', statusBadge],
-                  ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
-                  ['Ngày cập nhật', formatDate(r.updatedAt)],
-                  ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy || r.submittedForApprovalBy, (r as any).submittedForApprovalByName)}</span>],
-                  ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
-                  ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy, (r as any).level1ApprovedByName)}</span>],
-                  ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
-                  ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy, (r as any).level2ApprovedByName)}</span>],
-                  ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
-                  ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '—'],
-                  ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '—'],
-                ])}
+                {approvalOpen && (() => {
+                  const statusInfo = buoyStatusBadge(r.status || '');
+                  const isPendingPortAuthority =
+                    r.status === 'PENDING_APPROVAL' ||
+                    r.status === 'CHO_PHE_DUYET' ||
+                    r.status === 'PROPOSED' ||
+                    statusInfo?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
+                    statusInfo?.label?.toLowerCase().includes('chi cục');
+                  return gridRows([
+                    ['Trạng thái', statusBadge, false, isPendingPortAuthority],
+                    ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
+                    ['Ngày cập nhật', formatDate(r.updatedAt)],
+                    ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy || r.submittedForApprovalBy, (r as any).submittedForApprovalByName)}</span>],
+                    ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
+                    ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy, (r as any).level1ApprovedByName)}</span>],
+                    ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
+                    ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy, (r as any).level2ApprovedByName)}</span>],
+                    ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
+                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '', true],
+                    ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '', true],
+                  ]);
+                })()}
               </div>
             </div>
           ),
@@ -290,10 +411,10 @@ export default function BuoyDetailContent({
             <div style={{ paddingTop: 3 }}>
               <div className="chk-detail-grid">
                 {[
-                  ['Loại đối tượng', GEOMETRY_TYPE_LABELS[(r as any).geometryType || ''] || (r as any).geometryType || '—'],
-                  ['Biểu tượng bản đồ', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || '—'; const symImg = symbolImageMap.get(symId); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span>; })(),],
-                  ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : r.coordinateSystem || '—'],
-                  ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || r.latitude != null || r.longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
+                  ['Loại đối tượng', GEOMETRY_TYPE_LABELS[(r as any).geometryType || ''] || (r as any).geometryType || ''],
+                  ['Biểu tượng bản đồ', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || ''; const symImg = symbolImageMap.get(symId); if (!symName && !symImg) return ''; return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span>; })(),],
+                  ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem ? String(r.coordinateSystem) : '')],
+                  ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || r.latitude != null || r.longitude != null) ? 'Độ, phút, giây (DMS)' : ''],
                 ].map(([label, value], i) => (
                   <div key={i} className="chk-detail-row">
                     <span className="chk-detail-label">{label}</span>
@@ -320,6 +441,7 @@ export default function BuoyDetailContent({
                     <DetailTable
                       dataSource={pts.map((p) => ({ ...p }))}
                       emptyText="Chưa có tọa độ GPS nào"
+                      scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                       columns={[
                         { title: 'STT', width: 50 },
                         { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => renderDms(rec.lat, 'N') },
@@ -358,67 +480,70 @@ export default function BuoyDetailContent({
         {
           key: 'operationMaintenance', label: 'Vận hành & bảo trì',
           children: (
-            <div style={{ paddingTop: 3, overflowY: 'auto', maxHeight: 'calc(100vh - 290px)' }}>
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setOperationOpen(!operationOpen)}>
-                <span style={{ color: operationOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{operationOpen ? '▼' : '▶'} Thông tin vận hành khai thác</span>
-              </button>
-              {operationOpen && (
-                <div>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách vận hành khai thác</span>
-              <DetailTable
-                dataSource={(r.operationPlanCode || r.operationPlanName || r.operationStartDate || r.operationEndDate) ? [{ key: 'row', operationPlanCode: r.operationPlanCode || '—', operationPlanName: r.operationPlanName || '—', operationStartDate: r.operationStartDate || '—', operationEndDate: r.operationEndDate || '—' }] : []}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(rec: any) => rec.key || rec.operationPlanCode || 'row'}
-                columns={[
-                  { title: 'STT', width: 50, align: 'center' as const },
-                  { title: 'Mã kế hoạch', dataIndex: 'operationPlanCode', key: 'operationPlanCode', render: (v: string) => v || '—' },
-                  { title: 'Tên kế hoạch', dataIndex: 'operationPlanName', key: 'operationPlanName', render: (v: string) => v || '—' },
-                  { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
-                  { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
-                ]}
-              />
+            <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+              <div style={{ ...sectionBoxStyle, padding: operationOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                <div onClick={() => setOperationOpen(!operationOpen)} style={{ ...sectionHeaderStyle, marginBottom: operationOpen ? spaceMd : 0, paddingBottom: operationOpen ? spaceSm : 0, borderBottom: operationOpen ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', userSelect: 'none' }}>
+                  <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông tin vận hành khai thác</span></div>
+                  {operationOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                 </div>
-              )}
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setMaintenanceOpen(!maintenanceOpen)}>
-                <span style={{ color: maintenanceOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{maintenanceOpen ? '▼' : '▶'} Thông tin bảo trì</span>
-              </button>
-              {maintenanceOpen && (
-                <div>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin bảo trì</span>
-              <DetailTable
-                dataSource={(r.maintenancePlanCode || r.maintenancePlanName || r.maintenanceStartTime || r.maintenanceEndTime) ? [{ key: 'row', maintenancePlanCode: r.maintenancePlanCode || '—', maintenancePlanName: r.maintenancePlanName || '—', maintenanceStartTime: r.maintenanceStartTime || '—', maintenanceEndTime: r.maintenanceEndTime || '—' }] : []}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(rec: any) => rec.key || rec.maintenancePlanCode || 'row'}
-                columns={[
-                  { title: 'STT', width: 50, align: 'center' as const },
-                  { title: 'Mã kế hoạch', dataIndex: 'maintenancePlanCode', key: 'maintenancePlanCode', render: (v: string) => v || '—' },
-                  { title: 'Tên kế hoạch', dataIndex: 'maintenancePlanName', key: 'maintenancePlanName', render: (v: string) => v || '—' },
-                  { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartTime', key: 'maintenanceStartTime', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
-                  { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndTime', key: 'maintenanceEndTime', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
-                ]}
-              />
+                {operationOpen && (
+                  <DetailTable
+                    dataSource={(r.operationPlanCode || r.operationPlanName || r.operationStartDate || r.operationEndDate) ? [{ key: 'row', operationPlanCode: r.operationPlanCode || '', operationPlanName: r.operationPlanName || '', operationStartDate: r.operationStartDate || '', operationEndDate: r.operationEndDate || '' }] : []}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(rec: any) => rec.key || rec.operationPlanCode || 'row'}
+                    scrollY={160}
+                    columns={[
+                      { title: 'STT', width: 50, align: 'center' as const },
+                      { title: 'Mã kế hoạch', dataIndex: 'operationPlanCode', key: 'operationPlanCode', render: (v: string) => v || '' },
+                      { title: 'Tên kế hoạch', dataIndex: 'operationPlanName', key: 'operationPlanName', render: (v: string) => v || '' },
+                      { title: 'Ngày bắt đầu', dataIndex: 'operationStartDate', key: 'operationStartDate', width: 150, align: 'left' as const, render: (v: string) => (v ? formatDate(v) : '') },
+                      { title: 'Ngày kết thúc', dataIndex: 'operationEndDate', key: 'operationEndDate', width: 150, align: 'left' as const, render: (v: string) => (v ? formatDate(v) : '') },
+                    ]}
+                  />
+                )}
+              </div>
+              <div style={{ ...sectionBoxStyle, padding: maintenanceOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                <div onClick={() => setMaintenanceOpen(!maintenanceOpen)} style={{ ...sectionHeaderStyle, marginBottom: maintenanceOpen ? spaceMd : 0, paddingBottom: maintenanceOpen ? spaceSm : 0, borderBottom: maintenanceOpen ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', userSelect: 'none' }}>
+                  <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông tin bảo trì</span></div>
+                  {maintenanceOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                 </div>
-              )}
-              <button type="button" style={{ cursor: 'pointer', marginTop: 12, marginBottom: 12, border: 'none', background: 'transparent', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', display: 'block' }} onClick={() => setIncidentOpen(!incidentOpen)}>
-                <span style={{ color: incidentOpen ? actionPrimary : colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd + 1 }}>{incidentOpen ? '▼' : '▶'} Thông tin sự cố</span>
-              </button>
-              {incidentOpen && (
-                <div>
-              <span style={{ ...detailLabelStyle, marginBottom: spaceSm, display: 'inline-block' }}>Danh sách thông tin sự cố</span>
-              <DetailTable
-                dataSource={(r.incidentCode || r.incidentType || r.incidentLocation || r.incidentTime) ? [{ key: 'row', incidentCode: r.incidentCode || '—', incidentType: r.incidentType || '—', incidentLocation: r.incidentLocation || '—', incidentTime: r.incidentTime || '—' }] : []}
-                emptyText="Chưa có dữ liệu"
-                rowKey={(rec: any) => rec.key || rec.incidentCode || 'row'}
-                columns={[
-                  { title: 'STT', width: 50, align: 'center' as const },
-                  { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string) => v || '—' },
-                  { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string) => v || '—' },
-                  { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '—' },
-                  { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'left' as const, render: (v: string) => (v && v !== '—' ? formatDate(v) : '—') },
-                ]}
-              />
+                {maintenanceOpen && (
+                  <DetailTable
+                    dataSource={(r.maintenancePlanCode || r.maintenancePlanName || r.maintenanceStartTime || r.maintenanceEndTime) ? [{ key: 'row', maintenancePlanCode: r.maintenancePlanCode || '', maintenancePlanName: r.maintenancePlanName || '', maintenanceStartTime: r.maintenanceStartTime || '', maintenanceEndTime: r.maintenanceEndTime || '' }] : []}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(rec: any) => rec.key || rec.maintenancePlanCode || 'row'}
+                    scrollY={160}
+                    columns={[
+                      { title: 'STT', width: 50, align: 'center' as const },
+                      { title: 'Mã kế hoạch', dataIndex: 'maintenancePlanCode', key: 'maintenancePlanCode', render: (v: string) => v || '' },
+                      { title: 'Tên kế hoạch', dataIndex: 'maintenancePlanName', key: 'maintenancePlanName', render: (v: string) => v || '' },
+                      { title: 'Thời gian bắt đầu', dataIndex: 'maintenanceStartTime', key: 'maintenanceStartTime', width: 150, align: 'left' as const, render: (v: string) => (v ? formatDate(v) : '') },
+                      { title: 'Thời gian kết thúc', dataIndex: 'maintenanceEndTime', key: 'maintenanceEndTime', width: 150, align: 'left' as const, render: (v: string) => (v ? formatDate(v) : '') },
+                    ]}
+                  />
+                )}
+              </div>
+              <div style={{ ...sectionBoxStyle, padding: incidentOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
+                <div onClick={() => setIncidentOpen(!incidentOpen)} style={{ ...sectionHeaderStyle, marginBottom: incidentOpen ? spaceMd : 0, paddingBottom: incidentOpen ? spaceSm : 0, borderBottom: incidentOpen ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', userSelect: 'none' }}>
+                  <div style={sectionTitleStyle}><SlidersOutlined style={{ color: actionPrimary }} /><span>Thông tin sự cố</span></div>
+                  {incidentOpen ? <DownOutlined style={{ color: actionPrimary }} /> : <RightOutlined style={{ color: actionPrimary }} />}
                 </div>
-              )}
+                {incidentOpen && (
+                  <DetailTable
+                    dataSource={(r.incidentCode || r.incidentType || r.incidentLocation || r.incidentTime) ? [{ key: 'row', incidentCode: r.incidentCode || '', incidentType: r.incidentType || '', incidentLocation: r.incidentLocation || '', incidentTime: r.incidentTime || '' }] : []}
+                    emptyText="Chưa có dữ liệu"
+                    rowKey={(rec: any) => rec.key || rec.incidentCode || 'row'}
+                    scrollY={160}
+                    columns={[
+                      { title: 'STT', width: 50, align: 'center' as const },
+                      { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'incidentCode', render: (v: string) => v || '' },
+                      { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'incidentType', render: (v: string) => v || '' },
+                      { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'incidentLocation', render: (v: string) => v || '' },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'incidentTime', width: 150, align: 'left' as const, render: (v: string) => (v ? formatDate(v) : '') },
+                    ]}
+                  />
+                )}
+              </div>
             </div>
           ),
         },
@@ -476,6 +601,6 @@ export default function BuoyDetailContent({
         />
       </div>
     </Modal>
-    </>
+    </div>
   );
 }

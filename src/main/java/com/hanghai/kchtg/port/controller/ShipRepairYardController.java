@@ -151,13 +151,14 @@ public class ShipRepairYardController {
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(value = "skipHistory", required = false, defaultValue = "false") boolean skipHistory,
             Authentication authentication) {
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
         }
         UUID userId = SecurityUtils.getCurrentUserId();
-        List<AttachmentDto> result = shipRepairYardService.uploadAttachments("SHIP_REPAIR_YARD", id, files, userId);
+        List<AttachmentDto> result = shipRepairYardService.uploadAttachments("SHIP_REPAIR_YARD", id, files, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
     }
 
@@ -173,9 +174,10 @@ public class ShipRepairYardController {
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,
+            @RequestParam(value = "skipHistory", required = false, defaultValue = "false") boolean skipHistory,
             Authentication authentication) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        shipRepairYardService.deleteAttachment("SHIP_REPAIR_YARD", id, attId, userId);
+        shipRepairYardService.deleteAttachment("SHIP_REPAIR_YARD", id, attId, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 }

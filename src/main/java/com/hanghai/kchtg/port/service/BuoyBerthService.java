@@ -259,13 +259,13 @@ public class BuoyBerthService {
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("BuoyBerth", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("BuoyBerth", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                             geometryTypeLabel(geomType), actorId);
                 }
             }
@@ -333,15 +333,7 @@ public class BuoyBerthService {
         }
         entity.softDelete(SecurityUtils.getCurrentUserId());
         buoyBerthRepository.save(entity);
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(entity.getId())
-                .refType(InfrastructureType.BUOY_BERTH)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.DELETED)
-                .approvedBy(SecurityUtils.getCurrentUserId())
-                .changedField("approvalStatus")
-                .newValue("Trạng thái phê duyệt=Đã xóa")
-                .build());
+        // Không ghi lịch sử khi xóa bản ghi Nháp (chuẩn Cảng biển / Bến cảng / Cầu cảng).
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -382,6 +374,14 @@ public class BuoyBerthService {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
         }
 
+        // Snapshot trước khi upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
 
@@ -413,10 +413,18 @@ public class BuoyBerthService {
             savedAttachments.add(attachmentRepository.save(attachment));
         }
 
+        // Snapshot sau khi upload
+        List<Attachment> allAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String newFilesSummary = allAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         // Ghi lịch sử tải lên theo chuẩn Cầu cảng / Cảng biển
         if (!savedAttachments.isEmpty()) {
             String mergedNames = savedAttachments.stream().map(Attachment::getFileName).collect(java.util.stream.Collectors.joining(", "));
-            recordBuoyBerthAttachmentHistory(entityId, mergedNames,
+            recordBuoyBerthAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, mergedNames,
                     InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, userId, skipHistory);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
@@ -440,6 +448,21 @@ public class BuoyBerthService {
         }
         // Lấy tên file TRƯỚC khi xóa để ghi lịch sử (ATTACHMENT_DELETED).
         String fileName = attachment.getFileName();
+
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -448,7 +471,7 @@ public class BuoyBerthService {
         attachmentRepository.delete(attachment);
 
         // Ghi lịch sử xóa file theo chuẩn Cầu cảng / Cảng biển
-        recordBuoyBerthAttachmentHistory(entityId, fileName,
+        recordBuoyBerthAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, fileName,
                 InfrastructureHistoryStatus.ATTACHMENT_DELETED, userId, skipHistory);
     }
 
@@ -457,12 +480,10 @@ public class BuoyBerthService {
     }
 
     /**
-     * Ghi lịch sử thay đổi file đính kèm của Bến phao (chuẩn Cầu cảng/Cảng biển:
-     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
-     * Chỉ ghi khi bến phao đã duyệt (APPROVED / APPROVED_LEVEL2). Thêm mới không ghi.
+     * Ghi lịch sử thay đổi file đính kèm của Bến phao theo chuẩn snapshot bảng — chỉ khi bến phao đã duyệt.
      */
-    private void recordBuoyBerthAttachmentHistory(UUID buoyBerthId, String fileName,
-                                                  InfrastructureHistoryStatus status, UUID userId, Boolean skipHistory) {
+    private void recordBuoyBerthAttachmentHistory(UUID buoyBerthId, String oldFilesSummary, String newFilesSummary,
+                                                  String affectedFileName, InfrastructureHistoryStatus status, UUID userId, Boolean skipHistory) {
         try {
             if (Boolean.TRUE.equals(skipHistory)) {
                 return;
@@ -481,7 +502,13 @@ public class BuoyBerthService {
                     || java.time.Duration.between(buoyBerth.getCreatedAt(), buoyBerth.getUpdatedAt()).abs().toSeconds() <= 2)) {
                 return;
             }
-            String name = fileName != null ? fileName : "không rõ tên";
+
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (java.util.Objects.equals(oldVal, newVal)) {
+                return;
+            }
+
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             UUID actorId = userId != null ? userId : SecurityUtils.getCurrentUserId();
             historyRepository.save(InfrastructureHistory.builder()
@@ -491,13 +518,21 @@ public class BuoyBerthService {
                     .status(status)
                     .approvedBy(actorId)
                     .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(uploaded ? null : name)
-                    .newValue(uploaded ? name : null)
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
+                    .changedField("File đính kèm")
+                    .previousValue(oldVal)
+                    .newValue(newVal)
                     .build());
+            log.info("[BuoyBerthService] Đã ghi lịch sử {} file đính kèm của Bến phao [{}]: [{}] -> [{}]",
+                    uploaded ? "tải lên" : "xóa", buoyBerthId, oldVal, newVal);
         } catch (Exception e) {
             log.warn("Không thể ghi lịch sử đính kèm cho bến phao {}: {}", buoyBerthId, e.getMessage());
         }
+    }
+
+    private void recordBuoyBerthAttachmentHistory(UUID buoyBerthId, String oldFilesSummary, String newFilesSummary,
+                                                  String affectedFileName, InfrastructureHistoryStatus status, UUID userId) {
+        recordBuoyBerthAttachmentHistory(buoyBerthId, oldFilesSummary, newFilesSummary, affectedFileName, status, userId, null);
     }
 
     public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {
@@ -687,7 +722,7 @@ public class BuoyBerthService {
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";

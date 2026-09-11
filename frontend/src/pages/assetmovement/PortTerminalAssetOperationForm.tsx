@@ -108,7 +108,7 @@ export function PortTerminalAssetOperationForm({
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
               initialValue: selected.assetName,
-              valueFormatter: () => selected.assetName || '—',
+              valueFormatter: () => selected.assetName || '',
             },
             {
               name: 'unitOfMeasure',
@@ -233,7 +233,7 @@ export function PortTerminalAssetOperationForm({
             label: 'Nguyên giá trước điều chỉnh',
             type: FormFieldType.Readonly,
             valueFormatter: () =>
-              selected.originalValue != null ? `${fmtInputNumber(selected.originalValue)} VNĐ` : '—',
+              selected.originalValue != null ? `${fmtInputNumber(selected.originalValue)} VNĐ` : '',
           },
           {
             name: 'originalValue',
@@ -250,7 +250,7 @@ export function PortTerminalAssetOperationForm({
             label: 'Giá trị còn lại trước',
             type: FormFieldType.Readonly,
             valueFormatter: () =>
-              selected.remainingValue != null ? `${fmtInputNumber(selected.remainingValue)} VNĐ` : '—',
+              selected.remainingValue != null ? `${fmtInputNumber(selected.remainingValue)} VNĐ` : '',
           },
           {
             name: 'remainingValueAfter' as keyof OperationValues,
@@ -262,7 +262,7 @@ export function PortTerminalAssetOperationForm({
               const acc = Number(vals.accumulatedDepreciation) || 0;
               return Math.max(0, orig - acc);
             },
-            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : '—'),
+            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : ''),
           },
           {
             name: 'declarationDate',
@@ -323,7 +323,7 @@ export function PortTerminalAssetOperationForm({
               }
               return undefined;
             },
-            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : '—'),
+            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : ''),
           },
           {
             name: 'notes',

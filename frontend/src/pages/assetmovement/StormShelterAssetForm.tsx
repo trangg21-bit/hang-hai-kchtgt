@@ -146,6 +146,9 @@ export default function StormShelterAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: StormShelterAssetFormProps) {
+  const effectiveDrawerMode = drawerMode || (selected ? 'edit' : 'create');
+  const effectiveSelected = selected;
+
   const currentUser = useAuthStore((s) => s.user);
   const stormShelterOptions = useMemo(
     () =>
@@ -721,10 +724,10 @@ export default function StormShelterAssetForm({
   ]);
 
   const actions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'edit') {
+    if (effectiveDrawerMode === 'edit') {
       const isDraft =
-        !selected?.approvalStatus ||
-        ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase());
+        !effectiveSelected?.approvalStatus ||
+        ['DRAFT', 'NHAP'].includes(effectiveSelected.approvalStatus.toUpperCase());
       const res: FormSidebarAction[] = [];
 
       if (isDraft) {
@@ -771,18 +774,24 @@ export default function StormShelterAssetForm({
         onClick: () => onSave('approve'),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
+
+  const title = useMemo(() => {
+    if (effectiveDrawerMode === 'create') return 'Thêm mới tài sản khu tránh, trú bão';
+    return `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || 'Tài sản khu tránh, trú bão'}`;
+  }, [effectiveDrawerMode, effectiveSelected]);
 
   return (
     <DynamicFormSidebar<FormValues>
       open={open}
-      title={drawerMode === 'create' ? 'Thêm mới tài sản khu tránh, trú bão' : `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản khu tránh, trú bão'}`}
+      title={title}
       form={form}
       tabs={formTabs}
       footerActions={actions}
-      footerAlign="center"
+      actions={actions}
       onClose={onClose}
       width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+      rootClassName="storm-shelter-drawer-scope"
     />
   );
 }

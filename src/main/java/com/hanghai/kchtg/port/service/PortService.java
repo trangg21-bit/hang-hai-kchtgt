@@ -19,6 +19,9 @@ import com.hanghai.kchtg.port.repository.PortAttachmentRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
+import com.hanghai.kchtg.port.repository.PortWharfAreaRepository;
+import com.hanghai.kchtg.port.entity.PortWharfArea;
+import com.hanghai.kchtg.port.dto.port.PortWharfAreaDto;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
@@ -92,6 +95,7 @@ public class PortService {
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final InfrastructureHistoryRepository historyRepository;
+    private final PortWharfAreaRepository portWharfAreaRepository;
 
     @Value("${app.upload.attachment-path:uploads/port-attachments}")
     private String uploadPath;
@@ -117,6 +121,73 @@ public class PortService {
         String code = String.format("CB-%06d", nextNumber);
         log.info("Sinh mã cảng: {}", code);
         return code;
+    }
+
+    /**
+     * Sinh mã khu bến tự động.
+     * Cấu trúc: {portCode}-KB{2 số} (tham khảo cấu trúc bến cảng), hoặc KB-XXXXXX nếu chưa có mã cảng.
+     */
+    @Transactional(readOnly = true)
+    public String generateWharfAreaCode(UUID portId, String portCode) {
+        String pCode = null;
+        if (portId != null) {
+            pCode = portRepository.findById(portId).map(Port::getPortCode).orElse(null);
+        }
+        if (pCode == null && portCode != null && !portCode.isBlank()) {
+            pCode = portCode.trim();
+        }
+        String prefix = (pCode != null && !pCode.isBlank()) ? pCode + "-KB" : "KB-";
+
+        int maxNum = 0;
+        List<PortWharfArea> existing = (portId != null)
+                ? portWharfAreaRepository.findByPortIdAndDeletedAtIsNull(portId)
+                : portWharfAreaRepository.findByWharfCodeStartingWithAndDeletedAtIsNull(prefix);
+
+        for (PortWharfArea wa : existing) {
+            if (wa.getWharfCode() != null && wa.getWharfCode().startsWith(prefix)) {
+                try {
+                    int n = Integer.parseInt(wa.getWharfCode().substring(prefix.length()));
+                    if (n > maxNum) maxNum = n;
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        String code = prefix.endsWith("-KB")
+                ? prefix + String.format("%02d", maxNum + 1)
+                : String.format("KB-%06d", maxNum + 1);
+        log.info("Sinh mã khu bến: {}", code);
+        return code;
+    }
+
+    /**
+     * Format thông tin khu bến đầy đủ tất cả các trường để ghi vết lịch sử thay đổi (chuẩn VTS CHK).
+     */
+    private String formatWharfAreaForHistory(PortWharfArea w) {
+        if (w == null) return "";
+        StringBuilder sb = new StringBuilder();
+        if (w.getWharfName() != null && !w.getWharfName().isBlank()) {
+            sb.append("Tên: ").append(w.getWharfName().trim());
+        }
+        if (w.getWharfCode() != null && !w.getWharfCode().isBlank()) {
+            if (sb.length() > 0) sb.append(" | ");
+            sb.append("Mã: ").append(w.getWharfCode().trim());
+        }
+        if (w.getMainPlanningFunction() != null && !w.getMainPlanningFunction().isBlank()) {
+            if (sb.length() > 0) sb.append(" | ");
+            sb.append("Chức năng: ").append(w.getMainPlanningFunction().trim());
+        }
+        if (w.getPlanningScope() != null && !w.getPlanningScope().isBlank()) {
+            if (sb.length() > 0) sb.append(" | ");
+            sb.append("Phạm vi: ").append(w.getPlanningScope().trim());
+        }
+        if (w.getRegulatoryDocument() != null && !w.getRegulatoryDocument().isBlank()) {
+            if (sb.length() > 0) sb.append(" | ");
+            sb.append("Văn bản: ").append(w.getRegulatoryDocument().trim());
+        }
+        if (w.getNotes() != null && !w.getNotes().isBlank()) {
+            if (sb.length() > 0) sb.append(" | ");
+            sb.append("Ghi chú: ").append(w.getNotes().trim());
+        }
+        return sb.toString();
     }
 
     // ── CREATE ──────────────────────────────────────────────────
@@ -211,6 +282,29 @@ public class PortService {
                 att.setContentType(dto.getContentType());
                 att.setUploadedBy(dto.getUploadedBy());
                 saved.getAttachments().add(att);
+            }
+            saved = portRepository.save(saved);
+        }
+
+        // ── Handle PortWharfArea list ─────────────────────────────────
+        if (request.getWharfAreas() != null && !request.getWharfAreas().isEmpty()) {
+            for (PortWharfAreaDto dto : request.getWharfAreas()) {
+                if (dto.getWharfName() == null || dto.getWharfName().isBlank()) {
+                    continue;
+                }
+                PortWharfArea wa = PortWharfArea.builder()
+                        .port(saved)
+                        .portId(saved.getId())
+                        .wharfCode(dto.getWharfCode() != null && !dto.getWharfCode().isBlank()
+                                ? dto.getWharfCode().trim()
+                                : generateWharfAreaCode(saved.getId(), saved.getPortCode()))
+                        .wharfName(dto.getWharfName().trim())
+                        .mainPlanningFunction(dto.getMainPlanningFunction())
+                        .planningScope(dto.getPlanningScope())
+                        .regulatoryDocument(dto.getRegulatoryDocument())
+                        .notes(dto.getNotes())
+                        .build();
+                saved.getWharfAreas().add(wa);
             }
             saved = portRepository.save(saved);
         }
@@ -491,20 +585,25 @@ public class PortService {
         String newInfraSummary = null;
         if (request.getInfrastructureList() != null) {
             // Summary danh sách cũ (trước khi clear) để ghi lịch sử thay đổi
-            oldInfraSummary = entity.getInfrastructureList().stream()
-                    .map(i -> i.getInfraName() + (i.getQuantity() != null ? " (" + i.getQuantity() + ")" : ""))
+            oldInfraSummary = entity.getInfrastructureList() == null ? "" : entity.getInfrastructureList().stream()
+                    .filter(i -> i.getInfraName() != null && !i.getInfraName().isBlank())
+                    .map(i -> i.getInfraName().trim() + (i.getQuantity() != null ? " (" + i.getQuantity() + ")" : " (1)"))
                     .collect(Collectors.joining(", "));
             entity.getInfrastructureList().clear();
             for (PortInfrastructureDto dto : request.getInfrastructureList()) {
+                if (dto.getInfraName() == null || dto.getInfraName().isBlank()) {
+                    continue;
+                }
                 PortInfrastructure infra = new PortInfrastructure();
                 infra.setPort(entity);
                 infra.setStt(dto.getStt());
-                infra.setInfraName(dto.getInfraName());
-                infra.setQuantity(dto.getQuantity());
+                infra.setInfraName(dto.getInfraName().trim());
+                infra.setQuantity(dto.getQuantity() != null && dto.getQuantity() > 0 ? dto.getQuantity() : 1);
                 entity.getInfrastructureList().add(infra);
             }
             newInfraSummary = request.getInfrastructureList().stream()
-                    .map(i -> i.getInfraName() + (i.getQuantity() != null ? " (" + i.getQuantity() + ")" : ""))
+                    .filter(i -> i.getInfraName() != null && !i.getInfraName().isBlank())
+                    .map(i -> i.getInfraName().trim() + (i.getQuantity() != null && i.getQuantity() > 0 ? " (" + i.getQuantity() + ")" : " (1)"))
                     .collect(Collectors.joining(", "));
         }
 
@@ -521,6 +620,39 @@ public class PortService {
                 att.setUploadedBy(dto.getUploadedBy());
                 entity.getAttachments().add(att);
             }
+        }
+
+        // ── Handle PortWharfArea list (replace) ───────────────────────
+        String oldWharfSummary = null;
+        String newWharfSummary = null;
+        if (request.getWharfAreas() != null) {
+            oldWharfSummary = entity.getWharfAreas() == null ? "" : entity.getWharfAreas().stream()
+                    .filter(w -> w.getWharfName() != null && !w.getWharfName().isBlank())
+                    .map(this::formatWharfAreaForHistory)
+                    .collect(Collectors.joining(";\n"));
+            entity.getWharfAreas().clear();
+            for (PortWharfAreaDto dto : request.getWharfAreas()) {
+                if (dto.getWharfName() == null || dto.getWharfName().isBlank()) {
+                    continue;
+                }
+                PortWharfArea wa = PortWharfArea.builder()
+                        .port(entity)
+                        .portId(entity.getId())
+                        .wharfCode(dto.getWharfCode() != null && !dto.getWharfCode().isBlank()
+                                ? dto.getWharfCode().trim()
+                                : generateWharfAreaCode(entity.getId(), entity.getPortCode()))
+                        .wharfName(dto.getWharfName().trim())
+                        .mainPlanningFunction(dto.getMainPlanningFunction())
+                        .planningScope(dto.getPlanningScope())
+                        .regulatoryDocument(dto.getRegulatoryDocument())
+                        .notes(dto.getNotes())
+                        .build();
+                entity.getWharfAreas().add(wa);
+            }
+            newWharfSummary = entity.getWharfAreas().stream()
+                    .filter(w -> w.getWharfName() != null && !w.getWharfName().isBlank())
+                    .map(this::formatWharfAreaForHistory)
+                    .collect(Collectors.joining(";\n"));
         }
 
         // Actor thật từ SecurityContext — nếu truyền "system", ChangeTrackingService
@@ -572,12 +704,12 @@ public class PortService {
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("Port", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("Port", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                             geometryTypeLabel(geomType), actorId);
                 }
             }
@@ -589,11 +721,23 @@ public class PortService {
 
             // Công trình KCHT trực thuộc (infrastructureList) — recordChanges reflection
             // chỉ ghi Java toString rác nên ghi riêng summary đọc được (chuẩn VTS CHK).
-            if (oldInfraSummary != null && !oldInfraSummary.equals(newInfraSummary)) {
-                changeHistoryService.insertChangeRecord("Port", saved.getId(), "Công trình KCHT trực thuộc",
-                        (oldInfraSummary == null || oldInfraSummary.isEmpty()) ? "Chưa có" : oldInfraSummary,
-                        (newInfraSummary == null || newInfraSummary.isEmpty()) ? "Chưa có" : newInfraSummary,
-                        actorId);
+            if (request.getInfrastructureList() != null) {
+                String oldVal = (oldInfraSummary == null || oldInfraSummary.isBlank()) ? null : oldInfraSummary.trim();
+                String newVal = (newInfraSummary == null || newInfraSummary.isBlank()) ? null : newInfraSummary.trim();
+                if (!java.util.Objects.equals(oldVal, newVal)) {
+                    changeHistoryService.insertChangeRecord("Port", saved.getId(), "Công trình KCHT trực thuộc",
+                            oldVal, newVal, actorId);
+                }
+            }
+
+            // Khu bến (wharfAreas) — ghi log tóm tắt các khu bến
+            if (request.getWharfAreas() != null) {
+                String oldVal = (oldWharfSummary == null || oldWharfSummary.isBlank()) ? null : oldWharfSummary.trim();
+                String newVal = (newWharfSummary == null || newWharfSummary.isBlank()) ? null : newWharfSummary.trim();
+                if (!java.util.Objects.equals(oldVal, newVal)) {
+                    changeHistoryService.insertChangeRecord("Port", saved.getId(), "Khu bến",
+                            oldVal, newVal, actorId);
+                }
             }
         }
 
@@ -606,7 +750,7 @@ public class PortService {
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";
@@ -634,29 +778,8 @@ public class PortService {
             throw new IllegalArgumentException(msg.toString());
         }
 
-        // Capture snapshot before soft-delete for change history
-        Port snapshot = Port.builder()
-                .id(entity.getId()).portCode(entity.getPortCode()).portName(entity.getPortName())
-                .province(entity.getProvince()).area(entity.getArea()).maxVesselCapacity(entity.getMaxVesselCapacity())
-                .orgUnitId(entity.getOrgUnitId()).portGroup(entity.getPortGroup())
-                .operationalStatus(entity.getOperationalStatus()).approvalStatus(entity.getApprovalStatus())
-                .mapSymbolId(entity.getMapSymbolId()).spatialId(entity.getSpatialId())
-                .detailedLocation(entity.getDetailedLocation()).portClass(entity.getPortClass())
-                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
-                .waterAreaScope(entity.getWaterAreaScope()).totalBerths(entity.getTotalBerths())
-                .totalAnchoragesTransshipment(entity.getTotalAnchoragesTransshipment())
-                .totalPublicChannels(entity.getTotalPublicChannels()).totalDedicatedChannels(entity.getTotalDedicatedChannels())
-                .totalPublicChannelLength(entity.getTotalPublicChannelLength()).totalDedicatedChannelLength(entity.getTotalDedicatedChannelLength())
-                .totalBuoysBeacons(entity.getTotalBuoysBeacons()).totalDikes(entity.getTotalDikes())
-                .totalDikeLength(entity.getTotalDikeLength()).totalLighthouses(entity.getTotalLighthouses())
-                .buoyBerthCount(entity.getBuoyBerthCount()).anchorageCount(entity.getAnchorageCount())
-                .transshipmentCount(entity.getTransshipmentCount()).otherWaterAreas(entity.getOtherWaterAreas())
-                .remarks(entity.getRemarks()).build();
-
         entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         portRepository.save(entity);
-        changeTrackingService.recordChanges("Port", entity.getId().toString(), "system", snapshot, entity);
-        changeHistoryService.insertChangeRecord("Port", entity.getId(), "Trạng thái", null, "Đã xóa", "system");
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -882,6 +1005,17 @@ public class PortService {
                 return dto;
             }).collect(Collectors.toList()));
         }
+        if (includeChildCollections && entity.getWharfAreas() != null) {
+            builder.wharfAreas(entity.getWharfAreas().stream().map(wa -> PortWharfAreaDto.builder()
+                    .id(wa.getId())
+                    .wharfCode(wa.getWharfCode())
+                    .wharfName(wa.getWharfName())
+                    .mainPlanningFunction(wa.getMainPlanningFunction())
+                    .planningScope(wa.getPlanningScope())
+                    .regulatoryDocument(wa.getRegulatoryDocument())
+                    .notes(wa.getNotes())
+                    .build()).collect(Collectors.toList()));
+        }
         return builder.build();
     }
 
@@ -1048,10 +1182,20 @@ public class PortService {
     // ── Generic attachment operations (shared attachments table) ────────
 
     @Transactional
-    public List<AttachmentDto> uploadAttachmentsGeneric(UUID portId, List<MultipartFile> files, UUID userId) {
+    public List<AttachmentDto> uploadAttachmentsGeneric(UUID portId, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
         List<Attachment> saved = new ArrayList<>();
         List<String> uploadedFileNames = new ArrayList<>();
         java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+
+        // 1. Summary danh sách file cũ trước khi upload (bảng file đính kèm)
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("PORT", portId);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
         for (MultipartFile f : files) {
             String fn = f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown";
             String storageFileName = System.currentTimeMillis() + "_" + fn;
@@ -1064,10 +1208,24 @@ public class PortService {
             saved.add(attachmentRepository.save(a));
             uploadedFileNames.add(fn);
         }
+
+        // 2. Summary danh sách file mới sau khi upload (bảng file đính kèm đầy đủ)
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
         if (!uploadedFileNames.isEmpty()) {
-            recordAttachmentHistory(portId, userId, String.join(", ", uploadedFileNames), InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+            recordAttachmentHistory(portId, userId, oldFilesSummary, newFilesSummary, String.join(", ", uploadedFileNames), InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
         }
         return saved.stream().map(this::toAttachmentDto2).collect(Collectors.toList());
+    }
+
+    public List<AttachmentDto> uploadAttachmentsGeneric(UUID portId, List<MultipartFile> files, UUID userId) {
+        return uploadAttachmentsGeneric(portId, files, userId, null);
     }
 
     public List<AttachmentDto> listAttachmentsGeneric(UUID portId) {
@@ -1078,9 +1236,26 @@ public class PortService {
     @Transactional
     public void deleteAttachmentGeneric(UUID portId, UUID attId, UUID userId) {
         Attachment a = attachmentRepository.findById(attId).orElseThrow(() -> new EntityNotFoundException("Không tìm thấy: " + attId));
+
+        // 1. Summary danh sách file trước khi xóa
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("PORT", portId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        // 2. Summary danh sách file sau khi xóa
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try { java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(a.getFilePath())); } catch (Exception e) { log.warn("Xóa thất bại: {}", a.getFilePath()); }
         attachmentRepository.delete(a);
-        recordAttachmentHistory(portId, userId, a.getFileName(), InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+        recordAttachmentHistory(portId, userId, oldFilesSummary, newFilesSummary, a.getFileName(), InfrastructureHistoryStatus.ATTACHMENT_DELETED, false);
     }
 
     /**
@@ -1106,17 +1281,34 @@ public class PortService {
 
     /**
      * Ghi lịch sử thao tác file đính kèm vào infrastructure_history (refType=SEAPORT) —
-     * mirror Cctv/Berth: chỉ ghi khi Cảng biển đang ở trạng thái ĐÃ DUYỆT.
-     * changedField lưu nhãn tiếng Việt "Tài liệu đính kèm" để drawer Lịch sử hiển thị đúng.
+     * Ghi nhận dưới dạng BẢNG tương tự Công trình KCHT trực thuộc:
+     * previousValue: toàn bộ danh sách file trước khi thao tác
+     * newValue: toàn bộ danh sách file sau khi thao tác
      */
-    private void recordAttachmentHistory(UUID portId, UUID userId, String fileName,
-            InfrastructureHistoryStatus status) {
+    private void recordAttachmentHistory(UUID portId, UUID userId, String oldFilesSummary, String newFilesSummary, String affectedFileName,
+            InfrastructureHistoryStatus status, Boolean skipHistory) {
+        if (Boolean.TRUE.equals(skipHistory)) return;
         if (userId == null) return;
         Port port = portRepository.findById(portId).orElse(null);
         if (port == null) return;
         boolean approved = port.getApprovalStatus() == ApprovalStatus.APPROVED
                 || port.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
         if (!approved) return;
+
+        // Guard: Thêm mới cảng biển không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát updatedAt)
+        if (port.getCreatedAt() != null && port.getUpdatedAt() != null) {
+            long diffSec = Math.abs(java.time.Duration.between(port.getCreatedAt(), port.getUpdatedAt()).toSeconds());
+            if (diffSec <= 5 && !Boolean.FALSE.equals(skipHistory)) {
+                return;
+            }
+        }
+
+        String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+        String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+        if (java.util.Objects.equals(oldVal, newVal)) {
+            return;
+        }
+
         boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(portId)
@@ -1124,11 +1316,12 @@ public class PortService {
                 .status(status)
                 .approvedBy(userId)
                 .approvedDate(java.time.LocalDateTime.now())
-                .changedField("attachments")
-                .previousValue(uploaded ? null : fileName)
-                .newValue(uploaded ? fileName : null)
+                .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
+                .changedField("File đính kèm")
+                .previousValue(oldVal)
+                .newValue(newVal)
                 .build());
-        log.info("[PortService] Đã ghi lịch sử {} file đính kèm của Cảng biển [{}]: {}",
-                uploaded ? "tải lên" : "xóa", portId, fileName);
+        log.info("[PortService] Đã ghi lịch sử {} file đính kèm của Cảng biển [{}]: [{}] -> [{}]",
+                uploaded ? "tải lên" : "xóa", portId, oldVal, newVal);
     }
 }

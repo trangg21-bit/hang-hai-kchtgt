@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo, useRef } from "react";
 import { Form, Select, InputNumber } from "antd";
 import type { FormInstance } from "antd";
 import type { Dayjs } from "dayjs";
@@ -124,6 +124,9 @@ export default function PortTerminalAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: PortTerminalAssetFormProps) {
+  const effectiveDrawerMode = drawerMode || (selected ? "edit" : "create");
+  const effectiveSelected = selected;
+
   const relationOptions = useMemo(
     () =>
       relatedInfrastructure.map((item) => ({
@@ -466,7 +469,7 @@ export default function PortTerminalAssetForm({
                   );
                 },
                 valueFormatter: (val) =>
-                  val != null ? fmtInputNumber(Number(val)) : "—",
+                  val != null ? fmtInputNumber(Number(val)) : "",
               },
               {
                 name: "valueUnit",
@@ -520,7 +523,7 @@ export default function PortTerminalAssetForm({
                   return undefined;
                 },
                 valueFormatter: (val) =>
-                  val != null ? fmtInputNumber(Number(val)) : "—",
+                  val != null ? fmtInputNumber(Number(val)) : "",
               },
               {
                 name: "disposalMethod",
@@ -907,11 +910,17 @@ export default function PortTerminalAssetForm({
     selected,
   ]);
 
+  const lastDrawerModeRef = useRef<"create" | "edit" | undefined>(drawerMode);
+  if (drawerMode) {
+    lastDrawerModeRef.current = drawerMode;
+  }
+  const effectiveMode = drawerMode || lastDrawerModeRef.current;
+
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === "edit") {
+    if (effectiveMode === "edit") {
       const isDraft =
-        !selected?.approvalStatus ||
-        ["DRAFT", "NHAP"].includes(selected.approvalStatus.toUpperCase());
+        !effectiveSelected?.approvalStatus ||
+        ["DRAFT", "NHAP"].includes(effectiveSelected.approvalStatus.toUpperCase());
       const actions: FormSidebarAction[] = [];
 
       if (isDraft) {
@@ -958,14 +967,14 @@ export default function PortTerminalAssetForm({
         onClick: () => void onSave("APPROVED"),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveMode, selected, saving, saveAction, onSave]);
 
   const title = useMemo(() => {
-    if (drawerMode === "edit") {
-      return `Chỉnh sửa thông tin — ${selected?.assetName || screenConfig.title}`;
+    if (effectiveMode === "edit") {
+      return `Chỉnh sửa thông tin — ${selected?.assetName || "Tài sản bến cảng"}`;
     }
-    return `Thêm mới ${screenConfig.subjectLabel}`;
-  }, [drawerMode, screenConfig, selected]);
+    return "Thêm mới tài sản bến cảng";
+  }, [effectiveMode, selected]);
 
   return (
     <DynamicFormSidebar<FormValues>

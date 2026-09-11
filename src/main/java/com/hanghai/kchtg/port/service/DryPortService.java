@@ -47,6 +47,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import org.springframework.beans.factory.annotation.Value;
+import java.util.stream.Collectors;
+
 /**
  * Service core for DryPort (Cảng cạn) CRUD operations.
  * Covers F-026 (create), F-027 (update), F-028 (soft-delete).
@@ -72,6 +78,10 @@ public class DryPortService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
+    private final AttachmentRepository attachmentRepository;
+
+    @Value("${file.upload-dir:uploads}")
+    private String uploadPath;
 
     // ── GENERATE CODE ───────────────────────────────────────────
 
@@ -194,16 +204,6 @@ public class DryPortService {
                     InfrastructureType.DRY_PORT);
             saved.setSpatialId(spatialObj.getId());
             saved = dryPortRepository.save(saved);
-
-            // Lịch sử vị trí theo chuẩn Cảng biển: 2 dòng riêng "Tọa độ GIS" +
-            // "Loại đối tượng GIS" khi hồ sơ được tạo mới ở trạng thái đã duyệt
-            // (saveAction = approve), kèm approvedBy = user thật.
-            if (isApprove) {
-                changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Tọa độ GIS",
-                        "Chưa có", coordinates.trim(), actorId);
-                changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Loại đối tượng GIS",
-                        "Chưa có", geometryTypeLabel(geomType), actorId);
-            }
         }
 
         // If approve action, write audit log
@@ -214,10 +214,6 @@ public class DryPortService {
                     "Tạo mới và phê duyệt cảng cạn: " + saved.getDryPortCode(),
                     null);
         }
-
-        // Record all fields as new in change history
-        DryPort emptySnapshot = new DryPort();
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), actorId, emptySnapshot, saved);
 
         log.info("Created DryPort [{}] code={} action={}", saved.getId(), saved.getDryPortCode(), action);
         return toResponse(saved);
@@ -249,7 +245,7 @@ public class DryPortService {
             String updatedFrom, String updatedTo, String code, String transportCorridor) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.asc(EntityFields.ID)));
+                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         LocalDateTime updatedFromDt = null;
@@ -513,9 +509,7 @@ public class DryPortService {
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
         entity.softDelete(operatorId);
-        DryPort saved = dryPortRepository.save(entity);
-        changeHistoryService.recordChanges("DryPort", saved.getId().toString(), actorId, snapshot, saved);
-        changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Trạng thái", null, "Đã xóa", actorId);
+        dryPortRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -657,76 +651,183 @@ public class DryPortService {
         return builder.build();
     }
 
-    // ── Attachment operations ──────────────────────────────────────────
+    // ── Attachment operations (chuẩn Cảng biển / Bến cảng) ──────────────────────────
 
-    /**
-     * Ghi lịch sử thay đổi file đính kèm của Cảng cạn (chuẩn Port/DocumentService:
-     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
-     * Chỉ ghi khi hồ sơ đã duyệt (APPROVED / APPROVED_LEVEL2). DryPortService không lưu
-     * trữ file vật lý (luồng giao diện hiện tại đi qua hệ thống documents), nên phương
-     * thức này bổ sung lịch sử cho thao tác gọi qua endpoint attachments của cảng cạn.
-     */
+    @Transactional
+    public List<AttachmentDto> uploadAttachmentsGeneric(UUID dryPortId, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
+        List<Attachment> saved = new ArrayList<>();
+        List<String> uploadedFileNames = new ArrayList<>();
+        java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+
+        // 1. Summary danh sách file cũ trước khi upload (bảng file đính kèm)
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("DRY_PORT", dryPortId);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
+        for (MultipartFile f : files) {
+            String fn = f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + fn;
+            java.nio.file.Path dir = basePath.resolve("DRY_PORT").resolve(dryPortId.toString());
+            java.nio.file.Path filePath = dir.resolve(storageFileName);
+            try {
+                java.nio.file.Files.createDirectories(dir);
+                f.transferTo(filePath.toFile());
+            } catch (Exception e) {
+                throw new RuntimeException("Không thể lưu: " + fn);
+            }
+            String sp = filePath.toString();
+            Attachment a = new Attachment();
+            a.setEntityType("DRY_PORT");
+            a.setEntityId(dryPortId);
+            a.setFileName(fn);
+            a.setFilePath(sp);
+            a.setFileSize(f.getSize());
+            a.setContentType(f.getContentType());
+            a.setUploadedBy(userId);
+            saved.add(attachmentRepository.save(a));
+            uploadedFileNames.add(fn);
+        }
+
+        // 2. Summary danh sách file mới sau khi upload (bảng file đính kèm đầy đủ)
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        if (!uploadedFileNames.isEmpty()) {
+            recordAttachmentHistory(dryPortId, userId, oldFilesSummary, newFilesSummary, String.join(", ", uploadedFileNames),
+                    InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
+        }
+        return saved.stream().map(this::toAttachmentDto).collect(Collectors.toList());
+    }
+
+    public List<AttachmentDto> uploadAttachmentsGeneric(UUID dryPortId, List<MultipartFile> files, UUID userId) {
+        return uploadAttachmentsGeneric(dryPortId, files, userId, null);
+    }
+
+    public List<AttachmentDto> listAttachmentsGeneric(UUID dryPortId) {
+        return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("DRY_PORT", dryPortId)
+                .stream().map(this::toAttachmentDto).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteAttachmentGeneric(UUID dryPortId, UUID attId, UUID userId, Boolean skipHistory) {
+        Attachment a = attachmentRepository.findById(attId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy: " + attId));
+
+        // 1. Summary danh sách file trước khi xóa
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("DRY_PORT", dryPortId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        // 2. Summary danh sách file sau khi xóa
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(a.getFilePath()));
+        } catch (Exception e) {
+            log.warn("Xóa file thất bại: {}", a.getFilePath());
+        }
+        attachmentRepository.delete(a);
+        recordAttachmentHistory(dryPortId, userId, oldFilesSummary, newFilesSummary, a.getFileName(),
+                InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
+    }
+
+    public void deleteAttachmentGeneric(UUID dryPortId, UUID attId, UUID userId) {
+        deleteAttachmentGeneric(dryPortId, attId, userId, null);
+    }
+
+    public Attachment getAttachmentGeneric(UUID dryPortId, UUID attId) {
+        Attachment a = attachmentRepository.findById(attId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file đính kèm: " + attId));
+        boolean owned = a.getEntityType() != null && a.getEntityType().equals("DRY_PORT") && dryPortId.equals(a.getEntityId());
+        if (!owned) {
+            throw new EntityNotFoundException("File đính kèm không thuộc Cảng cạn này");
+        }
+        return a;
+    }
+
+    private AttachmentDto toAttachmentDto(Attachment e) {
+        AttachmentDto d = new AttachmentDto();
+        d.setId(e.getId());
+        d.setEntityType(e.getEntityType());
+        d.setEntityId(e.getEntityId());
+        d.setFileName(e.getFileName());
+        d.setFilePath(e.getFilePath());
+        d.setFileSize(e.getFileSize());
+        d.setContentType(e.getContentType());
+        d.setUploadedBy(e.getUploadedBy());
+        d.setUploadedAt(e.getUploadedAt());
+        return d;
+    }
+
+    private void recordAttachmentHistory(UUID dryPortId, UUID userId, String oldFilesSummary, String newFilesSummary,
+            String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
+        if (Boolean.TRUE.equals(skipHistory)) return;
+        if (userId == null || historyRepository == null) return;
+        DryPort dryPort = dryPortRepository.findById(dryPortId).orElse(null);
+        if (dryPort == null) return;
+        boolean approved = dryPort.getApprovalStatus() == ApprovalStatus.APPROVED
+                || dryPort.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (!approved) return;
+
+        String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+        String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+        if (java.util.Objects.equals(oldVal, newVal)) {
+            return;
+        }
+
+        boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(dryPortId)
+                .refType(InfrastructureType.DRY_PORT)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(status)
+                .approvedBy(userId)
+                .approvedDate(LocalDateTime.now())
+                .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
+                .changedField("File đính kèm")
+                .previousValue(oldVal)
+                .newValue(newVal)
+                .build());
+        log.info("[DryPortService] Đã ghi lịch sử {} file đính kèm của Cảng cạn [{}]: [{}] -> [{}]",
+                uploaded ? "tải lên" : "xóa", dryPortId, oldVal, newVal);
+    }
+
+    @Transactional
+    public void uploadAttachments(UUID id, List<MultipartFile> files, UUID userId, Boolean skipHistory) {
+        uploadAttachmentsGeneric(id, files, userId, skipHistory);
+    }
+
     @Transactional
     public void uploadAttachments(UUID id, List<MultipartFile> files, UUID userId) {
-        // basic upload — saves to disk, placeholder for now
-        log.info("Uploaded {} files for DryPort id={}", files.size(), id);
-        if (id == null || files == null || files.isEmpty() || historyRepository == null) {
-            return;
-        }
-        DryPort dryPort = dryPortRepository.findById(id).orElse(null);
-        if (dryPort == null) {
-            return;
-        }
-        ApprovalStatus approval = dryPort.getApprovalStatus();
-        boolean wasApproved = approval == ApprovalStatus.APPROVED
-                || approval == ApprovalStatus.APPROVED_LEVEL2;
-        if (!wasApproved) {
-            return;
-        }
-        UUID actor = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId() : userId;
-        for (MultipartFile file : files) {
-            String name = file.getOriginalFilename() != null ? file.getOriginalFilename() : "không rõ tên";
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(id)
-                    .refType(InfrastructureType.DRY_PORT)
-                    .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
-                    .approvedBy(actor)
-                    .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(null)
-                    .newValue(name)
-                    .build());
-        }
-        log.info("[DryPortService] Đã ghi lịch sử tải lên {} file đính kèm của Cảng cạn [{}]", files.size(), id);
+        uploadAttachmentsGeneric(id, files, userId, null);
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID id, UUID attId, Boolean skipHistory) {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        deleteAttachmentGeneric(id, attId, userId, skipHistory);
     }
 
     @Transactional
     public void deleteAttachment(UUID id, UUID attId) {
-        log.info("Deleted attachment {} for DryPort id={}", attId, id);
-        if (id == null || attId == null || historyRepository == null) {
-            return;
-        }
-        DryPort dryPort = dryPortRepository.findById(id).orElse(null);
-        if (dryPort == null) {
-            return;
-        }
-        ApprovalStatus approval = dryPort.getApprovalStatus();
-        boolean wasApproved = approval == ApprovalStatus.APPROVED
-                || approval == ApprovalStatus.APPROVED_LEVEL2;
-        if (!wasApproved) {
-            return;
-        }
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(id)
-                .refType(InfrastructureType.DRY_PORT)
-                .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
-                .approvedBy(SecurityUtils.getCurrentUserId())
-                .approvedDate(LocalDateTime.now())
-                .changedField("attachments")
-                .previousValue(attId.toString())
-                .newValue(null)
-                .build());
-        log.info("[DryPortService] Đã ghi lịch sử xóa file đính kèm của Cảng cạn [{}]: {}", id, attId);
+        deleteAttachment(id, attId, null);
     }
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */

@@ -105,7 +105,6 @@ public class PortApprovalService {
         if (userId != null) entity.setUpdatedBy(userId);
         portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
-        changeHistoryService.insertChangeRecord("Port", id, "Lý do từ chối", null, reason, String.valueOf(userId));
     }
 
     private Port loadPort(UUID id) {
@@ -158,12 +157,7 @@ public class PortApprovalService {
         }
         entity.setUpdatedAt(LocalDateTime.now());
         Port saved = portRepository.saveAndFlush(entity);
-        changeHistoryService.recordChanges("Port", saved.getId().toString(), "system", snapshot, saved);
         portCacheService.evictAfterCommit();
-
-        if (reason != null && !reason.isBlank()) {
-            changeHistoryService.insertChangeRecord("Port", saved.getId(), "Lý do từ chối", null, reason, userId);
-        }
 
         if (reason == null || reason.isBlank()) {
             log.info("Port [{}] approved by {}", id, userId);
@@ -212,6 +206,7 @@ public class PortApprovalService {
         return list.stream()
                 .map(h -> HistoryEntry.builder()
                         .id(h.getId())
+                        .approvalLevel(h.getApprovalLevel())
                         .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                         .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
                         .orgUnitName(h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null
@@ -219,6 +214,7 @@ public class PortApprovalService {
                                         ? userMap.get(h.getApprovedBy()).getOrgUnit().getName()
                                         : null)
                         .approvedDate(h.getApprovedDate())
+                        .reason(h.getReason())
                         .changedField(h.getChangedField())
                         .previousValue(h.getPreviousValue())
                         .newValue(h.getNewValue())

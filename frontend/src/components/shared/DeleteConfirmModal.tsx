@@ -107,7 +107,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       ]}
       width={480}
       centered
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ paddingTop: spaceSm, paddingBottom: spaceSm }}>
         <p style={{ fontSize: fontSizeMd, color: textPrimary, lineHeight: 1.6, marginBottom: 12 }}>

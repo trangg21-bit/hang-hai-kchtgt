@@ -12,16 +12,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
- * Service for inserting change history records.
+ * Service that records field-level change history into the
+ * {@code infrastructure_history} table.
  * <p>
- * INSERT-only — no update or delete operations. Each call persists
- * a change record into the infrastructure_history table.
+ * Writes one {@link InfrastructureHistory} record per changed field.
  * Called within the same @Transactional as the entity mutation.
  * </p>
  */
@@ -34,7 +31,7 @@ public class ChangeHistoryService {
 
     public static InfrastructureType resolveInfrastructureType(String entityName) {
         if (entityName == null) return InfrastructureType.SEAPORT;
-        return switch (entityName.toUpperCase()) {
+        return switch (entityName.toUpperCase().trim()) {
             case "PORT", "CANG_BIEN", "SEAPORT" -> InfrastructureType.SEAPORT;
             case "BERTH", "BEN_CANG", "PORT_TERMINAL" -> InfrastructureType.PORT_TERMINAL;
             case "PIER", "CAU_CANG" -> InfrastructureType.PIER;
@@ -129,6 +126,7 @@ public class ChangeHistoryService {
                         historyRepository.save(InfrastructureHistory.builder()
                                 .refId(refUuid)
                                 .refType(resolveInfrastructureType(entityName))
+                                .approvalLevel(ApprovalLevel.LEVEL_0)
                                 .status(InfrastructureHistoryStatus.UPDATED)
                                 .approvedBy(userUuid)
                                 .approvedDate(LocalDateTime.now())
@@ -150,12 +148,27 @@ public class ChangeHistoryService {
 
     private boolean isSkippedField(java.lang.reflect.Field field) {
         String name = field.getName();
+        // Skip collections (handled explicitly or not field-tracked)
+        if (java.util.Collection.class.isAssignableFrom(field.getType())) {
+            return true;
+        }
         return name.equals(EntityFields.ID)
                 || name.equals(EntityFields.CREATED_AT)
                 || name.equals(EntityFields.UPDATED_AT)
                 || name.equals(EntityFields.DELETED_AT)
                 || name.equals(EntityFields.CREATED_BY)
-                || name.equals(EntityFields.UPDATED_BY);
+                || name.equals(EntityFields.UPDATED_BY)
+                || name.equals("spatialId")
+                || name.equals("approvalStatus")
+                || name.equals("approverLevel1")
+                || name.equals("approvedDateLevel1")
+                || name.equals("approverLevel2")
+                || name.equals("approvedDateLevel2")
+                || name.equals("rejectionReason")
+                || name.equals("level1ApprovalContent")
+                || name.equals("level2ApprovalContent")
+                || name.equals("submittedAt")
+                || name.equals("submittedBy");
     }
 
     private boolean valuesEqual(Object a, Object b) {
@@ -234,6 +247,7 @@ public class ChangeHistoryService {
             InfrastructureHistory saved = historyRepository.save(InfrastructureHistory.builder()
                     .refId(entityId)
                     .refType(resolveInfrastructureType(entityType))
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(userUuid)
                     .approvedDate(LocalDateTime.now())

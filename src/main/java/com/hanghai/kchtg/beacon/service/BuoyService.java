@@ -210,7 +210,7 @@ public class BuoyService {
                 .flashType(request.getFlashType())
                 .period(request.getPeriod())
                 .status("DRAFT")
-                .approvalStatus(ApprovalStatus.PROPOSED)
+                .approvalStatus(ApprovalStatus.DRAFT)
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -219,6 +219,7 @@ public class BuoyService {
 
         if ("submit".equals(request.getAction())) {
             entity.setStatus("PENDING_APPROVAL");
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             entity.setApprovalLevel(1);
             entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId());
             entity.setSubmittedForApprovalAt(LocalDateTime.now());
@@ -259,10 +260,7 @@ public class BuoyService {
             entity = buoyRepo.save(entity);
         }
 
-        logHistory(entity, BeaconHistoryActionType.CREATE, null, null, null);
-        Buoy emptySnapshot = new Buoy();
-        changeHistoryService.recordChanges("Buoy", entity.getId().toString(),
-                entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : "system", emptySnapshot, entity);
+        logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
@@ -292,7 +290,7 @@ public class BuoyService {
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn Cảng biển (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";
@@ -487,7 +485,7 @@ public class BuoyService {
         String action = request.getAction();
         if ("submit".equals(action)) {
             entity.setStatus("PENDING_APPROVAL");
-            entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+            entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
             entity.setApprovalLevel(1);
             java.util.UUID uid = SecurityUtils.getCurrentUserId();
             entity.setSubmittedForApprovalBy(uid);
@@ -552,7 +550,7 @@ public class BuoyService {
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
                 boolean typeChanged = oldGeomType != newGeomType;
                 if (wktChanged) {
-                    changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "coordinates",
+                    changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Tọa độ GIS",
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, actorId);
                 }
@@ -589,6 +587,10 @@ public class BuoyService {
                     "Không thể xóa phao tiêu đang chờ phê duyệt");
         }
 
+        boolean wasApproved = "APPROVED".equals(entity.getStatus()) || "APPROVED_L2".equals(entity.getStatus())
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
         entity.setStatus("DELETED");
         entity.softDelete(SecurityUtils.getCurrentUserId());
         buoyRepo.save(entity);
@@ -597,8 +599,10 @@ public class BuoyService {
         java.util.UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
-        logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, "status", "ACTIVE", "DELETED");
-        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "status", "ACTIVE", "DELETED", actorId);
+        logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
+        if (wasApproved) {
+            changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
+        }
 
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -622,7 +626,7 @@ public class BuoyService {
         }
 
         entity.setStatus("PENDING_APPROVAL");
-        entity.setApprovalStatus(ApprovalStatus.PROPOSED);
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setApprovalLevel(1);
         entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId());
         entity.setSubmittedForApprovalAt(LocalDateTime.now());
@@ -644,7 +648,7 @@ public class BuoyService {
 
         // Self-approval: allowed per user request (BR-077-09 relaxed)
         entity.setStatus("APPROVED_L1");
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         entity.setLevel1ApprovedBy(approverId);
@@ -709,7 +713,8 @@ public class BuoyService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        boolean rejectedAtC2 = "APPROVED_L1".equals(entity.getStatus());
+        boolean rejectedAtC2 = "APPROVED_L1".equals(entity.getStatus())
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1;
         entity.setStatus(rejectedAtC2 ? "REJECTED_L2" : "REJECTED_L1");
         entity.setApprovalStatus(rejectedAtC2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(rejectReason);

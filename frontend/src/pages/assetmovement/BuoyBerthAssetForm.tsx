@@ -117,6 +117,9 @@ export default function BuoyBerthAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: BuoyBerthAssetFormProps) {
+  const effectiveDrawerMode = drawerMode || (selected ? 'edit' : 'create');
+  const effectiveSelected = selected;
+
   const buoyBerthOptions = useMemo(
     () =>
       buoyBerths.map((item) => ({
@@ -766,10 +769,10 @@ export default function BuoyBerthAssetForm({
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'edit') {
+    if (effectiveDrawerMode === 'edit') {
       const isDraft =
-        !selected?.approvalStatus ||
-        ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase());
+        !effectiveSelected?.approvalStatus ||
+        ['DRAFT', 'NHAP'].includes(effectiveSelected.approvalStatus.toUpperCase());
       const actions: FormSidebarAction[] = [];
 
       if (isDraft) {
@@ -816,14 +819,14 @@ export default function BuoyBerthAssetForm({
         onClick: () => void onSave('APPROVED'),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
 
   const title = useMemo(() => {
-    if (drawerMode === 'edit') {
-      return `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản bến phao'}`;
+    if (effectiveDrawerMode === 'edit') {
+      return `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || 'Tài sản bến phao'}`;
     }
     return 'Thêm mới tài sản bến phao';
-  }, [drawerMode, selected]);
+  }, [effectiveDrawerMode, effectiveSelected]);
 
   return (
     <DynamicFormSidebar<FormValues>

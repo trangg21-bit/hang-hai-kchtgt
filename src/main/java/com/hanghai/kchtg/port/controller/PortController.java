@@ -57,6 +57,16 @@ public class PortController {
         return ResponseEntity.ok(ApiResponse.success("Sinh mã cảng thành công", Map.of("portCode", code)));
     }
 
+    @GetMapping("/wharf-areas/generate-code")
+    @PreAuthorize("@auth.check(authentication, 'port:create')")
+    public ResponseEntity<ApiResponse<Map<String, String>>> generateWharfAreaCode(
+            @RequestParam(required = false) UUID portId,
+            @RequestParam(required = false) String portCode) {
+        log.info("Generating wharf area code: portId={}, portCode={}", portId, portCode);
+        String code = portService.generateWharfAreaCode(portId, portCode);
+        return ResponseEntity.ok(ApiResponse.success("Sinh mã khu bến thành công", Map.of("wharfCode", code)));
+    }
+
     @GetMapping("/options")
     public ResponseEntity<ApiResponse<List<PortOptionResponse>>> getOptions() {
         log.info("Getting Port options list");
@@ -223,13 +233,14 @@ public class PortController {
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(value = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("Không có file nào được chọn để tải lên"));
         }
         UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
-        List<AttachmentDto> result = portService.uploadAttachmentsGeneric(id, files, userId);
+        List<AttachmentDto> result = portService.uploadAttachmentsGeneric(id, files, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Tải lên file đính kèm thành công", result));
     }
 

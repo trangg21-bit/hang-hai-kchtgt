@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
@@ -6,23 +6,24 @@ import {
 } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import type { UploadFile } from 'antd';
+import type { UploadFile, InputNumberProps } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
   BankOutlined, SlidersOutlined, FileTextOutlined,
 } from '@ant-design/icons';
 import {
   colors, DRAWER_TABLE_SCROLL_Y,
-  textTertiary, borderDefault, actionPrimary, statusCritical,
+  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
-  surfaceCard, readonlyInputStyle, sidebarBg,
+  surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
-  getDatePickerProps, textAreaStyle,
+  getDatePickerProps,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { BERTH_ACTIVITY_STATUS_MAP } from '../../types/port';
 import type { Berth, SaveAction } from '../../types/port';
+import { OPERATIONAL_FUNCTION_OPTIONS, splitOperationalFunctionCodes } from '../../constants/operationalFunction';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
@@ -31,10 +32,9 @@ import { organizationService } from '../../services/organizationService';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { berthCRUD, portCRUD } from '../../services/portService';
 import { symbolService, type Symbol } from '../../services/symbolService';
-import { lineObjectService } from '../../services/lineObjectService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { userService } from '../../services/userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { LineObject } from '../../types/lineObject';
 import { useAuthStore } from '../../store/authStore';
 import { GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt, dmsToDd } from '../../utils/gisGeometry';
 
@@ -45,6 +45,21 @@ const labelProps = (text: string) => ({
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Xem chi tiết
 const sectionBoxStyle: React.CSSProperties = {
@@ -204,32 +219,30 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [berthCodeLoading, setBerthCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
+  const initialApprovalStatusRef = useRef<string | undefined>(undefined);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedPortId = Form.useWatch('portId', form);
+  const watchedOperationalFunction = Form.useWatch('operationalFunction', form);
 
-  /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới. */
-  const useMaxReached = (name: string, max: number): boolean => {
-    const raw = Form.useWatch(name, form) ?? '';
-    const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
-    return len >= max;
-  };
-  const atMax = {
-    berthName: useMaxReached('berthName', 255),
-    detailedLocation: useMaxReached('detailedLocation', 500),
-    operationalFunction: useMaxReached('operationalFunction', 500),
-    totalArea: useMaxReached('totalArea', 20),
-    designThroughput: useMaxReached('designThroughput', 20),
-    currentThroughput: useMaxReached('currentThroughput', 20),
-    maxVesselSize: useMaxReached('maxVesselSize', 20),
-    plannedThroughput: useMaxReached('plannedThroughput', 20),
-    latestCargoVolume: useMaxReached('latestCargoVolume', 20),
-    openingDecision: useMaxReached('openingDecision', 2000),
-    investmentAgreement: useMaxReached('investmentAgreement', 2000),
-  };
+  // Hiển thị trường hợp bản ghi cũ chưa chuẩn hóa (token giá trị tự do không nằm trong option)
+  // → vẫn hiển thị tag của token đó; phần lựa chọn MỚI bị giới hạn bởi OPERATIONAL_FUNCTION_OPTIONS.
+  const operationalFnOptions = useMemo(() => {
+    const current: unknown = watchedOperationalFunction;
+    const tokenList: string[] = Array.isArray(current)
+      ? current
+      : splitOperationalFunctionCodes(current as string | null | undefined);
+    const extraTokens = tokenList.filter(
+      (t) => t && !OPERATIONAL_FUNCTION_OPTIONS.some((o) => o.value === t),
+    );
+    if (extraTokens.length === 0) return OPERATIONAL_FUNCTION_OPTIONS;
+    return [
+      ...extraTokens.map((t) => ({ value: t, label: t })),
+      ...OPERATIONAL_FUNCTION_OPTIONS,
+    ];
+  }, [watchedOperationalFunction]);
 
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
@@ -258,11 +271,17 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
-  const [, setExistingFiles] = useState<any[]>([]);
+  const [existingFiles, setExistingFiles] = useState<any[]>([]);
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
 
   useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
-  useEffect(() => { lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.WATERWAY, pageSize: 1000 }).then(r => setWaterwayOptions((r.data || []).map((l: any) => ({ value: l.id, label: l.name || l.code })))).catch(() => {}); }, []);
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — không dùng GIS LineObject (đồng bộ chuẩn Cầu cảng)
+  useEffect(() => {
+    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
+      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
+      .catch(() => {});
+  }, []);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
@@ -277,11 +296,18 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     finally { setLoadingPorts(false); }
   };
 
-  useEffect(() => { if (watchedOrgUnitId) { if (!isEdit || !form.getFieldValue('portId')) form.setFieldsValue({ portId: undefined, berthCode: undefined }); loadPortOptions(watchedOrgUnitId); } }, [watchedOrgUnitId]);
+  useEffect(() => {
+    if (!watchedOrgUnitId) {
+      setPortOptions([]);
+      return;
+    }
+    if (!isEdit || !form.getFieldValue('portId')) {
+      form.setFieldsValue({ portId: undefined, berthCode: undefined });
+    }
+    loadPortOptions(watchedOrgUnitId);
+  }, [watchedOrgUnitId]);
 
   useEffect(() => { if (!watchedPortId || (isEdit && editPortIdRef.current === watchedPortId)) return; setBerthCodeLoading(true); api.get('/v1/berths/generate-code', { params: { portId: watchedPortId } }).then(r => { const c = r.data?.data?.berthCode ?? r.data?.data?.portCode ?? r.data?.data; if (c) form.setFieldsValue({ berthCode: c }); }).catch(() => {}).finally(() => setBerthCodeLoading(false)); }, [watchedPortId]);
-
-  useEffect(() => { if (!isSystemAdmin && !isEdit) { api.get('/users/me').then(r => { const p = r.data?.data ?? r.data; if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId }); }).catch(() => {}); } }, []);
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
   // (GIỮ tọa độ đã nhập/chọn, chỉ thêm dòng trống cho đủ số lượng — không xóa dữ liệu cũ)
@@ -340,17 +366,18 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           );
         } catch { setExistingFiles([]); }
         editPortIdRef.current = data.portId;
+        initialApprovalStatusRef.current = data?.approvalStatus;
         form.setFieldsValue({
           orgUnitId: data.orgUnitId, portId: data.portId, berthCode: data.berthCode, berthName: data.berthName,
           waterwayId: data.waterwayId, operatingOrgId: data.operatingOrgId,
           provinceId: data.provinceId ? VIETNAM_PROVINCES[data.provinceId - 1] ?? undefined : undefined,
-          detailedLocation: data.detailedLocation, structureType: data.structureType, operationalFunction: data.operationalFunction,
+          detailedLocation: data.detailedLocation, structureType: data.structureType, operationalFunction: splitOperationalFunctionCodes(data.operationalFunction),
           totalArea: normalizeSafeNumber(data.totalArea), designThroughput: normalizeSafeNumber(data.designThroughput), currentThroughput: normalizeSafeNumber(data.currentThroughput),
           maxVesselSize: normalizeSafeNumber(data.maxVesselSize), plannedThroughput: normalizeSafeNumber(data.plannedThroughput), latestCargoVolume: normalizeSafeNumber(data.latestCargoVolume),
           operationalStatus: data.operationalStatus || undefined,
           openingAnnouncementDate: data.openingAnnouncementDate ? dayjs(data.openingAnnouncementDate) : undefined,
           openingDecision: data.openingDecision, investmentAgreement: data.investmentAgreement,
-          geometryType: data.geometryType || undefined, mapSymbolId: data.mapSymbolId, coordinateSystem: data.coordinateSystem, displayRule: data.displayRule,
+          geometryType: data.geometryType || undefined, mapSymbolId: data.mapSymbolId, symbolId: data.mapSymbolId, coordinateSystem: data.coordinateSystem, displayRule: data.displayRule,
         });
       } catch { toast.error('Không thể tải thông tin bến cảng'); }
     })();
@@ -398,12 +425,12 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   };
 
   const handleOrgUnitChange = () => { form.setFieldsValue({ portId: undefined, berthCode: undefined }); setCoordinateList([]); };
+  const handlePortChange = () => { form.setFieldsValue({ berthCode: undefined }); };
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
-    const values = form.getFieldsValue();
-    const berthName = String(values.berthName ?? '').trim();
+    let formValues: any = {};
     try {
-      await form.validateFields();
+      formValues = await form.validateFields();
     } catch (e: any) {
       const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
       const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
@@ -412,6 +439,9 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       else setActiveTabKey('general');
       return;
     }
+    const rawValues = form.getFieldsValue(true);
+    const values = { ...rawValues, ...formValues };
+    const berthName = String(values.berthName ?? '').trim();
     // Bắt buộc chọn địa điểm và tình trạng
     if (!values.provinceId) {
       toast.error('Địa điểm (Tỉnh/Thành phố) là bắt buộc');
@@ -424,7 +454,8 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       return;
     }
 
-    if (hasLocation && !values.mapSymbolId) {
+    const symbolIdVal = values.mapSymbolId || values.symbolId || form.getFieldValue('mapSymbolId') || form.getFieldValue('symbolId') || undefined;
+    if (hasLocation && !symbolIdVal) {
       toast.error('Vui lòng chọn biểu tượng bản đồ');
       setActiveTabKey('location');
       return;
@@ -450,6 +481,13 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
+      const toPayloadNumber = (v: unknown): number | undefined => {
+        if (v == null) return undefined;
+        const s = String(v).trim();
+        if (s === '') return undefined;
+        const num = Number(s);
+        return isNaN(num) ? undefined : num;
+      };
       const provinceName: string | undefined = values.provinceId;
       const payload: Record<string, unknown> = {
         berthCode: String(values.berthCode || '').trim() || undefined,
@@ -457,23 +495,25 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         portId: values.portId,
         orgUnitId: values.orgUnitId,
         waterwayId: values.waterwayId || undefined,
+        waterway: waterwayOptions.find((o) => o.value === values.waterwayId)?.label || undefined,
         geometryType: values.geometryType || undefined,
         latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
         longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
         coordinates: wktCoordinates || undefined,
         operatingOrgId: values.operatingOrgId || undefined, provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
         detailedLocation: values.detailedLocation || undefined, structureType: values.structureType != null ? Number(values.structureType) : undefined,
-        operationalFunction: values.operationalFunction || undefined,
-        totalArea: values.totalArea != null && !isNaN(Number(values.totalArea)) ? Number(values.totalArea) : undefined,
-        designThroughput: values.designThroughput != null && !isNaN(Number(values.designThroughput)) ? Number(values.designThroughput) : undefined,
-        currentThroughput: values.currentThroughput != null && !isNaN(Number(values.currentThroughput)) ? Number(values.currentThroughput) : undefined,
-        maxVesselSize: values.maxVesselSize != null && !isNaN(Number(values.maxVesselSize)) ? Number(values.maxVesselSize) : undefined,
-        plannedThroughput: values.plannedThroughput != null && !isNaN(Number(values.plannedThroughput)) ? Number(values.plannedThroughput) : undefined,
-        latestCargoVolume: values.latestCargoVolume != null && !isNaN(Number(values.latestCargoVolume)) ? Number(values.latestCargoVolume) : undefined,
+        operationalFunction: Array.isArray(values.operationalFunction) ? (values.operationalFunction.length > 0 ? values.operationalFunction.join(',') : undefined) : (values.operationalFunction || undefined),
+        totalArea: toPayloadNumber(values.totalArea),
+        designThroughput: toPayloadNumber(values.designThroughput),
+        currentThroughput: toPayloadNumber(values.currentThroughput),
+        maxVesselSize: toPayloadNumber(values.maxVesselSize),
+        plannedThroughput: toPayloadNumber(values.plannedThroughput),
+        latestCargoVolume: toPayloadNumber(values.latestCargoVolume),
         operationalStatus: values.operationalStatus || undefined,
         openingAnnouncementDate: values.openingAnnouncementDate ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         openingDecision: values.openingDecision || undefined, investmentAgreement: values.investmentAgreement || undefined,
-        mapSymbolId: values.mapSymbolId || undefined, coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
+        mapSymbolId: symbolIdVal || undefined,
+        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
         displayRule: values.displayRule != null ? Number(values.displayRule) : undefined,
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
@@ -481,19 +521,32 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       let createdBerthId: string | undefined;
       if (isEdit && id) { await api.put('/v1/berths', { ...payload, id }); createdBerthId = id; }
       else { const res = await api.post('/v1/berths', payload); createdBerthId = res.data?.data?.id ?? res.data?.id; }
+      const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+      if (createdBerthId && pendingDeletedAttachmentIds.length > 0) {
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/berths/${createdBerthId}/attachments/${attId}`, {
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
+        }
+      }
       if (createdBerthId && uploadedFiles.length > 0) {
-        for (const fi of uploadedFiles) {
-          const of = fi.originFileObj as File;
-          if (!of) continue;
+        const newFiles = uploadedFiles.filter((fi: any) => !!fi.originFileObj);
+        if (newFiles.length > 0) {
           const fd = new FormData();
-          fd.append('files', of);
-          await api.post(`/v1/berths/${createdBerthId}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => {});
+          for (const fi of newFiles) {
+            const of = fi.originFileObj as File;
+            if (of) fd.append('files', of);
+          }
+          await api.post(`/v1/berths/${createdBerthId}/attachments`, fd, {
+            params: { skipHistory: !wasApproved },
+            headers: { 'Content-Type': 'multipart/form-data' },
+          }).catch(() => {});
         }
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu tạm thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : 'Gửi phê duyệt thành công');
       onFinish(true);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Có lỗi xảy ra'); } finally { setSubmitting(false); onSubmittingChange?.(false); }
-  }, [form, coordinateList, onSubmittingChange, isEdit, id, uploadedFiles, onFinish]);
+  }, [form, coordinateList, onSubmittingChange, isEdit, id, uploadedFiles, pendingDeletedAttachmentIds, existingFiles, onFinish]);
 
   const tabItems = [
     // Tab 1: Thông tin chung (đồng bộ cấu trúc Section Cards chuẩn như màn Xem chi tiết)
@@ -513,12 +566,12 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}>
-                  <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit || !isSystemAdmin} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} />
+                  <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]}>
-                  <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={!watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} />
+                  <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={isEdit || !watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" onChange={handlePortChange} style={selectStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -560,7 +613,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={24}>
-                <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.detailedLocation ? 'error' : undefined} help={atMax.detailedLocation ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+                <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
@@ -577,20 +630,29 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="totalArea" {...labelProps('Tổng diện tích (ha)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.totalArea ? 'error' : undefined} help={atMax.totalArea ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item name="totalArea" {...labelProps('Tổng diện tích (ha)')} style={{ marginBottom: spaceFormField }}>
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="maxVesselSize" {...labelProps('Cỡ tàu tiếp nhận lớn nhất (DWT)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.maxVesselSize ? 'error' : undefined} help={atMax.maxVesselSize ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item name="maxVesselSize" {...labelProps('Cỡ tàu tiếp nhận lớn nhất (DWT)')} style={{ marginBottom: spaceFormField }}>
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="operationalFunction" {...labelProps('Công năng khai thác')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.operationalFunction ? 'error' : undefined} help={atMax.operationalFunction ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                  <Input placeholder="Công năng khai thác" maxLength={500} showCount style={inputStyle} />
+                <Form.Item name="operationalFunction" {...labelProps('Công năng khai thác')} style={{ marginBottom: spaceFormField }}>
+                  <Select
+                    mode="multiple"
+                    showSearch
+                    allowClear
+                    placeholder="Công năng khai thác"
+                    optionFilterProp="label"
+                    options={operationalFnOptions}
+                    style={{ borderRadius: radiusPill }}
+                    maxTagCount="responsive"
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -602,24 +664,24 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="designThroughput" {...labelProps('Năng lực thông qua thiết kế (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="currentThroughput" {...labelProps('Năng lực thông qua hiện trạng (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="plannedThroughput" {...labelProps('Quy hoạch năng lực thông qua (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="latestCargoVolume" {...labelProps('Sản lượng thực tế năm gần nhất (tấn/năm)')} style={{ marginBottom: spaceFormField }}>
-                  <InputNumber stringMode min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -639,14 +701,16 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm...' })} />
                 </Form.Item>
               </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
               <Col span={24}>
                 <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}>
-                  <Input.TextArea placeholder="Nhập quyết định công bố" rows={3} maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập quyết định" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
               <Col span={24}>
                 <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}>
-                  <Input.TextArea placeholder="Nhập văn bản thỏa thuận" rows={3} maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -688,7 +752,17 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
-                  <Select placeholder="Chọn biểu tượng bản đồ" allowClear showSearch optionFilterProp="label" disabled={!watchedGeometryType} style={selectStyle}>
+                  <Select
+                    placeholder="Chọn biểu tượng bản đồ"
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    disabled={!watchedGeometryType}
+                    style={selectStyle}
+                    onChange={(val) => {
+                      form.setFieldValue('symbolId', val);
+                    }}
+                  >
                     {symbols.map(sym => (
                       <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
                         <Space>
@@ -868,7 +942,12 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           readonly={false}
           userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
-          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid)); }}
+          onDelete={(uid) => {
+            setUploadedFiles((prev) => prev.filter((x: any) => (x.uid || x.id) !== uid));
+            if (existingFiles.some((ef: any) => (ef.id || ef.uid) === uid)) {
+              setPendingDeletedAttachmentIds((prev) => [...prev, uid]);
+            }
+          }}
           onDownload={async (uid, name) => {
             if (isEdit && id) {
               await berthCRUD.downloadAttachment(id, uid, name);
@@ -885,7 +964,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
       <Modal
@@ -933,7 +1012,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
                 watchedGeometryType || 'POINT',
               ),
-              symbolId: form.getFieldValue('symbolId'),
+              symbolId: form.getFieldValue('mapSymbolId') || form.getFieldValue('symbolId'),
             }}
             onChange={(val) => {
               if (val?.coordinates) {
@@ -960,6 +1039,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                 form.setFieldValue('geometryType', val.geometryType);
               }
               if (val?.symbolId) {
+                form.setFieldValue('mapSymbolId', val.symbolId);
                 form.setFieldValue('symbolId', val.symbolId);
               }
             }}

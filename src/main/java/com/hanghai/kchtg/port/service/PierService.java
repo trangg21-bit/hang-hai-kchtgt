@@ -590,12 +590,6 @@ public class PierService {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
         pierRepository.save(entity);
-
-        // Actor thật từ SecurityContext — nếu truyền "system", drawer lịch sử hiện "—"
-        UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
-        changeHistoryService.recordChanges("Pier", entity.getId().toString(), actorId, snapshot, entity);
-        changeHistoryService.insertChangeRecord("Pier", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
         log.info("Soft-deleted Pier [{}] code={}", entity.getId(), entity.getPierCode());
     }
 

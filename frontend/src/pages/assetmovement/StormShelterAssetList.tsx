@@ -54,11 +54,10 @@ import type {
 } from '../../services/assetmovement/types';
 import {
   type InfrastructureAttachmentItem,
-  triggerBlobDownload,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold } from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import StormShelterAssetForm, { type FormValues } from './StormShelterAssetForm';
 import StormShelterAssetDetailContent from './StormShelterAssetDetailContent';

@@ -23,7 +23,6 @@ import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -60,14 +59,12 @@ import {
   spaceFormField,
   drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  historyGroupGridStyle, historyTimeStyle, historyMetaRowStyle,
-  historyInfoCardStyle, historyAccentBarStyle, historyInfoTitleStyle,
-  historyChangeRowStyle, historyCreateRowStyle, historyFieldLabelStyle,
-  historyOldValueStyle, historyNewValueStyle, historyArrowStyle,
   icons, statusBadgeStyle,
   cellTitleStyle, cellSubtitleStyle,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
+import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ─────
 const fontSizeMd = 13.5;
@@ -79,7 +76,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
   PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
   APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
@@ -98,8 +95,8 @@ const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = 
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
@@ -108,8 +105,8 @@ const TAB_STATUS_LIST = [
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined,
   DRAFT: 'DRAFT',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
   APPROVED_LEVEL1: 'APPROVED_LEVEL1',
-  APPROVED_LEVEL2: 'APPROVED_LEVEL2',
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
@@ -123,6 +120,15 @@ function formatDate(dateStr: string | null | undefined): string {
 }
 
 // ── History helpers (chuẩn VTS CHK — Pier pattern) ─────────────────────
+
+function normalizeHistoryKey(value: string): string {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+}
+
+const NUMERIC_HISTORY_FIELDS = new Set([
+  'stationLevel',
+  'Phân loại đài',
+]);
 
 const histLabels: Record<string, string> = {
   daiTtdhCode: 'Mã đài',
@@ -161,9 +167,11 @@ const histLabels: Record<string, string> = {
   geometryType: 'Loại đối tượng GIS',
   objectType: 'Loại đối tượng GIS',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
+  'File đính kèm': 'File đính kèm',
   attachments: 'Tài liệu đính kèm',
   attachmentList: 'Tài liệu đính kèm',
-  'Trạng thái': 'Hành động',
+  'Trạng thái': 'Trạng thái',
+  status: 'Trạng thái',
 };
 
 function histField(fn: string): string {
@@ -410,294 +418,6 @@ function histVal(
   return trimmedVal;
 }
 
-function historyTimestamp(item: any): string {
-  return item.approvedDate || item.changedAt || item.createdAt || '';
-}
-
-function historyActor(item: any): string {
-  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '';
-}
-
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-}
-
-function normalizedHistoryFields(value: string): string[] {
-  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
-  const hasApprovalStatus = fields.some((field) => {
-    const key = normalizeHistoryKey(field);
-    return key === 'approvalstatus' || key === 'trang thai phe duyet';
-  });
-  if (hasApprovalStatus) {
-    return fields.filter((field) => {
-      const key = normalizeHistoryKey(field);
-      return key !== 'approvedlevel1' && key !== 'approvedlevel2' && key !== 'da phe duyet cap 1' && key !== 'da phe duyet cap 2';
-    });
-  }
-  return fields;
-}
-
-function parseHistoryAssignments(value: string | null): Map<string, string> {
-  const result = new Map<string, string>();
-  if (!value) return result;
-  value.split(';').forEach((part) => {
-    const separator = part.indexOf('=');
-    if (separator < 0) return;
-    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
-  });
-  return result;
-}
-
-function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
-  const fields = normalizedHistoryFields(String(item.changedField || item.fieldName || item.field || '').trim());
-  const oldValue = item.previousValue ?? item.oldValue ?? null;
-  const newValue = item.newValue ?? null;
-  const oldAssignments = parseHistoryAssignments(oldValue);
-  const newAssignments = parseHistoryAssignments(newValue);
-  if (fields.length === 0) return [{ field: '', oldValue, newValue }];
-  return fields.map((field, index) => {
-    const displayField = histField(field);
-    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field)) ?? oldAssignments.get(normalizeHistoryKey(displayField));
-    const newAssigned = newAssignments.get(normalizeHistoryKey(field)) ?? newAssignments.get(normalizeHistoryKey(displayField));
-    const oldParts = oldValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
-    const newParts = newValue?.split(';').map((part: string) => part.trim()).filter(Boolean) || [];
-    return {
-      field,
-      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
-      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
-    };
-  });
-}
-
-function parseGisWktCoordinates(value: string): { typeName: string; points: Array<{ x: string; y: string }> } | null {
-  const str = (value || '').trim();
-  const typeMatch = /^(POINT|MULTIPOINT|LINESTRING|LINE|POLYGON)\s*\(/i.exec(str);
-  if (!typeMatch) return null;
-  const type = typeMatch[1].toUpperCase();
-  const typeName = type === 'POINT' ? 'Điểm'
-    : type === 'LINESTRING' || type === 'LINE' ? 'Đường'
-      : type === 'POLYGON' ? 'Vùng' : 'Tập hợp điểm';
-  let inner = str.slice(str.indexOf('(') + 1);
-  if (inner.endsWith(')')) inner = inner.slice(0, -1);
-  if (type === 'POLYGON') {
-    inner = inner.trim();
-    if (inner.startsWith('(') && inner.endsWith(')')) inner = inner.slice(1, -1);
-  }
-  const points = inner
-    .split(',')
-    .map((s) => s.replace(/[()]/g, '').trim().split(/\s+/).filter(Boolean))
-    .filter((p) => p.length >= 2)
-    .map((p) => ({ x: p[0], y: p[1] }));
-  if (points.length === 0) return null;
-  return { typeName, points };
-}
-
-function formatGisDms(xStr: string, yStr: string): string {
-  const x = Number(xStr);
-  const y = Number(yStr);
-  const toDms = (val: number, isLat: boolean): string => {
-    if (!Number.isFinite(val)) return '';
-    const abs = Math.abs(val);
-    const d = Math.floor(abs);
-    const mFloat = (abs - d) * 60;
-    const m = Math.floor(mFloat);
-    const s = Math.round((mFloat - m) * 600) / 10;
-    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
-    return `${d}°${String(m).padStart(2, '0')}'${s.toFixed(1).padStart(4, '0')}"${dir}`;
-  };
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return `${xStr}, ${yStr}`;
-  let lat = y;
-  let lng = x;
-  if (Math.abs(x) <= 90 && Math.abs(y) > 90) { lat = x; lng = y; }
-  return `${toDms(lat, true)}, ${toDms(lng, false)}`;
-}
-
-function splitHistoryFileNames(value: string): string[] {
-  const text = (value || '').trim();
-  if (!text || ['—', '-', '(null)', 'null', '(trống)', 'undefined', '[]', 'chua co'].includes(text.toLowerCase())) return [];
-  const stripPrefix = (name: string): string => name.trim().replace(/^(them|xoa|cu|moi)\s*:?\s+/i, '').trim();
-  if (text.startsWith('[') && text.endsWith(']')) {
-    try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) {
-        return parsed.map((it: any) => {
-          if (it === null || it === undefined) return '';
-          if (typeof it === 'string') return it;
-          if (typeof it === 'object') return it?.originalName || it?.fileName || it?.name || it?.storagePath || '';
-          return String(it);
-        }).map(stripPrefix).filter(Boolean);
-      }
-    } catch { /* fall through */ }
-  }
-  return text.split(/[,;\n]+/).map(stripPrefix).filter((n) => n && !['—', '-', '(null)', 'null', '(trống)', 'undefined'].includes(n.toLowerCase()));
-}
-
-function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—' || val === '') {
-    return '';
-  }
-  const normKey = normalizeHistoryKey(field);
-  const normVal = normalizeHistoryKey(val);
-  const rawValue = String(val ?? '').trim();
-
-  // Tài liệu đính kèm
-  if (normKey.includes('dinh kem') || normKey.includes('attachment') || normKey.includes('tep tin') || normKey.includes('file')) {
-    const fileNames = splitHistoryFileNames(rawValue);
-    if (fileNames.length === 0) return '';
-    return (
-      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
-        {fileNames.map((fileName, fi) => (
-          <span key={fi} title={fileName} style={{ display: 'inline-flex', alignItems: 'center', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
-            <span style={{ color: actionPrimary }}>📄</span>
-            <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fileName}</span>
-          </span>
-        ))}
-      </span>
-    );
-  }
-
-  // GIS WKT
-  const gisParsed = parseGisWktCoordinates(rawValue);
-  const isGisField = normKey.includes('toa do') || normKey.includes('coordinate') || normKey.includes('gis') || normKey.includes('khong gian') || normKey === 'spatialid';
-  if (gisParsed) {
-    const { typeName, points } = gisParsed;
-    return (
-      <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: spaceXs, minWidth: 0, maxWidth: '100%' }}>
-        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary, whiteSpace: 'nowrap' }}>
-          {typeName} ({points.length} điểm)
-        </span>
-        {points.map((pt, pi) => (
-          <span key={pi} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-            {points.length > 1 ? <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pi + 1}:</span> : null}
-            {formatGisDms(pt.x, pt.y)}
-          </span>
-        ))}
-      </span>
-    );
-  }
-  if (isGisField && /^-?\d+(\.\d+)?\s+-?\d+(\.\d+)?$/.test(rawValue)) {
-    const pair = rawValue.split(/\s+/);
-    return (
-      <span style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, wordBreak: 'break-word' }}>
-        {formatGisDms(pair[0], pair[1])}
-      </span>
-    );
-  }
-
-  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
-    }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
-    }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return <span style={statusBadgeStyle(actionPrimary)}>{val}</span>;
-    }
-    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
-    }
-    return <span style={statusBadgeStyle(statusDraft)}>{val}</span>;
-  }
-
-  if (normKey === 'operationalstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('hoat dong') || normVal.includes('operational')) {
-      return <span style={statusBadgeStyle(statusOperational)}>{val}</span>;
-    }
-    if (normVal.includes('chua khai thac') || normVal.includes('not yet') || normVal.includes('chua')) {
-      return <span style={statusBadgeStyle(statusAttention)}>{val}</span>;
-    }
-    if (normVal.includes('dung') || normVal.includes('suspended') || normVal.includes('ngung')) {
-      return <span style={statusBadgeStyle(statusCritical)}>{val}</span>;
-    }
-  }
-
-  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
-}
-
-function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
-  const item = group.items?.[0] || {};
-  const rawStatus = String(item.status ?? item.action ?? item.actionType ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
-    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || String(item.changedField || '').includes('đính kèm')) {
-    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
-  }
-  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
-    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
-  }
-  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
-    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-  }
-  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
-    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
-    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-  }
-
-  const approvalChange = changes.find((c: any) => {
-    const k = normalizeHistoryKey(String(c.field || c.fieldName || ''));
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
-  });
-
-  if (approvalChange) {
-    const nv = normalizeHistoryKey(String(approvalChange.newValue || ''));
-    if (nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu')) || nv.includes('tu choi cap cang vu')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc')) || nv.includes('tu choi cap cuc')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv === 'cho cuc duyet' || nv.includes('approved_level1') || nv.includes('da phe duyet cap 1') || nv.includes('cuc duyet')) {
-      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    }
-    if (nv === 'da duyet' || nv.includes('approved') || nv.includes('da phe duyet')) {
-      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    }
-    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
-      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-    }
-  }
-
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
-
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
-
 // ── Component ────────────────────────────────────────────────────────
 
 export default function DaiTtdhListPage() {
@@ -708,7 +428,6 @@ export default function DaiTtdhListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
 
-  const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
   // ── Filter state ─────────────────────────────────────────────────
@@ -864,9 +583,18 @@ export default function DaiTtdhListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
-        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
-        setOrgUnit(resolvedDefault);
-        defaultOrgUnitRef.current = resolvedDefault;
+        if (data.length > 0) {
+          try {
+            const p = await api.get('/users/me');
+            const uOrgId = (p.data?.data ?? p.data)?.orgUnitId;
+            const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__';
+            setOrgUnit(matchedOrgId);
+            defaultOrgUnitRef.current = matchedOrgId;
+          } catch {
+            setOrgUnit(data[0].id);
+            defaultOrgUnitRef.current = data[0].id;
+          }
+        }
       } catch { /* ignore */ }
     })();
 
@@ -975,7 +703,7 @@ export default function DaiTtdhListPage() {
   }, []);
 
   const handleFilterReset = useCallback(() => {
-    const defaultOrg = defaultOrgUnitRef.current;
+    const defaultOrg = defaultOrgUnitRef.current || '__all__';
     setOrgUnit(defaultOrg);
     setFilterName('');
     setFilterCode('');
@@ -1061,6 +789,8 @@ export default function DaiTtdhListPage() {
       toast.success('Đã xóa đài TTDH');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -1074,14 +804,17 @@ export default function DaiTtdhListPage() {
   // ── Approval handlers (Chuẩn 2 cấp VTS CHK) ─────────────────────
   const handleApprove = useCallback(async (record: DaiTtdh, content?: string) => {
     try {
-      if (record.approvalStatus === 'APPROVED_LEVEL1') {
+      const isC1 = ['PENDING_APPROVAL', 'PENDING', 'CHO_PHE_DUYET', 'PROPOSED'].includes(record.approvalStatus || '');
+      if (isC1) {
         await daiTtdhApproval.approveC1(record.id, content);
       } else {
         await daiTtdhApproval.approveC2(record.id, content);
       }
-      toast.success(record.approvalStatus === 'APPROVED_LEVEL1' ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
+      toast.success(isC1 ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
       setApproveModalOpen(false);
       setApprovingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -1102,6 +835,8 @@ export default function DaiTtdhListPage() {
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -1131,6 +866,8 @@ export default function DaiTtdhListPage() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
+      setSortField('updatedAt');
+      setSortOrder('descend');
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -1186,143 +923,41 @@ export default function DaiTtdhListPage() {
   ];
 
   const renderDaiTtdhHistoryTimeline = (records: any[]) => {
-    const safeRecords = Array.isArray(records) ? records : [];
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status ) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, items: [r] });
-      }
-    }
-    if (groups.length === 0) return (
-      <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-        <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
-          {hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}
-        </div>
-      </div>
-    );
-    const fmtTime = (ts: string) => { try { return dayjs(ts).format('HH:mm DD/MM/YYYY'); } catch { return ts || ''; } };
-    return (
-      <div>
-        {groups.map((g, gi) => {
-          const rec0 = g.items[0] || {};
-          const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
-          const orgName = orgId ? orgMap.get(orgId) : undefined;
-          const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '';
-          const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-            const getOrder = (field: string) => {
-              const directIdx = HISTORY_FIELD_ORDER.indexOf(field);
-              if (directIdx !== -1) return directIdx;
-              const norm = normalizeHistoryKey(field);
-              const normIdx = HISTORY_FIELD_ORDER.findIndex((f) => normalizeHistoryKey(f) === norm || normalizeHistoryKey(histField(f)) === norm);
-              return normIdx === -1 ? 999 : normIdx;
-            };
-            return getOrder(a.field) - getOrder(b.field);
-          }).filter((c: any) => c.field !== 'attachments' && c.field !== 'spatialId');
-          const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-          const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-          const actionMeta = resolveHistoryActionMeta(g, changes);
-          const barColor = actionMeta.color;
-          const formatHistoryValue = (fn: string, raw: string | null) => {
-            if (raw === null || raw === '(null)' || raw === '') return null;
-            return histVal(fn, raw, orgMap, symbolMap, userMap, operatingUnitMap);
-          };
-          const validChanges = changes.filter((c: any) => {
-            if (!c.field) return false;
-            const ov = formatHistoryValue(c.field, c.oldValue);
-            const nv = formatHistoryValue(c.field, c.newValue);
-            if (ov == null && nv == null) return false;
-            if (ov === nv) return false;
-            return true;
-          });
-          const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-          if (validChanges.length === 0 && reasons.length === 0) return null;
+    return renderStandardHistoryCards({
+      records,
+      fieldLabels: (fn) => histField(fn),
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'icon' || fn === 'symbolId') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
           return (
-            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-              <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                  <Typography.Text style={historyTimeStyle}>
-                    {g.ts ? fmtTime(g.ts) : ''}
-                  </Typography.Text>
-                  <span style={{ flexShrink: 0 }}>
-                    <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
-                      {actionMeta.label}
-                    </span>
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                  <Typography.Text style={historyMetaRowStyle}>
-                    Người cập nhật: {g.actor || ''}
-                  </Typography.Text>
-                  <Typography.Text style={historyMetaRowStyle}>
-                    Đơn vị: {unitName}
-                  </Typography.Text>
-                </div>
-              </div>
-              <div style={historyInfoCardStyle}>
-                <div style={historyAccentBarStyle(barColor)} />
-                <Typography.Text style={historyInfoTitleStyle}>
-                  {informationTitle}
-                </Typography.Text>
-                {validChanges.length > 0 ? (
-                  <div>
-                    {validChanges.map((change, ri: number) => {
-                      const fn = change.field;
-                      const ov = formatHistoryValue(fn, change.oldValue);
-                      const nv = formatHistoryValue(fn, change.newValue);
-                      const renderCell = (rawVal: string | null) => {
-                        if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
-                          const img = symbolImageMap.get(rawVal);
-                          const name = symbolMap.get(rawVal) || rawVal;
-                          return (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
-                              {name}
-                            </span>
-                          );
-                        }
-                        return null;
-                      };
-                      const renderVal = (rawVal: string | null, fmtVal: string | null) => {
-                        if (!fmtVal || fmtVal === '—' || fmtVal === '-' || fmtVal === '–' || fmtVal === '(null)' || fmtVal === 'null') return '';
-                        return renderCell(rawVal) ?? renderHistoryValueTag(fn, fmtVal);
-                      };
-                      return isCreate ? (
-                        <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                          <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                          <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                        </div>
-                      ) : (
-                        <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                          <div style={historyFieldLabelStyle}>{fn ? `${histField(fn)}:` : ''}</div>
-                          <span title={ov ?? ''} style={historyOldValueStyle}>{renderVal(change.oldValue, ov)}</span>
-                          <span style={historyArrowStyle}>→</span>
-                          <span title={nv ?? ''} style={historyNewValueStyle}>{renderVal(change.newValue, nv)}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-                    {reasons.map((r: string, ri: number) => (
-                      <div key={ri} style={{ fontSize: fontSizeMd, color: textPrimary }}>{r}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
           );
-        })}
-      </div>
-    );
+        }
+        const resolved = histVal(fn, raw, orgMap, symbolMap, userMap, operatingUnitMap);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+      resolveActorName: (actor) => {
+        if (!actor) return '';
+        return userMap.get(actor) || userMap.get(actor.toLowerCase()) || actor;
+      },
+      emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
+    });
   };
 
   // ── Filter sidebar content ──────────────────────────────────────
@@ -1467,13 +1102,13 @@ export default function DaiTtdhListPage() {
     if (['DRAFT', 'NHAP'].includes(st) && hasPerm('daittdh:update')) {
       actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     }
-    if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('daittdh:update')) {
+    if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'REJECTED', 'TU_CHOI'].includes(st) && hasPerm('daittdh:update')) {
       actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     }
     if (hasPerm('daittdh:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     }
-    if ((hasPerm('daittdh:approvec1') || hasPerm('daittdh:approve')) && st === 'APPROVED_LEVEL1') {
+    if ((hasPerm('daittdh:approvec1') || hasPerm('daittdh:approve')) && ['PENDING_APPROVAL', 'PENDING', 'CHO_PHE_DUYET', 'PROPOSED'].includes(st)) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -1488,7 +1123,7 @@ export default function DaiTtdhListPage() {
         onClick: () => openRejectModal(record),
       });
     }
-    if ((hasPerm('daittdh:approvec2') || hasPerm('daittdh:approve')) && st === 'APPROVED_LEVEL2') {
+    if ((hasPerm('daittdh:approvec2') || hasPerm('daittdh:approve')) && ['APPROVED_LEVEL1', 'APPROVED_LEVEL2'].includes(st)) {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',
@@ -1503,7 +1138,7 @@ export default function DaiTtdhListPage() {
         onClick: () => openRejectModal(record),
       });
     }
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'daittdh' })) {
+    if (hasPerm('daittdh:delete') && ['DRAFT', 'NHAP'].includes(st)) {
       actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
     }
     return actions;
@@ -1580,11 +1215,13 @@ export default function DaiTtdhListPage() {
     if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[r.provinceId - 1] ?? '') : '';
     if (field === 'stationLevel') return DAI_TTDH_STATION_LEVEL_OPTIONS.find((o) => o.value === r.stationLevel)?.label ?? r.stationLevel ?? '';
     if (field === 'operationalStatus') return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    if (field === 'updatedAt') return r.updatedAt ?? '';
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ?? '';
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ?? '';
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ?? '';
+    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
     return r[field] ?? '';
   }, [organizations, orgMap]);
 
@@ -1711,7 +1348,7 @@ export default function DaiTtdhListPage() {
     const allColumns = [...baseColumns, ...auditColumns];
     return allColumns.map((col) => ({
       ...col,
-      sortOrder: col.sortable ? (col.key === sortField ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
     }));
   }, [page, pageSize, organizations, orgMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
 

@@ -681,13 +681,11 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       else { const res: any = await buoyBerthCRUD.create(payload as any); createdBuoyBerthId = res?.id ?? res?.data?.id; }
       const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
       if (createdBuoyBerthId && pendingDeletedAttachmentIds.length > 0) {
-        await Promise.all(
-          pendingDeletedAttachmentIds.map((attId) =>
-            api.delete(`/v1/buoy-berth/${createdBuoyBerthId}/attachments/${attId}`, {
-              params: { skipHistory: !wasApproved },
-            }).catch(() => {})
-          )
-        );
+        for (const attId of pendingDeletedAttachmentIds) {
+          await api.delete(`/v1/buoy-berth/${createdBuoyBerthId}/attachments/${attId}`, {
+            params: { skipHistory: !wasApproved },
+          }).catch(() => {});
+        }
       }
       if (createdBuoyBerthId && uploadedFiles.length > 0) {
         const newFiles = uploadedFiles.filter((fi: any) => fi && fi.originFileObj);

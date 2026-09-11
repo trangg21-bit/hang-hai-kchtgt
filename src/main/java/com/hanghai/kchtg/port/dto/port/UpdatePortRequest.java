@@ -106,4 +106,6 @@ public class UpdatePortRequest {
 
     private List<PortAttachmentDto> attachments;
 
+    private List<PortWharfAreaDto> wharfAreas;
+
 }

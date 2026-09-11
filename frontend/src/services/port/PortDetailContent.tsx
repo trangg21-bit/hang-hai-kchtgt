@@ -1,21 +1,22 @@
 import { useState } from 'react';
-import { Select, Tabs, Modal, Button, Tooltip } from 'antd';
+import { Select, Tabs, Modal, Button, Tooltip, Drawer } from 'antd';
 import {
   EnvironmentOutlined, FileOutlined, FileImageOutlined, EyeOutlined,
   DownloadOutlined,
   BarChartOutlined, DownOutlined, RightOutlined, AuditOutlined, BankOutlined, SlidersOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import {
-  colors, actionPrimary, textTertiary,
+  colors, actionPrimary, textTertiary, textSecondary, textPrimary, borderDefault,
   surfaceCard, spaceSm, spaceMd, spaceFormField,
   fontSizeSm, fontSizeLg, fontWeightMedium, fontWeightBold,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   statusOperational, statusAttention, statusCritical,
-  DRAWER_TABLE_SCROLL_Y,
+  DRAWER_TABLE_SCROLL_Y, drawerTitleStyle, drawerCloseBtnStyle, cellTitleStyle, cellSubtitleStyle,
 } from '../../themetokenchk';
-import type { CangBienResponse } from './types';
+import type { CangBienResponse, PortWharfAreaItem } from './types';
 import { trangThaiPheDuyetBadge } from './schema';
 import { fmtNum } from '../../utils/numFmt';
 import DetailTable from '../../components/shared/DetailTable';
@@ -115,6 +116,8 @@ export default function PortDetailContent({
   const [previewImageFile, setPreviewImageFile] = useState<any>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [viewingWharfArea, setViewingWharfArea] = useState<PortWharfAreaItem | null>(null);
+  const wharfAreas: PortWharfAreaItem[] = (selectedRecord as any)?.wharfAreas || [];
 
   const openFilePreview = async (file: any) => {
     const rec = file?.id ? file : (file?._current ?? file);
@@ -539,7 +542,91 @@ export default function PortDetailContent({
           ),
         },
         {
-          key: 'infraOther', label: `Kết cấu hạ tầng (${otherInfra.length})`,
+          key: 'wharfArea',
+          label: `Khu bến (${wharfAreas.length})`,
+          children: (
+            <div style={{ paddingTop: 6 }}>
+              <div style={{ ...sectionBoxStyle, padding: '12px 18px' }}>
+                <div style={{ ...sectionHeaderStyle, marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={sectionTitleStyle}>
+                    <FileTextOutlined style={{ color: actionPrimary }} />
+                    <span>Danh sách khu bến</span>
+                  </div>
+                </div>
+                <DetailTable
+                  scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+                  dataSource={wharfAreas.map((item, idx) => ({ ...item, key: item.id || idx, index: idx + 1 }))}
+                  emptyText="Chưa có dữ liệu khu bến"
+                  columns={[
+                    { title: 'STT', dataIndex: 'index', key: 'index', width: 50, align: 'center' as const },
+                    {
+                      title: 'Tên / Mã khu bến',
+                      key: 'wharfNameAndCode',
+                      width: 220,
+                      render: (_: any, rec: PortWharfAreaItem) => (
+                        <div style={{ overflow: 'hidden' }}>
+                          <a
+                            title={rec.wharfName || ''}
+                            onClick={() => setViewingWharfArea(rec)}
+                            style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          >
+                            {rec.wharfName || ''}
+                          </a>
+                          <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {rec.wharfCode || ''}
+                          </span>
+                        </div>
+                      ),
+                    },
+                    {
+                      title: 'Chức năng quy hoạch chính',
+                      dataIndex: 'mainPlanningFunction',
+                      key: 'mainPlanningFunction',
+                      width: 260,
+                      render: (text: string) => (
+                        <span title={text || ''} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', maxWidth: '100%' }}>
+                          {text || ''}
+                        </span>
+                      ),
+                    },
+                    {
+                      title: 'Phạm vi / Địa bàn quy hoạch',
+                      dataIndex: 'planningScope',
+                      key: 'planningScope',
+                      width: 260,
+                      render: (text: string) => (
+                        <span title={text || ''} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', maxWidth: '100%' }}>
+                          {text || ''}
+                        </span>
+                      ),
+                    },
+                    {
+                      title: 'Thao tác',
+                      key: 'actions',
+                      width: 80,
+                      align: 'center' as const,
+                      render: (_: any, rec: PortWharfAreaItem) => (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Tooltip title="Xem chi tiết">
+                            <Button
+                              type="text"
+                              size="small"
+                              style={{ width: 28, height: 28, padding: 0 }}
+                              icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 15 }} />}
+                              onClick={() => setViewingWharfArea(rec)}
+                            />
+                          </Tooltip>
+                        </div>
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          ),
+        },
+        {
+          key: 'infraOther', label: `Kết cấu hạ tầng (${otherInfra.length + ((selectedRecord as any)?.infrastructureList?.length || 0)})`,
           children: (
             <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
               {/* Box 1: Danh sách KCHT thuộc cảng biển (kèm lọc loại) */}
@@ -622,7 +709,7 @@ export default function PortDetailContent({
                 <div onClick={() => setInfraSubOpen(!infraSubOpen)} style={{ ...sectionHeaderStyle, cursor: 'pointer', userSelect: 'none', marginBottom: infraSubOpen ? 12 : 0, paddingBottom: infraSubOpen ? 8 : 0, borderBottom: infraSubOpen ? '1px solid #f1f5f9' : 'none' }}>
                   <div style={sectionTitleStyle}>
                     <SlidersOutlined style={{ color: actionPrimary }} />
-                    <span>Công trình KCHT trực thuộc</span>
+                    <span>Công trình KCHT trực thuộc ({((selectedRecord as any)?.infrastructureList?.length || 0)})</span>
                   </div>
                   <span style={{ color: actionPrimary, fontSize: 12 }}>
                     {infraSubOpen ? <DownOutlined /> : <RightOutlined />}
@@ -635,9 +722,9 @@ export default function PortDetailContent({
                     emptyText="Chưa có dữ liệu"
                     rowKey={(r: any) => r.stt ?? r.infraName ?? r.name}
                     columns={[
-                      { title: 'STT', width: 50, align: 'center' as const },
+                      { title: 'STT', width: 50, align: 'center' as const, render: (_v: any, _rec: any, idx: number) => idx + 1 },
                       { title: 'Tên công trình', dataIndex: 'infraName', key: 'name', render: (v: string, rec: any) => v || rec.name || '' },
-                      { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => v ?? '' },
+                      { title: 'Số lượng', dataIndex: 'quantity', key: 'qty', width: 100, align: 'center' as const, render: (v: number) => (v != null ? fmtNum(v) : '') },
                     ]}
                   />
                 )}
@@ -869,6 +956,128 @@ export default function PortDetailContent({
           )}
         </div>
       </Modal>
+
+      {/* Drawer xem chi tiết Khu bến */}
+      <Drawer
+        open={!!viewingWharfArea}
+        onClose={() => setViewingWharfArea(null)}
+        destroyOnClose
+        push={false}
+        closable={false}
+        width="min(920px, 96vw)"
+        rootClassName="port-drawer-scope"
+        className="port-drawer-scope"
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu bến</span>}
+        extra={
+          <Button type="text" onClick={() => setViewingWharfArea(null)} style={drawerCloseBtnStyle}>
+            ✕
+          </Button>
+        }
+        footer={null}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px' },
+        }}
+      >
+        {viewingWharfArea && (
+          <div className="port-detail-content-wrapper">
+            <style>{`
+              .port-detail-content-wrapper,
+              .port-detail-content-wrapper .chk-detail-label,
+              .port-detail-content-wrapper .chk-detail-value {
+                font-size: 13.5px !important;
+              }
+              .port-detail-content-wrapper .chk-detail-grid {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 0 !important;
+              }
+              .port-detail-content-wrapper .chk-detail-row {
+                display: flex !important;
+                align-items: flex-start !important;
+                min-height: 36px !important;
+                padding: 7px 0 !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+                line-height: 1.5 !important;
+                gap: 10px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+              }
+              .port-detail-content-wrapper .chk-detail-row:last-child {
+                border-bottom: none !important;
+              }
+              .port-detail-content-wrapper .chk-detail-label {
+                width: 220px !important;
+                min-width: 220px !important;
+                max-width: 220px !important;
+                flex-shrink: 0 !important;
+                color: ${colors.sidebarBg} !important;
+                font-weight: 600 !important;
+                font-size: 13.5px !important;
+                text-align: left !important;
+                line-height: 1.5 !important;
+                align-self: flex-start !important;
+                white-space: nowrap !important;
+              }
+              .port-detail-content-wrapper .chk-detail-label::after {
+                content: ':' !important;
+                margin-left: 1px !important;
+                margin-right: 4px !important;
+              }
+              .port-detail-content-wrapper .chk-detail-value {
+                flex: 1 1 auto !important;
+                color: #1e293b !important;
+                font-size: 13.5px !important;
+                font-weight: 500 !important;
+                line-height: 1.5 !important;
+                min-width: 0 !important;
+                word-break: break-word !important;
+              }
+            `}</style>
+            <div style={{ paddingTop: 10 }}>
+              <div style={{ ...sectionBoxStyle, padding: '12px 18px' }}>
+                <div style={{ ...sectionHeaderStyle, marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={sectionTitleStyle}>
+                    <FileTextOutlined style={{ color: actionPrimary }} />
+                    <span>Thông tin khu bến</span>
+                  </div>
+                </div>
+                <div className="chk-detail-grid">
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Mã khu bến</span>
+                    <span className="chk-detail-value">
+                      {viewingWharfArea.wharfCode ? <span style={statusBadgeStyle(actionPrimary)}>{viewingWharfArea.wharfCode}</span> : ''}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Tên khu bến</span>
+                    <span className="chk-detail-value">
+                      {viewingWharfArea.wharfName ? <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>{viewingWharfArea.wharfName}</span> : ''}
+                    </span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Chức năng quy hoạch chính</span>
+                    <span className="chk-detail-value">{viewingWharfArea.mainPlanningFunction || ''}</span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Phạm vi / Địa bàn quy hoạch</span>
+                    <span className="chk-detail-value">{viewingWharfArea.planningScope || ''}</span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Văn bản quy định</span>
+                    <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{viewingWharfArea.regulatoryDocument || ''}</span>
+                  </div>
+                  <div className="chk-detail-row">
+                    <span className="chk-detail-label">Ghi chú</span>
+                    <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{viewingWharfArea.notes || ''}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

@@ -596,8 +596,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         switch (col.type) {
           // ── TwoLine (Chuẩn hiển thị Tên / Mã tài sản hoặc Cán bộ / Ngày) ──
           case TableColumnType.TwoLine: {
-            const primaryText =
-              rawVal !== undefined && rawVal !== null ? String(rawVal) : "—";
+            const primaryText = rawVal !== undefined && rawVal !== null ? String(rawVal) : '';
             const subVal = col.subValueRef
               ? col.subValueRef(row, index)
               : col.subField
@@ -652,7 +651,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
           // ── Status (Pill Badge bo tròn 2 đầu chuẩn UI Hàng hải) ──
           case TableColumnType.Status: {
-            if (!rawVal) return "—";
+            if (!rawVal) return '';
             const statusStr = String(rawVal);
             const statusKey = statusStr.toUpperCase();
 
@@ -698,8 +697,8 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
           // ── Date (DD/MM/YYYY) ──
           case TableColumnType.Date: {
-            if (!rawVal) return "—";
-            const fmt = col.format || "DD/MM/YYYY";
+            if (!rawVal) return '';
+            const fmt = col.format || 'DD/MM/YYYY';
             const dateStr = dayjs(rawVal as string | number | Date).isValid()
               ? dayjs(rawVal as string | number | Date).format(fmt)
               : String(rawVal);
@@ -708,8 +707,8 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
           // ── DateTime (DD/MM/YYYY HH:mm:ss) ──
           case TableColumnType.DateTime: {
-            if (!rawVal) return "—";
-            const fmt = col.format || "DD/MM/YYYY HH:mm:ss";
+            if (!rawVal) return '';
+            const fmt = col.format || 'DD/MM/YYYY HH:mm:ss';
             const dtStr = dayjs(rawVal as string | number | Date).isValid()
               ? dayjs(rawVal as string | number | Date).format(fmt)
               : String(rawVal);
@@ -719,8 +718,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
           // ── NumberFormatted (1,000 / 1.000) ──
           case TableColumnType.NumberFormatted:
           case TableColumnType.Number: {
-            if (rawVal === undefined || rawVal === null || rawVal === "")
-              return "—";
+            if (rawVal === undefined || rawVal === null || rawVal === '') return '';
             const num = Number(rawVal);
             if (isNaN(num)) return String(rawVal);
             const formatted = new Intl.NumberFormat("vi-VN").format(num);
@@ -737,8 +735,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
           // ── Money (1.000.000 đ) ──
           case TableColumnType.Money: {
-            if (rawVal === undefined || rawVal === null || rawVal === "")
-              return "—";
+            if (rawVal === undefined || rawVal === null || rawVal === '') return '';
             const num = Number(rawVal);
             if (isNaN(num)) return String(rawVal);
             const formatted = new Intl.NumberFormat("vi-VN").format(num) + " đ";
@@ -755,30 +752,27 @@ function CommonTableInternal<T extends Record<string, unknown>>(
           case TableColumnType.Text:
           case TableColumnType.Description:
           default: {
-            const textStr =
-              rawVal !== undefined &&
-              rawVal !== null &&
-              String(rawVal).trim() !== ""
-                ? String(rawVal)
-                : "—";
-            return (
-              <span
-                title={
-                  col.showTooltip !== false && textStr !== "—"
-                    ? textStr
-                    : undefined
-                }
-                style={{
-                  display: "block",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  fontWeight: col.bold ? fontWeightBold : undefined,
-                }}
-              >
-                {textStr}
-              </span>
-            );
+            const textStr = rawVal !== undefined && rawVal !== null ? String(rawVal) : '';
+            const shouldEllipsis = col.ellipsis !== false;
+
+            if (shouldEllipsis) {
+              return (
+                <Tooltip title={col.showTooltip !== false ? textStr : undefined} placement="topLeft">
+                  <span
+                    style={{
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontWeight: col.bold ? fontWeightBold : undefined,
+                    }}
+                  >
+                    {textStr}
+                  </span>
+                </Tooltip>
+              );
+            }
+            return <span style={{ fontWeight: col.bold ? fontWeightBold : undefined }}>{textStr}</span>;
           }
         }
       };

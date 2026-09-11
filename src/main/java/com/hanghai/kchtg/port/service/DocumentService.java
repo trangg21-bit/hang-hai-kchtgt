@@ -29,8 +29,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Dịch vụ quản lý giấy tờ / tài liệu đính kèm (Document).
@@ -78,7 +81,8 @@ public class DocumentService {
     @Transactional
     public DocumentResponse uploadFile(String entityType, String entityId,
                                       MultipartFile file, String originalFilename,
-                                      String contentType, long fileSize, String uploadedBy)
+                                      String contentType, long fileSize, String uploadedBy,
+                                      Boolean skipHistory)
             throws IOException {
 
         if (entityType == null || entityType.isBlank()) {
@@ -95,6 +99,15 @@ public class DocumentService {
         if (originalFilename == null || originalFilename.isBlank()) {
             throw new IllegalArgumentException("Tên file không được để trống");
         }
+
+        // 1. Summary danh sách file cũ trước khi upload
+        List<Document> existingDocs = documentRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc(entityType, entityId);
+        List<String> fileListBefore = existingDocs.stream()
+                .map(Document::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
         String storageKey = generateStorageKey(entityType, entityId, timestamp, originalFilename);
@@ -116,10 +129,25 @@ public class DocumentService {
         log.info("[DocumentService.uploadFile] Saved Document [{}] for entity={} {}",
                 saved.getId(), entityType, entityId);
 
-        recordPortAttachmentHistory(entityType, entityId, originalFilename,
-                InfrastructureHistoryStatus.ATTACHMENT_UPLOADED);
+        // 2. Summary danh sách file mới sau khi upload
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        if (originalFilename != null && !originalFilename.isBlank() && !fileListAfter.contains(originalFilename.trim())) {
+            fileListAfter.add(originalFilename.trim());
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        recordPortAttachmentHistory(entityType, entityId, oldFilesSummary, newFilesSummary, originalFilename,
+                InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
 
         return toResponse(saved);
+    }
+
+    @Transactional
+    public DocumentResponse uploadFile(String entityType, String entityId,
+                                      MultipartFile file, String originalFilename,
+                                      String contentType, long fileSize, String uploadedBy)
+            throws IOException {
+        return uploadFile(entityType, entityId, file, originalFilename, contentType, fileSize, uploadedBy, null);
     }
 
     @Transactional(readOnly = true)
@@ -164,33 +192,55 @@ public class DocumentService {
     }
 
     @Transactional
-    public void delete(UUID id, String userId) {
+    public void delete(UUID id, String userId, Boolean skipHistory) {
         Document entity = documentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Không tìm thấy giấy tờ với id: " + id));
 
         log.info("[DocumentService.delete] MinIO delete (STUB): key={}", entity.getStorageKey());
 
+        // 1. Summary danh sách file trước khi xóa
+        List<Document> existingDocs = documentRepository.findByEntityTypeAndEntityIdOrderByCreatedAtDesc(entity.getEntityType(), entity.getEntityId());
+        String oldFilesSummary = existingDocs.stream()
+                .map(Document::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        // 2. Summary danh sách file sau khi xóa
+        String newFilesSummary = existingDocs.stream()
+                .filter(d -> !d.getId().equals(id))
+                .map(Document::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         entity.softDelete(SecurityUtils.getCurrentUserId());
         entity.setUpdatedBy(UUID.fromString(userId));
         documentRepository.save(entity);
 
-        recordPortAttachmentHistory(entity.getEntityType(), entity.getEntityId(), entity.getFileName(),
-                InfrastructureHistoryStatus.ATTACHMENT_DELETED);
+        recordPortAttachmentHistory(entity.getEntityType(), entity.getEntityId(), oldFilesSummary, newFilesSummary,
+                entity.getFileName(), InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
 
         log.info("[DocumentService.delete] Soft-deleted Document [{}] key={}, deletedBy={}",
                 id, entity.getStorageKey(), userId);
     }
 
+    @Transactional
+    public void delete(UUID id, String userId) {
+        delete(id, userId, null);
+    }
+
     /**
-     * Ghi lịch sử thay đổi file đính kèm (chuẩn TTDH VTS: status
-     * ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
-     * Chỉ ghi khi entityType = "port", "buoy" hoặc "buoy-station" và hồ sơ đã duyệt
-     * (giống VtsOperationCenterService).
+     * Ghi lịch sử thay đổi file đính kèm dạng snapshot bảng (chuẩn Cảng biển PortService).
+     * Chỉ ghi khi entityType = "port", "buoy" hoặc "buoy-station" và hồ sơ đã duyệt.
      */
-    private void recordPortAttachmentHistory(String entityType, String entityId, String fileName,
-                                             InfrastructureHistoryStatus status) {
+    private void recordPortAttachmentHistory(String entityType, String entityId, String oldFilesSummary, String newFilesSummary,
+                                             String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
+            if (Boolean.TRUE.equals(skipHistory)) {
+                return;
+            }
             boolean isPort = "port".equalsIgnoreCase(entityType);
             boolean isBuoy = "buoy".equalsIgnoreCase(entityType);
             boolean isBuoyStation = "buoy-station".equalsIgnoreCase(entityType);
@@ -211,6 +261,13 @@ public class DocumentService {
                 if (!wasApproved) {
                     return;
                 }
+                // Guard: Thêm mới cảng biển không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát updatedAt)
+                if (port.getCreatedAt() != null && port.getUpdatedAt() != null) {
+                    long diffSec = Math.abs(java.time.Duration.between(port.getCreatedAt(), port.getUpdatedAt()).toSeconds());
+                    if (diffSec <= 5 && !Boolean.FALSE.equals(skipHistory)) {
+                        return;
+                    }
+                }
                 refType = InfrastructureType.SEAPORT;
                 entityLabel = "Cảng biển";
             } else if (isBuoy) {
@@ -223,6 +280,13 @@ public class DocumentService {
                         || approval == ApprovalStatus.APPROVED_LEVEL2;
                 if (!wasApproved) {
                     return;
+                }
+                // Guard: Thêm mới phao tiêu không bao giờ ghi lịch sử đính kèm
+                if (buoy.getCreatedAt() != null && buoy.getUpdatedAt() != null) {
+                    long diffSec = Math.abs(java.time.Duration.between(buoy.getCreatedAt(), buoy.getUpdatedAt()).toSeconds());
+                    if (diffSec <= 5 && !Boolean.FALSE.equals(skipHistory)) {
+                        return;
+                    }
                 }
                 refType = InfrastructureType.BUOY;
                 entityLabel = "Phao tiêu";
@@ -237,24 +301,39 @@ public class DocumentService {
                 if (!wasApproved) {
                     return;
                 }
+                // Guard: Thêm mới nhà trạm phao tiêu không bao giờ ghi lịch sử đính kèm
+                if (station.getCreatedAt() != null && station.getUpdatedAt() != null) {
+                    long diffSec = Math.abs(java.time.Duration.between(station.getCreatedAt(), station.getUpdatedAt()).toSeconds());
+                    if (diffSec <= 5 && !Boolean.FALSE.equals(skipHistory)) {
+                        return;
+                    }
+                }
                 refType = InfrastructureType.BUOY_STATION;
                 entityLabel = "Nhà trạm phao tiêu";
             }
 
-            String name = fileName != null ? fileName : "không rõ tên";
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (Objects.equals(oldVal, newVal)) {
+                return;
+            }
+
+            String name = affectedFileName != null ? affectedFileName : "không rõ tên";
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(refId)
                     .refType(refType)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(uploaded ? null : name)
-                    .newValue(uploaded ? name : null)
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
+                    .changedField("File đính kèm")
+                    .previousValue(oldVal)
+                    .newValue(newVal)
                     .build());
-            log.info("[DocumentService] Đã ghi lịch sử {} file đính kèm của {} [{}]: {}",
-                    uploaded ? "tải lên" : "xóa", entityLabel, refId, name);
+            log.info("[DocumentService] Đã ghi lịch sử {} file đính kèm của {} [{}]: [{}] -> [{}]",
+                    uploaded ? "tải lên" : "xóa", entityLabel, refId, oldVal, newVal);
         } catch (Exception e) {
             log.warn("[DocumentService] Không ghi được lịch sử file đính kèm (entityType={}, entityId={}): {}",
                     entityType, entityId, e.getMessage());

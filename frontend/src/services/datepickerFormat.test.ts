@@ -60,7 +60,8 @@ describe('themetokenchk DatePicker format tests', () => {
 
   it('getRangePickerProps configures single-panel compact popup with chk-range-datepicker-popup', () => {
     const props = getRangePickerProps();
-    expect(props.popupClassName).toContain('chk-range-datepicker-popup');
+    expect(props.classNames.popup.root).toContain('chk-range-datepicker-popup');
+    expect(props).not.toHaveProperty('popupClassName');
     const css = themeTokenChk.themeScopedCss('test-scope');
     expect(css).toContain('.chk-range-datepicker-popup .ant-picker-panel + .ant-picker-panel');
     expect(css).toContain('.chk-range-datepicker-popup .ant-picker-header button.ant-picker-header-next-btn');
@@ -79,7 +80,8 @@ describe('themetokenchk DatePicker format tests', () => {
       picker: 'year',
       value: dayjs('2026-05-15'),
     });
-    expect(props.popupClassName).toContain('chk-sidebar-datepicker-popup');
+    expect(props.classNames.popup.root).toContain('chk-sidebar-datepicker-popup');
+    expect(props).not.toHaveProperty('popupClassName');
     expect(props.format).toBe('YYYY');
     const html = renderToString(
       React.createElement(ConfigProvider, { locale: appLocale },
@@ -97,7 +99,8 @@ describe('themetokenchk DatePicker format tests', () => {
       picker: 'year',
       value: dayjs('2024-01-01'),
     });
-    expect(props.popupClassName).toContain('chk-form-datepicker-popup');
+    expect(props.classNames.popup.root).toContain('chk-form-datepicker-popup');
+    expect(props).not.toHaveProperty('popupClassName');
     expect(props.format).toBe('YYYY');
     const html = renderToString(
       React.createElement(ConfigProvider, { locale: appLocale },

@@ -260,7 +260,7 @@ export default function HistoryTimeline({ history, loading, error, onRetry }: Hi
           {translatedChangedField && <p style={{ marginBottom: 0 }}>Trường thay đổi: {translatedChangedField}</p>}
           {(translatedPreviousValue || translatedNewValue) && (
             <p style={{ marginBottom: 0 }}>
-              Trước: {translatedPreviousValue || '—'} → Sau: {translatedNewValue || '—'}
+              Trước: {translatedPreviousValue || ''} → Sau: {translatedNewValue || ''}
             </p>
           )}
         </>

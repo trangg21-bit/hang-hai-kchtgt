@@ -54,10 +54,11 @@ public class DaiTtdhApprovalService {
 
         ApprovalStatus previousStatus = entity.getApprovalStatus();
         if ("CANG_VU".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+            if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
+                    && entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cảng vụ: trạng thái hiện tại không hợp lệ");
             }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
             entity.setPortAuthorityApprovedBy(userId);
             entity.setRejectionReason(null);
@@ -65,7 +66,8 @@ public class DaiTtdhApprovalService {
                 entity.setPortAuthorityApprovalContent(content.trim());
             }
         } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1
+                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Cảng vụ trước");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -95,8 +97,10 @@ public class DaiTtdhApprovalService {
         DaiTtdh entity = daiTtdhRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đài TTDH với id: " + id));
 
-        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
-                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        boolean isC2 = "CUC".equalsIgnoreCase(cap)
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        entity.setApprovalStatus(isC2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
         daiTtdhRepository.save(entity);
@@ -144,9 +148,11 @@ public class DaiTtdhApprovalService {
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
                     m.put("decision", h.getStatus().name());
+                    m.put("reason", h.getReason() != null ? h.getReason() : "");
                     m.put("decidedBy", h.getApprovedBy() != null
                             ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -198,6 +204,8 @@ public class DaiTtdhApprovalService {
         m.put("approvedDate", h.getApprovedDate());
         m.put("orgUnitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
         m.put("status", h.getStatus() != null ? h.getStatus().getCode() : null);
+        m.put("reason", h.getReason());
+        m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
         return m;
     }
 

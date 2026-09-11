@@ -48,10 +48,11 @@ public class ShipRepairYardApprovalService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cơ sở sửa chữa, đóng tàu với id: " + id));
 
         if ("CANG_VU".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1) {
+            if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
+                    && entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Chi cục: trạng thái hiện tại không hợp lệ");
             }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
             entity.setPortAuthorityApprovedAt(LocalDateTime.now());
             entity.setPortAuthorityApprovedBy(userId);
             entity.setRejectionReason(null);
@@ -59,7 +60,8 @@ public class ShipRepairYardApprovalService {
                 entity.setPortAuthorityApprovalContent(content.trim());
             }
         } else if ("CUC".equals(cap)) {
-            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
+            if (entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL1
+                    && entity.getApprovalStatus() != ApprovalStatus.APPROVED_LEVEL2) {
                 throw new IllegalStateException("Không thể phê duyệt cấp Cục: cần phê duyệt cấp Chi cục trước");
             }
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -91,8 +93,10 @@ public class ShipRepairYardApprovalService {
         ShipRepairYard entity = shipRepairYardRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cơ sở sửa chữa, đóng tàu với id: " + id));
 
-        entity.setApprovalStatus(entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2
-                ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
+        boolean isC2 = "CUC".equalsIgnoreCase(cap)
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        entity.setApprovalStatus(isC2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
         ApprovalLog approvalLog = ApprovalLog.builder()
@@ -100,6 +104,7 @@ public class ShipRepairYardApprovalService {
                 .entityId(id.toString())
                 .decision("REJECTED")
                 .cap(cap)
+                .reason(reason)
                 .decidedBy(userId)
                 .decidedAt(LocalDateTime.now())
                 .build();
@@ -171,11 +176,13 @@ public class ShipRepairYardApprovalService {
         User userActor = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
         return HistoryEntry.builder()
                 .id(h.getId())
+                .approvalLevel(h.getApprovalLevel())
                 .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                 .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
                 .orgUnitName(userActor != null && userActor.getOrgUnit() != null
                         ? userActor.getOrgUnit().getName() : null)
                 .approvedDate(h.getApprovedDate())
+                .reason(h.getReason())
                 .changedField(h.getChangedField())
                 .previousValue(h.getPreviousValue())
                 .newValue(h.getNewValue())

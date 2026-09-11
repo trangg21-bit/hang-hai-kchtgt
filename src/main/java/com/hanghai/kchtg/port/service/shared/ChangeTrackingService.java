@@ -93,6 +93,7 @@ public class ChangeTrackingService {
                         historyRepository.save(InfrastructureHistory.builder()
                                 .refId(entityUuid)
                                 .refType(ChangeHistoryService.resolveInfrastructureType(entityName))
+                                .approvalLevel(ApprovalLevel.LEVEL_0)
                                 .status(InfrastructureHistoryStatus.UPDATED)
                                 .approvedBy(userUuid)
                                 .approvedDate(LocalDateTime.now())
@@ -113,13 +114,28 @@ public class ChangeTrackingService {
 
     private boolean isSkippedField(Field field) {
         String name = field.getName();
+        // Skip collections (handled explicitly or not field-tracked)
+        if (java.util.Collection.class.isAssignableFrom(field.getType())) {
+            return true;
+        }
         // Skip audit fields managed by JPA auditing and BaseEntity
         return name.equals(EntityFields.ID)
                 || name.equals(EntityFields.CREATED_AT)
                 || name.equals(EntityFields.UPDATED_AT)
                 || name.equals(EntityFields.DELETED_AT)
                 || name.equals(EntityFields.CREATED_BY)
-                || name.equals(EntityFields.UPDATED_BY);
+                || name.equals(EntityFields.UPDATED_BY)
+                || name.equals("spatialId")
+                || name.equals("approvalStatus")
+                || name.equals("approverLevel1")
+                || name.equals("approvedDateLevel1")
+                || name.equals("approverLevel2")
+                || name.equals("approvedDateLevel2")
+                || name.equals("rejectionReason")
+                || name.equals("level1ApprovalContent")
+                || name.equals("level2ApprovalContent")
+                || name.equals("submittedAt")
+                || name.equals("submittedBy");
     }
 
     private boolean valuesEqual(Object a, Object b) {

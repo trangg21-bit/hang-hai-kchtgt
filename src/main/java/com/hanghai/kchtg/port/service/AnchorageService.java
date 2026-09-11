@@ -277,13 +277,13 @@ public class AnchorageService {
                 boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
                             geometryTypeLabel(geomType), actorId);
                 }
             }
@@ -296,8 +296,8 @@ public class AnchorageService {
                     mooringWaterAreaRepository.findByAnchorageId(saved.getId()));
             if (!oldMooringSummary.equals(newMooringSummary)) {
                 changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Khu nước neo buộc tàu",
-                        oldMooringSummary.isEmpty() ? "Chưa có" : oldMooringSummary,
-                        newMooringSummary.isEmpty() ? "Chưa có" : newMooringSummary, actorId);
+                        oldMooringSummary.isEmpty() ? null : oldMooringSummary,
+                        newMooringSummary.isEmpty() ? null : newMooringSummary, actorId);
             }
         }
         evictAfterCommit();
@@ -373,10 +373,7 @@ public class AnchorageService {
             throw new IllegalStateException("Khu neo đậu đã bị xóa trước đó");
         }
 
-        // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cầu cảng)
-        Anchorage snapshot = buildSnapshot(entity);
         UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
 
         entity.softDelete(operatorId);
         anchorageRepository.save(entity);
@@ -388,9 +385,7 @@ public class AnchorageService {
             mooringWaterAreaRepository.save(wa);
         }
 
-        // Ghi lịch sử xóa mềm vào infrastructure_history với actor thật (chuẩn Cảng biển / Cầu cảng).
-        changeHistoryService.recordChanges("Anchorage", entity.getId().toString(), actorId, snapshot, entity);
-        changeHistoryService.insertChangeRecord("Anchorage", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
+        // Không ghi lịch sử khi xóa bản ghi Nháp (chuẩn Cảng biển / Bến cảng / Cầu cảng).
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -431,6 +426,14 @@ public class AnchorageService {
             throw new IllegalArgumentException("Không có file nào được chọn để tải lên");
         }
 
+        // Snapshot trước khi upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         java.util.List<Attachment> savedAttachments = new java.util.ArrayList<>();
         java.util.List<String> uploadedFilenames = new java.util.ArrayList<>();
@@ -465,8 +468,17 @@ public class AnchorageService {
                 uploadedFilenames.add(originalFilename.trim());
             }
         }
+
+        // Snapshot sau khi upload
+        List<Attachment> allAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String newFilesSummary = allAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         if ("ANCHORAGE".equalsIgnoreCase(entityType) && !uploadedFilenames.isEmpty()) {
-            recordAnchorageAttachmentHistory(entityId, String.join(", ", uploadedFilenames),
+            recordAnchorageAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, String.join(", ", uploadedFilenames),
                     InfrastructureHistoryStatus.ATTACHMENT_UPLOADED, skipHistory);
         }
         return savedAttachments.stream().map(this::toAttachmentDto).collect(java.util.stream.Collectors.toList());
@@ -489,6 +501,21 @@ public class AnchorageService {
             throw new IllegalArgumentException("File không thuộc entity này");
         }
         String fileName = attachment.getFileName();
+
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -496,7 +523,7 @@ public class AnchorageService {
         }
         attachmentRepository.delete(attachment);
         if ("ANCHORAGE".equalsIgnoreCase(entityType)) {
-            recordAnchorageAttachmentHistory(entityId, fileName,
+            recordAnchorageAttachmentHistory(entityId, oldFilesSummary, newFilesSummary, fileName,
                     InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
         }
     }
@@ -858,7 +885,7 @@ public class AnchorageService {
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */
     private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return "Chưa có";
+        if (type == null) return null;
         return switch (type) {
             case POINT -> "Đối tượng điểm";
             case LINE -> "Đối tượng đường";
@@ -883,12 +910,10 @@ public class AnchorageService {
     }
 
     /**
-     * Ghi lịch sử file đính kèm Khu neo đậu (chuẩn Cảng biển DocumentService.recordPortAttachmentHistory:
-     * status ATTACHMENT_UPLOADED / ATTACHMENT_DELETED, changedField "Tài liệu đính kèm").
-     * Chỉ ghi khi entityType = "ANCHORAGE" và hồ sơ đã duyệt. Thêm mới không ghi.
+     * Ghi lịch sử file đính kèm Khu neo đậu theo chuẩn snapshot bảng — chỉ khi hồ sơ đã duyệt.
      */
-    private void recordAnchorageAttachmentHistory(UUID anchorageId, String fileName,
-                                                  InfrastructureHistoryStatus status, Boolean skipHistory) {
+    private void recordAnchorageAttachmentHistory(UUID anchorageId, String oldFilesSummary, String newFilesSummary,
+                                                  String affectedFileName, InfrastructureHistoryStatus status, Boolean skipHistory) {
         try {
             if (Boolean.TRUE.equals(skipHistory)) return;
             Anchorage anchorage = anchorageRepository.findById(anchorageId).orElse(null);
@@ -903,7 +928,13 @@ public class AnchorageService {
                     || java.time.Duration.between(anchorage.getCreatedAt(), anchorage.getUpdatedAt()).abs().toSeconds() <= 2)) {
                 return;
             }
-            String name = fileName != null ? fileName : "không rõ tên";
+
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (java.util.Objects.equals(oldVal, newVal)) {
+                return;
+            }
+
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(anchorageId)
@@ -912,19 +943,20 @@ public class AnchorageService {
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(uploaded ? null : name)
-                    .newValue(uploaded ? name : null)
+                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
+                    .changedField("File đính kèm")
+                    .previousValue(oldVal)
+                    .newValue(newVal)
                     .build());
-            log.info("Đã ghi lịch sử {} file đính kèm của Khu neo đậu [{}]: {}",
-                    uploaded ? "tải lên" : "xóa", anchorageId, name);
+            log.info("Đã ghi lịch sử {} file đính kèm của Khu neo đậu [{}]: [{}] -> [{}]",
+                    uploaded ? "tải lên" : "xóa", anchorageId, oldVal, newVal);
         } catch (Exception e) {
             log.warn("Không ghi được lịch sử file đính kèm Khu neo đậu [{}]: {}", anchorageId, e.getMessage());
         }
     }
 
-    private void recordAnchorageAttachmentHistory(UUID anchorageId, String fileName,
-                                                  InfrastructureHistoryStatus status) {
-        recordAnchorageAttachmentHistory(anchorageId, fileName, status, null);
+    private void recordAnchorageAttachmentHistory(UUID anchorageId, String oldFilesSummary, String newFilesSummary,
+                                                  String affectedFileName, InfrastructureHistoryStatus status) {
+        recordAnchorageAttachmentHistory(anchorageId, oldFilesSummary, newFilesSummary, affectedFileName, status, null);
     }
 }

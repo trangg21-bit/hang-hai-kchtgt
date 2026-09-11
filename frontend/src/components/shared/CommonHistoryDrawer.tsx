@@ -518,7 +518,7 @@ function parseCoordinatesPoints(raw: string | null): { typeName?: string; points
 
 function renderCoordinatesDisplay(val: string | null) {
   if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
-    return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
+    return val === 'Chưa có' ? <span style={{ color: textTertiary }}>Chưa có</span> : null;
   }
   const parsed = parseCoordinatesPoints(val);
   if (!parsed || parsed.points.length === 0) {
@@ -543,7 +543,7 @@ function renderCoordinatesDisplay(val: string | null) {
 }
 
 export function renderCommonHistoryValueTag(field: string, val: string, isOld: boolean = false) {
-  if (!val || val === '—' || val === 'null' || val === '(null)' || val === '[]') {
+  if (!val || val === '—' || val === '-' || val === 'null' || val === '(null)' || val === '[]') {
     return <span style={{ color: textTertiary }}>—</span>;
   }
   const normKey = field.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -704,10 +704,10 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
   const hasKeywords = /(xóa|thêm|cũ:|mới:)/i.test(cleanPrev) || /(xóa|thêm|cũ:|mới:)/i.test(cleanNew);
   if (!hasKeywords) {
     if (prevItems.length > 0 && newItems.length === 0) {
-      return prevItems.map((item) => ({ field, oldValue: item, newValue: '—' }));
+      return prevItems.map((item) => ({ field, oldValue: item, newValue: '' }));
     }
     if (prevItems.length === 0 && newItems.length > 0) {
-      return newItems.map((item) => ({ field, oldValue: '—', newValue: item }));
+      return newItems.map((item) => ({ field, oldValue: '', newValue: item }));
     }
     const maxLen = Math.max(prevItems.length, newItems.length);
     if (maxLen > 0) {
@@ -715,13 +715,13 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
       for (let i = 0; i < maxLen; i++) {
         res.push({
           field,
-          oldValue: prevItems[i] || '—',
-          newValue: newItems[i] || '—',
+          oldValue: prevItems[i] || '',
+          newValue: newItems[i] || '',
         });
       }
       return res;
     }
-    return [{ field, oldValue: cleanPrev !== '' ? cleanPrev : '—', newValue: cleanNew !== '' ? cleanNew : '—' }];
+    return [{ field, oldValue: cleanPrev !== '' ? cleanPrev : '', newValue: cleanNew !== '' ? cleanNew : '' }];
   }
 
   const removed: string[] = [];
@@ -752,9 +752,9 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
 
   const results: HistoryChangeItem[] = [];
 
-  // 1. Xóa vùng: giá trị cũ là tên vùng, giá trị mới là '—' (như tài liệu đính kèm)
+  // 1. Xóa vùng: giá trị cũ là tên vùng, giá trị mới là '' (như tài liệu đính kèm)
   removed.forEach((name) => {
-    results.push({ field, oldValue: name, newValue: '—' });
+    results.push({ field, oldValue: name, newValue: '' });
   });
 
   // 2. Chỉnh sửa vùng: giá trị cũ là tên cũ, giá trị mới là tên mới
@@ -762,17 +762,17 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
   for (let i = 0; i < modCount; i++) {
     results.push({
       field,
-      oldValue: modifiedOld[i] || '—',
-      newValue: modifiedNew[i] || '—',
+      oldValue: modifiedOld[i] || '',
+      newValue: modifiedNew[i] || '',
     });
   }
 
-  // 3. Thêm mới vùng: giá trị cũ là '—', giá trị mới là tên vùng
+  // 3. Thêm mới vùng: giá trị cũ là '', giá trị mới là tên vùng
   added.forEach((name) => {
-    results.push({ field, oldValue: '—', newValue: name });
+    results.push({ field, oldValue: '', newValue: name });
   });
 
-  return results.length > 0 ? results : [{ field, oldValue: cleanPrev || '—', newValue: cleanNew || '—' }];
+  return results.length > 0 ? results : [{ field, oldValue: cleanPrev || '', newValue: cleanNew || '' }];
 }
 
 function parseAttachmentChanges(field: string, prevRaw: string, newRaw: string): HistoryChangeItem[] {
@@ -792,15 +792,15 @@ function parseAttachmentChanges(field: string, prevRaw: string, newRaw: string):
     const prevFiles = parseAttachmentValues(cleanPrev).map(normalizeAttachmentName).filter(Boolean);
     const newFiles = parseAttachmentValues(cleanNew).map(normalizeAttachmentName).filter(Boolean);
     if (prevFiles.length > 0 && newFiles.length === 0) {
-      return prevFiles.map((f) => ({ field, oldValue: f, newValue: '—' }));
+      return prevFiles.map((f) => ({ field, oldValue: f, newValue: '' }));
     }
     if (prevFiles.length === 0 && newFiles.length > 0) {
-      return newFiles.map((f) => ({ field, oldValue: '—', newValue: f }));
+      return newFiles.map((f) => ({ field, oldValue: '', newValue: f }));
     }
     return [{
       field,
-      oldValue: cleanPrev !== '' ? cleanPrev : '—',
-      newValue: cleanNew !== '' ? cleanNew : '—',
+      oldValue: cleanPrev !== '' ? cleanPrev : '',
+      newValue: cleanNew !== '' ? cleanNew : '',
     }];
   }
 
@@ -820,13 +820,13 @@ function parseAttachmentChanges(field: string, prevRaw: string, newRaw: string):
 
   const results: HistoryChangeItem[] = [];
   removed.forEach((name) => {
-    results.push({ field, oldValue: name, newValue: '—' });
+    results.push({ field, oldValue: name, newValue: '' });
   });
   added.forEach((name) => {
-    results.push({ field, oldValue: '—', newValue: name });
+    results.push({ field, oldValue: '', newValue: name });
   });
 
-  return results.length > 0 ? results : [{ field, oldValue: cleanPrev || '—', newValue: cleanNew || '—' }];
+  return results.length > 0 ? results : [{ field, oldValue: cleanPrev || '', newValue: cleanNew || '' }];
 }
 
 export function parseHistoryEntryChanges(item: CommonHistoryEntry): HistoryChangeItem[] {
@@ -860,8 +860,8 @@ export function parseHistoryEntryChanges(item: CommonHistoryEntry): HistoryChang
     const allKeys = Array.from(new Set([...Object.keys(prevMap), ...Object.keys(newMap)]));
     if (allKeys.length > 0) {
       return allKeys.flatMap((k) => {
-        const ov = prevMap[k] !== undefined ? prevMap[k] : '—';
-        const nv = newMap[k] !== undefined ? newMap[k] : '—';
+        const ov = prevMap[k] !== undefined ? prevMap[k] : '';
+        const nv = newMap[k] !== undefined ? newMap[k] : '';
         if (isZoneField(k)) {
           return parseZoneChanges(k, ov, nv);
         }
@@ -934,9 +934,9 @@ export function mergeChangesByField(
           if (trimmed && trimmed !== '—' && !newValList.includes(trimmed)) newValList.push(trimmed);
         });
       });
-      const mergedOld = oldValList.length > 0 ? oldValList.join(', ') : '—';
-      const mergedNew = newValList.length > 0 ? newValList.join(', ') : '—';
-      if (mergedOld !== '—' && mergedNew !== '—' && mergedOld === mergedNew) {
+      const mergedOld = oldValList.length > 0 ? oldValList.join(', ') : '';
+      const mergedNew = newValList.length > 0 ? newValList.join(', ') : '';
+      if (mergedOld !== '' && mergedNew !== '' && mergedOld === mergedNew) {
         return;
       }
       result.push({
@@ -957,9 +957,9 @@ export function mergeChangesByField(
           newValList.push(nv);
         }
       });
-      const mergedOld = oldValList.length > 0 ? oldValList.join(', ') : '—';
-      const mergedNew = newValList.length > 0 ? newValList.join(', ') : '—';
-      if (mergedOld !== '—' && mergedNew !== '—' && mergedOld === mergedNew) {
+      const mergedOld = oldValList.length > 0 ? oldValList.join(', ') : '';
+      const mergedNew = newValList.length > 0 ? newValList.join(', ') : '';
+      if (mergedOld !== '' && mergedNew !== '' && mergedOld === mergedNew) {
         return;
       }
       result.push({
@@ -1047,7 +1047,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
   const renderSymbolValue = (val: string) => {
     if (!val || val === '—' || val === '-' || val === 'null' || val === '(null)' || val === '(trống)' || val === '— (Trống)' || val === 'Chưa có') {
-      return <span style={{ color: textTertiary }}>—</span>;
+      return '';
     }
     const trimmed = String(val).trim();
     const upper = trimmed.toUpperCase();
@@ -1106,7 +1106,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   };
 
   const getRecordActor = (r: CommonHistoryEntry): string => {
-    return r.changedByName || r.actor || r.approvedByName || r.changedBy || r.approvedBy || '—';
+    return r.changedByName || r.actor || r.approvedByName || r.changedBy || r.approvedBy || '';
   };
 
   const getRecordAction = (r: CommonHistoryEntry): string => {
@@ -1114,14 +1114,14 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   };
 
   const formatTimestamp = (ts: string) => {
-    if (!ts) return '—';
+    if (!ts) return '';
     const d = dayjs(ts);
     if (!d.isValid()) return ts;
     return `${d.format('HH:mm:ss')} ${d.format('DD/MM/YYYY')}`;
   };
 
   const resolveFieldValue = (field: string, val: any): string => {
-    if (val === null || val === undefined || val === '') return '—';
+    if (val === null || val === undefined || val === '') return '';
     if (formatValue) {
       const custom = formatValue(field, val);
       if (custom !== undefined) return custom;
@@ -1134,7 +1134,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     if (typeof val === 'boolean') return val ? 'Có' : 'Không';
     if (typeof val === 'object') return JSON.stringify(val);
     const s = String(val).trim();
-    if (s === '(null)' || s === 'null' || s === '(trống)' || s === '— (Trống)' || s === 'Chưa có' || s === '-') return '—';
+    if (s === '(null)' || s === 'null' || s === '(trống)' || s === '— (Trống)' || s === 'Chưa có' || s === '-') return '';
     return s;
   };
 
@@ -1466,7 +1466,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                     <div style={{ minWidth: 0, paddingTop: spaceXs, alignSelf: 'start' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                         <Typography.Text style={historyTimeStyle}>
-                          {group.ts ? formatTimestamp(group.ts) : '—'}
+                          {group.ts ? formatTimestamp(group.ts) : ''}
                         </Typography.Text>
                         <span style={{ flexShrink: 0 }}>
                           <span
@@ -1487,7 +1487,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
                         <Typography.Text style={historyMetaRowStyle}>
-                          Người cập nhật: {group.actor || '—'}
+                          Người cập nhật: {group.actor || ''}
                         </Typography.Text>
                         <Typography.Text style={historyMetaRowStyle}>
                           Đơn vị: {unitName}
@@ -1520,7 +1520,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            {group.ts ? formatTimestamp(group.ts) : '—'}
+                            {group.ts ? formatTimestamp(group.ts) : ''}
                           </Typography.Text>
                           <span style={{ flexShrink: 0 }}>
                             <span
@@ -1543,8 +1543,8 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fontSizeSm, color: textSecondary }}>
                             <UserOutlined style={{ fontSize: 12, color: textTertiary, flexShrink: 0 }} />
-                            <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={group.actor || '—'}>
-                              {group.actor || '—'}
+                            <span style={{ color: textPrimary, fontWeight: fontWeightMedium, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={group.actor || ''}>
+                              {group.actor || ''}
                             </span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: fontSizeSm, color: textSecondary }}>
@@ -1599,7 +1599,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
                           const renderFormattedContent = (content: string, isOld: boolean = false) => {
                             if (!content || content === '—' || content === '-' || content === 'null' || content === '(null)' || content === '(trống)' || content === '— (Trống)' || content === 'Chưa có') {
-                              return '—';
+                              return '';
                             }
                             const str = String(content).trim();
                             const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -1659,10 +1659,10 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 }}
                               >
                                 <div style={variant === 'berth' ? historyFieldLabelStyle : { minWidth: 0, fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                                  {label ? `${label}:` : '—'}
+                                  {label ? `${label}:` : ''}
                                 </div>
-                                <span title={nv ?? '—'} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
-                                  {renderFormattedContent(nv, false) ?? (nv ?? '—')}
+                                <span title={nv ?? ''} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
+                                  {renderFormattedContent(nv, false) ?? (nv ?? '')}
                                 </span>
                               </div>
                             );
@@ -1686,16 +1686,16 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               }}
                             >
                               <div style={variant === 'berth' ? historyFieldLabelStyle : { minWidth: 0, fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                                {label ? `${label}:` : '—'}
+                                {label ? `${label}:` : ''}
                               </div>
-                              <span title={ov ?? '—'} style={variant === 'berth' ? historyOldValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textSecondary }}>
-                                {renderFormattedContent(ov, true) ?? (ov ?? '—')}
+                              <span title={ov ?? ''} style={variant === 'berth' ? historyOldValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textSecondary }}>
+                                {renderFormattedContent(ov, true) ?? (ov ?? '')}
                               </span>
                               <span style={variant === 'berth' ? historyArrowStyle : { color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                 →
                               </span>
-                              <span title={nv ?? '—'} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
-                                {renderFormattedContent(nv, false) ?? (nv ?? '—')}
+                              <span title={nv ?? ''} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
+                                {renderFormattedContent(nv, false) ?? (nv ?? '')}
                               </span>
                             </div>
                           );

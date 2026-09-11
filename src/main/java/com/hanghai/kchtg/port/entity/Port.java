@@ -175,4 +175,9 @@ public class Port extends BaseEntity implements ApprovableEntity {
     @JsonManagedReference
     @Builder.Default
     private List<PortAttachment> attachments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "port", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    @Builder.Default
+    private List<PortWharfArea> wharfAreas = new ArrayList<>();
 }

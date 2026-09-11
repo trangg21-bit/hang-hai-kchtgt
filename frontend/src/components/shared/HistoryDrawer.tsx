@@ -106,7 +106,7 @@ function historyNewValue(item: any): string | null {
 function historyActor(item: any): string {
   const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName
     || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '—';
+  return raw || '';
 }
 
 function normalizedHistoryFields(value: string): string[] {
@@ -181,7 +181,7 @@ function historyFieldValue(
   approvalStatusMap: Record<string, string>,
   conditionStatusMap: Record<string, string>,
 ): string {
-  if (!val || val === '(null)' || val === 'null' || val === '') return '(trống)';
+  if (!val || val === '(null)' || val === 'null' || val === '' || val === '-' || val === '—' || val === '–') return '';
   const displayValue = val.split(';').map((part) => {
     const separator = part.indexOf('=');
     return separator >= 0 ? part.slice(separator + 1).trim() : part.trim();
@@ -273,8 +273,8 @@ function renderHistoryValueTag(
   val: string | null,
   approvalStatusMap: Record<string, string>,
   _conditionStatusMap?: Record<string, string>,
-): React.ReactElement {
-  if (!val) return <span style={{ color: textTertiary }}>—</span>;
+): React.ReactElement | string {
+  if (!val || val === '—' || val === '-') return '';
   const normKey = normalizeHistoryKey(field);
   const normVal = normalizeHistoryKey(val);
   const approveLabels = Object.values(approvalStatusMap).map((v) => normalizeHistoryKey(v));
@@ -456,7 +456,7 @@ export default function HistoryDrawer({
             const ib = sortOrder.indexOf(b.field);
             return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
           });
-          const unitName = g.items[0]?.orgUnitName || g.items[0]?.unitName || '—';
+          const unitName = g.items[0]?.orgUnitName || g.items[0]?.unitName || '';
           const isCreate = changes.length > 0 && changes.every((c) => !c.oldValue || c.oldValue === '(null)' || c.oldValue === '');
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
           const formatHistoryValue = (fn: string, raw: string | null) => {
@@ -480,7 +480,7 @@ export default function HistoryDrawer({
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: spaceSm, marginBottom: spaceXs }}>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeLg - 1, color: textPrimary, fontWeight: fontWeightBold, lineHeight: 1.5, whiteSpace: 'nowrap' }}>
-                    {g.ts ? fmtTime(g.ts) : '—'}
+                    {g.ts ? fmtTime(g.ts) : ''}
                   </Typography.Text>
                   <span style={{ flexShrink: 0 }}>
                     <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>
@@ -490,7 +490,7 @@ export default function HistoryDrawer({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: spaceXs }}>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
-                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || '—'}</span>
+                    Người cập nhật: <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{g.actor || ''}</span>
                   </Typography.Text>
                   <Typography.Text style={{ display: 'block', fontSize: fontSizeSm + 1, color: textSecondary, fontWeight: fontWeightMedium, lineHeight: 1.4 }}>
                     Đơn vị: <span style={{ color: textPrimary }}>{unitName}</span>
@@ -521,12 +521,12 @@ export default function HistoryDrawer({
                           const nv = formatHistoryValue(fn, change.newValue);
                           return isCreate ? (
                             <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : '—'}</div>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : ''}</div>
                               <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{renderHistoryValueTag(fn, nv, approvalStatusMap, conditionStatusMap)}</div>
                             </div>
                           ) : (
                             <div key={`${fn}-${ri}`} style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr) 24px minmax(0, 1fr)', alignItems: 'flex-start', gap: spaceSm, fontSize: fontSizeMd, lineHeight: 1.6 }}>
-                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : '—'}</div>
+                              <div style={{ fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{fn ? `${historyFieldName(fieldNameMap, fn)}:` : ''}</div>
                               <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{renderHistoryValueTag(fn, ov, approvalStatusMap, conditionStatusMap)}</div>
                               <div style={{ color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>→</div>
                               <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>{renderHistoryValueTag(fn, nv, approvalStatusMap, conditionStatusMap)}</div>
@@ -571,7 +571,7 @@ export default function HistoryDrawer({
       }
       extra={<Button type="text" aria-label="Đóng lịch sử thay đổi" onClick={onClose} style={drawerCloseBtnStyle}>✕</Button>}
       styles={{ header: drawerTitleStyle }}
-      destroyOnClose
+      destroyOnHidden
     >
       <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: spaceMd }}>

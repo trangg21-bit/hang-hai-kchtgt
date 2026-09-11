@@ -1,16 +1,30 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Button, Modal, Input, Space, Typography, DatePicker, Radio, Select,
+  Button, Modal, Input, Space, DatePicker, Radio, Select,
   Form,
 } from 'antd';
 import {
-  HistoryOutlined, SearchOutlined,
+  HistoryOutlined, SearchOutlined, PlusOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../../services/api';
-import { dryPortCRUD, dryPortApproval, dryPortHistory } from '../../services/portService';
-import type { DryPort } from '../../types/port';
+import {
+  type DryPort,
+  fetchDryPortList,
+  fetchDryPortById,
+  deleteDryPort,
+  approveDryPort,
+  rejectDryPort,
+  fetchDryPortHistory,
+  fetchDryPortAllHistory,
+  fetchDryPortAttachmentList,
+  PORT_STATUS_OPTIONS,
+  REGION_OPTIONS,
+  trangThaiPheDuyetBadge,
+  trangThaiHoatDongBadge,
+  ddToDms,
+} from './dry-port';
 import DryPortDetailContent from './DryPortDetailContent';
 import DryPortForm, { type DryPortFormHandle } from './DryPortForm';
 import { OrgUnitTreeSelect, FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
@@ -18,19 +32,17 @@ import { userService } from '../../services/userService';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
 import { symbolService } from '../../services/symbolService';
-import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, FilterTableLayout, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
   statusOperational,
-  statusAttention,
-  statusCritical,
   statusDraft,
   actionPrimary,
   textPrimary,
@@ -40,32 +52,17 @@ import {
   fontSizeLg,
   fontSizeSm,
   fontWeightBold,
-  fontWeightMedium,
   radiusPill,
   borderDefault,
   spaceSm,
   spaceMd,
   spaceFormField,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
-  spaceXs,
   spaceXl,
   drawerTitleStyle,
   drawerFooterStyle,
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-  statusBadgeStyle,
   cellTitleStyle,
   cellSubtitleStyle,
   icons,
@@ -75,66 +72,15 @@ import {
   isUuidString,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 
 /* ───────────────────────────────────────────────
-   Constants
+   Helpers
    ─────────────────────────────────────────────── */
-const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
-};
-
-const TAB_STATUS_LIST = [
-  { key: 'all', label: 'Tất cả', color: actionPrimary },
-  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL2', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
-  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
-  { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
-];
-
-const PORT_STATUS_OPTIONS = [
-  { value: 1, label: 'Đang khai thác/vận hành' },
-  { value: 0, label: 'Chưa khai thác/vận hành' },
-  { value: 2, label: 'Dừng khai thác/vận hành' },
-];
-
-const REGION_OPTIONS = [
-  { value: 'Miền Bắc', label: 'Miền Bắc' },
-  { value: 'Miền Trung', label: 'Miền Trung' },
-  { value: 'Miền Nam', label: 'Miền Nam' },
-];
-
-/* ── Chuyển độ thập phân → DMS (Độ/Phút/Giây) ── */
-const ddToDms = (dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } => {
-  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  const abs = Math.abs(dd);
-  let d = Math.floor(abs);
-  let mFloat = (abs - d) * 60;
-  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
-  let m = Math.floor(mFloat);
-  let sFloat = (mFloat - m) * 60;
-  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
-  let s = Math.round(sFloat * 100) / 100;
-  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
-};
-
-/* ── Helpers ────────────────────────────────────────────── */
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '';
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
@@ -180,7 +126,7 @@ function normalizeHistoryKey(key: string): string {
 }
 
 function historyFieldValue(field: string, val: string | null | undefined, orgMap: Map<string, string>, symbolMap: Map<string, string>): string {
-  if (val === null || val === undefined || val === '' || val === 'null') return '—';
+  if (val === null || val === undefined || val === '' || val === 'null') return '';
   if (field === 'orgUnitId') return orgMap.get(val) || val;
   if (field === 'mapSymbolId') return symbolMap.get(val) || val;
   if (field === 'provinceId') {
@@ -192,73 +138,8 @@ function historyFieldValue(field: string, val: string | null | undefined, orgMap
     const s = parseInt(val, 10);
     return s === 1 ? 'Đang khai thác/vận hành' : s === 0 ? 'Chưa khai thác/vận hành' : s === 2 ? 'Dừng khai thác/vận hành' : val;
   }
-  if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[val]?.label || val;
+  if (field === 'approvalStatus') return trangThaiPheDuyetBadge(val).label;
   return val;
-}
-
-function formatHistoryValue(field: string, val: string | null | undefined): string {
-  if (val === null || val === undefined || val === '' || val === 'null') return '—';
-  if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[val]?.label || val;
-  return val;
-}
-
-function getDryPortActionMeta(item: any): { label: string; color: string; bg: string } {
-  const rawAction = (item?.action || '').toString().trim().toUpperCase();
-  const rawStatus = (item?.status || item?.approvalStatus || '').toString().trim().toUpperCase();
-  const rawReason = (item?.approvalReason || item?.reason || item?.content || item?.note || '').toString().trim().toLowerCase();
-  const changes = Array.isArray(item?.changes) ? item.changes : [];
-
-  if (rawAction === 'CREATE') {
-    return { label: 'Tạo mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
-    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
-    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-  }
-
-  const approvalChange = changes.find((c: any) => {
-    const k = normalizeHistoryKey(c.field || '');
-    return k === 'approvalstatus' || k === 'trang thai phe duyet' || k === 'trang thai';
-  });
-  if (approvalChange) {
-    const nv = normalizeHistoryKey(approvalChange.newValue || '');
-    if (nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    if (nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    if (nv.includes('approved_level1') || nv.includes('cap 1') || nv.includes('cuc duyet')) return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    if (nv.includes('approved') || nv.includes('da duyet') || nv.includes('da phe duyet')) return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    if (nv.includes('tu choi') || nv.includes('rejected')) return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam')) return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1')) {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
 }
 
 /* ───────────────────────────────────────────────
@@ -288,7 +169,6 @@ export default function DryPortListPage() {
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [filterCode, setFilterCode] = useState<string | undefined>();
   const [filterTransportCorridor, setFilterTransportCorridor] = useState<string | undefined>();
-  const [filterCollapsed, setFilterCollapsed] = useState(true);
 
   const [sortField, setSortField] = useState<string | undefined>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | undefined>('descend');
@@ -332,14 +212,23 @@ export default function DryPortListPage() {
   const historyFieldCount = useMemo(() => historyRecords.length, [historyRecords]);
 
   const openHistory = useCallback(async (r: DryPort) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    setHistoryTarget(r);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    setHistorySearchInput('');
+    setHistorySearch('');
+    setHistoryFrom('');
+    setHistoryTo('');
     setHistoryMode('current');
     try {
-      const d = await dryPortHistory.getHistory(r.id, { page: 0, size: 200 });
-      setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []);
-    } catch { toast.error('Không thể tải lịch sử thay đổi'); }
-    finally { setHistoryLoading(false); }
+      const d = await fetchDryPortHistory(r.id, { page: 0, size: 200 });
+      setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : Array.isArray(d) ? d : []);
+    } catch {
+      toast.error('Không thể tải lịch sử thay đổi');
+    } finally {
+      setHistoryLoading(false);
+    }
   }, []);
 
   const HISTORY_FIELD_ORDER = [
@@ -352,125 +241,65 @@ export default function DryPortListPage() {
   ];
 
   const renderDryPortHistoryTimeline = (records: any[]) => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-    for (const r of sorted) {
+    const filtered = (records || []).filter((r: any) => {
       if (q) {
-        const fn = (r.fieldName || '').toLowerCase();
-        const ov = (r.oldValue || '').toLowerCase();
-        const nv = (r.newValue || '').toLowerCase();
-        const lb = historyFieldName(r.fieldName || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName, r.oldValue, orgMap, symbolMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName, r.newValue, orgMap, symbolMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
+        const fn = (r.fieldName || r.changedField || '').toLowerCase();
+        const ov = (r.oldValue || r.previousValue || '').toLowerCase();
+        const nv = (r.newValue || r.value || '').toLowerCase();
+        const lb = historyFieldName(r.fieldName || r.changedField || '').toLowerCase();
+        const od = historyFieldValue(r.fieldName || r.changedField, r.oldValue || r.previousValue, orgMap, symbolMap).toLowerCase();
+        const nd = historyFieldValue(r.fieldName || r.changedField, r.newValue || r.value, orgMap, symbolMap).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) return false;
       }
-      if (historyEntityFilter && r.entityId !== historyEntityFilter) continue;
+      if (historyEntityFilter && r.entityId !== historyEntityFilter) return false;
       if (historyFrom || historyTo) {
-        const cd = (r.changedAt || r.createdAt || '').substring(0, 16);
-        if (historyFrom && cd < historyFrom.replace(' ', 'T')) continue;
-        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') continue;
+        const cd = (r.changedAt || r.createdAt || r.approvedDate || '').substring(0, 16);
+        if (historyFrom && cd < historyFrom.replace(' ', 'T')) return false;
+        if (historyTo && cd > historyTo.replace(' ', 'T') + ':59') return false;
       }
-      const ts = r.changedAt || r.createdAt || '';
-      const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === (r.changedBy || '')) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor: r.changedBy || '', items: [r] });
-    }
+      return true;
+    });
 
-    if (groups.length === 0) {
-      return (
-        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyFrom ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-        </div>
-      );
-    }
-
-    const fmtTime = (ts: string) => {
-      const d = new Date(ts);
-      return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}  ·  ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
-    };
-
-    return (
-      <div>{groups.map((g, gi) => {
-        const actionMeta = getDryPortActionMeta({ ...g.items[0], changes: g.items });
-        const isCreate = actionMeta.label === 'Tạo mới';
-        const barColor = actionMeta.color;
-        const unitName = orgMap.get(historyTarget?.orgUnitId || '') || '—';
-        const informationTitle = 'Thông tin chi tiết';
-
-        const orderedChanges = [...g.items].sort((a, b) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.fieldName || a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.fieldName || b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        });
-
-        return (
-          <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : '—'}
-                </Typography.Text>
-                <span style={{ flexShrink: 0 }}>
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Cán bộ cập nhật: {formatUserDisplayName(g.actor, null, userMap)}
-                </Typography.Text>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Đơn vị: {unitName}
-                </Typography.Text>
-              </div>
-            </div>
-            <div style={historyInfoCardStyle}>
-              <div style={historyAccentBarStyle(barColor)} />
-              <Typography.Text style={historyInfoTitleStyle}>
-                {informationTitle}
-              </Typography.Text>
-              {orderedChanges.length > 0 ? <div>{orderedChanges.map((change, ri: number) => {
-                const fn = change.fieldName || change.field;
-                const ov = formatHistoryValue(fn, change.oldValue);
-                const nv = formatHistoryValue(fn, change.newValue);
-                return isCreate ? (
-                  <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{nv ?? '—'}</span>
-                  </div>
-                ) : (
-                  <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                    <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
-                    <span title={ov ?? '—'} style={historyOldValueStyle}>{ov ?? '—'}</span>
-                    <span style={historyArrowStyle}>→</span>
-                    <span title={nv ?? '—'} style={historyNewValueStyle}>{nv ?? '—'}</span>
-                  </div>
-                );
-              })}</div> : <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>}
-            </div>
-          </div>
-        );
-      })}</div>
-    );
+    return renderStandardHistoryCards({
+      records: filtered,
+      fieldLabels: HISTORY_FIELD_LABELS,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'mapSymbolId' && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const formatted = historyFieldValue(fn, raw, orgMap, symbolMap);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+      emptyMessage: q || historyFrom ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
+    });
   };
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [updateDrawerOpen, setUpdateDrawerOpen] = useState(false);
   const [formEditId, setFormEditId] = useState<string | undefined>();
   const [editingName, setEditingName] = useState<string | undefined>();
+  const [editingRecord, setEditingRecord] = useState<DryPort | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [actionType, setActionType] = useState<'draft' | 'approve'>('draft');
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
 
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const createFormRef = useRef<DryPortFormHandle>(null);
   const updateFormRef = useRef<DryPortFormHandle>(null);
-
-  const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = currentUser?.permissions?.includes('*') || false;
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const orgMap = useMemo(() => {
@@ -494,9 +323,17 @@ export default function DryPortListPage() {
         setOrganizations(orgs);
         if (orgs.length > 0 && !defaultOrgApplied.current) {
           defaultOrgApplied.current = true;
-          const defaultId = resolveDefaultOrgUnitId(currentUser, orgs);
-          defaultOrgUnitId.current = defaultId;
-          setFilterOrgUnitId(defaultId);
+          try {
+            const profileRes = await api.get('/users/me');
+            const profile = profileRes.data?.data ?? profileRes.data;
+            const userOrgId = profile?.orgUnitId;
+            const defaultId = userOrgId ? (orgs.find((o: any) => o.id === userOrgId) ? userOrgId : orgs[0].id) : '__all__';
+            defaultOrgUnitId.current = defaultId;
+            setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
+          } catch {
+            defaultOrgUnitId.current = orgs[0].id;
+            setFilterOrgUnitId(orgs[0].id);
+          }
         }
       } catch { /* ignore */ }
       finally { setOrgUnitReady(true); }
@@ -522,15 +359,19 @@ export default function DryPortListPage() {
 
   const fetchCounts = useCallback(async (orgId: string | undefined) => {
     try {
-      const results = await Promise.allSettled(
-        TAB_STATUS_LIST.map(tab =>
-          tab.key === 'all'
-            ? dryPortCRUD.findAll({ page: 1, size: 1, orgUnitId: orgId && orgId !== '__all__' ? orgId : undefined })
-            : dryPortCRUD.findAll({ page: 1, size: 1, approvalStatus: tab.key, orgUnitId: orgId && orgId !== '__all__' ? orgId : undefined }),
-        ),
-      );
-      const counts: Record<string, number> = {};
-      results.forEach((r, i) => { counts[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0; });
+      const orgParam = orgId && orgId !== '__all__' ? orgId : undefined;
+      const [allRes, draftRes, appRes] = await Promise.allSettled([
+        fetchDryPortList({ page: 1, size: 1, orgUnitId: orgParam }),
+        fetchDryPortList({ page: 1, size: 1, approvalStatus: 'DRAFT', orgUnitId: orgParam }),
+        fetchDryPortList({ page: 1, size: 1, approvalStatus: 'APPROVED', orgUnitId: orgParam }),
+      ]);
+
+      const getVal = (r: PromiseSettledResult<{ total: number }>) => (r.status === 'fulfilled' ? r.value.total : 0);
+      const counts: Record<string, number> = {
+        all: getVal(allRes),
+        DRAFT: getVal(draftRes),
+        APPROVED: getVal(appRes),
+      };
       setTabCounts(counts);
     } catch { /* ignore */ }
   }, []);
@@ -542,10 +383,12 @@ export default function DryPortListPage() {
   }, [search]);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false);
+    setIsLoading(true);
+    setIsError(false);
     try {
-      const res = await dryPortCRUD.findAll({
-        page, size: pageSize,
+      const res = await fetchDryPortList({
+        page,
+        size: pageSize,
         search: debouncedSearch || undefined,
         orgUnitId: filterOrgUnitId === '__all__' ? undefined : filterOrgUnitId,
         provinceId: filterProvince,
@@ -557,10 +400,13 @@ export default function DryPortListPage() {
         transportCorridor: filterTransportCorridor,
         approvalStatus: activeTab === 'all' ? undefined : activeTab,
       });
-      setDataSource(res.data); setTotal(res.total);
+      setDataSource(res.data);
+      setTotal(res.total);
     } catch {
       setIsError(true);
-    } finally { setIsLoading(false); }
+    } finally {
+      setIsLoading(false);
+    }
   }, [page, pageSize, debouncedSearch, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterCode, filterTransportCorridor, activeTab]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
@@ -573,8 +419,7 @@ export default function DryPortListPage() {
   }, [search]);
 
   const handleFilterReset = useCallback(() => {
-    const defaultOrg = resolveDefaultOrgUnitId(currentUser, organizations);
-    defaultOrgUnitId.current = defaultOrg;
+    const defaultOrg = defaultOrgUnitId.current;
     setSearch('');
     setFilterProvince(undefined);
     setFilterRegion(undefined);
@@ -583,10 +428,10 @@ export default function DryPortListPage() {
     setFilterUpdatedTo(undefined);
     setFilterCode(undefined);
     setFilterTransportCorridor(undefined);
-    setFilterOrgUnitId(defaultOrg);
+    setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setActiveTab('all');
     setPage(1);
-  }, [currentUser, organizations]);
+  }, []);
 
   const openDetailModal = useCallback(async (record: DryPort) => {
     setDetailRecord(record);
@@ -594,17 +439,8 @@ export default function DryPortListPage() {
     setDetailLoading(true);
     setDetailFiles([]);
     try {
-      const [res1, res2] = await Promise.allSettled([
-        api.get(`/v1/documents/entity/dryport/${record.id}`, { params: { page: 0, size: 50 } }),
-        api.get(`/v1/documents/entity/dry-port/${record.id}`, { params: { page: 0, size: 50 } }),
-      ]);
-      const atts1 = res1.status === 'fulfilled' ? (res1.value.data?.data?.content || res1.value.data?.data || []) : [];
-      const atts2 = res2.status === 'fulfilled' ? (res2.value.data?.data?.content || res2.value.data?.data || []) : [];
-      const combined = [
-        ...(Array.isArray(atts1) ? atts1 : []),
-        ...(Array.isArray(atts2) ? atts2 : []).filter((b: any) => !(Array.isArray(atts1) ? atts1 : []).some((a: any) => a.id === b.id)),
-      ];
-      setDetailFiles(combined);
+      const atts = await fetchDryPortAttachmentList(record.id);
+      setDetailFiles(atts);
     } catch {
       setDetailFiles([]);
     } finally {
@@ -615,7 +451,7 @@ export default function DryPortListPage() {
   useEffect(() => {
     if (!isEmbeddedAction || !linkedRecordId) return;
     let cancelled = false;
-    dryPortCRUD.findById(linkedRecordId)
+    fetchDryPortById(linkedRecordId)
       .then((record) => {
         if (cancelled) return;
         if (linkedAction === 'detail') {
@@ -623,6 +459,7 @@ export default function DryPortListPage() {
         } else {
           setFormEditId(linkedRecordId);
           setEditingName(record.dryPortName || '');
+          setEditingRecord(record);
           setUpdateDrawerOpen(true);
         }
       })
@@ -645,124 +482,264 @@ export default function DryPortListPage() {
   }, [notifyEmbeddedActionClosed]);
 
   const provinceName = useCallback((provinceId: number | null | undefined): string => {
-    if (provinceId == null || provinceId < 1 || provinceId > VIETNAM_PROVINCES.length) return '—';
-    return VIETNAM_PROVINCES[provinceId - 1] || '—';
+    if (provinceId == null || provinceId < 1 || provinceId > VIETNAM_PROVINCES.length) return '';
+    return VIETNAM_PROVINCES[provinceId - 1] || '';
   }, []);
 
   const openDeleteModal = useCallback((record: DryPort) => {
-    setDeletingRecord(record); setDeleteModalOpen(true);
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
     setDeleteLoading(true);
     try {
-      await dryPortCRUD.delete(deletingRecord.id);
+      await deleteDryPort(deletingRecord.id);
       toast.success('Đã xóa cảng cạn');
-      setDeleteModalOpen(false); setDeletingRecord(null);
-      void fetchData(); void fetchCounts(filterOrgUnitId);
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-    finally { setDeleteLoading(false); }
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
+      void fetchData();
+      void fetchCounts(filterOrgUnitId);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
   }, [deletingRecord, fetchData, fetchCounts, filterOrgUnitId]);
 
   const openApproveModal = useCallback((record: DryPort) => {
-    setApprovingRecord(record); setApproveModalOpen(true);
+    setApprovingRecord(record);
+    setApproveModalOpen(true);
   }, []);
 
   const handleConfirmApprove = useCallback(async () => {
     if (!approvingRecord) return;
-    try { await dryPortApproval.approve(approvingRecord.id); toast.success('Đã phê duyệt'); void fetchData(); void fetchCounts(filterOrgUnitId); }
-    catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-    finally { setApproveModalOpen(false); setApprovingRecord(null); }
+    try {
+      await approveDryPort(approvingRecord.id);
+      toast.success('Đã phê duyệt');
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
+      void fetchData();
+      void fetchCounts(filterOrgUnitId);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
+    } finally {
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+    }
   }, [approvingRecord, fetchData, fetchCounts, filterOrgUnitId]);
 
   const openRejectModal = useCallback((record: DryPort) => {
-    setRejectingRecord(record); setRejectReason(''); setRejectError(''); setRejectModalOpen(true);
+    setRejectingRecord(record);
+    setRejectReason('');
+    setRejectError('');
+    setRejectModalOpen(true);
   }, []);
 
   const handleConfirmReject = useCallback(async () => {
     if (!rejectingRecord) return;
     const reason = rejectReason.trim();
-    if (!reason) { setRejectError('Vui lòng nhập lý do từ chối'); return; }
-    if (reason.length < 10) { setRejectError('Lý do từ chối phải có ít nhất 10 ký tự'); return; }
+    if (!reason) {
+      setRejectError('Vui lòng nhập lý do từ chối');
+      return;
+    }
+    if (reason.length < 10) {
+      setRejectError('Lý do từ chối phải có ít nhất 10 ký tự');
+      return;
+    }
     try {
-      await dryPortApproval.reject(rejectingRecord.id, reason);
+      await rejectDryPort(rejectingRecord.id, reason);
       toast.success('Đã từ chối phê duyệt');
-      setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); setRejectError('');
-      void fetchData(); void fetchCounts(filterOrgUnitId);
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      setRejectReason('');
+      setRejectError('');
+      setSortField('updatedAt');
+      setSortOrder('descend');
+      setPage(1);
+      void fetchData();
+      void fetchCounts(filterOrgUnitId);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+    }
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, filterOrgUnitId]);
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
     if (hasPerm('dryport:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: icons.create, onClick: () => { setFormEditId(undefined); setCreateDrawerOpen(true); } });
+      actions.push({
+        key: 'create',
+        label: 'Thêm mới',
+        variant: 'primary' as const,
+        icon: <PlusOutlined />,
+        onClick: () => {
+          setFormEditId(undefined);
+          setEditingRecord(null);
+          setCreateDrawerOpen(true);
+        },
+      });
     }
     return actions;
   }, [hasPerm]);
 
   const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus || '']?.label ?? r.approvalStatus ?? '';
-    if (field === 'updatedBy') return userMap.get(r.updatedBy || '') ?? r.updatedBy ?? '';
+    if (field === 'approvalStatus') {
+      const rank: Record<string, number> = { DRAFT: 1, PROPOSED: 1, PENDING: 2, PENDING_APPROVAL: 2, APPROVED_LEVEL1: 3, APPROVED: 4, REJECTED: 5, REJECTED_LEVEL1: 5, REJECTED_LEVEL2: 5 };
+      return rank[String(r.approvalStatus || '').toUpperCase()] ?? 99;
+    }
+    if (field === 'portStatus') return r.portStatus ?? 0;
+    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') return new Date(r.updatedAt || r.createdAt || 0).getTime();
     return r[field] ?? '';
-  }, [userMap]);
+  }, []);
 
   const columns = useMemo(() => {
     const base: any[] = [
       {
-        key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
-        render: (_: unknown, __: DryPort, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
+        key: 'sequenceNo',
+        label: 'STT',
+        width: 60,
+        fixed: 'left' as const,
+        align: 'center' as const,
+        render: (_: unknown, __: DryPort, idx?: number) => (
+          <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
+        ),
       },
       {
-        key: 'dryPortName', label: 'Tên/Mã Cảng cạn', dataIndex: 'dryPortName', width: 210, fixed: 'left' as const, sortable: true, sortOrder: sortField === 'dryPortName' ? sortOrder : undefined, ellipsis: false,
+        key: 'dryPortName',
+        label: 'Tên/Mã Cảng cạn',
+        dataIndex: 'dryPortName',
+        width: 280,
+        fixed: 'left' as const,
+        sortable: true,
+        sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
         render: (_: unknown, record: DryPort) => (
-          <div>
-            <a title={record.dryPortName} onClick={() => openDetailModal(record)} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.dryPortName || '—'}</a>
-            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.dryPortCode || '—'}</span>
+          <div style={{ minWidth: 0, overflow: 'hidden' }}>
+            <a
+              title={record.dryPortName}
+              onClick={() => openDetailModal(record)}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {record.dryPortName || ''}
+            </a>
+            <span
+              title={record.dryPortCode}
+              style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {record.dryPortCode || ''}
+            </span>
           </div>
-        )
+        ),
       },
       {
-        key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 260, sortable: true, sortOrder: sortField === 'orgUnitName' ? sortOrder : undefined,
-        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || '—'}</span>
+        key: 'orgUnitName',
+        label: 'Đơn vị quản lý',
+        dataIndex: 'orgUnitName',
+        width: 260,
+        sortable: true,
+        sortOrder: sortField === 'orgUnitName' ? sortOrder : undefined,
+        render: (v: string | null | undefined) => (
+          <span title={v || ''} style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {v || ''}
+          </span>
+        ),
       },
       {
-        key: 'operatingUnit', label: 'Đơn vị khai thác', dataIndex: 'operatingUnit', width: 220, sortable: true,
-        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
+        key: 'operatingUnit',
+        label: 'Đơn vị khai thác',
+        dataIndex: 'operatingUnit',
+        width: 220,
+        sortable: true,
+        render: (v: string | null | undefined) => (
+          <span title={v || ''} style={{ fontSize: fontSizeMd, color: textPrimary, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {v || ''}
+          </span>
+        ),
       },
       {
-        key: 'region', label: 'Khu vực', dataIndex: 'region', width: 200, sortable: true,
-        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
+        key: 'region',
+        label: 'Khu vực',
+        dataIndex: 'region',
+        width: 170,
+        sortable: true,
+        render: (v: string | null | undefined) => (
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span>
+        ),
       },
       {
-        key: 'transportCorridor', label: 'Hành lang vận tải', dataIndex: 'transportCorridor', width: 220, sortable: true,
-        render: (v: string | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || '—'}</span>
+        key: 'transportCorridor',
+        label: 'Hành lang vận tải',
+        dataIndex: 'transportCorridor',
+        width: 200,
+        sortable: true,
+        render: (v: string | null | undefined) => (
+          <span title={v || ''} style={{ fontSize: fontSizeMd, color: textPrimary, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {v || ''}
+          </span>
+        ),
       },
       {
-        key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true,
-        render: (status: string) => {
-          const s = APPROVAL_STYLE_MAP[status || ''] || { color: textTertiary, label: status || '—' };
-          return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
-        }
-      },
-    ];
-
-    base.push(
-      {
-        key: 'updatedBy', label: 'Cán bộ cập nhật', width: 190, ellipsis: false, sortable: true,
-        sortOrder: sortField === 'updatedBy' ? sortOrder : undefined,
+        key: 'portStatus',
+        label: 'Tình trạng',
+        dataIndex: 'portStatus',
+        width: 240,
+        ellipsis: false,
+        sortable: true,
+        cellTitle: (record: DryPort) => {
+          const badge = trangThaiHoatDongBadge(record.portStatus, (record as any).operationalStatus);
+          return badge.label;
+        },
         render: (_: unknown, record: DryPort) => {
-          const name = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
+          const badge = trangThaiHoatDongBadge(record.portStatus, (record as any).operationalStatus);
+          return <span style={badge.style}>{badge.label}</span>;
+        },
+      },
+      {
+        key: 'approvalStatus',
+        label: 'Trạng thái',
+        dataIndex: 'approvalStatus',
+        width: 260,
+        ellipsis: false,
+        sortable: true,
+        sortOrder: sortField === 'approvalStatus' ? sortOrder : undefined,
+        cellTitle: (record: DryPort) => {
+          const badge = trangThaiPheDuyetBadge(record.approvalStatus);
+          return badge?.label || record.approvalStatus || '';
+        },
+        render: (status: string) => {
+          const badge = trangThaiPheDuyetBadge(status);
+          return badge?.label ? <span style={badge.style}>{badge.label}</span> : null;
+        },
+      },
+      {
+        key: 'updatedAt',
+        dataIndex: 'updatedAt',
+        label: 'Cán bộ cập nhật',
+        width: 190,
+        sortable: true,
+        sortOrder: (sortField === 'updatedAt' || sortField === 'updatedBy') ? sortOrder : undefined,
+        render: (_: unknown, record: DryPort) => {
+          const rawName = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
+          const name = (rawName === '—' || rawName === '-') ? '' : rawName;
           const date = record.updatedAt || record.createdAt;
+          const cleanDate = date ? formatDate(date) : '';
           return (
-            <div style={{ lineHeight: '1.35' }}>
-              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>{date ? formatDate(date) : '—'}</div>
+            <div style={{ lineHeight: '1.35', minWidth: 0, overflow: 'hidden' }}>
+              <div title={name} style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {name}
+              </div>
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {cleanDate}
+              </div>
             </div>
           );
-        }
+        },
       },
-    );
+    ];
     return base;
   }, [page, pageSize, sortField, sortOrder, userMap, openDetailModal]);
 
@@ -773,7 +750,17 @@ export default function DryPortListPage() {
     const isPending = status === 'PENDING' || status === 'PENDING_APPROVAL';
     actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailModal(record) });
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport', extraUpdatePerms: ['dryport:update'], extraApprovePerms: ['dryport:approve'] })) {
-      actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setFormEditId(record.id); setEditingName(record.dryPortName); setUpdateDrawerOpen(true); } });
+      actions.push({
+        key: 'edit',
+        label: 'Chỉnh sửa',
+        icon: icons.edit,
+        onClick: () => {
+          setFormEditId(record.id);
+          setEditingName(record.dryPortName);
+          setEditingRecord(record);
+          setUpdateDrawerOpen(true);
+        },
+      });
     }
     if (hasPerm('dryport:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     if (isDraft && hasPerm('dryport:approve')) actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
@@ -798,7 +785,6 @@ export default function DryPortListPage() {
         detailFiles={detailFiles}
         ddToDms={ddToDms}
         provinceName={provinceName}
-        approvalStyleMap={APPROVAL_STYLE_MAP}
       />
     );
   };
@@ -806,21 +792,25 @@ export default function DryPortListPage() {
   const closeCreateDrawer = useCallback(() => {
     setCreateDrawerOpen(false);
     createForm.resetFields();
+    setSortField('updatedAt');
+    setSortOrder('descend');
+    setPage(1);
     void fetchData();
     void fetchCounts(filterOrgUnitId);
   }, [fetchData, fetchCounts, filterOrgUnitId, createForm]);
 
   const closeUpdateDrawer = useCallback(() => {
     setUpdateDrawerOpen(false);
-    setFormEditId(undefined);
-    updateForm.resetFields();
+    setSortField('updatedAt');
+    setSortOrder('descend');
+    setPage(1);
     void fetchData();
     void fetchCounts(filterOrgUnitId);
     notifyEmbeddedActionClosed();
-  }, [fetchData, fetchCounts, filterOrgUnitId, notifyEmbeddedActionClosed, updateForm]);
+  }, [fetchData, fetchCounts, filterOrgUnitId, notifyEmbeddedActionClosed]);
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
       <div className="dry-port-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         <style>{`
           .dry-port-page-wrapper,
@@ -866,78 +856,122 @@ export default function DryPortListPage() {
           }
         `}</style>
 
-        <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cảng cạn' }]} actions={headerActions} />
+        <ScreenHeader
+          breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: 'Quản lý cảng cạn' }]}
+          actions={headerActions}
+        />
         <FilterTableLayout
-          filterCollapsed={filterCollapsed}
-          onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+          hideFilterToggle={true}
+          statusTabs={[
+            { key: 'all', label: 'Tất cả', count: tabCounts['all'] ?? total, color: actionPrimary, active: !activeTab || activeTab === 'all' },
+            { key: 'DRAFT', label: 'Lưu tạm', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeTab === 'DRAFT' },
+            { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeTab === 'APPROVED' },
+          ]}
+          onStatusTabChange={(key) => {
+            setActiveTab(key);
+            setPage(1);
+          }}
           onFilterApply={handleFilterApply}
           onFilterReset={handleFilterReset}
           loading={isLoading}
           error={isError}
           onRetry={fetchData}
-          filterContent={<>
-            <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                Đơn vị quản lý
-              </div>
-              <FilterOrgUnitTreeSelect
+          filterContent={
+            <>
+              <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Đơn vị quản lý
+                </div>
+                <FilterOrgUnitTreeSelect
                 organizations={organizations}
                 value={filterOrgUnitId}
                 onChange={(val) => { setFilterOrgUnitId(val); setPage(1); }}
               />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cảng cạn</div>
-              <Input placeholder="Tìm theo mã, tên, địa chỉ..." allowClear
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onPressEnter={handleFilterApply}
-                style={{ borderRadius: radiusPill, height: 40 }} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
-              <Select placeholder="Chọn tình trạng" allowClear
-                value={filterStatus}
-                onChange={(val) => { setFilterStatus(val); setPage(1); }}
-                options={PORT_STATUS_OPTIONS}
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-            </div>
-            {filterCollapsed && (<>
+              </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cảng cạn</div>
-                <Input placeholder="Tìm theo mã cảng cạn" allowClear
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Tên cảng cạn
+                </div>
+                <Input
+                  placeholder="Tìm theo mã, tên, địa chỉ..."
+                  allowClear
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onPressEnter={handleFilterApply}
+                  style={{ borderRadius: radiusPill, height: 40 }}
+                />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Tình trạng
+                </div>
+                <Select
+                  placeholder="Chọn tình trạng"
+                  allowClear
+                  value={filterStatus}
+                  onChange={(val) => { setFilterStatus(val); setPage(1); }}
+                  options={PORT_STATUS_OPTIONS}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Mã cảng cạn
+                </div>
+                <Input
+                  placeholder="Tìm theo mã cảng cạn"
+                  allowClear
                   value={filterCode}
                   onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
                   onPressEnter={handleFilterApply}
-                  style={{ borderRadius: radiusPill, height: 40 }} />
+                  style={{ borderRadius: radiusPill, height: 40 }}
+                />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Khu vực</div>
-                <Select placeholder="Chọn khu vực" allowClear
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Khu vực
+                </div>
+                <Select
+                  placeholder="Chọn khu vực"
+                  allowClear
                   value={filterRegion}
                   onChange={(val) => { setFilterRegion(val); setPage(1); }}
                   options={REGION_OPTIONS}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Hành lang vận tải</div>
-                <Input placeholder="Tìm theo hành lang vận tải" allowClear
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Hành lang vận tải
+                </div>
+                <Input
+                  placeholder="Tìm theo hành lang vận tải"
+                  allowClear
                   value={filterTransportCorridor}
                   onChange={(e) => { setFilterTransportCorridor(e.target.value); setPage(1); }}
                   onPressEnter={handleFilterApply}
-                  style={{ borderRadius: radiusPill, height: 40 }} />
+                  style={{ borderRadius: radiusPill, height: 40 }}
+                />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
-                <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Địa điểm (Tỉnh/Thành Phố)
+                </div>
+                <Select
+                  placeholder="Chọn tỉnh/thành phố"
+                  allowClear
+                  showSearch
                   filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                   value={filterProvince}
                   onChange={(val) => { setFilterProvince(val); setPage(1); }}
                   options={VIETNAM_PROVINCES.map((p, i) => ({ value: i + 1, label: p }))}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Khoảng ngày cập nhật</div>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+                  Khoảng ngày cập nhật
+                </div>
                 <DatePicker.RangePicker
                   {...getRangePickerProps({
                     value: (filterUpdatedFrom && filterUpdatedTo)
@@ -957,16 +991,8 @@ export default function DryPortListPage() {
                   })}
                 />
               </div>
-            </>)}
-          </>}
-          statusTabs={TAB_STATUS_LIST.map((tab) => ({
-            key: tab.key,
-            label: tab.label,
-            count: tabCounts[tab.key] ?? 0,
-            color: tab.color,
-            active: activeTab === tab.key,
-          }))}
-          onStatusTabChange={(key: string) => { setActiveTab(key); setPage(1); }}
+            </>
+          }
         >
           <DataTable
             columns={columns}
@@ -1012,7 +1038,7 @@ export default function DryPortListPage() {
           {renderDetailContent()}
         </AppDrawer>
 
-        {/* ── Create Drawer ──────────────────────────────────────────── */}
+        {/* ── Create Drawer (3 buttons standard) ────────────────────── */}
         <AppDrawer
           width="min(920px, 96vw)"
           rootClassName="dry-port-drawer-scope"
@@ -1032,19 +1058,17 @@ export default function DryPortListPage() {
               >
                 Lưu tạm
               </Button>
-              {isSystemAdmin && (
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    setActionType('approve');
-                    createFormRef.current?.submit('SAVE_AND_APPROVE');
-                  }}
-                  loading={submitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              )}
+              <Button
+                type="primary"
+                onClick={() => {
+                  setActionType('approve');
+                  createFormRef.current?.submit('SAVE_AND_APPROVE');
+                }}
+                loading={submitting && actionType === 'approve'}
+                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+              >
+                Lưu và phê duyệt
+              </Button>
             </div>
           }
           styles={{
@@ -1075,8 +1099,28 @@ export default function DryPortListPage() {
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editingName || 'Cảng cạn'}</span>}
           open={updateDrawerOpen}
           onClose={closeUpdateDrawer}
+          afterOpenChange={(open) => {
+            if (!open) {
+              setFormEditId(undefined);
+              setEditingRecord(null);
+              setEditingName('');
+              updateForm.resetFields();
+            }
+          }}
           footer={
             <div style={drawerFooterStyle}>
+              {!(editingRecord?.approvalStatus === 'APPROVED' || editingRecord?.approvalStatus === 'APPROVED_LEVEL2') && (
+                <Button
+                  onClick={() => {
+                    setActionType('draft');
+                    updateFormRef.current?.submit('DRAFT');
+                  }}
+                  loading={submitting && actionType === 'draft'}
+                  style={outlineButtonStyle}
+                >
+                  Lưu tạm
+                </Button>
+              )}
               <Button
                 type="primary"
                 onClick={() => {
@@ -1095,7 +1139,7 @@ export default function DryPortListPage() {
             body: { padding: '0 24px 12px 24px' },
           }}
         >
-          {updateDrawerOpen && formEditId && (
+          {formEditId && (
             <>
               <style>{requiredMarkStyle}</style>
               <Form form={updateForm} layout="vertical">
@@ -1140,18 +1184,20 @@ export default function DryPortListPage() {
             {!historyLoading && (
               <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
                 <Radio.Group value={historyMode} onChange={e => {
-                  const m = e.target.value; setHistoryMode(m); setHistoryEntityFilter('');
+                  const m = e.target.value;
+                  setHistoryMode(m);
+                  setHistoryEntityFilter('');
                   if (m === 'current' && historyTarget) {
                     setHistoryLoading(true);
-                    dryPortHistory.getHistory(historyTarget.id, { page: 0, size: 200 })
-                      .then((d: any) => setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []))
+                    fetchDryPortHistory(historyTarget.id, { page: 0, size: 200 })
+                      .then((d: any) => setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : Array.isArray(d) ? d : []))
                       .catch(() => toast.error('Không thể tải lịch sử'))
                       .finally(() => setHistoryLoading(false));
                   } else if (m === 'all') {
                     setHistoryLoading(true);
-                    dryPortHistory.getAllHistory({ page: 0, size: 200 })
+                    fetchDryPortAllHistory({ page: 0, size: 200 })
                       .then((d: any) => {
-                        setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []);
+                        setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : Array.isArray(d) ? d : []);
                         if (d?.entityNames) setHistoryEntityNames(d.entityNames);
                       })
                       .catch(() => toast.error('Không thể tải lịch sử'))
@@ -1245,14 +1291,14 @@ export default function DryPortListPage() {
             <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
               onChange={(e) => { setRejectReason(e.target.value); setRejectError(''); }} rows={3} maxLength={500} showCount
               style={{ borderRadius: 8, fontSize: fontSizeMd }} />
-            {rejectError && <div style={{ color: statusCritical, fontSize: fontSizeSm, marginTop: 4 }}>{rejectError}</div>}
+            {rejectError && <div style={{ color: '#E34948', fontSize: fontSizeSm, marginTop: 4 }}>{rejectError}</div>}
           </div>
         </Modal>
 
         {/* ── Approve Modal ─────────────────────────────────────────── */}
         <ApprovalModal
           visible={approveModalOpen}
-          level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL2' ? 'c2' : 'c1'}
+          level={approvingRecord?.approvalStatus === 'APPROVED_LEVEL1' ? 'c2' : 'c1'}
           onConfirm={() => { if (approvingRecord) void handleConfirmApprove(); }}
           onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); }}
         />

@@ -77,4 +77,17 @@ describe('Ánh xạ trường và giá trị lịch sử Bến cảng (Berth)', 
     expect(formatBerthHistoryValue('structureType', '3')).toBe('Kết cấu trọng lực');
     expect(formatBerthHistoryValue('structureType', '4')).toBe('Kết cấu khác');
   });
+
+  it('dịch mã công năng khai thác của bến cảng sang nhãn tiếng Việt', () => {
+    expect(historyFieldValue('operationalFunction', 'CONTAINER')).toBe('Hàng Container');
+    expect(historyFieldValue('operationalFunction', 'GENERAL_CARGO')).toBe('Hàng tổng hợp (bách hóa)');
+    expect(formatBerthHistoryValue('operationalFunction', 'CONTAINER,PASSENGER')).toBe('Hàng Container, Hàng khách');
+    expect(formatBerthHistoryValue('operationalFunction', 'OIL_GAS')).toBe('Hàng chuyên dụng xăng dầu, khí hóa lỏng');
+  });
+
+  it('dịch mã thuộc luồng hàng hải của bến cảng sang tên luồng', () => {
+    const waterwayMap = new Map([['chan-1', 'Luồng hàng hải Vũng Tàu - Thị Vải']]);
+    expect(historyFieldValue('waterwayId', 'chan-1', undefined, undefined, undefined, waterwayMap)).toBe('Luồng hàng hải Vũng Tàu - Thị Vải');
+    expect(formatBerthHistoryValue('waterwayId', 'chan-1', undefined, undefined, undefined, waterwayMap)).toBe('Luồng hàng hải Vũng Tàu - Thị Vải');
+  });
 });

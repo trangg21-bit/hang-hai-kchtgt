@@ -6,18 +6,20 @@ import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
 import {
   Row, Col, Form, Input, InputNumber, Select, DatePicker, Button, Tabs,
-  Table, message, Space, Modal,
+  message, Space, Modal,
 } from 'antd';
-import type { UploadFile, UploadProps } from 'antd';
+import type { UploadFile, UploadProps, InputNumberProps } from 'antd';
 import { DeleteOutlined, PlusOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { colors } from '../../themetokenchk';
 import {
-  textTertiary, sidebarBg, statusCritical, actionPrimary,
+  textSecondary, textTertiary, sidebarBg, statusCritical, actionPrimary,
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, surfaceCard, borderDefault,
-  readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
-  primaryButtonStyle, outlineButtonStyle, textAreaStyle,
+  readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle, textAreaStyle,
+  primaryButtonStyle, outlineButtonStyle,
+  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
+import DetailTable from '../../components/shared/DetailTable';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -42,6 +44,21 @@ const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
+
+function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
+  const count = String(value ?? '').length;
+
+  return (
+    <InputNumber
+      stringMode
+      {...inputProps}
+      value={value}
+      maxLength={maxLength}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
+    />
+  );
+}
 const datePickerStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
 
 const sectionBoxStyle: React.CSSProperties = {
@@ -176,13 +193,6 @@ const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?:
   return [];
 };
 
-/** true khi giá trị field đã đạt đủ max ký tự — dùng để bật viền đỏ ô nhập + message cảnh báo bên dưới. */
-function useMaxReached(name: string, max: number): boolean {
-  const raw = Form.useWatch(name) ?? '';
-  const len = (typeof raw === 'string' ? raw : String(raw ?? '')).length;
-  return len >= max;
-}
-
 export const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
 export const MAX_FILE_SIZE = 20 * 1024 * 1024;
 export const MAX_FILE_COUNT = 10;
@@ -223,6 +233,7 @@ export interface BuoyFormContentProps {
   removeGpsPoint: (i: number) => void;
   updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
   ddToDms: (dd: number | null | undefined) => { d: number | null; m: number | null; s: number | null };
+  onDeleteAttachment?: (uid: string) => void;
 }
 
 export default function BuoyFormContent({
@@ -248,30 +259,14 @@ export default function BuoyFormContent({
   onStationChange,
   currentStationId,
   selectedUnitId,
+  onDeleteAttachment,
 }: BuoyFormContentProps) {
   const currentUser = useAuthStore((s) => s.user);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsPage, setGpsPage] = useState(1);
   const hasCoordinates = (gpsCoordList || []).some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
   const hasLocation = Boolean(geometryType || hasCoordinates);
-  const atMax = {
-    name: useMaxReached('name', 255),
-    locationDetail: useMaxReached('locationDetail', 500),
-    shape: useMaxReached('shape', 500),
-    structure: useMaxReached('structure', 2000),
-    area: useMaxReached('area', 20),
-    bodyHeight: useMaxReached('bodyHeight', 20),
-    diameter: useMaxReached('diameter', 20),
-    towerHeight: useMaxReached('towerHeight', 20),
-    lightHeight: useMaxReached('lightHeight', 20),
-    lightModel: useMaxReached('lightModel', 100),
-    towerColor: useMaxReached('towerColor', 500),
-    powerSupply: useMaxReached('powerSupply', 500),
-    range: useMaxReached('range', 20),
-    lightColor: useMaxReached('lightColor', 50),
-    flashType: useMaxReached('flashType', 50),
-    period: useMaxReached('period', 50),
-  };
+
   const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
     if (file.size > MAX_FILE_SIZE) {
       message.error(`File "${file.name}" vượt quá 20MB`);
@@ -335,6 +330,7 @@ export default function BuoyFormContent({
                     organizations={orgUnits}
                     placeholder="Chọn Đơn vị quản lý"
                     loading={loadingOrgs}
+                    disabled={isEdit}
                     showPath
                     allowClear
                   />
@@ -352,7 +348,7 @@ export default function BuoyFormContent({
                   <Select
                     placeholder={!selectedUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : (buoyStations.length === 0 && !loadingStations ? 'Không có nhà trạm đã phê duyệt thuộc đơn vị quản lý' : 'Chọn Thuộc nhà trạm quản lý vận hành phao, tiêu')}
                     loading={loadingStations}
-                    disabled={!selectedUnitId || (buoyStations.length === 0 && !loadingStations) || (isEdit && !!currentStationId)}
+                    disabled={isEdit || !selectedUnitId || (buoyStations.length === 0 && !loadingStations)}
                     options={buoyStations.map((s) => ({ value: s.id, label: s.name }))}
                     showSearch
                     filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
@@ -412,7 +408,6 @@ export default function BuoyFormContent({
                   required
                   style={{ marginBottom: spaceFormField }}
                   rules={[{ required: true, message: 'Tên phao tiêu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-                  validateStatus={atMax.name ? 'error' : undefined} help={atMax.name ? 'Đã đạt tối đa 255 ký tự' : undefined}
                 >
                   <Input placeholder="Nhập Tên phao, tiêu" maxLength={255} showCount style={inputStyle} />
                 </Form.Item>
@@ -425,7 +420,7 @@ export default function BuoyFormContent({
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.locationDetail ? 'error' : undefined} help={atMax.locationDetail ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+                <Form.Item name="locationDetail" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
@@ -453,47 +448,42 @@ export default function BuoyFormContent({
               </div>
             </div>
             <Row gutter={[24, 0]}>
-              <Col span={24}>
-                <Form.Item name="shape" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.shape ? 'error' : undefined} help={atMax.shape ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+              <Col span={12}>
+                <Form.Item name="shape" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập Hình dạng" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
-              <Col span={24}>
-                <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.structure ? 'error' : undefined} help={atMax.structure ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-                  <Input.TextArea placeholder="Nhập Kết cấu" rows={3} maxLength={2000} showCount style={textAreaStyle} />
+              <Col span={12}>
+                <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }}>
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.area ? 'error' : undefined} help={atMax.area ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} maxLength={20} placeholder="Nhập Diện tích (m2)" style={numberInputStyle} />
+                <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }}>
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.bodyHeight ? 'error' : undefined} help={atMax.bodyHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} maxLength={20} placeholder="Nhập Chiều cao thân phao (m)" style={numberInputStyle} />
+                <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }}>
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.diameter ? 'error' : undefined} help={atMax.diameter ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} maxLength={20} placeholder="Nhập Đường kính phao (m)" style={numberInputStyle} />
-                </Form.Item>
-              </Col>
               <Col span={12}>
                 <Form.Item name="beaconLight" {...labelProps('Đèn biển')} style={{ marginBottom: spaceFormField }}>
                   <Select placeholder="Chọn Đèn biển" options={BEACON_LIGHT_OPTIONS} allowClear style={selectStyle} />
                 </Form.Item>
               </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerHeight ? 'error' : undefined} help={atMax.towerHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}>
-                  <InputNumber min={0} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tháp đèn" parser={parseInteger} style={numberInputStyle} />
+                <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }}>
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item
                   name="lightHeight"
@@ -501,30 +491,29 @@ export default function BuoyFormContent({
                   required
                   style={{ marginBottom: spaceFormField }}
                   rules={[{ required: true, message: 'Chiều cao tâm sáng là bắt buộc' }]}
-                  validateStatus={atMax.lightHeight ? 'error' : undefined} help={atMax.lightHeight ? 'Đã đạt tối đa 20 ký tự' : undefined}
                 >
-                  <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Chiều cao tâm sáng (hải đồ)" parser={parseInteger} style={numberInputStyle} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightModel ? 'error' : undefined} help={atMax.lightModel ? 'Đã đạt tối đa 100 ký tự' : undefined}>
+                <Form.Item name="lightModel" {...labelProps('Chủng loại đèn (Thiết bị báo hiệu)')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập Chủng loại đèn (Thiết bị báo hiệu)" maxLength={100} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.towerColor ? 'error' : undefined} help={atMax.towerColor ? 'Đã đạt tối đa 500 ký tự' : undefined}>
+                <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item name="powerSupply" {...labelProps('Nguồn cung cấp năng lượng cho đèn')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.powerSupply ? 'error' : undefined} help={atMax.powerSupply ? 'Đã đạt tối đa 500 ký tự' : undefined}>
-                  <Input placeholder="Nhập Nguồn cung cấp năng lượng cho đèn" maxLength={500} showCount style={inputStyle} />
-                </Form.Item>
-              </Col>
               <Col span={12}>
                 <Form.Item
                   name="range"
@@ -533,9 +522,15 @@ export default function BuoyFormContent({
                   style={{ marginBottom: spaceFormField }}
                   rules={[{ required: true, message: 'Phạm vi chiếu sáng là bắt buộc' }]}
                   tooltip="Phạm vi chiếu sáng (hải lý)"
-                  validateStatus={atMax.range ? 'error' : undefined} help={atMax.range ? 'Đã đạt tối đa 20 ký tự' : undefined}
                 >
-                  <InputNumber min={0.01} step={1} precision={0} maxLength={20} placeholder="Nhập Phạm vi chiếu sáng" parser={parseInteger} style={numberInputStyle} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={24}>
+                <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }}>
+                  <Input.TextArea rows={3} placeholder="Nhập kết cấu" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -551,19 +546,19 @@ export default function BuoyFormContent({
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.lightColor ? 'error' : undefined} help={atMax.lightColor ? 'Đã đạt tối đa 50 ký tự' : undefined}>
+                <Form.Item name="lightColor" {...labelProps('Màu sắc')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập Màu sắc" maxLength={50} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.flashType ? 'error' : undefined} help={atMax.flashType ? 'Đã đạt tối đa 50 ký tự' : undefined}>
+                <Form.Item name="flashType" {...labelProps('Kiểu chớp')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập Kiểu chớp" maxLength={50} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.period ? 'error' : undefined} help={atMax.period ? 'Đã đạt tối đa 50 ký tự' : undefined}>
+                <Form.Item name="period" {...labelProps('Chu kỳ')} style={{ marginBottom: spaceFormField }}>
                   <Input placeholder="Nhập Chu kỳ" maxLength={50} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
@@ -703,42 +698,42 @@ export default function BuoyFormContent({
                 <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
               </div>
             )}
-            <Table
+            <DetailTable
               size="small"
-              tableLayout="fixed"
+              scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
               pagination={gpsCoordList.length > 10 ? {
                 current: gpsPage,
                 pageSize: 10,
                 total: gpsCoordList.length,
-                onChange: (p) => setGpsPage(p),
+                onChange: (p: number) => setGpsPage(p),
                 showSizeChanger: false,
                 size: 'small',
               } : false}
               dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-              rowKey={(r, idx) => r._idx ?? String(idx)}
-              locale={{ emptyText: 'Chưa có tọa độ GPS nào' }}
+              rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+              emptyText="Chưa có tọa độ GPS nào"
               columns={[
                 {
                   title: 'STT',
                   width: 60,
-                  align: 'center',
-                  render: (_v, _r, idx) => (gpsPage - 1) * 10 + idx + 1,
+                  align: 'center' as const,
+                  render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
                 },
                 {
                   title: 'Vĩ độ (Latitude - N)',
                   key: 'lat',
-                  render: (_v, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
+                  render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                 },
                 {
                   title: 'Kinh độ (Longitude - E)',
                   key: 'lng',
-                  render: (_v, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
+                  render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                 },
                 {
                   title: '',
                   width: 50,
-                  align: 'center',
-                  render: (_v, record: any) => (
+                  align: 'center' as const,
+                  render: (_v: any, record: any) => (
                     <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeGpsPoint(record._idx)} />
                   ),
                 },
@@ -765,7 +760,10 @@ export default function BuoyFormContent({
           readonly={false}
           userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
-          onDelete={(uid) => { setUploadFileList((prev) => prev.filter((x) => (x.uid || (x as any).id) !== uid)); }}
+          onDelete={(uid) => {
+            onDeleteAttachment?.(uid);
+            setUploadFileList((prev) => prev.filter((x) => (x.uid || (x as any).id) !== uid));
+          }}
           onDownload={(_uid, name) => { toast.info(`Đang tải xuống tệp: ${name}`); }}
         />
       ),
