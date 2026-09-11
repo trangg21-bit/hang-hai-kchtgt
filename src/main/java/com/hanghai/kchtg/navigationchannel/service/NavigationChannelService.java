@@ -176,7 +176,7 @@ public class NavigationChannelService {
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> findAll() {
         return repo.findByDeletedAtIsNull(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -184,7 +184,7 @@ public class NavigationChannelService {
         return repo
                 .findByDeletedAtIsNull(
                         PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
-                .map(this::toResponse);
+                .map(nc -> toResponse(nc, false));
     }
 
     @Transactional(readOnly = true)
@@ -577,13 +577,13 @@ public class NavigationChannelService {
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> findByApprovalStatus(ApprovalStatus s) {
         return repo.findByApprovalStatusAndDeletedAtIsNull(s)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<NavigationChannelResponse> searchByChannelNameContaining(String kw) {
         return repo.findByChannelNameContainingAndDeletedAtIsNull(kw)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+                .stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
