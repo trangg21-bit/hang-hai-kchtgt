@@ -36,6 +36,7 @@ import {
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
 import { useInfraAssetDetailAttachments } from './useInfraAssetDetailAttachments';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 
 export interface TransferAreaAssetDetailContentProps {
   open: boolean;
@@ -46,6 +47,8 @@ export interface TransferAreaAssetDetailContentProps {
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
   decreaseRows: AssetDecreaseResponse[];
+  attachments?: InfrastructureAttachmentItem[];
+  onDownloadAttachment?: (id: string, fileName: string) => void;
 }
 
 const sectionBoxStyle: React.CSSProperties = {
@@ -113,6 +116,8 @@ export default function TransferAreaAssetDetailContent({
   exploitationRows,
   increaseRows,
   decreaseRows,
+  attachments: propAttachments,
+  onDownloadAttachment,
 }: TransferAreaAssetDetailContentProps) {
   const combinedAdjustments = useMemo(() => {
     return [
@@ -129,7 +134,8 @@ export default function TransferAreaAssetDetailContent({
     ];
   }, [increaseRows, decreaseRows]);
 
-  const detailAttachments = useInfraAssetDetailAttachments(r);
+  const detailAttachments = useInfraAssetDetailAttachments(r, 'transfer-area');
+  const effectiveAttachments = propAttachments && propAttachments.length > 0 ? propAttachments : detailAttachments;
 
   const viewTabs = useMemo<ViewTabConfig<TransferAreaAsset>[]>(() => {
     if (!r) return [];
@@ -312,12 +318,13 @@ export default function TransferAreaAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: `Hồ sơ tài sản (${effectiveAttachments.length})`,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
-              attachments={detailAttachments}
+              attachments={effectiveAttachments}
               readonly={true}
+              onDownload={onDownloadAttachment}
             />
           </div>
         ),
@@ -783,7 +790,8 @@ export default function TransferAreaAssetDetailContent({
     r,
     orgName,
     transferAreaMap,
-    detailAttachments,
+    effectiveAttachments,
+    onDownloadAttachment,
     exploitationRows,
     combinedAdjustments,
   ]);

@@ -205,17 +205,17 @@ export default function PortTerminalAssetDetailContent({
                 ),
               },
               {
-                label: "Mã bến cảng",
-                value: (rec) => {
-                  const item = infraMap.get(rec.berthId || "") as { code?: string; berthCode?: string } | undefined;
-                  return item?.code || item?.berthCode || "";
+                label: screenConfig.relationCodeLabel,
+                render: (_v, rec) => {
+                  const item = infraMap.get((rec[screenConfig.relationField] as string) || "");
+                  return <>{item?.code || ""}</>;
                 },
               },
               {
-                label: "Tên bến cảng",
-                value: (rec) => {
-                  const item = infraMap.get(rec.berthId || "") as { name?: string; berthName?: string } | undefined;
-                  return item?.name || item?.berthName || "";
+                label: screenConfig.relationNameLabel,
+                render: (_v, rec) => {
+                  const item = infraMap.get((rec[screenConfig.relationField] as string) || "");
+                  return <>{item?.name || ""}</>;
                 },
               },
               {
@@ -323,18 +323,6 @@ export default function PortTerminalAssetDetailContent({
             ],
           },
         ],
-      },
-      {
-        key: "files",
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
-        customContent: () => (
-          <div style={{ paddingTop: 6 }}>
-            <InfrastructureAttachmentTab
-              attachments={detailAttachments}
-              readonly={true}
-            />
-          </div>
-        ),
       },
       {
         key: "details",

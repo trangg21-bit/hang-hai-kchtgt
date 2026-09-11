@@ -55,14 +55,15 @@ import type {
   PortTerminalAssetFilters,
   PortTerminalAssetPayload,
 } from "../../services/assetmovement/types";
-import {
-  type InfrastructureAttachmentItem,
-} from "../../components/shared/InfrastructureAttachmentTab";
+import { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import { triggerBlobDownload } from "../../components/shared/infrastructureAttachmentUtils";
 import { useAuthStore } from "../../store/authStore";
 import * as themeTokenChk from "../../themetokenchk";
 import { fontWeightBold } from "../../themetokenchk";
-import { ThemeTokenProvider, type ThemeToken } from "../../context/ThemeTokenContext";
+import {
+  ThemeTokenProvider,
+  type ThemeToken,
+} from "../../context/ThemeTokenContext";
 import PortTerminalAssetForm, {
   type FormValues,
 } from "./PortTerminalAssetForm";
@@ -308,7 +309,11 @@ function PortTerminalAssetList({
                   record.updatedByName ||
                   record.submittedByName ||
                   "Cán bộ quản lý",
-                uploadedDate: att.uploadedAt || (record.updatedAt ? dayjs(record.updatedAt).toISOString() : dayjs().toISOString()),
+                uploadedDate:
+                  att.uploadedAt ||
+                  (record.updatedAt
+                    ? dayjs(record.updatedAt).toISOString()
+                    : dayjs().toISOString()),
                 filePath: `/v1/asset/infra-assets/${record.id}/attachments/${att.id}/download`,
               })),
             );
@@ -392,12 +397,15 @@ function PortTerminalAssetList({
     [currentUser],
   );
 
-  const handleDeleteAttachment = useCallback((id: string) => {
-    if (selected?.id && id.includes("-")) {
-      deleteInfraAssetAttachment(selected.id, id).catch(() => {});
-    }
-    setAttachments((prev) => prev.filter((a) => a.id !== id));
-  }, [selected]);
+  const handleDeleteAttachment = useCallback(
+    (id: string) => {
+      if (selected?.id && id.includes("-")) {
+        deleteInfraAssetAttachment(selected.id, id).catch(() => {});
+      }
+      setAttachments((prev) => prev.filter((a) => a.id !== id));
+    },
+    [selected],
+  );
 
   const handleDownloadAttachment = useCallback(
     async (id: string, fileName: string) => {
@@ -428,16 +436,16 @@ function PortTerminalAssetList({
           }
           const res = await api.get(cleanPath, { responseType: "blob" });
           const contentType =
-            (typeof res.headers?.["content-type"] === "string"
-              ? res.headers["content-type"]
-              : "") || "application/octet-stream";
+            res.headers?.["content-type"] || "application/octet-stream";
           const blob = new Blob([res.data], { type: contentType });
           triggerBlobDownload(blob, fileName || "tai-lieu");
           toast.success(`Đã tải xuống tệp: ${fileName}`);
           return;
         } catch (err) {
           console.error("Download error:", err);
-          toast.error(`Không thể tải xuống tệp tin "${fileName}": Lỗi máy chủ hoặc tệp không tồn tại.`);
+          toast.error(
+            `Không thể tải xuống tệp tin "${fileName}": Lỗi máy chủ hoặc tệp không tồn tại.`,
+          );
           return;
         }
       }
@@ -501,7 +509,10 @@ function PortTerminalAssetList({
           payload,
         );
       } else {
-        savedAsset = await createInfrastructureAsset(screenConfig.assetType, payload);
+        savedAsset = await createInfrastructureAsset(
+          screenConfig.assetType,
+          payload,
+        );
       }
 
       const targetAssetId = savedAsset?.id || selected?.id;
@@ -720,127 +731,184 @@ function PortTerminalAssetList({
     setPage(1);
   }, []);
 
-  const tableOptions = useMemo<TableOption<PortTerminalAsset>>(() => ({
-    dataKey: 'id',
-    mainColumns: [
-      {
-        title: 'TÊN/MÃ TÀI SẢN',
-        dataIndex: 'assetName',
-        type: TableColumnType.TwoLine,
-        subField: 'assetCode',
-        width: 230,
-        fixed: 'left',
-        onClick: (record) => void openDetail(record),
-      },
-      {
-        title: 'ĐƠN VỊ QUẢN LÝ',
-        dataIndex: 'orgUnitId',
-        type: TableColumnType.Text,
-        width: 250,
-        bold: true,
-        render: (v) => <span style={{ fontWeight: fontWeightBold }}>{orgName.get(v as string) || ''}</span>,
-      },
-      {
-        title: 'ĐƠN VỊ SỬ DỤNG',
-        dataIndex: 'usingOrgUnitId',
-        type: TableColumnType.Text,
-        width: 250,
-        render: (v) => orgName.get(v as string) || '',
-      },
-      {
-        title: screenConfig.relationColumnTitle,
-        dataIndex: screenConfig.relationField as keyof PortTerminalAsset,
-        type: TableColumnType.Text,
-        width: screenConfig.relationColumnWidth || 190,
-        render: (v) => relatedInfrastructureMap.get(v as string)?.code || '',
-      },
-      {
-        title: 'LOẠI TÀI SẢN',
-        dataIndex: 'assetType',
-        type: TableColumnType.Text,
-        width: 160,
-        render: () => 'Tài sản bến cảng',
-      },
-      {
-        title: 'TÌNH TRẠNG TÀI SẢN',
-        dataIndex: 'assetCondition',
-        type: TableColumnType.Status,
-        width: 190,
-      },
-      {
-        title: 'HIỆN TRẠNG SỬ DỤNG',
-        dataIndex: 'usageStatus',
-        type: TableColumnType.Status,
-        width: 190,
-      },
-      {
-        title: 'NHÓM TÀI SẢN',
-        dataIndex: 'assetGroup',
-        type: TableColumnType.Text,
-        width: 210,
-      },
-      {
-        title: 'NGÀY SỬ DỤNG TÀI SẢN',
-        dataIndex: 'useDate',
-        type: TableColumnType.Date,
-        width: 190,
-      },
-      {
-        title: 'TRẠNG THÁI',
-        dataIndex: 'approvalStatus',
-        type: TableColumnType.Status,
-        width: 260,
-      },
-      {
-        title: 'CÁN BỘ CẬP NHẬT',
-        dataIndex: 'updatedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'updatedAt',
-        width: 210,
-      },
-      {
-        title: 'CÁN BỘ GỬI PHÊ DUYỆT',
-        dataIndex: 'submittedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'submittedAt',
-        width: 240,
-      },
-      {
-        title: 'CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
-        dataIndex: 'portAuthorityApprovedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'portAuthorityApprovedAt',
-        width: 340,
-      },
-      {
-        title: 'NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
-        dataIndex: 'portAuthorityApprovalContent',
-        type: TableColumnType.Text,
-        width: 280,
-      },
-      {
-        title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
-        dataIndex: 'departmentApprovedByName',
-        type: TableColumnType.TwoLine,
-        subField: 'departmentApprovedAt',
-        width: 260,
-      },
-      {
-        title: 'NỘI DUNG PHÊ DUYỆT CẤP CỤC',
-        dataIndex: 'departmentApprovalContent',
-        type: TableColumnType.Text,
-        width: 260,
-      },
+  const tableOptions = useMemo<TableOption<PortTerminalAsset>>(
+    () => ({
+      dataKey: "id",
+      mainColumns: [
+        {
+          title: "TÊN/MÃ TÀI SẢN",
+          dataIndex: "assetName",
+          type: TableColumnType.TwoLine,
+          subField: "assetCode",
+          width: 230,
+          fixed: "left",
+          onClick: (record) => void openDetail(record),
+        },
+        {
+          title: "ĐƠN VỊ QUẢN LÝ",
+          dataIndex: "orgUnitId",
+          type: TableColumnType.Text,
+          width: 250,
+          bold: true,
+          render: (v) => (
+            <span style={{ fontWeight: fontWeightBold }}>
+              {orgName.get(v as string) || ""}
+            </span>
+          ),
+        },
+        {
+          title: "ĐƠN VỊ SỬ DỤNG",
+          dataIndex: "usingOrgUnitId",
+          type: TableColumnType.Text,
+          width: 250,
+          render: (v) => orgName.get(v as string) || "",
+        },
+        {
+          title: screenConfig.relationColumnTitle,
+          dataIndex: screenConfig.relationField,
+          type: TableColumnType.Text,
+          width: screenConfig.relationColumnWidth,
+          render: (v) => relatedInfrastructureMap.get(v as string)?.code || "",
+        },
+        {
+          title: "LOẠI TÀI SẢN",
+          dataIndex: "assetType",
+          type: TableColumnType.Text,
+          width: 160,
+          render: () => "Tài sản bến cảng",
+        },
+        {
+          title: "TÌNH TRẠNG TÀI SẢN",
+          dataIndex: "assetCondition",
+          type: TableColumnType.Status,
+          width: 190,
+        },
+        {
+          title: "HIỆN TRẠNG SỬ DỤNG",
+          dataIndex: "usageStatus",
+          type: TableColumnType.Status,
+          width: 190,
+        },
+        {
+          title: "NHÓM TÀI SẢN",
+          dataIndex: "assetGroup",
+          type: TableColumnType.Text,
+          width: 210,
+        },
+        {
+          title: "NGÀY SỬ DỤNG TÀI SẢN",
+          dataIndex: "useDate",
+          type: TableColumnType.Date,
+          width: 190,
+        },
+        {
+          title: "TRẠNG THÁI",
+          dataIndex: "approvalStatus",
+          type: TableColumnType.Status,
+          width: 260,
+        },
+        {
+          title: "CÁN BỘ CẬP NHẬT",
+          dataIndex: "updatedByName",
+          type: TableColumnType.TwoLine,
+          subField: "updatedAt",
+          width: 210,
+        },
+        {
+          title: "CÁN BỘ GỬI PHÊ DUYỆT",
+          dataIndex: "submittedByName",
+          type: TableColumnType.TwoLine,
+          subField: "submittedAt",
+          width: 240,
+        },
+        {
+          title: "CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC",
+          dataIndex: "portAuthorityApprovedByName",
+          type: TableColumnType.TwoLine,
+          subField: "portAuthorityApprovedAt",
+          width: 340,
+        },
+        {
+          title: "NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC",
+          dataIndex: "portAuthorityApprovalContent",
+          type: TableColumnType.Text,
+          width: 280,
+        },
+        {
+          title: "CÁN BỘ PHÊ DUYỆT CẤP CỤC",
+          dataIndex: "departmentApprovedByName",
+          type: TableColumnType.TwoLine,
+          subField: "departmentApprovedAt",
+          width: 260,
+        },
+        {
+          title: "NỘI DUNG PHÊ DUYỆT CẤP CỤC",
+          dataIndex: "departmentApprovalContent",
+          type: TableColumnType.Text,
+          width: 260,
+        },
+      ],
+      actions: (record: PortTerminalAsset) => [
+        {
+          key: "detail",
+          label: "Xem chi tiết",
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        },
+        {
+          key: "edit",
+          label: "Chỉnh sửa",
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        },
+        {
+          key: "exploit",
+          label: "Khai thác tài sản",
+          icon: <RocketOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode("exploit");
+            operationForm.resetFields();
+          },
+        },
+        {
+          key: "increase",
+          label: "Tăng nguyên giá",
+          icon: <PlusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode("increase");
+            operationForm.resetFields();
+          },
+        },
+        {
+          key: "decrease",
+          label: "Giảm nguyên giá",
+          icon: <MinusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode("decrease");
+            operationForm.resetFields();
+          },
+        },
+        {
+          key: "delete",
+          label: "Xóa",
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        },
+      ],
+    }),
+    [
+      openDetail,
+      openEdit,
+      operationForm,
+      orgName,
+      relatedInfrastructureMap,
+      screenConfig,
     ],
-    actions: (record: PortTerminalAsset) => [
-      { key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(record) },
-      { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEdit(record) },
-      { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
-      { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
-      { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
-      { key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) },
-    ],
-  }), [openDetail, openEdit, operationForm, orgName, relatedInfrastructureMap, screenConfig]);
+  );
 
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
@@ -1031,10 +1099,6 @@ function PortTerminalAssetList({
           relatedInfrastructure={relatedInfrastructure}
           screenConfig={screenConfig}
           attachments={attachments}
-          exploitationRows={exploitationRows}
-          increaseRows={increaseRows}
-          decreaseRows={decreaseRows}
-          orgName={(id) => orgName.get(id || "") || id || "—"}
           saving={saving}
           saveAction={saveAction}
           onClose={() => {
