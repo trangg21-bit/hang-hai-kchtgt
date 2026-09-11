@@ -493,4 +493,13 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     // …and must NOT render the centered brand button (the old overlap bug)
     expect(countOf(html, 'aria-label="Về trang chủ"')).toBe(0);
   });
+
+  it('AC-10: "/reports/F-148" — initial render opens the parent report category submenu', () => {
+    const html = renderAt('/reports/F-148', ['*']);
+    expect(html).toContain('Báo cáo thống kê');
+    expect(html).toContain('Nhóm chỉ tiêu kết cấu hạ tầng');
+    expect(html).toContain('F-148');
+    expect(html).toContain('ant-menu-item-selected');
+  });
 });
+

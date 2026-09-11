@@ -147,28 +147,6 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     setSidebarState({ pathname: location.pathname, hidden });
   };
   const isMenuFullScreen = false;
-  const [openKeys, setOpenKeys] = useState<string[]>(() => navHit?.openKeys ?? []);
-  const [searchState, setSearchState] = useState(() => ({ pathname: location.pathname, query: '' }));
-  const searchQuery = searchState.pathname === location.pathname ? searchState.query : '';
-  const setSearchQuery = (query: string) => {
-    setSearchState({ pathname: location.pathname, query });
-  };
-  // M-024 rework: chips C0..C3 — tập level đang được phép hiển thị trong cây khối kcht
-  const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
-  usePermissionStore((s) => s.permissions);
-  const logout = useAuthStore((s) => s.logout);
-  const screens = useBreakpoint();
-  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 150);
-    return () => clearTimeout(timer);
-  }, [sidebarHidden]);
-
   // Map đường dẫn hiện tại về key tương ứng trong menu (landing + 6 nhóm chức năng)
   const pathSegments = location.pathname.split('/').filter(Boolean);
   let selectedKey: string;
@@ -194,26 +172,67 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     selectedKey = '/' + pathSegments[0];
   }
 
-  const routeOpenKeys = navHit?.openKeys ?? (
-    selectedKey.startsWith('/asset')
-      ? ['asset-management']
-      : selectedKey.startsWith('/documents')
-        ? ['planning-operation']
-        : selectedKey.startsWith('/gis') || selectedKey === '/symbols' || selectedKey === '/water-zone'
-          ? ['gis-management']
-          : selectedKey.startsWith('/reports')
-            ? [
-                'reports-parent',
-                (() => {
-                  const reportCode = selectedKey.replace('/reports/', '');
-                  const report = REPORT_TEMPLATES.find((r) => r.code === reportCode);
-                  return report ? `reports-${report.category}` : 'reports-bckcht';
-                })(),
-              ]
-            : ['/users', '/organizations', '/groups', '/logs', '/history', '/interconnect', '/connections', '/settings'].includes(selectedKey)
-              ? ['system-admin']
-              : []
+  const routeOpenKeys = useMemo(() => {
+    return navHit?.openKeys ?? (
+      selectedKey.startsWith('/asset')
+        ? ['asset-management']
+        : selectedKey.startsWith('/documents')
+          ? ['planning-operation']
+          : selectedKey.startsWith('/gis') || selectedKey === '/symbols' || selectedKey === '/water-zone'
+            ? ['gis-management']
+            : selectedKey.startsWith('/reports')
+              ? [
+                  'reports-parent',
+                  (() => {
+                    const reportCode = selectedKey.replace('/reports/', '');
+                    const report = REPORT_TEMPLATES.find((r) => r.code === reportCode);
+                    return report ? `reports-${report.category}` : 'reports-bckcht';
+                  })(),
+                ]
+              : ['/users', '/organizations', '/groups', '/logs', '/history', '/interconnect', '/connections', '/settings'].includes(selectedKey)
+                ? ['system-admin']
+                : []
+    );
+  }, [navHit, selectedKey]);
+
+  const [openKeys, setOpenKeys] = useState<string[]>(() =>
+    Array.from(new Set([...(navHit?.openKeys ?? []), ...routeOpenKeys]))
   );
+
+  const [prevGroupId, setPrevGroupId] = useState(activeGroup?.id);
+  const [prevPath, setPrevPath] = useState(location.pathname);
+
+  if (activeGroup?.id !== prevGroupId) {
+    setPrevGroupId(activeGroup?.id);
+    setPrevPath(location.pathname);
+    setOpenKeys(routeOpenKeys);
+  } else if (location.pathname !== prevPath) {
+    setPrevPath(location.pathname);
+    if (routeOpenKeys.length > 0) {
+      setOpenKeys((prev) => Array.from(new Set([...prev, ...routeOpenKeys])));
+    }
+  }
+
+  const [searchState, setSearchState] = useState(() => ({ pathname: location.pathname, query: '' }));
+  const searchQuery = searchState.pathname === location.pathname ? searchState.query : '';
+  const setSearchQuery = (query: string) => {
+    setSearchState({ pathname: location.pathname, query });
+  };
+  // M-024 rework: chips C0..C3 — tập level đang được phép hiển thị trong cây khối kcht
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  usePermissionStore((s) => s.permissions);
+  const logout = useAuthStore((s) => s.logout);
+  const screens = useBreakpoint();
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [sidebarHidden]);
 
   const activeSelectedKey = navHit?.key ?? selectedKey;
 
@@ -346,7 +365,7 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   const displayedItems = isSearching ? filterMenuByQuery(menuItems, trimmedSearchQuery) : menuItems;
   const effectiveOpenKeys = isSearching
     ? collectOpenableKeys(displayedItems)
-    : Array.from(new Set([...openKeys, ...routeOpenKeys]));
+    : openKeys;
 
   // Keep the responsive mode aligned with Sider's `lg` breakpoint. Using
   // `md` here left a 272px layout offset while AntD had already collapsed the
