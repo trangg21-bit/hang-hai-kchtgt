@@ -1,3 +1,5 @@
+import DynamicViewSidebar from './DynamicViewSidebar';
+
 export * from './dynamic-view-sidebar.model';
-export * from './DynamicViewSidebar';
-export { default } from './DynamicViewSidebar';
+export { DynamicViewSidebar };
+export default DynamicViewSidebar;

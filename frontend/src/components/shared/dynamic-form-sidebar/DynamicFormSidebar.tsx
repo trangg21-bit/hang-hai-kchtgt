@@ -325,6 +325,7 @@ export function DynamicFormSidebar<
   sections,
   fields,
   footerActions,
+  actions,
   footerAlign = "center",
   footer,
   onSubmit,
@@ -415,8 +416,9 @@ export function DynamicFormSidebar<
 
   const drawerFooter = useMemo(() => {
     if (footer !== undefined) return footer;
-    if (footerActions && footerActions.length > 0) {
-      return renderActionButtons(footerActions);
+    const resolvedActions = footerActions || actions;
+    if (resolvedActions && resolvedActions.length > 0) {
+      return renderActionButtons(resolvedActions);
     }
     return null;
   }, [footer, footerActions, renderActionButtons]);

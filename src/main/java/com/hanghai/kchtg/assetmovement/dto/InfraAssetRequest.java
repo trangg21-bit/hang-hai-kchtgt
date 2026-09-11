@@ -28,6 +28,10 @@ public class InfraAssetRequest {
     private UUID orgUnitId;
     private UUID usingOrgUnitId;
     private UUID berthId;
+    private UUID transferAreaId;
+    private UUID stormShelterId;
+    private UUID buoyBerthId;
+    private UUID pierId;
     private UUID anchorageId;
     private UUID beaconStationId;
     private UUID dikeRevetmentId;
@@ -63,4 +67,12 @@ public class InfraAssetRequest {
     private BigDecimal monthlyDepreciation;
     private String disposalMethod;
     private String approvalStatus;
+    private UUID submittedBy;
+    private java.time.Instant submittedAt;
+    private UUID portAuthorityApprovedBy;
+    private java.time.Instant portAuthorityApprovedAt;
+    private String portAuthorityApprovalContent;
+    private UUID departmentApprovedBy;
+    private java.time.Instant departmentApprovedAt;
+    private String departmentApprovalContent;
 }

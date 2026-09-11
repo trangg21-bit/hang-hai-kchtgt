@@ -595,6 +595,8 @@ export default function ChannelAssetList() {
         type: TableColumnType.TwoLine,
         subField: 'updatedAt',
         width: 210,
+        allowSort: true,
+        sortField: 'updatedBy',
       },
       {
         title: 'CÁN BỘ GỬI PHÊ DUYỆT',
@@ -602,6 +604,8 @@ export default function ChannelAssetList() {
         type: TableColumnType.TwoLine,
         subField: 'submittedAt',
         width: 240,
+        allowSort: true,
+        sortField: 'submittedBy',
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
@@ -609,6 +613,8 @@ export default function ChannelAssetList() {
         type: TableColumnType.TwoLine,
         subField: 'portAuthorityApprovedAt',
         width: 320,
+        allowSort: true,
+        sortField: 'portAuthorityApprovedBy',
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
@@ -616,6 +622,8 @@ export default function ChannelAssetList() {
         type: TableColumnType.TwoLine,
         subField: 'departmentApprovedAt',
         width: 240,
+        allowSort: true,
+        sortField: 'departmentApprovedBy',
       },
     ],
     actions: [

@@ -277,6 +277,14 @@ export const berthCRUD = {
 // ── Pier CRUD ────────────────────────────────────────────────────
 
 export const pierCRUD = {
+  list(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<Pier>> {
+    return pierCRUD.findAll(params);
+  },
+
   async findAll(params?: {
     page?: number;
     size?: number;
@@ -921,6 +929,14 @@ export const anchorageApproval = {
 // ── Transfer Area (Khu chuyển tải) CRUD ───────────────────────────
 
 export const transferAreaCRUD = {
+  list(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<TransferArea>> {
+    return transferAreaCRUD.findAll(params);
+  },
+
   async findAll(params?: {
     page?: number;
     size?: number;
@@ -1087,6 +1103,14 @@ export const transferAreaApproval = {
 // ── Storm Shelter (Khu tránh trú bão) CRUD ─────────────────────────
 
 export const stormShelterCRUD = {
+  list(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<StormShelterArea>> {
+    return stormShelterCRUD.findAll(params);
+  },
+
   async findAll(params?: {
     page?: number;
     size?: number;
@@ -1242,6 +1266,14 @@ export const stormShelterApproval = {
 // ── Buoy Berth (Bến phao) CRUD ─────────────────────────
 
 export const buoyBerthCRUD = {
+  list(params?: {
+    page?: number;
+    size?: number;
+    orgUnitId?: string;
+  }): Promise<PaginatedResponse<BuoyBerth>> {
+    return buoyBerthCRUD.findAll(params);
+  },
+
   async findAll(params?: {
     page?: number;
     size?: number;

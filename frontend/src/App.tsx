@@ -90,6 +90,10 @@ const AssetDecreaseList = lazy(() => import('./pages/assetmovement/AssetDecrease
 const InventoryList = lazy(() => import('./pages/assetmovement/InventoryList'));
 const AssetExploitationList = lazy(() => import('./pages/assetmovement/AssetExploitationList'));
 const PortTerminalAssetList = lazy(() => import('./pages/assetmovement/PortTerminalAssetList'));
+const TransferAreaAssetList = lazy(() => import('./pages/assetmovement/TransferAreaAssetList'));
+const StormShelterAssetList = lazy(() => import('./pages/assetmovement/StormShelterAssetList'));
+const BuoyBerthAssetList = lazy(() => import('./pages/assetmovement/BuoyBerthAssetList'));
+const PierAssetList = lazy(() => import('./pages/assetmovement/PierAssetList'));
 const AnchorageAssetList = lazy(() => import('./pages/assetmovement/AnchorageAssetList'));
 const LighthouseAssetList = lazy(() => import('./pages/assetmovement/LighthouseAssetList'));
 const DikeRevetmentAssetList = lazy(() => import('./pages/assetmovement/DikeRevetmentAssetList'));
@@ -286,6 +290,10 @@ export default function App() {
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/berth" element={<PermissionGuard permission="infraasset:manage"><PortTerminalAssetList /></PermissionGuard>} />
+                <Route path="/asset/transfer-area" element={<PermissionGuard permission="infraasset:manage"><TransferAreaAssetList /></PermissionGuard>} />
+                <Route path="/asset/storm-shelter" element={<PermissionGuard permission="infraasset:manage"><StormShelterAssetList /></PermissionGuard>} />
+                <Route path="/asset/buoy-berth" element={<PermissionGuard permission="infraasset:manage"><BuoyBerthAssetList /></PermissionGuard>} />
+                <Route path="/asset/pier" element={<PermissionGuard permission="infraasset:manage"><PierAssetList /></PermissionGuard>} />
                 <Route path="/asset/anchorage" element={<PermissionGuard permission="infraasset:manage"><AnchorageAssetList /></PermissionGuard>} />
                 <Route path="/asset/lighthouse" element={<PermissionGuard permission="infraasset:manage"><LighthouseAssetList /></PermissionGuard>} />
                 <Route path="/asset/dike-revetment" element={<PermissionGuard permission="infraasset:manage"><DikeRevetmentAssetList /></PermissionGuard>} />

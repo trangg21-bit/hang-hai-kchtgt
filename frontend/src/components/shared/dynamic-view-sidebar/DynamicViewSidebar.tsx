@@ -82,6 +82,17 @@ function formatFieldValue<T>(
         </span>
       );
     }
+    case ViewFieldType.Money: {
+      const num = Number(rawValue);
+      if (Number.isNaN(num)) return String(rawValue);
+      return (
+        <span>
+          {field.prefix}
+          {fmtNum(num)}
+          {field.suffix ? ` ${field.suffix}` : " VNĐ"}
+        </span>
+      );
+    }
     case ViewFieldType.Date: {
       return (
         <span>
@@ -105,11 +116,35 @@ function formatFieldValue<T>(
         typeof field.badgeColor === "function"
           ? field.badgeColor(rawValue, record)
           : field.badgeColor || actionPrimary;
-      return <span style={statusBadgeStyle(color)}>{String(rawValue)}</span>;
+      return (
+        <span
+          style={{
+            ...statusBadgeStyle(color),
+            maxWidth: "100%",
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "left",
+            lineHeight: 1.35,
+          }}
+        >
+          {String(rawValue)}
+        </span>
+      );
     }
     case ViewFieldType.Tag: {
       return (
-        <span style={statusBadgeStyle(actionPrimary)}>{String(rawValue)}</span>
+        <span
+          style={{
+            ...statusBadgeStyle(actionPrimary),
+            maxWidth: "100%",
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+            textAlign: "left",
+            lineHeight: 1.35,
+          }}
+        >
+          {String(rawValue)}
+        </span>
       );
     }
     case ViewFieldType.Text:
@@ -431,6 +466,8 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
           border-bottom: 1px solid #f1f5f9 !important;
           line-height: 1.5 !important;
           gap: 10px !important;
+          overflow: hidden !important;
+          box-sizing: border-box !important;
         }
 
         .berth-detail-content-wrapper .chk-detail-row:last-child {
@@ -443,8 +480,8 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
 
         .berth-drawer-scope .berth-detail-content-wrapper .chk-detail-row .chk-detail-label,
         .berth-detail-content-wrapper .chk-detail-label {
-          width: 220px !important;
-          min-width: 220px !important;
+          width: 190px !important;
+          min-width: 160px !important;
           max-width: 220px !important;
           flex-shrink: 0 !important;
           color: ${colors.sidebarBg} !important;
@@ -468,6 +505,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
           text-align: left !important;
           line-height: 1.5 !important;
           word-break: break-word !important;
+          overflow: hidden !important;
         }
 
         @media (max-width: 960px) {

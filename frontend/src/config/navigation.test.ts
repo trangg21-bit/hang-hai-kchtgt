@@ -508,10 +508,10 @@ describe('navigation.searchNavGroups — lọc 6 khối landing (R-2..R-7)', () 
   });
 
   it('matches a group via a deep child label inside group.tree', () => {
-    // '/pier' — Quản lý cầu cảng — là lá sâu (level 3) của cây kcht
+    // '/pier' — Quản lý cầu cảng (kcht) và '/asset/pier' — Tài sản cầu cảng (asset)
     const hits = searchNavGroups('cau cang', NAV_GROUPS);
-    expect(hits.map((g) => g.id)).toEqual(['kcht']);
-    expect(searchNavGroups('cầu cảng', NAV_GROUPS).map((g) => g.id)).toEqual(['kcht']);
+    expect(hits.map((g) => g.id)).toEqual(['kcht', 'asset']);
+    expect(searchNavGroups('cầu cảng', NAV_GROUPS).map((g) => g.id)).toEqual(['kcht', 'asset']);
   });
 
   it('matches a group by its desc text', () => {

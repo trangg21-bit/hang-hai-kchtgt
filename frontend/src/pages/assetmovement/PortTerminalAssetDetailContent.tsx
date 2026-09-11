@@ -149,7 +149,7 @@ export default function PortTerminalAssetDetailContent({
       id: `detail-att-${i}`,
       fileName: name.trim(),
       fileSize: 1024 * 1024,
-      uploadedByName: r.updatedByName || r.submittedByName || "Cán bộ quản lý",
+      uploadedByName: r.updatedByName || "—",
       uploadedDate: r.updatedAt
         ? dayjs(r.updatedAt).toISOString()
         : dayjs().toISOString(),
@@ -159,11 +159,12 @@ export default function PortTerminalAssetDetailContent({
   const viewTabs = useMemo<ViewTabConfig<PortTerminalAsset>[]>(() => {
     if (!r) return [];
 
-    const approvalInfo = APPROVAL_MAP[r.approvalStatus || ""] ||
-      APPROVAL_MAP[r.approvalStatus?.toUpperCase() || ""] || {
-        color: statusDraft,
-        label: r.approvalStatus || "—",
-      };
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus] || APPROVAL_MAP[r.approvalStatus.toUpperCase()] || {
+          color: statusDraft,
+          label: r.approvalStatus,
+        })
+      : { color: statusDraft, label: "—" };
 
     return [
       {
@@ -325,6 +326,24 @@ export default function PortTerminalAssetDetailContent({
               },
             ],
           },
+        ],
+      },
+      {
+        key: "files",
+        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        customContent: () => (
+          <div style={{ paddingTop: 6 }}>
+            <InfrastructureAttachmentTab
+              attachments={detailAttachments}
+              readonly={true}
+            />
+          </div>
+        ),
+      },
+      {
+        key: "details",
+        label: "Thông tin chi tiết",
+        sections: [
           {
             key: "depreciation_info",
             title: "Thông tin giá trị & Khấu hao tài sản",
@@ -393,99 +412,7 @@ export default function PortTerminalAssetDetailContent({
               },
             ],
           },
-          {
-            key: "approval_info",
-            title: "Thông tin phê duyệt",
-            icon: <AuditOutlined />,
-            collapsible: true,
-            defaultCollapsed: false,
-            fields: [
-              {
-                label: "Trạng thái",
-                type: ViewFieldType.Badge,
-                value: () => approvalInfo.label,
-                badgeColor: () => approvalInfo.color,
-              },
-              {
-                name: "updatedAt",
-                label: "Ngày cập nhật",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "updatedByName",
-                label: "Cán bộ cập nhật",
-                render: (val) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {String(val || "—")}
-                  </span>
-                ),
-              },
-              {
-                name: "submittedAt",
-                label: "Ngày gửi phê duyệt",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "submittedByName",
-                label: "Người gửi phê duyệt",
-              },
-              {
-                name: "approvedLevel1At",
-                label: "Ngày duyệt cấp 1",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "approvedLevel1ByName",
-                label: "Người duyệt cấp 1",
-              },
-              {
-                name: "approvalContentLevel1",
-                label: "Nội dung phê duyệt cấp 1",
-                colSpan: 24,
-              },
-              {
-                name: "approvedLevel2At",
-                label: "Ngày duyệt cấp 2",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "approvedLevel2ByName",
-                label: "Người duyệt cấp 2",
-              },
-              {
-                name: "approvalContentLevel2",
-                label: "Nội dung phê duyệt cấp 2",
-                colSpan: 24,
-              },
-              {
-                name: "rejectionReason",
-                label: "Lý do từ chối",
-                colSpan: 24,
-                hidden: (rec) => !rec.rejectionReason,
-                render: (val) => (
-                  <span style={{ color: statusCritical, fontWeight: 500 }}>
-                    {String(val)}
-                  </span>
-                ),
-              },
-            ],
-          },
         ],
-      },
-      {
-        key: "files",
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
-        customContent: () => (
-          <div style={{ paddingTop: 6 }}>
-            <InfrastructureAttachmentTab
-              attachments={detailAttachments}
-              readonly={true}
-              onUpload={() => {}}
-              onDelete={() => {}}
-              onDownload={() => {}}
-            />
-          </div>
-        ),
       },
       {
         key: "exploitation",
@@ -526,13 +453,13 @@ export default function PortTerminalAssetDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Đơn vị khai thác</span>
                       <span className="chk-detail-value">
-                        {orgName.get(row.operatorOrgUnitId || "") || "—"}
+                        {row.operatorOrgUnitId ? (orgName.get(row.operatorOrgUnitId) || "—") : "—"}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Danh mục tài sản</span>
                       <span className="chk-detail-value">
-                        {row.assetCategory || r.assetName}
+                        {row.assetCategory || "—"}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -552,7 +479,7 @@ export default function PortTerminalAssetDetailContent({
                         Thời hạn khai thác
                       </span>
                       <span className="chk-detail-value">
-                        {fmtDate(row.exploitationDeadline)}
+                        {row.exploitationDeadline ? fmtDate(row.exploitationDeadline) : "—"}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -560,8 +487,8 @@ export default function PortTerminalAssetDetailContent({
                         Tổng tiền thu được (VNĐ)
                       </span>
                       <span className="chk-detail-value">
-                        {(row.totalRevenue ?? row.doanhThu) != null
-                          ? `${fmtNum(row.totalRevenue ?? row.doanhThu)} VNĐ`
+                        {row.totalRevenue != null
+                          ? `${fmtNum(row.totalRevenue)} VNĐ`
                           : "—"}
                       </span>
                     </div>
@@ -570,8 +497,8 @@ export default function PortTerminalAssetDetailContent({
                         Chi phí liên quan
                       </span>
                       <span className="chk-detail-value">
-                        {(row.relatedCosts ?? row.depreciation) != null
-                          ? `${fmtNum(row.relatedCosts ?? row.depreciation)} VNĐ`
+                        {row.relatedCosts != null
+                          ? `${fmtNum(row.relatedCosts)} VNĐ`
                           : "—"}
                       </span>
                     </div>
@@ -638,9 +565,7 @@ export default function PortTerminalAssetDetailContent({
               </div>
             ) : (
               combinedAdjustments.map((row, index) => {
-                const details: Record<string, unknown> = {
-                  ...(row.adjustmentDetails || parseStoredDetails(row.reason)),
-                };
+                const details = row.adjustmentDetails;
                 return (
                   <div key={row.id} style={sectionBoxStyle}>
                     <div style={sectionHeaderStyle}>
@@ -664,8 +589,8 @@ export default function PortTerminalAssetDetailContent({
                         </span>
                         <span className="chk-detail-value">
                           {String(
-                            details.decisionNumber ||
-                              ("increaseCode" in row ? row.increaseCode : "—"),
+                            details?.decisionNumber ||
+                              ("increaseCode" in row ? row.increaseCode : ("decreaseCode" in row ? row.decreaseCode : "—")),
                           )}
                         </span>
                       </div>
@@ -674,7 +599,7 @@ export default function PortTerminalAssetDetailContent({
                           Ngày ra quyết định
                         </span>
                         <span className="chk-detail-value">
-                          {fmtDate(details.decisionDate as string)}
+                          {details?.decisionDate ? fmtDate(details.decisionDate) : "—"}
                         </span>
                       </div>
                       <div className="chk-detail-row">
@@ -682,7 +607,7 @@ export default function PortTerminalAssetDetailContent({
                           Ngày thay đổi nguyên giá
                         </span>
                         <span className="chk-detail-value">
-                          {fmtDate(details.adjustmentDate as string)}
+                          {details?.adjustmentDate ? fmtDate(details.adjustmentDate) : "—"}
                         </span>
                       </div>
                       <div className="chk-detail-row">
@@ -691,10 +616,10 @@ export default function PortTerminalAssetDetailContent({
                         </span>
                         <span className="chk-detail-value">
                           {String(
-                            details.adjustmentReason ||
+                            details?.adjustmentReason ||
                               ("decreaseReason" in row
                                 ? row.decreaseReason
-                                : "—"),
+                                : (row.reason || "—")),
                           )}
                         </span>
                       </div>
@@ -703,7 +628,7 @@ export default function PortTerminalAssetDetailContent({
                           Nguyên giá trước điều chỉnh
                         </span>
                         <span className="chk-detail-value">
-                          {details.originalValueBefore != null
+                          {details?.originalValueBefore != null
                             ? `${fmtNum(details.originalValueBefore as number)} VNĐ`
                             : "—"}
                         </span>
@@ -713,7 +638,7 @@ export default function PortTerminalAssetDetailContent({
                           Nguyên giá sau điều chỉnh
                         </span>
                         <span className="chk-detail-value">
-                          {details.originalValueAfter != null
+                          {details?.originalValueAfter != null
                             ? `${fmtNum(details.originalValueAfter as number)} VNĐ`
                             : "—"}
                         </span>
@@ -723,17 +648,27 @@ export default function PortTerminalAssetDetailContent({
                           Giá trị còn lại trước
                         </span>
                         <span className="chk-detail-value">
-                          {details.remainingValueBefore != null
+                          {details?.remainingValueBefore != null
                             ? `${fmtNum(details.remainingValueBefore as number)} VNĐ`
                             : "—"}
                         </span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label">
-                          Giá trị còn lại sau
+                          Khấu hao lũy kế
                         </span>
                         <span className="chk-detail-value">
-                          {details.remainingValueAfter != null
+                          {details?.accumulatedDepreciation != null
+                            ? `${fmtNum(Number(details.accumulatedDepreciation))} VNĐ`
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Giá trị còn lại sau điều chỉnh
+                        </span>
+                        <span className="chk-detail-value">
+                          {details?.remainingValueAfter != null
                             ? `${fmtNum(details.remainingValueAfter as number)} VNĐ`
                             : "—"}
                         </span>
@@ -751,12 +686,7 @@ export default function PortTerminalAssetDetailContent({
                           Ghi chú điều chỉnh
                         </span>
                         <span className="chk-detail-value">
-                          {String(
-                            details.adjustmentNotes ||
-                              details.notes ||
-                              row.reason ||
-                              "—",
-                          )}
+                          {String(details?.adjustmentNotes || "—")}
                         </span>
                       </div>
                     </div>
@@ -766,6 +696,87 @@ export default function PortTerminalAssetDetailContent({
             )}
           </div>
         ),
+      },
+      {
+        key: "tracking",
+        label: "Xử lý & theo dõi",
+        sections: [
+          {
+            key: "approval_info",
+            title: "Xử lý & theo dõi",
+            icon: <AuditOutlined />,
+            fields: [
+              {
+                label: "Trạng thái",
+                type: ViewFieldType.Badge,
+                value: () => approvalInfo.label,
+                badgeColor: () => approvalInfo.color,
+              },
+              {
+                name: "updatedAt",
+                label: "Ngày cập nhật",
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: "updatedByName",
+                label: "Cán bộ cập nhật",
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || "—")}
+                  </span>
+                ),
+              },
+              {
+                name: "submittedAt",
+                label: "Ngày gửi phê duyệt",
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: "submittedByName",
+                label: "Cán bộ gửi phê duyệt",
+              },
+              {
+                name: "portAuthorityApprovedAt",
+                label: "Ngày phê duyệt cấp Cảng vụ/Chi cục",
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: "portAuthorityApprovedByName",
+                label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
+              },
+              {
+                name: "portAuthorityApprovalContent",
+                label: "Nội dung phê duyệt cấp Cảng vụ/Chi cục",
+                colSpan: 24,
+              },
+              {
+                name: "departmentApprovedAt",
+                label: "Ngày phê duyệt cấp Cục",
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: "departmentApprovedByName",
+                label: "Cán bộ phê duyệt cấp Cục",
+              },
+              {
+                name: "departmentApprovalContent",
+                label: "Nội dung phê duyệt cấp Cục",
+                colSpan: 24,
+              },
+              {
+                name: "rejectionReason",
+                label: "Lý do từ chối",
+                colSpan: 24,
+                hidden: (rec) => !rec.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
+              },
+            ],
+          },
+        ],
       },
     ];
   }, [

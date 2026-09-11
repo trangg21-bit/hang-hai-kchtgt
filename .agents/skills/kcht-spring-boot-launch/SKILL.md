@@ -107,52 +107,6 @@ Extension Java debugger (`vscode-java-debug`) trong VS Code / Antigravity IDE g�
 }
 ```
 
-### 4.2. File `.vscode/tasks.json`
-```json
-{
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Free Port 8080",
-            "type": "process",
-            "command": "powershell.exe",
-            "args": [
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "${workspaceFolder}/scripts/free-port-8080.ps1"
-            ],
-            "problemMatcher": [],
-            "presentation": {
-                "reveal": "never",
-                "panel": "shared",
-                "close": true
-            }
-        }
-    ]
-}
-```
-
-Script an toàn đặt tại `scripts/free-port-8080.ps1` (tránh mọi lỗi escape ký tự/biến `$p`, `$_` của shell):
-```powershell
-$ErrorActionPreference = 'SilentlyContinue'
-try {
-    $connections = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue
-    if ($connections) {
-        $processIds = $connections.OwningProcess | Where-Object { $_ -gt 4 } | Select-Object -Unique
-        foreach ($pidToKill in $processIds) {
-            Stop-Process -Id $pidToKill -Force -ErrorAction SilentlyContinue
-            Write-Host "Da dung tien trinh cu tren port 8080 (PID: $pidToKill)"
-        }
-    } else {
-        Write-Host "Port 8080 san sang"
-    }
-} catch {
-    Write-Host "Port 8080 san sang"
-}
-```
-
 ---
 
 ## 5. Lệnh hữu ích khi cần thao tác bằng dòng lệnh (CLI Reference)

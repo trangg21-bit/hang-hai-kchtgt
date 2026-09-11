@@ -28,7 +28,7 @@ import {
   MonitorOutlined, FileTextOutlined, PieChartOutlined, RadarChartOutlined, DeploymentUnitOutlined,
   PlusCircleOutlined, MinusCircleOutlined, AuditOutlined, AppstoreOutlined,
   WarningOutlined, FileProtectOutlined, PictureOutlined, UserOutlined, TeamOutlined,
-  HistoryOutlined, SyncOutlined,
+  HistoryOutlined, SyncOutlined, SwapOutlined,
 } from '@ant-design/icons';
 
 import { landingGroupIcons } from '../themetokenchk';
@@ -91,6 +91,7 @@ const icons = {
   team: <TeamOutlined />,
   history: <HistoryOutlined />,
   sync: <SyncOutlined />,
+  swap: <SwapOutlined />,
 };
 
 /* ============ CÂY KCHT — 28 loại theo ma trận cha–con ============ */
@@ -188,9 +189,12 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Quản lý tài sản KCHT hàng hải',
     desc: 'Quản lý hồ sơ, biến động, kiểm kê và khai thác tài sản',
     icon: landingGroupIcons.asset,
-    underDevelopment: true,
     tree: [
       { key: '/asset/berth', route: '/asset/berth', label: 'Tài sản bến cảng', icon: icons.bank },
+      { key: '/asset/transfer-area', route: '/asset/transfer-area', label: 'Tài sản khu chuyển tải', icon: icons.swap },
+      { key: '/asset/storm-shelter', route: '/asset/storm-shelter', label: 'Tài sản khu tránh, trú bão', icon: icons.safety },
+      { key: '/asset/buoy-berth', route: '/asset/buoy-berth', label: 'Tài sản bến phao', icon: icons.container },
+      { key: '/asset/pier', route: '/asset/pier', label: 'Tài sản cầu cảng', icon: icons.build },
       { key: '/asset/anchorage', route: '/asset/anchorage', label: 'Tài sản khu neo đậu', icon: icons.environment },
       { key: '/asset/lighthouse', route: '/asset/lighthouse', label: 'Tài sản đèn biển và nhà trạm gắn liền đèn biển', icon: icons.bulb },
       { key: '/asset/dike-revetment', route: '/asset/dike-revetment', label: 'Tài sản đê/kè', icon: icons.block },

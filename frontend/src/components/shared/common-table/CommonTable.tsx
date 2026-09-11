@@ -7,10 +7,18 @@ import React, {
   useCallback,
   forwardRef,
   useImperativeHandle,
-} from 'react';
-import { Table, Dropdown, Button, Tooltip, Spin, type TableProps, type MenuProps } from 'antd';
-import { MoreOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+} from "react";
+import {
+  Table,
+  Dropdown,
+  Button,
+  Tooltip,
+  Spin,
+  type TableProps,
+  type MenuProps,
+} from "antd";
+import { MoreOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import {
   TableColumnType,
   BaseSearchRequest,
@@ -18,11 +26,15 @@ import {
   type TableOption,
   type TableActionOption,
   type CommonTableRef,
-} from './table.model';
-import Pagination from '../../list-view/Pagination';
-import EmptyState from '../../EmptyState';
-import { useThemeToken, THEME_SCOPE_CLASS, type ThemeToken } from '../../../context/ThemeTokenContext';
-import { layout } from '../../../theme';
+} from "./table.model";
+import Pagination from "../../list-view/Pagination";
+import EmptyState from "../../EmptyState";
+import {
+  useThemeToken,
+  THEME_SCOPE_CLASS,
+  type ThemeToken,
+} from "../../../context/ThemeTokenContext";
+import { layout } from "../../../theme";
 import {
   fontSizeMd,
   fontWeightBold,
@@ -32,8 +44,9 @@ import {
   statusBadgeStyle,
   cellTitleStyle,
   cellSubtitleStyle,
-} from '../../../themetokenchk';
-import { DEFAULT_STATUS_MAP } from './status-map.constants';
+  tableSortIcon,
+} from "../../../themetokenchk";
+import { DEFAULT_STATUS_MAP } from "./status-map.constants";
 
 const ACTION_COLUMN_WIDTH = 60;
 const HEADER_CHAR_WIDTH = 8.8;
@@ -45,10 +58,14 @@ const HEADER_SORTER_WIDTH = 22;
  * tuyệt đối không bị cắt "..." theo quy chuẩn UI của hệ thống.
  */
 function getHeaderMinWidth(title: React.ReactNode, hasSorter: boolean): number {
-  const text = typeof title === 'string' ? title : '';
+  const text = typeof title === "string" ? title : "";
   if (!text) return 0;
   const sorterSpace = hasSorter ? HEADER_SORTER_WIDTH : 0;
-  return Math.ceil(text.length * HEADER_CHAR_WIDTH) + HEADER_HORIZONTAL_PADDING + sorterSpace;
+  return (
+    Math.ceil(text.length * HEADER_CHAR_WIDTH) +
+    HEADER_HORIZONTAL_PADDING +
+    sorterSpace
+  );
 }
 
 /**
@@ -56,7 +73,7 @@ function getHeaderMinWidth(title: React.ReactNode, hasSorter: boolean): number {
  * Tự động đóng menu khi người dùng cuộn chuột bảng/trang.
  */
 const RowActionDropdown: React.FC<{
-  items: MenuProps['items'];
+  items: MenuProps["items"];
   themeToken: ThemeToken;
 }> = ({ items, themeToken }) => {
   const [open, setOpen] = useState(false);
@@ -65,24 +82,29 @@ const RowActionDropdown: React.FC<{
     if (!open) return;
     const closeOnScroll = (e: Event) => {
       const target = e.target as HTMLElement | null;
-      if (target && typeof target.closest === 'function' && target.closest('.ant-dropdown')) return;
+      if (
+        target &&
+        typeof target.closest === "function" &&
+        target.closest(".ant-dropdown")
+      )
+        return;
       setOpen(false);
     };
-    document.addEventListener('scroll', closeOnScroll, true);
-    return () => document.removeEventListener('scroll', closeOnScroll, true);
+    document.addEventListener("scroll", closeOnScroll, true);
+    return () => document.removeEventListener("scroll", closeOnScroll, true);
   }, [open]);
 
   return (
     <Dropdown
       menu={{ items }}
-      trigger={['click']}
+      trigger={["click"]}
       open={open}
       onOpenChange={setOpen}
       rootClassName={THEME_SCOPE_CLASS}
     >
       <Button
         icon={<MoreOutlined />}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         style={themeToken.rowActionButtonStyle}
       />
     </Dropdown>
@@ -105,7 +127,7 @@ export interface CommonTableProps<T = Record<string, unknown>> {
   /** Callback khi đổi trang hoặc số lượng bản ghi/trang */
   onPageChange?: (page: number, pageSize: number) => void;
   /** Callback khi đổi sắp xếp cột */
-  onSortChange?: (field: string, order: 'ascend' | 'descend' | null) => void;
+  onSortChange?: (field: string, order: "ascend" | "descend" | null) => void;
   /** Tham số lọc tùy biến bổ sung (sẽ tự động truyền vào BaseSearchRequest) */
   filters?: Record<string, unknown>;
   /** Callback khi tải xong dữ liệu thành công */
@@ -148,12 +170,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   ref: React.ForwardedRef<CommonTableRef<T>>,
 ) {
   const themeToken = useThemeToken();
-  const {
-    textSecondary,
-    colors,
-    tableHeaderBg,
-    tableRowStripeBg,
-  } = themeToken;
+  const { textSecondary, colors, tableHeaderBg, tableRowStripeBg } = themeToken;
 
   const serviceProvider = options?.serviceProvider;
   const disableInitialSearch = options?.disableInitialSearch;
@@ -163,21 +180,43 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   const [internalTotal, setInternalTotal] = useState<number>(0);
   const [internalLoading, setInternalLoading] = useState<boolean>(false);
   const [internalPage, setInternalPage] = useState<number>(1);
-  const [internalPageSize, setInternalPageSize] = useState<number>(options?.pageSize || 20);
-  const [sortField, setSortField] = useState<string | undefined>(options?.defaultSort?.field);
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>(
-    options?.defaultSort?.order === -1 || options?.defaultSort?.order === 'descend'
-      ? 'descend'
-      : options?.defaultSort?.order === 1 || options?.defaultSort?.order === 'ascend'
-        ? 'ascend'
+  const [internalPageSize, setInternalPageSize] = useState<number>(
+    options?.pageSize || 20,
+  );
+  const [sortField, setSortField] = useState<string | undefined>(
+    options?.defaultSort?.field,
+  );
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(
+    options?.defaultSort?.order === -1 ||
+      options?.defaultSort?.order === "descend"
+      ? "descend"
+      : options?.defaultSort?.order === 1 ||
+          options?.defaultSort?.order === "ascend"
+        ? "ascend"
         : null,
   );
-  const [filterOverrides, setFilterOverrides] = useState<Record<string, unknown>>({});
+
+  // Đồng bộ trạng thái sort với bộ lọc ngoài nếu được truyền
+  useEffect(() => {
+    if (filters && ("sortBy" in filters || "sortDir" in filters)) {
+      setSortField(filters.sortBy as string | undefined);
+      setSortOrder(
+        filters.sortDir === "ASC"
+          ? "ascend"
+          : filters.sortDir === "DESC"
+            ? "descend"
+            : null,
+      );
+    }
+  }, [filters?.sortBy, filters?.sortDir]);
+  const [filterOverrides, setFilterOverrides] = useState<
+    Record<string, unknown>
+  >({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [measuredTableWidth, setMeasuredTableWidth] = useState<number>();
 
   const tableShellRef = useRef<HTMLDivElement>(null);
-  const dataKey = (options?.dataKey as string) || 'id';
+  const dataKey = (options?.dataKey as string) || "id";
   const isServiceProviderMode = Boolean(serviceProvider);
 
   // Gộp filters bên ngoài và override nội bộ
@@ -187,22 +226,27 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   );
 
   // Xác định dữ liệu thực tế đang dùng
-  const actualData: T[] = externalDataSource !== undefined ? externalDataSource : internalData;
-  const actualTotal: number = externalTotal !== undefined ? externalTotal : internalTotal;
-  const actualLoading: boolean = externalLoading !== undefined ? externalLoading : internalLoading;
-  const actualPage: number = externalPage !== undefined ? externalPage : internalPage;
-  const actualPageSize: number = externalPageSize !== undefined ? externalPageSize : internalPageSize;
+  const actualData: T[] =
+    externalDataSource !== undefined ? externalDataSource : internalData;
+  const actualTotal: number =
+    externalTotal !== undefined ? externalTotal : internalTotal;
+  const actualLoading: boolean =
+    externalLoading !== undefined ? externalLoading : internalLoading;
+  const actualPage: number =
+    externalPage !== undefined ? externalPage : internalPage;
+  const actualPageSize: number =
+    externalPageSize !== undefined ? externalPageSize : internalPageSize;
 
   // Reset cuộn ngang về 0 khi đổi trang hoặc nạp dữ liệu
   const resetHorizontalScroll = useCallback(() => {
     if (!tableShellRef.current) return;
     tableShellRef.current
       .querySelectorAll<HTMLElement>(
-        '.ant-table-header, .ant-table-body, .ant-table-content, .ant-table-container, .ant-table, .ant-table-sticky-scroll',
+        ".ant-table-header, .ant-table-body, .ant-table-content, .ant-table-container, .ant-table, .ant-table-sticky-scroll",
       )
-      .forEach(el => {
+      .forEach((el) => {
         el.scrollLeft = 0;
-        el.scrollTo?.({ left: 0, behavior: 'auto' });
+        el.scrollTo?.({ left: 0, behavior: "auto" });
       });
   }, []);
 
@@ -222,7 +266,9 @@ function CommonTableInternal<T extends Record<string, unknown>>(
     if (!shell) return;
     const measure = () => {
       if (shell.clientWidth > 0) {
-        setMeasuredTableWidth(current => (current === shell.clientWidth ? current : shell.clientWidth));
+        setMeasuredTableWidth((current) =>
+          current === shell.clientWidth ? current : shell.clientWidth,
+        );
       }
     };
     measure();
@@ -232,16 +278,32 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   }, []);
 
   // Hàm tải dữ liệu qua ServiceProvider
+  // sortFieldOverride / sortOrderOverride cho phép truyền giá trị sort mới ngay lập tức
+  // (tránh race condition khi state chưa cập nhật)
   const fetchData = useCallback(
-    async (pageToLoad = actualPage, sizeToLoad = actualPageSize, currentFilters = effectiveFilters) => {
+    async (
+      pageToLoad = actualPage,
+      sizeToLoad = actualPageSize,
+      currentFilters = effectiveFilters,
+      sortFieldOverride?: string,
+      sortOrderOverride?: "ascend" | "descend" | null,
+    ) => {
       if (!serviceProvider) return;
+
+      // Dùng override nếu có, không thì dùng state hiện tại
+      const activeSortField =
+        sortFieldOverride !== undefined ? sortFieldOverride : sortField;
+      const activeSortOrder =
+        sortOrderOverride !== undefined ? sortOrderOverride : sortOrder;
 
       setInternalLoading(true);
       try {
         const req = new BaseSearchRequest({
           maxResultCount: sizeToLoad,
           skipCount: (pageToLoad - 1) * sizeToLoad,
-          sorting: sortField ? `${sortField} ${sortOrder === 'descend' ? 'DESC' : 'ASC'}` : undefined,
+          sorting: activeSortField
+            ? `${activeSortField} ${activeSortOrder === "descend" ? "DESC" : "ASC"}`
+            : undefined,
           ...currentFilters,
         });
 
@@ -252,10 +314,18 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         if (res instanceof BaseSearchResponse) {
           items = res.items as T[];
           totalCount = res.totalCount;
-        } else if (res && typeof res === 'object' && 'items' in res && Array.isArray((res as { items: unknown }).items)) {
+        } else if (
+          res &&
+          typeof res === "object" &&
+          "items" in res &&
+          Array.isArray((res as { items: unknown }).items)
+        ) {
           const typedRes = res as { items: T[]; totalCount?: number };
           items = typedRes.items;
-          totalCount = typeof typedRes.totalCount === 'number' ? typedRes.totalCount : items.length;
+          totalCount =
+            typeof typedRes.totalCount === "number"
+              ? typedRes.totalCount
+              : items.length;
         } else if (Array.isArray(res)) {
           items = res as T[];
           totalCount = res.length;
@@ -265,12 +335,23 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         setInternalTotal(totalCount);
         onLoadFinished?.(items);
       } catch (err) {
-        console.error('[CommonTable] Error loading data from serviceProvider:', err);
+        console.error(
+          "[CommonTable] Error loading data from serviceProvider:",
+          err,
+        );
       } finally {
         setInternalLoading(false);
       }
     },
-    [serviceProvider, actualPage, actualPageSize, effectiveFilters, sortField, sortOrder, onLoadFinished],
+    [
+      serviceProvider,
+      actualPage,
+      actualPageSize,
+      effectiveFilters,
+      sortField,
+      sortOrder,
+      onLoadFinished,
+    ],
   );
 
   // Tự động load lần đầu nếu bật serviceProvider và không cấm
@@ -296,22 +377,29 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   );
 
   // Xử lý đổi sắp xếp
-  const handleSortChange: NonNullable<TableProps<T>['onChange']> = useCallback(
+  // sorterObj.columnKey luôn khớp với columnKey được đặt tường minh trên cột (= col.sortField || col.dataIndex)
+  const handleSortChange: NonNullable<TableProps<T>["onChange"]> = useCallback(
     (_pagination, _filters, sorter) => {
       const sorterObj = Array.isArray(sorter) ? sorter[0] : sorter;
-      const field = (sorterObj?.field as string) || undefined;
-      const order = (sorterObj?.order as 'ascend' | 'descend' | undefined) || null;
+      const field = sorterObj?.columnKey as string | undefined;
+      const order = sorterObj?.order ?? null;
 
       setSortField(field);
       setSortOrder(order);
 
       if (isServiceProviderMode) {
         setInternalPage(1);
-        void fetchData(1, actualPageSize);
+        void fetchData(1, actualPageSize, effectiveFilters, field, order);
       }
-      onSortChange?.(field || '', order);
+      onSortChange?.(field ?? "", order);
     },
-    [isServiceProviderMode, actualPageSize, fetchData, onSortChange],
+    [
+      isServiceProviderMode,
+      actualPageSize,
+      effectiveFilters,
+      fetchData,
+      onSortChange,
+    ],
   );
 
   // Expose các phương thức điều khiển qua Ref
@@ -327,10 +415,12 @@ function CommonTableInternal<T extends Record<string, unknown>>(
       },
       getSelectedItems: () => {
         const keyMap = new Set(selectedRowKeys);
-        return actualData.filter(item => keyMap.has(item?.[dataKey] as React.Key));
+        return actualData.filter((item) =>
+          keyMap.has(item?.[dataKey] as React.Key),
+        );
       },
       setSelectedItems: (items: T[]) => {
-        setSelectedRowKeys(items.map(it => it?.[dataKey] as React.Key));
+        setSelectedRowKeys(items.map((it) => it?.[dataKey] as React.Key));
       },
       setPage: (newPage: number) => {
         handlePageChange(newPage, actualPageSize);
@@ -346,30 +436,46 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         setFilterOverrides(newFilters);
         setInternalPage(1);
         if (isServiceProviderMode) {
-          void fetchData(1, actualPageSize, { ...(filters || {}), ...newFilters });
+          void fetchData(1, actualPageSize, {
+            ...(filters || {}),
+            ...newFilters,
+          });
         }
       },
     }),
-    [actualPage, actualPageSize, actualTotal, actualData, dataKey, isServiceProviderMode, fetchData, handlePageChange, selectedRowKeys, filters],
+    [
+      actualPage,
+      actualPageSize,
+      actualTotal,
+      actualData,
+      dataKey,
+      isServiceProviderMode,
+      fetchData,
+      handlePageChange,
+      selectedRowKeys,
+      filters,
+    ],
   );
 
   // Row selection handler
-  const rowSelection: TableProps<T>['rowSelection'] = useMemo(() => {
+  const rowSelection: TableProps<T>["rowSelection"] = useMemo(() => {
     if (!options?.enableSelection) return undefined;
 
     return {
-      type: options.selectionMode === 'single' ? 'radio' : 'checkbox',
+      type: options.selectionMode === "single" ? "radio" : "checkbox",
       selectedRowKeys,
       onChange: (keys: React.Key[], rows: T[]) => {
         setSelectedRowKeys(keys);
-        if (options.selectionMode === 'single') {
+        if (options.selectionMode === "single") {
           options.selectionChange?.(rows[0]);
         } else {
           options.selectionChange?.(rows);
         }
       },
       getCheckboxProps: (record: T) => ({
-        disabled: options.customSelectionFilter ? !options.customSelectionFilter(record) : false,
+        disabled: options.customSelectionFilter
+          ? !options.customSelectionFilter(record)
+          : false,
       }),
       fixed: true,
       columnWidth: 46,
@@ -378,20 +484,26 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
   // Xây dựng các cột Ant Design từ mainColumns
   const generatedColumns = useMemo(() => {
-    const list: NonNullable<TableProps<T>['columns']> = [];
+    const list: NonNullable<TableProps<T>["columns"]> = [];
 
     // 1. Cột STT tự động
     if (!options?.hideSttColumn) {
       list.push({
-        key: '__stt',
-        title: 'STT',
-        align: 'center',
+        key: "__stt",
+        title: "STT",
+        align: "center",
         width: 60,
-        fixed: 'left',
+        fixed: "left",
         render: (_: unknown, __: T, index: number) => {
           const continuousIndex = (actualPage - 1) * actualPageSize + index + 1;
           return (
-            <span style={{ fontSize: fontSizeMd, color: textSecondary, fontWeight: fontWeightMedium }}>
+            <span
+              style={{
+                fontSize: fontSizeMd,
+                color: textSecondary,
+                fontWeight: fontWeightMedium,
+              }}
+            >
               {continuousIndex}
             </span>
           );
@@ -401,50 +513,72 @@ function CommonTableInternal<T extends Record<string, unknown>>(
             background: tableHeaderBg,
             fontWeight: fontWeightBold,
             fontSize: fontSizeMd,
-            textTransform: 'uppercase',
-            textAlign: 'center',
+            textTransform: "uppercase",
+            textAlign: "center",
           },
         }),
       });
     }
 
     // 2. Chuyển đổi từng TableColumnOption thành AntD Column
-    const activeColumns = (options?.mainColumns || []).filter(col => {
-      if (typeof col.hide === 'function') return !col.hide();
+    const activeColumns = (options?.mainColumns || []).filter((col) => {
+      if (typeof col.hide === "function") return !col.hide();
       return !col.hide;
     });
 
-    activeColumns.forEach(col => {
-      const colTitle = typeof col.title === 'function' ? col.title() : col.title || col.label || '';
-      const colField = (col.sortField || col.dataIndex) as string;
+    activeColumns.forEach((col) => {
+      const colTitle =
+        typeof col.title === "function"
+          ? col.title()
+          : col.title || col.label || "";
+      // colField = single source of truth cho sort: sortField → dataIndex
+      const colField = (col.sortField ?? col.dataIndex) as string;
       const isSortable = Boolean(col.allowSort || col.sorter);
       const safeMinWidth = getHeaderMinWidth(colTitle, isSortable);
 
       // Tính bề rộng thực tế đảm bảo không bị cắt chữ header
       let finalWidth: number | string | undefined = col.width;
-      if (typeof col.width === 'number') {
+      if (typeof col.width === "number") {
         finalWidth = Math.max(col.width, safeMinWidth);
       } else if (!col.width && safeMinWidth > 0) {
         finalWidth = safeMinWidth;
       }
 
+      // Sorter: chỉ bật cờ để thu thập tham số sắp xếp gửi API (không sort memory)
+      const effectiveSorter = Boolean(col.allowSort || col.sorter);
+      // isCurrentSorted: so sánh chính xác với colField — không fallback
+      const isCurrentSorted =
+        effectiveSorter && Boolean(sortOrder) && sortField === colField;
+
       const antdCol: Record<string, unknown> = {
-        key: String(col.dataIndex || col.sortField || colTitle),
+        // key và columnKey đều = colField — nguồn thực sự duy nhất, sorter callback trả đúng giá trị này
+        key: colField || colTitle,
         dataIndex: col.dataIndex,
         title: colTitle,
         width: finalWidth,
-        align: col.align || 'left',
+        align: col.align || "left",
         fixed: col.fixed,
-        ellipsis: false, // Ta tự kiểm soát ellipsis nội dung ô để tiêu đề không bao giờ bị cắt
-        sorter: col.sorter || (col.allowSort ? true : undefined),
-        sortOrder: sortField === colField ? sortOrder : null,
+        ellipsis: false,
+        sorter: effectiveSorter,
+        columnKey: colField,
+        sortOrder: isCurrentSorted ? sortOrder : null,
+        showSorterTooltip: false,
+        sortDirections: ["ascend", "descend", null],
+        sortIcon: themeToken.tableSortIcon || tableSortIcon,
         onHeaderCell: () => ({
+          className: isCurrentSorted
+            ? "ant-table-column-has-sorters ant-table-column-sort"
+            : effectiveSorter
+              ? "ant-table-column-has-sorters"
+              : undefined,
           style: {
-            background: tableHeaderBg,
+            background: isCurrentSorted ? "#f8fafc" : tableHeaderBg,
             fontWeight: fontWeightBold,
             fontSize: fontSizeMd,
-            textTransform: 'uppercase',
-            whiteSpace: 'nowrap',
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+            cursor: effectiveSorter ? "pointer" : undefined,
+            textAlign: col.align || "left",
           },
         }),
       };
@@ -462,23 +596,35 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         switch (col.type) {
           // ── TwoLine (Chuẩn hiển thị Tên / Mã tài sản hoặc Cán bộ / Ngày) ──
           case TableColumnType.TwoLine: {
-            const primaryText = rawVal !== undefined && rawVal !== null ? String(rawVal) : '—';
+            const primaryText =
+              rawVal !== undefined && rawVal !== null ? String(rawVal) : "—";
             const subVal = col.subValueRef
               ? col.subValueRef(row, index)
               : col.subField
                 ? (row as Record<string, unknown>)[col.subField]
                 : undefined;
-            const secondaryText = subVal !== undefined && subVal !== null ? String(subVal) : undefined;
+            const secondaryText =
+              subVal !== undefined && subVal !== null
+                ? String(subVal)
+                : undefined;
             let formattedSub = secondaryText;
-            if (secondaryText && (col.subFormat || /^\d{4}-\d{2}-\d{2}/.test(secondaryText))) {
+            if (
+              secondaryText &&
+              (col.subFormat || /^\d{4}-\d{2}-\d{2}/.test(secondaryText))
+            ) {
               const d = dayjs(secondaryText);
               if (d.isValid()) {
-                formattedSub = d.format(col.subFormat || (secondaryText.includes('T') || secondaryText.includes(':') ? 'DD/MM/YYYY HH:mm:ss' : 'DD/MM/YYYY'));
+                formattedSub = d.format(
+                  col.subFormat ||
+                    (secondaryText.includes("T") || secondaryText.includes(":")
+                      ? "DD/MM/YYYY HH:mm:ss"
+                      : "DD/MM/YYYY"),
+                );
               }
             }
 
             return (
-              <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
+              <div style={{ maxWidth: "100%", overflow: "hidden" }}>
                 {col.onClick ? (
                   <a
                     title={col.cellTitle ? col.cellTitle(row) : primaryText}
@@ -490,16 +636,13 @@ function CommonTableInternal<T extends Record<string, unknown>>(
                 ) : (
                   <span
                     title={col.cellTitle ? col.cellTitle(row) : primaryText}
-                    style={{ ...cellTitleStyle, cursor: 'default' }}
+                    style={{ ...cellTitleStyle, cursor: "default" }}
                   >
                     {primaryText}
                   </span>
                 )}
                 {formattedSub && (
-                  <span
-                    title={formattedSub}
-                    style={cellSubtitleStyle}
-                  >
+                  <span title={formattedSub} style={cellSubtitleStyle}>
                     {formattedSub}
                   </span>
                 )}
@@ -509,7 +652,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
           // ── Status (Pill Badge bo tròn 2 đầu chuẩn UI Hàng hải) ──
           case TableColumnType.Status: {
-            if (!rawVal) return '—';
+            if (!rawVal) return "—";
             const statusStr = String(rawVal);
             const statusKey = statusStr.toUpperCase();
 
@@ -520,31 +663,43 @@ function CommonTableInternal<T extends Record<string, unknown>>(
             if (col.statusMapping) {
               if (Array.isArray(col.statusMapping)) {
                 const found = col.statusMapping.find(
-                  m => String(m.value).toUpperCase() === statusKey || m.label === rawVal,
+                  (m) =>
+                    String(m.value).toUpperCase() === statusKey ||
+                    m.label === rawVal,
                 );
                 if (found) {
                   matchedLabel = found.label || String(found.value);
                   matchedColor = found.color || statusDraft;
                 }
-              } else if (col.statusMapping[statusStr] || col.statusMapping[statusKey]) {
-                const found = col.statusMapping[statusStr] || col.statusMapping[statusKey];
+              } else if (
+                col.statusMapping[statusStr] ||
+                col.statusMapping[statusKey]
+              ) {
+                const found =
+                  col.statusMapping[statusStr] || col.statusMapping[statusKey];
                 matchedLabel = found.label;
                 matchedColor = found.color;
               }
-            } else if (DEFAULT_STATUS_MAP[statusStr] || DEFAULT_STATUS_MAP[statusKey]) {
+            } else if (
+              DEFAULT_STATUS_MAP[statusStr] ||
+              DEFAULT_STATUS_MAP[statusKey]
+            ) {
               // 2. Tìm trong mapping mặc định của hệ thống
-              const found = DEFAULT_STATUS_MAP[statusStr] || DEFAULT_STATUS_MAP[statusKey];
+              const found =
+                DEFAULT_STATUS_MAP[statusStr] || DEFAULT_STATUS_MAP[statusKey];
               matchedLabel = found.label;
               matchedColor = found.color;
             }
 
-            return <span style={statusBadgeStyle(matchedColor)}>{matchedLabel}</span>;
+            return (
+              <span style={statusBadgeStyle(matchedColor)}>{matchedLabel}</span>
+            );
           }
 
           // ── Date (DD/MM/YYYY) ──
           case TableColumnType.Date: {
-            if (!rawVal) return '—';
-            const fmt = col.format || 'DD/MM/YYYY';
+            if (!rawVal) return "—";
+            const fmt = col.format || "DD/MM/YYYY";
             const dateStr = dayjs(rawVal as string | number | Date).isValid()
               ? dayjs(rawVal as string | number | Date).format(fmt)
               : String(rawVal);
@@ -553,8 +708,8 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
           // ── DateTime (DD/MM/YYYY HH:mm:ss) ──
           case TableColumnType.DateTime: {
-            if (!rawVal) return '—';
-            const fmt = col.format || 'DD/MM/YYYY HH:mm:ss';
+            if (!rawVal) return "—";
+            const fmt = col.format || "DD/MM/YYYY HH:mm:ss";
             const dtStr = dayjs(rawVal as string | number | Date).isValid()
               ? dayjs(rawVal as string | number | Date).format(fmt)
               : String(rawVal);
@@ -564,12 +719,17 @@ function CommonTableInternal<T extends Record<string, unknown>>(
           // ── NumberFormatted (1,000 / 1.000) ──
           case TableColumnType.NumberFormatted:
           case TableColumnType.Number: {
-            if (rawVal === undefined || rawVal === null || rawVal === '') return '—';
+            if (rawVal === undefined || rawVal === null || rawVal === "")
+              return "—";
             const num = Number(rawVal);
             if (isNaN(num)) return String(rawVal);
-            const formatted = new Intl.NumberFormat('vi-VN').format(num);
+            const formatted = new Intl.NumberFormat("vi-VN").format(num);
             return (
-              <span style={{ fontWeight: col.bold ? fontWeightBold : fontWeightMedium }}>
+              <span
+                style={{
+                  fontWeight: col.bold ? fontWeightBold : fontWeightMedium,
+                }}
+              >
                 {formatted}
               </span>
             );
@@ -577,103 +737,160 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
           // ── Money (1.000.000 đ) ──
           case TableColumnType.Money: {
-            if (rawVal === undefined || rawVal === null || rawVal === '') return '—';
+            if (rawVal === undefined || rawVal === null || rawVal === "")
+              return "—";
             const num = Number(rawVal);
             if (isNaN(num)) return String(rawVal);
-            const formatted = new Intl.NumberFormat('vi-VN').format(num) + ' đ';
+            const formatted = new Intl.NumberFormat("vi-VN").format(num) + " đ";
             return (
-              <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>
+              <span
+                style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}
+              >
                 {formatted}
               </span>
             );
           }
 
-          // ── Text / Description (Mặc định: hiển thị ellipsis + Tooltip) ──
+          // ── Text / Description (Mặc định: hiển thị ellipsis + title chuẩn) ──
           case TableColumnType.Text:
           case TableColumnType.Description:
           default: {
-            const textStr = rawVal !== undefined && rawVal !== null ? String(rawVal) : '—';
-            const shouldEllipsis = col.ellipsis !== false;
-
-            if (shouldEllipsis) {
-              return (
-                <Tooltip title={col.showTooltip !== false ? textStr : undefined} placement="topLeft">
-                  <span
-                    style={{
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontWeight: col.bold ? fontWeightBold : undefined,
-                    }}
-                  >
-                    {textStr}
-                  </span>
-                </Tooltip>
-              );
-            }
-            return <span style={{ fontWeight: col.bold ? fontWeightBold : undefined }}>{textStr}</span>;
+            const textStr =
+              rawVal !== undefined &&
+              rawVal !== null &&
+              String(rawVal).trim() !== ""
+                ? String(rawVal)
+                : "—";
+            return (
+              <span
+                title={
+                  col.showTooltip !== false && textStr !== "—"
+                    ? textStr
+                    : undefined
+                }
+                style={{
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontWeight: col.bold ? fontWeightBold : undefined,
+                }}
+              >
+                {textStr}
+              </span>
+            );
           }
         }
       };
 
-      list.push(antdCol as unknown as NonNullable<TableProps<T>['columns']>[number]);
+      list.push(
+        antdCol as unknown as NonNullable<TableProps<T>["columns"]>[number],
+      );
     });
 
     // 3. Cột Thao tác hành động (Action Column)
     if (!options?.hideActionColumn && options?.actions) {
       list.push({
-        key: 'actions',
-        title: '',
+        key: "actions",
+        title: "",
         width: ACTION_COLUMN_WIDTH,
-        fixed: 'right',
-        align: 'center',
+        fixed: "right",
+        align: "center",
         onHeaderCell: () => ({
           style: {
             background: tableHeaderBg,
             width: ACTION_COLUMN_WIDTH,
             maxWidth: ACTION_COLUMN_WIDTH,
-            textAlign: 'center',
+            textAlign: "center",
             paddingInline: 0,
+            paddingLeft: 0,
+            paddingRight: 0,
+          },
+        }),
+        onCell: () => ({
+          className: "common-table-action-cell",
+          style: {
+            width: ACTION_COLUMN_WIDTH,
+            minWidth: ACTION_COLUMN_WIDTH,
+            maxWidth: ACTION_COLUMN_WIDTH,
+            paddingInline: 0,
+            paddingLeft: 0,
+            paddingRight: 0,
+            textAlign: "center",
+            verticalAlign: "middle",
+            background: "#ffffff",
+            zIndex: 10,
+            overflow: "visible",
+            textOverflow: "clip",
           },
         }),
         render: (_: unknown, record: T) => {
           const actionsList: TableActionOption<T>[] =
-            typeof options.actions === 'function' ? options.actions(record) : options.actions || [];
-          const visibleActions = actionsList.filter(act => !act.hide?.(record));
+            typeof options.actions === "function"
+              ? options.actions(record)
+              : options.actions || [];
+          const visibleActions = actionsList.filter(
+            (act) => !act.hide?.(record),
+          );
 
           if (visibleActions.length === 0) return null;
 
           // Chế độ Dropdown 3 chấm tròn chuẩn UI
           if (options.isDropdownAction !== false) {
-            const menuItems: MenuProps['items'] = visibleActions.map((act, i) => ({
-              key: String(act.label || act.title || i),
-              label: act.label || act.title,
-              icon: act.icon,
-              danger: act.danger,
-              disabled: typeof act.disabled === 'function' ? act.disabled(record) : act.disabled,
-              onClick: () => {
-                if (act.executeAsync) {
-                  void act.executeAsync(record);
-                } else if (act.onClick) {
-                  void act.onClick(record);
-                }
-              },
-            }));
+            const menuItems: MenuProps["items"] = visibleActions.map(
+              (act, i) => ({
+                key: String(act.label || act.title || i),
+                label: act.label || act.title,
+                icon: act.icon,
+                danger: act.danger,
+                disabled:
+                  typeof act.disabled === "function"
+                    ? act.disabled(record)
+                    : act.disabled,
+                onClick: () => {
+                  if (act.executeAsync) {
+                    void act.executeAsync(record);
+                  } else if (act.onClick) {
+                    void act.onClick(record);
+                  }
+                },
+              }),
+            );
 
-            return <RowActionDropdown items={menuItems} themeToken={themeToken} />;
+            return (
+              <span
+                style={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <RowActionDropdown items={menuItems} themeToken={themeToken} />
+              </span>
+            );
           }
 
           // Chế độ inline buttons
           return (
-            <div style={{ display: 'inline-flex', gap: 6 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                gap: 6,
+                justifyContent: "center",
+              }}
+            >
               {visibleActions.map((act, i) => (
                 <Tooltip key={i} title={act.label || act.title}>
                   <Button
                     size="small"
                     danger={act.danger}
                     icon={act.icon}
-                    disabled={typeof act.disabled === 'function' ? act.disabled(record) : act.disabled}
+                    disabled={
+                      typeof act.disabled === "function"
+                        ? act.disabled(record)
+                        : act.disabled
+                    }
                     onClick={() => {
                       if (act.executeAsync) void act.executeAsync(record);
                       else if (act.onClick) void act.onClick(record);
@@ -703,16 +920,19 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   // Tính toán độ rộng cuộn ngang an toàn
   const declaredColumnsWidth = useMemo(() => {
     return generatedColumns.reduce((acc, col) => {
-      const w = typeof col.width === 'number' ? col.width : 0;
+      const w = typeof col.width === "number" ? col.width : 0;
       return acc + w;
     }, 0);
   }, [generatedColumns]);
 
   const customScrollX = options?.scroll?.x;
   const resolvedScrollX = useMemo(() => {
-    if (typeof customScrollX === 'number') return customScrollX;
-    if (customScrollX === 'max-content') {
-      return Math.max(declaredColumnsWidth, measuredTableWidth ?? layout.listTableMinWidth);
+    if (typeof customScrollX === "number") return customScrollX;
+    if (customScrollX === "max-content") {
+      return Math.max(
+        declaredColumnsWidth,
+        measuredTableWidth ?? layout.listTableMinWidth,
+      );
     }
     return Math.max(declaredColumnsWidth, layout.listTableMinWidth);
   }, [customScrollX, declaredColumnsWidth, measuredTableWidth]);
@@ -720,42 +940,73 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   return (
     <div
       ref={tableShellRef}
-      className={`common-table-shell ${className || ''}`}
+      className={`common-table-shell ${className || ""}`}
       style={{
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         flex: 1,
         minHeight: 0,
-        width: '100%',
+        width: "100%",
         ...style,
       }}
     >
-      {/* Kẻ sọc hàng chẵn lẻ tinh tế */}
-      {tableRowStripeBg !== 'transparent' && (
-        <style>{`
+      {/* Kẻ sọc hàng chẵn lẻ tinh tế và triệt tiêu ellipsis trên cột hành động */}
+      <style>{`
+        ${
+          tableRowStripeBg !== "transparent"
+            ? `
           .common-table-shell .list-view-row-stripe > td { background: ${tableRowStripeBg} !important; }
           .common-table-shell .list-view-row-stripe > td.ant-table-cell-fix-left,
           .common-table-shell .list-view-row-stripe > td.ant-table-cell-fix-right { background: ${tableRowStripeBg} !important; }
-        `}</style>
-      )}
+        `
+            : ""
+        }
+        .common-table-shell .ant-table-tbody > tr > td.common-table-action-cell,
+        .common-table-shell .ant-table-tbody > tr > td.ant-table-cell-fix-right:last-child {
+          text-overflow: clip !important;
+          overflow: visible !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          padding-inline: 0 !important;
+        }
+        .common-table-shell .ant-table-column-sorter-tooltip,
+        .common-table-shell .ant-table-thead .ant-tooltip,
+        .ant-tooltip:has(.ant-table-column-sorter-tooltip) {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+      `}</style>
 
       {/* Hiển thị lỗi có nút Thử lại nếu có */}
       {error && (
         <div
           style={{
-            padding: '12px 16px',
-            background: '#fff2f0',
-            border: '1px solid #ffccc7',
+            padding: "12px 16px",
+            background: "#fff2f0",
+            border: "1px solid #ffccc7",
             borderRadius: 8,
             marginBottom: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: statusCritical }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: statusCritical,
+            }}
+          >
             <ExclamationCircleOutlined />
-            <span>{typeof error === 'string' ? error : 'Có lỗi xảy ra khi tải dữ liệu.'}</span>
+            <span>
+              {typeof error === "string"
+                ? error
+                : "Có lỗi xảy ra khi tải dữ liệu."}
+            </span>
           </div>
           {onRetry && (
             <Button size="small" onClick={onRetry}>
@@ -769,7 +1020,12 @@ function CommonTableInternal<T extends Record<string, unknown>>(
       <Spin spinning={actualLoading}>
         <Table<T>
           className="list-view-table"
-          rowKey={(record: T) => ((record[dataKey] ?? (record as Record<string, unknown>).id ?? (record as Record<string, unknown>).key) as React.Key)}
+          showSorterTooltip={false}
+          rowKey={(record: T) =>
+            (record[dataKey] ??
+              (record as Record<string, unknown>).id ??
+              (record as Record<string, unknown>).key) as React.Key
+          }
           dataSource={actualData}
           columns={generatedColumns}
           rowSelection={rowSelection}
@@ -780,7 +1036,9 @@ function CommonTableInternal<T extends Record<string, unknown>>(
             x: resolvedScrollX,
             y: options?.scroll?.y,
           }}
-          rowClassName={(_: T, index: number) => (index % 2 === 1 ? 'list-view-row-stripe' : '')}
+          rowClassName={(_: T, index: number) =>
+            index % 2 === 1 ? "list-view-row-stripe" : ""
+          }
           locale={{
             emptyText: emptyState || options?.emptyText || (
               <EmptyState
@@ -795,7 +1053,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
 
       {/* Thanh phân trang tích hợp */}
       {options?.enablePaging !== false && (
-        <div style={{ marginTop: 'auto', paddingTop: 8 }}>
+        <div style={{ marginTop: "auto", paddingTop: 8 }}>
           <Pagination
             total={actualTotal}
             current={actualPage}
@@ -809,7 +1067,9 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   );
 }
 
-export const CommonTable = forwardRef(CommonTableInternal) as <T extends Record<string, unknown>>(
+export const CommonTable = forwardRef(CommonTableInternal) as <
+  T extends Record<string, unknown>,
+>(
   props: CommonTableProps<T> & { ref?: React.ForwardedRef<CommonTableRef<T>> },
 ) => React.ReactElement;
 

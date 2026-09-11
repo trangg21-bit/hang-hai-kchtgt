@@ -21,6 +21,7 @@ import {
   ContainerOutlined,
   SearchOutlined,
   BankOutlined,
+  SwapOutlined,
   EnvironmentOutlined,
   BarChartOutlined,
   PlusCircleOutlined,
@@ -43,6 +44,7 @@ import {
   PieChartOutlined,
   BuildOutlined,
   ToolOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -71,6 +73,8 @@ import {
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
+
+export { MENU_PERMISSION_MAP };
 
 const canAccessMenu = (path: string): boolean => {
   const required = MENU_PERMISSION_MAP[path];
@@ -215,6 +219,8 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       label: 'Quản lý tài sản KCHT hàng hải',
       children: [
         canAccessMenu('/asset/berth') ? { key: '/asset/berth', icon: <BankOutlined />, label: 'Tài sản bến cảng' } : null,
+        canAccessMenu('/asset/transfer-area') ? { key: '/asset/transfer-area', icon: <SwapOutlined />, label: 'Tài sản khu chuyển tải' } : null,
+        canAccessMenu('/asset/storm-shelter') ? { key: '/asset/storm-shelter', icon: <SafetyCertificateOutlined />, label: 'Tài sản khu tránh, trú bão' } : null,
         canAccessMenu('/asset/anchorage') ? { key: '/asset/anchorage', icon: <EnvironmentOutlined />, label: 'Tài sản khu neo đậu' } : null,
         canAccessMenu('/asset/lighthouse') ? { key: '/asset/lighthouse', icon: <BulbOutlined />, label: 'Tài sản đèn biển và nhà trạm gắn liền đèn biển' } : null,
         canAccessMenu('/asset/dike-revetment') ? { key: '/asset/dike-revetment', icon: <BlockOutlined />, label: 'Tài sản đê/kè' } : null,

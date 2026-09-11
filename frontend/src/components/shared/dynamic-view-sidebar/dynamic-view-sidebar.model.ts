@@ -7,6 +7,7 @@ import type React from 'react';
 export const ViewFieldType = {
   Text: 'text',
   Number: 'number',
+  Money: 'money',
   Date: 'date',
   DateTime: 'datetime',
   Badge: 'badge',
@@ -21,7 +22,7 @@ export type ViewFieldType = (typeof ViewFieldType)[keyof typeof ViewFieldType];
  */
 export interface ViewFieldConfig<T = Record<string, unknown>> {
   /** Tên thuộc tính trong dữ liệu bản ghi */
-  name?: string;
+  name?: string | number | keyof T;
   /** Nhãn tiêu đề trường (tự động thêm dấu hai chấm ':' phía sau) */
   label: React.ReactNode;
   /** Loại dữ liệu để tự động định dạng */

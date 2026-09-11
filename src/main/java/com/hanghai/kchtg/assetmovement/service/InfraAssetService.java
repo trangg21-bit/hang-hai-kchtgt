@@ -35,9 +35,11 @@ public class InfraAssetService {
     public InfraAssetResponse create(InfraAssetRequest request) {
         InfraAsset entity = new InfraAsset();
         copyEditableFields(request, entity);
-        if (entity.getAssetType() == null) entity.setAssetType(InfraAssetType.PORT_TERMINAL);
+        if (entity.getAssetType() == null)
+            entity.setAssetType(request.getAssetType() != null ? request.getAssetType() : InfraAssetType.PORT_TERMINAL);
         entity.setAssetCode(generateAssetCode(request.getAssetCode(), entity.getAssetType()));
-        if (entity.getStatus() == null) entity.setStatus(AssetStatus.MANAGED);
+        if (entity.getStatus() == null)
+            entity.setStatus(AssetStatus.MANAGED);
         calculateValues(entity);
         return toResponse(repository.save(entity));
     }
@@ -47,33 +49,62 @@ public class InfraAssetService {
     }
 
     public Page<InfraAssetResponse> findAll(String assetCode, String assetName, UUID parentOrgUnitId, UUID orgUnitId,
-                                             UUID usingOrgUnitId, UUID berthId, UUID anchorageId,
-                                             UUID beaconStationId, UUID dikeRevetmentId, UUID buoyId,
-                                             UUID buoyStationId, UUID navigationChannelId,
-                                             InfraAssetType assetType, String assetCondition, String approvalStatus,
-                                             LocalDate updatedFrom, LocalDate updatedTo, Pageable pageable) {
+            UUID usingOrgUnitId, UUID berthId, UUID transferAreaId, UUID stormShelterId, UUID buoyBerthId, UUID pierId,
+            UUID anchorageId,
+            UUID beaconStationId, UUID dikeRevetmentId, UUID buoyId,
+            UUID buoyStationId, UUID navigationChannelId,
+            InfraAssetType assetType, String assetCondition, String approvalStatus,
+            LocalDate updatedFrom, LocalDate updatedTo, Pageable pageable) {
         Specification<InfraAsset> specification = (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
-            if (assetCode != null && !assetCode.isBlank()) predicates.add(cb.like(cb.lower(root.get("assetCode")), "%" + assetCode.trim().toLowerCase(Locale.ROOT) + "%"));
-            if (assetName != null && !assetName.isBlank()) predicates.add(cb.like(cb.lower(root.get("assetName")), "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%"));
-            if (parentOrgUnitId != null) predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            if (orgUnitId != null) predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            if (usingOrgUnitId != null) predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
-            if (berthId != null) predicates.add(cb.equal(root.get("berthId"), berthId));
-            if (anchorageId != null) predicates.add(cb.equal(root.get("anchorageId"), anchorageId));
-            if (beaconStationId != null) predicates.add(cb.equal(root.get("beaconStationId"), beaconStationId));
-            if (dikeRevetmentId != null) predicates.add(cb.equal(root.get("dikeRevetmentId"), dikeRevetmentId));
-            if (buoyId != null) predicates.add(cb.equal(root.get("buoyId"), buoyId));
-            if (buoyStationId != null) predicates.add(cb.equal(root.get("buoyStationId"), buoyStationId));
-            if (navigationChannelId != null) predicates.add(cb.equal(root.get("navigationChannelId"), navigationChannelId));
-            if (assetType != null) predicates.add(cb.equal(root.get("assetType"), assetType));
-            if (assetCondition != null && !assetCondition.isBlank()) predicates.add(cb.equal(root.get("assetCondition"), assetCondition));
+            if (assetCode != null && !assetCode.isBlank())
+                predicates.add(cb.like(cb.lower(root.get("assetCode")),
+                        "%" + assetCode.trim().toLowerCase(Locale.ROOT) + "%"));
+            if (assetName != null && !assetName.isBlank())
+                predicates.add(cb.like(cb.lower(root.get("assetName")),
+                        "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%"));
+            if (parentOrgUnitId != null)
+                predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
+            if (orgUnitId != null)
+                predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
+            if (usingOrgUnitId != null)
+                predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
+            if (berthId != null)
+                predicates.add(cb.equal(root.get("berthId"), berthId));
+            if (transferAreaId != null)
+                predicates.add(cb.equal(root.get("transferAreaId"), transferAreaId));
+            if (stormShelterId != null)
+                predicates.add(cb.equal(root.get("stormShelterId"), stormShelterId));
+            if (buoyBerthId != null)
+                predicates.add(cb.equal(root.get("buoyBerthId"), buoyBerthId));
+            if (pierId != null)
+                predicates.add(cb.equal(root.get("pierId"), pierId));
+            if (anchorageId != null)
+                predicates.add(cb.equal(root.get("anchorageId"), anchorageId));
+            if (beaconStationId != null)
+                predicates.add(cb.equal(root.get("beaconStationId"), beaconStationId));
+            if (dikeRevetmentId != null)
+                predicates.add(cb.equal(root.get("dikeRevetmentId"), dikeRevetmentId));
+            if (buoyId != null)
+                predicates.add(cb.equal(root.get("buoyId"), buoyId));
+            if (buoyStationId != null)
+                predicates.add(cb.equal(root.get("buoyStationId"), buoyStationId));
+            if (navigationChannelId != null)
+                predicates.add(cb.equal(root.get("navigationChannelId"), navigationChannelId));
+            if (assetType != null)
+                predicates.add(cb.equal(root.get("assetType"), assetType));
+            if (assetCondition != null && !assetCondition.isBlank())
+                predicates.add(cb.equal(root.get("assetCondition"), assetCondition));
             if (approvalStatus != null && !approvalStatus.isBlank()) {
-                try { predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.fromString(approvalStatus))); }
-                catch (IllegalArgumentException ignored) { /* unknown status returns the unfiltered page */ }
+                try {
+                    predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.fromString(approvalStatus)));
+                } catch (IllegalArgumentException ignored) {
+                    /* unknown status returns the unfiltered page */ }
             }
-            if (updatedFrom != null) predicates.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), updatedFrom.atStartOfDay()));
-            if (updatedTo != null) predicates.add(cb.lessThan(root.get("updatedAt"), updatedTo.plusDays(1).atStartOfDay()));
+            if (updatedFrom != null)
+                predicates.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), updatedFrom.atStartOfDay()));
+            if (updatedTo != null)
+                predicates.add(cb.lessThan(root.get("updatedAt"), updatedTo.plusDays(1).atStartOfDay()));
             return cb.and(predicates.toArray(Predicate[]::new));
         };
         return repository.findAll(specification, pageable).map(this::toResponse);
@@ -104,15 +135,22 @@ public class InfraAssetService {
     }
 
     private String generateAssetCode(String requestedCode, InfraAssetType assetType) {
-        if (requestedCode != null && !requestedCode.isBlank() && repository.findByAssetCode(requestedCode.trim()).isEmpty()) {
+        if (requestedCode != null && !requestedCode.isBlank()
+                && repository.findByAssetCode(requestedCode.trim()).isEmpty()) {
             return requestedCode.trim();
         }
         String prefix = switch (assetType) {
+            case TRANSFER_AREA -> "TS-KCT-";
+            case STORM_SHELTER -> "TS-TB-";
+            case BUOY_BERTH -> "TS-BP-";
+            case PIER -> "TS-CC-";
             case BUOY -> "TS-PT-";
             case ANCHORAGE -> "TS-ND-";
             case LIGHTHOUSE -> "TS-DB-";
             case NAVIGATION_CHANNEL -> "TS-LHH-";
             case DIKE_REVETMENT -> "TS-DK-";
+            case RADAR_STATION -> "TS-RD-";
+            case AUXILIARY_EQUIPMENT -> "TS-TBPT-";
             default -> "TS-BC-";
         };
         String code;
@@ -126,8 +164,11 @@ public class InfraAssetService {
         BeanUtils.copyProperties(source, target, "assetCode", "status", "approvalStatus",
                 "remainingValue", "createdAt", "createdBy", "updatedAt", "updatedBy");
         if (source.getStatus() != null && !source.getStatus().isBlank()) {
-            try { target.setStatus(AssetStatus.valueOf(source.getStatus())); }
-            catch (IllegalArgumentException ignored) { target.setStatus(AssetStatus.MANAGED); }
+            try {
+                target.setStatus(AssetStatus.valueOf(source.getStatus()));
+            } catch (IllegalArgumentException ignored) {
+                target.setStatus(AssetStatus.MANAGED);
+            }
         }
         if (source.getApprovalStatus() != null && !source.getApprovalStatus().isBlank()) {
             try {
@@ -135,25 +176,50 @@ public class InfraAssetService {
                 target.setApprovalStatus(status);
                 UUID currentUserId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
                 if (status == ApprovalStatus.PENDING_APPROVAL) {
-                    target.setSubmittedBy(currentUserId);
-                    target.setSubmittedAt(java.time.Instant.now());
+                    if (target.getSubmittedBy() == null)
+                        target.setSubmittedBy(
+                                source.getSubmittedBy() != null ? source.getSubmittedBy() : currentUserId);
+                    if (target.getSubmittedAt() == null)
+                        target.setSubmittedAt(
+                                source.getSubmittedAt() != null ? source.getSubmittedAt() : java.time.Instant.now());
                 } else if (status == ApprovalStatus.APPROVED) {
-                    target.setDepartmentApprovedBy(currentUserId);
-                    target.setDepartmentApprovedAt(java.time.Instant.now());
+                    if (target.getDepartmentApprovedBy() == null)
+                        target.setDepartmentApprovedBy(
+                                source.getDepartmentApprovedBy() != null ? source.getDepartmentApprovedBy()
+                                        : currentUserId);
+                    if (target.getDepartmentApprovedAt() == null)
+                        target.setDepartmentApprovedAt(
+                                source.getDepartmentApprovedAt() != null ? source.getDepartmentApprovedAt()
+                                        : java.time.Instant.now());
                 }
             } catch (Exception ignored) {
                 target.setApprovalStatus(ApprovalStatus.DRAFT);
             }
         }
+        if (source.getPortAuthorityApprovedBy() != null)
+            target.setPortAuthorityApprovedBy(source.getPortAuthorityApprovedBy());
+        if (source.getPortAuthorityApprovedAt() != null)
+            target.setPortAuthorityApprovedAt(source.getPortAuthorityApprovedAt());
+        if (source.getDepartmentApprovedBy() != null)
+            target.setDepartmentApprovedBy(source.getDepartmentApprovedBy());
+        if (source.getDepartmentApprovedAt() != null)
+            target.setDepartmentApprovedAt(source.getDepartmentApprovedAt());
+        if (source.getSubmittedBy() != null)
+            target.setSubmittedBy(source.getSubmittedBy());
+        if (source.getSubmittedAt() != null)
+            target.setSubmittedAt(source.getSubmittedAt());
     }
 
     private void calculateValues(InfraAsset entity) {
         BigDecimal original = entity.getOriginalValue() == null ? BigDecimal.ZERO : entity.getOriginalValue();
-        BigDecimal accumulated = entity.getAccumulatedDepreciation() == null ? BigDecimal.ZERO : entity.getAccumulatedDepreciation();
+        BigDecimal accumulated = entity.getAccumulatedDepreciation() == null ? BigDecimal.ZERO
+                : entity.getAccumulatedDepreciation();
         entity.setAccumulatedDepreciation(accumulated);
         entity.setRemainingValue(original.subtract(accumulated).max(BigDecimal.ZERO));
-        if (entity.getMonthlyDepreciation() == null && entity.getDepreciationMonths() != null && entity.getDepreciationMonths() > 0) {
-            entity.setMonthlyDepreciation(original.divide(BigDecimal.valueOf(entity.getDepreciationMonths()), 2, java.math.RoundingMode.HALF_UP));
+        if (entity.getMonthlyDepreciation() == null && entity.getDepreciationMonths() != null
+                && entity.getDepreciationMonths() > 0) {
+            entity.setMonthlyDepreciation(original.divide(BigDecimal.valueOf(entity.getDepreciationMonths()), 2,
+                    java.math.RoundingMode.HALF_UP));
         }
     }
 

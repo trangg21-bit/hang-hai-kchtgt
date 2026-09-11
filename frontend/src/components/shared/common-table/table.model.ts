@@ -73,7 +73,14 @@ export interface TableColumnOption<T = Record<string, unknown>> {
   align?: 'left' | 'center' | 'right';
   /** Cho phép sắp xếp cột */
   allowSort?: boolean;
-  /** Tên trường gửi lên server khi sắp xếp (mặc định bằng dataIndex) */
+  /**
+   * Tên trường gửi lên backend khi user click sort — Single source of truth.
+   * Được dùng làm:
+   *   - Ant Design `key` và `columnKey` của cột
+   *   - Giá trị `sortBy` gửi lên backend
+   *   - Cơ sở so sánh để highlight icon sort đúng cột
+   * Nếu không đặt: tự động dùng `dataIndex`.
+   */
   sortField?: string;
   /** Sorter function client-side (nếu tự sắp xếp) hoặc boolean */
   sorter?: boolean | ((a: T, b: T) => number);

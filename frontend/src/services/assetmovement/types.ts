@@ -6,7 +6,11 @@ export interface PageResponse<T> {
   number: number;
 }
 
-export type InfrastructureAssetType = 'PORT_TERMINAL' | 'ANCHORAGE' | 'LIGHTHOUSE' | 'DIKE_REVETMENT';
+export type InfrastructureAssetType =
+  | "PORT_TERMINAL"
+  | "ANCHORAGE"
+  | "LIGHTHOUSE"
+  | "DIKE_REVETMENT";
 
 export interface PortTerminalAsset {
   [key: string]: unknown;
@@ -72,7 +76,10 @@ export interface PortTerminalAsset {
   updatedAt?: string;
 }
 
-export type PortTerminalAssetPayload = Omit<PortTerminalAsset, 'id' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
+export type PortTerminalAssetPayload = Omit<
+  PortTerminalAsset,
+  "id" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt"
+>;
 
 export interface PortTerminalAssetFilters {
   [key: string]: unknown;
@@ -92,18 +99,363 @@ export interface PortTerminalAssetFilters {
   approvalStatus?: string;
   updatedFrom?: string;
   updatedTo?: string;
+  sortBy?: string;
+  sortDir?: "ASC" | "DESC";
+}
+
+export interface TransferAreaAsset {
+  id: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  transferAreaId?: string;
+  assetCode: string;
+  assetName: string;
+  assetType: "TRANSFER_AREA";
+  barcode?: string;
+  assetCondition?: string;
+  usageStatus?: string;
+  assetGroup?: string;
+  assetSubgroup?: string;
+  address?: string;
+  origin?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  model?: string;
+  serialNumber?: string;
+  countryOfOrigin?: string;
+  manufacturer?: string;
+  constructionYear?: number;
+  useDate?: string;
+  landArea?: number;
+  floorArea?: number;
+  assetLocation?: string;
+  attachmentName?: string;
+  declarationDate?: string;
+  originalValue?: number;
+  depreciationRate?: number;
+  accumulatedDepreciation?: number;
+  remainingValue?: number;
+  assignmentDecisionNumber?: string;
+  depreciationStartDate?: string;
+  depreciationMonths?: number;
+  depreciationEndDate?: string;
+  monthlyDepreciation?: number;
+  disposalMethod?: string;
+  status?: string;
+  approvalStatus?: string;
+  submittedBy?: string;
+  submittedByName?: string;
+  submittedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovedByName?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedBy?: string;
+  departmentApprovedByName?: string;
+  departmentApprovedAt?: string;
+  departmentApprovalContent?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export type TransferAreaAssetPayload = Omit<
+  TransferAreaAsset,
+  "id" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt"
+>;
+
+export interface TransferAreaAssetFilters {
+  page?: number;
+  size?: number;
+  assetCode?: string;
+  assetName?: string;
+  assetType?: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  transferAreaId?: string;
+  assetCondition?: string;
+  approvalStatus?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  sortBy?: string;
+  sortDir?: "ASC" | "DESC";
+  [key: string]: unknown;
+}
+
+export interface StormShelterAsset {
+  id: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  stormShelterId?: string;
+  assetCode: string;
+  assetName: string;
+  assetType: "STORM_SHELTER";
+  barcode?: string;
+  assetCondition?: string;
+  usageStatus?: string;
+  assetGroup?: string;
+  assetSubgroup?: string;
+  address?: string;
+  origin?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  model?: string;
+  serialNumber?: string;
+  countryOfOrigin?: string;
+  manufacturer?: string;
+  constructionYear?: number;
+  useDate?: string;
+  landArea?: number;
+  floorArea?: number;
+  assetLocation?: string;
+  attachmentName?: string;
+  declarationDate?: string;
+  originalValue?: number;
+  depreciationRate?: number;
+  accumulatedDepreciation?: number;
+  remainingValue?: number;
+  assignmentDecisionNumber?: string;
+  depreciationStartDate?: string;
+  depreciationMonths?: number;
+  depreciationEndDate?: string;
+  monthlyDepreciation?: number;
+  disposalMethod?: string;
+  status?: string;
+  approvalStatus?: string;
+  submittedBy?: string;
+  submittedByName?: string;
+  submittedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovedByName?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedBy?: string;
+  departmentApprovedByName?: string;
+  departmentApprovedAt?: string;
+  departmentApprovalContent?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export type StormShelterAssetPayload = Omit<
+  StormShelterAsset,
+  "id" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt"
+>;
+
+export interface StormShelterAssetFilters {
+  page?: number;
+  size?: number;
+  assetCode?: string;
+  assetName?: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  stormShelterId?: string;
+  assetCondition?: string;
+  approvalStatus?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  sortBy?: string;
+  sortDir?: "ASC" | "DESC";
+  [key: string]: unknown;
+}
+
+export interface BuoyBerthAsset {
+  id: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  buoyBerthId?: string;
+  assetCode: string;
+  assetName: string;
+  assetType: "BUOY_BERTH";
+  barcode?: string;
+  assetCondition?: string;
+  usageStatus?: string;
+  assetGroup?: string;
+  assetSubgroup?: string;
+  address?: string;
+  origin?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  model?: string;
+  serialNumber?: string;
+  countryOfOrigin?: string;
+  manufacturer?: string;
+  constructionYear?: number;
+  useDate?: string;
+  landArea?: number;
+  floorArea?: number;
+  assetLocation?: string;
+  attachmentName?: string;
+  declarationDate?: string;
+  originalValue?: number;
+  depreciationRate?: number;
+  accumulatedDepreciation?: number;
+  remainingValue?: number;
+  assignmentDecisionNumber?: string;
+  depreciationStartDate?: string;
+  depreciationMonths?: number;
+  depreciationEndDate?: string;
+  monthlyDepreciation?: number;
+  disposalMethod?: string;
+  status?: string;
+  approvalStatus?: string;
+  submittedBy?: string;
+  submittedByName?: string;
+  submittedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovedByName?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedBy?: string;
+  departmentApprovedByName?: string;
+  departmentApprovedAt?: string;
+  departmentApprovalContent?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export type BuoyBerthAssetPayload = Omit<
+  BuoyBerthAsset,
+  "id" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt"
+>;
+
+export interface BuoyBerthAssetFilters {
+  page?: number;
+  size?: number;
+  assetCode?: string;
+  assetName?: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  buoyBerthId?: string;
+  assetCondition?: string;
+  approvalStatus?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  sortBy?: string;
+  sortDir?: "ASC" | "DESC";
+  [key: string]: unknown;
+}
+
+export interface PierAsset {
+  id: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  pierId?: string;
+  assetCode: string;
+  assetName: string;
+  assetType: "PIER";
+  barcode?: string;
+  assetCondition?: string;
+  usageStatus?: string;
+  assetGroup?: string;
+  assetSubgroup?: string;
+  address?: string;
+  origin?: string;
+  quantity?: number;
+  quantityUnit?: string;
+  model?: string;
+  serialNumber?: string;
+  countryOfOrigin?: string;
+  manufacturer?: string;
+  constructionYear?: number;
+  useDate?: string;
+  landArea?: number;
+  floorArea?: number;
+  assetLocation?: string;
+  attachmentName?: string;
+  declarationDate?: string;
+  originalValue?: number;
+  depreciationRate?: number;
+  accumulatedDepreciation?: number;
+  remainingValue?: number;
+  assignmentDecisionNumber?: string;
+  depreciationStartDate?: string;
+  depreciationMonths?: number;
+  depreciationEndDate?: string;
+  monthlyDepreciation?: number;
+  disposalMethod?: string;
+  status?: string;
+  approvalStatus?: string;
+  submittedBy?: string;
+  submittedByName?: string;
+  submittedAt?: string;
+  portAuthorityApprovedBy?: string;
+  portAuthorityApprovedByName?: string;
+  portAuthorityApprovedAt?: string;
+  portAuthorityApprovalContent?: string;
+  departmentApprovedBy?: string;
+  departmentApprovedByName?: string;
+  departmentApprovedAt?: string;
+  departmentApprovalContent?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export type PierAssetPayload = Omit<
+  PierAsset,
+  "id" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt"
+>;
+
+export interface PierAssetFilters {
+  page?: number;
+  size?: number;
+  assetCode?: string;
+  assetName?: string;
+  parentOrgUnitId?: string;
+  orgUnitId?: string;
+  usingOrgUnitId?: string;
+  pierId?: string;
+  assetCondition?: string;
+  approvalStatus?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  sortBy?: string;
+  sortDir?: "ASC" | "DESC";
+  [key: string]: unknown;
   updatedRange?: unknown;
 }
 
-export interface BuoyAsset extends Omit<PortTerminalAsset, 'assetType'> {
+export interface BuoyAsset extends Omit<PortTerminalAsset, "assetType"> {
   buoyId?: string;
   buoyStationId?: string;
-  assetType: 'BUOY';
+  assetType: "BUOY";
 }
 
-export type BuoyAssetPayload = Omit<BuoyAsset, 'id' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
+export type BuoyAssetPayload = Omit<
+  BuoyAsset,
+  "id" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt"
+>;
 
-export interface BuoyAssetFilters extends Omit<PortTerminalAssetFilters, 'assetType' | 'berthId' | 'anchorageId' | 'beaconStationId' | 'dikeRevetmentId'> {
+export interface BuoyAssetFilters extends Omit<
+  PortTerminalAssetFilters,
+  | "assetType"
+  | "berthId"
+  | "anchorageId"
+  | "beaconStationId"
+  | "dikeRevetmentId"
+> {
   refId?: string;
   buoyId?: string;
   buoyStationId?: string;
@@ -129,10 +481,15 @@ export interface AssetIncreaseResponse {
   status: string;
   increaseCode: string;
   adjustmentDetails?: AssetValueAdjustmentDetails;
+  decisionNumber?: string;
+  decisionDate?: string;
+  increaseAmount?: number;
+  notes?: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+  [key: string]: unknown;
 }
 
 export interface AssetDecreaseRequest {
@@ -142,6 +499,7 @@ export interface AssetDecreaseRequest {
   unitOfMeasure: string;
   reason: string;
   decreaseReason: string;
+  decreaseCode?: string;
   adjustmentDetails?: AssetValueAdjustmentDetails;
 }
 
@@ -154,11 +512,17 @@ export interface AssetDecreaseResponse {
   reason: string;
   status: string;
   decreaseReason: string;
+  decreaseCode?: string;
   adjustmentDetails?: AssetValueAdjustmentDetails;
+  decisionNumber?: string;
+  decisionDate?: string;
+  decreaseAmount?: number;
+  notes?: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+  [key: string]: unknown;
 }
 
 export interface AssetValueAdjustmentDetails {
@@ -171,6 +535,8 @@ export interface AssetValueAdjustmentDetails {
   originalValueAfter?: number;
   remainingValueBefore?: number;
   remainingValueAfter?: number;
+  originalValue?: number;
+  remainingValue?: number;
   declarationDate?: string;
   depreciationRate?: number;
   valueUnit?: string;
@@ -181,12 +547,14 @@ export interface AssetValueAdjustmentDetails {
   accumulatedDepreciation?: number;
   monthlyDepreciation?: number;
   disposalMethod?: string;
+  notes?: string;
+  [key: string]: unknown;
 }
 
 export interface InventoryPlanRequest {
   planName: string;
   scope: string;
-  inventoryType: 'DINH_KY' | 'DOT_XUAT';
+  inventoryType: "DINH_KY" | "DOT_XUAT";
   startDate: string;
   endDate: string;
   inventoryLeader: string;
@@ -235,6 +603,8 @@ export interface AssetExploitationRequest {
   depreciation: number;
   description: string;
   operatorOrgUnitId?: string;
+  exploitationOrgUnitId?: string;
+  exploitationTerm?: string | number;
   assetCategory?: string;
   unitOfMeasure?: string;
   quantity?: number;
@@ -243,6 +613,8 @@ export interface AssetExploitationRequest {
   relatedCosts?: number;
   stateBudgetPayment?: number;
   projectAmount?: number;
+  notes?: string;
+  [key: string]: unknown;
 }
 
 export interface AssetExploitationResponse {
@@ -254,6 +626,8 @@ export interface AssetExploitationResponse {
   depreciation: number;
   description: string;
   operatorOrgUnitId?: string;
+  exploitationOrgUnitId?: string;
+  exploitationTerm?: string | number;
   assetCategory?: string;
   unitOfMeasure?: string;
   quantity?: number;
@@ -262,10 +636,12 @@ export interface AssetExploitationResponse {
   relatedCosts?: number;
   stateBudgetPayment?: number;
   projectAmount?: number;
+  notes?: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+  [key: string]: unknown;
 }
 
 export interface AssetProcessingRecordRequest {
@@ -301,7 +677,7 @@ export interface ChannelAsset {
   navigationChannelId?: string;
   assetCode: string;
   assetName: string;
-  assetType: 'NAVIGATION_CHANNEL';
+  assetType: "NAVIGATION_CHANNEL";
   barcode?: string;
   assetCondition?: string;
   usageStatus?: string;
@@ -352,7 +728,10 @@ export interface ChannelAsset {
   updatedAt?: string;
 }
 
-export type ChannelAssetPayload = Omit<ChannelAsset, 'id' | 'createdBy' | 'updatedBy' | 'createdAt' | 'updatedAt'>;
+export type ChannelAssetPayload = Omit<
+  ChannelAsset,
+  "id" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt"
+>;
 
 export interface ChannelAssetFilters {
   page?: number;

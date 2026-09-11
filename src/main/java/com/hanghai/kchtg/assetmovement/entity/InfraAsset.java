@@ -45,6 +45,10 @@ public class InfraAsset extends BaseEntity {
     private UUID orgUnitId;
     private UUID usingOrgUnitId;
     private UUID berthId;
+    private UUID transferAreaId;
+    private UUID stormShelterId;
+    private UUID buoyBerthId;
+    private UUID pierId;
     private UUID anchorageId;
     private UUID beaconStationId;
     private UUID dikeRevetmentId;

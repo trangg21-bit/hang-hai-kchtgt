@@ -33,7 +33,7 @@ export interface SelectOptionItem {
  */
 export interface FormFieldConfig<T extends Record<string, unknown> = Record<string, unknown>> {
   /** Tên thuộc tính trong form */
-  name: string;
+  name: string | number | keyof T;
   /** Nhãn hiển thị */
   label: React.ReactNode;
   /** Loại trường nhập liệu */
@@ -189,6 +189,8 @@ export interface DynamicFormSidebarProps<T extends Record<string, unknown> = Rec
   fields?: FormFieldConfig<T>[];
   /** Danh sách nút hành động ở chân drawer */
   footerActions?: FormSidebarAction[];
+  /** Bí danh tương thích cho footerActions */
+  actions?: FormSidebarAction[];
   /** Căn chỉnh vị trí các nút ở chân drawer: 'center' (mặc định), 'left', 'right' */
   footerAlign?: 'left' | 'center' | 'right';
   /** Custom footer node (ghi đè footerActions nếu truyền) */

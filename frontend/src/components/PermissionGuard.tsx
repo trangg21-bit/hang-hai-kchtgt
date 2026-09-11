@@ -31,7 +31,7 @@ export default function PermissionGuard({ permission, children, fallback, disabl
   if (userPermissions === undefined && isAuthenticated) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-        <Spin tip="Đang tải quyền truy cập..." />
+        <Spin description="Đang tải quyền truy cập..." />
       </div>
     );
   }

@@ -9,9 +9,13 @@ public enum InfraAssetType {
     LIGHTHOUSE(2),
     AUXILIARY_EQUIPMENT(3),
     PORT_TERMINAL(4),
-    ANCHORAGE(5),
-    NAVIGATION_CHANNEL(6),
-    DIKE_REVETMENT(7);
+    TRANSFER_AREA(5),
+    STORM_SHELTER(6),
+    BUOY_BERTH(7),
+    PIER(8),
+    ANCHORAGE(9),
+    NAVIGATION_CHANNEL(10),
+    DIKE_REVETMENT(11);
 
     private final int value;
 

@@ -1,3 +1,5 @@
+import DynamicFormSidebar from './DynamicFormSidebar';
+
 export * from './dynamic-form-sidebar.model';
-export * from './DynamicFormSidebar';
-export { default } from './DynamicFormSidebar';
+export { DynamicFormSidebar };
+export default DynamicFormSidebar;

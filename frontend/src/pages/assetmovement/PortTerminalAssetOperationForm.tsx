@@ -38,6 +38,7 @@ export interface OperationValues {
   depreciationEndDate?: Dayjs;
   accumulatedDepreciation?: number;
   disposalMethod?: string;
+  [key: string]: unknown;
 }
 
 const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
@@ -103,7 +104,7 @@ export function PortTerminalAssetOperationForm({
               rules: [{ required: true, message: 'Đơn vị khai thác là bắt buộc' }],
             },
             {
-              name: 'assetCategory' as keyof OperationValues,
+              name: 'assetCategory',
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
               initialValue: selected.assetName,
@@ -311,7 +312,7 @@ export function PortTerminalAssetOperationForm({
             placeholder: '0',
           },
           {
-            name: 'monthlyDepreciation' as keyof OperationValues,
+            name: 'monthlyDepreciation',
             label: 'Khấu hao tháng',
             type: FormFieldType.Readonly,
             computedValue: (_f, vals) => {

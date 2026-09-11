@@ -9,6 +9,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useAuthStore } from '../../store/authStore';
 import toast from '../ToastNotification';
 import DetailTable from './DetailTable';
 import api from '../../services/api';
@@ -137,6 +138,27 @@ export const formatAttachmentFileSize = (bytes?: number): string => {
   return `${(num / 1024).toFixed(1)} KB`;
 };
 
+export const triggerBlobDownload = (blobOrUrl: Blob | string, fileName: string) => {
+  const isUrl = typeof blobOrUrl === 'string';
+  const url = isUrl ? blobOrUrl : URL.createObjectURL(blobOrUrl);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName || 'tai-lieu';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => {
+    try {
+      document.body.removeChild(link);
+      if (!isUrl) {
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // ignore
+    }
+  }, 3000);
+};
+
 /**
  * Component dùng chung cho Tab "File đính kèm" trên tất cả các Drawer Thêm mới, Sửa và Xem chi tiết.
  * Quy chuẩn:
@@ -160,6 +182,7 @@ export default function InfrastructureAttachmentTab({
   readonlyBerthLayout = false,
   loadReadonlyPreviewImage,
 }: InfrastructureAttachmentTabProps) {
+  const currentUser = useAuthStore((s) => s.user);
   const activeBlobUrlRef = useRef<string | null>(null);
   const uploadedFilesRef = useRef<Map<string, File>>(new Map());
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -205,53 +228,7 @@ export default function InfrastructureAttachmentTab({
   };
 
   const handleDownload = async (record: InfrastructureAttachmentItem) => {
-    const rawFile = resolveLocalFile(record);
-    if (rawFile) {
-      const url = URL.createObjectURL(rawFile);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = record.fileName || rawFile.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      return;
-    }
-    if (record.url && (record.url.startsWith('blob:') || record.url.startsWith('data:'))) {
-      const link = document.createElement('a');
-      link.href = record.url;
-      link.download = record.fileName || 'tai-lieu';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-    if (onDownload) {
-      onDownload(record.id, record.fileName);
-      return;
-    }
-    const targetPath = record.filePath || record.url;
-    if (targetPath) {
-      let cleanPath = targetPath;
-      if (cleanPath.startsWith('/api/')) {
-        cleanPath = cleanPath.replace(/^\/api/, '');
-      } else if (!cleanPath.startsWith('/')) {
-        cleanPath = `/${cleanPath}`;
-      }
-      try {
-        const res = await api.get(cleanPath, { responseType: 'blob' });
-        const blobUrl = URL.createObjectURL(new Blob([res.data]));
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = record.fileName || 'tai-lieu';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-      } catch (e) {
-        console.error('Lỗi khi tải file:', e);
-      }
-    }
+    await handleDownloadRecord(record);
   };
 
   const handlePreview = async (record: InfrastructureAttachmentItem) => {
@@ -336,33 +313,50 @@ export default function InfrastructureAttachmentTab({
     setPreviewLoading(false);
   };
 
-  const handleDownloadRecord = (record: InfrastructureAttachmentItem) => {
+  const handleDownloadRecord = async (record: InfrastructureAttachmentItem) => {
     if (onDownload) {
-      onDownload(record.id, record.fileName);
-      return;
+      try {
+        await onDownload(record.id, record.fileName);
+        return;
+      } catch (err) {
+        console.error('onDownload error:', err);
+        toast.error(`Không thể tải tệp tin "${record.fileName || 'tài liệu'}": Lỗi trong quá trình xử lý.`);
+        return;
+      }
     }
-    const rawFile = record.originFileObj || record.file;
+    const rawFile = resolveLocalFile(record);
     if (rawFile) {
-      const url = window.URL.createObjectURL(rawFile);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = record.fileName || (rawFile as File).name || 'attachment';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      triggerBlobDownload(rawFile, record.fileName || (rawFile as File).name || 'tai-lieu');
+      toast.success(`Đã tải xuống tệp: ${record.fileName || rawFile.name}`);
       return;
     }
-    if (record.url) {
-      const a = document.createElement('a');
-      a.href = record.url;
-      a.download = record.fileName || 'attachment';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+    if (record.url && (record.url.startsWith('blob:') || record.url.startsWith('data:'))) {
+      triggerBlobDownload(record.url, record.fileName || 'tai-lieu');
+      toast.success(`Đã tải xuống tệp: ${record.fileName}`);
       return;
     }
-    toast.error('Không tìm thấy tệp để tải xuống');
+    const targetPath = record.filePath || record.url;
+    if (targetPath) {
+      try {
+        let cleanPath = targetPath;
+        if (cleanPath.startsWith('/api/')) {
+          cleanPath = cleanPath.replace(/^\/api/, '');
+        } else if (!cleanPath.startsWith('/')) {
+          cleanPath = `/${cleanPath}`;
+        }
+        const res = await api.get(cleanPath, { responseType: 'blob' });
+        const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+        const blob = new Blob([res.data], { type: contentType });
+        triggerBlobDownload(blob, record.fileName || 'tai-lieu');
+        toast.success(`Đã tải xuống tệp: ${record.fileName}`);
+        return;
+      } catch (err) {
+        console.error('Download file error:', err);
+        toast.error(`Không thể tải tệp tin "${record.fileName || 'tài liệu'}": Tệp tin không tồn tại trên máy chủ.`);
+        return;
+      }
+    }
+    toast.error(`Không tìm thấy tệp tin đính kèm "${record.fileName || 'tài liệu'}" để tải xuống.`);
   };
 
   const effectiveScrollY = scrollY || (readonly ? DRAWER_TABLE_SCROLL_Y.detailView : DRAWER_TABLE_SCROLL_Y.withDragger);

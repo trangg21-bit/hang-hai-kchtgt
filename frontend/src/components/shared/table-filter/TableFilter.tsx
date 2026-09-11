@@ -1,5 +1,6 @@
 import React, {
   useState,
+  useEffect,
   useImperativeHandle,
   forwardRef,
   useMemo,
@@ -150,10 +151,17 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
     return filterList.some((f) => f.isAdvanced);
   }, [filterList]);
 
-  // Giá trị hiện hành kết hợp giữa draft nội bộ và controlled từ bên ngoài
+  // Đồng bộ draftValues khi controlledValues thay đổi từ bên ngoài (hỗ trợ Reset bộ lọc hoàn toàn)
+  useEffect(() => {
+    if (controlledValues !== undefined) {
+      setDraftValues((controlledValues || {}) as T);
+    }
+  }, [controlledValues]);
+
+  // Giá trị hiện hành: Ưu tiên controlledValues khi ở chế độ Controlled Component
   const currentValues = useMemo(() => {
-    if (controlledValues) {
-      return { ...draftValues, ...controlledValues } as T;
+    if (controlledValues !== undefined) {
+      return (controlledValues || {}) as T;
     }
     return draftValues;
   }, [controlledValues, draftValues]);
@@ -161,16 +169,14 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
   // Xử lý thay đổi giá trị một trường
   const handleFieldChange = useCallback(
     (key: string, value: unknown) => {
-      setDraftValues((prev) => {
-        const next = { ...prev, [key]: value };
-        onChange?.(next);
-        config?.onValuesChange?.(key, value, next);
-        const filterItem = filterList.find((f) => f.key === key);
-        filterItem?.onValueChange?.(value, next);
-        return next;
-      });
+      const next = { ...(currentValues as Record<string, unknown>), [key]: value } as T;
+      setDraftValues(next);
+      onChange?.(next);
+      config?.onValuesChange?.(key, value, next);
+      const filterItem = filterList.find((f) => f.key === key);
+      filterItem?.onValueChange?.(value, next);
     },
-    [config, filterList, onChange]
+    [config, currentValues, filterList, onChange]
   );
 
   // Xử lý tìm kiếm
@@ -189,9 +195,10 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
       }
     });
     setDraftValues(cleared as T);
+    onChange?.(cleared as T);
     resetCallback?.();
     searchCallback?.(cleared as T);
-  }, [defaultValuesFromConfig, filterList, resetCallback, searchCallback]);
+  }, [defaultValuesFromConfig, filterList, onChange, resetCallback, searchCallback]);
 
   // Xử lý toggle bộ lọc nâng cao
   const handleToggleAdvance = useCallback(() => {
@@ -628,7 +635,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
         </Button>
 
         {/* Nút Phễu lọc tròn */}
-        {!hideFilterToggle && hasAdvancedFilters ? (
+        {!hideFilterToggle && hasAdvancedFilters && (
           <Tooltip
             title={
               showAdvanced
@@ -651,11 +658,6 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
               }}
             />
           </Tooltip>
-        ) : (
-          <div
-            style={{ width: 38, height: 38, flexShrink: 0, visibility: 'hidden' }}
-            aria-hidden="true"
-          />
         )}
       </div>
     );

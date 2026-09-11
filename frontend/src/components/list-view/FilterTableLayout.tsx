@@ -85,22 +85,23 @@ export default function FilterTableLayout({
         </div>
 
         {/* Action Buttons — fixed bottom */}
-        <div className="filter-action-footer" style={{ borderTop: `1px solid ${borderDefault}`, padding: '12px 16px', display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+        <div className="filter-action-footer" style={{ borderTop: `1px solid ${borderDefault}`, padding: '12px 16px', display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
           <Button
             icon={<ReloadOutlined />}
             onClick={handleReset}
             shape="circle"
+            title="Làm mới bộ lọc"
             style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd, flexShrink: 0 }}
           />
           <Button
             type="primary"
             icon={<SearchOutlined />}
             onClick={handleApply}
-            style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: buttonRadius, height: 40, fontSize: fontSizeMd, padding: '0 14px' }}
+            style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: buttonRadius, height: 40, fontSize: fontSizeMd, padding: '0 16px', fontWeight: 500 }}
           >
             Tìm kiếm
           </Button>
-          {!hideFilterToggle ? (
+          {!hideFilterToggle && (
             <Button
               icon={<FilterOutlined />}
               onClick={onToggleCollapse}
@@ -115,8 +116,6 @@ export default function FilterTableLayout({
                 flexShrink: 0,
               }}
             />
-          ) : (
-            <div style={{ width: 38, height: 38, flexShrink: 0, visibility: 'hidden' }} aria-hidden="true" />
           )}
         </div>
       </div>

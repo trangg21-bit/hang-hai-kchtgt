@@ -373,9 +373,9 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).not.toContain('Quay lại Danh mục chức năng'); // back-row is kcht-group only
     expect(html).not.toContain('Tìm loại KCHT'); // kcht-specific search only inside kcht group
     expect(html).toContain('Cục Hàng Hải và Đường Thủy'); // sidebar footer
-    // full-access user: no card is dimmed/disabled
-    expect(countOf(html, 'disabled=""')).toBe(2);
-    expect(countOf(html, 'aria-disabled="true"')).toBe(2);
+    // full-access user: only report block is underDevelopment (disabled)
+    expect(countOf(html, 'disabled=""')).toBe(1);
+    expect(countOf(html, 'aria-disabled="true"')).toBe(1);
   });
 
   // AC-024-01f / AC-024-05 (render seam): no-permission blocks render dimmed (disabled), per-card.
@@ -383,7 +383,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     const html = renderAt('/', ['port:read', 'report:read']);
     expect(html).toContain('Quản lý KCHT hàng hải'); // port:read granted -> kcht enabled
     expect(html).toContain('Báo cáo thống kê'); // report:read granted -> report enabled
-    // asset/report/plan/gis/admin are disabled (asset + report are underDevelopment; plan/gis/admin lack permission)
+    // asset/report/plan/gis/admin are disabled (report is underDevelopment; asset/plan/gis/admin lack permission)
     expect(countOf(html, 'disabled=""')).toBe(5);
     expect(countOf(html, 'aria-disabled="true"')).toBe(5);
     // and the 4 un-granted labels still render (dimmed, not removed)

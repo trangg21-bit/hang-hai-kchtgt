@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import com.hanghai.kchtg.common.entity.EntityFields;
-
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.service.InfraAssetService;
@@ -18,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -27,6 +26,36 @@ import java.util.UUID;
 public class InfraAssetController {
 
     private final InfraAssetService infraAssetService;
+
+    /**
+     * Whitelist các field DB thực sự có trong bảng infra_assets.
+     */
+    private static final Set<String> SORTABLE_DB_FIELDS = Set.of(
+            "id", "createdAt", "updatedAt", "createdBy", "updatedBy",
+            "assetCode", "assetName", "assetType",
+            "parentOrgUnitId", "orgUnitId", "usingOrgUnitId",
+            "berthId", "transferAreaId", "stormShelterId", "buoyBerthId", "pierId",
+            "anchorageId", "beaconStationId", "dikeRevetmentId", "buoyId", "buoyStationId", "navigationChannelId",
+            "barcode", "assetCondition", "usageStatus", "assetGroup", "assetSubgroup",
+            "address", "origin", "quantity", "quantityUnit", "model", "serialNumber",
+            "countryOfOrigin", "manufacturer", "constructionYear", "useDate",
+            "landArea", "floorArea", "assetLocation", "attachmentName", "declarationDate",
+            "depreciationRate", "assignmentDecisionNumber", "depreciationStartDate",
+            "depreciationMonths", "depreciationEndDate", "monthlyDepreciation", "disposalMethod",
+            "originalValue", "accumulatedDepreciation", "remainingValue", "status", "approvalStatus",
+            "submittedBy", "submittedAt",
+            "portAuthorityApprovedBy", "portAuthorityApprovedAt", "portAuthorityApprovalContent",
+            "departmentApprovedBy", "departmentApprovedAt", "departmentApprovalContent"
+    );
+
+    private static Sort resolveSort(String sortBy, String sortDir) {
+        String field = (sortBy != null && SORTABLE_DB_FIELDS.contains(sortBy.trim()))
+                ? sortBy.trim()
+                : "createdAt";
+        return "ASC".equalsIgnoreCase(sortDir)
+                ? Sort.by(field).ascending()
+                : Sort.by(field).descending();
+    }
 
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
@@ -53,6 +82,10 @@ public class InfraAssetController {
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID usingOrgUnitId,
             @RequestParam(required = false) UUID berthId,
+            @RequestParam(required = false) UUID transferAreaId,
+            @RequestParam(required = false) UUID stormShelterId,
+            @RequestParam(required = false) UUID buoyBerthId,
+            @RequestParam(required = false) UUID pierId,
             @RequestParam(required = false) UUID anchorageId,
             @RequestParam(required = false) UUID beaconStationId,
             @RequestParam(required = false) UUID dikeRevetmentId,
@@ -64,12 +97,13 @@ public class InfraAssetController {
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) LocalDate updatedFrom,
             @RequestParam(required = false) LocalDate updatedTo,
+            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "DESC") String sortDir,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size,
-                Sort.by(EntityFields.CREATED_AT).descending());
+        Pageable pageable = PageRequest.of(page, size, resolveSort(sortBy, sortDir));
         Page<InfraAssetResponse> result = infraAssetService.findAll(assetCode, assetName, parentOrgUnitId, orgUnitId,
-                usingOrgUnitId, berthId, anchorageId, beaconStationId, dikeRevetmentId, buoyId, buoyStationId, navigationChannelId,
+                usingOrgUnitId, berthId, transferAreaId, stormShelterId, buoyBerthId, pierId, anchorageId, beaconStationId, dikeRevetmentId, buoyId, buoyStationId, navigationChannelId,
                 assetType, assetCondition,
                 approvalStatus, updatedFrom, updatedTo, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
@@ -83,6 +117,7 @@ public class InfraAssetController {
         InfraAssetResponse response = infraAssetService.update(id, request);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được cập nhật", response));
     }
+
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
