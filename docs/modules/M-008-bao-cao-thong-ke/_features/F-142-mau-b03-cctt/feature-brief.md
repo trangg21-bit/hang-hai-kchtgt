@@ -72,6 +72,6 @@ Admin Cục: metadata nhạy cảm tuân thủ cơ chế phân quyền chung; b�
 
 ## 7. Phần kỹ thuật — cấu trúc bảng
 
-Nguồn: `bcc157_report hoặc infra_assets`. Giữ bcc157_report; 🔴 version BIGINT NOT NULL DEFAULT 0 qua V20260910103000__add_bcc157_version.sql. Lịch sử ghi infrastructure_history với ref_type REPORT_BCC157 (nối cuối enum, không đổi ordinal cũ). Không thêm bảng lịch sử riêng.
+Nguồn: `bcc157_report hoặc infra_assets`. Giữ bcc157_report; 🔴 version BIGINT NOT NULL DEFAULT 0 qua V20260910103500__add_bcc157_version.sql. Lịch sử ghi infrastructure_history với ref_type REPORT_BCC157 (nối cuối enum, không đổi ordinal cũ). Không thêm bảng lịch sử riêng.
 
 Đọc giới hạn và mục chưa nghiệm thu tại `../../tech-lead/04-plan.md`; không xem brief này là xác nhận hoàn thành.

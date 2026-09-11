@@ -101,7 +101,7 @@ Mỗi mã có template `template_export/<mã VMD>.xlsx`. “Default” là cờ 
 
 **Chi tiết kỹ thuật đã thực hiện**:
 - **Database Migrations (Flyway)**:
-  - `V20260911110000__create_inland_waterway_port_call.sql`: Bảng `inland_waterway_port_call` cho phương tiện thủy nội địa.
+  - `V20260911111500__create_inland_waterway_port_call.sql`: Bảng `inland_waterway_port_call` cho phương tiện thủy nội địa.
   - `V20260911113000__create_bcdl_report_record.sql`: Bảng `bcdl_report_record` lưu snapshot báo cáo tổng hợp.
 - **JPA Entities & Repositories**:
   - `InlandWaterwayPortCall.java`, `InlandWaterwayPortCallRepository.java`.
