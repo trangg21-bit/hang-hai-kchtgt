@@ -7,7 +7,6 @@ import {
   Button,
   Modal,
   Input,
-  Alert,
   Space,
   Form,
   DatePicker,
@@ -23,8 +22,8 @@ import {
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
-import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
+
 import { userService } from '../../services/userService';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
@@ -109,11 +108,12 @@ import {
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, useOrgUnitFilter } from '../../components/org-unit';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
+
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -227,7 +227,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   const item = group.items?.[0] || {};
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
+  const level = Number(item.approvalLevel ?? item.level);
 
   if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
@@ -293,7 +293,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+  if (rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
@@ -358,10 +358,6 @@ export default function BuoyStationListPage() {
   const currentUser = useAuthStore((s) => s.user);
 
   // ── Filters ───────────────────────────────────────────────────────
-  const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
-  const defaultOrgUnitId = useRef<string | undefined>(undefined);
-  const defaultOrgApplied = useRef(false);
-  const [orgUnitReady, setOrgUnitReady] = useState(false);
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
@@ -376,6 +372,20 @@ export default function BuoyStationListPage() {
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
 
+  const {
+    orgUnitId: managingUnitId,
+    setOrgUnitId: setManagingUnitId,
+    resetOrgUnit,
+    organizations,
+    orgLevel2Map,
+    orgMap,
+    isReady: orgUnitReady,
+  } = useOrgUnitFilter({
+    onDefaultResolved: (defId) => {
+      setFilterValues((prev) => ({ ...prev, managingUnitId: defId }));
+    },
+  });
+
   const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -387,27 +397,12 @@ export default function BuoyStationListPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
 
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [portMap, setPortMap] = useState<Map<string, string>>(new Map());
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
   const [routeMap, setRouteMap] = useState<Map<string, string>>(new Map());
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
-  const orgMap = useMemo(() => {
-    const m = new Map<string, string>();
-    organizations.forEach((o) => { m.set(o.id, o.name); });
-    return m;
-  }, [organizations]);
 
-  // Tên đơn vị cấp 2 trong chuỗi phân cấp — cột Đơn vị quản lý (chuẩn Cảng biển).
-  const orgLevel2Map = useMemo(() => {
-    const map = new Map<string, string>();
-    organizations.forEach((o) => {
-      const name = resolveOrgLevel2Name(organizations, o.id);
-      if (name) map.set(o.id, name);
-    });
-    return map;
-  }, [organizations]);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [stationBuoys, setStationBuoys] = useState<Record<string, { classifications: string[]; classificationBuoys: string[]; classificationMarks: string[] }>>({});
   const [viewBuoyOpen, setViewBuoyOpen] = useState(false);
@@ -468,33 +463,7 @@ export default function BuoyStationListPage() {
 
   // ── Load master data ──────────────────────────────────────────────
   useEffect(() => {
-    (async () => {
-      try {
-        const r = await organizationService.list({ pageSize: 1000 });
-        const data = r.data || [];
-        setOrganizations(data);
-        // Đơn vị quản lý mặc định = đơn vị của user đang đăng nhập (giống BuoyListPage),
-        // nếu không khớp hoặc user không có đơn vị thì lấy đơn vị đầu tiên
-        if (data.length > 0 && !defaultOrgApplied.current) {
-          defaultOrgApplied.current = true;
-          try {
-            const profileRes = await api.get('/users/me');
-            const profile = profileRes.data?.data ?? profileRes.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : data[0].id;
-            defaultOrgUnitId.current = defaultId;
-            setManagingUnitId(defaultId);
-            setFilterValues((prev) => ({ ...prev, managingUnitId: defaultId }));
-          } catch {
-            defaultOrgUnitId.current = data[0].id;
-            setManagingUnitId(data[0].id);
-            setFilterValues((prev) => ({ ...prev, managingUnitId: data[0].id }));
-          }
-        }
-        setOrgUnitReady(true);
-      } catch { setOrgUnitReady(true); }
-    })();
+
     (async () => {
       try {
         const r = await userService.list({ pageSize: 1000 });
@@ -657,9 +626,8 @@ export default function BuoyStationListPage() {
   }, [filterValues]);
 
   const handleFilterReset = useCallback(() => {
-    const defaultOrg = defaultOrgUnitId.current === '__all__' ? undefined : defaultOrgUnitId.current;
+    const defaultOrg = resetOrgUnit();
     setFilterValues({ managingUnitId: defaultOrg });
-    setManagingUnitId(defaultOrg);
     setFilterName('');
     setFilterCode('');
     setFilterProvince(undefined);
@@ -668,7 +636,8 @@ export default function BuoyStationListPage() {
     setFilterClassification(undefined); setFilterClassificationBuoy(undefined); setFilterClassificationMark(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
-  }, []);
+  }, [resetOrgUnit]);
+
 
   // ── Detail ────────────────────────────────────────────────────────
   const openDetail = useCallback(async (r: BuoyStationResponse) => {
@@ -745,7 +714,7 @@ export default function BuoyStationListPage() {
       const m: Record<string, string> = { DRAFT: 'Lưu tạm', PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2: 'Từ chối cấp cục' };
       return m[val] || val;
     }
-    if (fn === 'approvalLevel') return val === 'LEVEL_1' ? 'Cấp Cảng vụ/Chi cục' : val === 'LEVEL_2' ? 'Cấp Cục' : val;
+    
     if (fn === 'isActive') return val === 'true' ? 'Hoạt động' : 'Ngừng';
     if (fn === 'unitId' || fn === 'operatingOrgId') return orgMap.get(val) || val;
     if (fn === 'portId') return portMap.get(val) || val;
@@ -809,16 +778,16 @@ export default function BuoyStationListPage() {
     const sorted = [...safeRecords].sort((a: any, b: any) =>
       new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === (r as any).status && prev.approvalLevel === (r as any).approvalLevel) {
+      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === (r as any).status ) {
         prev.items.push(r);
       } else {
-        groups.push({ tsSec: sec, ts, actor, status: (r as any).status, approvalLevel: (r as any).approvalLevel, items: [r] });
+        groups.push({ tsSec: sec, ts, actor, status: (r as any).status, items: [r] });
       }
     }
     if (groups.length === 0) return (
@@ -1284,13 +1253,10 @@ export default function BuoyStationListPage() {
         filterContent={<>
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
-            <OrgUnitTreeSelect
+            <FilterOrgUnitTreeSelect
               organizations={organizations}
-              placeholder="Chọn đơn vị..."
+              placeholder="Tất cả"
               allowClear
-              showPath
-              allLabel="Tất cả"
-              treeDefaultExpandAll={false}
               value={filterValues.managingUnitId || undefined}
               onChange={(val) => setFilterValues((prev) => ({ ...prev, managingUnitId: val }))}
             />

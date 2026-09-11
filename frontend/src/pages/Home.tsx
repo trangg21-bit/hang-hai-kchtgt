@@ -1,6 +1,8 @@
-import { useNavigate, useOutletContext } from 'react-router-dom';
-import { Row, Col, Tooltip } from 'antd';
-import { LockOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
+import { Row, Col, Tooltip, Segmented } from 'antd';
+import { LockOutlined, RightOutlined, SearchOutlined, AppstoreOutlined, DashboardOutlined } from '@ant-design/icons';
+import DashboardPage from './DashboardPage';
 import type { CSSProperties } from 'react';
 import { usePermissionStore } from '../store/permissionStore';
 import { useAuthStore } from '../store/authStore';
@@ -219,6 +221,20 @@ function formatToday(): string {
 export default function HomePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'directory' | 'dashboard'>(
+    tabParam === 'dashboard' ? 'dashboard' : 'directory'
+  );
+
+  useEffect(() => {
+    if (tabParam === 'dashboard' && activeTab !== 'dashboard') {
+      setActiveTab('dashboard');
+    } else if (tabParam !== 'dashboard' && activeTab !== 'directory') {
+      setActiveTab('directory');
+    }
+  }, [tabParam]);
+
   // Landing search (Item 1, M-024): searchQuery do AppLayout sở hữu, truyền qua
   // Outlet context — KHÔNG store/context mới. Rỗng → hiện cả 6 khối.
   const outlet = useOutletContext<{ searchQuery?: string } | null>();
@@ -274,163 +290,224 @@ export default function HomePage() {
         </p>
       </section>
 
-      {/* Section header */}
+      {/* Thanh chuyển đổi Tabs: Danh mục chức năng & Dashboard KPI */}
       <div
         style={{
-          alignItems: 'baseline',
           display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: spaceMd,
-          justifyContent: 'space-between',
-          marginBottom: spaceMd,
+          marginTop: spaceLg,
+          marginBottom: spaceLg,
+          paddingBottom: spaceSm,
+          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
-        <div>
-          <h2
-            style={{
-              color: textPrimary,
-              fontSize: fontSizeHeading,
-              fontWeight: fontWeightBold,
-              margin: 0,
-            }}
-          >
-            Danh mục chức năng
-          </h2>
-          <p style={SECTION_HINT_STYLE}>Chọn một khối chức năng để tiếp tục.</p>
-        </div>
-        {isSearching && (
-          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>
-            {matchingIds?.size ?? 0} khối phù hợp
+        <Segmented
+          size="large"
+          value={activeTab}
+          onChange={(val) => {
+            const nextTab = val as 'directory' | 'dashboard';
+            setActiveTab(nextTab);
+            const next = new URLSearchParams(searchParams);
+            if (nextTab === 'directory') next.delete('tab');
+            else next.set('tab', nextTab);
+            setSearchParams(next, { replace: true });
+          }}
+          options={[
+            {
+              label: (
+                <span style={{ fontWeight: 600, padding: '0 8px', fontSize: fontSizeMd }}>
+                  Danh mục chức năng
+                </span>
+              ),
+              value: 'directory',
+              icon: <AppstoreOutlined style={{ fontSize: 16 }} />,
+            },
+            {
+              label: (
+                <span style={{ fontWeight: 600, padding: '0 8px', fontSize: fontSizeMd }}>
+                  Dashboard KPI
+                </span>
+              ),
+              value: 'dashboard',
+              icon: <DashboardOutlined style={{ fontSize: 16 }} />,
+            },
+          ]}
+        />
+        {activeTab === 'dashboard' && (
+          <span style={{ color: textSecondary, fontSize: fontSizeSm }}>
+            Tổng quan số liệu KPI & biểu đồ kết cấu hạ tầng hàng hải
           </span>
         )}
       </div>
 
-      {/* Trạng thái thiếu quyền: không truy cập được khối nào → empty state,
-          KHÔNG render 6 card mờ. */}
-      {!anyAccessibleBlock && (
-        <div style={EMPTY_BOX_STYLE}>
-          <LockOutlined style={{ color: textTertiary, fontSize: fontSizeDisplay }} />
-          <h3
+      {/* Nội dung theo Tab đã chọn */}
+      {activeTab === 'dashboard' ? (
+        <DashboardPage />
+      ) : (
+        <>
+          {/* Section header */}
+          <div
             style={{
-              color: textPrimary,
-              fontSize: fontSizeLg,
-              fontWeight: fontWeightBold,
-              margin: `${spaceMd}px 0 ${spaceSm}px`,
+              alignItems: 'baseline',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: spaceMd,
+              justifyContent: 'space-between',
+              marginBottom: spaceMd,
             }}
           >
-            Chưa có khối chức năng khả dụng
-          </h3>
-          <p style={{ color: textSecondary, fontSize: fontSizeMd, margin: 0 }}>
-            Bạn chưa được phân quyền truy cập khối chức năng nào. Vui lòng liên hệ quản trị viên để được cấp
-            quyền.
-          </p>
-        </div>
-      )}
+            <div>
+              <h2
+                style={{
+                  color: textPrimary,
+                  fontSize: fontSizeHeading,
+                  fontWeight: fontWeightBold,
+                  margin: 0,
+                }}
+              >
+                Danh mục chức năng
+              </h2>
+              <p style={SECTION_HINT_STYLE}>Chọn một khối chức năng để tiếp tục.</p>
+            </div>
+            {isSearching && (
+              <span style={{ color: textTertiary, fontSize: fontSizeMd }}>
+                {matchingIds?.size ?? 0} khối phù hợp
+              </span>
+            )}
+          </div>
 
-      {/* R-7: search không khớp khối nào → empty state text chuẩn */}
-      {anyAccessibleBlock && noSearchMatch && (
-        <div style={EMPTY_BOX_STYLE}>
-          <SearchOutlined style={{ color: textTertiary, fontSize: fontSizeDisplay }} />
-          <h3
-            style={{
-              color: textPrimary,
-              fontSize: fontSizeLg,
-              fontWeight: fontWeightBold,
-              margin: `${spaceMd}px 0 ${spaceSm}px`,
-            }}
-          >
-            Không tìm thấy khối chức năng phù hợp
-          </h3>
-          <p style={{ color: textSecondary, fontSize: fontSizeMd, margin: 0 }}>
-            Thử từ khóa khác hoặc xóa nội dung tìm kiếm để xem toàn bộ chức năng.
-          </p>
-        </div>
-      )}
+          {/* Trạng thái thiếu quyền: không truy cập được khối nào → empty state,
+              KHÔNG render 6 card mờ. */}
+          {!anyAccessibleBlock && (
+            <div style={EMPTY_BOX_STYLE}>
+              <LockOutlined style={{ color: textTertiary, fontSize: fontSizeDisplay }} />
+              <h3
+                style={{
+                  color: textPrimary,
+                  fontSize: fontSizeLg,
+                  fontWeight: fontWeightBold,
+                  margin: `${spaceMd}px 0 ${spaceSm}px`,
+                }}
+              >
+                Chưa có khối chức năng khả dụng
+              </h3>
+              <p style={{ color: textSecondary, fontSize: fontSizeMd, margin: 0 }}>
+                Bạn chưa được phân quyền truy cập khối chức năng nào. Vui lòng liên hệ quản trị viên để được cấp
+                quyền.
+              </p>
+            </div>
+          )}
 
-      {/* 6 khối chức năng — responsive 3 → 2 → 1 cột */}
-      {anyAccessibleBlock && !noSearchMatch && (
-        <Row gutter={[spaceLg, spaceMd]}>
-          {cards.map((card) => {
-            const isDev = Boolean(card.group.underDevelopment);
-            const locked = isDev || !card.home;
-            const isMatch = matchingIds?.has(card.group.id) ?? false;
-            const searchMiss = isSearching && !isMatch;
-            const dimmed = locked || searchMiss;
-            return (
-              <Col key={card.group.id} lg={8} sm={12} xs={24}>
-                <Tooltip
-                  title={
-                    isDev
-                      ? 'Chức năng đang được phát triển, vui lòng quay lại sau'
-                      : locked && !searchMiss
-                        ? 'Chưa được phân quyền — liên hệ quản trị để được cấp quyền truy cập'
-                        : undefined
-                  }
-                >
-                  <span style={{ display: 'inline-block', height: '100%', width: '100%' }}>
-                    <button
-                      aria-disabled={dimmed}
-                      className="landing-block-card"
-                      disabled={dimmed}
-                      onClick={() => {
-                        if (isDev) return;
-                        if (!dimmed && card.home) navigate(card.home);
-                      }}
-                      style={{
-                        ...BLOCK_CARD_STYLE,
-                        border: `1px solid ${isMatch ? actionPrimary : colors.borderLight}`,
-                        ...(locked && !searchMiss ? LOCKED_CARD_STYLE : {}),
-                        ...(searchMiss ? SEARCH_MISS_STYLE : {}),
-                      }}
-                      type="button"
+          {/* R-7: search không khớp khối nào → empty state text chuẩn */}
+          {anyAccessibleBlock && noSearchMatch && (
+            <div style={EMPTY_BOX_STYLE}>
+              <SearchOutlined style={{ color: textTertiary, fontSize: fontSizeDisplay }} />
+              <h3
+                style={{
+                  color: textPrimary,
+                  fontSize: fontSizeLg,
+                  fontWeight: fontWeightBold,
+                  margin: `${spaceMd}px 0 ${spaceSm}px`,
+                }}
+              >
+                Không tìm thấy khối chức năng phù hợp
+              </h3>
+              <p style={{ color: textSecondary, fontSize: fontSizeMd, margin: 0 }}>
+                Thử từ khóa khác hoặc xóa nội dung tìm kiếm để xem toàn bộ chức năng.
+              </p>
+            </div>
+          )}
+
+          {/* 6 khối chức năng — responsive 3 → 2 → 1 cột */}
+          {anyAccessibleBlock && !noSearchMatch && (
+            <Row gutter={[spaceLg, spaceMd]}>
+              {cards.map((card) => {
+                const isDev = Boolean(card.group.underDevelopment);
+                const locked = isDev || !card.home;
+                const isMatch = matchingIds?.has(card.group.id) ?? false;
+                const searchMiss = isSearching && !isMatch;
+                const dimmed = locked || searchMiss;
+                return (
+                  <Col key={card.group.id} lg={8} sm={12} xs={24}>
+                    <Tooltip
+                      title={
+                        isDev
+                          ? 'Chức năng đang được phát triển, vui lòng quay lại sau'
+                          : locked && !searchMiss
+                            ? 'Chưa được phân quyền — liên hệ quản trị để được cấp quyền truy cập'
+                            : undefined
+                      }
                     >
-                      <div
-                        style={{
-                          alignItems: 'center',
-                          background: '#edf3fc',
-                          borderRadius: '12px',
-                          color: actionPrimary,
-                          display: 'flex',
-                          fontSize: fontSizeLandingIcon,
-                          height: 48,
-                          justifyContent: 'center',
-                          lineHeight: 1,
-                          marginBottom: spaceMd,
-                          width: 48,
-                        }}
-                      >
-                        {card.icon}
-                      </div>
-                      <h3 style={CARD_TITLE_STYLE}>{card.group.label}</h3>
-                      <p style={CARD_DESC_STYLE}>{card.group.desc}</p>
-                      <div style={CARD_FOOTER_STYLE}>
-                        {isDev ? (
-                          <span
+                      <span style={{ display: 'inline-block', height: '100%', width: '100%' }}>
+                        <button
+                          aria-disabled={dimmed}
+                          className="landing-block-card"
+                          disabled={dimmed}
+                          onClick={() => {
+                            if (isDev) return;
+                            if (!dimmed && card.home) navigate(card.home);
+                          }}
+                          style={{
+                            ...BLOCK_CARD_STYLE,
+                            border: `1px solid ${isMatch ? actionPrimary : colors.borderLight}`,
+                            ...(locked && !searchMiss ? LOCKED_CARD_STYLE : {}),
+                            ...(searchMiss ? SEARCH_MISS_STYLE : {}),
+                          }}
+                          type="button"
+                        >
+                          <div
                             style={{
-                              background: '#fef3c7',
-                              borderRadius: '4px',
-                              color: '#d97706',
-                              fontSize: fontSizeSm,
-                              fontWeight: fontWeightMedium,
-                              padding: '2px 8px',
+                              alignItems: 'center',
+                              background: '#edf3fc',
+                              borderRadius: '12px',
+                              color: actionPrimary,
+                              display: 'flex',
+                              fontSize: fontSizeLandingIcon,
+                              height: 48,
+                              justifyContent: 'center',
+                              lineHeight: 1,
+                              marginBottom: spaceMd,
+                              width: 48,
                             }}
                           >
-                            Đang phát triển
-                          </span>
-                        ) : (
-                          <>
-                            <span>{card.accessibleCount} chức năng</span>
-                            <RightOutlined aria-hidden="true" style={{ color: textTertiary, fontSize: fontSizeSm }} />
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  </span>
-                </Tooltip>
-              </Col>
-            );
-          })}
-        </Row>
+                            {card.icon}
+                          </div>
+                          <h3 style={CARD_TITLE_STYLE}>{card.group.label}</h3>
+                          <p style={CARD_DESC_STYLE}>{card.group.desc}</p>
+                          <div style={CARD_FOOTER_STYLE}>
+                            {isDev ? (
+                              <span
+                                style={{
+                                  background: '#fef3c7',
+                                  borderRadius: '4px',
+                                  color: '#d97706',
+                                  fontSize: fontSizeSm,
+                                  fontWeight: fontWeightMedium,
+                                  padding: '2px 8px',
+                                  margin: 0,
+                                }}
+                              >
+                                Đang phát triển
+                              </span>
+                            ) : (
+                              <>
+                                <span>{card.accessibleCount} chức năng</span>
+                                <RightOutlined aria-hidden="true" style={{ color: textTertiary, fontSize: fontSizeSm }} />
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      </span>
+                    </Tooltip>
+                  </Col>
+                );
+              })}
+            </Row>
+          )}
+        </>
       )}
     </div>
   );

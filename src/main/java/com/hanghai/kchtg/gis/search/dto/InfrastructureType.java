@@ -35,5 +35,6 @@ public enum InfrastructureType {
     TRANSMISSION,
     VTS_ASSIST,
     SEAPORT_THROUGHPUT,
-    REPORT_BCC157
+    REPORT_BCC157,
+    VTS_ZONE
 }

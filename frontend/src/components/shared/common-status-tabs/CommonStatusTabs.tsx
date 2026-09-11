@@ -72,14 +72,21 @@ export const CommonStatusTabs: React.FC<CommonStatusTabsProps> = ({
       (computedCounts.REJECTED_LEVEL2 || 0) +
       (computedCounts.REJECTED || 0) +
       (computedCounts.TU_CHOI || 0);
+    const archivedCount =
+      (computedCounts.ARCHIVED || 0) +
+      (computedCounts.DA_XOA || 0) +
+      (computedCounts.DELETED || 0) +
+      (computedCounts.archived || 0) +
+      (computedCounts.deleted || 0);
 
-    // Bắt buộc: Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối
+    // Bắt buộc: Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối + Đã xóa
     const sumChildCounts =
       draftCount +
       pendingApprovalCount +
       approvedLevel1Count +
       approvedCount +
-      rejectedCount;
+      rejectedCount +
+      archivedCount;
     const allCount =
       sumChildCounts > 0 ? sumChildCounts : (computedCounts.all || 0);
 
@@ -90,6 +97,7 @@ export const CommonStatusTabs: React.FC<CommonStatusTabsProps> = ({
       APPROVED_LEVEL1: approvedLevel1Count,
       APPROVED: approvedCount,
       REJECTED_LEVEL1: rejectedCount,
+      ARCHIVED: archivedCount,
     };
 
     return STANDARD_APPROVAL_TABS.map((tab) => {

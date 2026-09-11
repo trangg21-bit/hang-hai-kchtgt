@@ -40,7 +40,6 @@ export interface ChangeHistory {
   id: string;
   refId: string;
   refType: string;
-  approvalLevel: string;
   status: string;
   approvedBy: string | null;
   approvedDate: string;

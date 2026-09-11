@@ -24,7 +24,9 @@ export interface User {
   userId?: string;
   id?: string;
   email?: string;
-  orgUnitId?: string | number;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  orgUnitCode?: string;
   unitType?: string;
   [key: string]: unknown;
 }
@@ -252,11 +254,28 @@ export const useAuthStore = create<AuthState>((set, get) => {
     refreshPermissions: async () => {
       try {
         const res = await api.get('/users/me');
-        const body = (res.data?.data ?? res.data) as { permissionCodes?: string[] } | undefined;
+        const body = (res.data?.data ?? res.data) as {
+          permissionCodes?: string[];
+          orgUnitId?: string;
+          orgUnitName?: string;
+          orgUnitCode?: string;
+          fullName?: string;
+          unitType?: string;
+        } | undefined;
         const perms: string[] = Array.isArray(body?.permissionCodes) ? body.permissionCodes : [];
         const state = get();
         if (!state.user) return;
-        set({ user: { ...state.user, permissions: perms } });
+        set({
+          user: {
+            ...state.user,
+            permissions: perms,
+            fullName: body?.fullName || state.user.fullName,
+            orgUnitId: body?.orgUnitId ? String(body.orgUnitId) : state.user.orgUnitId,
+            orgUnitName: body?.orgUnitName || state.user.orgUnitName,
+            orgUnitCode: body?.orgUnitCode || state.user.orgUnitCode,
+            unitType: body?.unitType || state.user.unitType,
+          },
+        });
       } catch {
         // Fallback to empty array on failure so UI does not hang
         const state = get();

@@ -16,7 +16,7 @@ import {
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, surfaceCard, borderDefault,
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
-  primaryButtonStyle, outlineButtonStyle,
+  primaryButtonStyle, outlineButtonStyle, textAreaStyle,
 } from '../../themetokenchk';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -453,14 +453,14 @@ export default function BuoyFormContent({
               </div>
             </div>
             <Row gutter={[24, 0]}>
-              <Col span={12}>
+              <Col span={24}>
                 <Form.Item name="shape" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.shape ? 'error' : undefined} help={atMax.shape ? 'Đã đạt tối đa 500 ký tự' : undefined}>
                   <Input placeholder="Nhập Hình dạng" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col span={24}>
                 <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.structure ? 'error' : undefined} help={atMax.structure ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-                  <Input placeholder="Nhập Kết cấu" maxLength={2000} showCount style={inputStyle} />
+                  <Input.TextArea placeholder="Nhập Kết cấu" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>

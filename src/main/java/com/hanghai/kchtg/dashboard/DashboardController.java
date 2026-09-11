@@ -10,6 +10,7 @@ import com.hanghai.kchtg.integration.dto.AssetStatusDto;
 import com.hanghai.kchtg.integration.entity.CargoAggregate;
 import com.hanghai.kchtg.integration.repository.CargoAggregateRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -54,6 +55,7 @@ public class DashboardController {
      * Trả về breakdown Đã duyệt / Chờ duyệt / Từ chối cho yêu cầu biến động tài sản.
      */
     @GetMapping("/approval-asset")
+    @Cacheable(value = "assetApprovalStats")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAssetApprovalStats() {
         long approved = movementRequestRepo.countByStatusAndDeletedAtIsNull(
                 RequestStatus.APPROVED);
@@ -73,6 +75,7 @@ public class DashboardController {
     }
 
     @GetMapping("/ports/cargo-total")
+    @Cacheable(value = "cargoSummary", key = "'total_' + #province + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public ResponseEntity<ApiResponse<Page<CargoAggregate>>> getPortCargoTotal(
             @RequestParam(required = false) String province,
             @PageableDefault(size = 20, sort = "periodStart", direction = Sort.Direction.DESC) Pageable pageable) {
@@ -83,6 +86,7 @@ public class DashboardController {
     }
 
     @GetMapping("/cargo/summary")
+    @Cacheable(value = "cargoSummary", key = "'summary_' + #portCode + '_' + #periodType + '_' + #province + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public ResponseEntity<ApiResponse<Page<CargoAggregate>>> getCargoSummary(
             @RequestParam(required = false) String portCode,
             @RequestParam(required = false) String periodType,
@@ -114,13 +118,8 @@ public class DashboardController {
 
         List<Map<String, Object>> breakdown =
                 kchtAssetCountService.getInfraTableData(year, provinceId, infraType);
-        boolean filterByInfraType = infraType != null && !infraType.isBlank();
-        long totalAssets = filterByInfraType
-                ? sumBreakdown(breakdown, "total")
-                : kchtAssetCountService.countTotal(year, provinceId);
-        long operatingAssets = filterByInfraType
-                ? sumBreakdown(breakdown, "operating")
-                : kchtAssetCountService.countOperating(year, provinceId);
+        long totalAssets = sumBreakdown(breakdown, "total");
+        long operatingAssets = sumBreakdown(breakdown, "operating");
         Map<String, Long> assetsByStatus = new LinkedHashMap<>();
         assetsByStatus.put("PUBLISHED", operatingAssets);
         assetsByStatus.put("TOTAL", totalAssets);
@@ -145,6 +144,7 @@ public class DashboardController {
     }
 
     @GetMapping("/asset-processing-records")
+    @Cacheable(value = "assetProcessingRecords", key = "'records_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public ResponseEntity<ApiResponse<Page<AssetProcessingRecordResponse>>> getAssetProcessingRecords(
             @PageableDefault(size = 500) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(assetProcessingRecordService.findAll(pageable)));

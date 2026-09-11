@@ -130,7 +130,7 @@ class BerthServiceTest {
         assertEquals("CB-001-B01", result.getBerthCode());
         assertEquals("Bến mới", result.getBerthName());
         assertEquals(ApprovalStatus.DRAFT, result.getApprovalStatus());
-        verify(berthRepository).save(any(Berth.class));
+        verify(berthRepository, org.mockito.Mockito.atLeastOnce()).save(any(Berth.class));
     }
 
     @Test

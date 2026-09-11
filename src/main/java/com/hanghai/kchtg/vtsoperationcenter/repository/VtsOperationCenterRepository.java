@@ -26,7 +26,8 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         FROM VtsOperationCenter t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL
+          AND (:scopeEnabled = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(t.name) ASC
     """)
@@ -61,18 +62,20 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         LEFT JOIN Port p ON p.id = t.portId
         LEFT JOIN VtsSystem vs ON vs.id = t.vtsSystemId
         LEFT JOIN User u ON u.id = t.updatedBy
-        WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+        WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
           AND (:portId IS NULL OR t.portId = :portId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL
-               OR t.approvalStatus = :approvalStatus
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED))
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
+               OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
+                    t.approvalStatus = :approvalStatus
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)
+               )))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:keyword AS string) IS NULL OR
@@ -137,9 +140,8 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
     }
 
     @Query("""
-        SELECT t.approvalStatus, COUNT(t) FROM VtsOperationCenter t
-        WHERE t.deletedAt IS NULL
-          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+        SELECT CASE WHEN (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE t.approvalStatus END, COUNT(t) FROM VtsOperationCenter t
+        WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
           AND (:portId IS NULL OR t.portId = :portId)
@@ -157,7 +159,7 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
             CAST(function('immutable_unaccent', LOWER(t.name)) AS string) LIKE CAST(:name AS string))
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
-        GROUP BY t.approvalStatus
+        GROUP BY CASE WHEN (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE t.approvalStatus END
     """)
     List<Object[]> countByApprovalStatus(
         @Param("scopeEnabled") boolean scopeEnabled,

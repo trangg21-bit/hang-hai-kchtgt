@@ -55,7 +55,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.port.service.PortCacheService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -84,7 +83,6 @@ public class AisSystemService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OperatingOrganizationRepository operatingOrganizationRepository;
-    private final PortCacheService portCacheService;
     private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.upload.dir:uploads}")
@@ -409,7 +407,6 @@ public class AisSystemService {
             LocalDateTime now = LocalDateTime.now();
             for (Map.Entry<String, String> entry : previousValues.entrySet()) {
                 String field = entry.getKey();
-                String fieldName = getFieldDisplayName(field);
                 String oldVal = formatDisplayValue(field, entry.getValue());
                 Object rawNew = getEntityFieldValue(saved, field);
                 if (AisSystemRequest.Fields.coordinates.equals(field)) {
@@ -425,10 +422,9 @@ public class AisSystemService {
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
                         .approvedDate(now)
-                        .changedField(fieldName)
+                        .changedField(field)
                         .previousValue(oldVal)
                         .newValue(newVal)
-                        .reason("Cập nhật thông tin " + fieldName)
                         .build());
             }
         }
@@ -806,8 +802,7 @@ public class AisSystemService {
                 .status(status)
                 .approvedBy(userId)
                 .approvedDate(LocalDateTime.now())
-                .reason(reason)
-                .changedField("Trạng thái phê duyệt")
+                .changedField("approvalStatus")
                 .previousValue(previousStatus != null ? previousStatus.name() : null)
                 .newValue(newStatus != null ? newStatus.name() : null)
                 .build());
@@ -885,12 +880,10 @@ public class AisSystemService {
                     String orgUnitName = u != null && u.getOrgUnit() != null ? u.getOrgUnit().getName() : null;
                     HistoryEntry entry = new HistoryEntry();
                     entry.setId(h.getId());
-                    entry.setApprovalLevel(h.getApprovalLevel());
                     entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
                     entry.setApprovedBy(userName);
                     entry.setOrgUnitName(orgUnitName);
                     entry.setApprovedDate(h.getApprovedDate());
-                    entry.setReason(h.getReason());
                     entry.setChangedField(h.getChangedField());
                     entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
                     entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
@@ -970,9 +963,8 @@ public class AisSystemService {
                         .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(batchNow)
-                        .reason("Tải lên tài liệu đính kèm: " + originalFilename)
-                        .changedField("Tài liệu đính kèm")
-                        .previousValue("—")
+                        .changedField("attachments")
+                        .previousValue(null)
                         .newValue(originalFilename)
                         .build());
             }
@@ -1070,10 +1062,9 @@ public class AisSystemService {
                     .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
-                    .reason("Xóa tài liệu đính kèm: " + att.getFileName())
-                    .changedField("Tài liệu đính kèm")
+                    .changedField("attachments")
                     .previousValue(att.getFileName())
-                    .newValue("—")
+                    .newValue(null)
                     .build());
         }
     }

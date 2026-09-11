@@ -190,7 +190,7 @@ class PortServiceTest {
         testEntity.setApprovalStatus(ApprovalStatus.APPROVED); // was approved
 
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(portRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(portRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
         UpdatePortRequest request = new UpdatePortRequest();
         request.setId(testId);

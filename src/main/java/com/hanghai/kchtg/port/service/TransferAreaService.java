@@ -738,14 +738,12 @@ public class TransferAreaService {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(transferAreaId)
                     .refType(InfrastructureType.TRANSSHIPMENT_AREA)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(uploaded ? "—" : name)
-                    .newValue(uploaded ? name : "—")
+                    .changedField("attachments")
+                    .previousValue(uploaded ? null : name)
+                    .newValue(uploaded ? name : null)
                     .build());
             log.info("Đã ghi lịch sử {} file đính kèm của Khu chuyển tải [{}]: {}",
                     uploaded ? "tải lên" : "xóa", transferAreaId, name);

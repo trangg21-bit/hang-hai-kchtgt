@@ -246,14 +246,12 @@ public class DocumentService {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(refId)
                     .refType(refType)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(uploaded ? "—" : name)
-                    .newValue(uploaded ? name : "—")
+                    .changedField("attachments")
+                    .previousValue(uploaded ? null : name)
+                    .newValue(uploaded ? name : null)
                     .build());
             log.info("[DocumentService] Đã ghi lịch sử {} file đính kèm của {} [{}]: {}",
                     uploaded ? "tải lên" : "xóa", entityLabel, refId, name);

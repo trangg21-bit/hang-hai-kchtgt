@@ -31,7 +31,7 @@ import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
 
@@ -54,6 +54,107 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
 
+const LritStationGlobalStyles = React.memo(() => (
+  <style>{`
+    .lrit-page-wrapper,
+    .lrit-page-wrapper .ant-table,
+    .lrit-page-wrapper .ant-table-cell,
+    .lrit-page-wrapper .ant-input,
+    .lrit-page-wrapper .ant-select,
+    .lrit-page-wrapper .ant-select-selection-item,
+    .lrit-page-wrapper .ant-select-selection-placeholder,
+    .lrit-page-wrapper .ant-picker,
+    .lrit-page-wrapper .ant-picker-input > input,
+    .lrit-page-wrapper .ant-btn,
+    .lrit-page-wrapper .ant-pagination,
+    .lrit-page-wrapper .ant-breadcrumb,
+    .lrit-page-wrapper .filter-label,
+    .lrit-drawer-scope,
+    .lrit-drawer-scope .ant-drawer-content,
+    .lrit-drawer-scope .ant-tabs-tab,
+    .lrit-drawer-scope .chk-detail-label,
+    .lrit-drawer-scope .chk-detail-value,
+    .lrit-drawer-scope .ant-table,
+    .lrit-drawer-scope .ant-table-cell,
+    .lrit-drawer-scope .ant-table-thead > tr > th,
+    .lrit-drawer-scope .ant-btn,
+    .lrit-drawer-scope .ant-select,
+    .lrit-drawer-scope .ant-input,
+    .lrit-drawer-scope .ant-form-item-label > label {
+      font-size: 13.5px !important;
+    }
+    .lrit-page-wrapper .screen-header {
+      flex-wrap: wrap !important;
+      gap: 10px !important;
+    }
+
+    /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+    .lrit-page-wrapper div:has(> button[aria-pressed]) {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      justify-content: center !important;
+      justify-content: safe center !important;
+      align-items: center !important;
+      scrollbar-width: thin !important;
+      scrollbar-color: #cbd5e1 #f8fafc !important;
+      scroll-behavior: smooth !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 2px 16px 6px 16px !important;
+      gap: 20px !important;
+    }
+    .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+      height: 6px !important;
+      display: block !important;
+    }
+    .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+      background: #f1f5f9 !important;
+      border-radius: 999px !important;
+    }
+    .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+      background: #cbd5e1 !important;
+      border-radius: 999px !important;
+    }
+    .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8 !important;
+    }
+    .lrit-page-wrapper div:has(> button[aria-pressed]) > button {
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      cursor: pointer !important;
+    }
+
+    /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+    .lrit-drawer-scope .ant-drawer-content-wrapper {
+      max-width: 100vw !important;
+    }
+    @media (max-width: 1024px) {
+      .lrit-drawer-scope .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .lrit-drawer-scope .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+    }
+    @media (max-width: 640px) {
+      .lrit-drawer-scope .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        padding: 8px 0 !important;
+      }
+      .lrit-drawer-scope .chk-detail-label {
+        width: 100% !important;
+      }
+      .lrit-drawer-scope .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
+
 export default function LritStationList() {
   const [searchParams] = useSearchParams();
   const linkedAction = searchParams.get('action');
@@ -74,6 +175,7 @@ export default function LritStationList() {
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
@@ -165,13 +267,20 @@ export default function LritStationList() {
           organizationService.getAll().then((res: any) => Array.isArray(res) ? res : (res?.data || [])),
           symbolService.getOptions().catch(() => []),
         ]);
-        setOrgUnitOptions((orgs || []).map((o: any) => ({
+        const mappedOrgs = (orgs || []).map((o: any) => ({
           id: String(o.id),
           name: o.name || o.unitName || o.tenDonVi || 'Đơn vị',
           code: o.code || o.maDonVi,
           parentId: o.parentId ? String(o.parentId) : undefined,
-        })));
+        }));
+        setOrgUnitOptions(mappedOrgs);
         setSymbols(Array.isArray(syms) ? syms : []);
+        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, mappedOrgs);
+        defaultOrgUnitRef.current = resolvedDefault;
+        if (resolvedDefault) {
+          setFilterOrgUnitId(resolvedDefault);
+          setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
+        }
       } catch (err) {
         console.error('Failed to fetch lookup options', err);
       }
@@ -395,13 +504,15 @@ export default function LritStationList() {
   };
 
   const handleFilterReset = () => {
+    const defaultOrg = defaultOrgUnitRef.current;
     setFilterName('');
     setFilterCode('');
     setFilterConditionStatus(undefined);
-    setFilterOrgUnitId(undefined);
+    setFilterOrgUnitId(defaultOrg);
     setFilterProvinceId(undefined);
     setFilterUpdatedFrom(undefined);
     setFilterUpdatedTo(undefined);
+    setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setPage(1);
   };
 
@@ -701,117 +812,7 @@ export default function LritStationList() {
   return (
     <ThemeTokenProvider tokens={customLritTokens}>
       <div className="lrit-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        <style>{`
-          .lrit-page-wrapper,
-          .lrit-page-wrapper .ant-table,
-          .lrit-page-wrapper .ant-table-cell,
-          .lrit-page-wrapper .ant-input,
-          .lrit-page-wrapper .ant-select,
-          .lrit-page-wrapper .ant-select-selection-item,
-          .lrit-page-wrapper .ant-select-selection-placeholder,
-          .lrit-page-wrapper .ant-picker,
-          .lrit-page-wrapper .ant-picker-input > input,
-          .lrit-page-wrapper .ant-btn,
-          .lrit-page-wrapper .ant-pagination,
-          .lrit-page-wrapper .ant-breadcrumb,
-          .lrit-page-wrapper .filter-label,
-          .lrit-drawer-scope,
-          .lrit-drawer-scope .ant-drawer-content,
-          .lrit-drawer-scope .ant-tabs-tab,
-          .lrit-drawer-scope .chk-detail-label,
-          .lrit-drawer-scope .chk-detail-value,
-          .lrit-drawer-scope .ant-table,
-          .lrit-drawer-scope .ant-table-cell,
-          .lrit-drawer-scope .ant-table-thead > tr > th,
-          .lrit-drawer-scope .ant-btn,
-          .lrit-drawer-scope .ant-select,
-          .lrit-drawer-scope .ant-input,
-          .lrit-drawer-scope .ant-form-item-label > label,
-          .berth-drawer-scope,
-          .berth-drawer-scope .ant-drawer-content,
-          .berth-drawer-scope .ant-tabs-tab,
-          .berth-drawer-scope .chk-detail-label,
-          .berth-drawer-scope .chk-detail-value,
-          .berth-drawer-scope .ant-table,
-          .berth-drawer-scope .ant-table-cell,
-          .berth-drawer-scope .ant-table-thead > tr > th,
-          .berth-drawer-scope .ant-btn,
-          .berth-drawer-scope .ant-select,
-          .berth-drawer-scope .ant-input,
-          .berth-drawer-scope .ant-form-item-label > label {
-            font-size: 13.5px !important;
-          }
-          .lrit-page-wrapper .screen-header {
-            flex-wrap: wrap !important;
-            gap: 10px !important;
-          }
-
-          /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
-          .lrit-page-wrapper div:has(> button[aria-pressed]) {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            overflow-y: hidden !important;
-            justify-content: center !important;
-            justify-content: safe center !important;
-            align-items: center !important;
-            scrollbar-width: thin !important;
-            scrollbar-color: #cbd5e1 #f8fafc !important;
-            scroll-behavior: smooth !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
-          }
-          .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
-            display: block !important;
-          }
-          .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
-            background: #f1f5f9 !important;
-            border-radius: 999px !important;
-          }
-          .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
-            background: #cbd5e1 !important;
-            border-radius: 999px !important;
-          }
-          .lrit-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8 !important;
-          }
-          .lrit-page-wrapper div:has(> button[aria-pressed]) > button {
-            white-space: nowrap !important;
-            flex-shrink: 0 !important;
-            cursor: pointer !important;
-          }
-
-          /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
-          .lrit-drawer-scope .ant-drawer-content-wrapper,
-          .berth-drawer-scope .ant-drawer-content-wrapper {
-            max-width: 100vw !important;
-          }
-          @media (max-width: 1024px) {
-            .lrit-drawer-scope .chk-detail-grid {
-              grid-template-columns: 1fr !important;
-              column-gap: 0 !important;
-            }
-            .lrit-drawer-scope .chk-detail-row--full {
-              grid-column: 1 !important;
-            }
-          }
-          @media (max-width: 640px) {
-            .lrit-drawer-scope .chk-detail-row {
-              flex-direction: column !important;
-              align-items: flex-start !important;
-              gap: 4px !important;
-              padding: 8px 0 !important;
-            }
-            .lrit-drawer-scope .chk-detail-label {
-              width: 100% !important;
-            }
-            .lrit-drawer-scope .chk-detail-value {
-              width: 100% !important;
-            }
-          }
-        `}</style>
+        <LritStationGlobalStyles />
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },

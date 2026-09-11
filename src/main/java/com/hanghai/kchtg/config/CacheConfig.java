@@ -22,7 +22,7 @@ public class CacheConfig {
         @Bean
         public CacheManager cacheManager() {
                 CaffeineCacheManager cacheManager = new CaffeineCacheManager("passwordPolicy", "jwtRevocation",
-                                "kchtCounts", "fieldPolicies");
+                                "kchtCounts", "fieldPolicies", "assetApprovalStats", "cargoSummary", "assetProcessingRecords");
                 cacheManager.setCaffeine(Caffeine.newBuilder()
                                 .expireAfterWrite(10, TimeUnit.MINUTES)
                                 .maximumSize(1000));

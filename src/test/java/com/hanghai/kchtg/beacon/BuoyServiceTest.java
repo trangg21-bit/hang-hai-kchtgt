@@ -402,7 +402,7 @@ class BuoyServiceTest {
 
             assertThat(result.getStatus()).isEqualTo("APPROVED_L2");
             assertThat(result.getApprovalStatus()).isEqualTo("APPROVED");
-            verify(infraHistoryRepo, atLeastOnce()).save(any());
+            verify(changeHistoryService, atLeastOnce()).recordChanges(any(), any(), any(), any(), any());
         }
 
         @Test

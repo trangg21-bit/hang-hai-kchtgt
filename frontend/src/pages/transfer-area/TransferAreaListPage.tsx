@@ -15,12 +15,13 @@ import { transferAreaCRUD, transferAreaApproval, portCRUD } from '../../services
 import type { TransferArea } from '../../types/port';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -521,7 +522,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   const item = group.items?.[0] || {};
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
+  const level = Number(item.approvalLevel ?? item.level);
 
   if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
@@ -581,7 +582,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+  if (rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
@@ -608,6 +609,7 @@ export default function TransferAreaListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
 
+  const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
@@ -753,7 +755,7 @@ export default function TransferAreaListPage() {
       return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
         || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
     };
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
@@ -764,7 +766,7 @@ export default function TransferAreaListPage() {
       if (isSameGroup) {
         prev.items.push(r);
       } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+        groups.push({ tsSec: sec, ts, actor, status: r.status, items: [r] });
       }
     }
     if (groups.length === 0) return (
@@ -902,18 +904,9 @@ export default function TransferAreaListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
-        if (data.length > 0) {
-          try {
-            const p = await api.get('/users/me');
-            const uOrgId = (p.data?.data ?? p.data)?.orgUnitId;
-            const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__';
-            setOrgUnit(matchedOrgId);
-            defaultOrgUnitRef.current = matchedOrgId;
-          } catch {
-            setOrgUnit(data[0].id);
-            defaultOrgUnitRef.current = data[0].id;
-          }
-        }
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+        setOrgUnit(resolvedDefault);
+        defaultOrgUnitRef.current = resolvedDefault;
       } catch {
         /* ignore */
       }
@@ -1069,7 +1062,7 @@ export default function TransferAreaListPage() {
   }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
-    const oid = defaultOrgUnitRef.current || '__all__';
+    const oid = defaultOrgUnitRef.current;
     setOrgUnit(oid);
     setNameInput('');
     setCodeInput('');
@@ -1582,13 +1575,10 @@ export default function TransferAreaListPage() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý
         </div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
           value={orgUnit}
           onChange={(v) => { setOrgUnit(v); setPage(1); }}
         />

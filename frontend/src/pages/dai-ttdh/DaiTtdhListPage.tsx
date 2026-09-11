@@ -17,12 +17,13 @@ import {
 import type { DaiTtdh } from '../../types/port';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -619,7 +620,6 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   const item = group.items?.[0] || {};
   const rawStatus = String(item.status ?? item.action ?? item.actionType ?? '').toUpperCase();
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
 
   if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
@@ -679,7 +679,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+  if (rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
@@ -708,6 +708,7 @@ export default function DaiTtdhListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
 
+  const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
   // ── Filter state ─────────────────────────────────────────────────
@@ -863,18 +864,9 @@ export default function DaiTtdhListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
-        if (data.length > 0) {
-          try {
-            const p = await api.get('/users/me');
-            const uOrgId = (p.data?.data ?? p.data)?.orgUnitId;
-            const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__';
-            setOrgUnit(matchedOrgId);
-            defaultOrgUnitRef.current = matchedOrgId;
-          } catch {
-            setOrgUnit(data[0].id);
-            defaultOrgUnitRef.current = data[0].id;
-          }
-        }
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+        setOrgUnit(resolvedDefault);
+        defaultOrgUnitRef.current = resolvedDefault;
       } catch { /* ignore */ }
     })();
 
@@ -983,7 +975,7 @@ export default function DaiTtdhListPage() {
   }, []);
 
   const handleFilterReset = useCallback(() => {
-    const defaultOrg = defaultOrgUnitRef.current || '__all__';
+    const defaultOrg = defaultOrgUnitRef.current;
     setOrgUnit(defaultOrg);
     setFilterName('');
     setFilterCode('');
@@ -1197,16 +1189,16 @@ export default function DaiTtdhListPage() {
     const safeRecords = Array.isArray(records) ? records : [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status ) {
         prev.items.push(r);
       } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+        groups.push({ tsSec: sec, ts, actor, status: r.status, items: [r] });
       }
     }
     if (groups.length === 0) return (
@@ -1340,13 +1332,10 @@ export default function DaiTtdhListPage() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý
         </div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
           value={orgUnit}
           onChange={(v) => { setOrgUnit(v); setPage(1); }}
         />

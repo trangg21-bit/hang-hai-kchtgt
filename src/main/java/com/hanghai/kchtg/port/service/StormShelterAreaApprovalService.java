@@ -87,12 +87,9 @@ public class StormShelterAreaApprovalService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(entity.getId())
                 .refType(InfrastructureType.STORM_SHELTER_AREA)
-                .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
                 .status(InfrastructureHistoryStatus.APPROVED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
                 .approvedDate(LocalDateTime.now())
-                .reason(("CANG_VU".equals(cap) ? "Phê duyệt cấp Cảng vụ" : "Phê duyệt cấp Cục")
-                        + (content != null && !content.isBlank() ? ": " + content.trim() : ""))
                 .build());
 
         log.info("StormShelterArea [{}] approved by {} at level {}", id, userId, cap);
@@ -114,16 +111,12 @@ public class StormShelterAreaApprovalService {
 
         // Ghi sự kiện từ chối vào infrastructure_history (changedField = null để getHistory
         // phân loại vào approvalLog), chuẩn Cảng biển sau migration V20260825162500.
-        String levelLabel = "CANG_VU".equals(cap) ? "Cảng vụ" : "Cục";
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(entity.getId())
                 .refType(InfrastructureType.STORM_SHELTER_AREA)
-                .approvalLevel("CANG_VU".equals(cap) ? ApprovalLevel.LEVEL_1 : ApprovalLevel.LEVEL_2)
                 .status(InfrastructureHistoryStatus.REJECTED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
                 .approvedDate(LocalDateTime.now())
-                .reason("Từ chối cấp " + levelLabel
-                        + (reason != null && !reason.isBlank() ? ": " + reason.trim() : ""))
                 .build());
 
         log.info("StormShelterArea [{}] rejected by {} at level {}: {}", id, userId, cap, reason);
@@ -161,7 +154,6 @@ public class StormShelterAreaApprovalService {
                     m.put("entityId", entityId);
                     m.put("refId", h.getRefId());
                     m.put("refType", h.getRefType());
-                    m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
                     m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
                     m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
                     m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
@@ -173,7 +165,6 @@ public class StormShelterAreaApprovalService {
                     m.put("approvedByName", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
                     m.put("changedAt", h.getApprovedDate());
                     m.put("approvedDate", h.getApprovedDate());
-                    m.put("reason", h.getReason());
                     return m;
                 })
                 .toList();
@@ -186,10 +177,8 @@ public class StormShelterAreaApprovalService {
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
                     m.put("decision", h.getStatus().name());
-                    m.put("reason", h.getReason() != null ? h.getReason() : "");
                     m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("decidedAt", h.getApprovedDate());
-                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
                     return m;
                 })
                 .toList();
@@ -240,7 +229,6 @@ public class StormShelterAreaApprovalService {
                     m.put("refId", h.getRefId());
                     m.put("entityId", h.getRefId() != null ? h.getRefId().toString() : null);
                     m.put("refType", h.getRefType());
-                    m.put("approvalLevel", h.getApprovalLevel());
                     m.put("status", h.getStatus());
                     m.put("approvedBy", h.getApprovedBy() != null
                             ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
@@ -249,7 +237,6 @@ public class StormShelterAreaApprovalService {
                             ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
                             : null);
                     m.put("approvedDate", h.getApprovedDate());
-                    m.put("reason", h.getReason());
                     m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
                     m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
                     m.put("previousValue", h.getPreviousValue());

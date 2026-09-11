@@ -28,7 +28,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldNameConstants
-@SQLRestriction("deleted_at IS NULL")
+@SQLRestriction("1=1")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 public class CoastalStationInmarsat extends BaseEntity implements ApprovableEntity {
 

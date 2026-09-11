@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Modal, Input, Select, DatePicker } from 'antd';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -10,6 +10,7 @@ import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type { AisSystemListItem, AisSystemResponse } from '../../types/aisSystem';
 import { UNIT_OF_MEASURE_MAP, UnitOfMeasure } from '../../types/aisSystem';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
@@ -17,7 +18,7 @@ import { ScreenHeader, DataTable, Pagination } from '../../components/list-view'
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import AisSystemForm from './AisSystemForm';
 import ApprovalModal from '../../components/shared/ApprovalModal';
-import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
+import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 import toast from '../../components/ToastNotification';
@@ -34,8 +35,7 @@ import {
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
-import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 
 const fontSizeMd = 13.5;
@@ -47,19 +47,6 @@ const filterLabelStyle: React.CSSProperties = {
   marginBottom: spaceSm,
 };
 
-const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-};
 
 const CONDITION_STYLE_MAP: Record<string, { color: string; label: string }> = {
   OPERATIONAL: { color: statusOperational, label: 'Đang hoạt động' },
@@ -72,6 +59,123 @@ const CONDITION_STYLE_MAP: Record<string, { color: string; label: string }> = {
 
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
+
+const AisSystemGlobalStyles = React.memo(() => (
+  <style>{`
+    /* ── Cỡ chữ 13.5px chuẩn toàn màn Hệ thống AIS & filter sidebar ── */
+    .ais-page-wrapper,
+    .ais-page-wrapper .ant-table,
+    .ais-page-wrapper .ant-table-cell,
+    .ais-page-wrapper .ant-table-thead > tr > th,
+    .ais-page-wrapper .ant-table-tbody > tr > td,
+    .ais-page-wrapper .ant-input,
+    .ais-page-wrapper .ant-select,
+    .ais-page-wrapper .ant-select-selector,
+    .ais-page-wrapper .ant-select-selection-item,
+    .ais-page-wrapper .ant-select-selection-placeholder,
+    .ais-page-wrapper .ant-select-selection-search-input,
+    .ais-page-wrapper .ant-select-item-option-content,
+    .ais-page-wrapper .ant-tree-select,
+    .ais-page-wrapper .ant-tree-select .ant-select-selection-item,
+    .ais-page-wrapper .ant-tree-select .ant-select-selection-placeholder,
+    .ais-page-wrapper .ant-picker,
+    .ais-page-wrapper .ant-picker-input > input,
+    .ais-page-wrapper .ant-picker-range-separator,
+    .ais-page-wrapper .ant-btn,
+    .ais-page-wrapper .ant-pagination,
+    .ais-page-wrapper .ant-pagination-item,
+    .ais-page-wrapper .ant-pagination-total-text,
+    .ais-page-wrapper .ant-breadcrumb,
+    .ais-page-wrapper .ant-form-item-label > label,
+    .ais-page-wrapper input::placeholder,
+    .ais-page-wrapper .ant-picker-input > input::placeholder,
+    .ais-drawer-scope,
+    .ais-drawer-scope .ant-drawer-content,
+    .ais-drawer-scope .ant-tabs-tab,
+    .ais-drawer-scope .chk-detail-label,
+    .ais-drawer-scope .chk-detail-value,
+    .ais-drawer-scope .ant-table,
+    .ais-drawer-scope .ant-table-cell,
+    .ais-drawer-scope .ant-table-thead > tr > th,
+    .ais-drawer-scope .ant-btn,
+    .ais-drawer-scope .ant-select,
+    .ais-drawer-scope .ant-input,
+    .ais-drawer-scope .ant-form-item-label > label {
+      font-size: 13.5px !important;
+    }
+
+    /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+    .ais-page-wrapper div:has(> button[aria-pressed]) {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      justify-content: center !important;
+      justify-content: safe center !important;
+      align-items: center !important;
+      scrollbar-width: thin !important;
+      scrollbar-color: #cbd5e1 #f8fafc !important;
+      scroll-behavior: smooth !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 2px 16px 6px 16px !important;
+      gap: 20px !important;
+    }
+    .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+      height: 6px !important;
+      display: block !important;
+    }
+    .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+      background: #f1f5f9 !important;
+      border-radius: 999px !important;
+    }
+    .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+      background: #cbd5e1 !important;
+      border-radius: 999px !important;
+    }
+    .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8 !important;
+    }
+    .ais-page-wrapper div:has(> button[aria-pressed]) > button {
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      cursor: pointer !important;
+    }
+
+    /* ── Responsive ScreenHeader co dãn đẹp khi zoom ── */
+    .ais-page-wrapper > div:first-of-type {
+      flex-wrap: wrap !important;
+      gap: 10px !important;
+    }
+
+    /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+    .ais-drawer-scope .ant-drawer-content-wrapper {
+      max-width: 100vw !important;
+    }
+    @media (max-width: 1024px) {
+      .ais-drawer-scope .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .ais-drawer-scope .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+    }
+    @media (max-width: 640px) {
+      .ais-drawer-scope .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        padding: 8px 0 !important;
+      }
+      .ais-drawer-scope .chk-detail-label {
+        width: 100% !important;
+      }
+      .ais-drawer-scope .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
 
 export function AisSystemList() {
   const [searchParams] = useSearchParams();
@@ -102,6 +206,7 @@ export function AisSystemList() {
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   // Khóa bộ lọc đã dùng cho lần đếm gần nhất — dùng để bỏ truy vấn đếm khi chỉ
   // lật trang hoặc đổi cột sắp xếp.
@@ -197,6 +302,12 @@ export function AisSystemList() {
 
       if (orgRes.status === 'fulfilled' && Array.isArray(orgRes.value)) {
         setOrgUnitOptions(orgRes.value);
+        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, orgRes.value);
+        defaultOrgUnitRef.current = resolvedDefault;
+        if (resolvedDefault) {
+          setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
+          setAppliedFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
+        }
       }
       if (opRes.status === 'fulfilled' && Array.isArray(opRes.value)) {
         setOpCenters(opRes.value.map((item: any) => ({
@@ -380,10 +491,16 @@ export function AisSystemList() {
     }
   );
 
-  const handleFilterReset = () => {
+  const handleFilterSearch = (values: Record<string, any>) => {
     setPage(1);
-    setFilterValues({});
-    setAppliedFilterValues({});
+    setAppliedFilterValues(values);
+  };
+
+  const handleFilterReset = () => {
+    const defaultOrg = defaultOrgUnitRef.current;
+    setPage(1);
+    setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
+    setAppliedFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setFilterApprovalStatus(undefined);
   };
 
@@ -857,120 +974,7 @@ export function AisSystemList() {
   return (
     <ThemeTokenProvider tokens={customAisTokens}>
       <div className="ais-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        <style>{`
-          /* ── Cỡ chữ 13.5px chuẩn toàn màn Hệ thống AIS & filter sidebar ── */
-          .ais-page-wrapper,
-          .ais-page-wrapper .ant-table,
-          .ais-page-wrapper .ant-table-cell,
-          .ais-page-wrapper .ant-table-thead > tr > th,
-          .ais-page-wrapper .ant-table-tbody > tr > td,
-          .ais-page-wrapper .ant-input,
-          .ais-page-wrapper .ant-select,
-          .ais-page-wrapper .ant-select-selector,
-          .ais-page-wrapper .ant-select-selection-item,
-          .ais-page-wrapper .ant-select-selection-placeholder,
-          .ais-page-wrapper .ant-select-selection-search-input,
-          .ais-page-wrapper .ant-select-item-option-content,
-          .ais-page-wrapper .ant-tree-select,
-          .ais-page-wrapper .ant-tree-select .ant-select-selection-item,
-          .ais-page-wrapper .ant-tree-select .ant-select-selection-placeholder,
-          .ais-page-wrapper .ant-picker,
-          .ais-page-wrapper .ant-picker-input > input,
-          .ais-page-wrapper .ant-picker-range-separator,
-          .ais-page-wrapper .ant-btn,
-          .ais-page-wrapper .ant-pagination,
-          .ais-page-wrapper .ant-pagination-item,
-          .ais-page-wrapper .ant-pagination-total-text,
-          .ais-page-wrapper .ant-breadcrumb,
-          .ais-page-wrapper .ant-form-item-label > label,
-          .ais-page-wrapper input::placeholder,
-          .ais-page-wrapper .ant-picker-input > input::placeholder,
-          .ais-drawer-scope,
-          .ais-drawer-scope .ant-drawer-content,
-          .ais-drawer-scope .ant-tabs-tab,
-          .ais-drawer-scope .chk-detail-label,
-          .ais-drawer-scope .chk-detail-value,
-          .ais-drawer-scope .ant-table,
-          .ais-drawer-scope .ant-table-cell,
-          .ais-drawer-scope .ant-table-thead > tr > th,
-          .ais-drawer-scope .ant-btn,
-          .ais-drawer-scope .ant-select,
-          .ais-drawer-scope .ant-input,
-          .ais-drawer-scope .ant-form-item-label > label {
-            font-size: 13.5px !important;
-          }
-
-          /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
-          .ais-page-wrapper div:has(> button[aria-pressed]) {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            overflow-y: hidden !important;
-            justify-content: center !important;
-            justify-content: safe center !important;
-            align-items: center !important;
-            scrollbar-width: thin !important;
-            scrollbar-color: #cbd5e1 #f8fafc !important;
-            scroll-behavior: smooth !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
-          }
-          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
-            display: block !important;
-          }
-          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
-            background: #f1f5f9 !important;
-            border-radius: 999px !important;
-          }
-          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
-            background: #cbd5e1 !important;
-            border-radius: 999px !important;
-          }
-          .ais-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8 !important;
-          }
-          .ais-page-wrapper div:has(> button[aria-pressed]) > button {
-            white-space: nowrap !important;
-            flex-shrink: 0 !important;
-            cursor: pointer !important;
-          }
-
-          /* ── Responsive ScreenHeader co dãn đẹp khi zoom ── */
-          .ais-page-wrapper > div:first-of-type {
-            flex-wrap: wrap !important;
-            gap: 10px !important;
-          }
-
-          /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
-          .ais-drawer-scope .ant-drawer-content-wrapper {
-            max-width: 100vw !important;
-          }
-          @media (max-width: 1024px) {
-            .ais-drawer-scope .chk-detail-grid {
-              grid-template-columns: 1fr !important;
-              column-gap: 0 !important;
-            }
-            .ais-drawer-scope .chk-detail-row--full {
-              grid-column: 1 !important;
-            }
-          }
-          @media (max-width: 640px) {
-            .ais-drawer-scope .chk-detail-row {
-              flex-direction: column !important;
-              align-items: flex-start !important;
-              gap: 4px !important;
-              padding: 8px 0 !important;
-            }
-            .ais-drawer-scope .chk-detail-label {
-              width: 100% !important;
-            }
-            .ais-drawer-scope .chk-detail-value {
-              width: 100% !important;
-            }
-          }
-        `}</style>
+        <AisSystemGlobalStyles />
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
@@ -1001,12 +1005,10 @@ export function AisSystemList() {
               {/* ── BỘ LỌC CƠ BẢN (LUÔN HIỂN THỊ) — Chuẩn VTS / Bến cảng: 1. ĐVQL, 2. Tên, 3. Tình trạng ── */}
               <div style={{ marginBottom: 12, marginTop: spaceMd }}>
                 <div style={filterLabelStyle}>Đơn vị quản lý</div>
-                <OrgUnitTreeSelect
+                <FilterOrgUnitTreeSelect
                   organizations={orgUnitOptions}
-                  placeholder="Chọn đơn vị..."
+                  placeholder="Tất cả"
                   allowClear
-                  treeDefaultExpandAll={true}
-                  listHeight={256}
                   value={filterValues.orgUnitId}
                   onChange={(value) => {
                     setFilterValues((prev) => ({ ...prev, orgUnitId: value, vtsOperationCenterId: undefined }));

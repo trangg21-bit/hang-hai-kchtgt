@@ -17,6 +17,7 @@ import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
 import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -66,6 +68,11 @@ class CoastalStationLRITServiceTest {
     @InjectMocks
     private CoastalStationLRITService service;
 
+    @BeforeEach
+    void setUp() {
+        lenient().when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+    }
+
     @Test
     void doesNotRecordHistoryWhenCreatingDraft() {
         UUID stationId = UUID.randomUUID();
@@ -90,7 +97,7 @@ class CoastalStationLRITServiceTest {
     void keepsHistoryEmptyUntilFinalApproval() {
         UUID stationId = UUID.randomUUID();
         CoastalStationLRIT station = station(stationId, null, ApprovalStatus.DRAFT);
-        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(repository.findByIdAndDeletedAtIsNull(stationId)).thenReturn(Optional.of(station));
 
         assertThat(service.getHistory(stationId)).isEmpty();
         verifyNoInteractions(historyService);
@@ -104,7 +111,7 @@ class CoastalStationLRITServiceTest {
         CoastalStationLRIT station = station(stationId, oldSpatialId, ApprovalStatus.APPROVED);
         CoastalStationLRITUpdateRequest request = coordinateRequest("POINT(108.25 16.75)");
 
-        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(repository.findByIdAndDeletedAtIsNull(stationId)).thenReturn(Optional.of(station));
         when(repository.save(station)).thenReturn(station);
         when(gisSpatialObjectService.getCoordinatesBySpatialId(oldSpatialId)).thenReturn("POINT(106 10)");
         when(gisSpatialObjectService.syncSpatialObject(
@@ -122,7 +129,7 @@ class CoastalStationLRITServiceTest {
         ArgumentCaptor<Map<String, String>> changes = ArgumentCaptor.forClass(Map.class);
         verify(historyService).recordDeltaChanges(
                 eq(InfrastructureType.LRIT_STATION), eq(stationId), changes.capture(), any(), any());
-        assertThat(changes.getValue()).containsEntry("Tọa độ GIS", "POINT(106 10)");
+        assertThat(changes.getValue()).containsEntry("coordinates", "POINT(106 10)");
     }
 
     @Test
@@ -132,7 +139,7 @@ class CoastalStationLRITServiceTest {
         CoastalStationLRIT station = station(stationId, oldSpatialId, ApprovalStatus.DRAFT);
         CoastalStationLRITUpdateRequest request = coordinateRequest("POINT(108.25 16.75)");
 
-        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(repository.findByIdAndDeletedAtIsNull(stationId)).thenReturn(Optional.of(station));
         when(repository.save(station)).thenReturn(station);
         when(gisSpatialObjectService.syncSpatialObject(
                 eq(oldSpatialId), any(), any(), eq(GisGeometryType.POINT),
@@ -174,7 +181,7 @@ class CoastalStationLRITServiceTest {
         CoastalStationLRIT station = station(stationId, null, ApprovalStatus.PENDING_APPROVAL);
         station.setApproverLevel1(null);
 
-        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(repository.findByIdAndDeletedAtIsNull(stationId)).thenReturn(Optional.of(station));
         when(repository.save(station)).thenReturn(station);
 
         CoastalStationLRIT approved = service.approveLevel2(stationId);

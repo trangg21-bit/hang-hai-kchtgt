@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Input, Select, DatePicker } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -11,8 +11,9 @@ import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import EmptyState from '../../components/EmptyState';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import type { NavigationChannelResponse, ListParams, ApprovalStatus } from '../../types/navigationChannel';
 import { CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/navigationChannel';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -78,9 +79,11 @@ const TAB_COLOR: Record<string, string> = {
 
 export default function NavigationChannelChkList() {
   const isInIframe = window.self !== window.top;
+  const authUser = useAuthStore((s) => s.user);
   const hasPerm = useCallback((key: string) => usePermissionStore.getState().hasPermission(key), []);
 
   // ── Filters (DS/Lọc: #1/#2/#4/#5/#6/#8/#47/#48) ────────────────────
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterChannelCode, setFilterChannelCode] = useState('');
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
@@ -119,6 +122,9 @@ export default function NavigationChannelChkList() {
       try {
         const orgs = await organizationService.getTree();
         setOrganizations(orgs || []);
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, orgs || []);
+        defaultOrgUnitRef.current = resolvedDefault;
+        setFilterOrgUnitId(resolvedDefault);
       } catch (err) {
         console.error('Không tải được cây đơn vị quản lý', err);
       }
@@ -202,7 +208,7 @@ export default function NavigationChannelChkList() {
   const handleFilterReset = useCallback(() => {
     setFilterKeyword('');
     setFilterChannelCode('');
-    setFilterOrgUnitId(undefined);
+    setFilterOrgUnitId(defaultOrgUnitRef.current);
     setFilterSeaportId(undefined);
     setFilterProvinceId(undefined);
     setFilterConditionStatus(undefined);
@@ -390,11 +396,10 @@ export default function NavigationChannelChkList() {
     <>
       <div style={{ marginBottom: spaceFormField, marginTop: 16 }}>
         <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showSearch
           value={filterOrgUnitId}
           onChange={(v) => { setFilterOrgUnitId(v || undefined); setPage(1); }}
           style={filterInputStyle}

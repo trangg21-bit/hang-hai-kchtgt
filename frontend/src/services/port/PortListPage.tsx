@@ -12,7 +12,8 @@ import {
   DatePicker,
   Descriptions,
 } from 'antd';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { useAuthStore } from '../../store/authStore';
 import {
   PlusOutlined,
   DownloadOutlined,
@@ -894,11 +895,12 @@ export default function PortListPage() {
   }, [filterValues]);
 
   const handleFilterReset = useCallback(() => {
-    const defaultOrg = defaultOrgUnitId.current;
+    const defaultOrg = resolveDefaultOrgUnitId(useAuthStore.getState().user, orgUnits);
+    defaultOrgUnitId.current = defaultOrg;
     setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setFilterName('');
     setFilterCode('');
-    setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg || undefined);
+    setFilterOrgUnitId(defaultOrg);
     setFilterTinh('');
     setFilterPortGroup(undefined);
     setFilterPortClass(undefined);
@@ -908,7 +910,7 @@ export default function PortListPage() {
     setFilterApprovalStatus(undefined);
     setActiveStatusTab('');
     setPage(1);
-  }, []);
+  }, [orgUnits]);
 
   // Lọc live như Bến cảng: chọn/thay đổi bất cứ ô điều kiện nào trong sidebar là lọc ngay
   // (lắng nghe filterValues → forward sang các biến thật trong handleFilterApply → setPage(1)).
@@ -1083,20 +1085,11 @@ export default function PortListPage() {
           setOrgUnits(resp.data || []);
           const data = resp.data || [];
           if (data.length > 0 && !filterOrgUnitId) {
-            try {
-              const profileRes = await api.get('/users/me');
-              const profile = profileRes.data?.data ?? profileRes.data;
-              const userOrgId = profile?.orgUnitId;
-              const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : undefined;
-              defaultOrgUnitId.current = defaultId;
-              setFilterValues(prev => ({ ...prev, orgUnitId: defaultId }));
-              setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
-            } catch {
-              defaultOrgUnitId.current = data[0].id;
-              setFilterValues(prev => ({ ...prev, orgUnitId: data[0].id }));
-              setFilterOrgUnitId(data[0].id);
-            }
+            const user = useAuthStore.getState().user;
+            const defaultId = resolveDefaultOrgUnitId(user, data);
+            defaultOrgUnitId.current = defaultId;
+            setFilterValues(prev => ({ ...prev, orgUnitId: defaultId }));
+            setFilterOrgUnitId(defaultId);
           }
           setOrgUnitReady(true);
         } catch (err) {
@@ -1923,7 +1916,7 @@ export default function PortListPage() {
         ellipsis: false,
         sortable: true,
         sortOrder: sortField === 'updatedByName' ? sortOrder : null,
-        render: (v: string | null, record: CangBienResponse) => {
+        render: (_v: string | null, record: CangBienResponse) => {
           const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, (record as any).createdByName);
           const date = record.updatedAt || (record as any).createdAt;
           return (
@@ -1981,25 +1974,6 @@ export default function PortListPage() {
       cancelled = true;
     };
   }, [historyModalOpen, selectedRecord?.id]);
-
-  const loadMoreHistory = async () => {
-    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
-    setLoadingMoreHistory(true);
-    try {
-      const nextPage = historyPage + 1;
-      const history = await fetchportHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE);
-      if (history && history.length > 0) {
-        const filteredMore = history.filter((r: any) => r && !['spatialId', 'infrastructureList', 'attachments'].includes(r.changedField));
-        setHistoryRecords(prev => [...prev, ...filteredMore]);
-        setHistoryPage(nextPage);
-        setHasMoreHistory(history.length === HISTORY_PAGE_SIZE);
-      } else {
-        setHistoryPage(nextPage);
-        setHasMoreHistory(false);
-      }
-    } catch { /* ignore */ }
-    finally { setLoadingMoreHistory(false); }
-  };
 
   // ── Render ───────────────────────────────────────────────────────
   return (
@@ -2143,13 +2117,8 @@ export default function PortListPage() {
                 <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>
                   Đơn vị quản lý
                 </div>
-                <OrgUnitTreeSelect
+                <FilterOrgUnitTreeSelect
                   organizations={orgUnits}
-                  placeholder="Chọn đơn vị..."
-                  allowClear
-                  showPath
-                  allLabel="Tất cả"
-                  treeDefaultExpandAll={false}
                   value={filterValues.orgUnitId || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, orgUnitId: val }))}
                 />

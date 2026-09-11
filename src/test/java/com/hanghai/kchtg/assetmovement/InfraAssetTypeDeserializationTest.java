@@ -45,12 +45,12 @@ class InfraAssetTypeDeserializationTest {
         assertEquals(InfraAssetType.PORT_TERMINAL, converter.convert("4"));
         assertEquals(InfraAssetType.ANCHORAGE, converter.convert("ANCHORAGE"));
         assertEquals(InfraAssetType.ANCHORAGE, converter.convert("anchorage"));
-        assertEquals(InfraAssetType.ANCHORAGE, converter.convert("5"));
+        assertEquals(InfraAssetType.ANCHORAGE, converter.convert("9"));
         assertEquals(InfraAssetType.LIGHTHOUSE, converter.convert("LIGHTHOUSE"));
         assertEquals(InfraAssetType.LIGHTHOUSE, converter.convert("lighthouse"));
         assertEquals(InfraAssetType.LIGHTHOUSE, converter.convert("2"));
         assertEquals(InfraAssetType.DIKE_REVETMENT, converter.convert("DIKE_REVETMENT"));
         assertEquals(InfraAssetType.DIKE_REVETMENT, converter.convert("dike_revetment"));
-        assertEquals(InfraAssetType.DIKE_REVETMENT, converter.convert("7"));
+        assertEquals(InfraAssetType.DIKE_REVETMENT, converter.convert("11"));
     }
 }

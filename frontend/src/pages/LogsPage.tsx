@@ -20,8 +20,7 @@ import { colors } from '../themetokenchk';
 import * as themeTokenChk from '../themetokenchk';
 import { ThemeTokenProvider } from '../context/ThemeTokenContext';
 import { logService, type AccessLogEntry } from '../services/logService';
-import api from '../services/api';
-import { OrgUnitTreeSelect } from '../components/org-unit';
+import { FilterOrgUnitTreeSelect, useOrgUnitFilter } from '../components/org-unit';
 import { useAuthStore } from '../store/authStore';
 
 // ── Action translation: English code → Vietnamese display ─────────────────────
@@ -181,8 +180,6 @@ export default function LogsPage() {
   // ---- UI state ----
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [orgUnits, setOrgUnits] = useState<{ id: string; name: string; code?: string; parentId?: string }[]>([]);
-  const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [filters, setFilters] = useState<Record<string, any>>({
     dateRange: [dayjs().startOf('day'), dayjs().endOf('day')],
   });
@@ -190,9 +187,18 @@ export default function LogsPage() {
     dateRange: [Dayjs | null, Dayjs | null] | null;
     orgUnit?: string;
     email: string;
-  }>({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')], orgUnit: '__all__', email: '' });
+  }>({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')], orgUnit: undefined, email: '' });
 
-  const [filterOrgUnit, setFilterOrgUnit] = useState<string | undefined>();
+  const {
+    orgUnitId: filterOrgUnit,
+    setOrgUnitId: setFilterOrgUnit,
+    resetOrgUnit,
+    organizations: orgUnits,
+  } = useOrgUnitFilter({
+    onDefaultResolved: (defId) => {
+      setFilterValues((prev) => ({ ...prev, orgUnit: defId }));
+    },
+  });
   const [filterEmail, setFilterEmail] = useState('');
 
   // ---- Auth ----
@@ -212,29 +218,6 @@ export default function LogsPage() {
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const [tableBodyHeight, setTableBodyHeight] = useState(540);
 
-  // ---- Load org options (giống màn /cctv: fetch trực tiếp /common/options/org-units, không dùng cache) ----
-  const loadOrgOptions = async () => {
-    setLoadingOrgs(true);
-    try {
-      const res = await api.get('/common/options/org-units');
-      const items = res.data?.data;
-      const orgs = (Array.isArray(items) ? items : []).map((o: { id?: string; name?: string; code?: string; parentId?: string | null }) => ({
-        id: String(o.id),
-        name: o.name || 'Đơn vị',
-        code: o.code || undefined,
-        parentId: o.parentId ? String(o.parentId) : undefined,
-      }));
-      setOrgUnits(orgs);
-    } catch (error) {
-      console.error('Lỗi tải danh sách đơn vị:', error);
-    } finally {
-      setLoadingOrgs(false);
-    }
-  };
-
-  useEffect(() => {
-    loadOrgOptions();
-  }, []);
 
   // ---- Build API params from basic FilterBar ----
   const buildApiParams = (fv: Record<string, any>) => {
@@ -297,7 +280,6 @@ export default function LogsPage() {
       message.error('Ngày bắt đầu phải nhỏ hơn ngày kết thúc');
       return;
     }
-    loadOrgOptions();
     setFilters(values);
     setFilterOrgUnit(values.orgUnit === '__all__' ? undefined : values.orgUnit || undefined);
     setFilterEmail(email);
@@ -305,12 +287,13 @@ export default function LogsPage() {
   };
 
   const handleReset = () => {
-    setFilterValues({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')], orgUnit: '__all__', email: '' });
+    const defaultOrg = resetOrgUnit();
+    setFilterValues({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')], orgUnit: defaultOrg, email: '' });
     setFilters({ dateRange: [dayjs().startOf('day'), dayjs().endOf('day')] });
-    setFilterOrgUnit(undefined);
     setFilterEmail('');
     setPage(1);
   };
+
 
   // Giới hạn khoảng thời gian: chỉ chọn trong vòng 1 tháng trở lại, không cho chọn ngày tương lai
   // Measure available height for the table body so its bottom aligns with the
@@ -544,18 +527,14 @@ export default function LogsPage() {
             </div>
             <div style={{ marginBottom: spaceFormField }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
-              <OrgUnitTreeSelect
-                organizations={orgUnits}
-                placeholder="Chọn đơn vị"
+              <FilterOrgUnitTreeSelect
+                placeholder="Tất cả"
                 allowClear
-                showPath
-                allLabel="Tất cả"
-                treeDefaultExpandAll={false}
                 value={filterValues.orgUnit || undefined}
                 onChange={(val) => setFilterValues((prev) => ({ ...prev, orgUnit: val }))}
-                loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
+
             </div>
             <div style={{ marginBottom: spaceFormField }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Email</div>

@@ -87,7 +87,6 @@ export interface BuoyStationResponse {
   isActive: boolean;
   status: string;
   approvalStatus: string;
-  approvalLevel?: string;
   approvedBy?: string;
   approvedDate?: string;
   level1ApprovedBy?: string;
@@ -113,6 +112,7 @@ export interface BuoyStationResponse {
   incidentTime?: string;
   createdBy: string;
   createdByName?: string;
+  updatedBy?: string;
   updatedByName?: string;
   createdAt: string;
   updatedAt: string;
@@ -131,11 +131,9 @@ export interface ChangeHistory {
   id: string;
   refId: string;
   refType: string;
-  approvalLevel?: string;
   status?: string;
   approvedBy?: string;
   approvedDate?: string;
-  reason?: string;
   changedField?: string;
   previousValue?: string | null;
   newValue?: string | null;

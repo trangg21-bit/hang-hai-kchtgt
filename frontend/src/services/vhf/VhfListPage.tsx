@@ -59,7 +59,7 @@ import {
   Tabs,
   Typography,
 } from "antd";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
 import {
   PlusOutlined,
   SearchOutlined,
@@ -577,6 +577,7 @@ const VhfListPage = () => {
 
   // Bộ lọc
   const [filterCollapsed, setFilterCollapsed] = useState(false);
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterValues, setFilterValues] = useState({
     orgUnitId: "" as string,
     deviceName: "",
@@ -1985,14 +1986,10 @@ const VhfListPage = () => {
                 labelGap={spaceSm}
                 label={<span>Đơn vị quản lý <span style={{ color: statusCritical }}>*</span></span>}
               >
-                <OrgUnitTreeSelect
+                <FilterOrgUnitTreeSelect
                   organizations={orgUnits}
-                  placeholder="Chọn đơn vị..."
+                  placeholder="Tất cả"
                   allowClear
-                  showPath
-                  allLabel="Tất cả"
-                  treeDefaultExpandAll={false}
-                  showSearch
                   value={filterValues.orgUnitId || undefined}
                   onChange={(val) => {
                     setFilterValues((prev) => ({ ...prev, orgUnitId: (val as string) || "" }));

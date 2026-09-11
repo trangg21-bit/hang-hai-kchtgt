@@ -689,13 +689,11 @@ public class DryPortService {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.DRY_PORT)
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                     .approvedBy(actor)
                     .approvedDate(LocalDateTime.now())
-                    .reason("Tải lên tài liệu đính kèm: " + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue("—")
+                    .changedField("attachments")
+                    .previousValue(null)
                     .newValue(name)
                     .build());
         }
@@ -721,14 +719,12 @@ public class DryPortService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(id)
                 .refType(InfrastructureType.DRY_PORT)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
                 .approvedDate(LocalDateTime.now())
-                .reason("Xóa tài liệu đính kèm (mã tệp): " + attId)
-                .changedField("Tài liệu đính kèm")
+                .changedField("attachments")
                 .previousValue(attId.toString())
-                .newValue("—")
+                .newValue(null)
                 .build());
         log.info("[DryPortService] Đã ghi lịch sử xóa file đính kèm của Cảng cạn [{}]: {}", id, attId);
     }

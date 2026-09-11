@@ -13,7 +13,7 @@ import { dryPortCRUD, dryPortApproval, dryPortHistory } from '../../services/por
 import type { DryPort } from '../../types/port';
 import DryPortDetailContent from './DryPortDetailContent';
 import DryPortForm, { type DryPortFormHandle } from './DryPortForm';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { OrgUnitTreeSelect, FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { userService } from '../../services/userService';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
@@ -206,7 +206,6 @@ function getDryPortActionMeta(item: any): { label: string; color: string; bg: st
   const rawAction = (item?.action || '').toString().trim().toUpperCase();
   const rawStatus = (item?.status || item?.approvalStatus || '').toString().trim().toUpperCase();
   const rawReason = (item?.approvalReason || item?.reason || item?.content || item?.note || '').toString().trim().toLowerCase();
-  const level = typeof item?.approvalLevel === 'number' ? item.approvalLevel : parseInt(item?.approvalLevel, 10);
   const changes = Array.isArray(item?.changes) ? item.changes : [];
 
   if (rawAction === 'CREATE') {
@@ -250,7 +249,7 @@ function getDryPortActionMeta(item: any): { label: string; color: string; bg: st
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+  if (rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
@@ -495,17 +494,9 @@ export default function DryPortListPage() {
         setOrganizations(orgs);
         if (orgs.length > 0 && !defaultOrgApplied.current) {
           defaultOrgApplied.current = true;
-          try {
-            const profileRes = await api.get('/users/me');
-            const profile = profileRes.data?.data ?? profileRes.data;
-            const userOrgId = profile?.orgUnitId;
-            const defaultId = userOrgId ? (orgs.find((o: any) => o.id === userOrgId) ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
-          } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterOrgUnitId(orgs[0].id);
-          }
+          const defaultId = resolveDefaultOrgUnitId(currentUser, orgs);
+          defaultOrgUnitId.current = defaultId;
+          setFilterOrgUnitId(defaultId);
         }
       } catch { /* ignore */ }
       finally { setOrgUnitReady(true); }
@@ -582,7 +573,8 @@ export default function DryPortListPage() {
   }, [search]);
 
   const handleFilterReset = useCallback(() => {
-    const defaultOrg = defaultOrgUnitId.current;
+    const defaultOrg = resolveDefaultOrgUnitId(currentUser, organizations);
+    defaultOrgUnitId.current = defaultOrg;
     setSearch('');
     setFilterProvince(undefined);
     setFilterRegion(undefined);
@@ -591,10 +583,10 @@ export default function DryPortListPage() {
     setFilterUpdatedTo(undefined);
     setFilterCode(undefined);
     setFilterTransportCorridor(undefined);
-    setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
+    setFilterOrgUnitId(defaultOrg);
     setActiveTab('all');
     setPage(1);
-  }, []);
+  }, [currentUser, organizations]);
 
   const openDetailModal = useCallback(async (record: DryPort) => {
     setDetailRecord(record);
@@ -888,13 +880,8 @@ export default function DryPortListPage() {
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
                 Đơn vị quản lý
               </div>
-              <OrgUnitTreeSelect
+              <FilterOrgUnitTreeSelect
                 organizations={organizations}
-                placeholder="Chọn đơn vị..."
-                allowClear
-                showPath
-                allLabel="Tất cả"
-                treeDefaultExpandAll={false}
                 value={filterOrgUnitId}
                 onChange={(val) => { setFilterOrgUnitId(val); setPage(1); }}
               />

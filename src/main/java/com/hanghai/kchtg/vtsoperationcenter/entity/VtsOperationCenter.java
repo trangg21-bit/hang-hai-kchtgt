@@ -26,6 +26,7 @@ import java.util.UUID;
 @FieldNameConstants
 @EqualsAndHashCode(callSuper = true)
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 public class VtsOperationCenter extends BaseApprovableEntity {
 
     @Column(name = "code", nullable = false, unique = true, length = 50)

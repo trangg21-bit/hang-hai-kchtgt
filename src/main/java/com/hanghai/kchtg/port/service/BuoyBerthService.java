@@ -339,8 +339,7 @@ public class BuoyBerthService {
                 .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(InfrastructureHistoryStatus.DELETED)
                 .approvedBy(SecurityUtils.getCurrentUserId())
-                .reason("Xóa bến phao")
-                .changedField("Trạng thái phê duyệt")
+                .changedField("approvalStatus")
                 .newValue("Trạng thái phê duyệt=Đã xóa")
                 .build());
         if (entity.getSpatialId() != null) {
@@ -492,10 +491,9 @@ public class BuoyBerthService {
                     .status(status)
                     .approvedBy(actorId)
                     .approvedDate(LocalDateTime.now())
-                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(uploaded ? "—" : name)
-                    .newValue(uploaded ? name : "—")
+                    .changedField("attachments")
+                    .previousValue(uploaded ? null : name)
+                    .newValue(uploaded ? name : null)
                     .build());
         } catch (Exception e) {
             log.warn("Không thể ghi lịch sử đính kèm cho bến phao {}: {}", buoyBerthId, e.getMessage());

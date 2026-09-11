@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Row, Select } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { shipPortCallCRUD } from '../../services/shipPortCallService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { FilterOrgUnitTreeSelect, FormOrgUnitTreeSelect } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, FormOrgUnitTreeSelect, useUserDefaultOrgUnit } from '../../components/org-unit';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
@@ -67,9 +67,19 @@ export default function ShipPortCallPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   // ── Bộ lọc sidebar ──
+  const { defaultOrgUnitId } = useUserDefaultOrgUnit();
   const [keyword, setKeyword] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
-  const [orgUnitId, setOrgUnitId] = useState<string | undefined>();
+  const [orgUnitId, setOrgUnitId] = useState<string | undefined>(defaultOrgUnitId);
+  const defaultOrgApplied = useRef(false);
+
+  useEffect(() => {
+    if (!defaultOrgApplied.current && defaultOrgUnitId !== undefined) {
+      defaultOrgApplied.current = true;
+      setOrgUnitId(defaultOrgUnitId);
+    }
+  }, [defaultOrgUnitId]);
+
   const [reportRange, setReportRange] = useState<DateRange>(null);
   const [arrivalRange, setArrivalRange] = useState<DateRange>(null);
   const [departureRange, setDepartureRange] = useState<DateRange>(null);
@@ -118,12 +128,12 @@ export default function ShipPortCallPage() {
   const handleFilterReset = useCallback(() => {
     setKeywordInput('');
     setKeyword('');
-    setOrgUnitId(undefined);
+    setOrgUnitId(defaultOrgUnitId);
     setReportRange(null);
     setArrivalRange(null);
     setDepartureRange(null);
     setPage(1);
-  }, []);
+  }, [defaultOrgUnitId]);
 
   const handleRangeChange = (setter: (v: DateRange) => void) => (dates: DateRange) => setter(dates);
 
@@ -322,7 +332,7 @@ export default function ShipPortCallPage() {
         filterContent={
           <Form layout="vertical" onFinish={applyFilters}>
             <Form.Item label="Đơn vị quản lý" style={{ marginBottom: spaceFormField }}>
-              <FilterOrgUnitTreeSelect value={orgUnitId} onChange={setOrgUnitId} placeholder="Chọn đơn vị quản lý" />
+              <FilterOrgUnitTreeSelect value={orgUnitId} onChange={setOrgUnitId} placeholder="Tất cả" />
             </Form.Item>
             <Form.Item label="Tìm kiếm từ khóa" style={{ marginBottom: spaceFormField }}>
               <Input

@@ -18,7 +18,7 @@ import {
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
-  getDatePickerProps,
+  getDatePickerProps, textAreaStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { BERTH_ACTIVITY_STATUS_MAP } from '../../types/port';
@@ -639,16 +639,14 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   <DatePicker {...getDatePickerProps({ placeholder: 'Chọn thời điểm...' })} />
                 </Form.Item>
               </Col>
-              <Col span={12}>
+              <Col span={24}>
                 <Form.Item name="openingDecision" {...labelProps('Quyết định công bố/ Văn bản cho phép khai thác')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập quyết định công bố" maxLength={2000} showCount style={inputStyle} />
+                  <Input.TextArea placeholder="Nhập quyết định công bố" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
               <Col span={24}>
                 <Form.Item name="investmentAgreement" {...labelProps('Văn bản thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập văn bản thỏa thuận" maxLength={2000} showCount style={inputStyle} />
+                  <Input.TextArea placeholder="Nhập văn bản thỏa thuận" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>

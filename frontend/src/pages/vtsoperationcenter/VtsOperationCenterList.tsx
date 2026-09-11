@@ -27,11 +27,11 @@ import {
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
-import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 
 const fontSizeMd = 13.5;
 
@@ -51,6 +51,107 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
 };
+
+const VtsOperationCenterGlobalStyles = React.memo(() => (
+  <style>{`
+    .vts-page-wrapper,
+    .vts-page-wrapper .ant-table,
+    .vts-page-wrapper .ant-table-cell,
+    .vts-page-wrapper .ant-input,
+    .vts-page-wrapper .ant-select,
+    .vts-page-wrapper .ant-select-selection-item,
+    .vts-page-wrapper .ant-select-selection-placeholder,
+    .vts-page-wrapper .ant-picker,
+    .vts-page-wrapper .ant-picker-input > input,
+    .vts-page-wrapper .ant-btn,
+    .vts-page-wrapper .ant-pagination,
+    .vts-page-wrapper .ant-breadcrumb,
+    .vts-page-wrapper .filter-label,
+    .vts-drawer-scope,
+    .vts-drawer-scope .ant-drawer-content,
+    .vts-drawer-scope .ant-tabs-tab,
+    .vts-drawer-scope .chk-detail-label,
+    .vts-drawer-scope .chk-detail-value,
+    .vts-drawer-scope .ant-table,
+    .vts-drawer-scope .ant-table-cell,
+    .vts-drawer-scope .ant-table-thead > tr > th,
+    .vts-drawer-scope .ant-btn,
+    .vts-drawer-scope .ant-select,
+    .vts-drawer-scope .ant-input,
+    .vts-drawer-scope .ant-form-item-label > label {
+      font-size: 13.5px !important;
+    }
+    .vts-page-wrapper .screen-header {
+      flex-wrap: wrap !important;
+      gap: 10px !important;
+    }
+
+    /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
+    .vts-page-wrapper div:has(> button[aria-pressed]) {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      justify-content: center !important;
+      justify-content: safe center !important;
+      align-items: center !important;
+      scrollbar-width: thin !important;
+      scrollbar-color: #cbd5e1 #f8fafc !important;
+      scroll-behavior: smooth !important;
+      -webkit-overflow-scrolling: touch !important;
+      padding: 2px 16px 6px 16px !important;
+      gap: 20px !important;
+    }
+    .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+      height: 6px !important;
+      display: block !important;
+    }
+    .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+      background: #f1f5f9 !important;
+      border-radius: 999px !important;
+    }
+    .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+      background: #cbd5e1 !important;
+      border-radius: 999px !important;
+    }
+    .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8 !important;
+    }
+    .vts-page-wrapper div:has(> button[aria-pressed]) > button {
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      cursor: pointer !important;
+    }
+
+    /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
+    .vts-drawer-scope .ant-drawer-content-wrapper {
+      max-width: 100vw !important;
+    }
+    @media (max-width: 1024px) {
+      .vts-drawer-scope .chk-detail-grid {
+        grid-template-columns: 1fr !important;
+        column-gap: 0 !important;
+      }
+      .vts-drawer-scope .chk-detail-row--full {
+        grid-column: 1 !important;
+      }
+    }
+    @media (max-width: 640px) {
+      .vts-drawer-scope .chk-detail-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 4px !important;
+        padding: 8px 0 !important;
+      }
+      .vts-drawer-scope .chk-detail-label {
+        width: 100% !important;
+      }
+      .vts-drawer-scope .chk-detail-value {
+        width: 100% !important;
+      }
+    }
+  `}</style>
+));
 
 export default function VtsOperationCenterList() {
   const [searchParams] = useSearchParams();
@@ -72,6 +173,7 @@ export default function VtsOperationCenterList() {
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterConditionStatus, setFilterConditionStatus] = useState<ConditionStatus | undefined>();
@@ -165,19 +267,26 @@ export default function VtsOperationCenterList() {
           vtsSystemCRUD.getScopedPortOptions(),
           vtsSystemCRUD.getOptions(),
         ]);
-        setOrgUnitOptions((orgs || []).map((o: { id: string | number; name?: string; unitName?: string; tenDonVi?: string; code?: string; maDonVi?: string; parentId?: string | number }) => ({
+        const mappedOrgs = (orgs || []).map((o: { id: string | number; name?: string; unitName?: string; tenDonVi?: string; code?: string; maDonVi?: string; parentId?: string | number }) => ({
           id: String(o.id),
           name: o.name || o.unitName || o.tenDonVi || 'Đơn vị',
           code: o.code || o.maDonVi,
           parentId: o.parentId ? String(o.parentId) : undefined,
-        })));
+        }));
+        setOrgUnitOptions(mappedOrgs);
         setPortOptions(Array.isArray(ports) ? ports : []);
         setVtsSystemOptions(Array.isArray(systems) ? systems : []);
+        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, mappedOrgs);
+        defaultOrgUnitRef.current = resolvedDefault;
+        if (resolvedDefault) {
+          setFilterOrgUnitId(resolvedDefault);
+          setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
+        }
       } catch (e) {
         console.error('Failed to fetch lookup options', e);
       }
     })();
-  }, []);
+  }, [currentUser]);
 
   const filteredPortOptions = useMemo(() => {
     if (!filterValues.orgUnitId) return portOptions;
@@ -431,15 +540,17 @@ export default function VtsOperationCenterList() {
   };
 
   const handleFilterReset = () => {
+    const defaultOrg = defaultOrgUnitRef.current;
     setFilterName('');
     setFilterCode('');
     setFilterConditionStatus(undefined);
-    setFilterOrgUnitId(undefined);
+    setFilterOrgUnitId(defaultOrg);
     setFilterPortId(undefined);
     setFilterVtsSystemId(undefined);
     setFilterProvinceId(undefined);
     setFilterUpdatedFrom(undefined);
     setFilterUpdatedTo(undefined);
+    setFilterValues(defaultOrg ? { orgUnitId: defaultOrg } : {});
     setPage(1);
   };
 
@@ -714,117 +825,7 @@ export default function VtsOperationCenterList() {
   return (
     <ThemeTokenProvider tokens={customVtsTokens}>
       <div className="vts-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-        <style>{`
-          .vts-page-wrapper,
-          .vts-page-wrapper .ant-table,
-          .vts-page-wrapper .ant-table-cell,
-          .vts-page-wrapper .ant-input,
-          .vts-page-wrapper .ant-select,
-          .vts-page-wrapper .ant-select-selection-item,
-          .vts-page-wrapper .ant-select-selection-placeholder,
-          .vts-page-wrapper .ant-picker,
-          .vts-page-wrapper .ant-picker-input > input,
-          .vts-page-wrapper .ant-btn,
-          .vts-page-wrapper .ant-pagination,
-          .vts-page-wrapper .ant-breadcrumb,
-          .vts-page-wrapper .filter-label,
-          .vts-drawer-scope,
-          .vts-drawer-scope .ant-drawer-content,
-          .vts-drawer-scope .ant-tabs-tab,
-          .vts-drawer-scope .chk-detail-label,
-          .vts-drawer-scope .chk-detail-value,
-          .vts-drawer-scope .ant-table,
-          .vts-drawer-scope .ant-table-cell,
-          .vts-drawer-scope .ant-table-thead > tr > th,
-          .vts-drawer-scope .ant-btn,
-          .vts-drawer-scope .ant-select,
-          .vts-drawer-scope .ant-input,
-          .vts-drawer-scope .ant-form-item-label > label,
-          .berth-drawer-scope,
-          .berth-drawer-scope .ant-drawer-content,
-          .berth-drawer-scope .ant-tabs-tab,
-          .berth-drawer-scope .chk-detail-label,
-          .berth-drawer-scope .chk-detail-value,
-          .berth-drawer-scope .ant-table,
-          .berth-drawer-scope .ant-table-cell,
-          .berth-drawer-scope .ant-table-thead > tr > th,
-          .berth-drawer-scope .ant-btn,
-          .berth-drawer-scope .ant-select,
-          .berth-drawer-scope .ant-input,
-          .berth-drawer-scope .ant-form-item-label > label {
-            font-size: 13.5px !important;
-          }
-          .vts-page-wrapper .screen-header {
-            flex-wrap: wrap !important;
-            gap: 10px !important;
-          }
-
-          /* ── Responsive StatusTabs: Căn giữa khi đủ chỗ, thanh cuộn ngang khi tràn màn hình ── */
-          .vts-page-wrapper div:has(> button[aria-pressed]) {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            overflow-y: hidden !important;
-            justify-content: center !important;
-            justify-content: safe center !important;
-            align-items: center !important;
-            scrollbar-width: thin !important;
-            scrollbar-color: #cbd5e1 #f8fafc !important;
-            scroll-behavior: smooth !important;
-            -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
-          }
-          .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
-            display: block !important;
-          }
-          .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
-            background: #f1f5f9 !important;
-            border-radius: 999px !important;
-          }
-          .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
-            background: #cbd5e1 !important;
-            border-radius: 999px !important;
-          }
-          .vts-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8 !important;
-          }
-          .vts-page-wrapper div:has(> button[aria-pressed]) > button {
-            white-space: nowrap !important;
-            flex-shrink: 0 !important;
-            cursor: pointer !important;
-          }
-
-          /* ── Responsive Drawers: Không tràn viền khi màn hình nhỏ / zoom cao ── */
-          .vts-drawer-scope .ant-drawer-content-wrapper,
-          .berth-drawer-scope .ant-drawer-content-wrapper {
-            max-width: 100vw !important;
-          }
-          @media (max-width: 1024px) {
-            .vts-drawer-scope .chk-detail-grid {
-              grid-template-columns: 1fr !important;
-              column-gap: 0 !important;
-            }
-            .vts-drawer-scope .chk-detail-row--full {
-              grid-column: 1 !important;
-            }
-          }
-          @media (max-width: 640px) {
-            .vts-drawer-scope .chk-detail-row {
-              flex-direction: column !important;
-              align-items: flex-start !important;
-              gap: 4px !important;
-              padding: 8px 0 !important;
-            }
-            .vts-drawer-scope .chk-detail-label {
-              width: 100% !important;
-            }
-            .vts-drawer-scope .chk-detail-value {
-              width: 100% !important;
-            }
-          }
-        `}</style>
+        <VtsOperationCenterGlobalStyles />
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
@@ -867,12 +868,10 @@ export default function VtsOperationCenterList() {
               {/* ── BỘ LỌC CƠ BẢN (LUÔN HIỂN THỊ) — Chuẩn Bến cảng: 1. ĐVQL, 2. Tên KCHT, 3. Tình trạng ── */}
               <div style={{ marginBottom: 12, marginTop: spaceMd }}>
                 <div style={filterLabelStyle}>Đơn vị quản lý</div>
-                <OrgUnitTreeSelect
+                <FilterOrgUnitTreeSelect
                   organizations={orgUnitOptions}
-                  placeholder="Chọn đơn vị..."
+                  placeholder="Tất cả"
                   allowClear
-                  treeDefaultExpandAll={true}
-                  listHeight={256}
                   value={filterValues.orgUnitId as string | undefined}
                   onChange={(value) => {
                     setFilterValues((prev) => ({ ...prev, orgUnitId: value, portId: undefined, vtsSystemId: undefined }));
@@ -977,8 +976,6 @@ export default function VtsOperationCenterList() {
                   <div style={{ marginBottom: 12 }}>
                     <div style={filterLabelStyle}>Ngày cập nhật</div>
                     <DatePicker.RangePicker
-                      format="DD/MM/YYYY"
-                      placeholder={['Từ ngày', 'Đến ngày']}
                       allowClear
                       {...getRangePickerProps()}
                       value={filterValues.updateDateRange as [dayjs.Dayjs | null, dayjs.Dayjs | null] | undefined}

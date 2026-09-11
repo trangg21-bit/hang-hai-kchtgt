@@ -58,16 +58,13 @@ export interface UpdateShipRepairFacilityRequest extends CreateShipRepairFacilit
 
 export interface ApprovalRequest {
   decision: string;
-  reason?: string;
 }
 
 export interface HistoryEntry {
   id: number;
-  approvalLevel?: number;
   approvalStatus: string;
   approvedBy: string;
   approvedDate: string;
-  reason?: string;
 }
 
 export interface ListParams {

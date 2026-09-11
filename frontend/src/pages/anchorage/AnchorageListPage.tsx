@@ -14,13 +14,14 @@ import { anchorageCRUD, anchorageApproval, buoyBerthCRUD, portCRUD } from '../..
 import type { Anchorage } from '../../types/port';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -580,6 +581,7 @@ export default function AnchorageListPage() {
   const isEmbeddedAction = window.self !== window.top
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
+  const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
 
@@ -884,18 +886,9 @@ export default function AnchorageListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
-        if (data.length > 0) {
-          try {
-            const p = await api.get('/users/me');
-            const uOrgId = (p.data?.data ?? p.data)?.orgUnitId;
-            const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__';
-            setOrgUnit(matchedOrgId);
-            defaultOrgUnitRef.current = matchedOrgId;
-          } catch {
-            setOrgUnit(data[0].id);
-            defaultOrgUnitRef.current = data[0].id;
-          }
-        }
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+        setOrgUnit(resolvedDefault);
+        defaultOrgUnitRef.current = resolvedDefault;
       } catch {}
     })();
 
@@ -1057,7 +1050,7 @@ export default function AnchorageListPage() {
   }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
-    const oid = defaultOrgUnitRef.current || '__all__';
+    const oid = defaultOrgUnitRef.current;
     setOrgUnit(oid);
     setNameInput('');
     setCodeInput('');
@@ -1212,13 +1205,10 @@ export default function AnchorageListPage() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý
         </div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
           value={orgUnit}
           onChange={(v) => { setOrgUnit(v); setPage(1); }}
         />

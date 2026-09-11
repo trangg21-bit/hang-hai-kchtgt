@@ -4678,15 +4678,13 @@ export default function GISChartView() {
                         form={searchForm}
                         layout="vertical"
                         onFinish={() => void handleSearchInfrastructure(1, searchPageSize)}
-                        initialValues={{ orgUnitId: '__all__', kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}
+                        initialValues={{ orgUnitId: undefined, kchtType: urlKchtType, province: urlProvince || undefined, search: urlSearch, objectType: undefined }}
                         style={{ width: '100%', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}
                       >
                         <Form.Item name="orgUnitId" label={<span style={filterLabelStyle}>Đơn vị quản lý</span>} style={formFieldStyle}>
                         <OrgUnitTreeSelect
                           organizations={orgUnits}
-                          placeholder="Chọn đơn vị quản lý..."
-                          allLabel="Tất cả đơn vị"
-                          showPath
+                          placeholder="Tất cả"
                           showSearch
                           allowClear
                           treeDefaultExpandAll={false}

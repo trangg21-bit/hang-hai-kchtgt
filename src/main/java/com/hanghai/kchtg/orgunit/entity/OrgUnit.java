@@ -52,6 +52,10 @@ public class OrgUnit extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String name;
 
+    /** Mã đơn vị (ví dụ: G17.43, G17.72, G17.74). */
+    @Column(length = 100)
+    private String code;
+
     /**
      * Parent unit ID for hierarchical organisation. null indicates a root-level
      * unit. BR-016

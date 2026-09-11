@@ -912,10 +912,9 @@ public class AnchorageService {
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
-                    .changedField("Tài liệu đính kèm")
-                    .previousValue(uploaded ? "—" : name)
-                    .newValue(uploaded ? name : "—")
+                    .changedField("attachments")
+                    .previousValue(uploaded ? null : name)
+                    .newValue(uploaded ? name : null)
                     .build());
             log.info("Đã ghi lịch sử {} file đính kèm của Khu neo đậu [{}]: {}",
                     uploaded ? "tải lên" : "xóa", anchorageId, name);

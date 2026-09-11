@@ -16,6 +16,7 @@ export interface ApprovalStatusCounts {
   APPROVED?: number;
   REJECTED_LEVEL1?: number;
   REJECTED_LEVEL2?: number;
+  ARCHIVED?: number;
   // Fallbacks for legacy/camelCase properties
   draft?: number;
   pending?: number;
@@ -30,12 +31,15 @@ export interface ApprovalStatusCounts {
   REJECTED?: number;
   rejected?: number;
   rejectedLevel2?: number;
+  archived?: number;
+  deleted?: number;
+  DELETED?: number;
   [key: string]: number | undefined;
 }
 
 /**
- * 7 tab trang thai phe duyet chuan theo quy dinh he thong:
- * Tat ca, Luu tam, Cho Cang vu duyet, Cho Cuc duyet, Da duyet, Tu choi C1, Tu choi C2.
+ * 8 tab trang thai phe duyet chuan theo quy dinh he thong:
+ * Tat ca, Luu tam, Cho Cang vu duyet, Cho Cuc duyet, Da duyet, Tu choi C1, Tu choi C2, Da xoa.
  */
 export const STANDARD_APPROVAL_STATUS_CONFIG = [
   { key: 'ALL', label: 'Tất cả', color: actionPrimary },
@@ -45,6 +49,7 @@ export const STANDARD_APPROVAL_STATUS_CONFIG = [
   { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', color: statusOperational },
   { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp cục', color: statusCritical },
+  { key: ApprovalStatus.ARCHIVED, label: 'Đã xóa', color: statusCritical },
 ] as const;
 
 /**
@@ -61,8 +66,9 @@ export function buildStandardApprovalTabs(
   const a = Number(counts?.APPROVED ?? counts?.approved ?? 0) + Number(counts?.APPROVED_LEVEL2 ?? counts?.approvedLevel2 ?? 0);
   const r1 = Number(counts?.REJECTED_LEVEL1 ?? counts?.rejectedLevel1 ?? counts?.REJECTED ?? counts?.rejected ?? 0);
   const r2 = Number(counts?.REJECTED_LEVEL2 ?? counts?.rejectedLevel2 ?? 0);
+  const arc = Number(counts?.ARCHIVED ?? counts?.archived ?? counts?.DELETED ?? counts?.deleted ?? 0);
 
-  const countAll = d + p + a1 + a + r1 + r2;
+  const countAll = d + p + a1 + a + r1 + r2 + arc;
 
   return [
     { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !currentStatus || currentStatus === 'ALL' || currentStatus === 'all' },
@@ -72,6 +78,7 @@ export function buildStandardApprovalTabs(
     { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: a, color: statusOperational, active: currentStatus === ApprovalStatus.APPROVED || currentStatus === 'APPROVED' },
     { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: r1, color: statusCritical, active: currentStatus === ApprovalStatus.REJECTED_LEVEL1 || currentStatus === 'REJECTED_LEVEL1' },
     { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp cục', count: r2, color: statusCritical, active: currentStatus === ApprovalStatus.REJECTED_LEVEL2 || currentStatus === 'REJECTED_LEVEL2' },
+    { key: ApprovalStatus.ARCHIVED, label: 'Đã xóa', count: arc, color: statusCritical, active: currentStatus === ApprovalStatus.ARCHIVED || currentStatus === 'ARCHIVED' },
   ];
 }
 

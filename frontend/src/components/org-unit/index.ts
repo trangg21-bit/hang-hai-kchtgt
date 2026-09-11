@@ -21,4 +21,15 @@ export {
   resolveOrgSubtreeIds,
 };
 export type { OrgUnitTreeOption, OrgUnitTreeNode, OrgUnitTreeSelectProps } from './OrgUnitTreeSelect';
+
+export {
+  useUserDefaultOrgUnit,
+  useOrgUnitFilter,
+  resolveDefaultOrgUnitId,
+  isMinistryLevelUser,
+  MINISTRY_ROOT_ID,
+  MINISTRY_ROOT_CODE,
+} from './useUserDefaultOrgUnit';
+export type { UseOrgUnitFilterOptions } from './useUserDefaultOrgUnit';
+
 export default OrgUnitTreeSelect;

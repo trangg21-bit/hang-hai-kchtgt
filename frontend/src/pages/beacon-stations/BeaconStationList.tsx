@@ -57,7 +57,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { fmtNum } from '../../utils/numFmt';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -310,6 +310,7 @@ export default function BeaconStationList() {
     hasPerm('beaconstation:approvec2') || hasPerm('beaconstation:approve')
     || hasPerm('data:approvec2') || hasPerm('*');
 
+  const authUser = useAuthStore((s) => s.user);
   // ── Filter state ─────────────────────────────────────────────────
   const [inputName, setInputName] = useState('');
   const [inputCode, setInputCode] = useState('');
@@ -574,7 +575,7 @@ export default function BeaconStationList() {
     setFilterName(''); setFilterCode(''); setFilterType(undefined);
     setFilterLightModel(''); setFilterStatus(undefined); setFilterSeaportId(undefined);
     const defaultOrg = defaultOrgUnitId.current;
-    setFilterUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
+    setFilterUnitId(defaultOrg);
     setFilterOperator(''); setFilterProvinceId(undefined); setFilterOperationalStatus(undefined);
     setFilterCommissionedFrom(''); setFilterCommissionedTo(''); setFilterUpdatedBy(undefined);
     setFilterUpdatedFrom(''); setFilterUpdatedTo('');
@@ -1020,16 +1021,13 @@ export default function BeaconStationList() {
     <>
       <div style={{ marginBottom: 12, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
           value={filterUnitId}
           onChange={(v) => { setFilterUnitId(v); setPage(1); }}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
-          style={{ ...selectStyle, width: '100%' }}
+          style={{ width: '100%' }}
         />
       </div>
 

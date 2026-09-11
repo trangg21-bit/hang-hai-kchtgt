@@ -8,7 +8,6 @@ import {
   Button,
   Modal,
   Input,
-  Alert,
   Space,
   Form,
   DatePicker,
@@ -20,8 +19,8 @@ import { SearchOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
-import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
+
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { userService } from '../../services/userService';
@@ -69,7 +68,7 @@ import {
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, useOrgUnitFilter } from '../../components/org-unit';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import ApprovalModal from '../../components/shared/ApprovalModal';
@@ -275,10 +274,6 @@ export default function BuoyListPage() {
   const currentUser = useAuthStore((s: any) => s.user);
 
   // ── Filter state ─────────────────────────────────────────────────
-  const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
-  const defaultOrgUnitId = useRef<string | undefined>(undefined);
-  const defaultOrgApplied = useRef(false);
-  const [orgUnitReady, setOrgUnitReady] = useState(false);
   const [filterStationId, setFilterStationId] = useState<string | undefined>();
 
   // Bộ lọc thường (luôn hiển thị)
@@ -290,6 +285,16 @@ export default function BuoyListPage() {
   const [filterCondition, setFilterCondition] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
+
+  const {
+    orgUnitId: managingUnitId,
+    setOrgUnitId: setManagingUnitId,
+    resetOrgUnit,
+    organizations,
+    orgLevel2Map,
+    orgMap,
+    isReady: orgUnitReady,
+  } = useOrgUnitFilter();
 
   const [activeTab, setActiveTab] = useState('all');
   const [sortField, setSortField] = useState<string>('updatedAt');
@@ -307,23 +312,8 @@ export default function BuoyListPage() {
   const [isError, setIsError] = useState(false);
 
   // ── Organizations + Users for lookup ────────────────────────────
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
-  const orgMap = useMemo(() => {
-    const map = new Map<string, string>();
-    organizations.forEach((o) => { map.set(o.id, o.name); });
-    return map;
-  }, [organizations]);
 
-  // Tên đơn vị cấp 2 trong chuỗi phân cấp — cột Đơn vị quản lý (chuẩn Cảng biển).
-  const orgLevel2Map = useMemo(() => {
-    const map = new Map<string, string>();
-    organizations.forEach((o) => {
-      const name = resolveOrgLevel2Name(organizations, o.id);
-      if (name) map.set(o.id, name);
-    });
-    return map;
-  }, [organizations]);
 
   // ── Tab counts ──────────────────────────────────────────────────
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
@@ -545,37 +535,10 @@ export default function BuoyListPage() {
   const [approvingRecord, setApprovingRecord] = useState<Buoy | null>(null);
   const [approvingLevel, setApprovingLevel] = useState<'L1' | 'L2'>('L1');
 
-  // ── Load organizations + users ──────────────────────────────────
-  // F-074: Đơn vị quản lý là bộ lọc bắt buộc (giống Cảng biển):
-  // tự chọn mặc định = đơn vị của user đang đăng nhập, nếu không khớp thì lấy đơn vị đầu tiên
+  // ── Load users ──────────────────────────────────
   useEffect(() => {
     (async () => {
-      try {
-        const resp = await organizationService.list({ pageSize: 1000 });
-        const data = resp.data || [];
-        setOrganizations(data);
-        if (data.length > 0 && !defaultOrgApplied.current) {
-          defaultOrgApplied.current = true;
-          try {
-            const profileRes = await api.get('/users/me');
-            const profile = profileRes.data?.data ?? profileRes.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : data[0].id;
-            defaultOrgUnitId.current = defaultId;
-            setManagingUnitId(defaultId);
-          } catch {
-            defaultOrgUnitId.current = data[0].id;
-            setManagingUnitId(data[0].id);
-          }
-        }
-        setOrgUnitReady(true);
-      } catch (err) {
-        console.error('Failed to load organizations', err);
-        setOrgUnitReady(true);
-      }
-    })();
-    (async () => {
+
       try {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
@@ -639,9 +602,8 @@ export default function BuoyListPage() {
   }, []);
 
   const handleFilterReset = useCallback(() => {
-    // Reset về đơn vị quản lý mặc định (bắt buộc — giống Cảng biển)
-    const defaultOrg = defaultOrgUnitId.current;
-    setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
+    // Reset về đơn vị quản lý mặc định
+    resetOrgUnit();
     setFilterStationId(undefined);
     setFilterName('');
     setFilterCode('');
@@ -651,7 +613,8 @@ export default function BuoyListPage() {
     setFilterUpdatedTo(undefined);
     setActiveTab('all');
     setPage(1);
-  }, []);
+  }, [resetOrgUnit]);
+
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -1455,7 +1418,7 @@ export default function BuoyListPage() {
       sortable: true,
       ellipsis: false,
       render: (v: string | null, record: Buoy) => {
-        const name = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, (record as any).createdBy, (record as any).createdByName);
+        const name = formatUserDisplayName(record.updatedBy != null ? String(record.updatedBy) : undefined, (record as any).updatedByName, userMap, (record as any).createdBy, (record as any).createdByName);
         return (
           <div>
             <span style={{ fontWeight: fontWeightBold }}>{name}</span><br />
@@ -1494,7 +1457,7 @@ export default function BuoyListPage() {
       sortable: true,
       ellipsis: true,
       render: (v: string | null, record: Buoy) => {
-        const name = formatUserDisplayName(record.level1ApprovedBy, (record as any).level1ApprovedByName, userMap);
+        const name = formatUserDisplayName(record.level1ApprovedBy != null ? String(record.level1ApprovedBy) : undefined, (record as any).level1ApprovedByName, userMap);
         const cleanName = name === '—' ? '' : name;
         const date = formatDateTime(v);
         const cleanDate = date === '—' ? '' : date;
@@ -1516,7 +1479,7 @@ export default function BuoyListPage() {
       sortable: true,
       ellipsis: true,
       render: (v: string | null, record: Buoy) => {
-        const name = formatUserDisplayName(record.level2ApprovedBy, (record as any).level2ApprovedByName, userMap);
+        const name = formatUserDisplayName(record.level2ApprovedBy != null ? String(record.level2ApprovedBy) : undefined, (record as any).level2ApprovedByName, userMap);
         const cleanName = name === '—' ? '' : name;
         const date = formatDateTime(v);
         const cleanDate = date === '—' ? '' : date;
@@ -1743,15 +1706,12 @@ export default function BuoyListPage() {
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
               Đơn vị quản lý
             </div>
-            <OrgUnitTreeSelect
+            <FilterOrgUnitTreeSelect
               organizations={organizations}
-              placeholder="Chọn đơn vị..."
+              placeholder="Tất cả"
               allowClear
-              showPath
-              allLabel="Tất cả"
-              treeDefaultExpandAll={false}
               value={managingUnitId || undefined}
-              onChange={(v) => { setManagingUnitId(v === '__all__' ? undefined : v); setPage(1); }}
+              onChange={(v) => { setManagingUnitId(v); setPage(1); }}
             />
           </div>
           <div style={{ marginBottom: 12 }}>

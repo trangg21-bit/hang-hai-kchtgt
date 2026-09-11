@@ -1121,14 +1121,12 @@ public class PortService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(portId)
                 .refType(InfrastructureType.SEAPORT)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status(status)
                 .approvedBy(userId)
                 .approvedDate(java.time.LocalDateTime.now())
-                .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + fileName)
-                .changedField("Tài liệu đính kèm")
-                .previousValue(uploaded ? "—" : fileName)
-                .newValue(uploaded ? fileName : "—")
+                .changedField("attachments")
+                .previousValue(uploaded ? null : fileName)
+                .newValue(uploaded ? fileName : null)
                 .build());
         log.info("[PortService] Đã ghi lịch sử {} file đính kèm của Cảng biển [{}]: {}",
                 uploaded ? "tải lên" : "xóa", portId, fileName);

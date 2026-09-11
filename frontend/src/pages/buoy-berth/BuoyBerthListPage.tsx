@@ -17,8 +17,7 @@ import {
 } from '../../services/portService';
 import type { BuoyBerth } from '../../types/port';
 import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
-import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
@@ -462,8 +461,9 @@ function renderHistoryValueTag(field: string, val: string | null) {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BuoyBerthList() {
+  const authUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const userPermissions = useAuthStore((s: any) => s.user?.permissions) || [];
+  const userPermissions = authUser?.permissions || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
@@ -778,8 +778,9 @@ export default function BuoyBerthList() {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        defaultOrgUnitId.current = parentOrgUnits[0].id;
-        setManagingUnitId(parentOrgUnits[0].id);
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, parentOrgUnits);
+        defaultOrgUnitId.current = resolvedDefault;
+        setManagingUnitId(resolvedDefault);
       }
       setOrgUnitReady(true);
     } else {
@@ -788,20 +789,11 @@ export default function BuoyBerthList() {
           const resp = await organizationService.list({ pageSize: 1000 });
           const data = resp.data || [];
           setOrganizations(data);
-          if (data.length > 0 && !defaultOrgApplied.current) {
+          if (!defaultOrgApplied.current) {
             defaultOrgApplied.current = true;
-            try {
-              const profileRes = await api.get('/users/me');
-              const profile = profileRes.data?.data ?? profileRes.data;
-              const userOrgId = profile?.orgUnitId;
-              const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
-              defaultOrgUnitId.current = defaultId;
-              setManagingUnitId(defaultId === '__all__' ? undefined : defaultId);
-            } catch {
-              defaultOrgUnitId.current = data[0].id;
-              setManagingUnitId(data[0].id);
-            }
+            const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+            defaultOrgUnitId.current = resolvedDefault;
+            setManagingUnitId(resolvedDefault);
           }
           setOrgUnitReady(true);
         } catch (err) {
@@ -907,7 +899,7 @@ export default function BuoyBerthList() {
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
-    setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
+    setManagingUnitId(defaultOrg);
     setFilterName(''); setFilterCode(''); setFilterPortId(undefined);
     setFilterWaterwayId(undefined); setFilterClassification(undefined);
     setFilterProvince('');
@@ -1059,13 +1051,10 @@ export default function BuoyBerthList() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý
         </div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
           value={managingUnitId}
           onChange={(v) => { setManagingUnitId(v); setPage(1); }}
         />

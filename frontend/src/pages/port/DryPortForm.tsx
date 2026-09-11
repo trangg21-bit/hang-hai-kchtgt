@@ -18,7 +18,7 @@ import {
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
-  getDatePickerProps,
+  getDatePickerProps, textAreaStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { DryPort, SaveAction } from '../../types/port';
@@ -674,15 +674,13 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="connectionMode" {...labelProps('Phương thức kết nối giao thông với cảng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.connectionMode ? 'error' : undefined} help={atMax.connectionMode ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
-                  <Input placeholder="Nhập phương thức kết nối giao thông với cảng" maxLength={2000} showCount style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
                 <Form.Item name="portStatus" {...labelProps('Tình trạng')} required rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]} style={{ marginBottom: spaceFormField }} initialValue={1}>
                   <Select options={PORT_STATUS_OPTIONS} style={selectStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="connectionMode" {...labelProps('Phương thức kết nối giao thông với cảng')} style={{ marginBottom: spaceFormField }} validateStatus={atMax.connectionMode ? 'error' : undefined} help={atMax.connectionMode ? 'Đã đạt tối đa 2000 ký tự' : undefined}>
+                  <Input.TextArea placeholder="Nhập phương thức kết nối giao thông với cảng" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>

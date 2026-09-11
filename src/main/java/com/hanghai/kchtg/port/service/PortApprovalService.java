@@ -212,7 +212,6 @@ public class PortApprovalService {
         return list.stream()
                 .map(h -> HistoryEntry.builder()
                         .id(h.getId())
-                        .approvalLevel(h.getApprovalLevel())
                         .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                         .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
                         .orgUnitName(h.getApprovedBy() != null && userMap.get(h.getApprovedBy()) != null
@@ -220,7 +219,6 @@ public class PortApprovalService {
                                         ? userMap.get(h.getApprovedBy()).getOrgUnit().getName()
                                         : null)
                         .approvedDate(h.getApprovedDate())
-                        .reason(h.getReason())
                         .changedField(h.getChangedField())
                         .previousValue(h.getPreviousValue())
                         .newValue(h.getNewValue())

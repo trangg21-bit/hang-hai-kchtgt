@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Tabs, Button, Select, Tooltip, Modal, Tag } from 'antd';
+import { Tabs, Button, Select, Tooltip, Modal, Dropdown, type MenuProps } from 'antd';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -10,7 +10,7 @@ import {
   DownloadOutlined,
   FileImageOutlined,
   EyeOutlined,
-  EnvironmentOutlined,
+  MoreOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
@@ -25,7 +25,6 @@ import { ApprovalStatus, ConditionStatus } from '../../types/vtsSystem';
 import {
   colors,
   actionPrimary,
-  primaryButtonStyle,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
@@ -41,10 +40,13 @@ import {
   textSecondary,
   textTertiary,
   surfaceCard,
+  rowActionButtonStyle,
+  icons,
 } from '../../themetokenchk';
+import { THEME_SCOPE_CLASS } from '../../context/ThemeTokenContext';
 import { getProvinceNameById } from '../../types/common';
 import DetailTable from '../../components/shared/DetailTable';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import VtsZoneLocationDrawer from './VtsZoneLocationDrawer';
 
 const fontSizeMd = 13.5;
 const detailLabelStyle: React.CSSProperties = { color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd };
@@ -118,7 +120,7 @@ const renderApprovalBadge = (status?: ApprovalStatus | string) => {
     APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
     REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
     REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
-    ARCHIVED: { label: 'Đã xóa', color: textTertiary },
+    ARCHIVED: { label: 'Đã xóa', color: statusCritical },
   };
   const item = map[String(status).toUpperCase()] || { label: String(status), color: textSecondary };
   return (
@@ -156,13 +158,20 @@ export default function VtsSystemDetailContent({
   const [zoneList, setZoneList] = useState<any[]>(selectedRecord.zones || []);
   const [isLoadingZones, setIsLoadingZones] = useState(false);
   const [zonesLoaded, setZonesLoaded] = useState(Boolean(selectedRecord.zones && selectedRecord.zones.length > 0));
+  const [zoneLocationDrawerOpen, setZoneLocationDrawerOpen] = useState(false);
+  const [selectedZoneForLocation, setSelectedZoneForLocation] = useState<any>(null);
+  const [selectedZoneLocationIndex, setSelectedZoneLocationIndex] = useState<number | null>(null);
+
+  const handleOpenZoneLocation = (r: any, idx: number) => {
+    setSelectedZoneForLocation(r);
+    setSelectedZoneLocationIndex(idx);
+    setZoneLocationDrawerOpen(true);
+  };
 
   // File đính kèm
   const [attachmentList, setAttachmentList] = useState<any[]>(selectedRecord.attachments || []);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(Boolean(selectedRecord.attachments && selectedRecord.attachments.length > 0));
-  const [viewZoneGisModalOpen, setViewZoneGisModalOpen] = useState(false);
-  const [selectedViewZone, setSelectedViewZone] = useState<any>(null);
 
   // KCHT khác thuộc VTS — chuẩn Bến cảng
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
@@ -222,7 +231,52 @@ export default function VtsSystemDetailContent({
     return () => { mounted = false; };
   }, [selectedRecord?.id]);
 
-  // Lazy load zones nếu chưa tải
+  // Lazy load KCHT khác thuộc hệ thống VTS (Trung tâm điều hành & Trạm Radar) — chỉ tải khi vào tab
+  const [infraLoaded, setInfraLoaded] = useState(false);
+
+  const loadChildInfra = async () => {
+    if (!selectedRecord?.id || isLoadingInfra) return;
+    setIsLoadingInfra(true);
+    try {
+      const [opCenters, radarStations] = await Promise.all([
+        vtsOperationCenterService
+          .search({
+            vtsSystemId: selectedRecord.id,
+            page: 1,
+            size: 100,
+          })
+          .catch(() => ({ items: [] })),
+        radarStationService
+          .search({
+            vtsSystemId: selectedRecord.id,
+            page: 1,
+            size: 100,
+          })
+          .catch(() => ({ items: [] })),
+      ]);
+      const opList = (opCenters?.items || []).map((x: any) => ({
+        id: x.id,
+        infraName: x.name || x.code || '',
+        infraType: 'VTS_OPERATION_CENTER',
+        typeLabel: 'Trung tâm điều hành VTS',
+        raw: x,
+      }));
+      const radarList = (radarStations?.items || []).map((x: any) => ({
+        id: x.id,
+        infraName: x.stationName || x.name || x.code || '',
+        infraType: 'RADAR_STATION',
+        typeLabel: 'Trạm Radar VTS',
+        raw: x,
+      }));
+      setLoadedInfra([...opList, ...radarList]);
+      setInfraLoaded(true);
+    } catch {
+      setLoadedInfra([]);
+    } finally {
+      setIsLoadingInfra(false);
+    }
+  };
+
   const handleTabChange = (key: string) => {
     if (key === 'zones' && !zonesLoaded && selectedRecord?.id) {
       setIsLoadingZones(true);
@@ -249,61 +303,14 @@ export default function VtsSystemDetailContent({
         .catch(() => {})
         .finally(() => setIsLoadingFiles(false));
     }
+    if (key === 'other_infra' && !infraLoaded && selectedRecord?.id) {
+      void loadChildInfra();
+    }
   };
 
-  // Tải danh sách KCHT khác thuộc hệ thống VTS (Trung tâm điều hành & Trạm Radar) — chuẩn Bến cảng
   useEffect(() => {
-    if (!selectedRecord?.id) {
-      setLoadedInfra([]);
-      return;
-    }
-    let cancelled = false;
-    setIsLoadingInfra(true);
-
-    Promise.all([
-      vtsOperationCenterService
-        .search({
-          vtsSystemId: selectedRecord.id,
-          page: 1,
-          size: 100,
-        })
-        .catch(() => ({ items: [] })),
-      radarStationService
-        .search({
-          vtsSystemId: selectedRecord.id,
-          page: 1,
-          size: 100,
-        })
-        .catch(() => ({ items: [] })),
-    ])
-      .then(([opCenters, radarStations]: [any, any]) => {
-        if (cancelled) return;
-        const opList = (opCenters?.items || []).map((x: any) => ({
-          id: x.id,
-          infraName: x.name || x.code || '',
-          infraType: 'VTS_OPERATION_CENTER',
-          typeLabel: 'Trung tâm điều hành VTS',
-          raw: x,
-        }));
-        const radarList = (radarStations?.items || []).map((x: any) => ({
-          id: x.id,
-          infraName: x.stationName || x.name || x.code || '',
-          infraType: 'RADAR_STATION',
-          typeLabel: 'Trạm Radar VTS',
-          raw: x,
-        }));
-        setLoadedInfra([...opList, ...radarList]);
-      })
-      .catch(() => {
-        if (!cancelled) setLoadedInfra([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingInfra(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    setLoadedInfra([]);
+    setInfraLoaded(false);
   }, [selectedRecord?.id]);
 
   const infraRows = useMemo(() => {
@@ -728,12 +735,12 @@ export default function VtsSystemDetailContent({
                 rowKey={(item: any) => item.id || item.code || item.name}
                 columns={[
                   { title: 'STT', width: 50, align: 'center', render: (_: any, __: any, idx: number) => idx + 1 },
-                  { title: 'Mã vùng', dataIndex: 'code', key: 'code', width: 160, render: (v) => v || '' },
+                  { title: 'Mã vùng', dataIndex: 'code', key: 'code', width: 180, render: (v) => v || '' },
                   {
                     title: 'Tên vùng VTS',
                     dataIndex: 'name',
                     key: 'name',
-                    width: 280,
+                    width: 380,
                     render: (v) => (
                       <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>
                         {v || ''}
@@ -741,53 +748,43 @@ export default function VtsSystemDetailContent({
                     ),
                   },
                   {
-                    title: 'Tọa độ GIS',
-                    key: 'coordinates',
-                    width: 220,
-                    render: (_v: any, item: any) => {
-                      const rawWkt = item.coordinates || '';
-                      if (!rawWkt) {
-                        return <span style={{ color: textTertiary }}>—</span>;
-                      }
-                      let displayInfo = 'Đã có tọa độ';
-                      let tagColor: string = 'blue';
-                      if (rawWkt.startsWith('POLYGON')) {
-                        const count = (rawWkt.match(/,/g) || []).length + 1;
-                        displayInfo = `Vùng (${count} điểm)`;
-                      } else if (rawWkt.startsWith('LINE') || rawWkt.startsWith('LINESTRING')) {
-                        const count = (rawWkt.match(/,/g) || []).length + 1;
-                        displayInfo = `Đường (${count} điểm)`;
-                        tagColor = 'cyan';
-                      } else if (rawWkt.startsWith('POINT')) {
-                        displayInfo = 'Điểm tọa độ';
-                        tagColor = 'green';
-                      }
+                    title: 'Tình trạng',
+                    key: 'conditionStatus',
+                    width: 170,
+                    render: (_v, item: any) => renderConditionStatusBadge(item.conditionStatus || item.status || ConditionStatus.OPERATIONAL),
+                  },
+                  {
+                    title: 'Thao tác',
+                    key: 'actions',
+                    width: 80,
+                    align: 'center',
+                    render: (_v: any, r: any, idx: number) => {
+                      const actionItems: MenuProps['items'] = [
+                        {
+                          key: 'view',
+                          label: 'Xem chi tiết',
+                          icon: icons.view,
+                          onClick: () => handleOpenZoneLocation(r, idx),
+                        },
+                      ];
+
                       return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Tag color={tagColor} style={{ borderRadius: 12, padding: '1px 8px', fontSize: fontSizeSm }}>
-                            {displayInfo}
-                          </Tag>
-                          <Button
-                            type="link"
-                            size="small"
-                            icon={<EnvironmentOutlined />}
-                            style={{ padding: '0 4px', fontSize: fontSizeSm, height: 26, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-                            onClick={() => {
-                              setSelectedViewZone(item);
-                              setViewZoneGisModalOpen(true);
-                            }}
-                          >
-                            Xem bản đồ
-                          </Button>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Dropdown menu={{ items: actionItems }} trigger={['click']} rootClassName={THEME_SCOPE_CLASS}>
+                            <Button
+                              icon={<MoreOutlined />}
+                              style={{
+                                ...rowActionButtonStyle,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: 0,
+                              }}
+                            />
+                          </Dropdown>
                         </div>
                       );
                     },
-                  },
-                  {
-                    title: 'Tình trạng',
-                    key: 'conditionStatus',
-                    width: 160,
-                    render: (_v, item: any) => renderConditionStatusBadge(item.conditionStatus || item.status || ConditionStatus.OPERATIONAL),
                   },
                 ]}
               />
@@ -1193,45 +1190,14 @@ export default function VtsSystemDetailContent({
         />
       )}
 
-      {/* ── Modal xem vị trí vùng VTS trên bản đồ ── */}
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <EnvironmentOutlined style={{ color: actionPrimary }} />
-            <span>
-              Vị trí & Tọa độ trên bản đồ - Vùng VTS: {selectedViewZone?.name || selectedViewZone?.code || ''}
-            </span>
-          </div>
-        }
-        open={viewZoneGisModalOpen}
-        onCancel={() => setViewZoneGisModalOpen(false)}
-        destroyOnClose
-        width="94vw"
-        style={{ top: 20, maxWidth: 1400 }}
-        footer={[
-          <Button
-            key="close"
-            type="primary"
-            onClick={() => setViewZoneGisModalOpen(false)}
-            style={{ ...primaryButtonStyle, height: 36 }}
-          >
-            Đóng
-          </Button>,
-        ]}
-      >
-        <div style={{ padding: '8px 0', height: 520 }}>
-          <GisLocationSelector
-            inline={true}
-            defaultGeometryType={(selectedViewZone?.geometryType as any) || 'POLYGON'}
-            disabled
-            height={520}
-            value={{
-              geometryType: selectedViewZone?.geometryType || (selectedViewZone?.coordinates?.startsWith('POINT') ? 'POINT' : selectedViewZone?.coordinates?.startsWith('LINE') ? 'LINE' : 'POLYGON'),
-              coordinates: selectedViewZone?.coordinates || '',
-            }}
-          />
-        </div>
-      </Modal>
+      {/* ── Drawer xem chi tiết thông tin vị trí vùng VTS ── */}
+      <VtsZoneLocationDrawer
+        open={zoneLocationDrawerOpen}
+        mode="view"
+        zone={selectedZoneForLocation}
+        zoneIndex={selectedZoneLocationIndex}
+        onClose={() => setZoneLocationDrawerOpen(false)}
+      />
     </div>
   );
 }

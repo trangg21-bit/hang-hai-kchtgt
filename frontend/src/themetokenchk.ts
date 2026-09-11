@@ -974,13 +974,21 @@ textarea.ant-input {
 /* ── Đồng bộ thanh cuộn toàn hệ thống (Table, Dropdown, Modal, Drawer) ── */
 *::-webkit-scrollbar,
 .${scope} ::-webkit-scrollbar,
+.ant-select-dropdown::-webkit-scrollbar,
 .ant-select-dropdown ::-webkit-scrollbar,
+.ant-select-tree-dropdown::-webkit-scrollbar,
 .ant-select-tree-dropdown ::-webkit-scrollbar,
+.ant-tree-select-dropdown::-webkit-scrollbar,
 .ant-tree-select-dropdown ::-webkit-scrollbar,
+.ant-picker-dropdown::-webkit-scrollbar,
 .ant-picker-dropdown ::-webkit-scrollbar,
+.ant-drawer-body::-webkit-scrollbar,
 .ant-drawer-body ::-webkit-scrollbar,
+.ant-modal-body::-webkit-scrollbar,
 .ant-modal-body ::-webkit-scrollbar,
+.rc-virtual-list-holder::-webkit-scrollbar,
 .rc-virtual-list-holder ::-webkit-scrollbar,
+.ant-select-tree-list-holder::-webkit-scrollbar,
 .ant-select-tree-list-holder ::-webkit-scrollbar {
   width: ${scrollbarSize}px !important;
   height: ${scrollbarSize}px !important;
@@ -996,13 +1004,21 @@ textarea.ant-input {
 
 *::-webkit-scrollbar-thumb,
 .${scope} ::-webkit-scrollbar-thumb,
+.ant-select-dropdown::-webkit-scrollbar-thumb,
 .ant-select-dropdown ::-webkit-scrollbar-thumb,
+.ant-select-tree-dropdown::-webkit-scrollbar-thumb,
 .ant-select-tree-dropdown ::-webkit-scrollbar-thumb,
+.ant-tree-select-dropdown::-webkit-scrollbar-thumb,
 .ant-tree-select-dropdown ::-webkit-scrollbar-thumb,
+.ant-picker-dropdown::-webkit-scrollbar-thumb,
 .ant-picker-dropdown ::-webkit-scrollbar-thumb,
+.ant-drawer-body::-webkit-scrollbar-thumb,
 .ant-drawer-body ::-webkit-scrollbar-thumb,
+.ant-modal-body::-webkit-scrollbar-thumb,
 .ant-modal-body ::-webkit-scrollbar-thumb,
+.rc-virtual-list-holder::-webkit-scrollbar-thumb,
 .rc-virtual-list-holder ::-webkit-scrollbar-thumb,
+.ant-select-tree-list-holder::-webkit-scrollbar-thumb,
 .ant-select-tree-list-holder ::-webkit-scrollbar-thumb {
   background: ${scrollbarThumb} !important;
   border-radius: 999px !important;
@@ -1011,26 +1027,40 @@ textarea.ant-input {
 
 *::-webkit-scrollbar-thumb:hover,
 .${scope} ::-webkit-scrollbar-thumb:hover,
+.ant-select-dropdown::-webkit-scrollbar-thumb:hover,
 .ant-select-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-select-tree-dropdown::-webkit-scrollbar-thumb:hover,
 .ant-select-tree-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-tree-select-dropdown::-webkit-scrollbar-thumb:hover,
 .ant-tree-select-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-picker-dropdown::-webkit-scrollbar-thumb:hover,
 .ant-picker-dropdown ::-webkit-scrollbar-thumb:hover,
+.ant-drawer-body::-webkit-scrollbar-thumb:hover,
 .ant-drawer-body ::-webkit-scrollbar-thumb:hover,
+.ant-modal-body::-webkit-scrollbar-thumb:hover,
 .ant-modal-body ::-webkit-scrollbar-thumb:hover,
+.rc-virtual-list-holder::-webkit-scrollbar-thumb:hover,
 .rc-virtual-list-holder ::-webkit-scrollbar-thumb:hover,
+.ant-select-tree-list-holder::-webkit-scrollbar-thumb:hover,
 .ant-select-tree-list-holder ::-webkit-scrollbar-thumb:hover {
   background: ${scrollbarThumbHover} !important;
 }
 
 *::-webkit-scrollbar-track,
 .${scope} ::-webkit-scrollbar-track,
+.ant-select-dropdown::-webkit-scrollbar-track,
 .ant-select-dropdown ::-webkit-scrollbar-track,
+.ant-select-tree-dropdown::-webkit-scrollbar-track,
 .ant-select-tree-dropdown ::-webkit-scrollbar-track,
+.ant-tree-select-dropdown::-webkit-scrollbar-track,
 .ant-tree-select-dropdown ::-webkit-scrollbar-track,
+.rc-virtual-list-holder::-webkit-scrollbar-track,
 .rc-virtual-list-holder ::-webkit-scrollbar-track,
+.ant-select-tree-list-holder::-webkit-scrollbar-track,
 .ant-select-tree-list-holder ::-webkit-scrollbar-track {
   background: transparent !important;
 }
+
 
 *::-webkit-scrollbar-corner,
 .${scope} ::-webkit-scrollbar-corner {
@@ -1364,18 +1394,31 @@ textarea.ant-input {
   font-family: inherit !important;
   font-size: ${fontSizeMd}px !important;
   color: ${textPrimary} !important;
-  padding: 4px 0 !important;
+  padding: 0 !important;
 }
 .ant-select-tree .ant-select-tree-treenode {
   display: flex !important;
   align-items: center !important;
   width: 100% !important;
-  padding: 5px 8px !important;
+  padding: 4px 8px !important;
   margin-bottom: 2px !important;
   border-radius: 8px !important;
-  min-height: 32px !important;
-  height: auto !important;
+  min-height: 28px !important;
+  line-height: 22px !important;
+  overflow: hidden !important;
   transition: all 0.15s ease !important;
+}
+.ant-select-tree .ant-select-tree-treenode:last-child {
+  margin-bottom: 0 !important;
+}
+.ant-select-tree .ant-select-tree-node-content-wrapper {
+  line-height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 4px !important;
+}
+.ant-select-tree-list-holder {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 .ant-select-tree .ant-select-tree-treenode:hover,
 .ant-select-tree .ant-select-tree-treenode.ant-select-tree-treenode-active {
@@ -2577,19 +2620,22 @@ export const filterTreeSelectStyle: React.CSSProperties = {
 
 /** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Sidebar bộ lọc */
 export const filterTreeSelectDropdownStyle: React.CSSProperties = {
-  minWidth: 380,
-  maxWidth: 520,
-  maxHeight: 320,
+  minWidth: 420,
+  maxWidth: 580,
+  maxHeight: 360,
+  overflow: 'hidden',
   borderRadius: radiusMd,
   padding: '6px',
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',
 };
+
 
 /** Style popup menu Dropdown chuẩn cho OrgUnitTreeSelect trong Form (Drawer / Modal) */
 export const formTreeSelectDropdownStyle: React.CSSProperties = {
   minWidth: '100%',
   maxWidth: 650,
   maxHeight: 320,
+  overflow: 'hidden',
   borderRadius: radiusMd,
   padding: '6px',
   boxShadow: '0 10px 30px rgba(0, 0, 0, 0.15)',

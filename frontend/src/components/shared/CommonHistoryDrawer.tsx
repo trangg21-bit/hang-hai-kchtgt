@@ -138,6 +138,20 @@ const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: str
   SUBMIT: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
   SUBMITTED: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
   PROPOSED: { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+
+  // Numeric InfrastructureHistoryStatus (0 - 11)
+  '0': { label: 'Tạo mới', color: statusOperational, bg: `${statusOperational}15` },
+  '1': { label: 'Gửi duyệt', color: '#EDA100', bg: '#EDA10015' },
+  '2': { label: 'Đang xem xét', color: '#0284C7', bg: '#0284C715' },
+  '3': { label: 'Phê duyệt', color: statusOperational, bg: `${statusOperational}15` },
+  '4': { label: 'Từ chối', color: '#EF4444', bg: '#EF444415' },
+  '5': { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}15` },
+  '6': { label: 'Xóa', color: '#64748b', bg: '#64748b15' },
+  '7': { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c715' },
+  '8': { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c15' },
+  '9': { label: 'Lưu tạm', color: '#64748b', bg: '#64748b15' },
+  '10': { label: 'Hết hiệu lực', color: '#ef4444', bg: '#ef444415' },
+  '11': { label: 'Đổi trạng thái', color: '#8b5cf6', bg: '#8b5cf615' },
   UNDER_REVIEW: { label: 'Phê duyệt C1', color: '#0284C7', bg: '#0284C715' },
 
   REJECT: { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}15` },
@@ -151,7 +165,24 @@ const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: str
   EXTEND: { label: 'Gia hạn', color: '#2563eb', bg: '#2563eb15' },
 };
 
+export function formatFallbackFieldLabel(field: string, combinedMap: Record<string, string> = {}): string {
+  if (!field) return '—';
+  if (field.includes(',')) {
+    return field.split(',').map((f) => {
+      const trimmed = f.trim();
+      return combinedMap[trimmed] || formatSingleField(trimmed);
+    }).join(', ');
+  }
+  return formatSingleField(field);
+}
+
+function formatSingleField(field: string): string {
+  const spaced = field.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 const DEFAULT_FIELD_MAP: Record<string, string> = {
+  // Văn bản & Định danh
   documentName: 'Tên văn bản',
   documentNumber: 'Số hiệu văn bản',
   documentType: 'Loại văn bản',
@@ -161,6 +192,7 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   effectiveDate: 'Ngày có hiệu lực',
   expirationDate: 'Ngày hết hiệu lực',
   applicationArea: 'Phạm vi áp dụng',
+  scopeOfApplication: 'Phạm vi áp dụng',
   validityStatus: 'Trạng thái hiệu lực',
   description: 'Mô tả',
   code: 'Mã',
@@ -168,48 +200,88 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   systemName: 'Tên hệ thống',
   location: 'Vị trí',
   conditionStatus: 'Tình trạng',
+  condition: 'Tình trạng',
   operationalStatus: 'Trạng thái hoạt động',
   approvalStatus: 'Trạng thái phê duyệt',
+  status: 'Trạng thái',
+  portStatus: 'Tình trạng cảng',
   province: 'Địa điểm (Tỉnh/TP)',
   provinceId: 'Địa điểm (Tỉnh/TP)',
   provinceName: 'Địa điểm (Tỉnh/TP)',
   operatingOrgId: 'Đơn vị khai thác',
   operatingOrgName: 'Đơn vị khai thác',
-  operatingUnitId: 'Đơn vị khai thác',
-  operatingUnitName: 'Đơn vị khai thác',
+  operatingUnitId: 'Đơn vị vận hành/khai thác',
+  operatingUnitName: 'Đơn vị vận hành/khai thác',
+  operatingUnit: 'Đơn vị vận hành/khai thác',
+  owningOrgId: 'Đơn vị chủ quản',
+  owningOrgName: 'Đơn vị chủ quản',
+  managementUnitId: 'Đơn vị quản lý',
+  managementUnitName: 'Đơn vị quản lý',
+  unitId: 'Đơn vị',
+  unitName: 'Tên đơn vị',
+  operator: 'Đơn vị vận hành',
   portId: 'Thuộc cảng biển',
-  portName: 'Thuộc cảng biển',
+  portName: 'Tên cảng biển',
+  portCode: 'Mã cảng biển',
+  portClass: 'Loại cảng biển',
+  portGroup: 'Nhóm cảng biển',
+  seaportId: 'Thuộc cảng biển',
   vtsSystemId: 'Thuộc hệ thống VTS',
   vtsSystemName: 'Thuộc hệ thống VTS',
   vtsOperationCenterId: 'Thuộc TTDH VTS',
   vtsOperationCenterName: 'Thuộc TTDH VTS',
   radarStationId: 'Thuộc Trạm Radar',
   radarStationName: 'Thuộc Trạm Radar',
+  navigationChannelId: 'Thuộc luồng hàng hải',
+  buoyStationId: 'Thuộc trạm phao tiêu',
+  waterwayId: 'Tuyến luồng hàng hải',
+  waterwayRouteId: 'Tuyến luồng hàng hải',
+  attachedInfrastructureId: 'Hạ tầng đính kèm',
+  attachedInfrastructureType: 'Loại hạ tầng đính kèm',
+  infrastructureList: 'Công trình KCHT trực thuộc',
   coverage: 'Phạm vi phủ sóng',
+  coverageArea: 'Vùng phủ sóng',
+  coverageZone: 'Vùng phủ sóng',
+  coverageRange: 'Tầm phủ sóng/radar',
   detailedLocation: 'Địa điểm chi tiết',
   locationDetail: 'Địa điểm chi tiết',
+  locationAddress: 'Địa chỉ chi tiết',
   unitOfMeasure: 'Đơn vị tính',
   quantity: 'Số lượng',
   commissioningYear: 'Năm đưa vào sử dụng',
+  yearOfUse: 'Năm đưa vào sử dụng',
   specifications: 'Thông số kỹ thuật',
   manufacturer: 'Hãng sản xuất',
   maintenanceInfo: 'Thông tin bảo trì',
+  maintenanceApprovalDate: 'Ngày duyệt bảo trì',
   note: 'Ghi chú',
   notes: 'Ghi chú',
+  remarks: 'Ghi chú',
   orgUnitId: 'Đơn vị quản lý',
   orgUnitName: 'Tên đơn vị quản lý',
   facilityName: 'Tên cơ sở',
+  facilityType: 'Loại cơ sở',
   stationName: 'Tên trạm',
   channelCode: 'Mã luồng',
   channelName: 'Tên luồng',
   pierName: 'Tên cầu cảng',
   berthName: 'Tên bến cảng',
+  berthCode: 'Mã bến cảng',
+  berthId: 'Thuộc bến cảng',
   dryPortName: 'Tên cảng cạn',
+  dryPortCode: 'Mã cảng cạn',
   beaconName: 'Tên báo hiệu',
   beaconCode: 'Mã báo hiệu',
+  stormShelterName: 'Tên khu neo tránh bão',
+  stormShelterCode: 'Mã khu neo tránh bão',
+  anchorageName: 'Tên khu neo đậu',
+  anchorageCode: 'Mã khu neo đậu',
+  dikeRevetmentName: 'Tên đê kè',
+  dikeRevetmentType: 'Loại kết cấu đê kè',
   attachments: 'Tài liệu đính kèm',
   attachmentList: 'Tài liệu đính kèm',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
+  vtsZones: 'Vùng VTS',
   zones: 'Vùng VTS',
   zoneList: 'Vùng VTS',
   'Vùng VTS': 'Vùng VTS',
@@ -218,12 +290,150 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   coordinates: 'Tọa độ GIS',
   geometryType: 'Loại đối tượng GIS',
   objectType: 'Loại đối tượng GIS',
-  symbol: 'Biểu tượng',
-  symbolId: 'Biểu tượng',
-  mapSymbolId: 'Biểu tượng',
-  mapIcon: 'Biểu tượng',
+  symbol: 'Biểu tượng bản đồ',
+  symbolId: 'Biểu tượng bản đồ',
+  mapSymbolId: 'Biểu tượng bản đồ',
+  mapIcon: 'Biểu tượng bản đồ',
   coordinateSystem: 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
+  displayFormat: 'Định dạng hiển thị',
+  spatialId: 'Mã không gian (GIS)',
+  latitude: 'Vĩ độ',
+  longitude: 'Kinh độ',
+
+  // Thông số kỹ thuật & Diện tích
+  area: 'Diện tích (m²)',
+  totalArea: 'Tổng diện tích (m²)',
+  usableArea: 'Diện tích sử dụng (m²)',
+  warehouseArea: 'Diện tích kho (m²)',
+  yardArea: 'Diện tích bãi (m²)',
+  waterAreaScope: 'Phạm vi vùng nước',
+  waterAreaNeutralScope: 'Phạm vi vùng nước cách ly',
+  otherWaterAreas: 'Vùng nước khác',
+  length: 'Chiều dài (m)',
+  width: 'Chiều rộng (m)',
+  height: 'Chiều cao (m)',
+  towerHeight: 'Chiều cao tháp (m)',
+  lightHeight: 'Chiều cao tâm sáng (m)',
+  antennaHeight: 'Chiều cao anten (m)',
+  powerOutput: 'Công suất phát (W)',
+  transmitPower: 'Công suất phát (W)',
+  currentWaterDepth: 'Độ sâu luồng hiện tại (m)',
+  designWaterDepth: 'Độ sâu thiết kế (m)',
+  designBedElevation: 'Cao trình đáy thiết kế (m)',
+  bottomElevationDesign: 'Cao trình đáy thiết kế (m)',
+  crestElevation: 'Cao trình đỉnh (m)',
+  surfaceMaterial: 'Vật liệu bề mặt',
+  structureType: 'Kết cấu công trình',
+  constructionGrade: 'Cấp công trình xây dựng',
+  operationalFunction: 'Công năng sử dụng',
+  classification: 'Phân loại',
+  classificationBuoy: 'Phân loại phao',
+  classificationMark: 'Phân loại báo hiệu',
+  connectionMode: 'Phương thức kết nối',
+  transportCorridor: 'Hành lang vận tải',
+  region: 'Vùng hàng hải',
+  teuCapacity: 'Công suất (TEU)',
+  cargoThroughput: 'Sản lượng hàng hóa (tấn)',
+  currentThroughput: 'Sản lượng thông qua hiện tại (tấn)',
+  designThroughput: 'Công suất thiết kế (tấn)',
+  plannedThroughput: 'Sản lượng quy hoạch (tấn)',
+  latestCargoVolume: 'Khối lượng hàng hóa gần nhất (tấn)',
+  maxVesselSize: 'Cỡ tàu lớn nhất',
+  maxVesselDWT: 'Trọng tải tàu lớn nhất (DWT)',
+  publishedVesselDWT: 'Trọng tải tàu công bố (DWT)',
+  receivesLargeVessel: 'Tiếp nhận tàu trọng tải lớn',
+
+  // Số lượng & Thống kê
+  totalBerths: 'Tổng số bến cảng',
+  totalDikes: 'Tổng số đê kè',
+  totalDikeLength: 'Tổng chiều dài đê kè (m)',
+  totalPublicChannels: 'Tổng số tuyến luồng công cộng',
+  totalPublicChannelLength: 'Tổng chiều dài luồng công cộng (km)',
+  totalDedicatedChannels: 'Tổng số luồng chuyên dùng',
+  totalDedicatedChannelLength: 'Tổng chiều dài luồng chuyên dùng (km)',
+  totalBuoysBeacons: 'Tổng số phao tiêu báo hiệu',
+  totalLighthouses: 'Tổng số đèn biển',
+  totalAnchoragesTransshipment: 'Tổng số khu chuyển tải',
+  transshipmentCount: 'Số khu chuyển tải',
+  anchorageCount: 'Số khu neo đậu',
+  activeAnchorageCount: 'Số khu neo đậu hoạt động',
+  publishedAnchorageCount: 'Số khu neo đậu công bố',
+  underInvestmentAnchorageCount: 'Số khu neo đậu đang đầu tư',
+  publishedPierCount: 'Số cầu cảng công bố',
+  operatingPierCount: 'Số cầu cảng đang khai thác',
+  investmentAgreementPierCount: 'Số cầu cảng thỏa thuận đầu tư',
+  buoyBerthCount: 'Số phao neo',
+  activeStormShelterCount: 'Số khu neo tránh bão hoạt động',
+  staffCount: 'Số lượng nhân sự',
+
+  // Quyết định & Pháp lý
+  announcementDecisionDate: 'Ngày quyết định công bố',
+  announcementDecisionNumber: 'Số quyết định công bố',
+  announcementOrg: 'Cơ quan công bố',
+  announcementTime: 'Thời gian công bố',
+  openingAnnouncementDate: 'Ngày công bố mở',
+  openingDecision: 'Quyết định mở',
+  publicDecision: 'Quyết định công bố',
+  investmentAgreement: 'Thỏa thuận đầu tư',
+  investmentAgreementDoc: 'Văn bản thỏa thuận đầu tư',
+  noticeToMariners: 'Thông báo hàng hải',
+  documentDate: 'Ngày văn bản',
+  safetyAssessmentDate: 'Ngày đánh giá an toàn',
+  commencementDate: 'Thời gian bắt đầu hoạt động',
+  constructionDate: 'Ngày xây dựng',
+  lastInspectionDate: 'Ngày kiểm định gần nhất',
+  nextInspectionDate: 'Ngày kiểm định tiếp theo',
+  operationalLicense: 'Giấy phép hoạt động',
+  licenseExpiry: 'Hạn giấy phép',
+
+  // Thiết bị & Đài duyên hải
+  terminalId: 'Mã Terminal',
+  imoNumber: 'Số IMO',
+  reportingInterval: 'Chu kỳ báo cáo (giây)',
+  antennaType: 'Loại anten',
+  dataFormat: 'Định dạng dữ liệu',
+  communicationChannel: 'Kênh liên lạc',
+  communicationFrequency: 'Tần số liên lạc',
+  frequencyBand: 'Băng tần',
+  frequency: 'Tần số',
+  equipmentType: 'Loại thiết bị',
+  servicesProvided: 'Dịch vụ cung cấp',
+  services: 'Dịch vụ cung cấp',
+  contactPerson: 'Người liên hệ',
+  contactPhone: 'Số điện thoại liên hệ',
+  inspectorName: 'Cán bộ kiểm định',
+  inspectorPhone: 'SĐT cán bộ kiểm định',
+  district: 'Quận/Huyện',
+  ward: 'Phường/Xã',
+  address: 'Địa chỉ',
+  phone: 'Số điện thoại',
+  email: 'Email',
+  capacity: 'Công suất',
+  authority: 'Cơ quan thẩm quyền',
+  deviceName: 'Tên thiết bị',
+  deviceCode: 'Mã thiết bị',
+  model: 'Model',
+  range: 'Tầm hiệu lực / Phạm vi',
+  shapeDescription: 'Mô tả hình dạng',
+  routeDetails: 'Chi tiết tuyến luồng',
+  coordinateList: 'Danh sách tọa độ',
+  managementStation: 'Trạm quản lý',
+  deletedAt: 'Thời điểm xóa',
+  deletedBy: 'Người thực hiện xóa',
+  isActive: 'Kích hoạt',
+
+  // Các tổ hợp trường phổ biến
+  'coordinates, latitude, longitude': 'Tọa độ GIS (Kinh độ, Vĩ độ)',
+  'seaportId, coordinates, latitude': 'Cảng biển, Tọa độ GIS',
+  'name, mapSymbolId': 'Tên, Biểu tượng bản đồ',
+  'geometryType, coordinates': 'Loại đối tượng, Tọa độ GIS',
+  'geometryType, mapSymbolId, coordinateSystem, coordinates, latitude, longitude': 'Thông tin không gian GIS',
+  'vtsZones, attachments': 'Vùng VTS, Tài liệu đính kèm',
+  'conditionStatus, commencementDate': 'Tình trạng, Thời gian hoạt động',
+  'noticeToMariners, scopeOfApplication': 'Thông báo hàng hải, Phạm vi áp dụng',
+  'orgUnitId, operatingUnitId, detailedLocation': 'Đơn vị quản lý, Đơn vị vận hành, Địa điểm chi tiết',
+  'provinceId, noticeToMariners, vtsZones, attachments': 'Địa điểm, Thông báo hàng hải, Vùng VTS, Tài liệu đính kèm',
 };
 
 function formatCoordPointDms(xStr: string, yStr?: string): string {
@@ -333,19 +543,41 @@ function renderCoordinatesDisplay(val: string | null) {
 }
 
 export function renderCommonHistoryValueTag(field: string, val: string, isOld: boolean = false) {
-  if (!val || val === '—') {
+  if (!val || val === '—' || val === 'null' || val === '(null)' || val === '[]') {
     return <span style={{ color: textTertiary }}>—</span>;
   }
   const normKey = field.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-  const normVal = val.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+  
+  // Chuẩn hóa hiển thị tiếng Việt cho các mã enum
+  let displayVal = val;
+  const rawUpper = val.trim().toUpperCase();
+  if (normKey.includes('approvalstatus') || normKey.includes('trang thai phe duyet')) {
+    if (rawUpper === 'APPROVED' || rawUpper === 'APPROVED_LEVEL2') displayVal = 'Đã duyệt';
+    else if (rawUpper === 'APPROVED_LEVEL1') displayVal = 'Chờ Cục phê duyệt';
+    else if (rawUpper === 'SUBMITTED') displayVal = 'Chờ phê duyệt';
+    else if (rawUpper === 'DRAFT') displayVal = 'Bản nháp';
+    else if (rawUpper === 'REJECTED' || rawUpper === 'REJECTED_LEVEL1' || rawUpper === 'REJECTED_LEVEL2') displayVal = 'Từ chối';
+    else if (rawUpper === 'ARCHIVED') displayVal = 'Đã lưu trữ';
+  } else if (normKey.includes('conditionstatus') || normKey.includes('tinh trang')) {
+    if (rawUpper === 'OPERATIONAL') displayVal = 'Đang hoạt động';
+    else if (rawUpper === 'STOPPED') displayVal = 'Dừng hoạt động';
+    else if (rawUpper === 'MAINTENANCE') displayVal = 'Đang bảo trì';
+    else if (rawUpper === 'UNDER_CONSTRUCTION') displayVal = 'Đang xây dựng';
+  } else if (val.trim() === 'true' || val.trim() === 'TRUE') {
+    displayVal = 'Có';
+  } else if (val.trim() === 'false' || val.trim() === 'FALSE') {
+    displayVal = 'Không';
+  }
+
+  const normVal = displayVal.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
   // 1. Tình trạng hoạt động (ConditionStatus)
   if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    const color = getConditionStatusColor(val);
+    const color = getConditionStatusColor(displayVal);
     if (color && color !== textSecondary) {
       return (
         <span style={statusBadgeStyle(color)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
@@ -359,49 +591,49 @@ export function renderCommonHistoryValueTag(field: string, val: string, isOld: b
         || normVal === 'stopped' || normVal === 'not_operational') {
       return (
         <span style={statusBadgeStyle(statusCritical)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
     if (normVal.includes('bao tri') || normVal.includes('bao duong') || normVal.includes('sua chua') || normVal.includes('maintenance')) {
       return (
         <span style={statusBadgeStyle(statusAttention)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
     if (normVal.includes('xay dung') || normVal.includes('construction') || normVal.includes('under_construction')) {
       return (
         <span style={statusBadgeStyle(actionPrimary)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
-    if (normVal.includes('da phe duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
+    if (normVal.includes('da phe duyet') || normVal.includes('da duyet') || normVal.includes('con hieu luc') || normVal.includes('hoat dong') || normVal.includes('active') || normVal.includes('approved') || normVal.includes('valid')) {
       return (
         <span style={statusBadgeStyle(statusOperational)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
     if (normVal.includes('tu choi') || normVal.includes('het hieu luc') || normVal.includes('hong') || normVal.includes('inactive') || normVal.includes('rejected') || normVal.includes('expired')) {
       return (
         <span style={statusBadgeStyle(statusCritical)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
-    if (normVal.includes('dang xem xet') || normVal.includes('chua co hieu luc') || normVal.includes('review') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1') || normVal.includes('approved_level1')) {
+    if (normVal.includes('dang xem xet') || normVal.includes('chua co hieu luc') || normVal.includes('review') || normVal.includes('under_review') || normVal.includes('da phe duyet cap 1') || normVal.includes('cap 1') || normVal.includes('approved_level1') || normVal.includes('cho cuc phe duyet')) {
       return (
         <span style={statusBadgeStyle(actionPrimary)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
-    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed') || normVal.includes('cho')) {
+    if (normVal.includes('cho phe duyet') || normVal.includes('can bao duong') || normVal.includes('pending') || normVal.includes('draft') || normVal.includes('warning') || normVal.includes('proposed') || normVal.includes('cho') || normVal.includes('ban nhap')) {
       return (
         <span style={statusBadgeStyle(statusAttention)}>
-          {val}
+          {displayVal}
         </span>
       );
     }
@@ -409,7 +641,7 @@ export function renderCommonHistoryValueTag(field: string, val: string, isOld: b
 
   return (
     <span
-      title={typeof val === 'string' ? val : undefined}
+      title={typeof displayVal === 'string' ? displayVal : undefined}
       style={{
         color: isOld ? textSecondary : textPrimary,
         fontWeight: isOld ? 400 : fontWeightMedium,
@@ -419,7 +651,7 @@ export function renderCommonHistoryValueTag(field: string, val: string, isOld: b
         lineHeight: 1.5,
       }}
     >
-      {val}
+      {displayVal}
     </span>
   );
 }
@@ -916,15 +1148,14 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
     const filtered = (records || []).filter((r) => {
       const act = getRecordAction(r);
-      const reason = (r.reason || r.note || r.description || '').toLowerCase();
+      const note = (r.note || r.description || '').toLowerCase();
       // Nghiệp vụ: Lịch sử thay đổi chỉ hiển thị cập nhật trên hồ sơ đã duyệt, không hiển thị log Tạo mới / Lưu tạm
-      if (act === 'CREATED' || act === 'CREATE' || act === 'DRAFT' || act === 'PROPOSED' || reason.startsWith('tạo mới')) {
+      if (act === 'CREATED' || act === 'CREATE' || act === 'DRAFT' || act === 'PROPOSED' || note.startsWith('tạo mới')) {
         return false;
       }
 
       const ts = getRecordTimestamp(r);
       const actor = getRecordActor(r).toLowerCase();
-      const note = (r.note || r.reason || r.description || '').toLowerCase();
       const actLabel = resolveAction(act).label.toLowerCase();
 
       // Keyword search
@@ -1191,7 +1422,6 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                 if (item.action) primaryAction = item.action;
                 else if (item.status) primaryAction = item.status;
                 if (item.note) groupNotes.push(item.note);
-                if (item.reason && !groupNotes.includes(item.reason)) groupNotes.push(item.reason);
                 if (item.description && !groupNotes.includes(item.description)) groupNotes.push(item.description);
                 if (item.changes && Array.isArray(item.changes) && item.changes.length > 0) {
                   groupChanges.push(...item.changes);
@@ -1359,9 +1589,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                     {orderedChanges.length > 0 ? (
                       <div>
                         {orderedChanges.map((change, cIdx) => {
-                          const label = combinedFieldMap[change.field] || change.field;
+                          const label = combinedFieldMap[change.field] || formatFallbackFieldLabel(change.field, combinedFieldMap);
                           const prevChange = cIdx > 0 ? orderedChanges[cIdx - 1] : null;
-                          const prevLabel = prevChange ? (combinedFieldMap[prevChange.field] || prevChange.field) : null;
+                          const prevLabel = prevChange ? (combinedFieldMap[prevChange.field] || formatFallbackFieldLabel(prevChange.field, combinedFieldMap)) : null;
                           const isFirstInGroup = cIdx === 0 || label !== prevLabel;
 
                           const ov = resolveFieldValue(change.field, change.oldValue);

@@ -100,7 +100,6 @@ public class ShipRepairYardApprovalService {
                 .entityId(id.toString())
                 .decision("REJECTED")
                 .cap(cap)
-                .reason(reason)
                 .decidedBy(userId)
                 .decidedAt(LocalDateTime.now())
                 .build();
@@ -172,13 +171,11 @@ public class ShipRepairYardApprovalService {
         User userActor = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
         return HistoryEntry.builder()
                 .id(h.getId())
-                .approvalLevel(h.getApprovalLevel())
                 .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                 .approvedBy(h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null)
                 .orgUnitName(userActor != null && userActor.getOrgUnit() != null
                         ? userActor.getOrgUnit().getName() : null)
                 .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
                 .changedField(h.getChangedField())
                 .previousValue(h.getPreviousValue())
                 .newValue(h.getNewValue())

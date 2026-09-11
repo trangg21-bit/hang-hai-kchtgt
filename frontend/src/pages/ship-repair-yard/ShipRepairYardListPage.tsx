@@ -15,12 +15,13 @@ import {
 } from '../../services/portService';
 import type { ShipRepairYard } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
 import type { Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -147,7 +148,6 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
   const item = group.items?.[0] || {};
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
 
   if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
     return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
@@ -213,7 +213,7 @@ function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; 
     }
     return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
   }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
+  if (rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
     if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
       return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
     }
@@ -355,6 +355,7 @@ function renderHistoryValueTag(field: string, val: string | null) {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function ShipRepairYardList() {
+  const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
@@ -488,7 +489,7 @@ export default function ShipRepairYardList() {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
     const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
     const q = historySearch.toLowerCase().trim();
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; items: any[] }[] = [];
     for (const r of sorted) {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
@@ -509,10 +510,10 @@ export default function ShipRepairYardList() {
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r, userMap);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status && prev.approvalLevel === r.approvalLevel) {
+      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status ) {
         prev.items.push(r);
       } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+        groups.push({ tsSec: sec, ts, actor, status: r.status, items: [r] });
       }
     }
     if (groups.length === 0) return (
@@ -634,8 +635,9 @@ export default function ShipRepairYardList() {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        defaultOrgUnitId.current = parentOrgUnits[0].id;
-        setManagingUnitId(parentOrgUnits[0].id);
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, parentOrgUnits);
+        defaultOrgUnitId.current = resolvedDefault;
+        setManagingUnitId(resolvedDefault);
       }
       setOrgUnitReady(true);
     } else {
@@ -644,20 +646,11 @@ export default function ShipRepairYardList() {
           const resp = await organizationService.list({ pageSize: 1000 });
           const data = resp.data || [];
           setOrganizations(data);
-          if (data.length > 0 && !defaultOrgApplied.current) {
+          if (!defaultOrgApplied.current) {
             defaultOrgApplied.current = true;
-            try {
-              const profileRes = await api.get('/users/me');
-              const profile = profileRes.data?.data ?? profileRes.data;
-              const userOrgId = profile?.orgUnitId;
-              const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
-              defaultOrgUnitId.current = defaultId;
-              setManagingUnitId(defaultId === '__all__' ? undefined : defaultId);
-            } catch {
-              defaultOrgUnitId.current = data[0].id;
-              setManagingUnitId(data[0].id);
-            }
+            const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+            defaultOrgUnitId.current = resolvedDefault;
+            setManagingUnitId(resolvedDefault);
           }
           setOrgUnitReady(true);
         } catch (err) {
@@ -772,7 +765,7 @@ export default function ShipRepairYardList() {
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
-    setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
+    setManagingUnitId(defaultOrg);
     setFilterName(''); setFilterCode(''); setFilterPortId(undefined);
     setFilterPierId(undefined);
     setFilterProvince('');
@@ -879,13 +872,10 @@ export default function ShipRepairYardList() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
           Đơn vị quản lý
         </div>
-        <OrgUnitTreeSelect
+        <FilterOrgUnitTreeSelect
           organizations={organizations}
-          placeholder="Chọn đơn vị..."
+          placeholder="Tất cả"
           allowClear
-          showPath
-          allLabel="Tất cả"
-          treeDefaultExpandAll={false}
           value={managingUnitId}
           onChange={(v) => { setManagingUnitId(v); setPage(1); }}
         />

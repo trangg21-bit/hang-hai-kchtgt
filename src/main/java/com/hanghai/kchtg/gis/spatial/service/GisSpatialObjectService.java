@@ -48,6 +48,7 @@ public class GisSpatialObjectService {
                 case STORM_SHELTER_AREA -> GisSpatialObjectType.POLYGON_STORM_SHELTER;
                 case BUOY_BERTH -> GisSpatialObjectType.POLYGON_BUOY_BERTH;
                 case SHIP_REPAIR_YARD -> GisSpatialObjectType.POLYGON_SHIP_REPAIR_YARD;
+                case VTS_ZONE -> GisSpatialObjectType.POLYGON_LIMITED_ZONE;
                 default -> GisSpatialObjectType.POLYGON_OTHER;
             };
         } else {

@@ -9,16 +9,15 @@ import {
   Row,
   Col,
   DatePicker,
-  Modal,
-  Tag,
+  Dropdown,
+  type MenuProps,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined, FileTextOutlined, BankOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { PlusOutlined, FileTextOutlined, BankOutlined, MoreOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import { focusErrorTab } from '../../utils/formValidationHelper';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   VtsSystemResponse,
   CreateVtsSystemRequest,
@@ -27,7 +26,7 @@ import type {
 import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
-  requiredMarkStyle, inputStyle,
+  requiredMarkStyle, inputStyle, textAreaStyle,
   drawerTabBarStyle, drawerFormScrollStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontSizeMd, fontSizeSm,
   statusOperational, actionPrimary,
@@ -36,7 +35,10 @@ import {
   getDatePickerProps,
   DRAWER_TABLE_SCROLL_Y,
   borderDefault,
+  rowActionButtonStyle,
+  icons,
 } from '../../themetokenchk';
+import { THEME_SCOPE_CLASS } from '../../context/ThemeTokenContext';
 import AppDrawer from '../../components/shared/AppDrawer';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -46,6 +48,7 @@ import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '..
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import VtsSystemDetailContent from './VtsSystemDetailContent';
+import VtsZoneLocationDrawer from './VtsZoneLocationDrawer';
 
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -227,19 +230,36 @@ export default function VtsSystemForm({
   const [filesLoaded, setFilesLoaded] = useState(false);
   const [isLoadingZones, setIsLoadingZones] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-  const [zoneGisModalOpen, setZoneGisModalOpen] = useState(false);
-  const [selectedZoneIndex, setSelectedZoneIndex] = useState<number | null>(null);
-  const selectedZone = selectedZoneIndex !== null ? zoneList[selectedZoneIndex] : null;
 
   const isCreateMode = propMode === 'create';
   const isEditMode = propMode === 'edit';
   const isDetailMode = propMode === 'detail';
 
+  // Child Drawer xem chi tiết / chỉnh sửa vị trí vùng VTS
+  const [zoneLocationDrawerOpen, setZoneLocationDrawerOpen] = useState(false);
+  const [zoneLocationDrawerMode, setZoneLocationDrawerMode] = useState<'view' | 'edit'>('view');
+  const [selectedZoneForLocation, setSelectedZoneForLocation] = useState<any>(null);
+  const [selectedZoneLocationIndex, setSelectedZoneLocationIndex] = useState<number | null>(null);
+
+  const handleOpenZoneLocation = (r: any, idx: number, mode: 'view' | 'edit') => {
+    setSelectedZoneForLocation(r);
+    setSelectedZoneLocationIndex(idx);
+    setZoneLocationDrawerMode(mode);
+    setZoneLocationDrawerOpen(true);
+  };
+
+  const handleSaveZoneLocation = (updatedZone: any, zoneIndex: number) => {
+    setZoneList((prev) =>
+      prev.map((item, i) => (i === zoneIndex ? { ...item, ...updatedZone } : item))
+    );
+    setSelectedZoneForLocation((prev: any) => ({ ...prev, ...updatedZone }));
+  };
+
   const attachmentsEditable = isCreateMode ||
     record?.approvalStatus === ApprovalStatus.DRAFT ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
-    (record?.approvalStatus === ApprovalStatus.APPROVED && (hasPerm('vts:approvec2') || hasPerm('vts:update')));
+    (record?.approvalStatus === ApprovalStatus.APPROVED && (hasPerm('vts:approvec2') || hasPerm('vts:approve') || hasPerm('data:approvec2') || hasPerm('data:approve')));
 
   const handleUploadAttachment = async (file: File) => {
     if (file.size > 20 * 1024 * 1024) {
@@ -620,9 +640,10 @@ export default function VtsSystemForm({
           code: z.code.trim(),
           name: z.name.trim(),
           conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
-          geometryType: z.geometryType || (z.coordinates ? 'POLYGON' : undefined),
-          coordinates: z.coordinates || undefined,
-          spatialId: z.spatialId || undefined,
+          geometryType: z.geometryType,
+          coordinates: z.coordinates,
+          spatialId: z.spatialId,
+          symbolId: z.symbolId,
         })),
       };
 
@@ -1084,7 +1105,7 @@ export default function VtsSystemForm({
                               name="scope"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập phạm vi áp dụng" showCount maxLength={2000} style={inputStyle} />
+                              <Input.TextArea placeholder="Nhập phạm vi áp dụng" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -1094,7 +1115,7 @@ export default function VtsSystemForm({
                               rules={[{ required: true, message: 'Vui lòng nhập thông báo hàng hải' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập thông báo hàng hải" showCount maxLength={2000} style={inputStyle} />
+                              <Input.TextArea placeholder="Nhập thông báo hàng hải" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -1103,7 +1124,7 @@ export default function VtsSystemForm({
                               name="note"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập ghi chú" showCount maxLength={2000} style={inputStyle} />
+                              <Input.TextArea placeholder="Nhập ghi chú" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1155,15 +1176,14 @@ export default function VtsSystemForm({
                       columns={[
                         {
                           title: 'STT',
-                          width: 50,
+                          width: 60,
                           align: 'center',
-                          render: (_v, _r, idx) => idx + 1,
                         },
                         {
                           title: 'Mã vùng',
                           dataIndex: 'code',
                           key: 'code',
-                          width: 150,
+                          width: 180,
                           render: (val, r: any) => (
                             <ZoneCellInput
                               value={val}
@@ -1187,7 +1207,7 @@ export default function VtsSystemForm({
                           title: 'Tên vùng VTS',
                           dataIndex: 'name',
                           key: 'name',
-                          width: 260,
+                          width: 360,
                           render: (val, r: any) => (
                             <ZoneCellInput
                               value={val}
@@ -1208,56 +1228,9 @@ export default function VtsSystemForm({
                           ),
                         },
                         {
-                          title: 'Tọa độ GIS',
-                          key: 'coordinates',
-                          width: 220,
-                          render: (_val: any, r: any, idx: number) => {
-                            const rawWkt = r.coordinates || '';
-                            let displayInfo = 'Chưa có tọa độ';
-                            let tagColor: string = 'default';
-                            if (rawWkt) {
-                              if (rawWkt.startsWith('POLYGON')) {
-                                const count = (rawWkt.match(/,/g) || []).length + 1;
-                                displayInfo = `Vùng (${count} điểm)`;
-                                tagColor = 'blue';
-                              } else if (rawWkt.startsWith('LINE') || rawWkt.startsWith('LINESTRING')) {
-                                const count = (rawWkt.match(/,/g) || []).length + 1;
-                                displayInfo = `Đường (${count} điểm)`;
-                                tagColor = 'cyan';
-                              } else if (rawWkt.startsWith('POINT')) {
-                                displayInfo = 'Điểm tọa độ';
-                                tagColor = 'green';
-                              } else {
-                                displayInfo = 'Đã có tọa độ';
-                                tagColor = 'blue';
-                              }
-                            }
-
-                            return (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                                <Tag color={tagColor} style={{ marginRight: 0, borderRadius: 12, padding: '1px 8px', fontSize: fontSizeSm }}>
-                                  {displayInfo}
-                                </Tag>
-                                <Button
-                                  type="link"
-                                  size="small"
-                                  icon={<EnvironmentOutlined />}
-                                  style={{ padding: '0 4px', fontSize: fontSizeSm, height: 26, display: 'inline-flex', alignItems: 'center', gap: 2 }}
-                                  onClick={() => {
-                                    setSelectedZoneIndex(idx);
-                                    setZoneGisModalOpen(true);
-                                  }}
-                                >
-                                  {rawWkt ? 'Sửa' : 'Chọn vị trí'}
-                                </Button>
-                              </div>
-                            );
-                          },
-                        },
-                        {
                           title: 'Tình trạng',
                           key: 'conditionStatus',
-                          width: 150,
+                          width: 160,
                           render: (_val, r: any) => (
                             <Select
                               value={r.conditionStatus || r.status || ConditionStatus.OPERATIONAL}
@@ -1278,20 +1251,60 @@ export default function VtsSystemForm({
                         {
                           title: 'Thao tác',
                           key: 'actions',
-                          width: 70,
+                          width: 80,
                           align: 'center',
-                          render: (_v, r: any) => (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Button
-                                type="text"
-                                danger
-                                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                                style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                onClick={() => setZoneList((prev) => prev.filter((item) => !(item === r || (r.id && item.id === r.id) || (r._key && item._key === r._key))))}
-                                title="Xóa vùng VTS"
-                              />
-                            </div>
-                          ),
+                          render: (_v, r: any, idx: number) => {
+                            const actionItems: MenuProps['items'] = [
+                              {
+                                key: 'view',
+                                label: 'Xem chi tiết',
+                                icon: icons.view,
+                                onClick: () => handleOpenZoneLocation(r, idx, 'view'),
+                              },
+                              {
+                                key: 'edit',
+                                label: 'Chỉnh sửa',
+                                icon: icons.edit,
+                                onClick: () => handleOpenZoneLocation(r, idx, 'edit'),
+                              },
+                              {
+                                key: 'delete',
+                                label: 'Xóa',
+                                danger: true,
+                                icon: icons.delete,
+                                onClick: () => {
+                                  setZoneList((prev) =>
+                                    prev.filter(
+                                      (item, i) =>
+                                        i !== idx &&
+                                        !(
+                                          item === r ||
+                                          (r.id && item.id === r.id) ||
+                                          (r._key && item._key === r._key)
+                                        )
+                                    )
+                                  );
+                                },
+                              },
+                            ];
+
+                            return (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Dropdown menu={{ items: actionItems }} trigger={['click']} rootClassName={THEME_SCOPE_CLASS}>
+                                  <Button
+                                    icon={<MoreOutlined />}
+                                    style={{
+                                      ...rowActionButtonStyle,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: 0,
+                                    }}
+                                  />
+                                </Dropdown>
+                              </div>
+                            );
+                          },
                         },
                       ]}
                     />
@@ -1317,77 +1330,14 @@ export default function VtsSystemForm({
         </Spin>
       )}
     </AppDrawer>
-      <Modal
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <EnvironmentOutlined style={{ color: actionPrimary }} />
-            <span>
-              Thiết lập Vị trí & Tọa độ GIS vùng VTS{selectedZone?.name ? `: ${selectedZone.name}` : selectedZone?.code ? `: [${selectedZone.code}]` : ''}
-            </span>
-          </div>
-        }
-        open={zoneGisModalOpen}
-        onCancel={() => setZoneGisModalOpen(false)}
-        destroyOnClose
-        width="96vw"
-        style={{ top: 12, maxWidth: 1600 }}
-        footer={[
-          selectedZone?.coordinates && (
-            <Button
-              key="clear"
-              danger
-              onClick={() => {
-                if (selectedZoneIndex !== null) {
-                  setZoneList((prev) =>
-                    prev.map((item, i) =>
-                      i === selectedZoneIndex ? { ...item, coordinates: '', geometryType: undefined } : item
-                    )
-                  );
-                }
-                setZoneGisModalOpen(false);
-              }}
-              style={{ float: 'left' }}
-            >
-              Xóa tọa độ
-            </Button>
-          ),
-          <Button
-            key="close"
-            type="primary"
-            onClick={() => setZoneGisModalOpen(false)}
-            style={{ ...primaryButtonStyle, height: 32 }}
-          >
-            Xác nhận & Đóng
-          </Button>,
-        ]}
-      >
-        <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 8 }}>
-          <GisLocationSelector
-            inline={true}
-            defaultGeometryType="POLYGON"
-            height={520}
-            value={{
-              geometryType: selectedZone?.geometryType || 'POLYGON',
-              coordinates: selectedZone?.coordinates || '',
-            }}
-            onChange={(val) => {
-              if (selectedZoneIndex !== null) {
-                setZoneList((prev) =>
-                  prev.map((item, i) =>
-                    i === selectedZoneIndex
-                      ? {
-                          ...item,
-                          geometryType: val.geometryType || 'POLYGON',
-                          coordinates: val.coordinates,
-                        }
-                      : item
-                  )
-                );
-              }
-            }}
-          />
-        </div>
-      </Modal>
+      <VtsZoneLocationDrawer
+        open={zoneLocationDrawerOpen}
+        mode={zoneLocationDrawerMode}
+        zone={selectedZoneForLocation}
+        zoneIndex={selectedZoneLocationIndex}
+        onClose={() => setZoneLocationDrawerOpen(false)}
+        onSave={handleSaveZoneLocation}
+      />
     </>
   );
 }

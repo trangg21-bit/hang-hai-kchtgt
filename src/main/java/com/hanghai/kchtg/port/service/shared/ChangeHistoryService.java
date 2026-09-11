@@ -59,6 +59,14 @@ public class ChangeHistoryService {
             case "TRANSFERAREA", "TRANSFER_AREA", "TRANSSHIPMENT_AREA", "KHU_CHUYEN_TAI" -> InfrastructureType.TRANSSHIPMENT_AREA;
             case "ANCHORAGE", "KHU_NEO_DAU", "ANCHORAGE_AREA" -> InfrastructureType.ANCHORAGE_AREA;
             case "BUOYBERTH", "BUOY_BERTH", "BEN_PHAO" -> InfrastructureType.BUOY_BERTH;
+            case "VTS_ZONE", "VTSZONE", "VUNG_VTS" -> InfrastructureType.VTS_ZONE;
+            case "VHF" -> InfrastructureType.VHF;
+            case "SEAPORT_THROUGHPUT", "SAN_LUONG" -> InfrastructureType.SEAPORT_THROUGHPUT;
+            case "LEGAL_DOCUMENT", "VAN_BAN" -> InfrastructureType.LEGAL_DOCUMENT;
+            case "LRIT", "LRIT_STATION" -> InfrastructureType.LRIT_STATION;
+            case "INMARSAT", "INMARSAT_STATION" -> InfrastructureType.INMARSAT_STATION;
+            case "COSPAS_SARSAT", "COSPAS_SARSAT_STATION" -> InfrastructureType.COSPAS_SARSAT_STATION;
+            case "HAIPHONG", "HANOI_STATION" -> InfrastructureType.HANOI_STATION;
             default -> InfrastructureType.SEAPORT;
         };
     }
@@ -121,7 +129,6 @@ public class ChangeHistoryService {
                         historyRepository.save(InfrastructureHistory.builder()
                                 .refId(refUuid)
                                 .refType(resolveInfrastructureType(entityName))
-                                .approvalLevel(ApprovalLevel.LEVEL_0)
                                 .status(InfrastructureHistoryStatus.UPDATED)
                                 .approvedBy(userUuid)
                                 .approvedDate(LocalDateTime.now())
@@ -227,7 +234,6 @@ public class ChangeHistoryService {
             InfrastructureHistory saved = historyRepository.save(InfrastructureHistory.builder()
                     .refId(entityId)
                     .refType(resolveInfrastructureType(entityType))
-                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(userUuid)
                     .approvedDate(LocalDateTime.now())

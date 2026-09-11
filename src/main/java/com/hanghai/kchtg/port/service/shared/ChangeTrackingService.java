@@ -93,7 +93,6 @@ public class ChangeTrackingService {
                         historyRepository.save(InfrastructureHistory.builder()
                                 .refId(entityUuid)
                                 .refType(ChangeHistoryService.resolveInfrastructureType(entityName))
-                                .approvalLevel(ApprovalLevel.LEVEL_0)
                                 .status(InfrastructureHistoryStatus.UPDATED)
                                 .approvedBy(userUuid)
                                 .approvedDate(LocalDateTime.now())

@@ -48,6 +48,7 @@ import {
   statusCritical, statusOperational, actionPrimary,
   readonlyInputStyle, inputStyle, selectStyle,
   DRAWER_TABLE_SCROLL_Y, getDatePickerProps, spaceXs,
+  textAreaStyle,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -1101,7 +1102,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                               rules={[{ max: 2000, message: 'Thông số kỹ thuật tối đa 2000 ký tự' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                              <Input.TextArea placeholder="Nhập thông số kỹ thuật" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -1123,7 +1124,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                               rules={[{ max: 2000, message: 'Thông tin bảo trì tối đa 2000 ký tự' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                              <Input.TextArea placeholder="Nhập thông tin bảo trì" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -1133,7 +1134,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                               rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập ghi chú" maxLength={2000} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
+                              <Input.TextArea placeholder="Nhập ghi chú" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                         </Row>

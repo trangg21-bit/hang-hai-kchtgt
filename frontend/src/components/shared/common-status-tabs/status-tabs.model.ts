@@ -95,4 +95,10 @@ export const STANDARD_APPROVAL_TABS: readonly Omit<CommonStatusTabItem, 'count' 
     color: '#E34948',
     queryStatus: 'REJECTED_LEVEL1',
   },
+  {
+    key: 'ARCHIVED',
+    label: 'Đã xóa',
+    color: '#E34948',
+    queryStatus: 'ARCHIVED',
+  },
 ];

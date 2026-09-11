@@ -43,6 +43,7 @@ const BuoyListPage = lazy(() => import('./services/buoy/BuoyListPage'));
 const BeaconHistoryList = lazy(() => import('./pages/history/BeaconHistoryList'));
 const SymbolList = lazy(() => import('./pages/symbols/SymbolList'));
 const HomePage = lazy(() => import('./pages/Home'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage'));
 const PortList = lazy(() => import('./services/port/PortListPage'));
 const PortApprovePage = lazy(() => import('./services/port/PortApprovePage'));
@@ -156,8 +157,8 @@ export default function App() {
               <Route element={<AppLayout />}>
                 {/* Landing v2 (M-024): 6 khối chức năng trong AppLayout — PortalHome fullscreen đã gỡ */}
                 <Route path="/" element={<HomePage />} />
-                {/* '/dashboard' de-dup: nội dung KPI không còn trong tree (v2) → redirect về landing 6 khối (quyết định ghi lean-spec/F-292) */}
-                <Route path="/dashboard" element={<Navigate to="/" replace />} />
+                {/* Dashboard KPI page */}
+                <Route path="/dashboard" element={<PermissionGuard permission="report:read"><DashboardPage /></PermissionGuard>} />
                 <Route path="/users" element={<PermissionGuard permission="user:read"><UsersPage /></PermissionGuard>} />
 
                 {/* Organization — Đơn vị */}

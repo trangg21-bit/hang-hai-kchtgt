@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -70,14 +69,12 @@ public class HistoryService {
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(refId)
                 .refType(refType)
-                .approvalLevel(toApprovalLevel(action))
                 .status(toStatus(action))
                 .approvedBy(changedBy)
                 .approvedDate(approvedDate != null ? approvedDate : LocalDateTime.now())
                 .changedField(changedField)
                 .previousValue(previousValue)
                 .newValue(newValue)
-                .reason(reason)
                 .build());
     }
 
@@ -102,9 +99,9 @@ public class HistoryService {
         LocalDateTime now = LocalDateTime.now();
         for (Map.Entry<String, String> entry : oldValues.entrySet()) {
             String fieldName = entry.getKey();
-            String oldVal = entry.getValue() != null && !entry.getValue().isBlank() ? entry.getValue() : "—";
-            String newVal = newValueResolver != null ? newValueResolver.apply(fieldName) : "—";
-            if (newVal == null || newVal.isBlank()) newVal = "—";
+            String oldVal = entry.getValue() != null && !entry.getValue().isBlank() && !"—".equals(entry.getValue()) ? entry.getValue() : null;
+            String newVal = newValueResolver != null ? newValueResolver.apply(fieldName) : null;
+            if (newVal != null && (newVal.isBlank() || "—".equals(newVal))) newVal = null;
 
             recordHistory(
                     refType,
@@ -113,7 +110,7 @@ public class HistoryService {
                     fieldName,
                     oldVal,
                     newVal,
-                    "Cập nhật " + fieldName,
+                    null,
                     changedBy,
                     now);
         }
@@ -180,13 +177,11 @@ public class HistoryService {
                 Expression<String> cf = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("changedField"), "")));
                 Expression<String> pv = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("previousValue"), "")));
                 Expression<String> nv = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("newValue"), "")));
-                Expression<String> rz = cb.function("immutable_unaccent", String.class, cb.lower(cb.coalesce(root.get("reason"), "")));
 
                 predicates.add(cb.or(
                         cb.like(cf, pattern),
                         cb.like(pv, pattern),
-                        cb.like(nv, pattern),
-                        cb.like(rz, pattern)
+                        cb.like(nv, pattern)
                 ));
             }
 
@@ -228,12 +223,10 @@ public class HistoryService {
             CoastalStationVTSHistoryResponse entry = new CoastalStationVTSHistoryResponse();
             entry.setId(h.getId());
             entry.setStationCode(stationCode);
-            entry.setActionType(toActionType(h.getStatus(), h.getApprovalLevel()));
+            entry.setActionType(toActionType(h.getStatus()));
             entry.setChangedField(h.getChangedField());
             entry.setPreviousValue(h.getPreviousValue());
             entry.setNewValue(h.getNewValue());
-            entry.setReason(h.getReason());
-            entry.setApprovalLevel(h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
             entry.setChangedBy(h.getApprovedBy() == null
                     ? "Hệ thống"
                     : userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()));
@@ -263,17 +256,7 @@ public class HistoryService {
         return InfrastructureHistoryStatus.UPDATED;
     }
 
-    private ApprovalLevel toApprovalLevel(StationHistoryActionType action) {
-        if (action == StationHistoryActionType.APPROVE_L1) {
-            return ApprovalLevel.LEVEL_1;
-        }
-        if (action == StationHistoryActionType.APPROVE_L2) {
-            return ApprovalLevel.LEVEL_2;
-        }
-        return ApprovalLevel.LEVEL_0;
-    }
-
-    private StationHistoryActionType toActionType(InfrastructureHistoryStatus status, ApprovalLevel level) {
+    private StationHistoryActionType toActionType(InfrastructureHistoryStatus status) {
         if (status == null) {
             return StationHistoryActionType.UPDATE;
         }
@@ -287,9 +270,7 @@ public class HistoryService {
             return StationHistoryActionType.REJECT;
         }
         if (status == InfrastructureHistoryStatus.APPROVED) {
-            return level == ApprovalLevel.LEVEL_2
-                    ? StationHistoryActionType.APPROVE_L2
-                    : StationHistoryActionType.APPROVE_L1;
+            return StationHistoryActionType.APPROVE_L2;
         }
         return StationHistoryActionType.UPDATE;
     }
