@@ -291,6 +291,11 @@ export async function deleteInfrastructureAsset(id: string): Promise<void> {
   await api.delete(`/v1/asset/infra-assets/${id}`);
 }
 
+export async function fetchInfraAssetHistory(id: string): Promise<any> {
+  const res = await api.get(`/v1/asset/infra-assets/${id}/history`);
+  return res.data?.data;
+}
+
 export async function fetchPortTerminalAssets(
   params: PortTerminalAssetFilters,
 ): Promise<PageResponse<PortTerminalAsset>> {
@@ -856,8 +861,11 @@ export async function downloadInfraAssetAttachment(
       responseType: "blob",
     },
   );
+  const contentType = typeof res.headers["content-type"] === "string"
+    ? res.headers["content-type"]
+    : "application/octet-stream";
   const blob = new Blob([res.data], {
-    type: res.headers["content-type"] || "application/octet-stream",
+    type: contentType,
   });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");

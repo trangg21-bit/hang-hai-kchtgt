@@ -458,7 +458,7 @@ export default function CctvSystemAssetForm({
                 label: 'Khấu hao tháng (VNĐ)',
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customContent: () => (
+                customRender: () => (
                   <Form.Item noStyle shouldUpdate>
                     {({ getFieldValue }) => {
                       const orig = Number(getFieldValue('originalValue')) || 0;

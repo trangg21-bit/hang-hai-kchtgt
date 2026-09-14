@@ -1,41 +1,41 @@
-import React, { useMemo, useCallback } from "react";
 import {
+  Button,
+  Col,
+  DatePicker,
   Form,
   Input,
-  Select,
   InputNumber,
-  DatePicker,
   Row,
-  Col,
-  Tabs,
-  Button,
+  Select,
   Spin,
+  Tabs,
 } from "antd";
 import type { FormInstance, Rule } from "antd/es/form";
-import { AppDrawer } from "../AppDrawer";
-import { OrgUnitTreeSelect } from "../../org-unit";
-import { fmtInputNumber } from "../../../utils/numFmt";
+import React, { useCallback, useMemo } from "react";
 import { useThemeToken } from "../../../context/ThemeTokenContext";
 import {
-  colors,
   actionPrimary,
+  colors,
+  DRAWER_FORM_WIDTH,
+  drawerFormScrollStyle,
+  drawerTabBarStyle,
   fontSizeMd,
   fontWeightBold,
-  radiusPill,
-  radiusMd,
-  spaceFormField,
-  readonlyInputStyle,
-  drawerTabBarStyle,
-  drawerFormScrollStyle,
   getDatePickerProps,
-  DRAWER_FORM_WIDTH,
+  radiusMd,
+  radiusPill,
+  readonlyInputStyle,
+  spaceFormField,
 } from "../../../themetokenchk";
+import { fmtInputNumber } from "../../../utils/numFmt";
+import { OrgUnitTreeSelect } from "../../org-unit";
+import { AppDrawer } from "../AppDrawer";
 import {
   type DynamicFormSidebarProps,
   type FormFieldConfig,
   type FormSectionConfig,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
   FormFieldType,
 } from "./dynamic-form-sidebar.model";
 
@@ -125,7 +125,7 @@ function renderFormField<T extends Record<string, unknown>>(
           min={field.min}
           max={field.max}
           formatter={field.formatter || fmtInputNumber}
-          parser={field.parser}
+          parser={field.parser as any}
           placeholder={field.placeholder ?? (labelText ? `Nhập ${labelText}` : '0')}
           disabled={field.disabled}
           readOnly={field.readOnly}
@@ -205,7 +205,7 @@ function renderFormField<T extends Record<string, unknown>>(
     case FormFieldType.Readonly: {
       const computedVal = field.computedValue
         ? field.computedValue(form, formValues)
-        : formValues[field.name];
+        : formValues[field.name as keyof T];
       const displayVal = field.valueFormatter
         ? field.valueFormatter(computedVal)
         : computedVal != null
@@ -214,7 +214,7 @@ function renderFormField<T extends Record<string, unknown>>(
       controlNode = (
         <Input
           disabled
-          value={displayVal}
+          value={displayVal as any}
           placeholder={field.placeholder}
           style={{ ...readonlyInputStyle, ...field.controlStyle }}
         />
@@ -244,7 +244,7 @@ function renderFormField<T extends Record<string, unknown>>(
   if (field.type === FormFieldType.Custom && !field.label) {
     return (
       <Col
-        key={field.name}
+        key={String(field.name)}
         span={field.colSpan || 12}
         style={{ ...field.itemStyle }}
       >
@@ -254,12 +254,12 @@ function renderFormField<T extends Record<string, unknown>>(
   }
 
   return (
-    <Col key={field.name} span={field.colSpan || 12}>
+    <Col key={String(field.name)} span={field.colSpan || 12}>
       <Form.Item
         name={
           field.type === FormFieldType.Readonly && field.computedValue
             ? undefined
-            : field.name
+            : (field.name as any)
         }
         label={labelNode}
         rules={rules}

@@ -74,6 +74,11 @@ import {
    - Áp dụng giống nhau cho Thêm mới, Chỉnh sửa, Khai thác tài sản, Tăng nguyên giá và Giảm nguyên giá. Chỉ nội dung/schema nghiệp vụ được phép khác nhau.
    - Khi refactor, quét `rg -n -A 25 "<DynamicFormSidebar" frontend/src/pages` và loại bỏ mọi `width` tùy chỉnh trong phân hệ tài sản.
 
+6. **CẤM gom các trường chuẩn vào Custom Wrapper lồng nhau**:
+   - Mọi trường nhập liệu tiêu chuẩn (như Số lượng `quantity`, Đơn vị tính `quantityUnit`, Mã vạch `barcode`, v.v.) **BẮT BUỘC** khai báo độc lập bằng các loại trường chuẩn: `FormFieldType.Number`, `FormFieldType.Select`, `FormFieldType.Text`... với `colSpan: 12`.
+   - **TUYỆT ĐỐI CẤM** gom các trường chuẩn vào `FormFieldType.Custom` với JSX tự viết lồng `<Form.Item>` bên trong (như `quantityGroup`).
+   - *Hậu quả nếu vi phạm*: Phá vỡ cơ chế đăng ký tự động của Ant Design Form, khiến `form.validateFields()` bỏ qua trường và payload gửi lên server mang giá trị `null`, làm mất mát dữ liệu và sinh ra lịch sử thay đổi ảo (`640 -> (null)`)!
+
 ---
 
 ## 3. Các loại trường hỗ trợ (`FormFieldType`)

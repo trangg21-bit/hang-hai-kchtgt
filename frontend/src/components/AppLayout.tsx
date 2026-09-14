@@ -1,67 +1,55 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
-  Layout,
-  Menu,
-  Button,
+  AimOutlined,
+  ApartmentOutlined,
+  ApiOutlined,
+  AppstoreOutlined,
+  ArrowLeftOutlined,
+  AuditOutlined,
+  BankOutlined,
+  BarChartOutlined,
+  BlockOutlined,
+  BuildOutlined,
+  BulbOutlined,
+  CompassOutlined,
+  ContainerOutlined,
+  DashboardOutlined,
+  DeploymentUnitOutlined,
+  DownOutlined,
+  EnvironmentOutlined,
+  FileProtectOutlined,
+  FileTextOutlined,
+  GlobalOutlined,
+  HistoryOutlined,
+  LogoutOutlined,
+  MinusCircleOutlined,
+  PictureOutlined,
+  PlusCircleOutlined,
+  RadarChartOutlined,
+  SafetyCertificateOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  SwapOutlined,
+  SyncOutlined,
+  TeamOutlined,
+  ToolOutlined,
+  TruckOutlined,
+  UserOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
+import {
   Avatar,
+  Button,
+  Drawer,
   Dropdown,
   Grid,
-  Drawer,
-  Typography,
+  Layout,
+  Menu,
   Space,
+  Typography,
   type MenuProps,
 } from 'antd';
-import {
-  UserOutlined,
-  ArrowLeftOutlined,
-  LogoutOutlined,
-  DashboardOutlined,
-  SettingOutlined,
-  DownOutlined,
-  ContainerOutlined,
-  SearchOutlined,
-  BankOutlined,
-  SwapOutlined,
-  EnvironmentOutlined,
-  BarChartOutlined,
-  PlusCircleOutlined,
-  MinusCircleOutlined,
-  AuditOutlined,
-  AppstoreOutlined,
-  WarningOutlined,
-  FileProtectOutlined,
-  PictureOutlined,
-  TeamOutlined,
-  HistoryOutlined,
-  SyncOutlined,
-  ApiOutlined,
-  FileTextOutlined,
-  AimOutlined,
-  BulbOutlined,
-  DeploymentUnitOutlined,
-  BlockOutlined,
-  ApartmentOutlined,
-  BuildOutlined,
-  ToolOutlined,
-  RadarChartOutlined,
-  GlobalOutlined,
-  CompassOutlined,
-  SafetyCertificateOutlined,
-} from '@ant-design/icons';
-import { useAuthStore } from '../store/authStore';
-import { usePermissionStore } from '../store/permissionStore';
-import { colors, layout } from '../theme';
-import * as themeTokenChk from '../themetokenchk';
-import { actionPrimary } from '../themetokenchk';
-import { ThemeTokenProvider } from '../context/ThemeTokenContext';
-import LogoutConfirmModal from './shared/LogoutConfirmModal';
-import {
-  MENU_PERMISSION_MAP,
-  collectOpenableKeys,
-  filterEmptyChildren,
-  filterMenuByQuery,
-} from './appLayoutMenu';
+import { useEffect, useMemo, useState } from 'react';
+import { Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   NAV_GROUPS,
   accessibleTree,
@@ -72,8 +60,21 @@ import {
   type NavGroup,
   type NavNode,
 } from '../config/navigation';
-import { REPORT_TEMPLATES, CATEGORY_MAP } from '../config/reports';
 import { CATEGORY_ICONS, REPORT_ICONS } from '../config/reportIcons';
+import { CATEGORY_MAP, REPORT_TEMPLATES } from '../config/reports';
+import { ThemeTokenProvider } from '../context/ThemeTokenContext';
+import { useAuthStore } from '../store/authStore';
+import { usePermissionStore } from '../store/permissionStore';
+import { colors, layout } from '../theme';
+import * as themeTokenChk from '../themetokenchk';
+import { actionPrimary } from '../themetokenchk';
+import {
+  MENU_PERMISSION_MAP,
+  collectOpenableKeys,
+  filterEmptyChildren,
+  filterMenuByQuery,
+} from './appLayoutMenu';
+import LogoutConfirmModal from './shared/LogoutConfirmModal';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -87,11 +88,11 @@ const canAccessMenu = (path: string): boolean => {
     required = 'report:read';
   }
   if (!required) return true;
-  
+
   if (Array.isArray(required)) {
     return usePermissionStore.getState().hasAnyPermission(required);
   }
-  
+
   return usePermissionStore.getState().hasPermission(required);
 };
 
@@ -256,26 +257,29 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       label: 'Quản lý tài sản KCHT hàng hải',
       children: [
         canAccessMenu('/asset/berth') ? { key: '/asset/berth', icon: <BankOutlined />, label: 'Tài sản bến cảng' } : null,
-        canAccessMenu('/asset/lrit') ? { key: '/asset/lrit', icon: <CompassOutlined />, label: 'Tài sản đài LRIT' } : null,
-
-        canAccessMenu('/asset/transmission') ? { key: '/asset/transmission', icon: <DeploymentUnitOutlined />, label: 'Tài sản HT truyền dẫn' } : null,
-        canAccessMenu('/asset/vts-assist') ? { key: '/asset/vts-assist', icon: <ToolOutlined />, label: 'Tài sản hệ thống phụ trợ VTS' } : null,
-        canAccessMenu('/asset/vhf') ? { key: '/asset/vhf', icon: <ApiOutlined />, label: 'Tài sản HTTT liên lạc VHF' } : null,
-        canAccessMenu('/asset/dai-ttdh') ? { key: '/asset/dai-ttdh', icon: <RadarChartOutlined />, label: 'Tài sản đài TTDH' } : null,
-        canAccessMenu('/asset/inmarsat') ? { key: '/asset/inmarsat', icon: <GlobalOutlined />, label: 'Tài sản đài Inmarsat' } : null,
-
         canAccessMenu('/asset/transfer-area') ? { key: '/asset/transfer-area', icon: <SwapOutlined />, label: 'Tài sản khu chuyển tải' } : null,
         canAccessMenu('/asset/storm-shelter') ? { key: '/asset/storm-shelter', icon: <SafetyCertificateOutlined />, label: 'Tài sản khu tránh, trú bão' } : null,
+        canAccessMenu('/asset/buoy-berth') ? { key: '/asset/buoy-berth', icon: <ContainerOutlined />, label: 'Tài sản bến phao' } : null,
+        canAccessMenu('/asset/pier') ? { key: '/asset/pier', icon: <BuildOutlined />, label: 'Tài sản cầu cảng' } : null,
         canAccessMenu('/asset/anchorage') ? { key: '/asset/anchorage', icon: <EnvironmentOutlined />, label: 'Tài sản khu neo đậu' } : null,
         canAccessMenu('/asset/lighthouse') ? { key: '/asset/lighthouse', icon: <BulbOutlined />, label: 'Tài sản đèn biển và nhà trạm gắn liền đèn biển' } : null,
         canAccessMenu('/asset/dike-revetment') ? { key: '/asset/dike-revetment', icon: <BlockOutlined />, label: 'Tài sản đê/kè' } : null,
         canAccessMenu('/asset/buoy') ? { key: '/asset/buoy', icon: <AimOutlined />, label: 'Tài sản phao, tiêu và nhà trạm' } : null,
         canAccessMenu('/asset/channel') ? { key: '/asset/channel', icon: <DeploymentUnitOutlined />, label: 'Tài sản luồng hàng hải' } : null,
+        canAccessMenu('/asset/dry-port') ? { key: '/asset/dry-port', icon: <TruckOutlined />, label: 'Tài sản cảng cạn' } : null,
+        canAccessMenu('/asset/lrit') ? { key: '/asset/lrit', icon: <CompassOutlined />, label: 'Tài sản đài LRIT' } : null,
+        canAccessMenu('/asset/cospas-sarsat') ? { key: '/asset/cospas-sarsat', icon: <SafetyCertificateOutlined />, label: 'Tài sản đài Cospas-Sarsat' } : null,
+        canAccessMenu('/asset/ttxltt') ? { key: '/asset/ttxltt', icon: <BankOutlined />, label: 'Tài sản đài TTXLTT' } : null,
         canAccessMenu('/asset/vts-system') ? { key: '/asset/vts-system', icon: <CompassOutlined />, label: 'Tài sản hệ thống VTS' } : null,
         canAccessMenu('/asset/radar-station') ? { key: '/asset/radar-station', icon: <CompassOutlined />, label: 'Tài sản trạm radar' } : null,
         canAccessMenu('/asset/ais-system') ? { key: '/asset/ais-system', icon: <CompassOutlined />, label: 'Tài sản hệ thống AIS' } : null,
         canAccessMenu('/asset/cctv-system') ? { key: '/asset/cctv-system', icon: <CompassOutlined />, label: 'Tài sản HT CCTV' } : null,
         canAccessMenu('/asset/scada-system') ? { key: '/asset/scada-system', icon: <CompassOutlined />, label: 'Tài sản HT SCADA' } : null,
+        canAccessMenu('/asset/transmission') ? { key: '/asset/transmission', icon: <DeploymentUnitOutlined />, label: 'Tài sản HT truyền dẫn' } : null,
+        canAccessMenu('/asset/vts-assist') ? { key: '/asset/vts-assist', icon: <ToolOutlined />, label: 'Tài sản hệ thống phụ trợ VTS' } : null,
+        canAccessMenu('/asset/vhf') ? { key: '/asset/vhf', icon: <ApiOutlined />, label: 'Tài sản HTTT liên lạc VHF' } : null,
+        canAccessMenu('/asset/dai-ttdh') ? { key: '/asset/dai-ttdh', icon: <RadarChartOutlined />, label: 'Tài sản đài TTDH' } : null,
+        canAccessMenu('/asset/inmarsat') ? { key: '/asset/inmarsat', icon: <GlobalOutlined />, label: 'Tài sản đài Inmarsat' } : null,
         canAccessMenu('/asset/increase') ? { key: '/asset/increase', icon: <PlusCircleOutlined />, label: 'Yêu cầu tăng tài sản' } : null,
         canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', icon: <MinusCircleOutlined />, label: 'Yêu cầu giảm tài sản' } : null,
         canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', icon: <AuditOutlined />, label: 'Kiểm kê tài sản' } : null,
@@ -441,15 +445,15 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header — logo và nút thu gọn menu */}
-      <div 
-        className="sidebar-header" 
-        style={{ 
-          display: 'flex', 
+      <div
+        className="sidebar-header"
+        style={{
+          display: 'flex',
           flexDirection: isMenuFullScreen ? 'column' : 'row',
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          position: 'relative', 
-          padding: isMenuFullScreen ? '24px 16px' : '0 16px', 
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          padding: isMenuFullScreen ? '24px 16px' : '0 16px',
           cursor: 'pointer',
           borderBottom: isMenuFullScreen ? '1px solid #f0f0f0' : 'none',
           height: isMenuFullScreen ? 'auto' : undefined
@@ -561,9 +565,9 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       </div>
 
       {/* Footer — text */}
-      <div 
-        className="sidebar-footer" 
-        style={{ 
+      <div
+        className="sidebar-footer"
+        style={{
           justifyContent: 'center',
           color: isMenuFullScreen ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.45)',
           borderTop: isMenuFullScreen ? '1px solid #f0f0f0' : '1px solid rgba(255,255,255,0.06)'
@@ -708,9 +712,9 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
         </ThemeTokenProvider>
       )}
 
-        <Layout 
-          style={{ 
-            display: 'flex', 
+        <Layout
+          style={{
+            display: 'flex',
             flexDirection: 'column',
             paddingLeft: (!isMobile && !sidebarHidden) ? layout.sidebarWidth : 0,
             height: '100vh',

@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Form, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -13,14 +12,6 @@ import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  colors,
-  fontWeightBold,
-  fontSizeMd,
-  radiusPill,
-  spaceSm,
-  spaceFormField,
-} from '../../themetokenchk';
 import {
   DynamicFormSidebar,
   FormFieldType,
@@ -354,7 +345,7 @@ export default function TransmissionAssetForm({
                 name: 'remainingValue',
                 label: 'Giá trị còn lại (VNĐ)',
                 type: FormFieldType.Custom,
-                customContent: () => {
+                customRender: () => {
                   let original = 0;
                   let accumulated = 0;
                   if (watchedOriginalValue != null) original = Number(watchedOriginalValue);
@@ -434,7 +425,7 @@ export default function TransmissionAssetForm({
                 name: 'monthlyDepreciation',
                 label: 'Khấu hao tháng (VNĐ)',
                 type: FormFieldType.Custom,
-                customContent: () => {
+                customRender: () => {
                   let original = 0;
                   let months = 0;
                   if (watchedOriginalValue != null) original = Number(watchedOriginalValue);

@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
+import { Button } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
+  HistoryOutlined,
   PlusOutlined,
-  RocketOutlined,
 } from '@ant-design/icons';
 import {
   ScreenHeader,
@@ -22,7 +20,9 @@ import {
   type FilterOption,
   type ScreenHeaderAction,
 } from '../../components/list-view';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchTransmissionOptions } from '../../services/transmission/api';
@@ -40,6 +40,7 @@ import {
   uploadTransmissionAssetAttachments,
   deleteTransmissionAssetAttachment,
   downloadTransmissionAssetAttachment,
+  fetchTransmissionAssetHistory,
 } from '../../services/transmissionAsset/api';
 import type {
   TransmissionAsset,
@@ -53,9 +54,17 @@ import {
   resolveMimeType,
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
+import {
+  actionPrimary,
+  borderDefault,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+} from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
 import TransmissionAssetDetailContent from './TransmissionAssetDetailContent';
@@ -84,6 +93,41 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
+const TRANSMISSION_ASSET_FIELD_LABELS: Record<string, string> = {
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  orgUnitId: 'Đơn vị quản lý',
+  usingOrgUnitId: 'Đơn vị sử dụng',
+  transmissionId: 'Mã hệ thống truyền dẫn',
+  assetType: 'Loại tài sản',
+  types: 'Phân loại tài sản',
+  assetCode: 'Mã tài sản',
+  assetName: 'Tên tài sản',
+  barcode: 'Barcode',
+  assetCondition: 'Tình trạng tài sản',
+  usageStatus: 'Hiện trạng sử dụng',
+  assetGroup: 'Nhóm tài sản',
+  assetSubgroup: 'Phân nhóm tài sản',
+  origin: 'Nguồn gốc',
+  address: 'Địa chỉ',
+  landArea: 'Diện tích đất (m²)',
+  floorArea: 'Diện tích sàn (m²)',
+  constructionYear: 'Năm xây dựng',
+  useDate: 'Ngày đưa vào sử dụng',
+  declarationDate: 'Ngày kê khai',
+  originalValue: 'Nguyên giá (VNĐ)',
+  depreciationRate: 'Tỷ lệ hao mòn (%/năm)',
+  accumulatedDepreciation: 'Hao mòn/khấu hao lũy kế (VNĐ)',
+  remainingValue: 'Giá trị còn lại (VNĐ)',
+  assignmentDecisionNumber: 'Số quyết định giao tài sản',
+  depreciationStartDate: 'Ngày bắt đầu tính hao mòn',
+  depreciationMonths: 'Thời gian sử dụng (tháng)',
+  depreciationEndDate: 'Ngày kết thúc tính hao mòn',
+  monthlyDepreciation: 'Mức hao mòn/khấu hao tháng (VNĐ)',
+  disposalMethod: 'Hình thức xử lý',
+  attachmentName: 'Tài liệu đính kèm',
+  attachments: 'Tài liệu đính kèm',
+};
+
 export default function TransmissionAssetList() {
   const [data, setData] = useState<TransmissionAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -108,6 +152,58 @@ export default function TransmissionAssetList() {
   const [operationForm] = Form.useForm<OperationValues>();
   const currentUser = useAuthStore((s) => s.user);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+
+  // ── History state (chuẩn /berth) ───────────────────────────────────────
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<TransmissionAsset | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+
+  const historyFieldCount = useMemo(
+    () => (Array.isArray(historyRecords) ? historyRecords : []).length,
+    [historyRecords]
+  );
+
+  const openHistory = useCallback(async (r: TransmissionAsset) => {
+    setHistoryTarget(r);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    setHistorySearch('');
+    setHistoryFrom('');
+    setHistoryTo('');
+    try {
+      const d = await fetchTransmissionAssetHistory(r.id);
+      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
+      setHistoryRecords(ch);
+    } catch {
+      toast.error('Không thể tải lịch sử');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const filteredHistoryRecords = useMemo(() => {
+    return historyRecords.filter((rec) => {
+      if (historySearch) {
+        const s = historySearch.toLowerCase();
+        const matchField = String(rec.fieldName || rec.changedField || '').toLowerCase().includes(s);
+        const matchOld = String(rec.oldValue || rec.previousValue || '').toLowerCase().includes(s);
+        const matchNew = String(rec.newValue || rec.value || '').toLowerCase().includes(s);
+        if (!matchField && !matchOld && !matchNew) return false;
+      }
+      if (historyFrom && dayjs(rec.changedAt || rec.approvedDate).isBefore(dayjs(historyFrom), 'day')) {
+        return false;
+      }
+      if (historyTo && dayjs(rec.changedAt || rec.approvedDate).isAfter(dayjs(historyTo), 'day')) {
+        return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historySearch, historyFrom, historyTo]);
 
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
   const transmissionMap = useMemo(
@@ -733,15 +829,25 @@ export default function TransmissionAssetList() {
           },
         },
         {
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
         },
+        ...(record.approvalStatus === 'DRAFT'
+          ? [
+              {
+                key: 'delete',
+                label: 'Xóa',
+                icon: <DeleteOutlined />,
+                danger: true,
+                onClick: () => setDeleteTarget(record),
+              },
+            ]
+          : []),
       ],
     }),
-    [openDetail, openEdit, operationForm, orgName, transmissionMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap]
   );
 
   const headerActions: ScreenHeaderAction[] = useMemo(
@@ -908,6 +1014,88 @@ export default function TransmissionAssetList() {
               .finally(() => setSaving(false));
           }}
         />
+        {/* ── History Drawer (chuẩn /berth) ────────────────────────── */}
+        <AppDrawer
+          width="min(880px, 96vw)"
+          rootClassName="berth-drawer-scope"
+          className="berth-drawer-scope"
+          mask
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Space size={spaceSm} style={{ alignItems: 'center' }}>
+                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+                <span style={drawerTitleStyle}>
+                  {historyTarget ? `Lịch sử thay đổi — ${historyTarget.assetName}` : 'Lịch sử thay đổi'}
+                </span>
+                <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                  Tổng cộng {historyFieldCount}
+                </span>
+              </Space>
+            </div>
+          }
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          }}>
+          <div style={{ flexShrink: 0 }}>
+            {!historyLoading && (
+              <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+                <Input
+                  placeholder="Tìm kiếm nội dung thay đổi..."
+                  allowClear
+                  value={historySearch}
+                  onChange={e => setHistorySearch(e.target.value)}
+                  style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+                />
+                <DatePicker
+                  placeholder="Từ ngày"
+                  value={historyFrom ? dayjs(historyFrom) : null}
+                  onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <DatePicker
+                  placeholder="Đến ngày"
+                  value={historyTo ? dayjs(historyTo) : null}
+                  onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  style={{
+                    borderRadius: radiusPill,
+                    height: 40,
+                    fontSize: fontSizeMd,
+                    background: actionPrimary,
+                    borderColor: actionPrimary,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {historyLoading ? (
+              <LoadingSkeleton rows={5} />
+            ) : filteredHistoryRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+              </div>
+            ) : (
+              renderStandardHistoryCards({
+                records: filteredHistoryRecords,
+                fieldLabels: TRANSMISSION_ASSET_FIELD_LABELS,
+              })
+            )}
+          </div>
+        </AppDrawer>
       </div>
     </ThemeTokenProvider>
   );

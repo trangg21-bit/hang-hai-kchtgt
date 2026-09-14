@@ -2330,6 +2330,12 @@ export const getSidebarDatePickerProps = (extraProps?: Record<string, unknown>) 
   };
   return {
     format: extraFormat || (rest.picker === 'year' ? 'YYYY' : ['DD/MM/YYYY', 'YYYY-MM-DD']),
+    popupClassName: [
+      'chk-sidebar-datepicker-popup',
+      typeof extraClassNames?.popup === 'string' ? extraClassNames.popup : undefined,
+      typeof extraClassNames?.popup === 'object' ? extraClassNames.popup?.root : undefined,
+      extraPopupClassName,
+    ].filter(Boolean).join(' '),
     classNames: {
       ...extraClassNames,
       popup: {

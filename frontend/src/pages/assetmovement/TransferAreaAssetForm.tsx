@@ -238,50 +238,22 @@ export default function TransferAreaAssetForm({
             icon: <AppstoreOutlined />,
             fields: [
               {
-                name: 'quantityGroup',
-                label: '',
-                type: FormFieldType.Custom,
+                name: 'quantity',
+                label: 'Số lượng',
+                type: FormFieldType.Number,
+                min: 0,
+                formatter: fmtInputNumber,
+                placeholder: '0',
                 colSpan: 12,
-                customContent: () => (
-                  <div style={{ display: 'flex', gap: spaceSm }}>
-                    <div style={{ flex: 1 }}>
-                      <Form.Item
-                        name="quantity"
-                        label={
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                            Số lượng
-                          </span>
-                        }
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          formatter={fmtInputNumber}
-                          placeholder="0"
-                          style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
-                        />
-                      </Form.Item>
-                    </div>
-                    <div style={{ width: 140 }}>
-                      <Form.Item
-                        name="quantityUnit"
-                        label={
-                          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                            Đơn vị tính số lượng
-                          </span>
-                        }
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          allowClear
-                          placeholder="Đơn vị"
-                          options={UNITS.map((v) => ({ value: v, label: v }))}
-                          style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
-                        />
-                      </Form.Item>
-                    </div>
-                  </div>
-                ),
+              },
+              {
+                name: 'quantityUnit',
+                label: 'Đơn vị tính số lượng',
+                type: FormFieldType.Select,
+                placeholder: 'Chọn đơn vị tính',
+                allowClear: true,
+                options: UNITS.map((v) => ({ value: v, label: v })),
+                colSpan: 12,
               },
               { name: 'model', label: 'Model', type: FormFieldType.Text, placeholder: 'Nhập model' },
               { name: 'serialNumber', label: 'Serial', type: FormFieldType.Text, placeholder: 'Nhập serial' },

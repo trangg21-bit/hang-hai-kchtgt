@@ -1,45 +1,59 @@
 package com.hanghai.kchtg.transmissionasset.service;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.transmission.repository.TransmissionRepository;
-import com.hanghai.kchtg.transmissionasset.dto.*;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAdjustmentRequest;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAssetRequest;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAssetResponse;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionExploitationRequest;
 import com.hanghai.kchtg.transmissionasset.entity.TransmissionAsset;
 import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetAdjustment;
 import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetExploitation;
 import com.hanghai.kchtg.transmissionasset.repository.TransmissionAssetAdjustmentRepository;
 import com.hanghai.kchtg.transmissionasset.repository.TransmissionAssetExploitationRepository;
 import com.hanghai.kchtg.transmissionasset.repository.TransmissionAssetRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtsassist.repository.VtsAssistRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
-
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.port.repository.AttachmentRepository;
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.multipart.MultipartFile;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -56,6 +70,8 @@ public class TransmissionAssetService {
     private final VtsAssistRepository vtsAssistRepository;
     private final AttachmentRepository attachmentRepository;
     private final UserResolverService userResolverService;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public TransmissionAssetResponse create(TransmissionAssetRequest request) {
@@ -117,7 +133,81 @@ public class TransmissionAssetService {
 
     @Transactional
     public void delete(UUID id) {
-        repository.delete(requireAsset(id));
+        TransmissionAsset entity = requireAsset(id);
+        if (entity.getApprovalStatus() != null && entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
+            throw new IllegalArgumentException("Chỉ được xóa tài sản ở trạng thái Lưu tạm");
+        }
+        UUID userId = SecurityUtils.getCurrentUserId();
+        entity.softDelete(userId);
+        repository.save(entity);
+
+        InfrastructureHistoryUtils.recordSoftDelete(
+                historyRepository,
+                id,
+                InfrastructureType.TRANSMISSION,
+                userId,
+                "Xóa tài sản: " + entity.getAssetName()
+        );
+    }
+
+    public Map<String, Object> getHistory(UUID id) {
+        TransmissionAsset entity = requireAsset(id);
+        String entityId = id.toString();
+        String entityType = "TransmissionAsset";
+
+        List<InfrastructureHistory> list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("changedField", h.getChangedField());
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue());
+                    m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
+                    m.put("approvedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
+                    m.put("approvedDate", h.getApprovedDate());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
+                    return m;
+                })
+                .toList();
+
+        return Map.of(
+                "entityId", entityId,
+                "entityType", entityType,
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
+                "changeHistory", changeHistory,
+                "approvalLog", approvalLog,
+                "histories", list
+        );
     }
 
     // --- Exploitations (Tab 4) ---
@@ -282,17 +372,25 @@ public class TransmissionAssetService {
 
         List<Attachment> allAttachments = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("TRANSMISSION_ASSET", assetId);
         String mergedNames = allAttachments.stream()
-                .map(Attachment::getFileName)
+                .filter(Objects::nonNull)
+                .map(att -> att.getFileName())
+                .filter(Objects::nonNull)
                 .collect(Collectors.joining(", "));
         asset.setAttachmentName(mergedNames);
         repository.save(asset);
 
-        return allAttachments.stream().map(this::toAttachmentResponse).collect(Collectors.toList());
+        return allAttachments.stream()
+                .filter(Objects::nonNull)
+                .map(att -> toAttachmentResponse(att))
+                .collect(Collectors.toList());
     }
 
     public List<InfraAssetAttachmentResponse> listAttachments(UUID assetId) {
         return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("TRANSMISSION_ASSET", assetId)
-                .stream().map(this::toAttachmentResponse).collect(Collectors.toList());
+                .stream()
+                .filter(Objects::nonNull)
+                .map(att -> toAttachmentResponse(att))
+                .collect(Collectors.toList());
     }
 
     public Attachment getAttachment(UUID assetId, UUID attachmentId) {
@@ -320,7 +418,11 @@ public class TransmissionAssetService {
 
         List<Attachment> remaining = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("TRANSMISSION_ASSET", assetId);
         String mergedNames = remaining.isEmpty() ? null
-                : remaining.stream().map(Attachment::getFileName).collect(Collectors.joining(", "));
+                : remaining.stream()
+                        .filter(Objects::nonNull)
+                        .map(att -> att.getFileName())
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.joining(", "));
         asset.setAttachmentName(mergedNames);
         repository.save(asset);
     }

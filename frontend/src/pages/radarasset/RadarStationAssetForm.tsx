@@ -436,58 +436,39 @@ export default function RadarStationAssetForm({
                 label: "Giá trị còn lại (VNĐ)",
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customContent: () => (
-                  <Form.Item
-                    label="Giá trị còn lại (VNĐ)"
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <Form.Item noStyle shouldUpdate>
-                      {({ getFieldValue }) => {
-                        const orig =
-                          Number(getFieldValue("originalValue")) || 0;
-                        const acc =
-                          Number(getFieldValue("accumulatedDepreciation")) || 0;
-                        const rem = Math.max(0, orig - acc);
-                        return (
-                          <InputNumber
-                            value={rem}
-                            disabled
-                            formatter={fmtInputNumber}
-                            style={{
-                              width: "100%",
-                              borderRadius: radiusPill,
-                              height: 40,
-                              background: "#f8fafc",
-                            }}
-                          />
-                        );
-                      }}
-                    </Form.Item>
+                customRender: () => (
+                  <Form.Item noStyle shouldUpdate>
+                    {({ getFieldValue }) => {
+                      const orig =
+                        Number(getFieldValue("originalValue")) || 0;
+                      const acc =
+                        Number(getFieldValue("accumulatedDepreciation")) || 0;
+                      const rem = Math.max(0, orig - acc);
+                      return (
+                        <InputNumber
+                          value={rem}
+                          disabled
+                          formatter={fmtInputNumber}
+                          style={{
+                            width: "100%",
+                            borderRadius: radiusPill,
+                            height: 40,
+                            background: "#f8fafc",
+                          }}
+                        />
+                      );
+                    }}
                   </Form.Item>
                 ),
               },
               {
                 name: "valueUnit",
                 label: "Đơn vị tính giá trị",
-                type: FormFieldType.Custom,
+                type: FormFieldType.Select,
                 colSpan: 12,
-                customContent: () => (
-                  <Form.Item
-                    label="Đơn vị tính giá trị"
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <Select
-                      defaultValue="VNĐ"
-                      disabled
-                      options={[{ value: "VNĐ", label: "VNĐ" }]}
-                      style={{
-                        width: "100%",
-                        borderRadius: radiusPill,
-                        height: 40,
-                      }}
-                    />
-                  </Form.Item>
-                ),
+                disabled: true,
+                initialValue: "VNĐ",
+                options: [{ value: "VNĐ", label: "VNĐ" }],
               },
               {
                 name: "assignmentDecisionNumber",
@@ -532,33 +513,28 @@ export default function RadarStationAssetForm({
                 label: "Khấu hao tháng (VNĐ)",
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customContent: () => (
-                  <Form.Item
-                    label="Khấu hao tháng (VNĐ)"
-                    style={{ marginBottom: spaceFormField }}
-                  >
-                    <Form.Item noStyle shouldUpdate>
-                      {({ getFieldValue }) => {
-                        const orig =
-                          Number(getFieldValue("originalValue")) || 0;
-                        const months =
-                          Number(getFieldValue("depreciationMonths")) || 0;
-                        const mDep = months > 0 ? Math.round(orig / months) : 0;
-                        return (
-                          <InputNumber
-                            value={mDep}
-                            disabled
-                            formatter={fmtInputNumber}
-                            style={{
-                              width: "100%",
-                              borderRadius: radiusPill,
-                              height: 40,
-                              background: "#f8fafc",
-                            }}
-                          />
-                        );
-                      }}
-                    </Form.Item>
+                customRender: () => (
+                  <Form.Item noStyle shouldUpdate>
+                    {({ getFieldValue }) => {
+                      const orig =
+                        Number(getFieldValue("originalValue")) || 0;
+                      const months =
+                        Number(getFieldValue("depreciationMonths")) || 0;
+                      const mDep = months > 0 ? Math.round(orig / months) : 0;
+                      return (
+                        <InputNumber
+                          value={mDep}
+                          disabled
+                          formatter={fmtInputNumber}
+                          style={{
+                            width: "100%",
+                            borderRadius: radiusPill,
+                            height: 40,
+                            background: "#f8fafc",
+                          }}
+                        />
+                      );
+                    }}
                   </Form.Item>
                 ),
               },

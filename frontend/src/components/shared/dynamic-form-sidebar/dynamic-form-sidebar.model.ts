@@ -1,5 +1,5 @@
-import type React from 'react';
 import type { FormInstance, Rule } from 'antd/es/form';
+import type React from 'react';
 import type { Organization } from '../../../services/organizationService';
 
 /**
@@ -65,7 +65,7 @@ export interface FormFieldConfig<T extends Record<string, unknown> = Record<stri
   /** Hàm định dạng số hiển thị */
   formatter?: (value: unknown) => string;
   /** Hàm parse số từ chuỗi nhập vào */
-  parser?: (value: string | undefined) => unknown;
+  parser?: (value: string | undefined) => string | number;
   /** Định dạng ngày hiển thị (VD: 'DD/MM/YYYY', 'YYYY') */
   format?: string;
   /** Chế độ chọn ngày (VD: 'date', 'year', 'month') */

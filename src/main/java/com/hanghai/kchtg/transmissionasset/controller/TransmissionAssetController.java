@@ -5,7 +5,10 @@ import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.annotation.DataScope;
-import com.hanghai.kchtg.transmissionasset.dto.*;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAdjustmentRequest;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAssetRequest;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAssetResponse;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionExploitationRequest;
 import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetAdjustment;
 import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetExploitation;
 import com.hanghai.kchtg.transmissionasset.service.TransmissionAssetService;
@@ -117,6 +120,12 @@ public class TransmissionAssetController {
             @PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản HT truyền dẫn đã được xóa", null));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", service.getHistory(id)));
     }
 
     @GetMapping("/{id}/exploitations")

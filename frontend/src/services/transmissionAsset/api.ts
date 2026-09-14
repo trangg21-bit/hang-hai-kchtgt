@@ -40,6 +40,11 @@ export async function deleteTransmissionAsset(id: string): Promise<void> {
   await api.delete(`${BASE_URL}/${id}`);
 }
 
+export async function fetchTransmissionAssetHistory(id: string): Promise<any> {
+  const res = await api.get(`${BASE_URL}/${id}/history`);
+  return res.data?.data;
+}
+
 export async function fetchTransmissionExploitations(assetId: string): Promise<TransmissionAssetExploitation[]> {
   const res = await api.get(`${BASE_URL}/${assetId}/exploitations`);
   return res.data.data;

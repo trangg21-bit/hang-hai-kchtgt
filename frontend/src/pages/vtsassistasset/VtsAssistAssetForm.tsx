@@ -356,7 +356,7 @@ export default function VtsAssistAssetForm({
                 name: 'remainingValue',
                 label: 'Giá trị còn lại (VNĐ)',
                 type: FormFieldType.Custom,
-                customContent: () => {
+                customRender: () => {
                   let original = 0;
                   let accumulated = 0;
                   if (watchedOriginalValue != null) original = Number(watchedOriginalValue);
@@ -436,7 +436,7 @@ export default function VtsAssistAssetForm({
                 name: 'monthlyDepreciation',
                 label: 'Khấu hao tháng (VNĐ)',
                 type: FormFieldType.Custom,
-                customContent: () => {
+                customRender: () => {
                   let original = 0;
                   let months = 0;
                   if (watchedOriginalValue != null) original = Number(watchedOriginalValue);

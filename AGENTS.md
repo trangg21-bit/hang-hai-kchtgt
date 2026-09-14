@@ -271,7 +271,12 @@ import { spaceFormField, radiusPill } from '../tokens';
     - `DRAWER_TABLE_SCROLL_Y.withDragger = 'calc(100vh - 394px)'` (Tab có khung Upload Dragger khóa cứng `height: 104px, boxSizing: 'border-box'` + margin 10px).
     - `DRAWER_TABLE_SCROLL_Y.detailGis = 'calc(100vh - 356px)'` (Tab GIS trong Drawer Xem chi tiết: Header cố định 132px).
   - Thêm mới luôn hiển thị đủ 3 nút: 'Lưu tạm', 'Lưu và gửi phê duyệt', 'Lưu và phê duyệt' chuẩn Bến cảng. Tiêu đề Drawer dùng `fontSize: 16` (`<span style={{ ...drawerTitleStyle, fontSize: 16 }}>...</span>`), `rootClassName="<res>-drawer-scope"`.
-- **Quy chuẩn Lịch sử thay đổi (Audit Trail)**: Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).
+- **Quy chuẩn Lịch sử thay đổi (Audit Trail & Change Tracking)**:
+  - Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).
+  - **Backend**: `copyEditableFields` **BẮT BUỘC** loại trừ các trường phê duyệt (`departmentApprovedAt`, `submittedAt`...) khỏi `BeanUtils.copyProperties` để chống ghi đè `null`; `ChangeHistoryService.isSkippedField` **BẮT BUỘC** bỏ qua toàn bộ trường metadata duyệt để không ghi lẫn vào `changedField` của thay đổi dữ liệu.
+  - **Frontend Form**: Mọi trường dữ liệu chuẩn (Số lượng, Đơn vị tính...) phải khai báo phẳng độc lập (`FormFieldType.Number`, `FormFieldType.Select`), **TUYỆT ĐỐI CẤM** bọc qua custom wrapper lồng `<Form.Item>` làm mất data binding dẫn đến mất mát dữ liệu và sinh lịch sử thay đổi ảo.
+  - **Frontend Drawer Lịch sử**: Dùng `renderStandardHistoryCards` từ `changeHistoryRenderer.tsx`, dịch 100% tên trường sang tiếng Việt qua `GLOBAL_KCHT_FIELD_LABELS`, dùng `orgName` Map trong `formatValue` để khử sạch chuỗi UUID trần (`parentOrgUnitId`, `orgUnitId`...) sang Tên đơn vị tiếng Việt, hiển thị tên đơn vị quản lý ở header card qua `resolveUnitName`.
+  - Quy chuẩn và hướng dẫn chi tiết tại skill: [kcht-change-history-audit](file:///d:/bxd.hh.kcht/.agents/skills/kcht-change-history-audit/SKILL.md).
 
 ### Reference Implementation & Golden Layout Standard (MẪU CHUẨN BẮT BUỘC)
 

@@ -1,39 +1,30 @@
-import React, { useMemo } from "react";
-import { Form, Select, InputNumber } from "antd";
-import type { FormInstance } from "antd";
-import type { Dayjs } from "dayjs";
 import {
   BankOutlined,
   SlidersOutlined,
 } from "@ant-design/icons";
-import type { Organization } from "../../services/organizationService";
+import type { FormInstance } from "antd";
+import type { Dayjs } from "dayjs";
+import { useMemo } from "react";
+import {
+  DynamicFormSidebar,
+  FormFieldType,
+  type FormSidebarAction,
+  type FormTabConfig,
+} from "../../components/shared/dynamic-form-sidebar";
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from "../../components/shared/InfrastructureAttachmentTab";
 import type {
   PortTerminalAsset,
   PortTerminalAssetPayload,
 } from "../../services/assetmovement/types";
+import type { Organization } from "../../services/organizationService";
+import { fmtInputNumber } from "../../utils/numFmt";
 import {
   PORT_TERMINAL_ASSET_SCREEN,
   type InfrastructureAssetScreenConfig,
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
-import { fmtInputNumber } from "../../utils/numFmt";
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from "../../components/shared/InfrastructureAttachmentTab";
-import {
-  colors,
-  fontWeightBold,
-  fontSizeMd,
-  radiusPill,
-  spaceSm,
-  spaceFormField,
-} from "../../themetokenchk";
-import {
-  DynamicFormSidebar,
-  FormFieldType,
-  type FormTabConfig,
-  type FormSidebarAction,
-} from "../../components/shared/dynamic-form-sidebar";
 
 export type FormValues = Omit<
   PortTerminalAssetPayload,
@@ -246,70 +237,22 @@ export default function PortTerminalAssetForm({
                 options: ORIGINS.map((v) => ({ value: v, label: v })),
               },
               {
-                name: "quantityGroup",
-                label: "",
-                type: FormFieldType.Custom,
+                name: "quantity",
+                label: "Số lượng",
+                type: FormFieldType.Number,
+                min: 0,
+                formatter: fmtInputNumber,
+                placeholder: "0",
                 colSpan: 12,
-                customContent: () => (
-                  <div style={{ display: "flex", gap: spaceSm }}>
-                    <div style={{ flex: 1 }}>
-                      <Form.Item
-                        name="quantity"
-                        label={
-                          <span
-                            style={{
-                              color: colors.sidebarBg,
-                              fontWeight: fontWeightBold,
-                              fontSize: fontSizeMd,
-                            }}
-                          >
-                            Số lượng
-                          </span>
-                        }
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          formatter={fmtInputNumber}
-                          placeholder="0"
-                          style={{
-                            borderRadius: radiusPill,
-                            height: 40,
-                            width: "100%",
-                          }}
-                        />
-                      </Form.Item>
-                    </div>
-                    <div style={{ width: 140 }}>
-                      <Form.Item
-                        name="quantityUnit"
-                        label={
-                          <span
-                            style={{
-                              color: colors.sidebarBg,
-                              fontWeight: fontWeightBold,
-                              fontSize: fontSizeMd,
-                            }}
-                          >
-                            Đơn vị tính
-                          </span>
-                        }
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          allowClear
-                          placeholder="Đơn vị"
-                          options={UNITS.map((v) => ({ value: v, label: v }))}
-                          style={{
-                            borderRadius: radiusPill,
-                            height: 40,
-                            width: "100%",
-                          }}
-                        />
-                      </Form.Item>
-                    </div>
-                  </div>
-                ),
+              },
+              {
+                name: "quantityUnit",
+                label: "Đơn vị tính",
+                type: FormFieldType.Select,
+                placeholder: "Chọn đơn vị tính",
+                allowClear: true,
+                options: UNITS.map((v) => ({ value: v, label: v })),
+                colSpan: 12,
               },
               {
                 name: "model",

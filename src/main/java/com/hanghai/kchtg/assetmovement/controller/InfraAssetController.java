@@ -150,6 +150,12 @@ public class InfraAssetController {
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được xóa", null));
     }
 
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", infraAssetService.getHistory(id)));
+    }
+
     // ── Attachment endpoints ─────────────────────────────────────────────
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -173,7 +173,16 @@ public class ChangeHistoryService {
                 || name.equals("level1ApprovalContent")
                 || name.equals("level2ApprovalContent")
                 || name.equals("submittedAt")
-                || name.equals("submittedBy");
+                || name.equals("submittedBy")
+                || name.equals("portAuthorityApprovedBy")
+                || name.equals("portAuthorityApprovedAt")
+                || name.equals("portAuthorityApprovalContent")
+                || name.equals("departmentApprovedBy")
+                || name.equals("departmentApprovedAt")
+                || name.equals("departmentApprovalContent")
+                || name.equals("approvedBy")
+                || name.equals("approvedAt")
+                || name.equals("approvedRemarks");
     }
 
     private boolean valuesEqual(Object a, Object b) {
