@@ -1,6 +1,3 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -10,35 +7,43 @@ import {
   PlusOutlined,
   RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
+  type TableActionOption,
 } from '../../components/list-view';
+import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import toast from '../../components/ToastNotification';
-import { organizationService, type Organization } from '../../services/organizationService';
-import type { GenericStationOption } from '../../services/stationOptionsService';
 import {
-  createKhaiThac,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import {
   createAssetDecrease,
   createAssetIncrease,
+  createKhaiThac,
   createStationAsset,
+  deleteInfraAssetAttachment,
   deleteStationAsset,
   fetchAssetDecreaseList,
   fetchAssetIncreaseList,
+  fetchInfraAssetAttachments,
   fetchKhaiThacList,
   fetchStationAssets,
   updateStationAsset,
   uploadInfraAssetAttachments,
-  fetchInfraAssetAttachments,
-  deleteInfraAssetAttachment,
 } from '../../services/assetmovement/api';
 import type {
   AssetDecreaseResponse,
@@ -49,21 +54,18 @@ import type {
   StationAssetFilters,
   StationAssetPayload,
 } from '../../services/assetmovement/types';
-import type { StationTypeConfig } from './stationConfigs';
-import {
-  triggerBlobDownload,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
+import { organizationService, type Organization } from '../../services/organizationService';
+import type { GenericStationOption } from '../../services/stationOptionsService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import { fontWeightBold } from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import StationAssetForm, { type StationFormValues } from './StationAssetForm';
-import StationAssetDetailContent from './StationAssetDetailContent';
 import LritAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './LritAssetOperationForm';
+import StationAssetDetailContent from './StationAssetDetailContent';
+import StationAssetForm, { type StationFormValues } from './StationAssetForm';
+import type { StationTypeConfig } from './stationConfigs';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -679,57 +681,65 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           sortField: 'departmentApprovedBy',
         },
       ],
-      actions: (record: StationAsset) => [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void handleOpenDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => handleOpenEdit(record),
-        },
-        {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('exploit');
-            operationForm.resetFields();
+      actions: (record: StationAsset) => {
+        const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+        const actionsList: TableActionOption<StationAsset>[] = [
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void handleOpenDetail(record),
           },
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('increase');
-            operationForm.resetFields();
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => handleOpenEdit(record),
           },
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('decrease');
-            operationForm.resetFields();
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('exploit');
+              operationForm.resetFields();
+            },
           },
-        },
-        {
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
-        },
-      ],
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('increase');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('decrease');
+              operationForm.resetFields();
+            },
+          },
+        ];
+
+        if (isDraft) {
+          actionsList.push({
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
+          });
+        }
+
+        return actionsList;
+      },
     }),
     [config.stationFieldName, config.stationLabel, config.title, handleOpenDetail, handleOpenEdit, operationForm, orgName, stationMap],
   );

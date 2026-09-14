@@ -39,6 +39,14 @@ export async function deleteVtsAssistAsset(id: string): Promise<void> {
   await api.delete(`${BASE_URL}/${id}`);
 }
 
+export async function fetchVtsAssistAssetHistory(
+  id: string
+): Promise<{ changeHistory?: Record<string, unknown>[] } | Record<string, unknown>[]> {
+  const res = await api.get(`${BASE_URL}/${id}/history`);
+  return res.data?.data;
+}
+
+
 export async function fetchVtsAssistExploitations(assetId: string): Promise<VtsAssistAssetExploitation[]> {
   const res = await api.get(`${BASE_URL}/${assetId}/exploitations`);
   return res.data.data;

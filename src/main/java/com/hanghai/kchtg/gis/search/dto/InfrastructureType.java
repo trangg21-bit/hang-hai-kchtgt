@@ -33,6 +33,7 @@ public enum InfrastructureType {
     VHF,
     SCADA,
     TRANSMISSION,
+    COASTAL_STATION_ASSET,
     VTS_ASSIST,
     SEAPORT_THROUGHPUT,
     REPORT_BCC157,

@@ -128,6 +128,8 @@ export {
   uploadCoastalStationAssetAttachments as uploadInmarsatAssetAttachments,
   deleteCoastalStationAssetAttachment as deleteInmarsatAssetAttachment,
   downloadCoastalStationAssetAttachment as downloadInmarsatAssetAttachment,
+  fetchCoastalStationAssetHistory as fetchInmarsatAssetHistory,
   type CoastalStationAssetAttachmentResponse as InmarsatAssetAttachmentResponse,
 } from '../coastalStationAsset/api';
+
 

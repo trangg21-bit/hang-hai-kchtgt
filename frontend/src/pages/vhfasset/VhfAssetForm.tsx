@@ -149,7 +149,7 @@ export default function VhfAssetForm({
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
                 initialValue: 'Tài sản HTTT liên lạc VHF',
-                disabled: true,
+                placeholder: 'Chọn loại tài sản',
                 options: [
                   { value: 'Tài sản HTTT liên lạc VHF', label: 'Tài sản HTTT liên lạc VHF' },
                 ],

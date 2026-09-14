@@ -160,7 +160,7 @@ export default function VtsAssistAssetForm({
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
                 initialValue: 'Tài sản hệ thống phụ trợ VTS',
-                disabled: true,
+                placeholder: 'Chọn loại tài sản',
                 options: [
                   { value: 'Tài sản hệ thống phụ trợ VTS', label: 'Tài sản hệ thống phụ trợ VTS' },
                 ],

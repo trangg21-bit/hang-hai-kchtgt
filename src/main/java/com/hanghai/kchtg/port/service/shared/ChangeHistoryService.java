@@ -31,6 +31,9 @@ public class ChangeHistoryService {
 
     public static InfrastructureType resolveInfrastructureType(String entityName) {
         if (entityName == null) return InfrastructureType.SEAPORT;
+        try {
+            return InfrastructureType.valueOf(entityName.toUpperCase().trim());
+        } catch (IllegalArgumentException ignored) {}
         return switch (entityName.toUpperCase().trim()) {
             case "PORT", "CANG_BIEN", "SEAPORT" -> InfrastructureType.SEAPORT;
             case "BERTH", "BEN_CANG", "PORT_TERMINAL" -> InfrastructureType.PORT_TERMINAL;
@@ -64,6 +67,7 @@ public class ChangeHistoryService {
             case "INMARSAT", "INMARSAT_STATION" -> InfrastructureType.INMARSAT_STATION;
             case "COSPAS_SARSAT", "COSPAS_SARSAT_STATION" -> InfrastructureType.COSPAS_SARSAT_STATION;
             case "HAIPHONG", "HANOI_STATION" -> InfrastructureType.HANOI_STATION;
+            case "COASTAL_STATION_ASSET", "COASTAL_STATION", "COASTALSTATIONASSET", "TAI_SAN_DAI" -> InfrastructureType.COASTAL_STATION_ASSET;
             default -> InfrastructureType.SEAPORT;
         };
     }

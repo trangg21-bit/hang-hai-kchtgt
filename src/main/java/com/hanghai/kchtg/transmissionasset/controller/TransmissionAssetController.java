@@ -57,6 +57,12 @@ public class TransmissionAssetController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage') or @auth.check(authentication, 'transmission:history') or @auth.check(authentication, 'transmission:read') or @auth.check(authentication, 'data:read')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản HT truyền dẫn thành công", service.getHistory(id)));
+    }
+
     private static final java.util.Set<String> SORTABLE_FIELDS = java.util.Set.of(
             "id", "assetCode", "assetName", "parentOrgUnitId", "orgUnitId", "usingOrgUnitId",
             "transmissionId", "assetCondition", "usageStatus", "assetGroup", "assetSubgroup",

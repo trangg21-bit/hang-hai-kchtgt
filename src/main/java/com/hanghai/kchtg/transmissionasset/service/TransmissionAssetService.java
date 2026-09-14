@@ -7,13 +7,9 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -32,8 +28,10 @@ import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.transmission.repository.TransmissionRepository;
@@ -70,8 +68,10 @@ public class TransmissionAssetService {
     private final VtsAssistRepository vtsAssistRepository;
     private final AttachmentRepository attachmentRepository;
     private final UserResolverService userResolverService;
+    private final ChangeTrackingService changeTrackingService;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public TransmissionAssetResponse create(TransmissionAssetRequest request) {
@@ -110,9 +110,22 @@ public class TransmissionAssetService {
             if (assetCondition != null && !assetCondition.isBlank()) predicates.add(cb.equal(root.get("assetCondition"), assetCondition));
             if (assetType != null && !assetType.isBlank()) predicates.add(cb.equal(root.get("assetType"), assetType.trim()));
             if (approvalStatus != null && !approvalStatus.isBlank()) {
-                try {
-                    predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.fromString(approvalStatus)));
-                } catch (IllegalArgumentException ignored) {}
+                String upper = approvalStatus.trim().toUpperCase(Locale.ROOT);
+                if ("ARCHIVED".equals(upper) || "DELETED".equals(upper) || "DA_XOA".equals(upper)) {
+                    predicates.add(cb.or(
+                        cb.isNotNull(root.get("deletedAt")),
+                        cb.equal(root.get("approvalStatus"), ApprovalStatus.ARCHIVED)
+                    ));
+                } else {
+                    predicates.add(cb.isNull(root.get("deletedAt")));
+                    predicates.add(cb.notEqual(root.get("approvalStatus"), ApprovalStatus.ARCHIVED));
+                    try {
+                        predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.fromString(approvalStatus)));
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            } else {
+                predicates.add(cb.isNull(root.get("deletedAt")));
+                predicates.add(cb.notEqual(root.get("approvalStatus"), ApprovalStatus.ARCHIVED));
             }
             if (updatedFrom != null) predicates.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), updatedFrom.atStartOfDay()));
             if (updatedTo != null) predicates.add(cb.lessThan(root.get("updatedAt"), updatedTo.plusDays(1).atStartOfDay()));
@@ -124,90 +137,101 @@ public class TransmissionAssetService {
     @Transactional
     public TransmissionAssetResponse update(UUID id, TransmissionAssetRequest request) {
         TransmissionAsset entity = requireAsset(id);
+        TransmissionAsset oldEntity = new TransmissionAsset();
+        BeanUtils.copyProperties(entity, oldEntity);
+
         String assetCode = entity.getAssetCode();
         copyEditableFields(request, entity);
         entity.setAssetCode(assetCode);
         calculateValues(entity);
-        return toResponse(repository.save(entity));
+        TransmissionAsset saved = repository.save(entity);
+
+        String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
+        changeTrackingService.recordChanges("TRANSMISSION", id.toString(), actorId, oldEntity, saved);
+
+        return toResponse(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
         TransmissionAsset entity = requireAsset(id);
-        if (entity.getApprovalStatus() != null && entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
-            throw new IllegalArgumentException("Chỉ được xóa tài sản ở trạng thái Lưu tạm");
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT && entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
+            throw new IllegalStateException("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm");
         }
-        UUID userId = SecurityUtils.getCurrentUserId();
-        entity.softDelete(userId);
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        entity.softDelete(currentUserId);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
 
-        InfrastructureHistoryUtils.recordSoftDelete(
-                historyRepository,
-                id,
-                InfrastructureType.TRANSMISSION,
-                userId,
-                "Xóa tài sản: " + entity.getAssetName()
-        );
+        InfrastructureHistoryUtils.recordSoftDelete(historyRepository, id, InfrastructureType.TRANSMISSION, currentUserId, "Xóa tài sản hệ thống truyền dẫn");
     }
 
-    public Map<String, Object> getHistory(UUID id) {
-        TransmissionAsset entity = requireAsset(id);
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getHistory(UUID id) {
+        requireAsset(id);
         String entityId = id.toString();
         String entityType = "TransmissionAsset";
 
-        List<InfrastructureHistory> list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
+        List<InfrastructureHistory> list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.TRANSMISSION, id);
 
-        Set<UUID> userIds = list.stream()
+        java.util.Set<UUID> userIds = list.stream()
                 .map(InfrastructureHistory::getApprovedBy)
-                .filter(Objects::nonNull)
+                .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(
-                                User::getId,
-                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
-                                (a, b) -> a));
 
-        List<Map<String, Object>> changeHistory = list.stream()
+        java.util.Map<UUID, User> userMap = userIds.isEmpty() ? java.util.Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
+        List<java.util.Map<String, Object>> changeHistory = list.stream()
                 .filter(h -> h.getChangedField() != null)
                 .map(h -> {
-                    Map<String, Object> m = new HashMap<>();
+                    java.util.Map<String, Object> m = new java.util.HashMap<>();
                     m.put("id", h.getId());
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
-                    m.put("changedField", h.getChangedField());
-                    m.put("previousValue", h.getPreviousValue());
-                    m.put("newValue", h.getNewValue());
+                    m.put("refId", h.getRefId());
+                    m.put("refType", h.getRefType());
                     m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
-                    m.put("approvedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
+                    m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+                    String actorName = u != null && u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : (u != null ? u.getUsername() : (h.getApprovedBy() != null ? h.getApprovedBy().toString() : "Hệ thống"));
+                    String orgUnitName = "";
+                    if (u != null && u.getOrgUnit() != null) {
+                        try {
+                            orgUnitName = orgUnitCacheService.getName(u.getOrgUnit().getId());
+                            if (orgUnitName == null || orgUnitName.isBlank()) {
+                                orgUnitName = u.getOrgUnit().getName();
+                            }
+                        } catch (Exception e) {
+                            orgUnitName = "";
+                        }
+                    }
+                    m.put("changedBy", actorName);
+                    m.put("approvedBy", actorName);
+                    m.put("approvedByName", actorName);
+                    m.put("actorName", actorName);
+                    m.put("orgUnitName", orgUnitName != null ? orgUnitName : "");
+                    m.put("unitName", orgUnitName != null ? orgUnitName : "");
+                    if (u != null && u.getOrgUnit() != null) {
+                        try {
+                            m.put("userOrgUnitId", u.getOrgUnit().getId().toString());
+                        } catch (Exception ignored) {}
+                    }
+                    m.put("changedAt", h.getApprovedDate());
                     m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
                     return m;
                 })
                 .toList();
 
-        List<Map<String, Object>> approvalLog = list.stream()
-                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
-                .map(h -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("id", h.getId());
-                    m.put("entityType", entityType);
-                    m.put("entityId", entityId);
-                    m.put("decision", h.getStatus().name());
-                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
-                    m.put("decidedAt", h.getApprovedDate());
-                    m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);
-                    return m;
-                })
-                .toList();
-
-        return Map.of(
-                "entityId", entityId,
-                "entityType", entityType,
-                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
-                "changeHistory", changeHistory,
-                "approvalLog", approvalLog,
-                "histories", list
-        );
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("changeHistory", changeHistory);
+        return result;
     }
 
     // --- Exploitations (Tab 4) ---

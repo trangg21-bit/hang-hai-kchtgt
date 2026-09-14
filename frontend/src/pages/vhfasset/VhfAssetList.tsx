@@ -6,6 +6,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
@@ -19,9 +20,11 @@ import {
   CommonStatusTabs,
   TableColumnType,
   type TableOption,
+  type TableActionOption,
   type FilterOption,
   type ScreenHeaderAction,
 } from '../../components/list-view';
+import { canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -56,13 +59,14 @@ import {
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import VhfAssetForm, { type FormValues } from './VhfAssetForm';
 import VhfAssetDetailContent from './VhfAssetDetailContent';
 import VhfAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './VhfAssetOperationForm';
+import VhfAssetHistory, { useVhfHistory } from './VhfAssetHistory';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -71,6 +75,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -96,12 +101,8 @@ export default function VhfAssetList() {
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [filters, setFilters] = useState<VhfAssetFilters>({
-    assetType: VHF_ASSET_TYPE,
-  });
-  const [draftFilters, setDraftFilters] = useState<VhfAssetFilters & { updatedRange?: [Dayjs | null, Dayjs | null] }>({
-    assetType: VHF_ASSET_TYPE,
-  });
+  const [filters, setFilters] = useState<VhfAssetFilters>({});
+  const [draftFilters, setDraftFilters] = useState<VhfAssetFilters & { updatedRange?: [Dayjs | null, Dayjs | null] }>({});
   const [drawerMode, setDrawerMode] = useState<DrawerMode>();
   const [selected, setSelected] = useState<VhfAsset>();
   const [deleteTarget, setDeleteTarget] = useState<VhfAsset>();
@@ -124,6 +125,12 @@ export default function VhfAssetList() {
       ),
     [transmissions]
   );
+
+  const {
+    historyOpen, historyTarget, historyRecords, historyLoading,
+    historyFilters, filteredHistory, hasActiveHistoryFilter,
+    openHistory, setHistoryOpen, setHistoryFilters,
+  } = useVhfHistory({ orgName, transmissionMap });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -326,7 +333,7 @@ export default function VhfAssetList() {
       triggerBlobDownload(fallbackBlob, fileName);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
-    [attachments, selected?.id]
+    [attachments, selected]
   );
 
   const openDetail = useCallback(async (record: VhfAsset) => {
@@ -467,8 +474,7 @@ export default function VhfAssetList() {
         key: 'assetType',
         label: 'Loại tài sản',
         type: 'select',
-        disabled: true,
-        defaultValue: VHF_ASSET_TYPE,
+        placeholder: 'Chọn loại tài sản',
         options: [{ value: VHF_ASSET_TYPE, label: VHF_ASSET_TYPE }],
       },
       {
@@ -504,16 +510,14 @@ export default function VhfAssetList() {
     const range = draftFilters.updatedRange;
     setFilters({
       ...draftFilters,
-      assetType: VHF_ASSET_TYPE,
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),
     });
   }, [draftFilters]);
 
   const handleFilterReset = useCallback(() => {
-    const defaultF = { assetType: VHF_ASSET_TYPE };
-    setDraftFilters(defaultF);
-    setFilters(defaultF);
+    setDraftFilters({});
+    setFilters({});
     setPage(1);
   }, []);
 
@@ -656,59 +660,93 @@ export default function VhfAssetList() {
           allowSort: true,
         },
       ],
-      actions: (record: VhfAsset) => [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        },
-        {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('exploit');
-            operationForm.resetFields();
+      actions: (record: VhfAsset) => {
+        const isArchived =
+          normalizeApprovalStatus(record.approvalStatus) === 'ARCHIVED' ||
+          Boolean((record as { deletedAt?: string | null }).deletedAt);
+
+        if (isArchived) {
+          return [
+            {
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ];
+        }
+
+        const rowActions: TableActionOption<VhfAsset>[] = [
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void openDetail(record),
           },
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('increase');
-            operationForm.resetFields();
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
           },
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('decrease');
-            operationForm.resetFields();
+          {
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
           },
-        },
-        {
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
-        },
-      ],
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('exploit');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('increase');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('decrease');
+              operationForm.resetFields();
+            },
+          },
+        ];
+
+        if (canDeleteApprovalRecord(record.approvalStatus, { resource: 'infraasset' })) {
+          rowActions.push({
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
+          });
+        }
+
+        return rowActions;
+      },
     }),
-    [openDetail, openEdit, operationForm, orgName, transmissionMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap]
   );
 
   const headerActions: ScreenHeaderAction[] = useMemo(
@@ -724,16 +762,8 @@ export default function VhfAssetList() {
     [openCreate]
   );
 
-  const customTokens = useMemo(
-    () => ({
-      ...themeTokenChk,
-      fontSizeMd: 13.5,
-    }),
-    []
-  );
-
   return (
-    <ThemeTokenProvider tokens={customTokens}>
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
       <div
         className="vhf-asset-page-wrapper"
         style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
@@ -758,7 +788,6 @@ export default function VhfAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -870,6 +899,20 @@ export default function VhfAssetList() {
               )
               .finally(() => setSaving(false));
           }}
+        />
+        {/* ── History Drawer ── */}
+        <VhfAssetHistory
+          open={historyOpen}
+          target={historyTarget}
+          records={historyRecords}
+          loading={historyLoading}
+          filters={historyFilters}
+          filteredRecords={filteredHistory}
+          hasActiveFilter={hasActiveHistoryFilter}
+          orgName={orgName}
+          transmissionMap={transmissionMap}
+          onClose={() => setHistoryOpen(false)}
+          onFiltersChange={setHistoryFilters}
         />
       </div>
     </ThemeTokenProvider>
