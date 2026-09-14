@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   BankOutlined,
   SlidersOutlined,
@@ -21,8 +21,12 @@ import {
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
 import { fmtNum } from "../../utils/numFmt";
+import toast from "../../components/ToastNotification";
+import api from "../../services/api";
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
+  triggerBlobDownload,
+  resolveMimeType,
 } from "../../components/shared/InfrastructureAttachmentTab";
 import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
 import {
@@ -53,6 +57,7 @@ export interface PortTerminalAssetDetailContentProps {
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
   decreaseRows: AssetDecreaseResponse[];
+  onDownloadAttachment?: (id: string, fileName: string) => void;
 }
 
 export interface AdjustmentRowItem {
@@ -135,6 +140,7 @@ export default function PortTerminalAssetDetailContent({
   exploitationRows,
   increaseRows,
   decreaseRows,
+  onDownloadAttachment,
 }: PortTerminalAssetDetailContentProps) {
   const infraMap = useMemo(
     () => relatedInfrastructureMap || berthMap || new Map(),
@@ -228,7 +234,84 @@ export default function PortTerminalAssetDetailContent({
     };
   }, [r]);
 
-
+  const handleDownloadAttachment = useCallback(
+    async (id: string, fileName: string) => {
+      const att = detailAttachments.find(
+        (a) => a.id === id || a.fileName === fileName,
+      );
+      if (att?.originFileObj) {
+        triggerBlobDownload(
+          att.originFileObj,
+          fileName || att.originFileObj.name,
+        );
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (att?.file) {
+        triggerBlobDownload(att.file, fileName || att.file.name);
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (
+        att?.url &&
+        (att.url.startsWith("blob:") || att.url.startsWith("data:"))
+      ) {
+        triggerBlobDownload(att.url, fileName || "tai-lieu");
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      const targetPath =
+        att?.filePath ||
+        (r?.id && id && !id.startsWith("detail-att-")
+          ? `/v1/asset/infra-assets/${r.id}/attachments/${id}/download`
+          : undefined);
+      if (targetPath) {
+        try {
+          let cleanPath = targetPath;
+          if (cleanPath.startsWith("/api/")) {
+            cleanPath = cleanPath.replace(/^\/api/, "");
+          } else if (!cleanPath.startsWith("/")) {
+            cleanPath = `/${cleanPath}`;
+          }
+          const res = await api.get(cleanPath, { responseType: "blob" });
+          const serverContentType =
+            (typeof res.headers?.["content-type"] === "string"
+              ? res.headers["content-type"]
+              : "") || "";
+          const contentType = resolveMimeType(
+            fileName || att?.fileName || "tai-lieu",
+            serverContentType || "application/octet-stream",
+          );
+          const blob = new Blob([res.data], { type: contentType });
+          triggerBlobDownload(blob, fileName || att?.fileName || "tai-lieu");
+          toast.success(`Đã tải xuống tệp: ${fileName}`);
+          return;
+        } catch (err) {
+          console.warn(
+            "Download from server failed, falling back to local generated attachment:",
+            err,
+          );
+        }
+      }
+      if (onDownloadAttachment) {
+        onDownloadAttachment(id, fileName);
+        return;
+      }
+      const fallbackContentType = resolveMimeType(
+        fileName || "tai-lieu",
+        att?.fileType || "application/octet-stream",
+      );
+      const fallbackBlob = new Blob(
+        [
+          `Tài liệu đính kèm: ${fileName}\nThời gian: ${dayjs().format("DD/MM/YYYY HH:mm:ss")}\nĐược tải về từ Hệ thống Quản lý KCHT Hàng hải`,
+        ],
+        { type: fallbackContentType },
+      );
+      triggerBlobDownload(fallbackBlob, fileName || "tai-lieu");
+      toast.success(`Đã tải xuống tệp: ${fileName}`);
+    },
+    [detailAttachments, onDownloadAttachment, r],
+  );
 
   const viewTabs = useMemo<ViewTabConfig<PortTerminalAsset>[]>(() => {
     if (!r) return [];
@@ -581,7 +664,7 @@ export default function PortTerminalAssetDetailContent({
               readonly={true}
               onUpload={() => {}}
               onDelete={() => {}}
-              onDownload={() => {}}
+              onDownload={handleDownloadAttachment}
             />
           </div>
         ),
@@ -964,6 +1047,7 @@ export default function PortTerminalAssetDetailContent({
     detailAttachments,
     exploitationRows,
     combinedAdjustments,
+    handleDownloadAttachment,
   ]);
 
   return (

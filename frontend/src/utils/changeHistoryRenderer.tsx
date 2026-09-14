@@ -705,10 +705,6 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
 
     if (ordered.length === 0) return null;
 
-    const meta = g.items?.[0] || {};
-    const barColor = actionPrimary;
-    const accent = historyAccentBarStyle(barColor);
-
     const paintValue = (fn: string, rawV: string | null) => {
       if (isBlankOrDash(rawV)) return '';
       if (fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') {
@@ -769,6 +765,27 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
       return isBlankOrDash(formatted) ? '' : formatted;
     };
 
+    const validRows = ordered
+      .map((x) => ({
+        ...x,
+        label: `${fieldLabel(x.field)}:`,
+        ov: paintValue(x.field, x.oldValue),
+        nv: paintValue(x.field, x.newValue),
+      }))
+      .filter((r) => {
+        const oBlank = isBlankOrDash(r.ov) || (typeof r.ov === 'string' && !r.ov.trim());
+        const nBlank = isBlankOrDash(r.nv) || (typeof r.nv === 'string' && !r.nv.trim());
+        if (oBlank && nBlank) return false;
+        if (typeof r.ov === 'string' && typeof r.nv === 'string' && r.ov.trim() === r.nv.trim()) return false;
+        return true;
+      });
+
+    if (validRows.length === 0) return null;
+
+    const meta = g.items?.[0] || {};
+    const barColor = actionPrimary;
+    const accent = historyAccentBarStyle(barColor);
+
     const unit = resolveUnitName ? resolveUnitName(g.items[0]) : (meta.orgUnitName || meta.unitName || '');
 
     return (
@@ -816,19 +833,16 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
           <Typography.Text style={historyInfoTitleStyle}>
             Thông tin thay đổi:
           </Typography.Text>
-          {ordered.map((x, ri) => {
-            const label = `${fieldLabel(x.field)}:`;
-            const ov = paintValue(x.field, x.oldValue);
-            const nv = paintValue(x.field, x.newValue);
+          {validRows.map((x, ri) => {
             return (
               <div key={x.rowId} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
-                <span style={historyOldValueStyle} title={typeof ov === 'string' && ov ? ov : undefined}>
-                  {ov}
+                <Typography.Text style={historyFieldLabelStyle}>{x.label}</Typography.Text>
+                <span style={historyOldValueStyle} title={typeof x.ov === 'string' && x.ov ? x.ov : undefined}>
+                  {x.ov}
                 </span>
                 <Typography.Text style={historyArrowStyle}>→</Typography.Text>
-                <span style={historyNewValueStyle} title={typeof nv === 'string' && nv ? nv : undefined}>
-                  {nv}
+                <span style={historyNewValueStyle} title={typeof x.nv === 'string' && x.nv ? x.nv : undefined}>
+                  {x.nv}
                 </span>
               </div>
             );

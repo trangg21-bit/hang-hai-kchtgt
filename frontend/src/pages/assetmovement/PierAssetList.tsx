@@ -807,15 +807,14 @@ export default function PierAssetList() {
           hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
-              counts={statusCounts}
               activeKey={filters.approvalStatus || 'all'}
-              onChange={(_key, queryStatus) => {
+              counts={statusCounts}
+              onChange={(_key, status) => {
                 setPage(1);
-                setFilters((prev) => ({ ...prev, approvalStatus: queryStatus }));
+                setFilters((prev) => ({ ...prev, approvalStatus: status }));
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}

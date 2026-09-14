@@ -202,7 +202,7 @@ api.interceptors.response.use(
         }
       }
     } else {
-      if (!isAuthRequest && !isStationBuoysRequest && !isGenerateCodeRequest && !isAttachmentListRequest) {
+      if (!isAuthRequest && !isStationBuoysRequest && !isGenerateCodeRequest && !isAttachmentListRequest && !isHistoryRequest) {
         showUniqueError(friendlyMsg);
       }
     }

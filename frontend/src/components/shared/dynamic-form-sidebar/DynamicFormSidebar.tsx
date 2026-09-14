@@ -178,14 +178,16 @@ function renderFormField<T extends Record<string, unknown>>(
     case FormFieldType.Year: {
       controlNode = (
         <DatePicker
-          picker="year"
-          format={field.format || "YYYY"}
           placeholder={field.placeholder || "Chọn năm"}
           disabled={field.disabled}
           {...getDatePickerProps({
+            picker: "year",
+            format: field.format || "YYYY",
             style: { ...defaultSelectStyle, ...field.controlStyle },
             ...field.datePickerProps,
           })}
+          picker="year"
+          format={field.format || "YYYY"}
         />
       );
       break;
@@ -454,8 +456,10 @@ export function DynamicFormSidebar<
       <Tabs
         defaultActiveKey={effectiveTabs[0]?.key}
         tabBarStyle={drawerTabBarStyle}
+        destroyInactiveTabPane={false}
         items={effectiveTabs.map((tab: FormTabConfig<T>) => ({
           key: tab.key,
+          forceRender: true,
           label: (
             <span>
               {tab.icon && <span style={{ marginRight: 6 }}>{tab.icon}</span>}
@@ -533,6 +537,7 @@ export function DynamicFormSidebar<
         <Form<T>
           form={form}
           layout="vertical"
+          preserve={true}
           initialValues={initialValues}
           onFinish={handleFinish}
           onValuesChange={onValuesChange}

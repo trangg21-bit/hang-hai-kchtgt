@@ -811,7 +811,6 @@ export default function BuoyBerthAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}

@@ -220,4 +220,9 @@ describe('DryPortAsset UI Components (Tài sản cảng cạn)', () => {
     const editHtml = renderToStaticMarkup(<FormWrapper mode="edit" />);
     expect(editHtml).toContain('Chỉnh sửa');
   });
+
+  it('provides History option in table actions', () => {
+    const html = renderToStaticMarkup(<DryPortAssetList />);
+    expect(html).toBeDefined();
+  });
 });

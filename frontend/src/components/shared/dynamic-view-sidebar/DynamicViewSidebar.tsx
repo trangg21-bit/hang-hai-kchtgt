@@ -112,6 +112,12 @@ function formatFieldValue<T>(
         </span>
       );
     }
+    case ViewFieldType.Year: {
+      const s = String(rawValue).trim();
+      const match = s.match(/\b(19\d{2}|20\d{2})\b/);
+      const yearStr = match ? match[0] : (dayjs(s).isValid() ? dayjs(s).format("YYYY") : s);
+      return <span>{yearStr}</span>;
+    }
     case ViewFieldType.Badge: {
       const color =
         typeof field.badgeColor === "function"

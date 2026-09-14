@@ -1,5 +1,33 @@
 package com.hanghai.kchtg.transmissionasset.controller;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.port.entity.Attachment;
@@ -12,26 +40,8 @@ import com.hanghai.kchtg.transmissionasset.dto.TransmissionExploitationRequest;
 import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetAdjustment;
 import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetExploitation;
 import com.hanghai.kchtg.transmissionasset.service.TransmissionAssetService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/asset/transmission-assets")
@@ -127,7 +137,6 @@ public class TransmissionAssetController {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản HT truyền dẫn đã được xóa", null));
     }
-
 
     @GetMapping("/{id}/exploitations")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")

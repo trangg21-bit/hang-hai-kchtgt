@@ -970,7 +970,6 @@ export default function TransferAreaAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={() => void loadData()}
