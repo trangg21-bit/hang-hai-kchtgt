@@ -376,7 +376,6 @@ export function PortTerminalAssetOperationForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
       rootClassName={`berth-drawer-scope ${drawerClassName}`}
       className={`berth-drawer-scope ${drawerClassName}`}
       tabs={tabs}

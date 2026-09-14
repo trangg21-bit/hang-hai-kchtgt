@@ -760,6 +760,7 @@ export default function VhfAssetDetailContent({
     orgName,
     transmissionMap,
     activeAttachments,
+    handleDownloadDetail,
     exploitationRows,
     adjustmentRows,
     exploitationTableOption,
@@ -773,11 +774,6 @@ export default function VhfAssetDetailContent({
       record={r}
       title={`Chi tiết tài sản HTTT liên lạc VHF — ${r?.assetName || ''}`}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="vhf-asset-view-drawer"
       className="vhf-asset-view-drawer"
     />

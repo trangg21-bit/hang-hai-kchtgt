@@ -780,7 +780,6 @@ export default function StormShelterAssetDetailContent({
       record={r}
       tabs={viewTabs}
       onClose={onClose}
-      width={980}
     />
   );
 }

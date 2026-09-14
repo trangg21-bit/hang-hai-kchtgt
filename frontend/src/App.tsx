@@ -169,7 +169,7 @@ export default function App() {
               <Route path="/reset-password/:token" element={<PasswordResetPage mode="reset" />} />
 
               {/* Protected routes — inside layout */}
-              <Route element={<AppLayout />}>
+              <Route element={<AuthenticatedLayout />}>
                 {/* Landing v2 (M-024): 6 khối chức năng trong AppLayout — PortalHome fullscreen đã gỡ */}
                 <Route path="/" element={<HomePage />} />
                 {/* Dashboard KPI page */}
@@ -382,6 +382,12 @@ export default function App() {
 function UnknownRouteRedirect() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
+}
+
+function AuthenticatedLayout() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const token = useAuthStore((s) => s.token);
+  return isAuthenticated && token ? <AppLayout /> : <Navigate to="/login" replace />;
 }
 
 function RegisterAntdStatic() {

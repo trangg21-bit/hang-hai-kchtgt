@@ -14,7 +14,7 @@ import {
   statusBadgeStyle,
   borderDefault,
   drawerTitleStyle,
-  DRAWER_WIDTH,
+  DRAWER_FORM_WIDTH,
 } from "../../../themetokenchk";
 import {
   type DynamicViewSidebarProps,
@@ -259,7 +259,6 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
   title,
   record,
   onClose,
-  width,
   size,
   tabs,
   sections,
@@ -411,7 +410,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
 
   return (
     <AppDrawer
-      width={width || DRAWER_WIDTH}
+      width={DRAWER_FORM_WIDTH}
       size={size}
       rootClassName={rootClassName}
       className={className}

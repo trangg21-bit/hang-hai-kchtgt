@@ -412,7 +412,6 @@ export default function RadarStationAssetOperationForm({
       footerActions={footerActions}
       footerAlign="center"
       onClose={onClose}
-      width="60vw"
       rootClassName="radar-asset-drawer-scope"
     />
   );

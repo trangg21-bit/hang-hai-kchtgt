@@ -560,7 +560,6 @@ export default function VtsSystemAssetForm({
       tabs={formTabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={typeof window !== 'undefined' ? Math.min(1040, Math.floor(window.innerWidth * 0.95)) : 1040}
     />
   );
 }

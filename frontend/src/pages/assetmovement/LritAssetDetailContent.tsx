@@ -1015,11 +1015,6 @@ export default function LritAssetDetailContent({
         record={r}
         title={`Chi tiết tài sản đài LRIT${r?.assetName ? ` — ${r.assetName}` : ''}`}
         tabs={viewTabs}
-        width={
-          typeof window !== 'undefined'
-            ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-            : 1000
-        }
         rootClassName="lrit-drawer-scope"
         className="lrit-drawer-scope"
       />

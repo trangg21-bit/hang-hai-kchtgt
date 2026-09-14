@@ -699,6 +699,7 @@ export default function DaiTtdhAssetDetailContent({
     exploitationTableOption,
     adjustmentRows,
     adjustmentTableOption,
+    handleDownloadDetail,
   ]);
 
   return (
@@ -727,11 +728,6 @@ export default function DaiTtdhAssetDetailContent({
       onClose={onClose}
       record={r}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="daittdh-asset-view-drawer"
       className="daittdh-asset-view-drawer"
     />

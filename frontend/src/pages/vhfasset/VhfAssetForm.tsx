@@ -488,11 +488,6 @@ export default function VhfAssetForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="vhf-asset-drawer-scope"
       className="vhf-asset-drawer-scope"
       tabs={formTabs}

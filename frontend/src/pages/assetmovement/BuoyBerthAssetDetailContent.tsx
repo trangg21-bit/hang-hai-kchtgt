@@ -754,11 +754,6 @@ export default function BuoyBerthAssetDetailContent({
       title={r ? `Chi tiết tài sản bến phao — ${r.assetName}` : 'Chi tiết tài sản'}
       onClose={onClose}
       record={r}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="buoy-berth-drawer-scope"
       className="buoy-berth-drawer-scope"
       tabs={viewTabs}

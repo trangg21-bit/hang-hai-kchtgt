@@ -105,6 +105,9 @@ export default function VtsAssistAssetForm({
       })),
     [vtsAssists],
   );
+  const watchedOriginalValue = Form.useWatch('originalValue', form);
+  const watchedAccumulatedDepreciation = Form.useWatch('accumulatedDepreciation', form);
+  const watchedDepreciationMonths = Form.useWatch('depreciationMonths', form);
 
   const formTabs = useMemo<FormTabConfig<FormValues>[]>(() => {
     return [
@@ -354,10 +357,12 @@ export default function VtsAssistAssetForm({
                 label: 'Giá trị còn lại (VNĐ)',
                 type: FormFieldType.Custom,
                 customContent: () => {
-                  const original =
-                    Form.useWatch('originalValue', form) ?? 0;
-                  const accumulated =
-                    Form.useWatch('accumulatedDepreciation', form) ?? 0;
+                  let original = 0;
+                  let accumulated = 0;
+                  if (watchedOriginalValue != null) original = Number(watchedOriginalValue);
+                  if (watchedAccumulatedDepreciation != null) {
+                    accumulated = Number(watchedAccumulatedDepreciation);
+                  }
                   const remaining = Math.max(0, Number(original) - Number(accumulated));
                   return (
                     <div>
@@ -432,10 +437,12 @@ export default function VtsAssistAssetForm({
                 label: 'Khấu hao tháng (VNĐ)',
                 type: FormFieldType.Custom,
                 customContent: () => {
-                  const original =
-                    Form.useWatch('originalValue', form) ?? 0;
-                  const months =
-                    Form.useWatch('depreciationMonths', form) ?? 0;
+                  let original = 0;
+                  let months = 0;
+                  if (watchedOriginalValue != null) original = Number(watchedOriginalValue);
+                  if (watchedDepreciationMonths != null) {
+                    months = Number(watchedDepreciationMonths);
+                  }
                   const monthly =
                     months && Number(months) > 0
                       ? Math.round(Number(original) / Number(months))
@@ -485,10 +492,12 @@ export default function VtsAssistAssetForm({
     organizations,
     vtsAssistOptions,
     attachments,
-    form,
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
+    watchedAccumulatedDepreciation,
+    watchedDepreciationMonths,
+    watchedOriginalValue,
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
@@ -557,11 +566,6 @@ export default function VtsAssistAssetForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="vts-assist-asset-drawer-scope"
       className="vts-assist-asset-drawer-scope"
       tabs={formTabs}

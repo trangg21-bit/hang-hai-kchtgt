@@ -342,7 +342,6 @@ export default function CctvSystemAssetOperationForm({
       footerActions={footerActions}
       footerAlign="center"
       onClose={onClose}
-      width="60vw"
       rootClassName="cctv-asset-drawer-scope"
     />
   );

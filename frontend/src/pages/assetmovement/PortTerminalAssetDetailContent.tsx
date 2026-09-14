@@ -169,8 +169,13 @@ export default function PortTerminalAssetDetailContent({
 
   useEffect(() => {
     if (!r?.id) {
-      setDetailAttachments([]);
-      return;
+      let isMounted = true;
+      Promise.resolve().then(() => {
+        if (isMounted) setDetailAttachments([]);
+      });
+      return () => {
+        isMounted = false;
+      };
     }
     let isMounted = true;
     fetchInfraAssetAttachments(r.id)
@@ -295,19 +300,19 @@ export default function PortTerminalAssetDetailContent({
               {
                 label: screenConfig.relationCodeLabel,
                 value: (rec) => {
-                  const target: any = infraMap.get(
+                  const target = infraMap.get(
                     rec[screenConfig.relationField] || "",
                   );
-                  return target?.code || target?.berthCode || "—";
+                  return target?.code || "—";
                 },
               },
               {
                 label: screenConfig.relationNameLabel,
                 value: (rec) => {
-                  const target: any = infraMap.get(
+                  const target = infraMap.get(
                     rec[screenConfig.relationField] || "",
                   );
-                  return target?.name || target?.berthName || "—";
+                  return target?.name || "—";
                 },
               },
               {
@@ -969,11 +974,6 @@ export default function PortTerminalAssetDetailContent({
       record={r}
       title={`Chi tiết ${screenConfig.subjectLabel}${r ? ` - ${r.assetName}` : ""}`}
       tabs={viewTabs}
-      width={
-        typeof window !== "undefined"
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName={`berth-drawer-scope ${screenConfig.drawerClassName}`}
       className={`berth-drawer-scope ${screenConfig.drawerClassName}`}
     />

@@ -813,11 +813,6 @@ export default function VtsAssistAssetDetailContent({
       onClose={onClose}
       record={r}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="vts-assist-asset-view-drawer"
       className="vts-assist-asset-view-drawer"
     />

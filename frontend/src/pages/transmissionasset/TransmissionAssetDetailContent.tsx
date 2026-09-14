@@ -753,6 +753,8 @@ export default function TransmissionAssetDetailContent({
     handleDownloadDetail,
     exploitationRows,
     adjustmentRows,
+    exploitationTableOption,
+    adjustmentTableOption,
   ]);
 
   return (
@@ -762,11 +764,6 @@ export default function TransmissionAssetDetailContent({
       record={r}
       title={`Chi tiết tài sản HT truyền dẫn — ${r?.assetName || ''}`}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="transmission-asset-view-drawer"
       className="transmission-asset-view-drawer"
     />

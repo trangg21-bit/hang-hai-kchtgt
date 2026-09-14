@@ -1090,11 +1090,6 @@ export default function StationAssetDetailContent({
         record={r}
         title={`Chi tiết ${config.title.toLowerCase()}${r ? ` - ${r.assetName}` : ''}`}
         tabs={viewTabs}
-        width={
-          typeof window !== 'undefined'
-            ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-            : 1000
-        }
         rootClassName={`berth-drawer-scope ${config.drawerClassName || ''}`}
         className={`berth-drawer-scope ${config.drawerClassName || ''}`}
       />

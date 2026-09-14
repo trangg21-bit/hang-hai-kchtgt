@@ -466,7 +466,6 @@ export default function StormShelterAssetForm({
       footerActions={actions}
       actions={actions}
       onClose={onClose}
-      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
       rootClassName="storm-shelter-drawer-scope"
     />
   );

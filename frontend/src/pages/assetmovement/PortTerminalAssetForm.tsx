@@ -584,11 +584,6 @@ export default function PortTerminalAssetForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== "undefined"
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName={`berth-drawer-scope ${screenConfig.drawerClassName}`}
       className={`berth-drawer-scope ${screenConfig.drawerClassName}`}
       tabs={formTabs}

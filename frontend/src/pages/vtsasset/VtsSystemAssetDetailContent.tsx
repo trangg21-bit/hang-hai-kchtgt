@@ -129,33 +129,27 @@ export default function VtsSystemAssetDetailContent({
   const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
   useEffect(() => {
-    if (!r?.attachmentName) {
-      setDetailAttachments([]);
-      return;
-    }
-    const names = r.attachmentName
-      .split(',')
-      .map((name) => name.trim())
-      .filter(Boolean);
+    const names = r?.attachmentName
+      ? r.attachmentName.split(',').map((name) => name.trim()).filter(Boolean)
+      : [];
     let isMounted = true;
 
     const initialItems: InfrastructureAttachmentItem[] = names.map((name, i) => ({
       id: `vts-detail-att-${i}`,
       fileName: name,
       fileSize: 1024 * 1024,
-      uploadedByName: r.updatedByName || r.submittedByName || 'Cán bộ quản lý',
-      uploadedDate: r.updatedAt
+      uploadedByName: r?.updatedByName || r?.submittedByName || 'Cán bộ quản lý',
+      uploadedDate: r?.updatedAt
         ? dayjs(r.updatedAt).toISOString()
         : dayjs().toISOString(),
     }));
-    setDetailAttachments(initialItems);
 
     Promise.all(
       names.map(async (name, i) => {
         try {
           const url = await getAttachmentPreviewUrl(name, {
-            assetCode: r.assetCode,
-            assetName: r.assetName,
+            assetCode: r?.assetCode,
+            assetName: r?.assetName,
           });
           return { id: `vts-detail-att-${i}`, url };
         } catch {
@@ -164,8 +158,8 @@ export default function VtsSystemAssetDetailContent({
       })
     ).then((resolved) => {
       if (!isMounted) return;
-      setDetailAttachments((prev) =>
-        prev.map((item) => {
+      setDetailAttachments(
+        initialItems.map((item) => {
           const match = resolved.find((res) => res.id === item.id);
           return match?.url ? { ...item, url: match.url } : item;
         })
@@ -798,7 +792,6 @@ export default function VtsSystemAssetDetailContent({
       title={`Chi tiết tài sản hệ thống VTS${r ? ` - ${r.assetName}` : ''}`}
       onClose={onClose}
       tabs={viewTabs}
-      width={typeof window !== 'undefined' ? Math.min(1040, Math.floor(window.innerWidth * 0.95)) : 1040}
     />
   );
 }

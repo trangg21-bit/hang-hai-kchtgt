@@ -114,31 +114,25 @@ export default function RadarStationAssetDetailContent({
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
   useEffect(() => {
-    if (!selectedRecord?.attachmentName) {
-      setAttachments([]);
-      return;
-    }
-    const names = selectedRecord.attachmentName
-      .split(',')
-      .map((name) => name.trim())
-      .filter(Boolean);
+    const names = selectedRecord?.attachmentName
+      ? selectedRecord.attachmentName.split(',').map((name) => name.trim()).filter(Boolean)
+      : [];
     let isMounted = true;
 
     const initialItems: InfrastructureAttachmentItem[] = names.map((name, i) => ({
       id: `att-${i + 1}`,
       fileName: name,
       fileSize: 1024 * 1024,
-      uploadedAt: selectedRecord.createdAt,
-      uploadedByName: selectedRecord.createdByName || 'Cán bộ cập nhật',
+      uploadedAt: selectedRecord?.createdAt,
+      uploadedByName: selectedRecord?.createdByName || 'Cán bộ cập nhật',
     }));
-    setAttachments(initialItems);
 
     Promise.all(
       names.map(async (name, i) => {
         try {
           const url = await getAttachmentPreviewUrl(name, {
-            assetCode: selectedRecord.assetCode,
-            assetName: selectedRecord.assetName,
+            assetCode: selectedRecord?.assetCode,
+            assetName: selectedRecord?.assetName,
           });
           return { id: `att-${i + 1}`, url };
         } catch {
@@ -147,8 +141,8 @@ export default function RadarStationAssetDetailContent({
       })
     ).then((resolved) => {
       if (!isMounted) return;
-      setAttachments((prev) =>
-        prev.map((item) => {
+      setAttachments(
+        initialItems.map((item) => {
           const match = resolved.find((r) => r.id === item.id);
           return match?.url ? { ...item, url: match.url } : item;
         })
@@ -861,10 +855,8 @@ export default function RadarStationAssetDetailContent({
         </span>
       }
       record={selectedRecord}
-      data={selectedRecord}
       tabs={tabs}
       onClose={onClose}
-      width="90vw"
       rootClassName="radar-asset-drawer-scope"
     />
   );

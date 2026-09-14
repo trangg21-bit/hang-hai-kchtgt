@@ -349,11 +349,6 @@ export default function LritAssetOperationForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="lrit-drawer-scope"
       className="lrit-drawer-scope"
       tabs={tabs}

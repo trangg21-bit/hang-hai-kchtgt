@@ -116,7 +116,7 @@ export default function ScadaSystemAssetDetailContent({
   const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
   useEffect(() => {
-    let initialList: InfrastructureAttachmentItem[] = [];
+    let initialList: InfrastructureAttachmentItem[];
     if (attachments && attachments.length > 0) {
       initialList = attachments;
     } else if (selectedRecord?.attachmentName && selectedRecord.attachmentName.trim()) {
@@ -159,8 +159,6 @@ export default function ScadaSystemAssetDetailContent({
         },
       ];
     }
-    setDetailAttachments(initialList);
-
     let isMounted = true;
     Promise.all(
       initialList.map(async (item) => {
@@ -176,8 +174,8 @@ export default function ScadaSystemAssetDetailContent({
       })
     ).then((resolved) => {
       if (!isMounted) return;
-      setDetailAttachments((prev) =>
-        prev.map((item) => {
+      setDetailAttachments(
+        initialList.map((item) => {
           const match = resolved.find((r) => r.id === item.id);
           return match?.url ? { ...item, url: match.url } : item;
         })
@@ -1104,7 +1102,6 @@ export default function ScadaSystemAssetDetailContent({
       record={selectedRecord}
       tabs={tabs}
       onClose={onClose}
-      width={1000}
     />
   );
 }

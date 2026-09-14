@@ -5,6 +5,7 @@ Thumbs.db
 # IDE
 .vscode/*
 !.vscode/launch.json
+!.vscode/settings.json
 .idea/
 .codex-tmp/
 

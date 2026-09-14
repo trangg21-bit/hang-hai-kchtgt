@@ -370,11 +370,6 @@ export default function DaiTtdhAssetForm({
       tabs={formTabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="daittdh-asset-drawer-scope"
       className="daittdh-asset-drawer-scope"
     />

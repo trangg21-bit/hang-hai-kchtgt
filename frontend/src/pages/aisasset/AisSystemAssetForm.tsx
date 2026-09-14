@@ -516,6 +516,7 @@ export default function AisSystemAssetForm({
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
+    handleLoadReadonlyPreviewImage,
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
@@ -579,7 +580,6 @@ export default function AisSystemAssetForm({
       footerAlign="center"
       onClose={onClose}
       onValuesChange={handleValuesChange}
-      width={typeof window !== 'undefined' ? Math.min(1040, Math.floor(window.innerWidth * 0.95)) : 1040}
       rootClassName="ais-asset-drawer-scope"
     />
   );

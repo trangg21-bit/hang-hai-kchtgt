@@ -849,11 +849,6 @@ export default function BuoyAssetDetailContent({
       onClose={onClose}
       record={rec}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
     />
   );
 }

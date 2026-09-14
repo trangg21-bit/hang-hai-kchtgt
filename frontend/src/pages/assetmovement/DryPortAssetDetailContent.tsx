@@ -1085,11 +1085,6 @@ export default function DryPortAssetDetailContent({
         record={r}
         title={`Chi tiết tài sản cảng cạn${r ? ` - ${r.assetName}` : ''}`}
         tabs={viewTabs}
-        width={
-          typeof window !== 'undefined'
-            ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-            : 1000
-        }
         rootClassName="berth-drawer-scope dry-port-drawer-scope"
         className="berth-drawer-scope dry-port-drawer-scope"
       />

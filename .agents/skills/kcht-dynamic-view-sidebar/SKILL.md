@@ -62,6 +62,13 @@ import {
 3. **Chỉ lấy chuẩn 1 trường, không fallback toán tử linh tinh**:
    Không dùng toán tử `??`, `||`, ternary bừa bãi khi trích xuất giá trị hiển thị.
 
+4. **Chiều rộng phải giống DynamicFormSidebar và không cho phép tùy chỉnh từng màn**:
+   - `DynamicViewSidebar` dùng trực tiếp `DRAWER_FORM_WIDTH`, cùng nguồn với `DynamicFormSidebar`.
+   - **CẤM** khai báo prop `width` trong `DynamicViewSidebarProps` và **CẤM** truyền `width` tại mọi `XxxAssetDetailContent.tsx`.
+   - Không dùng các biến thể `900`, `980`, `1000`, `1040`, `60vw`, `90vw` hoặc biểu thức `Math.min(window.innerWidth, ...)` cho Drawer chi tiết tài sản.
+   - `rootClassName`/`className` chỉ được dùng để định danh scope style, không được đổi chiều rộng Drawer.
+   - Sau khi sửa, quét `rg -n -A 30 "<DynamicViewSidebar" frontend/src` và xác nhận không còn `width=` trong khối gọi component.
+
 ---
 
 ## 3. Các loại trường hiển thị (`ViewFieldType`)
@@ -225,3 +232,4 @@ export default function AssetDetailDrawer({
 - [ ] 4. Dọn sạch 100% Unused Imports / Unused Variables.
 - [ ] 5. Chạy `npx tsc --noEmit` đạt mã 0 (0 lỗi).
 - [ ] 6. Chạy `npx eslint` đạt mã 0 (0 errors, 0 warnings).
+- [ ] 7. `DynamicViewSidebar` và `DynamicFormSidebar` cùng dùng `DRAWER_FORM_WIDTH`; model và mọi màn tài sản không còn prop `width` tùy chỉnh.

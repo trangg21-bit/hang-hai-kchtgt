@@ -68,6 +68,12 @@ import {
 4. **Tự động tính toán (Computed Values)**:
    Các trường tính toán phụ thuộc (như `Giá trị còn lại = Nguyên giá - Khấu hao lũy kế`, `Khấu hao tháng = Nguyên giá / Số tháng`) phải cấu hình `type: FormFieldType.Readonly` kết hợp callback `computedValue` và `valueFormatter`, tự động cập nhật ngay lập tức khi người dùng nhập liệu.
 
+5. **Một chiều rộng duy nhất cho toàn bộ Drawer tài sản**:
+   - `DynamicFormSidebar` phải tự lấy `DRAWER_FORM_WIDTH` từ component lõi.
+   - **CẤM** truyền prop `width` tại `XxxAssetForm.tsx` và `XxxAssetOperationForm.tsx`, kể cả giá trị `1000`, `60vw` hoặc biểu thức `Math.min(window.innerWidth, ...)`.
+   - Áp dụng giống nhau cho Thêm mới, Chỉnh sửa, Khai thác tài sản, Tăng nguyên giá và Giảm nguyên giá. Chỉ nội dung/schema nghiệp vụ được phép khác nhau.
+   - Khi refactor, quét `rg -n -A 25 "<DynamicFormSidebar" frontend/src/pages` và loại bỏ mọi `width` tùy chỉnh trong phân hệ tài sản.
+
 ---
 
 ## 3. Các loại trường hỗ trợ (`FormFieldType`)
@@ -315,7 +321,6 @@ export default function AssetForm({
       tabs={formTabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
     />
   );
 }
@@ -357,3 +362,4 @@ Trước khi bàn giao bất kỳ màn hình nào áp dụng `DynamicFormSidebar
 - [ ] 4. Dọn sạch 100% Unused Imports / Unused Variables (IDE Lint clean).
 - [ ] 5. Chạy `npx tsc --noEmit` đạt mã 0 (0 lỗi).
 - [ ] 6. Chạy `npx eslint` đạt mã 0 (0 errors, 0 warnings).
+- [ ] 7. Không có prop `width` trên `DynamicFormSidebar` trong các màn tài sản; tất cả dùng `DRAWER_FORM_WIDTH` từ component lõi.

@@ -349,11 +349,6 @@ export default function DryPortAssetOperationForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="dryport-drawer-scope"
       className="dryport-drawer-scope"
       tabs={tabs}

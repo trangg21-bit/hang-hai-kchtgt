@@ -385,7 +385,6 @@ export function BuoyAssetOperationForm({
       tabs={formTabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
     />
   );
 }

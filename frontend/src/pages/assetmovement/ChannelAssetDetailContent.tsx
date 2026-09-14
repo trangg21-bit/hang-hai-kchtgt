@@ -870,7 +870,6 @@ export default function ChannelAssetDetailContent({
       record={rec}
       title={`Chi tiết tài sản${rec ? ` — ${rec.assetName}` : ''}`}
       tabs={viewTabs}
-      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
     />
   );
 }
