@@ -875,7 +875,7 @@ export default function BuoyAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle={true}
+          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
@@ -886,7 +886,6 @@ export default function BuoyAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={() => void loadData()}

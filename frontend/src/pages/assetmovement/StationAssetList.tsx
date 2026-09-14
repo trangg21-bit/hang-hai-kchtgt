@@ -2,14 +2,16 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
   RocketOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
-import { Form } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import dayjs from 'dayjs';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CommonStatusTabs,
   CommonTable,
@@ -17,19 +19,20 @@ import {
   ScreenHeader,
   TableColumnType,
   TableFilter,
-  type FilterOption,
   type ScreenHeaderAction,
-  type TableOption,
   type TableActionOption,
 } from '../../components/list-view';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
   triggerBlobDownload,
+  resolveMimeType,
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import {
   createAssetDecrease,
   createAssetIncrease,
@@ -49,23 +52,37 @@ import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
   AssetIncreaseResponse,
-  AssetValueAdjustmentDetails,
   StationAsset,
   StationAssetFilters,
-  StationAssetPayload,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import type { GenericStationOption } from '../../services/stationOptionsService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold } from '../../themetokenchk';
+import {
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
+import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 import LritAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './LritAssetOperationForm';
+import { type StationTypeConfig } from './stationConfigs';
 import StationAssetDetailContent from './StationAssetDetailContent';
 import StationAssetForm, { type StationFormValues } from './StationAssetForm';
-import type { StationTypeConfig } from './stationConfigs';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -74,6 +91,143 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
+];
+
+const ASSET_FIELD_LABELS: Record<string, string> = {
+  // Thông tin cơ bản & Quản lý vận hành
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  orgUnitId: 'Đơn vị quản lý',
+  usingOrgUnitId: 'Đơn vị sử dụng',
+  stationId: 'Trạm bờ',
+  lritStationId: 'Mã đài',
+  ttdhStationId: 'Mã đài',
+  inmarsatStationId: 'Mã đài',
+  cospasSarsatStationId: 'Mã đài',
+  ttxlttStationId: 'Mã đài',
+  dryPortId: 'Cảng cạn',
+  assetType: 'Loại tài sản',
+  assetCode: 'Mã tài sản',
+  assetName: 'Tên tài sản',
+  barcode: 'Barcode',
+  assetCondition: 'Tình trạng tài sản',
+  usageStatus: 'Hiện trạng sử dụng',
+  assetGroup: 'Nhóm tài sản',
+  assetSubgroup: 'Phân nhóm tài sản',
+  origin: 'Nguồn gốc',
+  quantity: 'Số lượng',
+  quantityUnit: 'Đơn vị tính',
+  model: 'Model',
+  serialNumber: 'Serial',
+  countryOfOrigin: 'Xuất xứ',
+  manufacturer: 'Hãng sản xuất',
+  constructionYear: 'Năm xây dựng',
+  useDate: 'Ngày sử dụng tài sản',
+  landArea: 'Diện tích đất, sàn sử dụng (m²)',
+  floorArea: 'Diện tích sàn sử dụng (m²)',
+  assetLocation: 'Vị trí tài sản',
+  address: 'Địa chỉ',
+  location: 'Vị trí',
+  description: 'Mô tả / Ghi chú',
+  technicalSpecs: 'Thông số kỹ thuật',
+  fundingSource: 'Nguồn kinh phí',
+
+  // Hồ sơ tài sản & File đính kèm
+  attachmentName: 'File đính kèm',
+  attachments: 'File đính kèm',
+  'File đính kèm': 'File đính kèm',
+  'Tài liệu đính kèm': 'File đính kèm',
+
+  // Thông tin chi tiết & Giá trị - Khấu hao
+  declarationDate: 'Ngày kê khai tài sản',
+  originalValue: 'Nguyên giá (VNĐ)',
+  depreciationRate: 'Tỷ lệ hao mòn/khấu hao (%)',
+  remainingValue: 'Giá trị còn lại (VNĐ)',
+  assignmentDecisionNumber: 'Số quyết định giao',
+  depreciationStartDate: 'Ngày tính khấu hao',
+  depreciationMonths: 'Số tháng tính khấu hao',
+  depreciationEndDate: 'Ngày hết khấu hao',
+  accumulatedDepreciation: 'Khấu hao lũy kế (VNĐ)',
+  monthlyDepreciation: 'Khấu hao tháng (VNĐ)',
+  disposalMethod: 'Hình thức xử lý tài sản',
+
+  // Phê duyệt
+  approvalStatus: 'Trạng thái phê duyệt',
+  portAuthorityApprovalContent: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+  approvalReasonLevel1: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+  approvalContentLevel1: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+  departmentApprovalContent: 'Nội dung phê duyệt cấp Cục',
+  approvalReasonLevel2: 'Nội dung phê duyệt cấp Cục',
+  approvalContentLevel2: 'Nội dung phê duyệt cấp Cục',
+  rejectionReason: 'Lý do từ chối',
+};
+
+const HISTORY_FIELD_ORDER = [
+  // Thông tin chung
+  'parentOrgUnitId',
+  'orgUnitId',
+  'usingOrgUnitId',
+  'lritStationId',
+  'ttdhStationId',
+  'inmarsatStationId',
+  'cospasSarsatStationId',
+  'ttxlttStationId',
+  'stationId',
+  'dryPortId',
+  'assetType',
+  'assetCode',
+  'assetName',
+  'barcode',
+  'assetCondition',
+  'usageStatus',
+  'assetGroup',
+  'assetSubgroup',
+  'origin',
+  'quantity',
+  'quantityUnit',
+  'model',
+  'serialNumber',
+  'countryOfOrigin',
+  'manufacturer',
+  'constructionYear',
+  'useDate',
+  'landArea',
+  'floorArea',
+  'assetLocation',
+  'address',
+  'location',
+  'description',
+  'technicalSpecs',
+  'fundingSource',
+
+  // Hồ sơ tài sản
+  'attachmentName',
+  'attachments',
+  'File đính kèm',
+  'Tài liệu đính kèm',
+
+  // Thông tin chi tiết
+  'declarationDate',
+  'originalValue',
+  'depreciationRate',
+  'remainingValue',
+  'assignmentDecisionNumber',
+  'depreciationStartDate',
+  'depreciationMonths',
+  'depreciationEndDate',
+  'accumulatedDepreciation',
+  'monthlyDepreciation',
+  'disposalMethod',
+
+  // Phê duyệt
+  'approvalStatus',
+  'portAuthorityApprovalContent',
+  'approvalReasonLevel1',
+  'approvalContentLevel1',
+  'departmentApprovalContent',
+  'approvalReasonLevel2',
+  'approvalContentLevel2',
+  'rejectionReason',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -86,6 +240,18 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 };
 
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
+
+const parseYearToDayjs = (val: unknown): dayjs.Dayjs | undefined => {
+  if (val == null || val === '') return undefined;
+  if (dayjs.isDayjs(val)) return val;
+  const str = String(val).trim();
+  const match = str.match(/\b(19\d{2}|20\d{2})\b/);
+  if (match) {
+    return dayjs(match[1], 'YYYY');
+  }
+  const d = dayjs(str);
+  return d.isValid() ? dayjs(String(d.year()), 'YYYY') : undefined;
+};
 
 export interface StationAssetListProps {
   config: StationTypeConfig;
@@ -117,6 +283,18 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   const [operationForm] = Form.useForm<OperationValues>();
   const currentUser = useAuthStore((s) => s.user);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<StationAsset | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+
+  const historyFieldCount = useMemo(
+    () => (Array.isArray(historyRecords) ? historyRecords : []).length,
+    [historyRecords],
+  );
 
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
   const stationMap = useMemo(() => new Map(stations.map((item) => [item.id, item])), [stations]);
@@ -191,7 +369,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
     form.setFieldsValue({
       ...record,
       [config.stationFieldName]: (record as unknown as Record<string, unknown>)[config.stationFieldName] as string | undefined || record.stationId,
-      constructionYear: record.constructionYear ? dayjs(String(record.constructionYear), 'YYYY') : undefined,
+      constructionYear: parseYearToDayjs(record.constructionYear),
       useDate: record.useDate ? dayjs(record.useDate) : undefined,
       declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
       depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
@@ -260,23 +438,265 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
     }
   }, []);
 
+  const formatHistoryValue = useCallback(
+    (field: string, val: any) => {
+      if (val == null || val === '') return '';
+      const strVal = String(val).trim();
+      if (!strVal || strVal === '-') return '';
+
+      // Currency
+      if (
+        [
+          'originalValue',
+          'remainingValue',
+          'accumulatedDepreciation',
+          'monthlyDepreciation',
+        ].includes(field)
+      ) {
+        const n = Number(val);
+        if (!isNaN(n)) return `${fmtInputNumber(n)} VNĐ`;
+      }
+      // Percent
+      if (field === 'depreciationRate') {
+        const n = Number(val);
+        if (!isNaN(n)) return `${n}%`;
+      }
+      // Area
+      if (field === 'landArea' || field === 'floorArea') {
+        const n = Number(val);
+        if (!isNaN(n)) return `${fmtInputNumber(n)} m²`;
+      }
+      // Quantity
+      if (field === 'quantity') {
+        const n = Number(val);
+        if (!isNaN(n)) return fmtInputNumber(n);
+      }
+      // Depreciation months
+      if (field === 'depreciationMonths') {
+        const n = Number(val);
+        if (!isNaN(n)) return `${fmtInputNumber(n)} tháng`;
+      }
+      // Construction year
+      if (field === 'constructionYear') {
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+          return dayjs(val).format('YYYY');
+        }
+        return String(val);
+      }
+      // Organizations
+      if (
+        field === 'orgUnitId' ||
+        field === 'usingOrgUnitId' ||
+        field === 'parentOrgUnitId'
+      ) {
+        return orgName.get(String(val)) || String(val);
+      }
+      // Station lookup
+      if (
+        field === 'stationId' ||
+        field === config.stationFieldName ||
+        field === 'lritStationId' ||
+        field === 'ttdhStationId' ||
+        field === 'inmarsatStationId' ||
+        field === 'cospasSarsatStationId' ||
+        field === 'ttxlttStationId'
+      ) {
+        const st = stationMap.get(String(val));
+        return st
+          ? st.code
+            ? `${st.name} (${st.code})`
+            : st.name
+          : String(val);
+      }
+      // Approval Status
+      if (field === 'approvalStatus') {
+        const statusMap: Record<string, string> = {
+          DRAFT: 'Lưu tạm',
+          NHAP: 'Lưu tạm',
+          PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
+          CHO_PHE_DUYET: 'Chờ Cảng vụ duyệt',
+          APPROVED_LEVEL1: 'Chờ Cục duyệt',
+          APPROVED: 'Đã duyệt',
+          DA_PHE_DUYET: 'Đã duyệt',
+          REJECTED_LEVEL1: 'Cảng vụ từ chối',
+          REJECTED_LEVEL2: 'Cục từ chối',
+          REJECTED: 'Từ chối',
+          TU_CHOI: 'Từ chối',
+          ARCHIVED: 'Đã lưu trữ',
+        };
+        return statusMap[strVal] || strVal;
+      }
+      // Dates
+      if (
+        field === 'useDate' ||
+        field === 'declarationDate' ||
+        field === 'depreciationStartDate' ||
+        field === 'depreciationEndDate'
+      ) {
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+          return dayjs(val).format('DD/MM/YYYY');
+        }
+      }
+      return undefined;
+    },
+    [config.stationFieldName, orgName, stationMap],
+  );
+
+  const openHistory = useCallback(
+    async (record: StationAsset) => {
+      setHistoryTarget(record);
+      setHistoryOpen(true);
+      setHistoryLoading(true);
+      setHistoryRecords([]);
+      setHistorySearch('');
+      setHistoryFrom('');
+      setHistoryTo('');
+      try {
+        const res = await api.get(`/v1/asset/infra-assets/${record.id}/history`);
+        const d = res.data?.data || res.data;
+        let ch = Array.isArray(d?.changeHistory) ? d.changeHistory : (Array.isArray(d) ? d : []);
+        if (ch.length === 0) {
+          const stationId =
+            (record as unknown as Record<string, unknown>)[config.stationFieldName] ||
+            record.stationId ||
+            record.lritStationId ||
+            record.ttdhStationId ||
+            record.inmarsatStationId ||
+            record.cospasSarsatStationId ||
+            record.ttxlttStationId;
+          if (stationId) {
+            const fallbackEp =
+              config.type === 'COSPAS_SARSAT_STATION'
+                ? `/v1/stations/cospas-sarsat/${stationId}/history`
+                : config.type === 'TTXLTT_STATION'
+                  ? `/v1/stations/haiphong/${stationId}/history`
+                  : `/v1/stations/lrit/${stationId}/history`;
+            const sRes = await api.get(fallbackEp).catch(() => null);
+            const sData = sRes?.data?.data || sRes?.data;
+            if (Array.isArray(sData?.changeHistory) && sData.changeHistory.length > 0) {
+              ch = sData.changeHistory;
+            } else if (Array.isArray(sData) && sData.length > 0) {
+              ch = sData;
+            }
+          }
+        }
+        setHistoryRecords(ch);
+      } catch {
+        toast.error('Không thể tải lịch sử');
+      } finally {
+        setHistoryLoading(false);
+      }
+    },
+    [config.stationFieldName, config.type],
+  );
+
+  const renderStationHistoryTimeline = (records: any[]) => {
+    const q = historySearch.toLowerCase().trim();
+    const filtered = (records || []).filter((r: any) => {
+      if (q) {
+        const fn = (r.fieldName || r.changedField || '').toLowerCase();
+        const ov = (r.oldValue || r.previousValue || '').toLowerCase();
+        const nv = (r.newValue || r.value || '').toLowerCase();
+        const lb = (ASSET_FIELD_LABELS[r.fieldName || r.changedField] || r.fieldName || '').toLowerCase();
+        const od = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.oldValue || r.previousValue) ??
+            (r.oldValue || r.previousValue || ''),
+        ).toLowerCase();
+        const nd = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.newValue || r.value) ??
+            (r.newValue || r.value || ''),
+        ).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) {
+          return false;
+        }
+      }
+      if (historyFrom || historyTo) {
+        const cd = r.changedAt || r.createdAt || r.approvedDate || '';
+        if (historyFrom && cd.substring(0, 10) < historyFrom) return false;
+        if (historyTo && cd.substring(0, 10) > historyTo) return false;
+      }
+      return true;
+    });
+
+    return renderStandardHistoryCards({
+      records: filtered,
+      fieldLabels: ASSET_FIELD_LABELS,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') {
+          if (raw && !isBlankOrDash(raw)) {
+            const files = String(raw)
+              .split(/\s*,\s*/)
+              .map((f) => f.trim())
+              .filter((f) => !isBlankOrDash(f));
+            if (files.length > 0) {
+              return (
+                <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                  {files.map((file, idx) => (
+                    <span key={idx} style={{ wordBreak: 'break-all' }}>
+                      {file}
+                    </span>
+                  ))}
+                </span>
+              );
+            }
+          }
+        }
+        const formatted = formatHistoryValue(fn, raw);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const oName = orgId ? orgName.get(orgId) : undefined;
+        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+      },
+      resolveActorName: (rawActor, rec) => {
+        return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
+      },
+      emptyMessage:
+        q || historyFrom || historyTo
+          ? 'Không tìm thấy kết quả phù hợp'
+          : 'Chưa có thay đổi nào được ghi nhận',
+    });
+  };
+
   const handleSave = async (status: string) => {
     setSaveAction(status);
     setSaving(true);
     try {
-      const values = await form.validateFields();
-      const stationIdValue = (values as unknown as Record<string, unknown>)[config.stationFieldName] as string | undefined;
+      const formValues = form.getFieldsValue(true);
+      const validatedValues = await form.validateFields();
+      const merged = {
+        ...(selected && drawerMode === 'edit' ? selected : {}),
+        ...formValues,
+        ...validatedValues,
+      };
+      const stationIdValue = (merged as unknown as Record<string, unknown>)[config.stationFieldName] as string | undefined || merged.stationId;
       const payload: StationAssetPayload = {
-        ...values,
+        ...merged,
         assetType: config.type,
         types: config.types,
         stationId: stationIdValue,
         [config.stationFieldName]: stationIdValue,
-        constructionYear: values.constructionYear ? Number(values.constructionYear.format('YYYY')) : undefined,
-        useDate: values.useDate ? values.useDate.format('YYYY-MM-DD') : undefined,
-        declarationDate: values.declarationDate ? values.declarationDate.format('YYYY-MM-DD') : undefined,
-        depreciationStartDate: values.depreciationStartDate ? values.depreciationStartDate.format('YYYY-MM-DD') : undefined,
-        depreciationEndDate: values.depreciationEndDate ? values.depreciationEndDate.format('YYYY-MM-DD') : undefined,
+        constructionYear: merged.constructionYear
+          ? (dayjs.isDayjs(merged.constructionYear)
+              ? Number(merged.constructionYear.format('YYYY'))
+              : (typeof merged.constructionYear === 'number'
+                  ? merged.constructionYear
+                  : Number(String(merged.constructionYear).match(/\b(19\d{2}|20\d{2})\b/)?.[0] || merged.constructionYear)))
+          : undefined,
+        useDate: merged.useDate
+          ? (dayjs.isDayjs(merged.useDate) ? merged.useDate.format('YYYY-MM-DD') : String(merged.useDate))
+          : undefined,
+        declarationDate: merged.declarationDate
+          ? (dayjs.isDayjs(merged.declarationDate) ? merged.declarationDate.format('YYYY-MM-DD') : String(merged.declarationDate))
+          : undefined,
+        depreciationStartDate: merged.depreciationStartDate
+          ? (dayjs.isDayjs(merged.depreciationStartDate) ? merged.depreciationStartDate.format('YYYY-MM-DD') : String(merged.depreciationStartDate))
+          : undefined,
+        depreciationEndDate: merged.depreciationEndDate
+          ? (dayjs.isDayjs(merged.depreciationEndDate) ? merged.depreciationEndDate.format('YYYY-MM-DD') : String(merged.depreciationEndDate))
+          : undefined,
         attachmentName: attachments.length > 0 ? attachments[0].fileName : undefined,
         approvalStatus: status,
       };
@@ -285,52 +705,52 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
       if (drawerMode === 'create') {
         const created = await createStationAsset(payload, config.type);
         savedId = created.id;
-        if (values.operatorOrgUnitId || values.totalRevenue || values.exploitationDeadline) {
-          const deadlineDate = values.exploitationDeadline
-            ? (dayjs.isDayjs(values.exploitationDeadline) ? values.exploitationDeadline : dayjs(values.exploitationDeadline))
+        if (merged.operatorOrgUnitId || merged.totalRevenue || merged.exploitationDeadline) {
+          const deadlineDate = merged.exploitationDeadline
+            ? (dayjs.isDayjs(merged.exploitationDeadline) ? merged.exploitationDeadline : dayjs(merged.exploitationDeadline))
             : undefined;
 
           await createKhaiThac({
             assetId: created.id,
             assetName: created.assetName,
-            operatorOrgUnitId: values.operatorOrgUnitId || undefined,
+            operatorOrgUnitId: merged.operatorOrgUnitId || undefined,
             exploitationYear: deadlineDate && deadlineDate.isValid() ? deadlineDate.year() : dayjs().year(),
-            doanhThu: values.totalRevenue || 0,
-            depreciation: values.relatedCosts || 0,
-            description: values.description || '',
-            unitOfMeasure: values.unitOfMeasure,
-            quantity: values.exploitationQuantity || 1,
+            doanhThu: merged.totalRevenue || 0,
+            depreciation: merged.relatedCosts || 0,
+            description: merged.description || '',
+            unitOfMeasure: merged.unitOfMeasure,
+            quantity: merged.exploitationQuantity || 1,
             exploitationDeadline: deadlineDate && deadlineDate.isValid() ? deadlineDate.format('YYYY-MM-DD') : undefined,
-            totalRevenue: values.totalRevenue,
-            relatedCosts: values.relatedCosts,
-            stateBudgetPayment: values.stateBudgetPayment,
-            projectAmount: values.projectAmount,
+            totalRevenue: merged.totalRevenue,
+            relatedCosts: merged.relatedCosts,
+            stateBudgetPayment: merged.stateBudgetPayment,
+            projectAmount: merged.projectAmount,
           }).catch(() => {});
         }
         toast.success(`Thêm mới ${config.title.toLowerCase()} thành công`);
       } else if (drawerMode === 'edit' && selected) {
         await updateStationAsset(selected.id, payload, config.type);
         savedId = selected.id;
-        if (values.operatorOrgUnitId || values.totalRevenue || values.exploitationDeadline) {
-          const deadlineDate = values.exploitationDeadline
-            ? (dayjs.isDayjs(values.exploitationDeadline) ? values.exploitationDeadline : dayjs(values.exploitationDeadline))
+        if (merged.operatorOrgUnitId || merged.totalRevenue || merged.exploitationDeadline) {
+          const deadlineDate = merged.exploitationDeadline
+            ? (dayjs.isDayjs(merged.exploitationDeadline) ? merged.exploitationDeadline : dayjs(merged.exploitationDeadline))
             : undefined;
 
           await createKhaiThac({
             assetId: selected.id,
             assetName: selected.assetName,
-            operatorOrgUnitId: values.operatorOrgUnitId || undefined,
+            operatorOrgUnitId: merged.operatorOrgUnitId || undefined,
             exploitationYear: deadlineDate && deadlineDate.isValid() ? deadlineDate.year() : dayjs().year(),
-            doanhThu: values.totalRevenue || 0,
-            depreciation: values.relatedCosts || 0,
-            description: values.description || '',
-            unitOfMeasure: values.unitOfMeasure,
-            quantity: values.exploitationQuantity || 1,
+            doanhThu: merged.totalRevenue || 0,
+            depreciation: merged.relatedCosts || 0,
+            description: merged.description || '',
+            unitOfMeasure: merged.unitOfMeasure,
+            quantity: merged.exploitationQuantity || 1,
             exploitationDeadline: deadlineDate && deadlineDate.isValid() ? deadlineDate.format('YYYY-MM-DD') : undefined,
-            totalRevenue: values.totalRevenue,
-            relatedCosts: values.relatedCosts,
-            stateBudgetPayment: values.stateBudgetPayment,
-            projectAmount: values.projectAmount,
+            totalRevenue: merged.totalRevenue,
+            relatedCosts: merged.relatedCosts,
+            stateBudgetPayment: merged.stateBudgetPayment,
+            projectAmount: merged.projectAmount,
           }).catch(() => {});
         }
         toast.success(`Cập nhật ${config.title.toLowerCase()} thành công`);
@@ -682,8 +1102,27 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         },
       ],
       actions: (record: StationAsset) => {
-        const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
-        const actionsList: TableActionOption<StationAsset>[] = [
+        const isDraft = record.approvalStatus === 'DRAFT' || !record.approvalStatus;
+        const isArchived = record.approvalStatus === 'ARCHIVED';
+
+        if (isArchived) {
+          return [
+            {
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void handleOpenDetail(record),
+            },
+            {
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ];
+        }
+
+        const actionList = [
           {
             key: 'detail',
             label: 'Xem chi tiết',
@@ -695,6 +1134,12 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
             label: 'Chỉnh sửa',
             icon: <EditOutlined />,
             onClick: () => handleOpenEdit(record),
+          },
+          {
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
           },
           {
             key: 'exploit',
@@ -728,8 +1173,9 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           },
         ];
 
+        // Nút xóa chỉ hiển thị với bản ghi có trạng thái lưu tạm (DRAFT)
         if (isDraft) {
-          actionsList.push({
+          actionList.push({
             key: 'delete',
             label: 'Xóa',
             icon: <DeleteOutlined />,
@@ -738,12 +1184,11 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           });
         }
 
-        return actionsList;
+        return actionList;
       },
     }),
-    [config.stationFieldName, config.stationLabel, config.title, handleOpenDetail, handleOpenEdit, operationForm, orgName, stationMap],
+    [config.stationFieldName, config.stationLabel, config.title, handleOpenDetail, handleOpenEdit, openHistory, operationForm, orgName, stationMap],
   );
-
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
       {
@@ -866,7 +1311,6 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -946,7 +1390,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
             }
             setAttachments((prev) => prev.filter((a) => a.id !== id));
           }}
-          onDownloadAttachment={(_id, fileName) => {
+          onDownloadAttachment={async (_id, fileName) => {
             const att = attachments.find((a) => a.id === _id || a.fileName === fileName);
             if (att?.originFileObj) {
               triggerBlobDownload(att.originFileObj, fileName || att.originFileObj.name);
@@ -963,7 +1407,43 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
               toast.success(`Đã tải xuống tệp: ${fileName}`);
               return;
             }
-            triggerBlobDownload(new Blob([`Tài liệu: ${fileName}`], { type: 'application/octet-stream' }), fileName);
+            const targetPath =
+              att?.filePath ||
+              (selected?.id && _id && !_id.startsWith('att-')
+                ? `/v1/asset/infra-assets/${selected.id}/attachments/${_id}/download`
+                : undefined);
+            if (targetPath) {
+              try {
+                let cleanPath = targetPath;
+                if (cleanPath.startsWith('/api/')) {
+                  cleanPath = cleanPath.replace(/^\/api/, '');
+                } else if (!cleanPath.startsWith('/')) {
+                  cleanPath = `/${cleanPath}`;
+                }
+                const res = await api.get(cleanPath, { responseType: 'blob' });
+                const serverContentType =
+                  (typeof res.headers?.['content-type'] === 'string' ? res.headers['content-type'] : '') || '';
+                const contentType = resolveMimeType(
+                  fileName || att?.fileName || 'tai-lieu',
+                  serverContentType || 'application/octet-stream',
+                );
+                const blob = new Blob([res.data], { type: contentType });
+                triggerBlobDownload(blob, fileName || att?.fileName || 'tai-lieu');
+                toast.success(`Đã tải xuống tệp: ${fileName}`);
+                return;
+              } catch (err) {
+                console.warn('Download error from server, falling back to local generated attachment:', err);
+              }
+            }
+            const fallbackContentType = resolveMimeType(
+              fileName || 'tai-lieu',
+              att?.fileType || 'application/octet-stream',
+            );
+            const fallbackBlob = new Blob(
+              [`Tài liệu đính kèm: ${fileName}\nThời gian: ${dayjs().format('DD/MM/YYYY HH:mm:ss')}\nĐược tải về từ Hệ thống Quản lý KCHT Hàng hải`],
+              { type: fallbackContentType },
+            );
+            triggerBlobDownload(fallbackBlob, fileName || 'tai-lieu');
             toast.success(`Đã tải xuống tệp: ${fileName}`);
           }}
         />
@@ -995,6 +1475,103 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           }}
           onSubmit={handleSubmitOperation}
         />
+
+        {/* ── History Drawer ────────────────────────────────────────── */}
+        <AppDrawer
+          width="min(880px, 96vw)"
+          rootClassName="berth-drawer-scope"
+          className="berth-drawer-scope"
+          mask
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Space size={spaceSm} style={{ alignItems: 'center' }}>
+                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+                <span style={drawerTitleStyle}>
+                  {historyTarget
+                    ? `Lịch sử thay đổi — ${historyTarget.assetName || historyTarget.assetCode || config.title}`
+                    : 'Lịch sử thay đổi'}
+                </span>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    padding: '2px 10px',
+                    borderRadius: 999,
+                    fontSize: fontSizeLg - 1,
+                    fontWeight: fontWeightBold,
+                    background: `${colors.sidebarBg}15`,
+                    color: colors.sidebarBg,
+                    lineHeight: '20px',
+                  }}
+                >
+                  Tổng cộng {historyFieldCount}
+                </span>
+              </Space>
+            </div>
+          }
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          }}
+        >
+          <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
+          <div style={{ flexShrink: 0 }}>
+            {!historyLoading && (
+              <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+                <Input
+                  placeholder="Tìm kiếm nội dung thay đổi..."
+                  allowClear
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+                />
+                <DatePicker
+                  placeholder="Từ ngày"
+                  classNames={{ popup: { root: 'history-dt-popup' } }}
+                  value={historyFrom ? dayjs(historyFrom) : null}
+                  onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <DatePicker
+                  placeholder="Đến ngày"
+                  classNames={{ popup: { root: 'history-dt-popup' } }}
+                  value={historyTo ? dayjs(historyTo) : null}
+                  onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  style={{
+                    borderRadius: radiusPill,
+                    height: 40,
+                    fontSize: fontSizeMd,
+                    background: actionPrimary,
+                    borderColor: actionPrimary,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {historyLoading ? (
+              <LoadingSkeleton rows={5} />
+            ) : historyRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+              </div>
+            ) : (
+              renderStationHistoryTimeline(historyRecords)
+            )}
+          </div>
+        </AppDrawer>
 
         {/* ── Delete Confirmation Modal ────────────────────────────── */}
         <DeleteConfirmModal

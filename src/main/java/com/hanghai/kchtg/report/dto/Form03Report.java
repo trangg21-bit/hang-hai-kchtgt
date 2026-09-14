@@ -1,19 +1,13 @@
 package com.hanghai.kchtg.report.dto;
 
 import com.hanghai.kchtg.report.entity.ReportStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import java.util.Objects;
 
 /**
  * DTO cho Báo cáo Mẫu 03 — Báo cáo quản lý tài sản.
  * Thống kê tài sản đang quản lý, hoạt động và không hoạt động.
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class Form03Report {
 
     private String code;
@@ -24,6 +18,111 @@ public class Form03Report {
     private Long activeAssets;
     private Long inactiveAssets;
     private ReportStatus status;
+
+    public Form03Report() {
+    }
+
+    public Form03Report(String code, String name, String formNumber, String reportingPeriod, Long managedAssets, Long activeAssets, Long inactiveAssets, ReportStatus status) {
+        this.code = code;
+        this.name = name;
+        this.formNumber = formNumber;
+        this.reportingPeriod = reportingPeriod;
+        this.managedAssets = managedAssets;
+        this.activeAssets = activeAssets;
+        this.inactiveAssets = inactiveAssets;
+        this.status = status;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getFormNumber() {
+        return formNumber;
+    }
+
+    public void setFormNumber(String formNumber) {
+        this.formNumber = formNumber;
+    }
+
+    public String getReportingPeriod() {
+        return reportingPeriod;
+    }
+
+    public void setReportingPeriod(String reportingPeriod) {
+        this.reportingPeriod = reportingPeriod;
+    }
+
+    public Long getManagedAssets() {
+        return managedAssets;
+    }
+
+    public void setManagedAssets(Long managedAssets) {
+        this.managedAssets = managedAssets;
+    }
+
+    public Long getActiveAssets() {
+        return activeAssets;
+    }
+
+    public void setActiveAssets(Long activeAssets) {
+        this.activeAssets = activeAssets;
+    }
+
+    public Long getInactiveAssets() {
+        return inactiveAssets;
+    }
+
+    public void setInactiveAssets(Long inactiveAssets) {
+        this.inactiveAssets = inactiveAssets;
+    }
+
+    public ReportStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ReportStatus status) {
+        this.status = status;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Form03Report that = (Form03Report) o;
+        return Objects.equals(code, that.code) && Objects.equals(name, that.name) && Objects.equals(formNumber, that.formNumber) && Objects.equals(reportingPeriod, that.reportingPeriod) && Objects.equals(managedAssets, that.managedAssets) && Objects.equals(activeAssets, that.activeAssets) && Objects.equals(inactiveAssets, that.inactiveAssets) && status == that.status;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(code, name, formNumber, reportingPeriod, managedAssets, activeAssets, inactiveAssets, status);
+    }
+
+    @Override
+    public String toString() {
+        return "Form03Report{" +
+                "code='" + code + '\'' +
+                ", name='" + name + '\'' +
+                ", formNumber='" + formNumber + '\'' +
+                ", reportingPeriod='" + reportingPeriod + '\'' +
+                ", managedAssets=" + managedAssets +
+                ", activeAssets=" + activeAssets +
+                ", inactiveAssets=" + inactiveAssets +
+                ", status=" + status +
+                '}';
+    }
 
     public static Form03ReportBuilder builder() {
         return new Form03ReportBuilder();

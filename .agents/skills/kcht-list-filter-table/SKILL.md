@@ -242,7 +242,6 @@ export default function StandardAssetListPage() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={() => void loadData()}

@@ -850,7 +850,7 @@ export default function ChannelAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle={true}
+          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
@@ -861,7 +861,6 @@ export default function ChannelAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={() => void loadData()}
