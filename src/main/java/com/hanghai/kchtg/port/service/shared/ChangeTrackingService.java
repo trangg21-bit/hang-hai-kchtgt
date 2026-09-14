@@ -86,7 +86,7 @@ public class ChangeTrackingService {
                     String oldValueStr = formatValue(oldValue);
                     String newValueStr = formatValue(newValue);
 
-                    log.debug("Change in {} [{}]: {} = [{}] -> [{}]",
+                    log.info("ChangeTracking: FIELD CHANGE {} [{}] {} = [{}] -> [{}]",
                             entityName, entityId, fieldName, oldValueStr, newValueStr);
 
                     if (entityUuid != null && historyRepository != null) {
@@ -136,6 +136,13 @@ public class ChangeTrackingService {
                 || name.equals("level2ApprovalContent")
                 || name.equals("submittedAt")
                 || name.equals("submittedBy")
+                || name.equals("portAuthorityApprovedBy")
+                || name.equals("portAuthorityApprovedAt")
+                || name.equals("portAuthorityApprovalContent")
+                || name.equals("departmentApprovedBy")
+                || name.equals("departmentApprovedAt")
+                || name.equals("departmentApprovalContent")
+                || name.equals("lockVersion")
                 || name.equals("waterway");
     }
 

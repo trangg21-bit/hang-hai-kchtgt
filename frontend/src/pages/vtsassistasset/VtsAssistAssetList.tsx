@@ -6,6 +6,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
@@ -19,6 +20,7 @@ import {
   CommonStatusTabs,
   TableColumnType,
   type TableOption,
+  type TableActionOption,
   type FilterOption,
   type ScreenHeaderAction,
 } from '../../components/list-view';
@@ -56,13 +58,15 @@ import {
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import { canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import VtsAssistAssetForm, { type FormValues } from './VtsAssistAssetForm';
 import VtsAssistAssetDetailContent from './VtsAssistAssetDetailContent';
 import VtsAssistAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './VtsAssistAssetOperationForm';
+import VtsAssistAssetHistory, { useVtsAssistHistory } from './VtsAssistAssetHistory';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -71,6 +75,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -100,12 +105,8 @@ export default function VtsAssistAssetList() {
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [filters, setFilters] = useState<VtsAssistAssetFilters>({
-    assetType: 'Tài sản hệ thống phụ trợ VTS',
-  });
-  const [draftFilters, setDraftFilters] = useState<VtsAssistAssetFilters & { updatedRange?: [Dayjs | null, Dayjs | null] }>({
-    assetType: 'Tài sản hệ thống phụ trợ VTS',
-  });
+  const [filters, setFilters] = useState<VtsAssistAssetFilters>({});
+  const [draftFilters, setDraftFilters] = useState<VtsAssistAssetFilters & { updatedRange?: [Dayjs | null, Dayjs | null] }>({});
   const [drawerMode, setDrawerMode] = useState<DrawerMode>();
   const [selected, setSelected] = useState<VtsAssistAsset>();
   const [deleteTarget, setDeleteTarget] = useState<VtsAssistAsset>();
@@ -128,6 +129,12 @@ export default function VtsAssistAssetList() {
       ),
     [vtsAssists]
   );
+
+  const {
+    historyOpen, historyTarget, historyRecords, historyLoading,
+    historyFilters, filteredHistory, hasActiveHistoryFilter,
+    openHistory, setHistoryOpen, setHistoryFilters,
+  } = useVtsAssistHistory({ orgName, transmissionMap: vtsAssistMap });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -158,6 +165,7 @@ export default function VtsAssistAssetList() {
   }, [filters, page, pageSize]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu khi trang/bộ lọc thay đổi
     void loadData();
   }, [loadData]);
 
@@ -293,7 +301,7 @@ export default function VtsAssistAssetList() {
       setAttachments((prev) => prev.filter((a) => a.id !== id));
       toast.success('Đã xóa tệp đính kèm.');
     },
-    [selected?.id]
+    [selected]
   );
 
   const handleDownloadAttachment = useCallback(
@@ -343,7 +351,7 @@ export default function VtsAssistAssetList() {
       triggerBlobDownload(dummyBlob, fileName);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
-    [attachments, selected?.id]
+    [attachments, selected]
   );
 
   const openDetail = useCallback(async (record: VtsAssistAsset) => {
@@ -514,8 +522,7 @@ export default function VtsAssistAssetList() {
         key: 'assetType',
         label: 'Loại tài sản',
         type: 'select',
-        disabled: true,
-        defaultValue: 'Tài sản hệ thống phụ trợ VTS',
+        placeholder: 'Chọn loại tài sản',
         options: [{ value: 'Tài sản hệ thống phụ trợ VTS', label: 'Tài sản hệ thống phụ trợ VTS' }],
       },
       {
@@ -551,15 +558,14 @@ export default function VtsAssistAssetList() {
     const range = draftFilters.updatedRange;
     setFilters({
       ...draftFilters,
-      assetType: 'Tài sản hệ thống phụ trợ VTS',
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),
     });
   }, [draftFilters]);
 
   const handleFilterReset = useCallback(() => {
-    setDraftFilters({ assetType: 'Tài sản hệ thống phụ trợ VTS' });
-    setFilters({ assetType: 'Tài sản hệ thống phụ trợ VTS' });
+    setDraftFilters({});
+    setFilters({});
     setPage(1);
   }, []);
 
@@ -702,59 +708,93 @@ export default function VtsAssistAssetList() {
           allowSort: true,
         },
       ],
-      actions: (record: VtsAssistAsset) => [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        },
-        {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('exploit');
-            operationForm.resetFields();
+      actions: (record: VtsAssistAsset) => {
+        const isArchived =
+          normalizeApprovalStatus(record.approvalStatus) === 'ARCHIVED' ||
+          Boolean((record as { deletedAt?: string | null }).deletedAt);
+
+        if (isArchived) {
+          return [
+            {
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ];
+        }
+
+        const rowActions: TableActionOption<VtsAssistAsset>[] = [
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void openDetail(record),
           },
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('increase');
-            operationForm.resetFields();
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
           },
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('decrease');
-            operationForm.resetFields();
+          {
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
           },
-        },
-        {
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
-        },
-      ],
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('exploit');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('increase');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('decrease');
+              operationForm.resetFields();
+            },
+          },
+        ];
+
+        if (canDeleteApprovalRecord(record.approvalStatus, { resource: 'infraasset' })) {
+          rowActions.push({
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
+          });
+        }
+
+        return rowActions;
+      },
     }),
-    [openDetail, openEdit, operationForm, orgName, vtsAssistMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, vtsAssistMap]
   );
 
   const headerActions: ScreenHeaderAction[] = useMemo(
@@ -770,16 +810,8 @@ export default function VtsAssistAssetList() {
     [openCreate]
   );
 
-  const customTokens = useMemo(
-    () => ({
-      ...themeTokenChk,
-      fontSizeMd: 13.5,
-    }),
-    []
-  );
-
   return (
-    <ThemeTokenProvider tokens={customTokens}>
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
       <div
         className="vts-assist-asset-page-wrapper"
         style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
@@ -804,7 +836,6 @@ export default function VtsAssistAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -918,6 +949,20 @@ export default function VtsAssistAssetList() {
               )
               .finally(() => setSaving(false));
           }}
+        />
+        {/* ── History Drawer ── */}
+        <VtsAssistAssetHistory
+          open={historyOpen}
+          target={historyTarget}
+          records={historyRecords}
+          loading={historyLoading}
+          filters={historyFilters}
+          filteredRecords={filteredHistory}
+          hasActiveFilter={hasActiveHistoryFilter}
+          orgName={orgName}
+          transmissionMap={vtsAssistMap}
+          onClose={() => setHistoryOpen(false)}
+          onFiltersChange={setHistoryFilters}
         />
       </div>
     </ThemeTokenProvider>

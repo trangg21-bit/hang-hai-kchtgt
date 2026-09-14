@@ -119,6 +119,12 @@ public class CoastalStationAssetController {
         return ResponseEntity.ok(ApiResponse.success("Tài sản đài đã được xóa thành công", null));
     }
 
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage') or @auth.check(authentication, 'data:read')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản đài thành công", service.getHistory(id)));
+    }
+
     @GetMapping("/{id}/exploitations")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<List<CoastalStationAssetExploitation>>> getExploitations(@PathVariable UUID id) {

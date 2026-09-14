@@ -194,8 +194,13 @@ public class VtsAssistApprovalService {
           }
           String orgUnitName = null;
           if (u != null) {
-            if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
-              orgUnitName = u.getOrgUnit().getName();
+            if (u.getOrgUnit() != null) {
+              if (orgUnitCacheService != null) {
+                orgUnitName = orgUnitCacheService.getName(u.getOrgUnit().getId());
+              }
+              if (orgUnitName == null || orgUnitName.isBlank()) {
+                orgUnitName = u.getOrgUnit().getName();
+              }
             } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
               orgUnitName = u.getDepartment();
             } else if (parent.getOrgUnitId() != null && orgUnitCacheService != null) {

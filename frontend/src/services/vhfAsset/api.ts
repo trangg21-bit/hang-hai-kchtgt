@@ -46,6 +46,14 @@ export async function deleteVhfAsset(id: string): Promise<void> {
   await api.delete(`${BASE_URL}/${id}`);
 }
 
+export async function fetchVhfAssetHistory(
+  id: string
+): Promise<{ changeHistory?: Record<string, unknown>[] } | Record<string, unknown>[]> {
+  const res = await api.get(`${BASE_URL}/${id}/history`);
+  return res.data?.data;
+}
+
+
 export async function fetchVhfExploitations(assetId: string): Promise<VhfAssetExploitation[]> {
   const res = await api.get(`${BASE_URL}/${assetId}/exploitations`);
   return res.data.data;

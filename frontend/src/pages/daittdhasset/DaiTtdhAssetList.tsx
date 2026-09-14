@@ -6,6 +6,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
@@ -19,9 +20,11 @@ import {
   CommonStatusTabs,
   TableColumnType,
   type TableOption,
+  type TableActionOption,
   type FilterOption,
   type ScreenHeaderAction,
 } from '../../components/list-view';
+import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -45,6 +48,7 @@ import type {
   DaiTtdhAssetPayload,
   DaiTtdhAssetExploitation,
   DaiTtdhAssetAdjustment,
+  PageResponse,
 } from '../../services/daiTtdhAsset/types';
 import {
   triggerBlobDownload,
@@ -54,13 +58,14 @@ import {
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import DaiTtdhAssetForm, { type FormValues } from './DaiTtdhAssetForm';
 import DaiTtdhAssetDetailContent from './DaiTtdhAssetDetailContent';
 import DaiTtdhAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './DaiTtdhAssetOperationForm';
+import DaiTtdhAssetHistory, { useDaiTtdhHistory } from './DaiTtdhAssetHistory';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -69,6 +74,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -114,13 +120,12 @@ export default function DaiTtdhAssetList() {
     [daiTtdhs]
   );
 
-  const customTokens = useMemo(
-    () => ({
-      ...themeTokenChk,
-      fontSizeMd: 13.5,
-    }),
-    []
-  );
+
+  const {
+    historyOpen, historyTarget, historyRecords, historyLoading,
+    historyFilters, filteredHistory, hasActiveHistoryFilter,
+    openHistory, setHistoryOpen, setHistoryFilters,
+  } = useDaiTtdhHistory({ orgName, daiTtdhMap });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -135,10 +140,17 @@ export default function DaiTtdhAssetList() {
       setTotal(res.totalElements || 0);
 
       const baseFilters = { ...filters, approvalStatus: undefined, page: 0, size: 1 };
+      const emptyPage: PageResponse<DaiTtdhAsset> = {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: 1,
+        number: 0,
+      };
       const [all, ...statusPages] = await Promise.all([
-        fetchDaiTtdhAssets(baseFilters).catch(() => ({ totalElements: 0, content: [] } as any)),
+        fetchDaiTtdhAssets(baseFilters).catch(() => emptyPage),
         ...STATUS_COUNT_KEYS.map((approvalStatus) =>
-          fetchDaiTtdhAssets({ ...baseFilters, approvalStatus }).catch(() => ({ totalElements: 0, content: [] } as any))
+          fetchDaiTtdhAssets({ ...baseFilters, approvalStatus }).catch(() => emptyPage)
         ),
       ]);
       const nextCounts: Record<string, number> = {
@@ -159,6 +171,7 @@ export default function DaiTtdhAssetList() {
   }, [filters, page, pageSize]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- nạp dữ liệu khi bộ lọc/trang thay đổi
     void loadData();
   }, [loadData]);
 
@@ -309,7 +322,7 @@ export default function DaiTtdhAssetList() {
       triggerBlobDownload(fallbackBlob, fileName);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
-    [attachments, selected?.id]
+    [attachments, selected]
   );
 
   const openDetail = useCallback(async (record: DaiTtdhAsset) => {
@@ -668,47 +681,82 @@ export default function DaiTtdhAssetList() {
           allowSort: true,
         },
       ],
-      actions: (record: DaiTtdhAsset) => [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        },
-        {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => openOperation(record, 'exploit'),
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => openOperation(record, 'increase'),
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => openOperation(record, 'decrease'),
-        },
-        {
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
-        },
-      ],
+      actions: (record: DaiTtdhAsset) => {
+        const isArchived =
+          normalizeApprovalStatus(record.approvalStatus) === 'ARCHIVED' ||
+          Boolean((record as { deletedAt?: string | null }).deletedAt);
+
+        if (isArchived) {
+          return [
+            {
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ];
+        }
+
+        const rowActions: TableActionOption<DaiTtdhAsset>[] = [
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void openDetail(record),
+          },
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
+          },
+          {
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
+          },
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => openOperation(record, 'exploit'),
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => openOperation(record, 'increase'),
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => openOperation(record, 'decrease'),
+          },
+        ];
+
+        const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+        if (isDraft) {
+          rowActions.push({
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
+          });
+        }
+
+        return rowActions;
+      },
     }),
-    [daiTtdhMap, openDetail, openEdit, openOperation, orgName]
+    [daiTtdhMap, openDetail, openEdit, openHistory, openOperation, orgName]
   );
 
   const headerActions = useMemo<ScreenHeaderAction[]>(
@@ -725,7 +773,7 @@ export default function DaiTtdhAssetList() {
   );
 
   return (
-    <ThemeTokenProvider tokens={customTokens}>
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
       <div
         className="daittdh-asset-page-wrapper"
         style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
@@ -750,7 +798,6 @@ export default function DaiTtdhAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -866,6 +913,20 @@ export default function DaiTtdhAssetList() {
               )
               .finally(() => setSaving(false));
           }}
+        />
+        {/* ── History Drawer ── */}
+        <DaiTtdhAssetHistory
+          open={historyOpen}
+          target={historyTarget}
+          records={historyRecords}
+          loading={historyLoading}
+          filters={historyFilters}
+          filteredRecords={filteredHistory}
+          hasActiveFilter={hasActiveHistoryFilter}
+          orgName={orgName}
+          daiTtdhMap={daiTtdhMap}
+          onClose={() => setHistoryOpen(false)}
+          onFiltersChange={setHistoryFilters}
         />
       </div>
     </ThemeTokenProvider>

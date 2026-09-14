@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Form, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -12,6 +13,14 @@ import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import {
+  colors,
+  fontWeightBold,
+  fontSizeMd,
+  radiusPill,
+  spaceSm,
+  spaceFormField,
+} from '../../themetokenchk';
 import {
   DynamicFormSidebar,
   FormFieldType,
@@ -149,7 +158,7 @@ export default function TransmissionAssetForm({
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
                 initialValue: 'Tài sản HT truyền dẫn',
-                disabled: true,
+                placeholder: 'Chọn loại tài sản',
                 options: [
                   { value: 'Tài sản HT truyền dẫn', label: 'Tài sản HT truyền dẫn' },
                 ],

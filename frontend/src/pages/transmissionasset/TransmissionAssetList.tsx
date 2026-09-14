@@ -1,73 +1,68 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
   HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
   PlusOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableActionOption,
+  type TableOption,
 } from '../../components/list-view';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import {
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchTransmissionOptions } from '../../services/transmission/api';
 import type { TransmissionOptionResponse } from '../../services/transmission/types';
 import {
-  fetchTransmissionAssets,
-  deleteTransmissionAsset,
-  createTransmissionAsset,
-  updateTransmissionAsset,
-  fetchTransmissionExploitations,
-  createTransmissionExploitation,
-  fetchTransmissionAdjustments,
   createTransmissionAdjustment,
-  fetchTransmissionAssetAttachments,
-  uploadTransmissionAssetAttachments,
+  createTransmissionAsset,
+  createTransmissionExploitation,
+  deleteTransmissionAsset,
   deleteTransmissionAssetAttachment,
   downloadTransmissionAssetAttachment,
-  fetchTransmissionAssetHistory,
+  fetchTransmissionAdjustments,
+  fetchTransmissionAssetAttachments,
+  fetchTransmissionAssets,
+  fetchTransmissionExploitations,
+  updateTransmissionAsset,
+  uploadTransmissionAssetAttachments,
 } from '../../services/transmissionAsset/api';
 import type {
   TransmissionAsset,
+  TransmissionAssetAdjustment,
+  TransmissionAssetExploitation,
   TransmissionAssetFilters,
   TransmissionAssetPayload,
-  TransmissionAssetExploitation,
-  TransmissionAssetAdjustment,
 } from '../../services/transmissionAsset/types';
-import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import {
-  actionPrimary,
-  borderDefault,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-} from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
+import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import TransmissionAssetDetailContent from './TransmissionAssetDetailContent';
+import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
+import TransmissionAssetHistory, { useTransmissionHistory } from './TransmissionAssetHistory';
 import TransmissionAssetOperationForm, {
   type OperationMode,
   type OperationValues,
@@ -80,6 +75,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -92,41 +88,6 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 };
 
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
-
-const TRANSMISSION_ASSET_FIELD_LABELS: Record<string, string> = {
-  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
-  orgUnitId: 'Đơn vị quản lý',
-  usingOrgUnitId: 'Đơn vị sử dụng',
-  transmissionId: 'Mã hệ thống truyền dẫn',
-  assetType: 'Loại tài sản',
-  types: 'Phân loại tài sản',
-  assetCode: 'Mã tài sản',
-  assetName: 'Tên tài sản',
-  barcode: 'Barcode',
-  assetCondition: 'Tình trạng tài sản',
-  usageStatus: 'Hiện trạng sử dụng',
-  assetGroup: 'Nhóm tài sản',
-  assetSubgroup: 'Phân nhóm tài sản',
-  origin: 'Nguồn gốc',
-  address: 'Địa chỉ',
-  landArea: 'Diện tích đất (m²)',
-  floorArea: 'Diện tích sàn (m²)',
-  constructionYear: 'Năm xây dựng',
-  useDate: 'Ngày đưa vào sử dụng',
-  declarationDate: 'Ngày kê khai',
-  originalValue: 'Nguyên giá (VNĐ)',
-  depreciationRate: 'Tỷ lệ hao mòn (%/năm)',
-  accumulatedDepreciation: 'Hao mòn/khấu hao lũy kế (VNĐ)',
-  remainingValue: 'Giá trị còn lại (VNĐ)',
-  assignmentDecisionNumber: 'Số quyết định giao tài sản',
-  depreciationStartDate: 'Ngày bắt đầu tính hao mòn',
-  depreciationMonths: 'Thời gian sử dụng (tháng)',
-  depreciationEndDate: 'Ngày kết thúc tính hao mòn',
-  monthlyDepreciation: 'Mức hao mòn/khấu hao tháng (VNĐ)',
-  disposalMethod: 'Hình thức xử lý',
-  attachmentName: 'Tài liệu đính kèm',
-  attachments: 'Tài liệu đính kèm',
-};
 
 export default function TransmissionAssetList() {
   const [data, setData] = useState<TransmissionAsset[]>([]);
@@ -153,58 +114,6 @@ export default function TransmissionAssetList() {
   const currentUser = useAuthStore((s) => s.user);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
-  // ── History state (chuẩn /berth) ───────────────────────────────────────
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyTarget, setHistoryTarget] = useState<TransmissionAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyFrom, setHistoryFrom] = useState('');
-  const [historyTo, setHistoryTo] = useState('');
-
-  const historyFieldCount = useMemo(
-    () => (Array.isArray(historyRecords) ? historyRecords : []).length,
-    [historyRecords]
-  );
-
-  const openHistory = useCallback(async (r: TransmissionAsset) => {
-    setHistoryTarget(r);
-    setHistoryOpen(true);
-    setHistoryLoading(true);
-    setHistoryRecords([]);
-    setHistorySearch('');
-    setHistoryFrom('');
-    setHistoryTo('');
-    try {
-      const d = await fetchTransmissionAssetHistory(r.id);
-      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
-      setHistoryRecords(ch);
-    } catch {
-      toast.error('Không thể tải lịch sử');
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, []);
-
-  const filteredHistoryRecords = useMemo(() => {
-    return historyRecords.filter((rec) => {
-      if (historySearch) {
-        const s = historySearch.toLowerCase();
-        const matchField = String(rec.fieldName || rec.changedField || '').toLowerCase().includes(s);
-        const matchOld = String(rec.oldValue || rec.previousValue || '').toLowerCase().includes(s);
-        const matchNew = String(rec.newValue || rec.value || '').toLowerCase().includes(s);
-        if (!matchField && !matchOld && !matchNew) return false;
-      }
-      if (historyFrom && dayjs(rec.changedAt || rec.approvedDate).isBefore(dayjs(historyFrom), 'day')) {
-        return false;
-      }
-      if (historyTo && dayjs(rec.changedAt || rec.approvedDate).isAfter(dayjs(historyTo), 'day')) {
-        return false;
-      }
-      return true;
-    });
-  }, [historyRecords, historySearch, historyFrom, historyTo]);
-
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
   const transmissionMap = useMemo(
     () =>
@@ -216,6 +125,12 @@ export default function TransmissionAssetList() {
       ),
     [transmissions]
   );
+
+  const {
+    historyOpen, historyTarget, historyRecords, historyLoading,
+    historyFilters, filteredHistory, hasActiveHistoryFilter,
+    openHistory, setHistoryOpen, setHistoryFilters,
+  } = useTransmissionHistory({ orgName, transmissionMap });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -246,6 +161,7 @@ export default function TransmissionAssetList() {
   }, [filters, page, pageSize]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu khi trang/bộ lọc thay đổi
     void loadData();
   }, [loadData]);
 
@@ -380,7 +296,7 @@ export default function TransmissionAssetList() {
       setAttachments((prev) => prev.filter((a) => a.id !== id));
       toast.success('Đã xóa tệp đính kèm.');
     },
-    [selected?.id]
+    [selected]
   );
 
   const handleDownloadAttachment = useCallback(
@@ -430,7 +346,7 @@ export default function TransmissionAssetList() {
       triggerBlobDownload(dummyBlob, fileName);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
-    [attachments, selected?.id]
+    [attachments, selected]
   );
 
   const openDetail = useCallback(async (record: TransmissionAsset) => {
@@ -598,8 +514,7 @@ export default function TransmissionAssetList() {
         key: 'assetType',
         label: 'Loại tài sản',
         type: 'select',
-        disabled: true,
-        defaultValue: 'Tài sản HT truyền dẫn',
+        placeholder: 'Chọn loại tài sản',
         options: [{ value: 'Tài sản HT truyền dẫn', label: 'Tài sản HT truyền dẫn' }],
       },
       {
@@ -785,67 +700,92 @@ export default function TransmissionAssetList() {
           allowSort: true,
         },
       ],
-      actions: (record: TransmissionAsset) => [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        },
-        {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('exploit');
-            operationForm.resetFields();
+      actions: (record: TransmissionAsset) => {
+        const isArchived =
+          normalizeApprovalStatus(record.approvalStatus) === 'ARCHIVED' ||
+          Boolean((record as { deletedAt?: string | null }).deletedAt);
+
+        if (isArchived) {
+          return [
+            {
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ];
+        }
+
+        const rowActions: TableActionOption<TransmissionAsset>[] = [
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void openDetail(record),
           },
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('increase');
-            operationForm.resetFields();
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
           },
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('decrease');
-            operationForm.resetFields();
+          {
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
           },
-        },
-        {
-          key: 'history',
-          label: 'Lịch sử',
-          icon: <HistoryOutlined />,
-          onClick: () => void openHistory(record),
-        },
-        ...(record.approvalStatus === 'DRAFT'
-          ? [
-              {
-                key: 'delete',
-                label: 'Xóa',
-                icon: <DeleteOutlined />,
-                danger: true,
-                onClick: () => setDeleteTarget(record),
-              },
-            ]
-          : []),
-      ],
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('exploit');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('increase');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('decrease');
+              operationForm.resetFields();
+            },
+          },
+        ];
+
+        const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+        if (isDraft) {
+          rowActions.push({
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
+          });
+        }
+
+        return rowActions;
+      },
     }),
     [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap]
   );
@@ -863,16 +803,8 @@ export default function TransmissionAssetList() {
     [openCreate]
   );
 
-  const customTokens = useMemo(
-    () => ({
-      ...themeTokenChk,
-      fontSizeMd: 13.5,
-    }),
-    []
-  );
-
   return (
-    <ThemeTokenProvider tokens={customTokens}>
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
       <div
         className="transmission-asset-page-wrapper"
         style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
@@ -897,7 +829,6 @@ export default function TransmissionAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -1014,88 +945,20 @@ export default function TransmissionAssetList() {
               .finally(() => setSaving(false));
           }}
         />
-        {/* ── History Drawer (chuẩn /berth) ────────────────────────── */}
-        <AppDrawer
-          width="min(880px, 96vw)"
-          rootClassName="berth-drawer-scope"
-          className="berth-drawer-scope"
-          mask
-          title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <Space size={spaceSm} style={{ alignItems: 'center' }}>
-                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
-                <span style={drawerTitleStyle}>
-                  {historyTarget ? `Lịch sử thay đổi — ${historyTarget.assetName}` : 'Lịch sử thay đổi'}
-                </span>
-                <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {historyFieldCount}
-                </span>
-              </Space>
-            </div>
-          }
+        {/* ── History Drawer ── */}
+        <TransmissionAssetHistory
           open={historyOpen}
+          target={historyTarget}
+          records={historyRecords}
+          loading={historyLoading}
+          filters={historyFilters}
+          filteredRecords={filteredHistory}
+          hasActiveFilter={hasActiveHistoryFilter}
+          orgName={orgName}
+          transmissionMap={transmissionMap}
           onClose={() => setHistoryOpen(false)}
-          footer={null}
-          styles={{
-            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-            body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
-          }}>
-          <div style={{ flexShrink: 0 }}>
-            {!historyLoading && (
-              <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-                <Input
-                  placeholder="Tìm kiếm nội dung thay đổi..."
-                  allowClear
-                  value={historySearch}
-                  onChange={e => setHistorySearch(e.target.value)}
-                  style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
-                />
-                <DatePicker
-                  placeholder="Từ ngày"
-                  value={historyFrom ? dayjs(historyFrom) : null}
-                  onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
-                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
-                  format="DD/MM/YYYY"
-                />
-                <DatePicker
-                  placeholder="Đến ngày"
-                  value={historyTo ? dayjs(historyTo) : null}
-                  onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
-                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
-                  format="DD/MM/YYYY"
-                />
-                <Button
-                  type="primary"
-                  icon={<SearchOutlined />}
-                  style={{
-                    borderRadius: radiusPill,
-                    height: 40,
-                    fontSize: fontSizeMd,
-                    background: actionPrimary,
-                    borderColor: actionPrimary,
-                  }}
-                >
-                  Tìm kiếm
-                </Button>
-              </div>
-            )}
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-            {historyLoading ? (
-              <LoadingSkeleton rows={5} />
-            ) : filteredHistoryRecords.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
-              </div>
-            ) : (
-              renderStandardHistoryCards({
-                records: filteredHistoryRecords,
-                fieldLabels: TRANSMISSION_ASSET_FIELD_LABELS,
-              })
-            )}
-          </div>
-        </AppDrawer>
+          onFiltersChange={setHistoryFilters}
+        />
       </div>
     </ThemeTokenProvider>
   );

@@ -51,8 +51,6 @@ export interface DaiTtdhAssetDetailContentProps {
   adjustmentRows: DaiTtdhAssetAdjustment[];
 }
 
-export { renderApprovalStatusBadge };
-
 export default function DaiTtdhAssetDetailContent({
   open,
   selectedRecord,
@@ -87,7 +85,7 @@ export default function DaiTtdhAssetDetailContent({
           width: 220,
           render: (v) => (
             <span style={{ fontWeight: fontWeightBold }}>
-              {orgName.get(v as string) || '—'}
+              {orgName.get(v as string) || ''}
             </span>
           ),
         },
@@ -96,7 +94,7 @@ export default function DaiTtdhAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) ?? '—',
+          render: (v) => (v as string) ?? '',
         },
         {
           title: 'Đơn vị tính',
@@ -298,7 +296,7 @@ export default function DaiTtdhAssetDetailContent({
         })
       : {
           color: textTertiary,
-          label: '—',
+          label: '',
         };
 
     return [
@@ -319,51 +317,54 @@ export default function DaiTtdhAssetDetailContent({
               {
                 name: 'assetName',
                 label: 'Tên tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: colors.sidebarBg,
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        fontWeight: fontWeightBold,
+                        color: colors.sidebarBg,
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Cơ quan quản lý cấp trên',
-                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '—') : '—'),
+                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '') : ''),
               },
               {
                 label: 'Đơn vị quản lý',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {rec.orgUnitId ? (orgName.get(rec.orgUnitId) ?? '—') : '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.orgUnitId && orgName.get(rec.orgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.orgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Đơn vị sử dụng',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {rec.usingOrgUnitId ? (orgName.get(rec.usingOrgUnitId) ?? '—') : '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.usingOrgUnitId && orgName.get(rec.usingOrgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.usingOrgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Mã đài TTDH',
                 value: (rec) =>
-                  (rec.stationId ? daiTtdhMap.get(rec.stationId)?.code : undefined) ?? rec.stationCode ?? '—',
+                  (rec.stationId ? daiTtdhMap.get(rec.stationId)?.code : undefined) ?? rec.stationCode ?? '',
               },
               {
                 label: 'Tên đài TTDH trực thuộc',
                 value: (rec) =>
-                  (rec.stationId ? daiTtdhMap.get(rec.stationId)?.name : undefined) ?? rec.stationName ?? '—',
+                  (rec.stationId ? daiTtdhMap.get(rec.stationId)?.name : undefined) ?? rec.stationName ?? '',
               },
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                render: (val) => (val ? String(val) : '—'),
+                render: (val) => (val ? String(val) : ''),
               },
               {
                 name: 'barcode',
@@ -372,42 +373,44 @@ export default function DaiTtdhAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: fontWeightMedium,
-                      background: '#ecfdf5',
-                      color: '#059669',
-                      border: '1px solid #a7f3d0',
-                    }}
-                  >
-                    {val ? String(val) : '—'}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: fontWeightMedium,
+                        background: '#ecfdf5',
+                        color: '#059669',
+                        border: '1px solid #a7f3d0',
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                render: (val) => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: fontWeightMedium,
-                      background: '#eff6ff',
-                      color: '#2563eb',
-                      border: '1px solid #bfdbfe',
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: fontWeightMedium,
+                        background: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #bfdbfe',
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'assetGroup',
@@ -437,7 +440,9 @@ export default function DaiTtdhAssetDetailContent({
                 name: 'quantity',
                 label: 'Số lượng',
                 render: (val, rec) =>
-                  val != null ? `${fmtNum(Number(val))} ${rec.quantityUnit || 'Bộ'}` : '—',
+                  val != null && String(val).trim() !== ''
+                    ? `${fmtNum(Number(val))} ${rec.quantityUnit || 'Bộ'}`
+                    : '',
               },
               {
                 name: 'quantityUnit',
@@ -471,12 +476,14 @@ export default function DaiTtdhAssetDetailContent({
               {
                 name: 'landArea',
                 label: 'Diện tích đất (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'floorArea',
                 label: 'Diện tích sàn sử dụng (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'assetLocation',
@@ -574,62 +581,62 @@ export default function DaiTtdhAssetDetailContent({
               },
               {
                 label: 'Cán bộ gửi phê duyệt',
-                value: (rec) => rec.submittedByName || '—',
+                value: (rec) => rec.submittedByName || '',
               },
               {
                 label: 'Ngày gửi phê duyệt',
                 value: (rec) =>
                   rec.submittedAt
                     ? dayjs(rec.submittedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Cán bộ phê duyệt Cảng vụ/Chi cục',
-                value: (rec) => rec.portAuthorityApprovedByName || '—',
+                value: (rec) => rec.portAuthorityApprovedByName || '',
               },
               {
                 label: 'Ngày Cảng vụ/Chi cục duyệt',
                 value: (rec) =>
                   rec.portAuthorityApprovedAt
                     ? dayjs(rec.portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Nội dung Cảng vụ duyệt',
-                value: (rec) => rec.portAuthorityApprovalContent || '—',
+                value: (rec) => rec.portAuthorityApprovalContent || '',
                 colSpan: 24,
               },
               {
                 label: 'Cán bộ phê duyệt Cục',
-                value: (rec) => rec.departmentApprovedByName || '—',
+                value: (rec) => rec.departmentApprovedByName || '',
               },
               {
                 label: 'Ngày Cục duyệt',
                 value: (rec) =>
                   rec.departmentApprovedAt
                     ? dayjs(rec.departmentApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Nội dung Cục duyệt',
-                value: (rec) => rec.departmentApprovalContent || '—',
+                value: (rec) => rec.departmentApprovalContent || '',
                 colSpan: 24,
               },
               {
                 label: 'Lý do từ chối (nếu có)',
-                value: (rec) => rec.rejectionReason || '—',
+                value: (rec) => rec.rejectionReason || '',
                 colSpan: 24,
               },
               {
                 label: 'Cán bộ cập nhật cuối',
-                value: (rec) => rec.updatedByName || '—',
+                value: (rec) => rec.updatedByName || '',
               },
               {
                 label: 'Ngày cập nhật cuối',
                 value: (rec) =>
                   rec.updatedAt
                     ? dayjs(rec.updatedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
             ],
           },
@@ -655,7 +662,7 @@ export default function DaiTtdhAssetDetailContent({
         <span>
           Xem chi tiết tài sản đài TTDH —{' '}
           <span style={{ color: colors.sidebarBg }}>
-            {r?.assetName || '—'}
+            {r?.assetName || ''}
           </span>
           {r?.assetCode && (
             <span

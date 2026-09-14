@@ -79,14 +79,13 @@ export const CommonStatusTabs: React.FC<CommonStatusTabsProps> = ({
       (computedCounts.archived || 0) +
       (computedCounts.deleted || 0);
 
-    // Bắt buộc: Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối + Đã xóa
+    // Bắt buộc theo AGENTS.md & skill: Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối (không gồm Đã xóa)
     const sumChildCounts =
       draftCount +
       pendingApprovalCount +
       approvedLevel1Count +
       approvedCount +
-      rejectedCount +
-      archivedCount;
+      rejectedCount;
     const allCount =
       sumChildCounts > 0 ? sumChildCounts : (computedCounts.all || 0);
 

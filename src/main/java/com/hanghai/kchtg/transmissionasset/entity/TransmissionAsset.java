@@ -12,6 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Filter;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @lombok.experimental.SuperBuilder
 @lombok.EqualsAndHashCode(callSuper = true)
 @Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@SQLRestriction("1=1")
 public class TransmissionAsset extends BaseEntity {
 
     @Column(unique = true, nullable = false, length = 50)

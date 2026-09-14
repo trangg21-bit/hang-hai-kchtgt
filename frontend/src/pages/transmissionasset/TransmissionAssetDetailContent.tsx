@@ -24,8 +24,7 @@ import {
   statusOperational,
   statusAttention,
   statusCritical,
-  statusDraft,
-  radiusPill,
+  textTertiary,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
@@ -56,8 +55,6 @@ export interface TransmissionAssetDetailContentProps {
   attachments?: InfrastructureAttachmentItem[];
   onDownloadAttachment?: (id: string, fileName: string) => void;
 }
-
-export { renderApprovalStatusBadge };
 
 export default function TransmissionAssetDetailContent({
   open,
@@ -97,7 +94,7 @@ export default function TransmissionAssetDetailContent({
           width: 220,
           render: (v) => (
             <span style={{ fontWeight: fontWeightBold }}>
-              {orgName.get(v as string) || '—'}
+              {orgName.get(v as string) || ''}
             </span>
           ),
         },
@@ -106,7 +103,7 @@ export default function TransmissionAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) ?? '—',
+          render: (v) => (v as string) ?? '',
         },
         {
           title: 'Đơn vị tính',
@@ -308,7 +305,7 @@ export default function TransmissionAssetDetailContent({
         })
       : {
           color: textTertiary,
-          label: '—',
+          label: '',
         };
 
     return [
@@ -329,51 +326,54 @@ export default function TransmissionAssetDetailContent({
               {
                 name: 'assetName',
                 label: 'Tên tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: colors.sidebarBg,
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        fontWeight: fontWeightBold,
+                        color: colors.sidebarBg,
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Cơ quan quản lý cấp trên',
-                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '—') : '—'),
+                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '') : ''),
               },
               {
                 label: 'Đơn vị quản lý',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {rec.orgUnitId ? (orgName.get(rec.orgUnitId) ?? '—') : '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.orgUnitId && orgName.get(rec.orgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.orgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Đơn vị sử dụng',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {rec.usingOrgUnitId ? (orgName.get(rec.usingOrgUnitId) ?? '—') : '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.usingOrgUnitId && orgName.get(rec.usingOrgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.usingOrgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Mã thiết bị',
                 value: (rec) =>
-                  (rec.transmissionId ? transmissionMap.get(rec.transmissionId)?.code : undefined) ?? '—',
+                  (rec.transmissionId ? transmissionMap.get(rec.transmissionId)?.code : undefined) ?? '',
               },
               {
                 label: 'Tên hệ thống truyền dẫn',
                 value: (rec) =>
-                  (rec.transmissionId ? transmissionMap.get(rec.transmissionId)?.name : undefined) ?? '—',
+                  (rec.transmissionId ? transmissionMap.get(rec.transmissionId)?.name : undefined) ?? '',
               },
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                render: (val) => (val ? String(val) : '—'),
+                render: (val) => (val ? String(val) : ''),
               },
               {
                 name: 'barcode',
@@ -382,25 +382,26 @@ export default function TransmissionAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      background:
-                        val === 'Tốt'
-                          ? `${statusOperational}18`
-                          : `${statusAttention}18`,
-                      color:
-                        val === 'Tốt' ? statusOperational : statusAttention,
-                    }}
-                  >
-                    {val ? String(val) : '—'}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background:
+                          val === 'Tốt'
+                            ? `${statusOperational}18`
+                            : `${statusAttention}18`,
+                        color:
+                          val === 'Tốt' ? statusOperational : statusAttention,
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'usageStatus',
@@ -434,7 +435,9 @@ export default function TransmissionAssetDetailContent({
                 name: 'quantity',
                 label: 'Số lượng',
                 render: (val, rec) =>
-                  `${val != null ? fmtNum(Number(val)) : '—'} ${rec.quantityUnit || ''}`.trim(),
+                  val != null && String(val).trim() !== ''
+                    ? `${fmtNum(Number(val))} ${rec.quantityUnit || ''}`.trim()
+                    : '',
               },
               {
                 name: 'model',
@@ -464,12 +467,14 @@ export default function TransmissionAssetDetailContent({
               {
                 name: 'landArea',
                 label: 'Diện tích đất (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'floorArea',
                 label: 'Diện tích sàn sử dụng (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'assetLocation',
@@ -512,25 +517,27 @@ export default function TransmissionAssetDetailContent({
               {
                 name: 'originalValue',
                 label: 'Nguyên giá (VNĐ)',
-                render: (val) => (
-                  <span style={{ fontWeight: fontWeightBold, color: actionPrimary }}>
-                    {val != null ? `${fmtNum(Number(val))} VNĐ` : '—'}
-                  </span>
-                ),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? (
+                    <span style={{ fontWeight: fontWeightBold, color: actionPrimary }}>
+                      {`${fmtNum(Number(val))} VNĐ`}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'depreciationRate',
                 label: 'Tỷ lệ hao mòn/khấu hao (%)',
-                render: (val) => (val != null ? `${val}%` : '—'),
+                render: (val) => (val != null && String(val).trim() !== '' ? `${val}%` : ''),
               },
               {
                 name: 'remainingValue',
                 label: 'Giá trị còn lại (VNĐ)',
-                render: (val) => (
-                  <span style={{ fontWeight: fontWeightBold, color: statusOperational }}>
-                    {val != null ? `${fmtNum(Number(val))} VNĐ` : '—'}
-                  </span>
-                ),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? (
+                    <span style={{ fontWeight: fontWeightBold, color: statusOperational }}>
+                      {`${fmtNum(Number(val))} VNĐ`}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Đơn vị tính giá trị',
@@ -548,7 +555,7 @@ export default function TransmissionAssetDetailContent({
               {
                 name: 'depreciationMonths',
                 label: 'Số tháng tính khấu hao',
-                render: (val) => (val != null ? `${val} tháng` : '—'),
+                render: (val) => (val != null && String(val).trim() !== '' ? `${val} tháng` : ''),
               },
               {
                 name: 'depreciationEndDate',
@@ -558,12 +565,12 @@ export default function TransmissionAssetDetailContent({
               {
                 name: 'accumulatedDepreciation',
                 label: 'Khấu hao lũy kế (VNĐ)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} VNĐ` : '—'),
+                render: (val) => (val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} VNĐ` : ''),
               },
               {
                 name: 'monthlyDepreciation',
                 label: 'Khấu hao tháng (VNĐ)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} VNĐ` : '—'),
+                render: (val) => (val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} VNĐ` : ''),
               },
               {
                 name: 'disposalMethod',

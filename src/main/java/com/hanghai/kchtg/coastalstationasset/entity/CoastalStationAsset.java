@@ -27,8 +27,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @lombok.experimental.SuperBuilder
 @lombok.EqualsAndHashCode(callSuper = true)
-@SQLRestriction("deleted_at IS NULL")
 @Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@SQLRestriction("1=1")
 public class CoastalStationAsset extends BaseEntity {
 
     @Column(unique = true, nullable = false, length = 50)

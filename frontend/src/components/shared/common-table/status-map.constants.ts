@@ -18,6 +18,8 @@ export const APPROVAL_STATUS_MAP: Record<string, { label: string; color: string 
   REJECTED_LEVEL1: { label: 'Cảng vụ từ chối', color: statusCritical },
   REJECTED_LEVEL2: { label: 'Cục từ chối', color: statusCritical },
   REJECTED: { label: 'Từ chối', color: statusCritical },
+  ARCHIVED: { label: 'Đã xóa', color: statusCritical },
+  DA_XOA: { label: 'Đã xóa', color: statusCritical },
 };
 
 /** Alias tương thích cho APPROVAL_STATUS_MAP */
