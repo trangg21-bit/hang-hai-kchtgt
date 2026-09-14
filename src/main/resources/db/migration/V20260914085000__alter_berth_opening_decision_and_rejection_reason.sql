@@ -1,4 +1,4 @@
--- V20260911153000__alter_berth_opening_decision_and_rejection_reason.sql
+-- V20260914085000__alter_berth_opening_decision_and_rejection_reason.sql
 -- Increase opening_decision to VARCHAR(2000) and rejection_reason to TEXT to match piers and avoid truncation/validation errors
 
 DO $$
