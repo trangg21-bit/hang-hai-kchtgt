@@ -285,4 +285,40 @@ class EffectivePermissionServiceTest {
         assertEquals(Set.of("vts:read"), result);
         verifyNoInteractions(permissionCacheService, userRepository);
     }
+
+    @Test
+    @DisplayName("Implicit Read: Operational permissions implicitly grant read/view/search")
+    void implicitRead_grantedFromOperationalPermissions() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vts:approvec1"));
+
+        assertTrue(service.checkPermission(userId, "vts:read"));
+        assertTrue(service.checkPermission(userId, "vts:view"));
+        assertTrue(service.checkPermission(userId, "vts:search"));
+        assertFalse(service.checkPermission(userId, "vts:delete"));
+        assertFalse(service.checkPermission(userId, "vts:create"));
+    }
+
+    @Test
+    @DisplayName("Parent Domain Coverage: specialstation grants access to specialized coastal stations")
+    void parentDomainCoverage_specialstationGrantsChildStations() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("specialstation:read"));
+
+        assertTrue(service.checkPermission(userId, "coastalstationlrit:read"));
+        assertTrue(service.checkPermission(userId, "coastalstationinmarsat:read"));
+        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:read"));
+        assertTrue(service.checkPermission(userId, "coastalstationcospassarsat:read"));
+        assertFalse(service.checkPermission(userId, "port:read"));
+    }
+
+    @Test
+    @DisplayName("Canonical Resource Mapping: vtssystem and vts alias symmetrically")
+    void canonicalResourceMapping_vtsAndVtssystem() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vtssystem:update"));
+
+        // Has update on vtssystem -> matches vts:update
+        assertTrue(service.checkPermission(userId, "vts:update"));
+        // Implicit read works across canonical resource
+        assertTrue(service.checkPermission(userId, "vts:read"));
+        assertFalse(service.checkPermission(userId, "vts:delete"));
+    }
 }

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -325,6 +326,14 @@ public class GlobalExceptionHandler {
             return;
         }
         log.warn("IO exception during request processing: {}", msg);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<String>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        log.warn("Phương thức HTTP không được hỗ trợ: {} - Được hỗ trợ: {}", ex.getMethod(), ex.getSupportedHttpMethods());
+        return ResponseEntity
+                .status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error("Phương thức yêu cầu '" + ex.getMethod() + "' không được hỗ trợ"));
     }
 
     /**

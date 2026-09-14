@@ -439,7 +439,7 @@ public class ScadaService {
               .status(InfrastructureHistoryStatus.UPDATED)
               .approvedBy(currentUserId)
               .approvedDate(now)
-              .changedField(fieldName)
+              .changedField(field)
               .previousValue(formatDisplayValue(field, oldVal))
               .newValue(formatDisplayValue(field, newVal))
               .reason("Cập nhật thông tin " + fieldName)
@@ -559,6 +559,12 @@ public class ScadaService {
   public String formatDisplayValue(String field, String rawValue) {
     if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
       return "Chưa có";
+    }
+    if ("coordinates".equals(field) || "Tọa độ".equals(field) || "Tọa độ GIS".equals(field)) {
+      if (rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
+        return "Chưa có";
+      }
+      return rawValue.trim();
     }
     if ("mapSymbolId".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field) || "symbolId".equals(field)) {
       try {

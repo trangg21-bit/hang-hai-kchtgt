@@ -45,9 +45,6 @@ public class InfrastructureHistory {
     @Column(name = "approved_date", nullable = false, updatable = false, columnDefinition = "TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime approvedDate;
 
-    @Column(name = "reason", length = 500)
-    private String reason;
-
     @Column(name = "changed_field", length = 1000)
     private String changedField;
 
@@ -69,7 +66,7 @@ public class InfrastructureHistory {
 
     public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType, ApprovalLevel approvalLevel,
             InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
-            String reason, String changedField, String previousValue, String newValue) {
+            String changedField, String previousValue, String newValue) {
         this.id = id;
         this.refId = refId;
         this.refType = refType;
@@ -77,28 +74,21 @@ public class InfrastructureHistory {
         this.status = status;
         this.approvedBy = approvedBy;
         this.approvedDate = approvedDate;
-        this.reason = reason;
         this.changedField = changedField;
         this.previousValue = previousValue;
         this.newValue = newValue;
     }
 
-    public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType, ApprovalLevel approvalLevel,
-            InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
-            String changedField, String previousValue, String newValue) {
-        this(id, refId, refType, approvalLevel, status, approvedBy, approvedDate, null, changedField, previousValue, newValue);
-    }
-
     public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType,
             InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
             String reason, String changedField, String previousValue, String newValue) {
-        this(id, refId, refType, null, status, approvedBy, approvedDate, reason, changedField, previousValue, newValue);
+        this(id, refId, refType, null, status, approvedBy, approvedDate, changedField, previousValue, newValue);
     }
 
     public InfrastructureHistory(UUID id, UUID refId, InfrastructureType refType,
             InfrastructureHistoryStatus status, UUID approvedBy, LocalDateTime approvedDate,
             String changedField, String previousValue, String newValue) {
-        this(id, refId, refType, null, status, approvedBy, approvedDate, null, changedField, previousValue, newValue);
+        this(id, refId, refType, null, status, approvedBy, approvedDate, changedField, previousValue, newValue);
     }
 
     public static Builder builder() {
@@ -113,7 +103,6 @@ public class InfrastructureHistory {
         private InfrastructureHistoryStatus status;
         private UUID approvedBy;
         private LocalDateTime approvedDate;
-        private String reason;
         private String changedField;
         private String previousValue;
         private String newValue;
@@ -153,11 +142,6 @@ public class InfrastructureHistory {
             return this;
         }
 
-        public Builder reason(String reason) {
-            this.reason = reason;
-            return this;
-        }
-
         public Builder changedField(String changedField) {
             this.changedField = changedField;
             return this;
@@ -175,7 +159,7 @@ public class InfrastructureHistory {
 
         public InfrastructureHistory build() {
             return new InfrastructureHistory(id, refId, refType, approvalLevel, status, approvedBy, approvedDate,
-                    reason, changedField, previousValue, newValue);
+                    changedField, previousValue, newValue);
         }
     }
 
@@ -257,14 +241,6 @@ public class InfrastructureHistory {
 
     public void setNewValue(String newValue) {
         this.newValue = newValue;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
     }
 
 }
