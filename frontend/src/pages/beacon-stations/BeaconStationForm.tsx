@@ -239,17 +239,19 @@ const renderDmsGroup = (
 };
 
 export interface BeaconStationFormProps {
-  form: any;
+  form?: any;
   id?: string;
   initialData?: BeaconStation | null;
-  onFinish: (saved: boolean) => void;
+  onFinish?: (saved: boolean) => void;
   onSubmittingChange?: (submitting: boolean) => void;
 }
 
 export default forwardRef(function BeaconStationForm(
-  { form, id, initialData, onFinish, onSubmittingChange }: BeaconStationFormProps,
+  { form: externalForm, id, initialData, onFinish, onSubmittingChange }: BeaconStationFormProps,
   ref,
 ) {
+  const [internalForm] = Form.useForm();
+  const form = externalForm || internalForm;
   const isEdit = !!id;
   const [, setSubmitting] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState('general');

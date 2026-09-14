@@ -36,13 +36,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -575,6 +572,7 @@ public class DryPortService {
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
         entity.softDelete(operatorId);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         dryPortRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -710,9 +708,10 @@ public class DryPortService {
                 .coordinateSystem(e.getCoordinateSystem()).displayRule(e.getDisplayRule())
                 .mapSymbolId(e.getMapSymbolId())
                 // Audit
-                .approvalStatus(e.getApprovalStatus())
+                .approvalStatus(e.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : e.getApprovalStatus())
                 .createdBy(e.getCreatedBy()).updatedBy(e.getUpdatedBy())
-                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt());
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                .deletedAt(e.getDeletedAt()).deletedBy(e.getDeletedBy());
 
         if (e.getSpatialId() != null) {
             builder.spatialId(e.getSpatialId());

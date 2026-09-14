@@ -75,7 +75,7 @@ Bố cục dạng lưới 2 cột đối xứng, các trường nội dung phê 
 | 8 | Thời gian bắt đầu hoạt động | Label | Định dạng DD/MM/YYYY | |
 | 9 | Phạm vi áp dụng | Label | Nội dung | |
 | 10 | Thông báo hàng hải | Label | Nội dung | |
-| 11 | Tình trạng | Label (Badge) | "Đang hoạt động" / "Dừng hoạt động" / "Đang bảo trì" / "Đang xây dựng" | |
+| 11 | Tình trạng | Label (Badge) | "Chưa khai thác/vận hành" / "Đang khai thác/vận hành" / "Dừng khai thác/vận hành" (chuẩn 3 trạng thái KCHT) | |
 
 ### Nhóm 3 — Thông tin vùng VTS
 
@@ -157,7 +157,7 @@ Bố cục dạng lưới 2 cột đối xứng, các trường nội dung phê 
 - [x] Tất cả trường hiển thị read-only, không cho phép chỉnh sửa
 - [x] Trường không có dữ liệu hiển thị "—" (text) hoặc "Không có dữ liệu" (bảng)
 - [x] Trạng thái hiển thị dạng badge màu: Đã phê duyệt (xanh), Chờ phê duyệt (vàng), Từ chối (đỏ)
-- [x] Tình trạng hiển thị dạng badge: Đang khai thác (xanh), Dừng hoạt động (đỏ)
+- [x] Tình trạng hiển thị dạng badge: Chưa khai thác/vận hành (vàng), Đang khai thác/vận hành (xanh), Dừng khai thác/vận hành (đỏ)
 - [x] File đính kèm có thể tải xuống khi click vào tên file
 - [x] Các bảng con hiển thị đúng số dòng (VD: "1-1 trong 1")
 

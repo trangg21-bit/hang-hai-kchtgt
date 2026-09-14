@@ -261,11 +261,12 @@ export interface ScadaFormRef {
   submit: (saveAction: ScadaSaveAction) => Promise<void>;
 }
 
-interface ScadaFormProps {
+export interface ScadaFormProps {
   id?: string | null;
   isEdit?: boolean;
   form: FormInstance;
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  onFinish?: () => void;
   onSubmittingChange?: (submitting: boolean) => void;
 }
 
@@ -274,6 +275,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   isEdit = false,
   form,
   onSuccess,
+  onFinish,
   onSubmittingChange,
 }, ref) => {
   const [activeTab, setActiveTab] = useState('info');
@@ -726,7 +728,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           );
         }
 
-        onSuccess();
+        (onSuccess || onFinish)?.();
       } catch (err: unknown) {
         console.error('[scada] submit error', err);
       } finally {

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.station.dto.lrit;
 
+import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,7 +19,7 @@ import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldNameConstants
-public class CoastalStationLRITRequest {
+public class CoastalStationLRITRequest extends FieldPresenceTrackedRequest {
 
     private UUID orgUnitId;
     private UUID operatingOrgId;

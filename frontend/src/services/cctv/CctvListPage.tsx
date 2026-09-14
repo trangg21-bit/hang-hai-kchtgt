@@ -155,7 +155,7 @@ import {
   getSidebarDatePickerProps,
   inputStyle,
 } from "../../themetokenchk";
-import { cellTitleStyle, cellSubtitleStyle } from "../../themetokenchk";
+import { cellTitleStyle, cellSubtitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import * as themeTokenChk from "../../themetokenchk";
 import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
 import dayjs from "dayjs";
@@ -345,7 +345,7 @@ const CctvListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
-      { key: "DELETED", status: "DELETED" },
+      { key: "ARCHIVED", status: "ARCHIVED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -373,7 +373,7 @@ const CctvListPage = () => {
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
         (counts.REJECTED_LEVEL2 || 0) +
-        (counts.DELETED || 0)
+        (counts.ARCHIVED || counts.DELETED || 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
@@ -2221,11 +2221,11 @@ const CctvListPage = () => {
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
           {
-            key: "DELETED",
+            key: "ARCHIVED",
             label: "Đã xóa",
-            count: tabCounts["DELETED"] ?? 0,
+            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "DELETED",
+            active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -2273,9 +2273,8 @@ const CctvListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        size={undefined} /* bỏ size '50%' từ drawerProps để antd dùng width bên dưới (khớp chuẩn /berth) */
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }} /* Clone chuẩn /berth (BerthListPage Detail Drawer): inline kẹp 96vw lên wrapper */
+        size={undefined}
+        width={DRAWER_WIDTH}
       rootClassName={THEME_SCOPE_CLASS}
       className="cctv-drawer-scope"
       title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
@@ -3116,7 +3115,7 @@ const CctvListPage = () => {
 
       {/* ── Create Drawer ─────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="cctv-drawer-scope"
         className="cctv-drawer-scope"
         title={
@@ -3205,7 +3204,7 @@ const CctvListPage = () => {
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="cctv-drawer-scope"
         className="cctv-drawer-scope"
         title={
@@ -3309,7 +3308,8 @@ const CctvListPage = () => {
         {...drawerProps}
       rootClassName={THEME_SCOPE_CLASS}
       className="cctv-drawer-scope"
-      size={isIframeModal ? '100%' : 960}
+        size={undefined}
+        width={isIframeModal ? '100%' : DRAWER_WIDTH}
         mask={!isIframeModal}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

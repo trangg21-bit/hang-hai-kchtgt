@@ -482,8 +482,10 @@ public class CoastalStationLRITService {
             }
         }
 
-        if (request.getOrgUnitId() != null) {
-            validateAllowedOrgUnit(request.getOrgUnitId());
+        if (request.isFieldPresent("orgUnitId") || request.getOrgUnitId() != null) {
+            if (request.getOrgUnitId() != null) {
+                validateAllowedOrgUnit(request.getOrgUnitId());
+            }
             entity.setOrgUnitId(request.getOrgUnitId());
         }
 
@@ -491,29 +493,29 @@ public class CoastalStationLRITService {
             throw new IllegalArgumentException("Mã đài LRIT '" + request.getCode() + "' đã được sử dụng");
         }
 
-        if (request.getOperatingOrgId() != null) entity.setOperatingOrgId(request.getOperatingOrgId());
-        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
-        if (request.getName() != null) {
+        if (request.isFieldPresent("operatingOrgId") || request.getOperatingOrgId() != null) entity.setOperatingOrgId(request.getOperatingOrgId());
+        if (request.isFieldPresent("provinceId") || request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
+        if (request.isFieldPresent("name") || request.getName() != null) {
             entity.setName(request.getName());
         }
-        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
+        if (request.isFieldPresent("locationAddress") || request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
+        if (request.isFieldPresent("conditionStatus") || request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
 
-        if (request.getTerminalId() != null) entity.setTerminalId(request.getTerminalId());
-        if (request.getImoNumber() != null) entity.setImoNumber(request.getImoNumber());
-        if (request.getReportingInterval() != null) entity.setReportingInterval(request.getReportingInterval());
-        if (request.getAntennaHeight() != null) entity.setAntennaHeight(request.getAntennaHeight());
-        if (request.getPowerOutput() != null) entity.setPowerOutput(request.getPowerOutput());
-        if (request.getAntennaType() != null) entity.setAntennaType(request.getAntennaType());
-        if (request.getDataFormat() != null) entity.setDataFormat(request.getDataFormat());
-        if (request.getCommunicationChannel() != null) entity.setCommunicationChannel(request.getCommunicationChannel());
-        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
-        if (request.getServicesProvided() != null) entity.setServicesProvided(request.getServicesProvided());
-        if (request.getDescription() != null) entity.setDescription(request.getDescription());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
+        if (request.isFieldPresent("terminalId") || request.getTerminalId() != null) entity.setTerminalId(request.getTerminalId());
+        if (request.isFieldPresent("imoNumber") || request.getImoNumber() != null) entity.setImoNumber(request.getImoNumber());
+        if (request.isFieldPresent("reportingInterval") || request.getReportingInterval() != null) entity.setReportingInterval(request.getReportingInterval());
+        if (request.isFieldPresent("antennaHeight") || request.getAntennaHeight() != null) entity.setAntennaHeight(request.getAntennaHeight());
+        if (request.isFieldPresent("powerOutput") || request.getPowerOutput() != null) entity.setPowerOutput(request.getPowerOutput());
+        if (request.isFieldPresent("antennaType") || request.getAntennaType() != null) entity.setAntennaType(request.getAntennaType());
+        if (request.isFieldPresent("dataFormat") || request.getDataFormat() != null) entity.setDataFormat(request.getDataFormat());
+        if (request.isFieldPresent("communicationChannel") || request.getCommunicationChannel() != null) entity.setCommunicationChannel(request.getCommunicationChannel());
+        if (request.isFieldPresent("coverageArea") || request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
+        if (request.isFieldPresent("servicesProvided") || request.getServicesProvided() != null) entity.setServicesProvided(request.getServicesProvided());
+        if (request.isFieldPresent("description") || request.getDescription() != null) entity.setDescription(request.getDescription());
+        if (request.isFieldPresent("contactPerson") || request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
+        if (request.isFieldPresent("contactPhone") || request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
 
-        if (request.getSymbolId() != null || request.getSymbol() != null) {
+        if (request.isFieldPresent("symbolId") || request.isFieldPresent("symbol") || request.getSymbolId() != null || request.getSymbol() != null) {
             entity.setSymbolId(resolveSymbolId(request.getSymbolId(), request.getSymbol()));
         }
         String reqGeom = request.getGeometryType() != null ? request.getGeometryType() : request.getObjectType();
@@ -524,8 +526,8 @@ public class CoastalStationLRITService {
         // coordinates != null means the caller intentionally changed GIS. An
         // empty string clears the old spatial object; omitting the property
         // keeps a legacy caller's existing location intact.
-        if (request.getCoordinates() != null) {
-            if (!request.getCoordinates().isBlank()) {
+        if (request.isFieldPresent("coordinates")) {
+            if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
                 BigDecimal[] pt = extractFirstCoordinate(request.getCoordinates());
                 if (pt != null) {
                     entity.setLatitude(pt[0]);
@@ -648,9 +650,10 @@ public class CoastalStationLRITService {
         if (conditionStatus == null) return "—";
         return switch (conditionStatus) {
             case OPERATIONAL -> "Đang hoạt động";
-            case STOPPED -> "Dừng hoạt động";
+            case STOPPED, SUSPENDED -> "Dừng hoạt động";
             case MAINTENANCE -> "Đang bảo trì";
-            case UNDER_CONSTRUCTION -> "Đang xây dựng";
+            case UNDER_CONSTRUCTION, NOT_YET_OPERATIONAL -> "Đang xây dựng";
+            default -> "Đang hoạt động";
         };
     }
 

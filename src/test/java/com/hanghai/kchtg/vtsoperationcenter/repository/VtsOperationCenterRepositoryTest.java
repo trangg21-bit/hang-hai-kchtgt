@@ -48,7 +48,10 @@ class VtsOperationCenterRepositoryTest {
                 "o.name", "t.orgUnitId",
                 "p.portName", "t.portId",
                 "vs.systemName", "t.vtsSystemId",
-                "u.fullName", "t.updatedAt", "t.createdAt");
+                "u.fullName", "t.updatedAt", "t.createdAt",
+                "uSub.fullName", "t.submittedAt",
+                "uApp1.fullName", "t.approvedDateLevel1",
+                "uApp2.fullName", "t.approvedDateLevel2");
 
         for (String property : sortableProperties) {
             for (Sort.Direction direction : Sort.Direction.values()) {

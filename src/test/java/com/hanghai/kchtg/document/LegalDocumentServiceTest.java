@@ -5,7 +5,6 @@ import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;
-import com.hanghai.kchtg.document.entity.DocumentType;
 import com.hanghai.kchtg.document.entity.LegalDocument;
 import com.hanghai.kchtg.document.entity.ValidityStatus;
 import com.hanghai.kchtg.document.repository.AttachedDocumentRepository;

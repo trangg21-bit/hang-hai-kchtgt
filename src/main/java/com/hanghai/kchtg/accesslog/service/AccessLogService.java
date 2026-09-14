@@ -8,8 +8,6 @@ import com.hanghai.kchtg.accesslog.enums.LogType;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -31,7 +29,6 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class AccessLogService {
 
-    private static final Logger log = LoggerFactory.getLogger(AccessLogService.class);
 
     private final AccessLogRepository repository;
 

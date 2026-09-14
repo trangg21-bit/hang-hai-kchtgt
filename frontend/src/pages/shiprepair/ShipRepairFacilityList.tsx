@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Space,
@@ -23,20 +22,19 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { shipRepairFacilityCRUD } from '../../services/shipRepairFacilityService';
-import { organizationService } from '../../services/organizationService';
 import type { ShipRepairFacilityResponse, ListParams } from '../../types/shipRepairFacility';
 import { usePermissionStore } from '../../store/permissionStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import ShipRepairFacilityForm from './ShipRepairFacilityForm';
 
 const APPROVAL_STATUS_OPTIONS = [
-  { label: 'Chờ duyệt', value: 'PROPOSED' },
+  { label: 'Lưu tạm', value: 'DRAFT' },
   { label: 'Chờ Cảng vụ duyệt', value: 'PENDING_APPROVAL' },
   { label: 'Chờ Cục duyệt', value: 'APPROVED_LEVEL1' },
   { label: 'Đã duyệt', value: 'APPROVED' },
   { label: 'Cảng vụ trả về', value: 'REJECTED_LEVEL1' },
   { label: 'Cục trả về', value: 'REJECTED_LEVEL2' },
-  { label: 'Từ chối', value: 'REJECTED' },
+  { label: 'Đã xóa', value: 'ARCHIVED' },
 ];
 
 const LOAI_CO_SO_MAP: Record<string, string> = {
@@ -49,7 +47,6 @@ const LOAI_CO_SO_MAP: Record<string, string> = {
 
 export default function ShipRepairFacilityList() {
   const isInIframe = window.self !== window.top;
-  const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [filterKeyword, setFilterKeyword] = useState('');
@@ -65,19 +62,6 @@ export default function ShipRepairFacilityList() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [organizations, setOrganizations] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (isInIframe) return;
-    (async () => {
-      try {
-        const resp = await organizationService.list({ pageSize: 1000 });
-        setOrganizations(resp.data || []);
-      } catch (err) {
-        console.error('Failed to load organizations', err);
-      }
-    })();
-  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -89,7 +73,6 @@ export default function ShipRepairFacilityList() {
         approvalStatus: filterStatus,
       };
       const res = await shipRepairFacilityCRUD.search(params);
-      // ShipRepairFacility search returns List<> (not paginated) — set total = items.length
       setDataSource(res.items);
       setTotal(res.items.length);
     } catch (err: unknown) {
@@ -100,16 +83,33 @@ export default function ShipRepairFacilityList() {
     }
   }, [filterKeyword, filterProvince, filterStatus]);
 
-  useEffect(() => { if (!isInIframe) fetchData(); }, [fetchData, isInIframe]);
+  useEffect(() => {
+    let active = true;
+    if (!isInIframe) {
+      (async () => {
+        try {
+          const params: ListParams = {
+            keyword: filterKeyword || undefined,
+            province: filterProvince,
+            approvalStatus: filterStatus,
+          };
+          const res = await shipRepairFacilityCRUD.search(params);
+          if (active) {
+            setDataSource(res.items);
+            setTotal(res.items.length);
+          }
+        } catch (err: unknown) {
+          if (active) {
+            setIsError(true);
+            setError(err instanceof Error ? err : new Error('Không thể tải danh sách'));
+          }
+        }
+      })();
+    }
+    return () => { active = false; };
+  }, [filterKeyword, filterProvince, filterStatus, isInIframe]);
 
-  const handleReset = useCallback(() => {
-    setFilterKeyword('');
-    setFilterProvince(undefined);
-    setFilterStatus(undefined);
-    setPage(1);
-  }, []);
-
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number | string) => {
     try {
       await shipRepairFacilityCRUD.delete(String(id));
       message.success('Xóa thành công');
@@ -125,7 +125,7 @@ export default function ShipRepairFacilityList() {
       key: 'sequenceNo',
       width: 50,
       render: (_: unknown, __: unknown, index: number) => index + 1,
-    } as any,
+    },
     {
       title: 'Tên cơ sở',
       dataIndex: 'facilityName',
@@ -178,7 +178,10 @@ export default function ShipRepairFacilityList() {
       dataIndex: 'approvalStatus',
       key: 'approvalStatus',
       width: 120,
-      render: (status: string) => <ApprovalStatusBadge status={status} />,
+      render: (status: string, record: ShipRepairFacilityResponse) => {
+        const isArchived = filterStatus === 'ARCHIVED' || Boolean(record.isDeleted) || Boolean((record as any).deletedAt) || status === 'ARCHIVED';
+        return <ApprovalStatusBadge status={isArchived ? 'ARCHIVED' : status} />;
+      },
     },
     {
       title: 'Thao tác',
@@ -227,7 +230,7 @@ export default function ShipRepairFacilityList() {
           </Space>
         );
       },
-    } as any,
+    },
   ];
 
   return (

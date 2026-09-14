@@ -195,7 +195,7 @@ class ShipRepairFacilityServiceTest {
         assertEquals("Cơ sở mới", response.getFacilityName());
         assertEquals("Đà Nẵng", response.getAddress());
         verify(repository, times(1)).save(any());
-        verify(historyRepository, times(1)).save(any());
+        verify(historyRepository, times(2)).save(any());
     }
 
     @Test

@@ -33,8 +33,8 @@ import {
   radiusPill,
   statusBadgeStyle,
   DRAWER_TABLE_SCROLL_Y,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  getVtsConditionStatusColor,
+  getVtsConditionStatusLabel,
   fontSizeSm,
   fontSizeLg,
   textSecondary,
@@ -42,6 +42,8 @@ import {
   surfaceCard,
   rowActionButtonStyle,
   icons,
+  formatUserDisplayName,
+  isUuidString,
 } from '../../themetokenchk';
 import { THEME_SCOPE_CLASS } from '../../context/ThemeTokenContext';
 import { getProvinceNameById } from '../../types/common';
@@ -88,8 +90,8 @@ const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY'
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return null;
-  const label = getConditionStatusLabel(status);
-  const color = getConditionStatusColor(status);
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
   return (
     <span
       style={{
@@ -147,7 +149,6 @@ export default function VtsSystemDetailContent({
   incidentList,
 }: VtsSystemDetailContentProps) {
   const [record, setRecord] = useState<VtsSystemResponse>(selectedRecord);
-
   // States toggle các section
   const [approvalOpen, setApprovalOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
@@ -156,8 +157,6 @@ export default function VtsSystemDetailContent({
 
   // Vùng VTS
   const [zoneList, setZoneList] = useState<any[]>(selectedRecord.zones || []);
-  const [isLoadingZones, setIsLoadingZones] = useState(false);
-  const [zonesLoaded, setZonesLoaded] = useState(Boolean(selectedRecord.zones && selectedRecord.zones.length > 0));
   const [zoneLocationDrawerOpen, setZoneLocationDrawerOpen] = useState(false);
   const [selectedZoneForLocation, setSelectedZoneForLocation] = useState<any>(null);
   const [selectedZoneLocationIndex, setSelectedZoneLocationIndex] = useState<number | null>(null);
@@ -170,8 +169,6 @@ export default function VtsSystemDetailContent({
 
   // File đính kèm
   const [attachmentList, setAttachmentList] = useState<any[]>(selectedRecord.attachments || []);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-  const [filesLoaded, setFilesLoaded] = useState(Boolean(selectedRecord.attachments && selectedRecord.attachments.length > 0));
 
   // KCHT khác thuộc VTS — chuẩn Bến cảng
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
@@ -200,11 +197,9 @@ export default function VtsSystemDetailContent({
         name: z.name || '',
         conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
       })));
-      setZonesLoaded(true);
     }
     if (Array.isArray(selectedRecord.attachments) && selectedRecord.attachments.length > 0) {
       setAttachmentList(selectedRecord.attachments);
-      setFilesLoaded(true);
     }
 
     vtsSystemCRUD.getById(selectedRecord.id, { includeZones: true, includeAttachments: true })
@@ -218,11 +213,9 @@ export default function VtsSystemDetailContent({
             name: z.name || '',
             conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
           })));
-          setZonesLoaded(true);
         }
         if (Array.isArray(data.attachments)) {
           setAttachmentList(data.attachments);
-          setFilesLoaded(true);
         }
       })
       .catch((err) => {
@@ -278,31 +271,6 @@ export default function VtsSystemDetailContent({
   };
 
   const handleTabChange = (key: string) => {
-    if (key === 'zones' && !zonesLoaded && selectedRecord?.id) {
-      setIsLoadingZones(true);
-      vtsSystemCRUD.getZones(selectedRecord.id)
-        .then((zones) => {
-          setZoneList((zones || []).map((z: any, idx: number) => ({
-            ...z,
-            code: z.code || `VTS-Z0${idx + 1}`,
-            name: z.name || '',
-            conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
-          })));
-          setZonesLoaded(true);
-        })
-        .catch(() => {})
-        .finally(() => setIsLoadingZones(false));
-    }
-    if (key === 'files' && !filesLoaded && selectedRecord?.id) {
-      setIsLoadingFiles(true);
-      vtsSystemCRUD.getAttachments(selectedRecord.id)
-        .then((files) => {
-          setAttachmentList(files || []);
-          setFilesLoaded(true);
-        })
-        .catch(() => {})
-        .finally(() => setIsLoadingFiles(false));
-    }
     if (key === 'other_infra' && !infraLoaded && selectedRecord?.id) {
       void loadChildInfra();
     }
@@ -655,43 +623,59 @@ export default function VtsSystemDetailContent({
 
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
+                      <div className="chk-detail-row chk-detail-row--full">
                         <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
                         <span className="chk-detail-value">{renderApprovalBadge(record.approvalStatus)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
-                          {record.updatedByName || record.createdByName ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.updatedByName || record.createdByName}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(record.updatedBy, record.updatedByName, undefined, record.createdBy, record.createdByName);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.updatedByName && !isUuidString(record.updatedByName)) return <span style={{ fontWeight: fontWeightBold }}>{record.updatedByName}</span>;
+                            if (record.createdByName && !isUuidString(record.createdByName)) return <span style={{ fontWeight: fontWeightBold }}>{record.createdByName}</span>;
+                            return '';
+                          })()}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                        <span className="chk-detail-value">
+                          {fmtDateTime((record as any).updatedDate || (record as any).updatedAt || record.createdDate || (record as any).createdAt)}
                         </span>
                       </div>
 
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                         <span className="chk-detail-value">
-                          {record.submittedByName ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.submittedByName}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(undefined, record.submittedByName, undefined);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.submittedByName && !isUuidString(record.submittedByName)) return <span style={{ fontWeight: fontWeightBold }}>{record.submittedByName}</span>;
+                            return '';
+                          })()}
                         </span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                        <span className="chk-detail-value">{fmtDateTime(record.submittedDate)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(record.submittedDate || (record as any).submittedAt)}</span>
                       </div>
 
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">
-                          {record.approverLevel1Name || record.approverLevel1 ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel1Name || record.approverLevel1}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(record.approverLevel1, record.approverLevel1Name, undefined);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.approverLevel1Name && !isUuidString(record.approverLevel1Name)) return <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel1Name}</span>;
+                            return '';
+                          })()}
                         </span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel1)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel1 || (record as any).approvedAtLevel1)}</span>
                       </div>
 
                       <div className="chk-detail-row chk-detail-row--full">
@@ -702,14 +686,17 @@ export default function VtsSystemDetailContent({
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
-                          {record.approverLevel2Name || record.approverLevel2 ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel2Name || record.approverLevel2}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(record.approverLevel2, record.approverLevel2Name, undefined);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.approverLevel2Name && !isUuidString(record.approverLevel2Name)) return <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel2Name}</span>;
+                            return '';
+                          })()}
                         </span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel2)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel2 || (record as any).approvedAtLevel2)}</span>
                       </div>
 
                       <div className="chk-detail-row chk-detail-row--full">
@@ -731,7 +718,7 @@ export default function VtsSystemDetailContent({
               <DetailTable
                 scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 dataSource={zoneList}
-                emptyText={isLoadingZones ? "Đang tải dữ liệu vùng VTS..." : "Chưa có dữ liệu"}
+                emptyText="Chưa có dữ liệu"
                 rowKey={(item: any) => item.id || item.code || item.name}
                 columns={[
                   { title: 'STT', width: 50, align: 'center', render: (_: any, __: any, idx: number) => idx + 1 },
@@ -798,7 +785,7 @@ export default function VtsSystemDetailContent({
             children: (
               <DetailTable
                 dataSource={attachmentList}
-                emptyText={isLoadingFiles ? "Đang tải tài liệu đính kèm..." : "Chưa có tài liệu đính kèm"}
+                emptyText="Chưa có tài liệu đính kèm"
                 scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                 rowKey={(f: any) => f.id || f.fileName}
                   columns={[

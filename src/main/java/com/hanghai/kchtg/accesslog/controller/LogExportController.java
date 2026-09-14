@@ -5,8 +5,6 @@ import com.hanghai.kchtg.accesslog.dto.LogAggregateResponse;
 import com.hanghai.kchtg.accesslog.entity.LogRetentionPolicy;
 import com.hanghai.kchtg.accesslog.service.LogService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +21,9 @@ import java.util.UUID;
  * REST Controller cho việc xuat log, xem thong ke, canh bao, va config retention policy.
  * <p>
  * Base path: {@code /api/logs}
+ * </p>
  * <p>
- * F-005 changes:
- * - CSV export changed from FileSystemResource to StreamingResponseBody (G3)
- * - Alert threshold changed to 5 failures/1hr (G4)
+ * Migration:
  * - Added aggregate endpoints (G6)
  * - Added retention policy endpoints (G5)
  * - Extended @PreAuthorize for new BA roles
@@ -35,8 +32,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/logs")
 public class LogExportController {
-
-    private static final Logger log = LoggerFactory.getLogger(LogExportController.class);
 
     private final LogService logService;
 

@@ -4,7 +4,6 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.port.entity.BerthType;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.Builder;
 import lombok.Data;
 
@@ -73,4 +72,8 @@ public class BerthResponse {
     private String portAuthorityApprovalContent;
     private String departmentApprovalContent;
     private String rejectionReason;
+
+    // ── Audit (soft-delete) ──
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
 }

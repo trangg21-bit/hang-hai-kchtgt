@@ -36,6 +36,7 @@ import java.util.UUID;
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 // @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
+@org.hibernate.annotations.SQLRestriction("1=1")
 public class StormShelterArea extends BaseEntity {
 
     // @Enumerated(EnumType.ORDINAL)

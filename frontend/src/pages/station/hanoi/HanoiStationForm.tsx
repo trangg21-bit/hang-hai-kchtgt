@@ -35,7 +35,7 @@ import { HANOI_SERVICE_OPTIONS } from '../../../types/hanoiStation';
 import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y,
+  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
   textTertiary, borderDefault,
@@ -809,8 +809,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
     <AppDrawer
       rootClassName="hanoi-drawer-scope"
       className="hanoi-drawer-scope"
-      style={{ maxWidth: '96vw' }}
-      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
+      width={DRAWER_WIDTH}
       open={open}
       onClose={onClose || onCancel}
       styles={{

@@ -52,7 +52,14 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
      * Search berths filtering by legacy DB columns.
      * For operationalStatus null-check (NHAP status), pass operationalStatusNull=true.
      */
-    @Query("SELECT b FROM Berth b WHERE b.deletedAt IS NULL " +
+    @Query("SELECT b FROM Berth b WHERE " +
+            "((:approvalStatus IS NULL AND b.deletedAt IS NULL AND b.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (b.deletedAt IS NOT NULL OR b.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            "  OR (b.deletedAt IS NULL AND b.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
+            "      b.approvalStatus = :approvalStatus " +
+            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (b.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR b.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR b.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  )) " +
+            ") " +
             "AND (:includeAll = true OR b.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(b.berthCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(b.berthName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
             "AND (CAST(:berthCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.berthCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:berthCode AS string), '%'))) AS string)) " +
@@ -61,7 +68,6 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
             "AND (CAST(:waterway AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.waterway)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:waterway AS string), '%'))) AS string)) " +
             "AND (:waterwayId IS NULL OR b.waterwayId = :waterwayId) " +
             "AND (:berthType IS NULL OR b.berthType = :berthType) " +
-            "AND (:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) " +
             "AND ((:operationalStatusNull = true AND b.operationalStatus IS NULL) OR (:operationalStatusNull = false AND (:operationalStatus IS NULL OR b.operationalStatus = :operationalStatus))) " +
             "AND (:structureType IS NULL OR b.structureType = :structureType) " +
             "AND (CAST(:operationalFunction AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.operationalFunction)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:operationalFunction AS string), '%'))) AS string)) " +

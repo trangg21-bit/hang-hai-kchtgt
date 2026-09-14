@@ -41,13 +41,18 @@ public interface WaterZoneRepository extends JpaRepository<WaterZone, UUID> {
 
     long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
-    @Query("SELECT w FROM WaterZone w WHERE w.deletedAt IS NULL " +
+    @Query("SELECT w FROM WaterZone w WHERE " +
+            "((:approvalStatus IS NULL AND w.deletedAt IS NULL AND w.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (w.deletedAt IS NOT NULL OR w.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            " OR (w.deletedAt IS NULL AND w.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
+            "     w.approvalStatus = :approvalStatus " +
+            "     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (w.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR w.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR w.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            " ))) " +
             "AND (:orgUnitId IS NULL OR w.orgUnitId = :orgUnitId) " +
             "AND (:portId IS NULL OR w.portId = :portId) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(w.waterZoneCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(w.waterZoneName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
             "AND (:waterZoneType IS NULL OR w.waterZoneType = :waterZoneType) " +
-            "AND (:operationalStatus IS NULL OR w.operationalStatus = :operationalStatus) " +
-            "AND (:approvalStatus IS NULL OR w.approvalStatus = :approvalStatus)")
+            "AND (:operationalStatus IS NULL OR w.operationalStatus = :operationalStatus)")
     Page<WaterZone> searchWaterZones(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("portId") UUID portId,

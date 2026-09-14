@@ -11,7 +11,7 @@ import type { DataTableColumn } from '../../components/list-view/DataTable';
 import toast from '../../components/ToastNotification';
 import { inputStyle, selectStyle, primaryButtonStyle, textAreaStyle, spaceFormField, spaceSm, radiusPill, fontSizeMd, fontWeightMedium } from '../../tokens';
 import { useThemeToken } from '../../context/ThemeTokenContext';
-import { getDatePickerProps, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import { getDatePickerProps, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH } from '../../themetokenchk';
 
 /* =========================================================================
  * F-130 — Quản lý thông tin bảo trì (maintenance_plans)
@@ -501,7 +501,7 @@ function MaintenanceList() {
       <Drawer
         open={drawerMode === 'create' || drawerMode === 'edit'}
         onClose={closeDrawer}
-        width={860}
+        width={DRAWER_WIDTH}
         title={drawerMode === 'create' ? 'Thêm mới kế hoạch bảo trì' : 'Chỉnh sửa kế hoạch bảo trì'}
         footer={[
           <Button key="cancel" style={{ ...primaryButtonStyle, background: t.borderDefault, borderColor: t.borderDefault, color: t.textSecondary, marginRight: spaceSm }} onClick={closeDrawer}>
@@ -597,7 +597,7 @@ function MaintenanceList() {
       <Drawer
         open={drawerMode === 'view'}
         onClose={closeDrawer}
-        width={900}
+        width={DRAWER_WIDTH}
         title="Chi tiết kế hoạch bảo trì"
       >
         {viewRecord && (

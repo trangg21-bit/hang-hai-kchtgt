@@ -66,7 +66,7 @@ Khi người dùng click vào một mốc, hiển thị popup "Chi tiết lịch
 | 8 | Thời gian bắt đầu hoạt động | Label | Không | **Có:** "17/04/2026". **Không:** "—" | Định dạng DD/MM/YYYY |
 | 9 | Phạm vi áp dụng | Label | Không | **Có:** "Việt Nam". **Không:** "—" | |
 | 10 | Thông báo hàng hải | Label | Không | **Có:** nội dung. **Không:** "—" | |
-| 11 | Tình trạng | Label (Badge) | Không | **Có:** "Đang khai thác/vận hành" (xanh) / "Dừng hoạt động" (đỏ) / "Đang bảo trì" (vàng) / "Đang xây dựng" (xám). **Không:** "—" | |
+| 11 | Tình trạng | Label (Badge) | Không | **Có:** "Chưa khai thác/vận hành" (vàng) / "Đang khai thác/vận hành" (xanh) / "Dừng khai thác/vận hành" (đỏ) (chuẩn 3 trạng thái KCHT). **Không:** "—" | |
 
 #### Nhóm 3 — Thông tin vùng VTS
 

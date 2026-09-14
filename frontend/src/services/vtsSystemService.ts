@@ -3,6 +3,7 @@ import { toArray, toSingle, toTotalCount } from './resilient';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from './operatingOrganizationsData';
 import type {
   VtsSystemResponse,
+  VtsSystemMutationResponse,
   VtsSystemAttachment,
   VtsSystemListItem,
   CreateVtsSystemRequest,
@@ -260,14 +261,14 @@ export const vtsSystemCRUD = {
     window.URL.revokeObjectURL(url);
   },
 
-  async create(data: CreateVtsSystemRequest): Promise<VtsSystemResponse> {
+  async create(data: CreateVtsSystemRequest): Promise<VtsSystemMutationResponse> {
     const res = await api.post(VTS_BASE_PATH, data);
-    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+    return toSingle<VtsSystemMutationResponse>(res.data) || {} as VtsSystemMutationResponse;
   },
 
-  async update(id: string, data: UpdateVtsSystemRequest): Promise<VtsSystemResponse> {
+  async update(id: string, data: UpdateVtsSystemRequest): Promise<VtsSystemMutationResponse> {
     const res = await api.put(`${VTS_BASE_PATH}/${id}`, data);
-    return toSingle<VtsSystemResponse>(res.data) || {} as VtsSystemResponse;
+    return toSingle<VtsSystemMutationResponse>(res.data) || {} as VtsSystemMutationResponse;
   },
 
   async delete(id: string): Promise<void> {
@@ -294,23 +295,23 @@ export const vtsSystemCRUD = {
 };
 
 export const vtsSystemApproval = {
-  async submit(id: string): Promise<VtsSystemResponse & { message?: string }> {
+  async submit(id: string): Promise<VtsSystemMutationResponse & { message?: string }> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/submit`);
-    const single = toSingle<VtsSystemResponse>(res.data) || ({} as VtsSystemResponse);
+    const single = toSingle<VtsSystemMutationResponse>(res.data) || ({} as VtsSystemMutationResponse);
     if (res.data?.message) (single as any).message = res.data.message;
     return single;
   },
 
-  async approveC1(id: string, data: ApprovalRequest): Promise<VtsSystemResponse & { message?: string }> {
+  async approveC1(id: string, data: ApprovalRequest): Promise<VtsSystemMutationResponse & { message?: string }> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/approve/c1`, data);
-    const single = toSingle<VtsSystemResponse>(res.data) || ({} as VtsSystemResponse);
+    const single = toSingle<VtsSystemMutationResponse>(res.data) || ({} as VtsSystemMutationResponse);
     if (res.data?.message) (single as any).message = res.data.message;
     return single;
   },
 
-  async approveC2(id: string, data: ApprovalRequest): Promise<VtsSystemResponse & { message?: string }> {
+  async approveC2(id: string, data: ApprovalRequest): Promise<VtsSystemMutationResponse & { message?: string }> {
     const res = await api.post(`${VTS_BASE_PATH}/${id}/approve/c2`, data);
-    const single = toSingle<VtsSystemResponse>(res.data) || ({} as VtsSystemResponse);
+    const single = toSingle<VtsSystemMutationResponse>(res.data) || ({} as VtsSystemMutationResponse);
     if (res.data?.message) (single as any).message = res.data.message;
     return single;
   },

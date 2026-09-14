@@ -7,8 +7,6 @@ import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
 import com.hanghai.kchtg.mapicon.repository.SymbolLibraryRepository;
 import com.hanghai.kchtg.mapicon.repository.SymbolUsageRepository;
 import jakarta.persistence.EntityNotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +22,6 @@ import java.util.*;
 @Service
 public class SymbolService {
 
-    private static final Logger log = LoggerFactory.getLogger(SymbolService.class);
     private static final int MAX_SVG_SIZE = 50_000;
     private static final int MAX_PNG_SIZE = 100_000;
 

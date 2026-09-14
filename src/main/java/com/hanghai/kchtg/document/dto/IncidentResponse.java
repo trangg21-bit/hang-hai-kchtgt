@@ -59,8 +59,12 @@ public class IncidentResponse {
     private UUID updatedBy;
     private LocalDateTime updatedAt;
 
+    @Builder.Default
     private List<IncidentEvolutionResponse> evolutions = new ArrayList<>();
+    @Builder.Default
     private List<IncidentHandlingResponse> handlings = new ArrayList<>();
+    @Builder.Default
     private List<IncidentFileResponse> files = new ArrayList<>();
+    @Builder.Default
     private List<ProcessingProgressResponse> processingProgress = new ArrayList<>();
 }

@@ -35,7 +35,7 @@ import java.util.UUID;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
-// @org.hibernate.annotations.Filter(name = "recordSecurityLevelFilter", condition = "security_level <= :maxSecurityLevel")
+@org.hibernate.annotations.SQLRestriction("1=1")
 public class TransferArea extends BaseEntity {
 
     // @Enumerated(EnumType.ORDINAL)

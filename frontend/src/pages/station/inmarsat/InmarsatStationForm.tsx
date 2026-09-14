@@ -33,7 +33,7 @@ import type {
 import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y,
+  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
   textTertiary, borderDefault,
@@ -574,9 +574,9 @@ export default function InmarsatStationForm({
     // Validate GPS Coordinates
     const geomType = values.geometryType || undefined;
     const ddPoints: Array<{ latitude: number; longitude: number }> = [];
-    let wktString: string | undefined;
-    let mainLat: number | undefined;
-    let mainLng: number | undefined;
+    let wktString: string | null = null;
+    let mainLat: number | null = null;
+    let mainLng: number | null = null;
 
     if (values.geometryType || coordinateList.length > 0) {
       const dmsVal = validateDmsCoordinates(coordinateList, geomType);
@@ -602,22 +602,22 @@ export default function InmarsatStationForm({
       }
     }
 
-    const payload: CoastalStationInmarsatRequest = {
+    const payload = {
       code: values.code,
       name: values.name,
       orgUnitId: values.orgUnitId,
       operatingOrgId: values.operatingOrgId,
       provinceId: values.provinceId,
       conditionStatus: values.conditionStatus,
-      locationDetail: values.locationDetail,
-      services: typeof values.services === 'string' ? values.services : JSON.stringify(values.services || []),
-      coverageZone: values.coverageZone,
-      frequency: values.frequency,
-      notes: values.notes,
-      geometryType: geomType,
-      symbolId: values.symbolId || undefined,
-      coordinateSystem: geomType ? (values.coordinateSystem || 'WGS-84') : undefined,
-      displayRule: geomType ? (values.displayRule || 'Độ, phút, giây (DMS)') : undefined,
+      locationDetail: values.locationDetail ?? null,
+      services: typeof values.services === 'string' ? values.services : (values.services?.length ? JSON.stringify(values.services) : null),
+      coverageZone: values.coverageZone ?? null,
+      frequency: values.frequency ?? null,
+      notes: values.notes ?? null,
+      geometryType: geomType ?? null,
+      symbolId: values.symbolId ?? null,
+      coordinateSystem: geomType ? (values.coordinateSystem || 'WGS-84') : null,
+      displayRule: geomType ? (values.displayRule || 'Độ, phút, giây (DMS)') : null,
       coordinates: wktString,
       latitude: mainLat,
       longitude: mainLng,
@@ -695,8 +695,7 @@ export default function InmarsatStationForm({
     <AppDrawer
       rootClassName="inmarsat-drawer-scope"
       className="inmarsat-drawer-scope"
-      style={{ maxWidth: '96vw' }}
-      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
+      width={DRAWER_WIDTH}
       open={Boolean(open)}
       onClose={handleClose}
       styles={{

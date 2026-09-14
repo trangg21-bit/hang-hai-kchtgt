@@ -36,6 +36,7 @@ import lombok.experimental.FieldNameConstants;
 @Table(name = "ports",
         uniqueConstraints = @UniqueConstraint(columnNames = "port_code"))
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 @Getter
 @Setter
 @NoArgsConstructor

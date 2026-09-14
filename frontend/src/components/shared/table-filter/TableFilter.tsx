@@ -126,7 +126,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
 
   // Tính toán giá trị mặc định ban đầu từ filterList
   const defaultValuesFromConfig = useMemo(() => {
-    const currentUser = useAuthStore.getState().user;
+    const currentUser = typeof useAuthStore.getState === 'function' ? useAuthStore.getState()?.user : undefined;
     const res: Record<string, unknown> = {};
     filterList.forEach((filter) => {
       if (filter.defaultValue !== undefined) {

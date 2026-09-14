@@ -32,13 +32,18 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
     @Query("SELECT MAX(d.dryPortCode) FROM DryPort d WHERE d.dryPortCode LIKE 'CC-%'")
     Optional<String> findMaxCode();
 
-    @Query("SELECT d FROM DryPort d WHERE d.deletedAt IS NULL " +
+    @Query("SELECT d FROM DryPort d WHERE " +
+            "((:approvalStatus IS NULL AND d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (d.deletedAt IS NOT NULL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            " OR (d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
+            "     d.approvalStatus = :approvalStatus " +
+            "     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            " ))) " +
             "AND (:includeAll = true OR d.orgUnitId IN :orgUnitIds) " +
             "AND (:provinceId IS NULL OR d.provinceId = :provinceId) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(d.dryPortCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(d.dryPortName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(d.detailedLocation)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
             "AND (CAST(:name AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dryPortName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:name AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR d.operationalStatus = :operationalStatus) " +
-            "AND (:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) " +
             "AND (CAST(:code AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dryPortCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:code AS string), '%'))) AS string)) " +
             "AND (CAST(:transportCorridor AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.transportCorridor)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:transportCorridor AS string), '%'))) AS string)) " +
             "AND (:region IS NULL OR d.region = :region) " +

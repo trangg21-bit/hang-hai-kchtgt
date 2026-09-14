@@ -30,6 +30,7 @@ import {
   drawerTitleStyle,
   drawerCloseBtnStyle,
   drawerFooterStyle,
+  DRAWER_WIDTH,
   statusBadgeStyle,
   getDatePickerProps,
 } from '../../themetokenchk';
@@ -478,7 +479,7 @@ const SeaportThroughputDrawer: React.FC<SeaportThroughputDrawerProps> = ({
     <Drawer
       open={open}
       onClose={onClose}
-      width={960}
+      width={DRAWER_WIDTH}
       title={<span style={drawerTitleStyle}>{title}</span>}
       closeIcon={<span style={drawerCloseBtnStyle}>×</span>}
       destroyOnHidden

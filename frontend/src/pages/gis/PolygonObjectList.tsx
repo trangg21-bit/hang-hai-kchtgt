@@ -42,6 +42,7 @@ import {
   spaceSm,
   drawerTitleStyle,
   drawerFooterStyle,
+  DRAWER_WIDTH,
   primaryButtonStyle,
   outlineButtonStyle,
   surfacePage,
@@ -629,7 +630,7 @@ export default function PolygonObjectList() {
 
         {/* ── Create AppDrawer ─────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới danh mục đối tượng vùng</span>}
@@ -672,7 +673,7 @@ export default function PolygonObjectList() {
 
         {/* ── Edit AppDrawer ───────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={
@@ -733,7 +734,7 @@ export default function PolygonObjectList() {
 
         {/* ── View Detail AppDrawer ────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={

@@ -74,40 +74,29 @@ export function trangThaiPheDuyetBadge(status: string | null | undefined): Statu
   let color = '#93A3B3';
   switch (upper) {
     case 'DRAFT':
-    case 'NHAP':
-    case 'LƯU TẠM':
-    case 'LUU TAM':
       label = 'Lưu tạm';
       color = '#93A3B3';
       break;
-    case 'PENDING':
     case 'PENDING_APPROVAL':
-    case 'PORT_AUTHORITY':
-    case 'CHỜ CẢNG VỤ DUYỆT':
-    case 'CHỜ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC':
       label = 'Chờ Cảng vụ duyệt';
       color = '#EDA100';
       break;
     case 'APPROVED_LEVEL1':
-    case 'CHỜ CỤC DUYỆT':
-    case 'CHỜ PHÊ DUYỆT CẤP CỤC':
       label = 'Chờ Cục duyệt';
       color = '#0284C7';
       break;
     case 'APPROVED':
-    case 'APPROVED_LEVEL2':
-    case 'ĐÃ PHÊ DUYỆT':
-    case 'ĐÃ DUYỆT':
       label = 'Đã phê duyệt';
       color = '#1BAF7A';
       break;
-    case 'REJECTED':
     case 'REJECTED_LEVEL1':
     case 'REJECTED_LEVEL2':
-    case 'TỪ CHỐI':
-    case 'TU CHOI':
       label = 'Từ chối';
       color = '#E34948';
+      break;
+    case 'ARCHIVED':
+      label = 'Đã xóa';
+      color = statusCritical;
       break;
     default:
       label = status;

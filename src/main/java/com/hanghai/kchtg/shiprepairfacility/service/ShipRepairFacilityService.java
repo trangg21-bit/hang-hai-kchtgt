@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.shiprepairfacility.service;
 
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -9,14 +8,12 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.AdminAutoApproval;
-import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
 import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import lombok.RequiredArgsConstructor;
@@ -267,6 +264,7 @@ public class ShipRepairFacilityService {
         }
 
         entity.softDelete(deletedBy);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
 
         historyRepository.save(InfrastructureHistory.builder()
@@ -480,7 +478,7 @@ public class ShipRepairFacilityService {
                 .authority(entity.getAuthority())
                 .orgUnitId(entity.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 .approvedLevel1(entity.getApprovedLevel1())
                 .approverLevel1(entity.getApproverLevel1())
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
@@ -492,6 +490,9 @@ public class ShipRepairFacilityService {
                 .createdDate(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
                 .updatedDate(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
+                .isDeleted(entity.getDeletedAt() != null)
                 .attachments(attachments)
                 .spatialId(entity.getSpatialId())
                 .geometryType(geomType)

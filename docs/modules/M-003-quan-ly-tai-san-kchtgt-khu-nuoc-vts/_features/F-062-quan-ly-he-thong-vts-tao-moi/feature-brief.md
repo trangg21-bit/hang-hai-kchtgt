@@ -58,7 +58,7 @@ source-paths:
 | 8 | Thời gian bắt đầu hoạt động | DatePicker | Có | Không | Placeholder: "Chọn thời gian bắt đầu hoạt động" | Định dạng DD/MM/YYYY |
 | 9 | Phạm vi áp dụng | TextArea + counter | Có | Không | max 2000, placeholder: "Nhập phạm vi áp dụng" | Hiển thị "0/2000" |
 | 10 | Thông báo hàng hải | TextArea + counter | Có | Không | max 2000, placeholder: "Nhập thông báo hàng hải" | Hiển thị "0/2000" |
-| 11 | Tình trạng | Dropdown | Có | Có | Mặc định: "Đang hoạt động" | Options: "Đang hoạt động", "Dừng hoạt động", "Đang bảo trì", "Đang xây dựng" |
+| 11 | Tình trạng | Dropdown | Có | Có | Mặc định: "Đang khai thác/vận hành" | Options: "Chưa khai thác/vận hành", "Đang khai thác/vận hành", "Dừng khai thác/vận hành" (chuẩn 3 trạng thái KCHT) |
 
 ### Nhóm 3 — Danh sách vùng VTS
 
@@ -115,7 +115,7 @@ source-paths:
 | operationStartDate | LocalDate | Không | null | Thời gian bắt đầu hoạt động |
 | scope | String | Không | null | Phạm vi áp dụng, max 2000 |
 | maritimeNotice | String | Không | null | Thông báo hàng hải, max 2000 |
-| conditionStatus | Enum | Có | OPERATIONAL | Tình trạng: OPERATIONAL, STOPPED, MAINTENANCE, UNDER_CONSTRUCTION |
+| conditionStatus | Enum | Có | OPERATIONAL | Tình trạng: NOT_YET_OPERATIONAL, OPERATIONAL, SUSPENDED (chuẩn 3 trạng thái KCHT) |
 | note | String | Không | null | Ghi chú, max 2000 |
 | approvalStatus | Enum | — | DRAFT | Trạng thái phê duyệt (DRAFT, PENDING_APPROVAL, APPROVED_LEVEL1, REJECTED_LEVEL1, REJECTED_LEVEL2, APPROVED, ARCHIVED) |
 | approverLevel1 | UUID | Không | null | Người duyệt C1 |
@@ -135,7 +135,7 @@ source-paths:
 | heThongVTSId | Long (FK) | — | — | FK → HeThongVTS |
 | code | String | Có | — | Mã vùng VTS |
 | name | String | Có | — | Tên vùng VTS |
-| status | String | Có | "Đang hoạt động" | Tình trạng |
+| status | String | Có | "Đang khai thác/vận hành" | Tình trạng |
 
 ## Business Rules
 
@@ -146,7 +146,7 @@ source-paths:
 | BR-062-03 | Tên hệ thống VTS bắt buộc, max 255 | HeThongVTS.tenHeThong |
 | BR-062-04 | Đơn vị quản lý, đơn vị chủ quản, đơn vị vận hành bắt buộc | HeThongVTS |
 | BR-062-05 | Địa điểm Tỉnh/TP bắt buộc | HeThongVTS.province |
-| BR-062-06 | Tình trạng bắt buộc, mặc định "Đang hoạt động" | HeThongVTS.tinhTrang |
+| BR-062-06 | Tình trạng bắt buộc, mặc định "Đang khai thác/vận hành" | HeThongVTS.tinhTrang |
 | BR-062-07 | Danh sách vùng VTS và file đính kèm không bắt buộc khi tạo mới | VungVTS, Attachment |
 | BR-062-08 | Phê duyệt 2 cấp: Trưởng phòng (C1) → Cục trưởng (C2) | HeThongVTS |
 

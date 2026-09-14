@@ -59,6 +59,7 @@ import {
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   icons, statusBadgeStyle,
   cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
+  DRAWER_WIDTH,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import { formatHistoryNumber } from '../../utils/numFmt';
@@ -68,17 +69,13 @@ import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHis
 const fontSizeMd = 13.5;
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Lưu tạm' }, DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -100,11 +97,13 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  ARCHIVED: 'ARCHIVED',
 };
 
 function formatDate(d: string | null | undefined): string {
@@ -242,17 +241,12 @@ function histVal(
   if (fn === 'approvalStatus' || fn === 'Trạng thái' || fn === 'Trạng thái phê duyệt') {
     const m: Record<string, string> = {
       DRAFT: 'Lưu tạm',
-      PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
       APPROVED: 'Đã phê duyệt',
-      DA_PHE_DUYET: 'Đã phê duyệt',
-      APPROVED_LEVEL2: 'Đã phê duyệt',
-      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-      REJECTED_LEVEL2: 'Từ chối cấp cục',
-      TU_CHOI: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL2: 'Từ chối cấp Cục',
+      ARCHIVED: 'Đã xóa',
     };
     return m[v.toUpperCase()] || v;
   }
@@ -1095,8 +1089,10 @@ export default function AnchorageListPage() {
       },
       {
         label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
-        render: (v: string) => {
-          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
+        render: (v: string, record: Anchorage) => {
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
+          const eff = isArchived ? 'ARCHIVED' : v;
+          const s = eff && (APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         },
       },
@@ -1477,7 +1473,7 @@ export default function AnchorageListPage() {
 
         {/* ── History Drawer ── */}
         <AppDrawer
-          width="min(880px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
           mask

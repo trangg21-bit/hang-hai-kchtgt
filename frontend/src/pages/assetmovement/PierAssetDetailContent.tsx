@@ -856,7 +856,6 @@ export default function PierAssetDetailContent({
       record={selectedRecord}
       tabs={viewTabs}
       onClose={onClose}
-      width={900}
       rootClassName="pier-drawer-scope"
     />
   );

@@ -32,6 +32,7 @@ import java.util.UUID;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 public class DryPort extends BaseEntity implements ApprovableEntity {
 
     @Column(name = "dry_port_code", nullable = false, unique = true, length = 50)

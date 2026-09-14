@@ -11,7 +11,6 @@ import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
@@ -34,7 +33,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -62,6 +60,7 @@ public class CctvApprovalService {
   private final InfrastructureApprovalService approvalService;
   private final CctvService cctvService;
   private final InfrastructureHistoryRepository historyRepository;
+  @SuppressWarnings("unused")
   private final ChangeLogRepository changeLogRepository;
   private final UserRepository userRepository;
   private final OrgUnitCacheService orgUnitCacheService;

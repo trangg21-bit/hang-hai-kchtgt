@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { radiusMd } from '../tokens-dashboard';
+import { radiusMd } from '../themetokenchk';
 
 export default function DashboardMap() {
   const mapRef = useRef<HTMLDivElement>(null);

@@ -26,10 +26,22 @@ class InfrastructureHistoryReasonMigrationTest {
         postgres = EmbeddedPostgres.builder().start();
         dataSource = postgres.getPostgresDatabase();
 
+        String uatSql;
+        try (var in = InfrastructureHistoryReasonMigrationTest.class.getResourceAsStream("/uat-schema-fixture.sql")) {
+            if (in != null) {
+                uatSql = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } else {
+                uatSql = "";
+            }
+        }
+
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+            if (!uatSql.isEmpty()) {
+                statement.execute(uatSql);
+            }
             statement.execute("""
-                    CREATE TABLE public.infrastructure_history (
+                    CREATE TABLE IF NOT EXISTS public.infrastructure_history (
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         ref_id UUID NOT NULL,
                         ref_type VARCHAR(64) NOT NULL,
@@ -40,7 +52,12 @@ class InfrastructureHistoryReasonMigrationTest {
                         changed_field VARCHAR(1000),
                         previous_value TEXT,
                         new_value TEXT
-                    )
+                    );
+                    CREATE TABLE IF NOT EXISTS public.infra_assets (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        asset_type VARCHAR(50),
+                        types VARCHAR(100)
+                    );
                     """);
         }
     }
@@ -60,6 +77,7 @@ class InfrastructureHistoryReasonMigrationTest {
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion("20260911120000")
+                .target("20260911130000")
                 .outOfOrder(true)
                 .load();
 

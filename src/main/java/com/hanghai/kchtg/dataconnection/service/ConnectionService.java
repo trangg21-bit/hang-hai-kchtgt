@@ -42,6 +42,7 @@ public class ConnectionService {
     private final DataConnectionRepository repo;
     private final EncryptionUtil encryptionUtil;
     private final ConnectionHealthRepository healthRepo;
+    @SuppressWarnings("unused")
     private final SyncLogRepository syncLogRepo;
 
     public ConnectionService(DataConnectionRepository repo,
@@ -209,7 +210,6 @@ public class ConnectionService {
                         .responseCode(status)
                         .build();
             } catch (Exception e) {
-                long elapsed = System.currentTimeMillis() - start;
                 log.warn("Health check attempt {} for {}: {}", attempt, connId, e.getMessage());
                 if (attempt < MAX_RETRIES) {
                     try {

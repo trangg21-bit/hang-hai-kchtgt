@@ -153,4 +153,85 @@ describe('mergeChangesByField', () => {
     expect(merged).toHaveLength(3);
     expect(merged.map((m) => m.field)).toEqual(['Tài liệu đính kèm', 'Tên hệ thống', 'Vùng VTS']);
   });
+
+  it('decomposes detailed VTS zone into subfields grouped under Thông tin vùng VTS', () => {
+    const item = {
+      changedField: 'zones',
+      previousValue: '',
+      newValue: 'Mã vùng: 1, Tên vùng: 2, Tình trạng: Đang khai thác/vận hành - Tọa độ: POINT (106.45752 16.27796) - Loại hình: POINT - Biểu tượng: Biểu tượng KCHT',
+    };
+    const changes = parseHistoryEntryChanges(item);
+    expect(changes).toHaveLength(6);
+    expect(changes.every((c) => c.parentGroup === 'Thông tin vùng VTS' && c.isChild === true)).toBe(true);
+
+    const fieldNames = changes.map((c) => c.field);
+    expect(fieldNames).toEqual([
+      'Mã vùng',
+      'Tên vùng',
+      'Tình trạng',
+      'Loại đối tượng GIS',
+      'Tọa độ GIS',
+      'Biểu tượng bản đồ',
+    ]);
+
+    expect(changes[0]).toMatchObject({ field: 'Mã vùng', oldValue: '', newValue: '1' });
+    expect(changes[1]).toMatchObject({ field: 'Tên vùng', oldValue: '', newValue: '2' });
+    expect(changes[2]).toMatchObject({ field: 'Tình trạng', oldValue: '', newValue: 'Đang khai thác/vận hành' });
+    expect(changes[3]).toMatchObject({ field: 'Loại đối tượng GIS', oldValue: '', newValue: 'Đối tượng điểm' });
+    expect(changes[4]).toMatchObject({ field: 'Tọa độ GIS', oldValue: '', newValue: 'POINT (106.45752 16.27796)' });
+    expect(changes[5]).toMatchObject({ field: 'Biểu tượng bản đồ', oldValue: '', newValue: 'Biểu tượng KCHT' });
+  });
+
+  it('keeps detailed deleted and added zones as separate operations', () => {
+    const item = {
+      changedField: 'zones',
+      previousValue: 'Xóa Vùng cũ (VZ-OLD) - Tọa độ: POINT (108 16) - Loại hình: POINT',
+      newValue: 'Thêm Vùng mới (VZ-NEW) - Tọa độ: POINT (110 13) - Loại hình: POINT',
+    };
+    const changes = parseHistoryEntryChanges(item);
+
+    expect(changes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        field: 'Mã vùng',
+        oldValue: 'VZ-OLD',
+        newValue: '',
+        parentGroup: 'Thông tin vùng VTS',
+        mergeGroupKey: 'vts-zone-Xóa',
+      }),
+      expect.objectContaining({
+        field: 'Mã vùng',
+        oldValue: '',
+        newValue: 'VZ-NEW',
+        parentGroup: 'Thông tin vùng VTS',
+        mergeGroupKey: 'vts-zone-Thêm',
+      }),
+      expect.objectContaining({
+        field: 'Tọa độ GIS',
+        oldValue: 'POINT (108 16)',
+        newValue: '',
+        parentGroup: 'Thông tin vùng VTS',
+        mergeGroupKey: 'vts-zone-Xóa',
+      }),
+      expect.objectContaining({
+        field: 'Tọa độ GIS',
+        oldValue: '',
+        newValue: 'POINT (110 13)',
+        parentGroup: 'Thông tin vùng VTS',
+        mergeGroupKey: 'vts-zone-Thêm',
+      }),
+    ]));
+  });
+
+  it('preserves child fields intact in mergeChangesByField without collapsing them into a single row', () => {
+    const rawChanges = [
+      { field: 'Mã vùng', oldValue: '', newValue: '1', parentGroup: 'Thông tin vùng VTS', isChild: true },
+      { field: 'Tên vùng', oldValue: '', newValue: '2', parentGroup: 'Thông tin vùng VTS', isChild: true },
+      { field: 'Tình trạng', oldValue: '', newValue: 'Đang khai thác/vận hành', parentGroup: 'Thông tin vùng VTS', isChild: true },
+      { field: 'Loại đối tượng GIS', oldValue: '', newValue: 'Đối tượng điểm', parentGroup: 'Thông tin vùng VTS', isChild: true },
+      { field: 'Tọa độ GIS', oldValue: '', newValue: 'POINT (106 16)', parentGroup: 'Thông tin vùng VTS', isChild: true },
+    ];
+    const merged = mergeChangesByField(rawChanges);
+    expect(merged).toHaveLength(5);
+    expect(merged.every((m) => m.parentGroup === 'Thông tin vùng VTS' && m.isChild === true)).toBe(true);
+  });
 });

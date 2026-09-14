@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Button, Modal, Input, Select, DatePicker,
-  Drawer, Space, Typography, Form,
+  Drawer, Space, Form,
 } from 'antd';
 import {
   HistoryOutlined,
@@ -21,7 +21,7 @@ import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId 
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
-import type { Organization } from '../../services/organizationService';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -51,23 +51,20 @@ import {
   textTertiary,
   borderDefault,
   fontSizeLg,
-  fontSizeSm,
-  fontWeightMedium,
   fontWeightBold,
   radiusPill,
   spaceMd,
   spaceSm,
-  spaceXs,
   spaceXl,
   spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
+  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, DRAWER_WIDTH,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   icons, statusBadgeStyle,
   cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 
@@ -78,16 +75,13 @@ const fontSizeMd = 13.5;
 // ── Constants ────────────────────────────────────────────────────────
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -109,6 +103,7 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -119,6 +114,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  ARCHIVED: 'ARCHIVED',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
@@ -222,13 +218,13 @@ function histVal(
   if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
   if (fn === 'approvalStatus') {
     const m: Record<string, string> = {
-      NHAP: 'Lưu tạm', DRAFT: 'Lưu tạm',
-      CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', CHO_PD_CAP_CUC: 'Chờ phê duyệt cấp cục',
-      PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục', APPROVED: 'Đã phê duyệt',
-      APPROVED_LEVEL2: 'Đã duyệt (lịch sử)', DA_PHE_DUYET: 'Đã phê duyệt',
-      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục', TU_CHOI: 'Từ chối cấp Cảng vụ/Chi cục',
-      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2: 'Từ chối cấp cục',
+      DRAFT: 'Lưu tạm',
+      PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+      APPROVED: 'Đã phê duyệt',
+      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL2: 'Từ chối cấp Cục',
+      ARCHIVED: 'Đã xóa',
     };
     return m[val?.toUpperCase()] || val;
   }
@@ -1111,9 +1107,11 @@ export default function BuoyBerthList() {
         dataIndex: 'approvalStatus',
         width: 260,
         sortable: true,
-        render: (v: string | null) => {
-          if (!v) return '';
-          const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()];
+        render: (v: string | null, record: BuoyBerth) => {
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
+          const eff = isArchived ? 'ARCHIVED' : (v || '');
+          if (!eff) return '';
+          const s = APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff.toUpperCase()];
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         },
       },
@@ -1409,7 +1407,7 @@ export default function BuoyBerthList() {
         {...drawerProps}
         rootClassName="buoy-berth-drawer-scope"
         className="buoy-berth-drawer-scope"
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editBuoyBerthId ? 'Chỉnh sửa thông tin Bến phao' : 'Thêm mới Bến phao'}</span>}
         open={createDrawerVisible}
         destroyOnHidden
@@ -1502,8 +1500,7 @@ export default function BuoyBerthList() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         rootClassName="buoy-berth-drawer-scope"
         className="buoy-berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết bến phao{detailRecord ? ` - ${detailRecord.buoyBerthName}` : ''}</span>}
@@ -1520,8 +1517,7 @@ export default function BuoyBerthList() {
 
       {/* ── Kết cấu hạ tầng Detail Drawer (Khu neo đậu / Khu tránh, trú bão) — kích thước đồng bộ bằng Drawer cha ── */}
       <AppDrawer
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         rootClassName="buoy-berth-drawer-scope"
         className="buoy-berth-drawer-scope"
         title={<span style={drawerTitleStyle}>
@@ -1643,7 +1639,7 @@ export default function BuoyBerthList() {
 
       {/* ── History drawer (timeline theo chuẩn quản lý Cảng biển) ── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-berth-drawer-scope"
         className="buoy-berth-drawer-scope"
         mask

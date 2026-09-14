@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

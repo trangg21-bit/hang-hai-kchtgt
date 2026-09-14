@@ -4,7 +4,6 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
@@ -23,7 +22,6 @@ import com.hanghai.kchtg.port.dto.anchorage.MooringWaterAreaResponse;
 import com.hanghai.kchtg.port.dto.anchorage.UpdateAnchorageRequest;
 import com.hanghai.kchtg.port.entity.Anchorage;
 import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.entity.BuoyBerth;
 import com.hanghai.kchtg.port.entity.MooringWaterArea;
 import com.hanghai.kchtg.port.entity.MooringWaterAreaAnchorPoint;
@@ -38,7 +36,6 @@ import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -376,6 +373,7 @@ public class AnchorageService {
         UUID operatorId = SecurityUtils.getCurrentUserId();
 
         entity.softDelete(operatorId);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         anchorageRepository.save(entity);
 
         // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete)
@@ -592,7 +590,7 @@ public class AnchorageService {
                 .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 // Technical fields
                 .shapeDescription(entity.getShapeDescription())
                 .area(entity.getArea())
@@ -628,6 +626,8 @@ public class AnchorageService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .build();
 
         if (entity.getSpatialId() != null) {

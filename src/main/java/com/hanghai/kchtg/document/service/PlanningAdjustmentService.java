@@ -27,6 +27,7 @@ public class PlanningAdjustmentService {
 
     private final PlanningAdjustmentRepository planningAdjustmentRepository;
     private final AdjustmentApprovalRepository adjustmentApprovalRepository;
+    @SuppressWarnings("unused")
     private final PortPlanningService portPlanningService;
 
     // ── CRUD ──────────────────────────────────────────────────────────

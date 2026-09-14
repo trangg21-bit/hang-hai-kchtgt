@@ -17,8 +17,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.hanghai.kchtg.security.RecordSecurityLevel;
-import lombok.Builder;
 import lombok.experimental.FieldNameConstants;
 
 /**
@@ -36,6 +34,7 @@ import lombok.experimental.FieldNameConstants;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 public class Pier extends BaseEntity implements ApprovableEntity {
 
     @Column(name = "pier_code", nullable = false, unique = true, length = 50)

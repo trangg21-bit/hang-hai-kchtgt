@@ -11,7 +11,7 @@ import { AppDrawer } from './AppDrawer';
 import dayjs from 'dayjs';
 import { symbolService, type SymbolOption } from '../../services/symbolService';
 import { getProvinceNameById } from '../../types/common';
-import { colors, getRangePickerProps } from '../../themetokenchk';
+import { colors, getRangePickerProps, DRAWER_WIDTH } from '../../themetokenchk';
 import {
   actionPrimary,
   statusOperational,
@@ -21,7 +21,6 @@ import {
   textSecondary,
   textTertiary,
   borderDefault,
-  radiusSm,
   radiusPill,
   spaceXs,
   spaceSm,
@@ -60,6 +59,10 @@ export interface HistoryChangeItem {
   field: string;
   oldValue?: any;
   newValue?: any;
+  parentGroup?: string;
+  isChild?: boolean;
+  mergeGroupKey?: string;
+  operation?: 'Xóa' | 'Thêm' | 'Cập nhật';
 }
 
 export interface CommonHistoryEntry {
@@ -167,6 +170,7 @@ const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: str
 
 export function formatFallbackFieldLabel(field: string, combinedMap: Record<string, string> = {}): string {
   if (!field) return '—';
+  if (combinedMap[field]) return combinedMap[field];
   if (field.includes(',')) {
     return field.split(',').map((f) => {
       const trimmed = f.trim();
@@ -177,8 +181,13 @@ export function formatFallbackFieldLabel(field: string, combinedMap: Record<stri
 }
 
 function formatSingleField(field: string): string {
-  const spaced = field.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim();
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  if (!field) return '';
+  if (field.includes(' ')) {
+    return field.replace(/\bG\s*I\s*S\b/g, 'GIS');
+  }
+  const spaced = field.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/_/g, ' ').trim();
+  const res = spaced.replace(/\bG\s*I\s*S\b/g, 'GIS');
+  return res.charAt(0).toUpperCase() + res.slice(1);
 }
 
 const DEFAULT_FIELD_MAP: Record<string, string> = {
@@ -193,6 +202,8 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   expirationDate: 'Ngày hết hiệu lực',
   applicationArea: 'Phạm vi áp dụng',
   scopeOfApplication: 'Phạm vi áp dụng',
+  scope: 'Phạm vi áp dụng',
+  maritimeNotice: 'Thông báo hàng hải',
   validityStatus: 'Trạng thái hiệu lực',
   description: 'Mô tả',
   code: 'Mã',
@@ -201,6 +212,7 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   location: 'Vị trí',
   conditionStatus: 'Tình trạng',
   condition: 'Tình trạng',
+  'Tình trạng': 'Tình trạng',
   operationalStatus: 'Trạng thái hoạt động',
   approvalStatus: 'Trạng thái phê duyệt',
   status: 'Trạng thái',
@@ -290,6 +302,12 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   coordinates: 'Tọa độ GIS',
   geometryType: 'Loại đối tượng GIS',
   objectType: 'Loại đối tượng GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS',
+  'Tọa độ GIS': 'Tọa độ GIS',
+  'Biểu tượng bản đồ': 'Biểu tượng bản đồ',
+  'Mã vùng': 'Mã vùng',
+  'Tên vùng': 'Tên vùng',
+  'Thông tin vùng VTS': 'Thông tin vùng VTS',
   symbol: 'Biểu tượng bản đồ',
   symbolId: 'Biểu tượng bản đồ',
   mapSymbolId: 'Biểu tượng bản đồ',
@@ -381,6 +399,8 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   documentDate: 'Ngày văn bản',
   safetyAssessmentDate: 'Ngày đánh giá an toàn',
   commencementDate: 'Thời gian bắt đầu hoạt động',
+  operationStartDate: 'Thời gian bắt đầu hoạt động',
+  operationStartTime: 'Thời gian bắt đầu hoạt động',
   constructionDate: 'Ngày xây dựng',
   lastInspectionDate: 'Ngày kiểm định gần nhất',
   nextInspectionDate: 'Ngày kiểm định tiếp theo',
@@ -722,6 +742,49 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
   const prevItems = splitItems(cleanPrev);
   const newItems = splitItems(cleanNew);
 
+  // Helper phân rã chuỗi thông tin vùng VTS (Mã vùng, Tên vùng, Tình trạng)
+  const parseZoneFieldParts = (zoneStr: string) => {
+    let text = (zoneStr || '').trim();
+    let code = '';
+    let name = '';
+    let condition = '';
+
+    // Bóc tách Tình trạng
+    const condMatch = text.match(/(?:^|[-–—,;]\s*)Tình trạng:\s*([^–—\n\r,;]+)/i);
+    if (condMatch) {
+      condition = condMatch[1].trim();
+      text = text.replace(condMatch[0], '').trim();
+    }
+
+    // Bóc tách Mã vùng
+    const codeMatch = text.match(/(?:^|[-–—,;]\s*)Mã vùng:\s*([^–—\n\r,;]+)/i);
+    if (codeMatch) {
+      code = codeMatch[1].trim();
+      text = text.replace(codeMatch[0], '').trim();
+    }
+
+    // Bóc tách Tên vùng
+    const nameMatch = text.match(/(?:^|[-–—,;]\s*)Tên vùng:\s*([^–—\n\r,;]+)/i);
+    if (nameMatch) {
+      name = nameMatch[1].trim();
+      text = text.replace(nameMatch[0], '').trim();
+    }
+
+    // Fallback cho dạng cũ "Tên (Mã)" hoặc chỉ có tên
+    if (!code && !name) {
+      const parenMatch = text.match(/^(.+?)\s*\(([^)]+)\)/);
+      if (parenMatch) {
+        name = parenMatch[1].trim();
+        code = parenMatch[2].trim();
+      } else {
+        const clean = text.replace(/^[-–—,\s]+|[-–—,\s]+$/g, '').trim();
+        if (clean) name = clean;
+      }
+    }
+
+    return { code, name, condition };
+  };
+
   // Helper bóc tách cấu trúc zone: "Tên (Mã) - Tọa độ: WKT - Loại hình: TYPE"
   const extractZoneDetails = (str: string) => {
     if (!str) return null;
@@ -759,22 +822,102 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
 
     const cleanZoneName = text
       .replace(/^[-–—\s]+|[-–—\s]+$/g, '')
-      .replace(/^(cũ|mới|thêm|xóa):\s*/i, '')
+      .replace(/^(cũ|mới|thêm mới|thêm|xóa)[:\s]\s*/i, '')
       .trim();
 
+    const parts = parseZoneFieldParts(cleanZoneName);
+
     return {
-      name: cleanZoneName,
+      rawName: cleanZoneName,
+      code: parts.code,
+      name: parts.name,
+      condition: parts.condition,
       coord,
       geomType: mapGeomLabel(geomType),
       symbol,
     };
   };
 
-  // Kiểm tra nếu có chuỗi zone chi tiết chứa Tọa độ / Loại hình / Biểu tượng
-  const anyHasDetails = prevItems.some((i) => /(Tọa độ|Loại hình|Biểu tượng):/i.test(i))
-    || newItems.some((i) => /(Tọa độ|Loại hình|Biểu tượng):/i.test(i))
-    || /(Tọa độ|Loại hình|Biểu tượng):/i.test(cleanPrev)
-    || /(Tọa độ|Loại hình|Biểu tượng):/i.test(cleanNew);
+  // Kiểm tra nếu có chuỗi zone chi tiết chứa Tọa độ / Loại hình / Biểu tượng / Mã vùng / Tên vùng / Tình trạng
+  const anyHasDetails = prevItems.some((i) => /(Tọa độ|Loại hình|Biểu tượng|Mã vùng|Tên vùng|Tình trạng):/i.test(i))
+    || newItems.some((i) => /(Tọa độ|Loại hình|Biểu tượng|Mã vùng|Tên vùng|Tình trạng):/i.test(i))
+    || /(Tọa độ|Loại hình|Biểu tượng|Mã vùng|Tên vùng|Tình trạng):/i.test(cleanPrev)
+    || /(Tọa độ|Loại hình|Biểu tượng|Mã vùng|Tên vùng|Tình trạng):/i.test(cleanNew);
+
+  // Khi một lần lưu vừa xóa vừa thêm vùng, các mảng cũ/mới không có quan hệ
+  // theo vị trí. Phải tách theo tiền tố thao tác trước khi phân rã chi tiết.
+  const hasExplicitAddRemove = prevItems.some((item) => /^xóa\s+/i.test(stripPrefixByField(item, field)))
+    || newItems.some((item) => /^thêm\s+/i.test(stripPrefixByField(item, field)));
+
+  if (anyHasDetails && hasExplicitAddRemove) {
+    const detailResults: HistoryChangeItem[] = [];
+    const parentGroup = 'Thông tin vùng VTS';
+
+    const appendDetails = (oldDetail: ReturnType<typeof extractZoneDetails>, newDetail: ReturnType<typeof extractZoneDetails>, operation: 'Xóa' | 'Thêm' | 'Cập nhật') => {
+      const oldValues = oldDetail || { code: '', name: '', condition: '', coord: '', geomType: '', symbol: '' };
+      const newValues = newDetail || { code: '', name: '', condition: '', coord: '', geomType: '', symbol: '' };
+      const mergeGroupKey = `vts-zone-${operation}`;
+      const fields = [
+        ['Mã vùng', oldValues.code || '', newValues.code || ''],
+        ['Tên vùng', oldValues.name || '', newValues.name || ''],
+        ['Tình trạng', oldValues.condition || '', newValues.condition || ''],
+        ['Loại đối tượng GIS', oldValues.geomType || '', newValues.geomType || ''],
+        ['Tọa độ GIS', oldValues.coord || '', newValues.coord || ''],
+        ['Biểu tượng bản đồ', oldValues.symbol || '', newValues.symbol || ''],
+      ] as const;
+
+      fields.forEach(([fieldName, oldValue, newValue]) => {
+        if ((oldValue || newValue) && oldValue !== newValue) {
+          detailResults.push({
+            field: fieldName,
+            oldValue,
+            newValue,
+            parentGroup,
+            isChild: true,
+            mergeGroupKey,
+            operation,
+          });
+        }
+      });
+    };
+
+    const removed: string[] = [];
+    const modifiedOld: string[] = [];
+    prevItems.forEach((item) => {
+      const cleanItem = stripPrefixByField(item, field);
+      if (/^xóa\s+/i.test(cleanItem)) {
+        removed.push(cleanItem.replace(/^xóa\s+/i, '').trim());
+      } else if (/^cũ:\s*/i.test(cleanItem)) {
+        modifiedOld.push(cleanItem.replace(/^cũ:\s*/i, '').trim());
+      }
+    });
+
+    const added: string[] = [];
+    const modifiedNew: string[] = [];
+    newItems.forEach((item) => {
+      const cleanItem = stripPrefixByField(item, field);
+      if (/^thêm\s+/i.test(cleanItem)) {
+        added.push(cleanItem.replace(/^thêm\s+/i, '').trim());
+      } else if (/^mới:\s*/i.test(cleanItem)) {
+        modifiedNew.push(cleanItem.replace(/^mới:\s*/i, '').trim());
+      }
+    });
+
+    removed.forEach((zone) => appendDetails(extractZoneDetails(zone), null, 'Xóa'));
+    const modifiedCount = Math.max(modifiedOld.length, modifiedNew.length);
+    for (let i = 0; i < modifiedCount; i++) {
+      appendDetails(
+        extractZoneDetails(modifiedOld[i] || ''),
+        extractZoneDetails(modifiedNew[i] || ''),
+        'Cập nhật',
+      );
+    }
+    added.forEach((zone) => appendDetails(null, extractZoneDetails(zone), 'Thêm'));
+
+    if (detailResults.length > 0) {
+      return detailResults;
+    }
+  }
 
   if (anyHasDetails) {
     const detailResults: HistoryChangeItem[] = [];
@@ -786,18 +929,48 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
       const prevDetail = extractZoneDetails(pItem);
       const newDetail = extractZoneDetails(nItem);
 
-      // 1. Tên / mã vùng VTS
+      const parentGroup = 'Thông tin vùng VTS';
+
+      // 1. Mã vùng
+      const oldCode = prevDetail?.code || '';
+      const newCode = newDetail?.code || '';
+      if ((oldCode || newCode) && oldCode !== newCode) {
+        detailResults.push({
+          field: 'Mã vùng',
+          oldValue: oldCode,
+          newValue: newCode,
+          parentGroup,
+          isChild: true,
+        });
+      }
+
+      // 2. Tên vùng
       const oldName = prevDetail?.name || '';
       const newName = newDetail?.name || '';
       if ((oldName || newName) && oldName !== newName) {
         detailResults.push({
-          field: 'Vùng VTS',
+          field: 'Tên vùng',
           oldValue: oldName,
           newValue: newName,
+          parentGroup,
+          isChild: true,
         });
       }
 
-      // 2. Loại đối tượng GIS
+      // 3. Tình trạng
+      const oldCond = prevDetail?.condition || '';
+      const newCond = newDetail?.condition || '';
+      if ((oldCond || newCond) && oldCond !== newCond) {
+        detailResults.push({
+          field: 'Tình trạng',
+          oldValue: oldCond,
+          newValue: newCond,
+          parentGroup,
+          isChild: true,
+        });
+      }
+
+      // 4. Loại đối tượng GIS
       const oldGeom = prevDetail?.geomType || '';
       const newGeom = newDetail?.geomType || '';
       if ((oldGeom || newGeom) && oldGeom !== newGeom) {
@@ -805,10 +978,12 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
           field: 'Loại đối tượng GIS',
           oldValue: oldGeom,
           newValue: newGeom,
+          parentGroup,
+          isChild: true,
         });
       }
 
-      // 3. Tọa độ GIS (kích hoạt renderCoordinatesDisplay chuẩn DMS)
+      // 5. Tọa độ GIS (kích hoạt renderCoordinatesDisplay chuẩn DMS)
       const oldCoord = prevDetail?.coord || '';
       const newCoord = newDetail?.coord || '';
       if ((oldCoord || newCoord) && oldCoord !== newCoord) {
@@ -816,10 +991,12 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
           field: 'Tọa độ GIS',
           oldValue: oldCoord,
           newValue: newCoord,
+          parentGroup,
+          isChild: true,
         });
       }
 
-      // 4. Biểu tượng bản đồ (nếu có)
+      // 6. Biểu tượng bản đồ (nếu có)
       const oldSym = prevDetail?.symbol || '';
       const newSym = newDetail?.symbol || '';
       if ((oldSym || newSym) && oldSym !== newSym) {
@@ -827,6 +1004,8 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
           field: 'Biểu tượng bản đồ',
           oldValue: oldSym,
           newValue: newSym,
+          parentGroup,
+          isChild: true,
         });
       }
     }
@@ -1049,6 +1228,16 @@ export function mergeChangesByField(
   const groups = new Map<string, { field: string; items: HistoryChangeItem[] }>();
 
   changes.forEach((c) => {
+    // Nếu là trường con có parentGroup / isChild, giữ nguyên theo nhóm cha và trường con để không bị gộp chung
+    if (c.parentGroup || c.isChild) {
+      const childKey = `__child_${c.mergeGroupKey || c.parentGroup || ''}_${c.field}`;
+      if (!groups.has(childKey)) {
+        groups.set(childKey, { field: c.field, items: [] });
+      }
+      groups.get(childKey)!.items.push(c);
+      return;
+    }
+
     const rawField = c.field || '';
     const label = fieldLabelMap[rawField] || rawField;
     const norm = label.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -1066,6 +1255,22 @@ export function mergeChangesByField(
 
   const result: HistoryChangeItem[] = [];
   groups.forEach(({ field, items }, key) => {
+    if (key.startsWith('__child_')) {
+      const first = items[0];
+      const oldVal = items.map((i) => i.oldValue).filter(Boolean).join(', ') || first.oldValue;
+      const newVal = items.map((i) => i.newValue).filter(Boolean).join(', ') || first.newValue;
+      result.push({
+        field: first.field,
+        oldValue: oldVal,
+        newValue: newVal,
+        parentGroup: first.parentGroup,
+        isChild: first.isChild,
+        mergeGroupKey: first.mergeGroupKey,
+        operation: first.operation,
+      });
+      return;
+    }
+
     if (key === '__attachments__') {
       const oldValList: string[] = [];
       const newValList: string[] = [];
@@ -1276,6 +1481,16 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       const provName = getProvinceNameById(val);
       if (provName) return provName;
     }
+    if (fLower.includes('condition') || fLower.includes('tinhtrang') || fLower === 'tinhtranghoatdong') {
+      return getConditionStatusLabel(val);
+    }
+    if (fLower.includes('date') || fLower.includes('ngay') || fLower.includes('startdate') || fLower.includes('time') || fLower.includes('thoigian')) {
+      const sVal = String(val).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(sVal)) {
+        const d = dayjs(sVal);
+        if (d.isValid()) return d.format('DD/MM/YYYY');
+      }
+    }
     if (typeof val === 'boolean') return val ? 'Có' : 'Không';
     if (typeof val === 'object') return JSON.stringify(val);
     const s = String(val).trim();
@@ -1419,14 +1634,14 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       }
     }
 
-    return { filteredGroups: groups, totalCount: filtered.length };
+    return { filteredGroups: groups, totalCount: groups.length };
   }, [records, keyword, dateFrom, dateTo, combinedFieldMap, serverFiltered]);
 
   return (
     <AppDrawer
       rootClassName={variant === 'berth' ? 'berth-drawer-scope' : 'vtssystemchk-theme-scope'}
       className={variant === 'berth' ? 'berth-drawer-scope' : 'vtssystemchk-theme-scope'}
-      width={width || (variant === 'berth' ? 'min(880px, 96vw)' : undefined)}
+      width={width || DRAWER_WIDTH}
       mask
       open={open}
       onClose={onClose}
@@ -1738,13 +1953,20 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                           const prevChange = cIdx > 0 ? orderedChanges[cIdx - 1] : null;
                           const prevLabel = prevChange ? (combinedFieldMap[prevChange.field] || formatFallbackFieldLabel(prevChange.field, combinedFieldMap)) : null;
                           const isFirstInGroup = cIdx === 0 || label !== prevLabel;
+                          const isFirstInParentGroup = Boolean(
+                            change.parentGroup && (
+                              cIdx === 0
+                              || orderedChanges[cIdx - 1]?.parentGroup !== change.parentGroup
+                              || (change.operation && orderedChanges[cIdx - 1]?.operation !== change.operation)
+                            )
+                          );
 
                           const ov = resolveFieldValue(change.field, change.oldValue);
                           const nv = resolveFieldValue(change.field, change.newValue);
 
                           const renderFormattedContent = (content: string, isOld: boolean = false) => {
                             if (!content || content === '—' || content === '-' || content === 'null' || content === '(null)' || content === '(trống)' || content === '— (Trống)' || content === 'Chưa có') {
-                              return '';
+                              return <span style={{ color: textTertiary }}>—</span>;
                             }
                             const str = String(content).trim();
                             const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
@@ -1773,11 +1995,24 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               if (items.length > 1) {
                                 return (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                                    {items.map((item, idx) => (
-                                      <div key={idx} style={{ color: isOld ? textSecondary : textPrimary, fontWeight: isOld ? 400 : fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                                        {item}
-                                      </div>
-                                    ))}
+                                    {items.map((item, idx) => {
+                                      const normItem = item.toLowerCase();
+                                      if (normItem.startsWith('tình trạng:') || normItem.startsWith('tinh trang:')) {
+                                        const colonIdx = item.indexOf(':');
+                                        const statusPart = item.substring(colonIdx + 1).trim();
+                                        return (
+                                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, lineHeight: '20px' }}>
+                                            <span style={{ color: isOld ? textSecondary : textPrimary, fontWeight: isOld ? 400 : fontWeightMedium }}>Tình trạng:</span>
+                                            {renderCommonHistoryValueTag('conditionStatus', statusPart, isOld)}
+                                          </div>
+                                        );
+                                      }
+                                      return (
+                                        <div key={idx} style={{ color: isOld ? textSecondary : textPrimary, fontWeight: isOld ? 400 : fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                          {item}
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 );
                               }
@@ -1787,62 +2022,120 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
                           if (isCreate) {
                             return (
+                              <React.Fragment key={cIdx}>
+                                {isFirstInParentGroup && change.parentGroup && (
+                                  <div
+                                    style={{
+                                      fontWeight: fontWeightBold,
+                                      fontSize: fontSizeMd,
+                                      color: textPrimary,
+                                      marginTop: cIdx > 0 ? 10 : 2,
+                                      marginBottom: 4,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 6,
+                                    }}
+                                  >
+                                    <span>{change.parentGroup}:</span>
+                                  </div>
+                                )}
+                                <div
+                                  style={variant === 'berth' ? {
+                                    ...historyCreateRowStyle,
+                                    paddingTop: cIdx > 0 ? spaceXs : 0,
+                                  } : {
+                                    display: 'grid',
+                                    gridTemplateColumns: '165px minmax(0, 1fr)',
+                                    alignItems: 'flex-start',
+                                    gap: spaceSm,
+                                    fontSize: fontSizeMd,
+                                    lineHeight: 1.6,
+                                    padding: '4px 0',
+                                    marginTop: isFirstInGroup && cIdx > 0 && !isFirstInParentGroup ? 6 : 0,
+                                  }}
+                                >
+                                  <div
+                                    style={variant === 'berth' ? {
+                                      ...historyFieldLabelStyle,
+                                      paddingLeft: change.isChild ? 16 : 0,
+                                    } : {
+                                      minWidth: 0,
+                                      fontWeight: fontWeightMedium,
+                                      color: textSecondary,
+                                      overflowWrap: 'anywhere',
+                                      wordBreak: 'break-word',
+                                      paddingLeft: change.isChild ? 16 : 0,
+                                    }}
+                                  >
+                                    {label ? `${label}:` : ''}
+                                  </div>
+                                  <span title={nv ?? ''} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
+                                    {renderFormattedContent(nv, false) ?? (nv ?? '')}
+                                  </span>
+                                </div>
+                              </React.Fragment>
+                            );
+                          }
+
+                          return (
+                            <React.Fragment key={cIdx}>
+                              {isFirstInParentGroup && change.parentGroup && (
+                                <div
+                                  style={{
+                                    fontWeight: fontWeightBold,
+                                    fontSize: fontSizeMd,
+                                    color: textPrimary,
+                                    marginTop: cIdx > 0 ? 10 : 2,
+                                    marginBottom: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                  }}
+                                >
+                                  <span>{change.parentGroup}:</span>
+                                </div>
+                              )}
                               <div
-                                key={cIdx}
                                 style={variant === 'berth' ? {
-                                  ...historyCreateRowStyle,
+                                  ...historyChangeRowStyle,
                                   paddingTop: cIdx > 0 ? spaceXs : 0,
                                 } : {
                                   display: 'grid',
-                                  gridTemplateColumns: '150px minmax(0, 1fr)',
+                                  gridTemplateColumns: '165px minmax(0, 1fr) 24px minmax(0, 1fr)',
                                   alignItems: 'flex-start',
                                   gap: spaceSm,
                                   fontSize: fontSizeMd,
                                   lineHeight: 1.6,
                                   padding: '4px 0',
-                                  marginTop: isFirstInGroup && cIdx > 0 ? 6 : 0,
+                                  marginTop: isFirstInGroup && cIdx > 0 && !isFirstInParentGroup ? 6 : 0,
                                 }}
                               >
-                                <div style={variant === 'berth' ? historyFieldLabelStyle : { minWidth: 0, fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                                <div
+                                  style={variant === 'berth' ? {
+                                    ...historyFieldLabelStyle,
+                                    paddingLeft: change.isChild ? 16 : 0,
+                                  } : {
+                                    minWidth: 0,
+                                    fontWeight: fontWeightMedium,
+                                    color: textSecondary,
+                                    overflowWrap: 'anywhere',
+                                    wordBreak: 'break-word',
+                                    paddingLeft: change.isChild ? 16 : 0,
+                                  }}
+                                >
                                   {label ? `${label}:` : ''}
                                 </div>
-                                <span title={nv ?? ''} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textPrimary }}>
+                                <span title={ov ?? ''} style={variant === 'berth' ? historyOldValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textSecondary }}>
+                                  {renderFormattedContent(ov, true) ?? (ov ?? '')}
+                                </span>
+                                <span style={variant === 'berth' ? historyArrowStyle : { color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
+                                  →
+                                </span>
+                                <span title={nv ?? ''} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
                                   {renderFormattedContent(nv, false) ?? (nv ?? '')}
                                 </span>
                               </div>
-                            );
-                          }
-
-                          return (
-                            <div
-                              key={cIdx}
-                              style={variant === 'berth' ? {
-                                ...historyChangeRowStyle,
-                                paddingTop: cIdx > 0 ? spaceXs : 0,
-                              } : {
-                                display: 'grid',
-                                gridTemplateColumns: '150px minmax(0, 1fr) 24px minmax(0, 1fr)',
-                                alignItems: 'flex-start',
-                                gap: spaceSm,
-                                fontSize: fontSizeMd,
-                                lineHeight: 1.6,
-                                padding: '4px 0',
-                                marginTop: isFirstInGroup && cIdx > 0 ? 6 : 0,
-                              }}
-                            >
-                              <div style={variant === 'berth' ? historyFieldLabelStyle : { minWidth: 0, fontWeight: fontWeightMedium, color: textSecondary, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                                {label ? `${label}:` : ''}
-                              </div>
-                              <span title={ov ?? ''} style={variant === 'berth' ? historyOldValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textSecondary }}>
-                                {renderFormattedContent(ov, true) ?? (ov ?? '')}
-                              </span>
-                              <span style={variant === 'berth' ? historyArrowStyle : { color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
-                                →
-                              </span>
-                              <span title={nv ?? ''} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
-                                {renderFormattedContent(nv, false) ?? (nv ?? '')}
-                              </span>
-                            </div>
+                            </React.Fragment>
                           );
                         })}
                       </div>

@@ -324,7 +324,6 @@ public class InfrastructureApprovalService {
 
         assertDeletable(entity);
         assertDeletableBy(entity, userId);
-        ApprovalStatus currentStatus = entity.getApprovalStatus();
 
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
 

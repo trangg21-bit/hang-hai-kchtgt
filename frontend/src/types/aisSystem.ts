@@ -144,25 +144,25 @@ export interface AisSystemListItem {
 export interface CreateAisSystemRequest {
   code: string;
   name: string;
-  vtsOperationCenterId?: string;
-  radarStationId?: string;
+  vtsOperationCenterId?: string | null;
+  radarStationId?: string | null;
   operatingOrgId: string;
   orgUnitId: string;
-  provinceId?: number;
-  detailedLocation?: string;
+  provinceId?: number | null;
+  detailedLocation?: string | null;
   unitOfMeasure: UnitOfMeasure;
   quantity: number;
-  model?: string;
-  specifications?: string;
-  manufacturer?: string;
-  commissioningYear?: number;
+  model?: string | null;
+  specifications?: string | null;
+  manufacturer?: string | null;
+  commissioningYear?: number | null;
   conditionStatus: ConditionStatus;
-  maintenanceInfo?: string;
-  note?: string;
+  maintenanceInfo?: string | null;
+  note?: string | null;
   spatialId?: string;
-  geometryType?: string;
-  coordinates?: string;
-  symbolId?: string;
+  geometryType?: string | null;
+  coordinates?: string | null;
+  symbolId?: string | null;
   approvalStatus?: ApprovalStatus;
 }
 

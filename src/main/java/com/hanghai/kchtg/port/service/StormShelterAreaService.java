@@ -36,7 +36,6 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -363,6 +362,7 @@ public class StormShelterAreaService {
         UUID operatorId = SecurityUtils.getCurrentUserId();
 
         entity.softDelete(operatorId);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         stormShelterAreaRepository.save(entity);
 
         // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete)
@@ -668,7 +668,7 @@ public class StormShelterAreaService {
                 .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 // Technical fields
                 .shapeDescription(entity.getShapeDescription())
                 .area(entity.getArea())
@@ -703,6 +703,8 @@ public class StormShelterAreaService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .build();
 
         if (entity.getSpatialId() != null) {

@@ -113,6 +113,7 @@ import {
   readonlyInputStyle,
   drawerFormScrollStyle,
   DRAWER_TABLE_SCROLL_Y,
+  DRAWER_WIDTH,
   historyGroupGridStyle,
   historyTimeStyle,
   historyMetaRowStyle,
@@ -297,7 +298,7 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
-  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
+  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, RadarStationStatus | undefined> = {
@@ -308,7 +309,7 @@ const TAB_QUERY_MAP: Record<string, RadarStationStatus | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  DELETED: 'DELETED',
+  ARCHIVED: 'ARCHIVED',
 };
 
 // Status badge — semantic tokens (AGENTS.md: không hardcode màu)
@@ -323,7 +324,6 @@ const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: str
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
-  DELETED: { color: statusCritical, label: 'Đã xóa' },
   ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
@@ -2824,7 +2824,7 @@ export default function RadarStationList() {
           const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
         });
-        const rec0 = g.items[0] || {};
+        const rec0: any = g.items[0] || {};
         const rawUnit = rec0.orgUnitName;
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const resolvedName = orgId ? orgNameById(orgId) : undefined;
@@ -3276,7 +3276,7 @@ export default function RadarStationList() {
 
       {/* ── Create / Edit / Detail Drawer ─────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         title={
           <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
             {isDetailMode
@@ -4134,7 +4134,7 @@ export default function RadarStationList() {
 
       {/* ── History Drawer (đồng bộ chuẩn /berth) ─────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         placement="right"
         open={historyOpen}
         rootClassName="radar-drawer-scope"

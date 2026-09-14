@@ -9,4 +9,4 @@ CREATE INDEX IF NOT EXISTS idx_infra_assets_dry_port_id ON infra_assets(dry_port
 -- Cập nhật types nếu có bản ghi DRY_PORT trước đó
 UPDATE infra_assets
 SET types = 'DRY_PORT'
-WHERE asset_type = 10 AND types IS NULL;
+WHERE CAST(asset_type AS VARCHAR) = '10' AND types IS NULL;

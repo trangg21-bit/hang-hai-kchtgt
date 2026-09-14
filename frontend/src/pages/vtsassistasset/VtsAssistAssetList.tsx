@@ -549,8 +549,17 @@ export default function VtsAssistAssetList() {
   const handleFilterApply = useCallback(() => {
     setPage(1);
     const range = draftFilters.updatedRange;
+    const trimmedCode = draftFilters.assetCode?.trim() || undefined;
+    const trimmedName = draftFilters.assetName?.trim() || undefined;
+    setDraftFilters((prev) => ({
+      ...prev,
+      assetCode: trimmedCode,
+      assetName: trimmedName,
+    }));
     setFilters({
       ...draftFilters,
+      assetCode: trimmedCode,
+      assetName: trimmedName,
       assetType: 'Tài sản hệ thống phụ trợ VTS',
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),

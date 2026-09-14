@@ -41,6 +41,7 @@ public class OperationPlanService {
     private static final DateTimeFormatter CODE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final OperationPlanRepository operationPlanRepository;
+    @SuppressWarnings("unused")
     private final OperationDetailRepository operationDetailRepository;
     private final OperationReportRepository operationReportRepository;
     private final OperationConfirmationRepository operationConfirmationRepository;

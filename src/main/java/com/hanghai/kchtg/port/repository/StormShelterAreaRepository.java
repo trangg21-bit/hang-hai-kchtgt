@@ -47,7 +47,13 @@ public interface StormShelterAreaRepository extends JpaRepository<StormShelterAr
     /**
      * Search storm shelter areas with unaccent support on code and name.
      */
-    @Query("SELECT a FROM StormShelterArea a WHERE a.deletedAt IS NULL " +
+    @Query("SELECT a FROM StormShelterArea a WHERE " +
+            "((:approvalStatus IS NULL AND a.deletedAt IS NULL AND a.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (a.deletedAt IS NOT NULL OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            " OR (a.deletedAt IS NULL AND a.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
+            "     a.approvalStatus = :approvalStatus " +
+            "     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            " ))) " +
             "AND (:includeAll = true OR a.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR " +
             "  (CAST(function('immutable_unaccent', LOWER(a.stormShelterCode)) AS string) LIKE " +
@@ -67,7 +73,6 @@ public interface StormShelterAreaRepository extends JpaRepository<StormShelterAr
             "  CAST(function('immutable_unaccent', LOWER(a.classification)) AS string) LIKE " +
             "  CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:classification AS string), '%'))) AS string)) " +
             "AND (:provinceId IS NULL OR a.provinceId = :provinceId) " +
-            "AND (:approvalStatus IS NULL OR a.approvalStatus = :approvalStatus) " +
             "AND ((:operationalStatusNull = true AND a.operationalStatus IS NULL) OR " +
             "  (:operationalStatusNull = false AND (:operationalStatus IS NULL OR a.operationalStatus = :operationalStatus))) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR a.updatedAt >= :updatedFrom) " +

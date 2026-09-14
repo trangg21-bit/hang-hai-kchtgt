@@ -11,7 +11,7 @@ import type { DataTableColumn } from '../../components/list-view/DataTable';
 import toast from '../../components/ToastNotification';
 import { inputStyle, selectStyle, primaryButtonStyle, textAreaStyle, spaceFormField, spaceSm, radiusPill, fontSizeMd, fontWeightMedium } from '../../tokens';
 import { useThemeToken } from '../../context/ThemeTokenContext';
-import { getDatePickerProps, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import { getDatePickerProps, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH } from '../../themetokenchk';
 
 /* =========================================================================
  * F-129 — Quản lý thông tin vận hành khai thác (operation_plans)
@@ -511,7 +511,7 @@ function OperationList() {
       <Drawer
         open={drawerMode === 'create' || drawerMode === 'edit'}
         onClose={closeDrawer}
-        width={860}
+        width={DRAWER_WIDTH}
         title={drawerMode === 'create' ? 'Thêm mới kế hoạch vận hành' : 'Chỉnh sửa kế hoạch vận hành'}
         footer={[
           <Button key="cancel" style={{ ...primaryButtonStyle, background: t.borderDefault, borderColor: t.borderDefault, color: t.textSecondary, marginRight: spaceSm }} onClick={closeDrawer}>
@@ -618,7 +618,7 @@ function OperationList() {
       <Drawer
         open={drawerMode === 'view'}
         onClose={closeDrawer}
-        width={900}
+        width={DRAWER_WIDTH}
         title="Chi tiết kế hoạch vận hành"
       >
         {viewRecord && (

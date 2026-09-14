@@ -25,8 +25,8 @@ CREATE INDEX IF NOT EXISTS idx_infra_assets_ttxltt_station_id ON infra_assets(tt
 -- 4. Đồng bộ dữ liệu mặc định cho types từ asset_type hiện có
 UPDATE infra_assets
 SET types = CASE
-    WHEN asset_type = 4 THEN 'PORT_TERMINAL'
-    WHEN asset_type = 5 THEN 'LRIT_STATION'
+    WHEN CAST(asset_type AS VARCHAR) = '4' THEN 'PORT_TERMINAL'
+    WHEN CAST(asset_type AS VARCHAR) = '5' THEN 'LRIT_STATION'
     ELSE types
 END
 WHERE types IS NULL AND asset_type IS NOT NULL;

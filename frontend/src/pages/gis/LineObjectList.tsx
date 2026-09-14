@@ -41,6 +41,7 @@ import {
   spaceSm,
   drawerTitleStyle,
   drawerFooterStyle,
+  DRAWER_WIDTH,
   primaryButtonStyle,
   outlineButtonStyle,
   surfacePage,
@@ -623,7 +624,7 @@ export default function LineObjectList() {
 
         {/* ── Create AppDrawer ─────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới danh mục đối tượng đường</span>}
@@ -666,7 +667,7 @@ export default function LineObjectList() {
 
         {/* ── Edit AppDrawer ───────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={
@@ -727,7 +728,7 @@ export default function LineObjectList() {
 
         {/* ── View Detail AppDrawer ────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={

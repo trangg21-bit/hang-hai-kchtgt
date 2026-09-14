@@ -157,6 +157,8 @@ export interface NavigationChannelResponse {
   updatedAt?: string; // #48
   createdBy?: string;
   updatedBy?: string; // #49
+  deletedAt?: string;
+  deletedBy?: string;
   // #58-#71 — read-only, lấy từ module liên quan (không nhập trong F-038)
   relatedInfrastructureName?: string; // #58
   relatedInfrastructureType?: string; // #59

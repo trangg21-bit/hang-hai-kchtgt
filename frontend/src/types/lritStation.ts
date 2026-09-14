@@ -58,35 +58,35 @@ export interface LritStationItem {
 }
 
 export interface CreateLritStationRequest {
-  orgUnitId?: string;
-  operatingOrgId?: string;
-  provinceId?: number;
-  code?: string;
+  orgUnitId?: string | null;
+  operatingOrgId?: string | null;
+  provinceId?: number | null;
+  code?: string | null;
   name: string;
-  locationAddress?: string;
-  conditionStatus?: string;
-  terminalId?: string;
-  imoNumber?: string;
-  reportingInterval?: number;
-  antennaHeight?: number;
-  powerOutput?: number;
-  antennaType?: string;
-  dataFormat?: string;
-  communicationChannel?: string;
-  coverageArea?: string;
-  servicesProvided?: string;
-  services?: string[];
-  description?: string;
-  contactPerson?: string;
-  contactPhone?: string;
-  geometryType?: string;
-  symbolId?: string;
+  locationAddress?: string | null;
+  conditionStatus?: string | null;
+  terminalId?: string | null;
+  imoNumber?: string | null;
+  reportingInterval?: number | null;
+  antennaHeight?: number | null;
+  powerOutput?: number | null;
+  antennaType?: string | null;
+  dataFormat?: string | null;
+  communicationChannel?: string | null;
+  coverageArea?: string | null;
+  servicesProvided?: string | null;
+  services?: string[] | null;
+  description?: string | null;
+  contactPerson?: string | null;
+  contactPhone?: string | null;
+  geometryType?: string | null;
+  symbolId?: string | null;
   symbol?: string;
-  coordinateSystem?: string;
-  displayRule?: string;
-  latitude?: number;
-  longitude?: number;
-  coordinates?: string;
+  coordinateSystem?: string | null;
+  displayRule?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  coordinates?: string | null;
 }
 
 export type UpdateLritStationRequest = CreateLritStationRequest;

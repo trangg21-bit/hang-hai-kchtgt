@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Button, Modal, Input, Select, DatePicker,
-  Space, Typography, Form, Drawer,
+  Space, Form, Drawer,
 } from 'antd';
 import {
   HistoryOutlined,
@@ -16,12 +16,11 @@ import {
 } from '../../services/portService';
 import type { DaiTtdh } from '../../types/port';
 import { AppDrawer } from '../../components/shared/AppDrawer';
-import { organizationService } from '../../services/organizationService';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { userService } from '../../services/userService';
-import type { Organization } from '../../services/organizationService';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
@@ -33,7 +32,7 @@ import DaiTtdhForm, { DAI_TTDH_STATION_LEVEL_OPTIONS, DAI_TTDH_SERVICES_OPTIONS 
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import DaiTtdhDetailContent from './DaiTtdhDetailContent';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import * as themeTokenChk from '../../themetokenchk';
@@ -48,16 +47,13 @@ import {
   textTertiary,
   borderDefault,
   fontSizeLg,
-  fontSizeSm,
-  fontWeightMedium,
   fontWeightBold,
   radiusPill,
   spaceMd,
   spaceSm,
-  spaceXs,
   spaceXl,
   spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
+  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, DRAWER_WIDTH,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   icons, statusBadgeStyle,
   cellTitleStyle, cellSubtitleStyle,
@@ -72,18 +68,13 @@ const fontSizeMd = 13.5;
 // ── Constants ────────────────────────────────────────────────────────
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -96,10 +87,11 @@ const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
+  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -110,6 +102,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  ARCHIVED: 'ARCHIVED',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
@@ -315,19 +308,13 @@ function histVal(
     normKey === 'trang thai phe duyet'
   ) {
     const m: Record<string, string> = {
-      NHAP: 'Lưu tạm',
       DRAFT: 'Lưu tạm',
-      CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
       PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      APPROVED_LEVEL2: 'Chờ phê duyệt cấp cục',
-      DA_PHE_DUYET: 'Đã phê duyệt',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
       APPROVED: 'Đã phê duyệt',
-      TU_CHOI: 'Từ chối cấp Cảng vụ/Chi cục',
-      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-      REJECTED_LEVEL2: 'Từ chối cấp cục',
+      REJECTED_LEVEL2: 'Từ chối cấp Cục',
+      ARCHIVED: 'Đã xóa',
     };
     return m[trimmedVal.toUpperCase()] || trimmedVal;
   }
@@ -651,9 +638,14 @@ export default function DaiTtdhListPage() {
         ),
       );
       const c: Record<string, number> = {};
+      let childSum = 0;
       rs.forEach((r, i) => {
-        c[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0;
+        const k = TAB_STATUS_LIST[i]?.key || 'all';
+        const cnt = r.status === 'fulfilled' ? r.value.total : 0;
+        c[k] = cnt;
+        if (k !== 'all') childSum += cnt;
       });
+      c['all'] = childSum;
       setTabCounts(c);
     } catch { /* ignore */ }
   }, []);
@@ -1325,8 +1317,10 @@ export default function DaiTtdhListPage() {
         width: 280,
         ellipsis: false,
         sortable: true,
-        render: (v: string) => {
-          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
+        render: (v: string, record: any) => {
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record?.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
+          const eff = isArchived ? 'ARCHIVED' : v;
+          const s = eff && (APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         },
       },
@@ -1541,7 +1535,7 @@ export default function DaiTtdhListPage() {
           {...drawerProps}
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           title={
             <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
               {editDaiTtdhId ? 'Chỉnh sửa thông tin Đài TTDH' : 'Thêm mới Đài TTDH'}
@@ -1651,8 +1645,8 @@ export default function DaiTtdhListPage() {
           {...drawerProps}
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
-          size={1000}
-          width="min(1000px, 96vw)"
+          size={undefined}
+          width={DRAWER_WIDTH}
           title={<span style={drawerTitleStyle}>Chi tiết đài TTDH{detailRecord ? ` - ${detailRecord.daiTtdhName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={closeDetailDrawer}
@@ -1804,7 +1798,7 @@ export default function DaiTtdhListPage() {
 
         {/* ── History Drawer (timeline theo chuẩn quản lý Cảng biển) ── */}
         <AppDrawer
-          width="min(880px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
           mask

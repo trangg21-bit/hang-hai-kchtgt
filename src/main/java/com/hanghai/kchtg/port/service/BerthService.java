@@ -36,7 +36,6 @@ import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -526,6 +525,7 @@ public class BerthService {
                 .build();
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         berthRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -593,7 +593,7 @@ public class BerthService {
                 .channelDepth(e.getChannelDepth())
                 .operationalFunction(e.getOperationalFunction())
                 .operationalStatus(e.getOperationalStatus())
-                .approvalStatus(e.getApprovalStatus())
+                .approvalStatus(e.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : e.getApprovalStatus())
                 .orgUnitId(e.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
@@ -620,6 +620,7 @@ public class BerthService {
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                .deletedAt(e.getDeletedAt()).deletedBy(e.getDeletedBy())
                 // Two-level approval fields
                 .activityStatus(e.getActivityStatus())
                 .submittedForApprovalAt(e.getSubmittedForApprovalAt())

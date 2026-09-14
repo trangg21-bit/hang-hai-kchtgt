@@ -168,35 +168,38 @@ public class DaiTtdhService {
         //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
         //     entity.setSecurityLevel(request.getSecurityLevel());
         // }
-        if (request.getDaiTtdhName() != null)
+        if (request.isFieldPresent("daiTtdhName") || request.getDaiTtdhName() != null)
             entity.setDaiTtdhName(request.getDaiTtdhName());
-        if (request.getOrgUnitId() != null) {
+        if (request.isFieldPresent("orgUnitId") || request.getOrgUnitId() != null) {
+            if (request.getOrgUnitId() != null) {
             orgUnitScopeService.requireOrganizationInScope(request.getOrgUnitId());
+            }
             entity.setOrgUnitId(request.getOrgUnitId());
         }
-        if (request.getOperatingUnitId() != null)
+        if (request.isFieldPresent("operatingUnitId") || request.getOperatingUnitId() != null)
             entity.setOperatingUnitId(request.getOperatingUnitId());
-        if (request.getStationLevel() != null)
+        if (request.isFieldPresent("stationLevel") || request.getStationLevel() != null)
             entity.setStationLevel(request.getStationLevel());
-        if (request.getProvinceId() != null)
+        if (request.isFieldPresent("provinceId") || request.getProvinceId() != null)
             entity.setProvinceId(request.getProvinceId());
-        if (request.getDetailedLocation() != null)
+        if (request.isFieldPresent("detailedLocation") || request.getDetailedLocation() != null)
             entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getOperationalStatus() != null)
+        if (request.isFieldPresent("operationalStatus") || request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getCoverageArea() != null)
+        if (request.isFieldPresent("coverageArea") || request.getCoverageArea() != null)
             entity.setCoverageArea(request.getCoverageArea());
-        if (request.getServicesProvided() != null)
+        if (request.isFieldPresent("servicesProvided") || request.getServicesProvided() != null)
             entity.setServicesProvided(request.getServicesProvided());
-        if (request.getRemarks() != null)
+        if (request.isFieldPresent("remarks") || request.getRemarks() != null)
             entity.setRemarks(request.getRemarks());
-        entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null) {
+        if (request.isFieldPresent("mapSymbolId") || request.getMapSymbolId() != null)
+            entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.isFieldPresent("coordinateSystem") || request.getCoordinateSystem() != null) {
             entity.setCoordinateSystem(request.getCoordinateSystem());
         } else if (request.getGeometryType() != null && entity.getCoordinateSystem() == null) {
             entity.setCoordinateSystem(1);
         }
-        if (request.getDisplayRule() != null) {
+        if (request.isFieldPresent("displayRule") || request.getDisplayRule() != null) {
             entity.setDisplayRule(request.getDisplayRule());
         } else if (request.getGeometryType() != null && entity.getDisplayRule() == null) {
             entity.setDisplayRule("Độ, phút, giây (DMS)");
@@ -227,8 +230,14 @@ public class DaiTtdhService {
         }
 
         DaiTtdh saved = daiTtdhRepository.save(entity);
-        persistGis(saved, request.getGeometryType(), coordinates,
-                request.getLongitude(), request.getLatitude());
+        boolean gisProvided = request.isFieldPresent("geometryType")
+                || request.isFieldPresent("coordinates")
+                || request.isFieldPresent("latitude")
+                || request.isFieldPresent("longitude");
+        if (gisProvided) {
+            persistGis(saved, request.getGeometryType(), coordinates,
+                    request.getLongitude(), request.getLatitude());
+        }
 
         // Lịch sử thay đổi (chuẩn Cảng biển / Bến cảng):
         // Chỉ ghi nhận biến động trường khi bản ghi ĐÃ ĐƯỢC PHÊ DUYỆT
@@ -302,6 +311,7 @@ public class DaiTtdhService {
             throw new IllegalArgumentException("Chỉ được xóa đài TTDH ở trạng thái Nháp");
         }
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         daiTtdhRepository.save(entity);
         // Không ghi lịch sử khi xóa bản ghi Nháp (chuẩn Cảng biển / Bến cảng / Cầu cảng).
         if (entity.getSpatialId() != null) {
@@ -630,7 +640,7 @@ public class DaiTtdhService {
                 .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 .coverageArea(entity.getCoverageArea())
                 .servicesProvided(entity.getServicesProvided())
                 .remarks(entity.getRemarks())
@@ -650,6 +660,8 @@ public class DaiTtdhService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .build();
 
         if (entity.getSpatialId() != null) {

@@ -438,12 +438,14 @@ public class CoastalStationInmarsatService {
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
-        if (request.getOrgUnitId() != null) {
-            validateAllowedOrgUnit(request.getOrgUnitId());
+        if (request.isFieldPresent("orgUnitId") || request.getOrgUnitId() != null) {
+            if (request.getOrgUnitId() != null) {
+                validateAllowedOrgUnit(request.getOrgUnitId());
+            }
             entity.setOrgUnitId(request.getOrgUnitId());
         }
 
-        if (request.getOperatingOrgId() != null) {
+        if (request.isFieldPresent("operatingOrgId") || request.getOperatingOrgId() != null) {
             entity.setOperatingOrgId(request.getOperatingOrgId());
         }
 
@@ -451,46 +453,48 @@ public class CoastalStationInmarsatService {
             entity.setName(request.getEffectiveName());
         }
 
-        if (request.getProvinceId() != null) {
+        if (request.isFieldPresent("provinceId") || request.getProvinceId() != null) {
             entity.setProvinceId(request.getProvinceId());
         }
 
         String effectiveLoc = request.getLocationAddress() != null && !request.getLocationAddress().isBlank()
                 ? request.getLocationAddress().trim()
                 : (request.getLocationDetail() != null ? request.getLocationDetail().trim() : null);
-        if (effectiveLoc != null) {
+        if (request.isFieldPresent("locationAddress") || request.isFieldPresent("locationDetail") || effectiveLoc != null) {
             entity.setLocationAddress(effectiveLoc);
         }
-        if (request.getConditionStatus() != null)
+        if (request.isFieldPresent("conditionStatus") || request.getConditionStatus() != null)
             entity.setConditionStatus(request.getConditionStatus());
 
-        if (request.getCoverageArea() != null) {
+        if (request.isFieldPresent("coverageArea") || request.isFieldPresent("coverageZone") || request.getCoverageArea() != null || request.getCoverageZone() != null) {
             entity.setCoverageArea(request.getCoverageArea());
-        } else if (request.getCoverageZone() != null) {
-            entity.setCoverageArea(request.getCoverageZone());
+            if (request.getCoverageArea() == null) {
+                entity.setCoverageArea(request.getCoverageZone());
+            }
         }
-        if (request.getServices() != null)
+        if (request.isFieldPresent("services") || request.getServices() != null)
             entity.setServices(request.getServices());
-        if (request.getFrequency() != null)
+        if (request.isFieldPresent("frequency") || request.getFrequency() != null)
             entity.setFrequency(request.getFrequency());
-        if (request.getNotes() != null) {
+        if (request.isFieldPresent("notes") || request.isFieldPresent("description") || request.getNotes() != null) {
             entity.setNotes(request.getNotes());
-        } else if (request.getDescription() != null) {
-            entity.setNotes(request.getDescription());
+            if (request.getNotes() == null) {
+                entity.setNotes(request.getDescription());
+            }
         }
 
-        if (request.getSpatialId() != null)
+        if (request.isFieldPresent("spatialId") || request.getSpatialId() != null)
             entity.setSpatialId(request.getSpatialId());
-        if (request.getSymbolId() != null || request.getSymbol() != null) {
+        if (request.isFieldPresent("symbolId") || request.isFieldPresent("symbol") || request.getSymbolId() != null || request.getSymbol() != null) {
             UUID resolvedSym = resolveSymbolId(request.getSymbolId(), request.getSymbol());
             entity.setSymbolId(resolvedSym);
         }
-        if (request.getLatitude() != null)
+        if (request.isFieldPresent("latitude") || request.getLatitude() != null)
             entity.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null)
+        if (request.isFieldPresent("longitude") || request.getLongitude() != null)
             entity.setLongitude(request.getLongitude());
 
-        if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
+        if (request.isFieldPresent("coordinates")) {
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     entity.getSpatialId(),
                     "Đài Inmarsat " + entity.getName(),
@@ -1101,9 +1105,10 @@ public class CoastalStationInmarsatService {
             return "—";
         return switch (status) {
             case OPERATIONAL -> "Đang hoạt động";
-            case STOPPED -> "Dừng hoạt động";
+            case STOPPED, SUSPENDED -> "Dừng hoạt động";
             case MAINTENANCE -> "Đang bảo trì";
-            case UNDER_CONSTRUCTION -> "Đang xây dựng";
+            case UNDER_CONSTRUCTION, NOT_YET_OPERATIONAL -> "Đang xây dựng";
+            default -> "Đang hoạt động";
         };
     }
 }

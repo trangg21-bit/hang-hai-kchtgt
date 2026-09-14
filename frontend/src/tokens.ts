@@ -578,6 +578,10 @@ export const paginationSizeSelectStyle: React.CSSProperties = {
 
 // --- 5.5 Drawer ---
 
+export const DRAWER_WIDTH = 'min(1000px, 96vw)';
+export const DRAWER_FORM_WIDTH = DRAWER_WIDTH;
+export const DRAWER_HISTORY_WIDTH = DRAWER_WIDTH;
+
 /** Props chuẩn cho Drawer CRUD: size 50% màn hình, right, không nút X mặc định */
 export const drawerProps = {
   size: '50%' as const,

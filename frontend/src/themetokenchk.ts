@@ -294,10 +294,11 @@ export const DRAWER_TABLE_SCROLL_Y = {
 } as const;
 
 /**
- * Chiều rộng chuẩn duy nhất cho toàn bộ Drawer Thêm mới, Sửa, Biến động, Xem chi tiết trên toàn hệ thống (1000px).
+ * Chiều rộng chuẩn duy nhất cho toàn bộ Drawer Thêm mới, Sửa, Biến động, Xem chi tiết, Lịch sử trên toàn hệ thống (1000px / 96vw).
  */
-export const DRAWER_WIDTH = typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000;
+export const DRAWER_WIDTH = 'min(1000px, 96vw)';
 export const DRAWER_FORM_WIDTH = DRAWER_WIDTH;
+export const DRAWER_HISTORY_WIDTH = DRAWER_WIDTH;
 
 /**
  * Chiều rộng chuẩn duy nhất cho Modal Xác nhận Xóa trên toàn hệ thống (480px).
@@ -509,7 +510,7 @@ export const getConditionStatusColor = (status?: unknown): string => {
   return textSecondary;
 };
 
-/** Lấy nhãn tiếng Việt chuẩn cho Tình trạng hoạt động (ConditionStatus). */
+/** Lấy nhãn tiếng Việt chuẩn cho Tình trạng hoạt động (ConditionStatus) của KCHT thông thường. */
 export const getConditionStatusLabel = (status?: unknown): string => {
   if (status == null || status === '' || status === '—') return '';
   const s = String(status).trim();
@@ -534,11 +535,64 @@ export const getConditionStatusLabel = (status?: unknown): string => {
   return s;
 };
 
-/** Render Pill Badge chuẩn cho Tình trạng hoạt động (ConditionStatus). */
+/** Lấy nhãn tiếng Việt chuẩn 3 trạng thái dành riêng cho Hệ thống VTS & Trung tâm điều hành VTS (Khai thác/vận hành). */
+export const getVtsConditionStatusLabel = (status?: unknown): string => {
+  if (status == null || status === '' || status === '—') return '';
+  const s = String(status).trim();
+  const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+
+  if (norm.includes('chua khai thac') || norm.includes('chua hoat dong')
+    || norm === 'not_yet_operational' || norm === 'chua_khai_thac'
+    || norm.includes('xay dung') || norm === 'under_construction' || norm === '3' || norm === '4') {
+    return 'Chưa khai thác/vận hành';
+  }
+  if (norm.includes('dung khai thac') || norm.includes('dung hoat dong') || norm.includes('ngung')
+    || norm.includes('tam dung') || norm.includes('khong hoat dong')
+    || norm === 'suspended' || norm === 'stopped' || norm === 'not_operational'
+    || norm === 'dung_khai_thac' || norm === '1' || norm === '5') {
+    return 'Dừng khai thác/vận hành';
+  }
+  if (norm.includes('bao tri') || norm.includes('maintenance') || norm === '2') {
+    return 'Đang bảo trì';
+  }
+  if (norm.includes('dang khai thac') || norm.includes('dang hoat dong')
+    || norm === 'operational' || norm === 'dang_khai_thac' || norm === '0') {
+    return 'Đang khai thác/vận hành';
+  }
+  return 'Đang khai thác/vận hành';
+};
+
+/** Lấy màu sắc ngữ nghĩa chuẩn 3 trạng thái dành riêng cho Hệ thống VTS & Trung tâm điều hành VTS. */
+export const getVtsConditionStatusColor = (status?: unknown): string => {
+  if (status == null || status === '') return textSecondary;
+  const s = String(status).trim();
+  const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+
+  if (norm.includes('dung') || norm.includes('ngung') || norm.includes('suspended')
+    || norm === 'stopped' || norm === 'not_operational' || norm === '1' || norm === '5') {
+    return statusCritical;
+  }
+  if (norm.includes('chua') || norm === 'not_yet_operational' || norm === 'chua_khai_thac'
+    || norm.includes('xay dung') || norm === 'under_construction' || norm === '3' || norm === '4'
+    || norm.includes('bao tri') || norm.includes('maintenance') || norm === '2') {
+    return statusAttention;
+  }
+  return statusOperational;
+};
+
+/** Render Pill Badge chuẩn cho Tình trạng hoạt động (ConditionStatus) của KCHT thông thường. */
 export const renderConditionStatusPillBadge = (status?: unknown): React.ReactNode => {
   if (status == null || status === '' || status === '—') return '';
   const label = getConditionStatusLabel(status);
   const color = getConditionStatusColor(status);
+  return React.createElement('span', { style: statusBadgeStyle(color) }, label);
+};
+
+/** Render Pill Badge chuẩn 3 trạng thái dành riêng cho Hệ thống VTS. */
+export const renderVtsConditionStatusPillBadge = (status?: unknown): React.ReactNode => {
+  if (status == null || status === '' || status === '—') return '';
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
   return React.createElement('span', { style: statusBadgeStyle(color) }, label);
 };
 

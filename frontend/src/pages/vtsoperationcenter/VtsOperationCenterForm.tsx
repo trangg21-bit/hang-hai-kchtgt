@@ -31,10 +31,10 @@ import type {
   UpdateVtsOperationCenterRequest,
   VtsOperationCenterAttachment,
 } from '../../types/vtsOperationCenter';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y,
+  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
   requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg,
   fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
   textSecondary, textTertiary, borderDefault,
@@ -86,6 +86,10 @@ export interface VtsOperationCenterFormProps {
   onCancel?: () => void;
   onSuccess?: () => void;
 }
+
+const normalizeFormConditionStatus = (status?: unknown): ConditionStatus => {
+  return normalizeConditionStatus(status);
+};
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -469,7 +473,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           provinceId: initialData.provinceId != null ? String(initialData.provinceId) : undefined,
           detailedLocation: initialData.detailedLocation,
           coverage: initialData.coverage,
-          conditionStatus: initialData.conditionStatus || ConditionStatus.OPERATIONAL,
+          conditionStatus: normalizeFormConditionStatus(initialData.conditionStatus),
           note: initialData.note,
           geometryType: geom,
           symbolId: initialData.symbolId,
@@ -498,7 +502,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           provinceId: res.provinceId != null ? String(res.provinceId) : undefined,
           detailedLocation: res.detailedLocation,
           coverage: res.coverage,
-          conditionStatus: res.conditionStatus || ConditionStatus.OPERATIONAL,
+          conditionStatus: normalizeFormConditionStatus(res.conditionStatus),
           note: res.note,
           geometryType: geom,
           symbolId: res.symbolId,
@@ -647,22 +651,22 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         wkt = serializeCoordinatesToWkt(coordResult.validCoords, values.geometryType || 'POINT');
       }
 
-      const payload: CreateVtsOperationCenterRequest = {
+      const payload = {
         code: values.code?.trim(),
         name: values.name?.trim(),
         orgUnitId: values.orgUnitId,
-        portId: values.portId,
-        vtsSystemId: values.vtsSystemId,
+        portId: values.portId ?? null,
+        vtsSystemId: values.vtsSystemId ?? null,
         provinceId: values.provinceId != null ? Number(values.provinceId) : 1,
-        detailedLocation: values.detailedLocation?.trim(),
-        coverage: values.coverage?.trim(),
+        detailedLocation: values.detailedLocation?.trim() ?? null,
+        coverage: values.coverage?.trim() ?? null,
         conditionStatus: values.conditionStatus,
-        note: values.note?.trim(),
-        geometryType: values.geometryType || undefined,
-        symbolId: values.symbolId || undefined,
-        coordinates: wkt || undefined,
-        coordinateSystem: values.coordinateSystem || undefined,
-        displayRule: values.displayRule || undefined,
+        note: values.note?.trim() ?? null,
+        geometryType: values.geometryType ?? null,
+        symbolId: values.symbolId ?? null,
+        coordinates: wkt ?? null,
+        coordinateSystem: values.coordinateSystem ?? null,
+        displayRule: values.displayRule ?? null,
       };
 
       if (isCreateMode) {
@@ -755,8 +759,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     <AppDrawer
       rootClassName="vts-drawer-scope vts-opcenter-drawer-scope berth-drawer-scope"
       className="vts-drawer-scope vts-opcenter-drawer-scope berth-drawer-scope"
-      style={{ maxWidth: '96vw' }}
-      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
+      width={DRAWER_WIDTH}
       open={Boolean(open)}
       onClose={onCancel || (() => {})}
       styles={{
@@ -917,10 +920,18 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên trung tâm điều hành VTS</span>}
                               name="name"
-                              rules={[{ required: true, message: 'Vui lòng nhập tên trung tâm điều hành VTS' }]}
+                              rules={[{ required: true, message: 'Vui lòng nhập tên trung tâm điều hành VTS', whitespace: true }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập tên trung tâm điều hành VTS" maxLength={255} showCount style={inputStyle} />
+                              <Input
+                                placeholder="Nhập tên trung tâm điều hành VTS"
+                                maxLength={255}
+                                showCount
+                                style={inputStyle}
+                                onBlur={(e) => {
+                                  form.setFieldValue('name', e.target.value.trim());
+                                }}
+                              />
                             </Form.Item>
                           </Col>
 

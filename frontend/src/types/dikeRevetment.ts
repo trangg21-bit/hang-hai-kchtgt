@@ -25,7 +25,6 @@ export const DIKE_REVETMENT_STATUS_MAP: Record<string, { label: string }> = {
   APPROVED_LEVEL2: { label: 'Đã duyệt' },
   REJECTED: { label: 'Từ chối' },
   ARCHIVED: { label: 'Đã xóa' },
-  DELETED: { label: 'Đã xóa' },
 };
 
 export const CONDITION_STATUS_MAP: Record<string, { label: string }> = {
@@ -193,5 +192,4 @@ export const DIKE_REVETMENT_STATUS_LABELS: Record<string, string> = {
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp cục',
   ARCHIVED: 'Đã xóa',
-  DELETED: 'Đã xóa',
 };

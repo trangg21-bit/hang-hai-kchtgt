@@ -3,8 +3,6 @@ package com.hanghai.kchtg.port.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -23,7 +21,6 @@ import lombok.experimental.SuperBuilder;
  *
  * Entity types supported: ports, berths, piers, dry-ports, water-zones
  */
-import lombok.Builder;
 import lombok.experimental.FieldNameConstants;
 
 @Entity

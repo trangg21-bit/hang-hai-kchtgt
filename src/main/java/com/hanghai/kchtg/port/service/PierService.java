@@ -586,6 +586,7 @@ public class PierService {
                 .build();
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -639,7 +640,8 @@ public class PierService {
                 .length(e.getLength())
                 .designLoad(e.getDesignLoad()).pierType(e.getPierType())
                 .operationalFunction(e.getOperationalFunction())
-                .operationalStatus(e.getOperationalStatus()).approvalStatus(e.getApprovalStatus())
+                .operationalStatus(e.getOperationalStatus())
+                .approvalStatus(e.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : e.getApprovalStatus())
                 .orgUnitId(e.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
                 .spatialId(e.getSpatialId())
@@ -648,6 +650,7 @@ public class PierService {
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                .deletedAt(e.getDeletedAt()).deletedBy(e.getDeletedBy())
                 // ── Spec Group A: Basic info ──
                 .portId(e.getPortId())
                 .navigationChannelId(e.getNavigationChannelId())

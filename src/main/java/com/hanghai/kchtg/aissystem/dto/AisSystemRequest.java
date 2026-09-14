@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.aissystem.dto;
 
+import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -10,7 +11,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldNameConstants
-public class AisSystemRequest {
+public class AisSystemRequest extends FieldPresenceTrackedRequest {
 
 
 
@@ -84,4 +84,79 @@ public class AisSystemRequest {
     private String coordinates;
     private String symbolId;
     private ApprovalStatus approvalStatus;
+
+    public void setVtsOperationCenterId(UUID value) {
+        markFieldPresent("vtsOperationCenterId");
+        this.vtsOperationCenterId = value;
+    }
+
+    public void setRadarStationId(UUID value) {
+        markFieldPresent("radarStationId");
+        this.radarStationId = value;
+    }
+
+    public void setProvinceId(Integer value) {
+        markFieldPresent("provinceId");
+        this.provinceId = value;
+    }
+
+    public void setDetailedLocation(String value) {
+        markFieldPresent("detailedLocation");
+        this.detailedLocation = value;
+    }
+
+    public void setModel(String value) {
+        markFieldPresent("model");
+        this.model = value;
+    }
+
+    public void setSpecifications(String value) {
+        markFieldPresent("specifications");
+        this.specifications = value;
+    }
+
+    public void setManufacturer(String value) {
+        markFieldPresent("manufacturer");
+        this.manufacturer = value;
+    }
+
+    public void setCommissioningYear(Integer value) {
+        markFieldPresent("commissioningYear");
+        this.commissioningYear = value;
+    }
+
+    public void setMaintenanceInfo(String value) {
+        markFieldPresent("maintenanceInfo");
+        this.maintenanceInfo = value;
+    }
+
+    public void setNote(String value) {
+        markFieldPresent("note");
+        this.note = value;
+    }
+
+    public void setSpatialId(UUID value) {
+        markFieldPresent("spatialId");
+        this.spatialId = value;
+    }
+
+    public void setGeometryType(GisGeometryType value) {
+        markFieldPresent("geometryType");
+        this.geometryType = value;
+    }
+
+    public void setCoordinates(String value) {
+        markFieldPresent("coordinates");
+        this.coordinates = value;
+    }
+
+    public void setSymbolId(String value) {
+        markFieldPresent("symbolId");
+        this.symbolId = value;
+    }
+
+    public void setApprovalStatus(ApprovalStatus value) {
+        markFieldPresent("approvalStatus");
+        this.approvalStatus = value;
+    }
 }

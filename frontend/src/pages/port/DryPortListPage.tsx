@@ -26,7 +26,7 @@ import {
 } from './dry-port';
 import DryPortDetailContent from './DryPortDetailContent';
 import DryPortForm, { type DryPortFormHandle } from './DryPortForm';
-import { OrgUnitTreeSelect, FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect } from '../../components/org-unit';
 import { userService } from '../../services/userService';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
@@ -44,6 +44,8 @@ import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
   statusOperational,
   statusDraft,
+  statusAttention,
+  statusCritical,
   actionPrimary,
   textPrimary,
   textSecondary,
@@ -70,11 +72,34 @@ import {
   getRangePickerProps,
   formatUserDisplayName,
   isUuidString,
+  DRAWER_WIDTH,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
+
+const TAB_STATUS_LIST = [
+  { key: 'all', label: 'Tất cả', color: actionPrimary },
+  { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
+  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
+  { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
+  { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
+  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
+];
+
+const TAB_QUERY_MAP: Record<string, string | undefined> = {
+  all: undefined,
+  DRAFT: 'DRAFT',
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
+  APPROVED: 'APPROVED',
+  REJECTED_LEVEL1: 'REJECTED_LEVEL1',
+  REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  ARCHIVED: 'ARCHIVED',
+};
 
 /* ───────────────────────────────────────────────
    Helpers
@@ -118,16 +143,6 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
 
 function historyFieldName(field: string): string {
   return HISTORY_FIELD_LABELS[field] || field;
-}
-
-function normalizeHistoryKey(key: string): string {
-  return (key || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
 }
 
 function historyFieldValue(field: string, val: string | null | undefined, orgMap: Map<string, string>, symbolMap: Map<string, string>): string {
@@ -366,19 +381,23 @@ export default function DryPortListPage() {
   const fetchCounts = useCallback(async (orgId: string | undefined) => {
     try {
       const orgParam = orgId && orgId !== '__all__' ? orgId : undefined;
-      const [allRes, draftRes, appRes] = await Promise.allSettled([
-        fetchDryPortList({ page: 1, size: 1, orgUnitId: orgParam }),
-        fetchDryPortList({ page: 1, size: 1, approvalStatus: 'DRAFT', orgUnitId: orgParam }),
-        fetchDryPortList({ page: 1, size: 1, approvalStatus: 'APPROVED', orgUnitId: orgParam }),
-      ]);
-
-      const getVal = (r: PromiseSettledResult<{ total: number }>) => (r.status === 'fulfilled' ? r.value.total : 0);
-      const counts: Record<string, number> = {
-        all: getVal(allRes),
-        DRAFT: getVal(draftRes),
-        APPROVED: getVal(appRes),
-      };
-      setTabCounts(counts);
+      const rs = await Promise.allSettled(
+        TAB_STATUS_LIST.map((t) =>
+          t.key === 'all'
+            ? fetchDryPortList({ page: 1, size: 1, orgUnitId: orgParam })
+            : fetchDryPortList({ page: 1, size: 1, approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: orgParam })
+        )
+      );
+      const c: Record<string, number> = {};
+      let childSum = 0;
+      rs.forEach((r, i) => {
+        const k = TAB_STATUS_LIST[i]?.key || 'all';
+        const count = r.status === 'fulfilled' ? r.value.total : 0;
+        c[k] = count;
+        if (k !== 'all') childSum += count;
+      });
+      c['all'] = childSum;
+      setTabCounts(c);
     } catch { /* ignore */ }
   }, []);
 
@@ -408,7 +427,7 @@ export default function DryPortListPage() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         transportCorridor: filterTransportCorridor ? filterTransportCorridor.trim() : undefined,
-        approvalStatus: activeTab === 'all' ? undefined : activeTab,
+        approvalStatus: TAB_QUERY_MAP[activeTab],
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -726,11 +745,13 @@ export default function DryPortListPage() {
         sortable: true,
         sortOrder: sortField === 'approvalStatus' ? sortOrder : undefined,
         cellTitle: (record: DryPort) => {
-          const badge = trangThaiPheDuyetBadge(record.approvalStatus);
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || record.approvalStatus === 'ARCHIVED';
+          const badge = trangThaiPheDuyetBadge(isArchived ? 'ARCHIVED' : record.approvalStatus);
           return badge?.label || record.approvalStatus || '';
         },
-        render: (status: string) => {
-          const badge = trangThaiPheDuyetBadge(status);
+        render: (status: string, record: DryPort) => {
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || status === 'ARCHIVED' || status === 'DELETED';
+          const badge = trangThaiPheDuyetBadge(isArchived ? 'ARCHIVED' : status);
           return badge?.label ? <span style={badge.style}>{badge.label}</span> : null;
         },
       },
@@ -891,11 +912,13 @@ export default function DryPortListPage() {
         />
         <FilterTableLayout
           hideFilterToggle={true}
-          statusTabs={[
-            { key: 'all', label: 'Tất cả', count: tabCounts['all'] ?? total, color: actionPrimary, active: !activeTab || activeTab === 'all' },
-            { key: 'DRAFT', label: 'Lưu tạm', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeTab === 'DRAFT' },
-            { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeTab === 'APPROVED' },
-          ]}
+          statusTabs={TAB_STATUS_LIST.map((t) => ({
+            key: t.key,
+            label: t.label,
+            count: tabCounts[t.key] ?? 0,
+            color: t.color,
+            active: (activeTab || 'all') === t.key,
+          }))}
           onStatusTabChange={(key) => {
             setActiveTab(key);
             setPage(1);
@@ -1052,7 +1075,7 @@ export default function DryPortListPage() {
 
         {/* ── Detail Drawer ──────────────────────────────────────────── */}
         <AppDrawer
-          width="min(1000px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="dry-port-drawer-scope"
           className="dry-port-drawer-scope"
           title={<span style={drawerTitleStyle}>Chi tiết cảng cạn{detailRecord ? ` - ${detailRecord.dryPortName}` : ''}</span>}
@@ -1069,7 +1092,7 @@ export default function DryPortListPage() {
 
         {/* ── Create Drawer (3 buttons standard) ────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="dry-port-drawer-scope"
           className="dry-port-drawer-scope"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Cảng cạn</span>}
@@ -1122,7 +1145,7 @@ export default function DryPortListPage() {
 
         {/* ── Edit Drawer ────────────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="dry-port-drawer-scope"
           className="dry-port-drawer-scope"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editingName || 'Cảng cạn'}</span>}
@@ -1186,7 +1209,7 @@ export default function DryPortListPage() {
 
         {/* ── History Drawer ────────────────────────────────────────── */}
         <AppDrawer
-          width="min(880px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="dry-port-drawer-scope"
           className="dry-port-drawer-scope"
           mask

@@ -318,7 +318,6 @@ export default function ScadaSystemAssetOperationForm({
       tabs={tabs}
       actions={sidebarActions}
       onClose={onClose}
-      width={900}
     />
   );
 }

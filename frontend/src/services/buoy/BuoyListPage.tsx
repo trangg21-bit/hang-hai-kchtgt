@@ -55,7 +55,7 @@ import {
   textPrimary, textSecondary, textTertiary, borderDefault,
   fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField, radiusPill,
-  drawerTitleStyle, drawerFooterStyle,
+  drawerTitleStyle, drawerFooterStyle, DRAWER_WIDTH,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, icons,
   fontSizeSm,
@@ -1794,7 +1794,7 @@ export default function BuoyListPage() {
 
       {/* ── Create / Edit Drawer (Hợp nhất 1 Drawer chuẩn Cầu cảng / VTS CHK) ── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-drawer-scope"
         className="buoy-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingRecord ? `Chỉnh sửa thông tin phao, tiêu — ${editingRecord.name || ''}` : 'Thêm mới thông tin phao, tiêu'}</span>}
@@ -1923,7 +1923,7 @@ export default function BuoyListPage() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        width="min(1000px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-drawer-scope"
         className="buoy-drawer-scope"
         title={<span style={drawerTitleStyle}>
@@ -1954,7 +1954,7 @@ export default function BuoyListPage() {
 
       {/* ── History Drawer ─────────────────────────────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-drawer-scope"
         className="buoy-drawer-scope"
         title={

@@ -31,6 +31,8 @@ public class WaterZoneResponse {
     private UUID updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
     private UUID mapSymbolId;
     private UUID spatialId;
     private GisGeometryType geometryType;

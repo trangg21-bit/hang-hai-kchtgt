@@ -305,7 +305,7 @@ public class RadarStationService {
                             .approvalLevel(ApprovalLevel.LEVEL_2)
                             .status(InfrastructureHistoryStatus.UPDATED)
                             .approvedBy(updatedBy)
-                            .changedField(field)
+                            .changedField(fieldName)
                             .previousValue(formatDisplayValue(field, oldVal))
                             .newValue(formatDisplayValue(field, newVal))
                             .build());
@@ -538,7 +538,8 @@ public class RadarStationService {
         String codePattern = (code != null && !code.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(code) + "%"
                 : null;
-        boolean deletedOnly = "DELETED".equalsIgnoreCase(approvalStatusStr != null ? approvalStatusStr.trim() : null);
+        boolean deletedOnly = "ARCHIVED".equalsIgnoreCase(approvalStatusStr != null ? approvalStatusStr.trim() : null)
+                || "DELETED".equalsIgnoreCase(approvalStatusStr != null ? approvalStatusStr.trim() : null);
         ApprovalStatus statusEnum = (approvalStatusStr != null && !approvalStatusStr.trim().isEmpty() && !deletedOnly)
                 ? ApprovalStatus.fromString(approvalStatusStr)
                 : null;

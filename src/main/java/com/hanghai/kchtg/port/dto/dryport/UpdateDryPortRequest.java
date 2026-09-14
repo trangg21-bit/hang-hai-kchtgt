@@ -2,7 +2,6 @@ package com.hanghai.kchtg.port.dto.dryport;
 
 import java.util.UUID;
 
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;

@@ -82,6 +82,7 @@ import {
   outlineButtonStyle,
   requiredMarkStyle,
   drawerFooterStyle,
+  DRAWER_WIDTH,
   icons,
   statusBadgeStyle,
   cellTitleStyle,
@@ -1192,7 +1193,7 @@ export default function BuoyStationListPage() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        width="min(1000px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-station-drawer-scope"
         className="buoy-station-drawer-scope"
         title={<span style={drawerTitleStyle}>{detailRecord ? `Chi tiết thông tin nhà trạm quản lý vận hành phao, tiêu - ${detailRecord.name}` : 'Chi tiết thông tin nhà trạm quản lý vận hành phao, tiêu'}</span>}
@@ -1224,7 +1225,7 @@ export default function BuoyStationListPage() {
 
       {/* ── Buoy Detail Drawer (nested — đè lên chi tiết nhà trạm) ── */}
       <AppDrawer
-        width="min(950px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-station-drawer-scope"
         className="buoy-station-drawer-scope"
         title={<span style={drawerTitleStyle}>{viewBuoyRecord ? `Chi tiết phao tiêu - ${viewBuoyRecord.name}` : 'Chi tiết phao tiêu'}</span>}
@@ -1249,7 +1250,7 @@ export default function BuoyStationListPage() {
 
       {/* ── History Drawer ─────────────────────────────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-station-drawer-scope"
         className="buoy-station-drawer-scope"
         title={
@@ -1396,7 +1397,7 @@ export default function BuoyStationListPage() {
 
       {/* ── Create / Edit Drawer (Hợp nhất 1 Drawer chuẩn Cầu cảng / VTS CHK) ── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="buoy-station-drawer-scope"
         className="buoy-station-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editRecord ? `Chỉnh sửa thông tin nhà trạm quản lý vận hành phao, tiêu — ${editRecord.name || ''}` : 'Thêm mới thông tin nhà trạm quản lý vận hành phao, tiêu'}</span>}

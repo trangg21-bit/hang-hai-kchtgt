@@ -591,26 +591,26 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
 
       const payload: Record<string, unknown> = {
         orgUnitId: vals.orgUnitId,
-        operatingUnitId: vals.operatingUnitId || undefined,
+        operatingUnitId: vals.operatingUnitId ?? null,
         daiTtdhCode: vals.daiTtdhCode?.trim(),
         daiTtdhName: vals.daiTtdhName?.trim(),
         stationLevel: vals.stationLevel != null ? Number(vals.stationLevel) : undefined,
-        provinceId: provinceIndex && provinceIndex > 0 ? provinceIndex : undefined,
-        detailedLocation: vals.detailedLocation?.trim() || undefined,
-        operationalStatus: vals.operationalStatus || undefined,
-        coverageArea: vals.coverageArea?.trim() || undefined,
+        provinceId: provinceIndex && provinceIndex > 0 ? provinceIndex : null,
+        detailedLocation: vals.detailedLocation?.trim() ?? null,
+        operationalStatus: vals.operationalStatus ?? null,
+        coverageArea: vals.coverageArea?.trim() ?? null,
         servicesProvided: Array.isArray(vals.servicesProvided)
-          ? (vals.servicesProvided.length > 0 ? vals.servicesProvided.join(',') : undefined)
-          : (vals.servicesProvided || undefined),
-        remarks: vals.remarks?.trim() || undefined,
-        geometryType: vals.geometryType || undefined,
-        mapSymbolId: vals.mapSymbolId || undefined,
-        coordinateSystem: vals.coordinateSystem,
-        displayRule: vals.displayRule,
+          ? (vals.servicesProvided.length > 0 ? vals.servicesProvided.join(',') : null)
+          : (vals.servicesProvided ?? null),
+        remarks: vals.remarks?.trim() ?? null,
+        geometryType: vals.geometryType ?? null,
+        mapSymbolId: vals.mapSymbolId ?? null,
+        coordinateSystem: vals.coordinateSystem ?? null,
+        displayRule: vals.displayRule ?? null,
       };
-      (payload as any).latitude = coordsFormatted.length > 0 ? coordsFormatted[0].latitude : undefined;
-      (payload as any).longitude = coordsFormatted.length > 0 ? coordsFormatted[0].longitude : undefined;
-      (payload as any).coordinates = wktCoordinates || undefined;
+      (payload as any).latitude = coordsFormatted.length > 0 ? coordsFormatted[0].latitude : null;
+      (payload as any).longitude = coordsFormatted.length > 0 ? coordsFormatted[0].longitude : null;
+      (payload as any).coordinates = wktCoordinates ?? null;
 
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });

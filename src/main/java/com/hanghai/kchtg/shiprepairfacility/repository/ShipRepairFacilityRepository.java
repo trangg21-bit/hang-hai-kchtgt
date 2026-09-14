@@ -16,11 +16,16 @@ public interface ShipRepairFacilityRepository extends JpaRepository<ShipRepairFa
     List<ShipRepairFacility> findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT c FROM ShipRepairFacility c WHERE " +
-            "c.deletedAt IS NULL AND " +
+            "((:approvalStatus IS NULL AND c.deletedAt IS NULL AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (c.deletedAt IS NOT NULL OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            "  OR (c.deletedAt IS NULL AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
+            "      c.approvalStatus = :approvalStatus " +
+            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  )) " +
+            ") AND " +
             "(:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) AND " +
             "(CAST(:keyword AS string) IS NULL OR LOWER(c.facilityName) LIKE :keyword OR LOWER(c.address) LIKE :keyword) AND " +
             "(:provinceId IS NULL OR c.provinceId = :provinceId) AND " +
-            "(:approvalStatus IS NULL OR c.approvalStatus = :approvalStatus) AND " +
             "(:reviewStatus IS NULL OR c.approvalStatus = :reviewStatus)")
     List<ShipRepairFacility> search(@Param("orgUnitId") UUID orgUnitId,
                                     @Param("keyword") String keyword,

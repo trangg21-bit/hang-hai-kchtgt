@@ -74,14 +74,14 @@ class PermissionRoleServiceTest {
 
     @Test
     void inactiveGroupPermissionsAreNotEffective() {
-        User user = userWithPermission("vts:update");
+        User user = userWithPermission("port:update");
         UserGroup group = new UserGroup();
         group.setStatus(GroupStatus.INACTIVE);
         group.setPermissions(java.util.List.of("vts:read"));
         user.setGroups(java.util.List.of(group));
         when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
-        assertThat(permissionRoleService.checkPermission(userId, "vts", "update")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "port", "update")).isTrue();
         assertThat(permissionRoleService.checkPermission(userId, "vts", "read")).isFalse();
     }
 

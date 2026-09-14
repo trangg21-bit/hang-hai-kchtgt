@@ -27,7 +27,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -277,6 +279,20 @@ class VtsSystemControllerTest {
         assertNotNull(req);
         assertEquals("VTS26-14", req.getCode());
         assertEquals(1, req.getZones().size());
+    }
+
+    @Test
+    void testJsonDeserialization_TracksExplicitNullForClearableFields() throws Exception {
+        String json = "{\"portId\":null,\"operationStartDate\":null}";
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+
+        VtsSystemUpdateRequest req = mapper.readValue(json, VtsSystemUpdateRequest.class);
+
+        assertNull(req.getPortId());
+        assertTrue(req.isPortIdPresent());
+        assertNull(req.getOperationStartDate());
+        assertTrue(req.isOperationStartDatePresent());
     }
 
     private Authentication mockAuth() {

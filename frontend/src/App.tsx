@@ -23,7 +23,6 @@ const GISChartView = lazy(() => import('./pages/gis/GISChartView'));
 const S63PermitsPage = lazy(() => import('./pages/gis/S63PermitsPage'));
 const LoginPage = lazy(() => import('./pages/Login'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
-const ReportList = lazy(() => import('./pages/reports/ReportList'));
 const ReportViewer = lazy(() => import('./pages/reports/ReportViewer'));
 const Bcc157Form = lazy(() => import('./pages/reports/Bcc157Form'));
 const ConnectionList = lazy(() => import('./pages/connections/ConnectionList'));

@@ -33,6 +33,7 @@ import java.util.UUID;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 public class Berth extends BaseEntity implements ApprovableEntity {
 
     @Column(name = "berth_code", nullable = false, unique = true, length = 50)

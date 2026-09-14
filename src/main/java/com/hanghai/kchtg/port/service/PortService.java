@@ -32,7 +32,6 @@ import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -779,6 +778,7 @@ public class PortService {
         }
 
         entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         portRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -883,7 +883,7 @@ public class PortService {
                 .area(entity.getArea())
                 .maxVesselCapacity(entity.getMaxVesselCapacity())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 .orgUnitId(entity.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .portGroup(entity.getPortGroup())
                 .mapSymbolId(entity.getMapSymbolId())
@@ -893,6 +893,8 @@ public class PortService {
                 .updatedByName(updatedBy)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 // Extended fields
                 .detailedLocation(entity.getDetailedLocation())
                 .portClass(entity.getPortClass())

@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -49,11 +48,11 @@ public class VtsSystemController {
 
     @PreAuthorize("@auth.check(authentication, 'vts:create')")
     @PostMapping
-    public ResponseEntity<ApiResponse<VtsSystemResponse>> create(
+    public ResponseEntity<ApiResponse<VtsSystemMutationResponse>> create(
             @Valid @RequestBody VtsSystemCreateRequest request,
             Authentication authentication) {
         VtsSystemResponse response = service.create(request, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", VtsSystemMutationResponse.from(response)));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:create')")
@@ -179,12 +178,12 @@ public class VtsSystemController {
     @PreAuthorize("@auth.checkAny(authentication, 'vts:update', 'vts:approvec2')")
     @DataScope
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<VtsSystemResponse>> update(
+    public ResponseEntity<ApiResponse<VtsSystemMutationResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody VtsSystemUpdateRequest request,
             Authentication authentication) {
         VtsSystemResponse response = service.update(id, request, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", VtsSystemMutationResponse.from(response)));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:delete')")
@@ -200,33 +199,33 @@ public class VtsSystemController {
     @PreAuthorize("@auth.check(authentication, 'vts:update')")
     @DataScope
     @PostMapping("/{id}/submit")
-    public ResponseEntity<ApiResponse<VtsSystemResponse>> submit(
+    public ResponseEntity<ApiResponse<VtsSystemMutationResponse>> submit(
             @PathVariable UUID id,
             Authentication authentication) {
         VtsSystemResponse response = service.submit(id, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", VtsSystemMutationResponse.from(response)));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:approvec1')")
     @DataScope
     @PostMapping("/{id}/approve/c1")
-    public ResponseEntity<ApiResponse<VtsSystemResponse>> approveC1(
+    public ResponseEntity<ApiResponse<VtsSystemMutationResponse>> approveC1(
             @PathVariable UUID id,
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         VtsSystemResponse response = service.approveC1(id, request, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", VtsSystemMutationResponse.from(response)));
     }
 
     @PreAuthorize("@auth.check(authentication, 'vts:approvec2')")
     @DataScope
     @PostMapping("/{id}/approve/c2")
-    public ResponseEntity<ApiResponse<VtsSystemResponse>> approveC2(
+    public ResponseEntity<ApiResponse<VtsSystemMutationResponse>> approveC2(
             @PathVariable UUID id,
             @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         VtsSystemResponse response = service.approveC2(id, request, SecurityUtils.getCurrentUserId());
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", VtsSystemMutationResponse.from(response)));
     }
 
     /**

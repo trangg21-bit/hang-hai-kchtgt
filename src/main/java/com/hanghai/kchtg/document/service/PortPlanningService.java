@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 public class PortPlanningService {
 
     private final PortPlanningRepository portPlanningRepository;
+    @SuppressWarnings("unused")
     private final PlanningCategoryRepository planningCategoryRepository;
     private final PlanningFileRepository planningFileRepository;
     private final LookupLogRepository lookupLogRepository;
