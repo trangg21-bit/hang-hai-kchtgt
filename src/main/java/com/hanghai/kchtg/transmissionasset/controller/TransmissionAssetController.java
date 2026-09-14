@@ -128,11 +128,6 @@ public class TransmissionAssetController {
         return ResponseEntity.ok(ApiResponse.success("Tài sản HT truyền dẫn đã được xóa", null));
     }
 
-    @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
-    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", service.getHistory(id)));
-    }
 
     @GetMapping("/{id}/exploitations")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
