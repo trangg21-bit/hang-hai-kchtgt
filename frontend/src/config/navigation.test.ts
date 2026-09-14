@@ -568,24 +568,29 @@ describe('navigation.reportTree — 8 report categories & 49 report templates', 
     });
   });
 
-  it('disables all categories except bckcht and bcdl', () => {
+  it('disables all categories except active implemented groups (bckcht, bcdl, bcpttv, bcdn, bctt48, bccndb, bcthtn)', () => {
     const categories = reportGroup?.tree ?? [];
-    const bckchtNode = categories.find((c) => c.key === 'reports-bckcht');
-    expect(bckchtNode).toBeDefined();
-    expect(bckchtNode?.disabled).toBeFalsy();
-    bckchtNode?.children?.forEach((child) => {
-      expect(child.disabled).toBeFalsy();
+    const enabledKeys = [
+      'reports-bckcht',
+      'reports-bcdl',
+      'reports-bcpttv',
+      'reports-bcdn',
+      'reports-bctt48',
+      'reports-bccndb',
+      'reports-bcthtn',
+    ];
+
+    enabledKeys.forEach((key) => {
+      const node = categories.find((c) => c.key === key);
+      expect(node).toBeDefined();
+      expect(node?.disabled).toBeFalsy();
+      node?.children?.forEach((child) => {
+        expect(child.disabled).toBeFalsy();
+      });
     });
 
-    const bcdlNode = categories.find((c) => c.key === 'reports-bcdl');
-    expect(bcdlNode).toBeDefined();
-    expect(bcdlNode?.disabled).toBeFalsy();
-    bcdlNode?.children?.forEach((child) => {
-      expect(child.disabled).toBeFalsy();
-    });
-
-    const otherCategories = categories.filter((c) => c.key !== 'reports-bckcht' && c.key !== 'reports-bcdl');
-    expect(otherCategories.length).toBe(6);
+    const otherCategories = categories.filter((c) => !enabledKeys.includes(c.key));
+    expect(otherCategories.length).toBe(1);
     otherCategories.forEach((cat) => {
       expect(cat.disabled).toBe(true);
       cat.children?.forEach((child) => {

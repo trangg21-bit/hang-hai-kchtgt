@@ -4,6 +4,16 @@ export interface SharedMapView {
   zoom: number;
 }
 
+/**
+ * KCHT lines and polygons stay represented by their map symbol in the
+ * overview. Rendering their complete geometry earlier makes the national
+ * view unreadable and bypasses marker clustering.
+ */
+export const KCHT_GEOMETRY_MIN_ZOOM = 10;
+
+export const shouldRenderKchtGeometry = (zoom: number): boolean =>
+  Number.isFinite(zoom) && zoom >= KCHT_GEOMETRY_MIN_ZOOM;
+
 const isFiniteInRange = (value: number, min: number, max: number) =>
   Number.isFinite(value) && value >= min && value <= max;
 

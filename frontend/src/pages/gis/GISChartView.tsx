@@ -149,6 +149,7 @@ import {
   buildMapShareUrl,
   circleToPolygonCoordinates,
   parseSharedMapView,
+  shouldRenderKchtGeometry,
 } from '../../utils/mapInteraction';
 import {
   getKchtOperationalStatusText,
@@ -2302,6 +2303,8 @@ export default function GISChartView() {
   const searchMarkerRenderTimerRef = useRef<number | undefined>(undefined);
   const searchMarkerRenderFrameRef = useRef<number | undefined>(undefined);
   const searchMarkerIconCacheRef = useRef<Map<string, any>>(new Map());
+  const notifiedBulkSelectionRef = useRef('');
+  const renderSearchMarkersRef = useRef<() => void>();
   const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
   const fetchPlanningFeaturesRef = useRef<() => Promise<void>>();
   const moveEndTimeoutRef = useRef<any>(null);
@@ -3289,6 +3292,10 @@ export default function GISChartView() {
         }
       }, 300);
     });
+    const handleZoomEnd = () => {
+      renderSearchMarkersRef.current?.();
+    };
+    map.on('zoomend', handleZoomEnd);
 
     // Feature group for vector charts
     geoJsonGroupRef.current = L.featureGroup().addTo(map);
@@ -3532,6 +3539,7 @@ export default function GISChartView() {
         mapRef.current.off('click', handleMapClick);
         mapRef.current.off('contextmenu', handleMapContextMenu);
         mapRef.current.off('moveend');
+        mapRef.current.off('zoomend', handleZoomEnd);
         mapRef.current.remove();
         mapRef.current = null;
         baseMapLayerRef.current = null;
@@ -3718,9 +3726,16 @@ export default function GISChartView() {
     searchKchtHitTargetsRef.current = [];
 
     const selectedRecords = selectedInfrastructureResults;
-    if (selectedRecords.length === 0) return;
+    if (selectedRecords.length === 0) {
+      notifiedBulkSelectionRef.current = '';
+      return;
+    }
+    const renderCompleteGeometry = shouldRenderKchtGeometry(mapRef.current.getZoom());
     const shouldNotifyBulkLoad = selectedRecords.length > 1
       && selectedRecords.length === infrastructureResults.length;
+    const bulkSelectionKey = shouldNotifyBulkLoad
+      ? selectedRecords.map((record) => String(record.id)).join('|')
+      : '';
 
     const buildRecordLayers = (record: KchtGisSearchResult) => {
       const recordLayers: any[] = [];
@@ -3764,11 +3779,14 @@ export default function GISChartView() {
           }
         };
 
+        const interactionGeometry: MapHitGeometry = renderCompleteGeometry || !isVectorGeometry
+          ? hitGeometry
+          : { type: 'Point', coordinates: renderCenter };
         searchKchtHitTargetsRef.current.push({
           key: `search:${geometryType}:${record.id}`,
           label: record.name || record.code || record.kchtTypeLabel || 'Kết cấu hạ tầng',
           source: 'search',
-          geometry: hitGeometry,
+          geometry: interactionGeometry,
           openPopup: openPopupAt,
         });
 
@@ -3829,27 +3847,25 @@ export default function GISChartView() {
           }
           searchMarkerIconCacheRef.current.set(iconCacheKey, markerIcon);
           
-          // Only true point geometries receive a marker. Lines and polygons use
-          // their own geometry as the click target at every zoom level.
-          if (!isVectorGeometry) {
-            const marker = L.marker([lat, lon], {
-              icon: markerIcon,
-              pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
-              bubblingMouseEvents: false,
-              pmIgnore: true,
-            });
-            marker.on('click', (event: any) => {
-              L.DomEvent.stopPropagation(event.originalEvent || event);
-              if (mapFeatureClickHandlerRef.current) {
-                void mapFeatureClickHandlerRef.current(event.latlng);
-              }
-            });
-            recordLayers.push(marker);
-          }
+          // Every record keeps a representative symbol so the overview can be
+          // clustered without drawing country-scale vector geometry.
+          const marker = L.marker([lat, lon], {
+            icon: markerIcon,
+            pane: GIS_LAYER_INTERACTION_POLICY.kchtMarkerPane,
+            bubblingMouseEvents: false,
+            pmIgnore: true,
+          });
+          marker.on('click', (event: any) => {
+            L.DomEvent.stopPropagation(event.originalEvent || event);
+            if (mapFeatureClickHandlerRef.current) {
+              void mapFeatureClickHandlerRef.current(event.latlng);
+            }
+          });
+          recordLayers.push(marker);
 
           // Visual paths never own click behavior; the shared dispatcher resolves
           // every KCHT and planning candidate at the selected screen point.
-          if (hitGeometry.type === 'LineString') {
+          if (renderCompleteGeometry && hitGeometry.type === 'LineString') {
             const shapeCoordinates = (hitGeometry.coordinates as Array<[number, number]>).map(
               ([longitude, latitude]) => [latitude, longitude],
             );
@@ -3862,7 +3878,7 @@ export default function GISChartView() {
               pmIgnore: true,
             });
             recordLayers.push(shapeLayer);
-          } else if (hitGeometry.type === 'Polygon') {
+          } else if (renderCompleteGeometry && hitGeometry.type === 'Polygon') {
             const shapeCoordinates = (hitGeometry.coordinates as Array<Array<[number, number]>>).map((ring) => ring.map(
               ([longitude, latitude]) => [latitude, longitude],
             ));
@@ -3919,13 +3935,18 @@ export default function GISChartView() {
       searchMarkerRenderFrameRef.current = undefined;
       const endTime = performance.now();
       console.log(`[Map] Draw completed in ${(endTime - startTime).toFixed(2)} ms. Rendered ${selectedRecords.length} records (${renderedLayerCount} main layers).`);
-      if (shouldNotifyBulkLoad) {
+      if (shouldNotifyBulkLoad && notifiedBulkSelectionRef.current !== bulkSelectionKey) {
+        notifiedBulkSelectionRef.current = bulkSelectionKey;
         toast.success(`Đã tải xong ${renderedRecordCount} kết cấu hạ tầng trên bản đồ.`);
       }
     };
 
     searchMarkerRenderFrameRef.current = window.requestAnimationFrame(addNextBatch);
   }, [infrastructureResults.length, selectedInfrastructureResults, symbolsByCode, symbolsById]);
+
+  useEffect(() => {
+    renderSearchMarkersRef.current = renderSearchMarkers;
+  }, [renderSearchMarkers]);
 
   // Trigger search result rendering whenever data or selections change
   useEffect(() => {
