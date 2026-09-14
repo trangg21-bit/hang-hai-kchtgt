@@ -1,24 +1,43 @@
 {
     "editor.formatOnSave": false,
     "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "never",
-        "source.organizeImports": "never"
+        "source.organizeImports": "always",
+        "source.removeUnusedImports": "always",
+        "source.fixAll.eslint": "explicit"
     },
     "files.eol": "\n",
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "[typescript]": {
-        "editor.formatOnSave": false
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
     },
     "[typescriptreact]": {
-        "editor.formatOnSave": false
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
     },
     "[javascript]": {
-        "editor.formatOnSave": false
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
     },
     "[javascriptreact]": {
-        "editor.formatOnSave": false
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
     },
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "javascript.updateImportsOnFileMove.enabled": "always",
     "[java]": {
         "editor.formatOnSave": false
     },

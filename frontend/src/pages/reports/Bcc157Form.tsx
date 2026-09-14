@@ -90,13 +90,13 @@ const TABLE_ROWS: TableRow[] = [
 ];
 
 export interface Bcc157FormProps {
-  open: boolean;
+  open?: boolean;
   reportId?: string;
   onClose?: () => void;
   onSaved?: () => void;
 }
 
-export default function Bcc157Form({ open, reportId, onClose, onSaved }: Bcc157FormProps) {
+export default function Bcc157Form({ open = true, reportId, onClose, onSaved }: Bcc157FormProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

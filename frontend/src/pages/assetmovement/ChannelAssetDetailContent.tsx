@@ -356,7 +356,8 @@ export default function ChannelAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
@@ -446,8 +447,9 @@ export default function ChannelAssetDetailContent({
         ],
       },
       {
-        key: 'exploit',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        key: 'exploitation',
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             {exploitationRows.length === 0 ? (
@@ -554,8 +556,9 @@ export default function ChannelAssetDetailContent({
         ),
       },
       {
-        key: 'history',
-        label: `Lịch sử thay đổi nguyên giá (${increaseRows.length + decreaseRows.length})`,
+        key: 'adjustments',
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: increaseRows.length + decreaseRows.length,
         customContent: () => {
           const totalHistory = increaseRows.length + decreaseRows.length;
           return (

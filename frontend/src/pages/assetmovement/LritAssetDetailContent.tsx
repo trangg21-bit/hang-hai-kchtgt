@@ -839,7 +839,8 @@ export default function LritAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
         icon: <SlidersOutlined />,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
@@ -852,7 +853,8 @@ export default function LritAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         icon: <RocketOutlined />,
         customContent: () => (
           <div
@@ -978,7 +980,8 @@ export default function LritAssetDetailContent({
       },
       {
         key: 'adjustments',
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>

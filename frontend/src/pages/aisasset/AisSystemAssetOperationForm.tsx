@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import type { FormInstance } from "antd";
 import type { Dayjs } from "dayjs";
 import {
@@ -20,6 +20,7 @@ import {
 export type OperationMode = "exploit" | "increase" | "decrease";
 
 export interface OperationValues {
+  [key: string]: unknown;
   operatorOrgUnitId?: string;
   unitOfMeasure?: string;
   quantity?: number;

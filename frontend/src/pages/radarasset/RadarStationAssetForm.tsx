@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Form, Select, InputNumber } from "antd";
 import type { FormInstance } from "antd";
 import type { Dayjs } from "dayjs";
@@ -387,8 +387,6 @@ export default function RadarStationAssetForm({
         customContent: (
           <div style={{ padding: "8px 0" }}>
             <InfrastructureAttachmentTab
-              refType="RADAR_STATION_ASSET"
-              refId={selected?.id || "new"}
               attachments={attachments}
               readonly={false}
               onUpload={onUploadAttachment}

@@ -105,26 +105,18 @@ const sectionTitleStyle: React.CSSProperties = {
 
 const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: "Lưu tạm" },
-  NHAP: { color: statusDraft, label: "Lưu tạm" },
   PENDING_APPROVAL: {
     color: statusAttention,
-    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
+    label: "Chờ Cảng vụ duyệt",
   },
-  CHO_PHE_DUYET: {
-    color: statusAttention,
-    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-  },
-  APPROVED_LEVEL1: { color: actionPrimary, label: "Chờ phê duyệt cấp Cục" },
-  APPROVED_LEVEL2: { color: statusAttention, label: "Chờ phê duyệt cấp cục" },
-  APPROVED: { color: statusOperational, label: "Đã phê duyệt" },
-  DA_PHE_DUYET: { color: statusOperational, label: "Đã phê duyệt" },
+  APPROVED_LEVEL1: { color: "#0284C7", label: "Chờ Cục duyệt" },
+  APPROVED: { color: statusOperational, label: "Đã duyệt" },
   REJECTED_LEVEL1: {
     color: statusCritical,
-    label: "Từ chối cấp Cảng vụ/Chi cục",
+    label: "Cảng vụ từ chối",
   },
-  REJECTED_LEVEL2: { color: statusCritical, label: "Từ chối cấp cục" },
+  REJECTED_LEVEL2: { color: statusCritical, label: "Cục từ chối" },
   REJECTED: { color: statusCritical, label: "Từ chối" },
-  TU_CHOI: { color: statusCritical, label: "Từ chối" },
 };
 
 const fmtDateTime = (v?: string | null): string =>
@@ -241,11 +233,15 @@ export default function PortTerminalAssetDetailContent({
   const viewTabs = useMemo<ViewTabConfig<PortTerminalAsset>[]>(() => {
     if (!r) return [];
 
-    const approvalInfo = APPROVAL_MAP[r.approvalStatus || ""] ||
-      APPROVAL_MAP[r.approvalStatus?.toUpperCase() || ""] || {
-        color: statusDraft,
-        label: r.approvalStatus || "",
-      };
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus.toUpperCase()] ?? {
+          color: textTertiary,
+          label: r.approvalStatus,
+        })
+      : {
+          color: textTertiary,
+          label: "—",
+        };
 
     return [
       {
@@ -576,7 +572,8 @@ export default function PortTerminalAssetDetailContent({
       },
       {
         key: "files",
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: "Hồ sơ tài sản",
+        badgeCount: detailAttachments.length,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
@@ -591,7 +588,8 @@ export default function PortTerminalAssetDetailContent({
       },
       {
         key: "exploitation",
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: "Khai thác tài sản",
+        badgeCount: exploitationRows.length,
         icon: <RocketOutlined />,
         customContent: () => (
           <div
@@ -719,7 +717,8 @@ export default function PortTerminalAssetDetailContent({
       },
       {
         key: "adjustments",
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: "Lịch sử thay đổi nguyên giá",
+        badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
         customContent: () => (
           <div

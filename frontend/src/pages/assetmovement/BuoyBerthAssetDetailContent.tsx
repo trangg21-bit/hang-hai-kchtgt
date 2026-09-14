@@ -305,7 +305,8 @@ export default function BuoyBerthAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
@@ -391,7 +392,8 @@ export default function BuoyBerthAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         customContent: () => (
           <div
             style={{
@@ -508,7 +510,8 @@ export default function BuoyBerthAssetDetailContent({
       },
       {
         key: 'adjustments',
-        label: `Thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
         customContent: () => (
           <div
             style={{

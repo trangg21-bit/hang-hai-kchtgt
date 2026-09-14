@@ -8,6 +8,7 @@ export interface StationTypeConfig {
   codePrefix: string;
   breadcrumbGroup: string;
   breadcrumbItem: string;
+  drawerClassName?: string;
 }
 
 export const LRIT_CONFIG: StationTypeConfig = {

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Form, InputNumber, Select } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -357,8 +357,7 @@ export default function StationAssetForm({
               {
                 name: 'constructionYear',
                 label: 'Năm xây dựng',
-                type: FormFieldType.DatePicker,
-                picker: 'year',
+                type: FormFieldType.Year,
                 placeholder: 'Chọn năm',
               },
               {
@@ -696,7 +695,9 @@ export default function StationAssetForm({
                           </span>
                         </td>
                         <td style={{ padding: '8px 12px' }}>
-                          {row.increaseCode || row.decreaseCode || '—'}
+                          {'increaseCode' in row
+                            ? (row.increaseCode ? row.increaseCode : '—')
+                            : (row.decreaseCode ? row.decreaseCode : '—')}
                         </td>
                         <td style={{ padding: '8px 12px' }}>
                           {row.createdAt ? String(row.createdAt).slice(0, 10) : '—'}

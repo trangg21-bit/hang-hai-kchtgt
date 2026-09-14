@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import {
+  BankOutlined,
   DeploymentUnitOutlined,
   SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
 } from '@ant-design/icons';
@@ -20,25 +20,26 @@ import InfrastructureAttachmentTab, {
 import {
   colors,
   actionPrimary,
-  textTertiary,
-  fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
   statusAttention,
   statusCritical,
   statusDraft,
+  radiusPill,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
-import CommonTable from '../../components/shared/common-table/CommonTable';
 import {
+  CommonTable,
   TableColumnType,
   type TableOption,
-} from '../../components/shared/common-table/table.model';
+  APPROVAL_MAP,
+  renderApprovalStatusBadge,
+} from '../../components/shared/common-table';
 import {
   fetchVtsAssistAssetAttachments,
   downloadVtsAssistAssetAttachment,
@@ -57,41 +58,7 @@ export interface VtsAssistAssetDetailContentProps {
   onDownloadAttachment?: (id: string, fileName: string) => void;
 }
 
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
-  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ từ chối' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục từ chối' },
-};
+export { renderApprovalStatusBadge };
 
 export default function VtsAssistAssetDetailContent({
   open,
@@ -140,7 +107,7 @@ export default function VtsAssistAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) || r?.assetName || '—',
+          render: (v) => (v as string) ?? '—',
         },
         {
           title: 'Đơn vị tính',
@@ -203,7 +170,7 @@ export default function VtsAssistAssetDetailContent({
         },
       ],
     }),
-    [orgName, r?.assetName]
+    [orgName]
   );
 
   const adjustmentTableOption = useMemo<TableOption<VtsAssistAssetAdjustment>>(
@@ -317,14 +284,9 @@ export default function VtsAssistAssetDetailContent({
         {
           title: 'Trạng thái',
           dataIndex: 'status',
-          type: TableColumnType.Status,
+          type: TableColumnType.Template,
           width: 140,
-          statusMapping: {
-            DRAFT: { label: 'Lưu tạm', color: '#93A3B3' },
-            PENDING_APPROVAL: { label: 'Chờ duyệt', color: '#EDA100' },
-            APPROVED: { label: 'Đã duyệt', color: '#1BAF7A' },
-            REJECTED: { label: 'Từ chối', color: '#E34948' },
-          },
+          render: (_v, row) => renderApprovalStatusBadge(row.status),
         },
         {
           title: 'Ngày cập nhật',
@@ -340,11 +302,15 @@ export default function VtsAssistAssetDetailContent({
   const viewTabs = useMemo<ViewTabConfig<VtsAssistAsset>[]>(() => {
     if (!r) return [];
 
-    const approvalInfo = APPROVAL_MAP[r.approvalStatus || ''] ||
-      APPROVAL_MAP[r.approvalStatus?.toUpperCase() || ''] || {
-        color: statusDraft,
-        label: r.approvalStatus || '—',
-      };
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus.toUpperCase()] ?? {
+          color: textTertiary,
+          label: r.approvalStatus,
+        })
+      : {
+          color: textTertiary,
+          label: '—',
+        };
 
     return [
       {
@@ -377,13 +343,13 @@ export default function VtsAssistAssetDetailContent({
               },
               {
                 label: 'Cơ quan quản lý cấp trên',
-                value: (rec) => orgName.get(rec.parentOrgUnitId || '') || '—',
+                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '—') : '—'),
               },
               {
                 label: 'Đơn vị quản lý',
                 render: (_v, rec) => (
                   <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.orgUnitId || '') || '—'}
+                    {rec.orgUnitId ? (orgName.get(rec.orgUnitId) ?? '—') : '—'}
                   </span>
                 ),
               },
@@ -391,24 +357,24 @@ export default function VtsAssistAssetDetailContent({
                 label: 'Đơn vị sử dụng',
                 render: (_v, rec) => (
                   <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.usingOrgUnitId || '') || '—'}
+                    {rec.usingOrgUnitId ? (orgName.get(rec.usingOrgUnitId) ?? '—') : '—'}
                   </span>
                 ),
               },
               {
                 label: 'Mã thiết bị',
                 value: (rec) =>
-                  vtsAssistMap.get(rec.transmissionId || '')?.code || rec.transmissionCode || '—',
+                  (rec.transmissionId ? vtsAssistMap.get(rec.transmissionId)?.code : undefined) ?? rec.transmissionCode ?? '—',
               },
               {
                 label: 'Tên hệ thống phụ trợ VTS',
                 value: (rec) =>
-                  vtsAssistMap.get(rec.transmissionId || '')?.name || rec.transmissionName || '—',
+                  (rec.transmissionId ? vtsAssistMap.get(rec.transmissionId)?.name : undefined) ?? rec.transmissionName ?? '—',
               },
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                render: (val) => String(val || 'Tài sản hệ thống phụ trợ VTS'),
+                render: (val) => (val ? String(val) : '—'),
               },
               {
                 name: 'barcode',
@@ -430,7 +396,7 @@ export default function VtsAssistAssetDetailContent({
                       border: '1px solid #a7f3d0',
                     }}
                   >
-                    {String(val || '—')}
+                    {val ? String(val) : '—'}
                   </span>
                 ),
               },
@@ -626,50 +592,32 @@ export default function VtsAssistAssetDetailContent({
         ],
       },
       {
-        key: 'exploitations',
+        key: 'exploitation',
         label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
+        icon: <BankOutlined />,
         customContent: (
           <div style={{ padding: '4px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <RocketOutlined style={{ color: actionPrimary }} />
-                  <span>Danh sách khai thác tài sản hệ thống phụ trợ VTS ({exploitationRows.length})</span>
-                </div>
-              </div>
-              <CommonTable
-                options={exploitationTableOption as unknown as TableOption<Record<string, unknown>>}
-                dataSource={exploitationRows as unknown as Record<string, unknown>[]}
-                total={exploitationRows.length}
-                page={1}
-                pageSize={100}
-                loading={false}
-              />
-            </div>
+            <CommonTable<VtsAssistAssetExploitation>
+              options={exploitationTableOption}
+              dataSource={exploitationRows}
+              total={exploitationRows.length}
+            />
           </div>
         ),
       },
       {
         key: 'adjustments',
-        label: 'Tăng giảm tài sản',
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: adjustmentRows.length,
+        icon: <AuditOutlined />,
         customContent: (
           <div style={{ padding: '4px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <AuditOutlined style={{ color: actionPrimary }} />
-                  <span>Lịch sử tăng / giảm nguyên giá ({adjustmentRows.length})</span>
-                </div>
-              </div>
-              <CommonTable
-                options={adjustmentTableOption as unknown as TableOption<Record<string, unknown>>}
-                dataSource={adjustmentRows as unknown as Record<string, unknown>[]}
-                total={adjustmentRows.length}
-                page={1}
-                pageSize={100}
-                loading={false}
-              />
-            </div>
+            <CommonTable<VtsAssistAssetAdjustment>
+              options={adjustmentTableOption}
+              dataSource={adjustmentRows}
+              total={adjustmentRows.length}
+            />
           </div>
         ),
       },
@@ -684,6 +632,7 @@ export default function VtsAssistAssetDetailContent({
             fields: [
               {
                 label: 'Trạng thái phê duyệt',
+                colSpan: 24,
                 render: () => (
                   <span
                     style={{

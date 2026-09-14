@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import {
+  BankOutlined,
   ApiOutlined,
   SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
 } from '@ant-design/icons';
@@ -19,25 +19,26 @@ import InfrastructureAttachmentTab, {
 import {
   colors,
   actionPrimary,
-  textTertiary,
-  fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
   statusAttention,
   statusCritical,
   statusDraft,
+  radiusPill,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
-import CommonTable from '../../components/shared/common-table/CommonTable';
 import {
+  CommonTable,
   TableColumnType,
   type TableOption,
-} from '../../components/shared/common-table/table.model';
+  APPROVAL_MAP,
+  renderApprovalStatusBadge,
+} from '../../components/shared/common-table';
 import {
   fetchVhfAssetAttachments,
   downloadVhfAssetAttachment,
@@ -56,41 +57,7 @@ export interface VhfAssetDetailContentProps {
   onDownloadAttachment?: (id: string, fileName: string) => void;
 }
 
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
-  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ từ chối' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục từ chối' },
-};
+export { renderApprovalStatusBadge };
 
 export default function VhfAssetDetailContent({
   open,
@@ -139,7 +106,7 @@ export default function VhfAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) || r?.assetName || '—',
+          render: (v) => (v as string) ?? '—',
         },
         {
           title: 'Đơn vị tính',
@@ -202,7 +169,7 @@ export default function VhfAssetDetailContent({
         },
       ],
     }),
-    [orgName, r?.assetName]
+    [orgName]
   );
 
   const adjustmentTableOption = useMemo<TableOption<VhfAssetAdjustment>>(
@@ -317,28 +284,8 @@ export default function VhfAssetDetailContent({
           title: 'Trạng thái',
           dataIndex: 'status',
           type: TableColumnType.Template,
-          width: 150,
-          render: (val) => {
-            const s = String(val || 'DRAFT').toUpperCase();
-            const isApproved = s === 'APPROVED' || s === 'DA_DUYET';
-            const color = isApproved ? statusOperational : statusAttention;
-            return (
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '2px 8px',
-                  borderRadius: 999,
-                  fontSize: 12,
-                  fontWeight: fontWeightMedium,
-                  background: `${color}15`,
-                  border: `1px solid ${color}40`,
-                  color,
-                }}
-              >
-                {isApproved ? 'Đã duyệt' : 'Chờ duyệt'}
-              </span>
-            );
-          },
+          width: 140,
+          render: (_v, row) => renderApprovalStatusBadge(row.status),
         },
         {
           title: 'Ngày lập',
@@ -354,11 +301,15 @@ export default function VhfAssetDetailContent({
   const viewTabs = useMemo<ViewTabConfig<VhfAsset>[]>(() => {
     if (!r) return [];
 
-    const approvalStatusKey = (r.approvalStatus || 'DRAFT').toUpperCase();
-    const approvalInfo = APPROVAL_MAP[approvalStatusKey] || {
-      color: textTertiary,
-      label: r.approvalStatus || '—',
-    };
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus.toUpperCase()] ?? {
+          color: textTertiary,
+          label: r.approvalStatus,
+        })
+      : {
+          color: textTertiary,
+          label: '—',
+        };
 
     return [
       {
@@ -391,13 +342,13 @@ export default function VhfAssetDetailContent({
               },
               {
                 label: 'Cơ quan quản lý cấp trên',
-                value: (rec) => orgName.get(rec.parentOrgUnitId || '') || '—',
+                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '—') : '—'),
               },
               {
                 label: 'Đơn vị quản lý',
                 render: (_v, rec) => (
                   <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.orgUnitId || '') || '—'}
+                    {rec.orgUnitId ? (orgName.get(rec.orgUnitId) ?? '—') : '—'}
                   </span>
                 ),
               },
@@ -405,24 +356,24 @@ export default function VhfAssetDetailContent({
                 label: 'Đơn vị sử dụng',
                 render: (_v, rec) => (
                   <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.usingOrgUnitId || '') || '—'}
+                    {rec.usingOrgUnitId ? (orgName.get(rec.usingOrgUnitId) ?? '—') : '—'}
                   </span>
                 ),
               },
               {
                 label: 'Mã thiết bị',
                 value: (rec) =>
-                  transmissionMap.get(rec.transmissionId || '')?.code || '—',
+                  (rec.transmissionId ? transmissionMap.get(rec.transmissionId)?.code : undefined) ?? '—',
               },
               {
                 label: 'Tên thiết bị VHF / truyền dẫn',
                 value: (rec) =>
-                  transmissionMap.get(rec.transmissionId || '')?.name || '—',
+                  (rec.transmissionId ? transmissionMap.get(rec.transmissionId)?.name : undefined) ?? '—',
               },
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                render: (val) => String(val || 'Tài sản HTTT liên lạc VHF'),
+                render: (val) => (val ? String(val) : '—'),
               },
               {
                 name: 'barcode',
@@ -447,7 +398,7 @@ export default function VhfAssetDetailContent({
                         val === 'Tốt' ? statusOperational : statusAttention,
                     }}
                   >
-                    {String(val || 'Tốt')}
+                    {val ? String(val) : '—'}
                   </span>
                 ),
               },
@@ -532,7 +483,8 @@ export default function VhfAssetDetailContent({
       },
       {
         key: 'attachments',
-        label: `Hồ sơ tài sản (${activeAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: activeAttachments.length,
         customContent: (
           <div style={{ padding: '0 4px', marginBottom: 12 }}>
             <InfrastructureAttachmentTab
@@ -621,47 +573,31 @@ export default function VhfAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
+        icon: <BankOutlined />,
         customContent: (
-          <div style={sectionBoxStyle}>
-            <div style={sectionHeaderStyle}>
-              <span style={sectionTitleStyle}>
-                <RocketOutlined /> Danh sách theo dõi khai thác tài sản
-              </span>
-              <span style={{ fontSize: 13, color: textTertiary }}>
-                Tổng số: <strong>{exploitationRows.length}</strong> bản ghi
-              </span>
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <CommonTable<VhfAssetExploitation>
-                options={exploitationTableOption}
-                dataSource={exploitationRows}
-                total={exploitationRows.length}
-              />
-            </div>
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<VhfAssetExploitation>
+              options={exploitationTableOption}
+              dataSource={exploitationRows}
+              total={exploitationRows.length}
+            />
           </div>
         ),
       },
       {
-        key: 'adjustment',
-        label: `Biến động tài sản (${adjustmentRows.length})`,
+        key: 'adjustments',
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: adjustmentRows.length,
+        icon: <AuditOutlined />,
         customContent: (
-          <div style={sectionBoxStyle}>
-            <div style={sectionHeaderStyle}>
-              <span style={sectionTitleStyle}>
-                <SlidersOutlined /> Lịch sử điều chỉnh tăng/giảm nguyên giá
-              </span>
-              <span style={{ fontSize: 13, color: textTertiary }}>
-                Tổng số: <strong>{adjustmentRows.length}</strong> lần điều chỉnh
-              </span>
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <CommonTable<VhfAssetAdjustment>
-                options={adjustmentTableOption}
-                dataSource={adjustmentRows}
-                total={adjustmentRows.length}
-              />
-            </div>
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<VhfAssetAdjustment>
+              options={adjustmentTableOption}
+              dataSource={adjustmentRows}
+              total={adjustmentRows.length}
+            />
           </div>
         ),
       },
@@ -675,20 +611,32 @@ export default function VhfAssetDetailContent({
             icon: <AuditOutlined />,
             fields: [
               {
-                label: 'Trạng thái',
+                label: 'Trạng thái phê duyệt',
+                colSpan: 24,
                 render: () => (
                   <span
                     style={{
-                      display: 'inline-block',
-                      padding: '3px 10px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '3px 12px',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      fontWeight: 600,
                       background: `${approvalInfo.color}18`,
                       color: approvalInfo.color,
                       border: `1px solid ${approvalInfo.color}40`,
+                      whiteSpace: 'nowrap',
                     }}
                   >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        backgroundColor: approvalInfo.color,
+                      }}
+                    />
                     {approvalInfo.label}
                   </span>
                 ),

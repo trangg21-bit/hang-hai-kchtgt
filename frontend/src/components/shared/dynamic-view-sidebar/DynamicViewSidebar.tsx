@@ -60,7 +60,7 @@ function formatFieldValue<T>(
   if (field.value) {
     rawValue = field.value(record);
   } else if (field.name && record && typeof record === "object") {
-    rawValue = (record as Record<string, unknown>)[field.name];
+    rawValue = (record as Record<PropertyKey, unknown>)[field.name];
   }
 
   if (field.render) {
@@ -239,7 +239,7 @@ function ViewSectionItem<T>({
 
             return (
               <div
-                key={field.name || `field-${idx}`}
+                key={String(field.name || `field-${idx}`)}
                 className={`chk-detail-row ${isFullWidth ? "chk-detail-row--full" : ""} ${field.className || ""}`}
                 style={field.style}
               >
@@ -335,7 +335,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
                         const isFullWidth = field.colSpan === 24;
                         return (
                           <div
-                            key={field.name || `tab-field-${idx}`}
+                            key={String(field.name || `tab-field-${idx}`)}
                             className={`chk-detail-row ${isFullWidth ? "chk-detail-row--full" : ""} ${field.className || ""}`}
                             style={field.style}
                           >
@@ -387,7 +387,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
               const isFullWidth = field.colSpan === 24;
               return (
                 <div
-                  key={field.name || `field-${idx}`}
+                  key={String(field.name || `field-${idx}`)}
                   className={`chk-detail-row ${isFullWidth ? "chk-detail-row--full" : ""} ${field.className || ""}`}
                   style={field.style}
                 >
