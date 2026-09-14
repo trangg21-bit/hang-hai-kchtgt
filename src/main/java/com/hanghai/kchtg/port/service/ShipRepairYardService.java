@@ -661,7 +661,6 @@ public class ShipRepairYardService {
                     .status(status)
                     .approvedBy(actorId)
                     .approvedDate(LocalDateTime.now())
-                    .reason(reason)
                     .changedField(changedField)
                     .previousValue(previousValue)
                     .newValue(newValue)

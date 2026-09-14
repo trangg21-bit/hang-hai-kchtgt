@@ -319,7 +319,6 @@ class RadarStationServiceTest {
                     .changedField("Tên trạm radar")
                     .previousValue("Trạm cũ")
                     .newValue("Trạm mới")
-                    .reason("Cập nhật thông tin Tên trạm radar")
                     .build();
 
             when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))

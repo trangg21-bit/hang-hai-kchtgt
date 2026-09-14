@@ -243,7 +243,6 @@ class VhfApprovalServiceTest {
                     .changedField("Tên thiết bị")
                     .previousValue("VHF cũ")
                     .newValue("VHF mới")
-                    .reason("Cập nhật thông tin Tên thiết bị")
                     .build();
 
             when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VHF, ID))

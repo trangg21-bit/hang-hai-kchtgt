@@ -362,7 +362,6 @@ public class VhfService {
               .changedField(field)
               .previousValue(formatDisplayValue(field, oldVal))
               .newValue(formatDisplayValue(field, newVal))
-              .reason("Cập nhật thông tin " + fieldName)
               .build());
         }
       } else {
@@ -373,7 +372,6 @@ public class VhfService {
             .status(InfrastructureHistoryStatus.UPDATED)
             .approvedBy(currentUserId)
             .approvedDate(now)
-            .reason("Cập nhật sau phê duyệt")
             .build());
       }
     }
@@ -931,7 +929,6 @@ public class VhfService {
             .changedField("Tài liệu đính kèm")
             .previousValue(null)
             .newValue(originalFilename)
-            .reason("Tải lên tài liệu đính kèm: " + originalFilename)
             .build());
       }
     }
@@ -974,7 +971,6 @@ public class VhfService {
           .changedField("Tài liệu đính kèm")
           .previousValue(attachment.getFileName())
           .newValue(null)
-          .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
           .build());
     }
   }

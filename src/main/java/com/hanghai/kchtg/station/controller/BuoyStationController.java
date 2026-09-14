@@ -178,7 +178,7 @@ public class BuoyStationController {
                             : null);
                     m.put("approvedDate", h.getApprovedDate());
                     m.put("changedAt", h.getApprovedDate());
-                    m.put("reason", h.getReason());
+                    m.put("reason", "");
                     m.put("changedField", h.getChangedField());
                     m.put("fieldName", h.getChangedField());
                     m.put("previousValue", h.getPreviousValue());
@@ -240,7 +240,7 @@ public class BuoyStationController {
                             : null);
                     m.put("approvedDate", h.getApprovedDate());
                     m.put("changedAt", h.getApprovedDate());
-                    m.put("reason", h.getReason());
+                    m.put("reason", "");
                     m.put("changedField", h.getChangedField());
                     m.put("fieldName", h.getChangedField());
                     m.put("previousValue", h.getPreviousValue());

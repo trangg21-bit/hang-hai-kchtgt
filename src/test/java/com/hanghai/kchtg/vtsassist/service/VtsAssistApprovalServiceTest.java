@@ -178,7 +178,6 @@ class VtsAssistApprovalServiceTest {
                 .changedField("operationalStatus")
                 .previousValue("0")
                 .newValue("1")
-                .reason("Phê duyệt cấp 1")
                 .build();
 
         when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_ASSIST, ID))

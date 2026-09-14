@@ -327,7 +327,6 @@ public class DocumentService {
                     .status(status)
                     .approvedBy(SecurityUtils.getCurrentUserId())
                     .approvedDate(LocalDateTime.now())
-                    .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + name)
                     .changedField("File đính kèm")
                     .previousValue(oldVal)
                     .newValue(newVal)

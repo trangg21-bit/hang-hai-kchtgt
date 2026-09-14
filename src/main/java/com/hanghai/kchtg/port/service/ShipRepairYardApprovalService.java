@@ -182,7 +182,6 @@ public class ShipRepairYardApprovalService {
                 .orgUnitName(userActor != null && userActor.getOrgUnit() != null
                         ? userActor.getOrgUnit().getName() : null)
                 .approvedDate(h.getApprovedDate())
-                .reason(h.getReason())
                 .changedField(h.getChangedField())
                 .previousValue(h.getPreviousValue())
                 .newValue(h.getNewValue())

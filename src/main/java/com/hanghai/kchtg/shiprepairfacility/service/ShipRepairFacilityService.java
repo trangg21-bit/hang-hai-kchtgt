@@ -388,7 +388,6 @@ public class ShipRepairFacilityService {
                     ? userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
-            entry.setReason(h.getReason());
             entry.setChangedField(h.getChangedField());
             entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
             entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));

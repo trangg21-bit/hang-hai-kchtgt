@@ -480,7 +480,6 @@ public class VtsAssistService {
               .changedField(field)
               .previousValue(formatDisplayValue(field, oldVal))
               .newValue(formatDisplayValue(field, newVal))
-              .reason("Cập nhật thông tin " + fieldName)
               .build());
         }
       } else {
@@ -491,7 +490,6 @@ public class VtsAssistService {
             .status(InfrastructureHistoryStatus.UPDATED)
             .approvedBy(currentUserId)
             .approvedDate(now)
-            .reason("Cập nhật sau phê duyệt")
             .build());
       }
     }
@@ -1032,7 +1030,6 @@ public class VtsAssistService {
             .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
             .approvedBy(userId)
             .approvedDate(LocalDateTime.now())
-            .reason("Tải lên tài liệu đính kèm: " + originalFilename)
             .changedField("Tài liệu đính kèm")
             .previousValue("—")
             .newValue(originalFilename)
@@ -1084,7 +1081,6 @@ public class VtsAssistService {
         .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
         .approvedBy(userId)
         .approvedDate(LocalDateTime.now())
-        .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
         .changedField("Tài liệu đính kèm")
         .previousValue(attachment.getFileName())
         .newValue("—")

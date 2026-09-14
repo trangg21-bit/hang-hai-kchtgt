@@ -774,7 +774,6 @@ public class BuoyService {
                     .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
                     .previousValue(previousJson)
                     .newValue(newJson)
-                    .reason(reason)
                     .build());
         }
     }

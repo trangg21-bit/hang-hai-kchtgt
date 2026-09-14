@@ -237,7 +237,6 @@ class ScadaApprovalServiceTest {
                     .changedField("Tên thiết bị")
                     .previousValue("SCADA cũ")
                     .newValue("SCADA mới")
-                    .reason("Cập nhật thông tin Tên thiết bị")
                     .build();
 
             when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SCADA, ID))

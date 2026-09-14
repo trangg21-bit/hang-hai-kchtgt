@@ -713,7 +713,6 @@ class BeaconStationServiceTest {
                     .changedField("Chiều cao tháp đèn (m)")
                     .previousValue("12")
                     .newValue("15")
-                    .reason("Cập nhật thông tin Chiều cao tháp đèn (m)")
                     .build();
 
             when(infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), any(Pageable.class)))
@@ -751,7 +750,6 @@ class BeaconStationServiceTest {
                     .changedField("Tên đèn biển")
                     .previousValue("Đèn biển cũ")
                     .newValue("Đèn biển mới")
-                    .reason("Cập nhật thông tin Tên đèn biển")
                     .build();
 
             when(infraHistoryRepo.searchHistory(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), eq("den bien"), any(), any(), any(Pageable.class)))

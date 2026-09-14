@@ -884,7 +884,6 @@ public class DryPortService {
                 .status(status)
                 .approvedBy(userId)
                 .approvedDate(LocalDateTime.now())
-                .reason((uploaded ? "Tải lên tài liệu đính kèm: " : "Xóa tài liệu đính kèm: ") + affectedFileName)
                 .changedField("File đính kèm")
                 .previousValue(oldVal)
                 .newValue(newVal)

@@ -308,7 +308,6 @@ public class RadarStationService {
                             .changedField(field)
                             .previousValue(formatDisplayValue(field, oldVal))
                             .newValue(formatDisplayValue(field, newVal))
-                            .reason("Cập nhật " + fieldName)
                             .build());
                 }
             } else {
@@ -318,7 +317,6 @@ public class RadarStationService {
                         .approvalLevel(ApprovalLevel.LEVEL_2)
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(updatedBy)
-                        .reason("Cập nhật sau phê duyệt")
                         .build());
             }
         }
@@ -633,7 +631,6 @@ public class RadarStationService {
                     .approvedBy(userName)
                     .orgUnitName(orgUnitName)
                     .approvedDate(h.getApprovedDate())
-                    .reason(h.getReason())
                     .changedField(h.getChangedField())
                     .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
                     .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
@@ -841,7 +838,6 @@ public class RadarStationService {
                         .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
-                        .reason("Tải lên tài liệu đính kèm: " + originalFilename)
                         .changedField("Tài liệu đính kèm")
                         .previousValue("—")
                         .newValue(originalFilename)
@@ -880,7 +876,6 @@ public class RadarStationService {
                     .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
-                    .reason("Xóa tài liệu đính kèm: " + fileName)
                     .changedField("Tài liệu đính kèm")
                     .previousValue(fileName)
                     .newValue("—")

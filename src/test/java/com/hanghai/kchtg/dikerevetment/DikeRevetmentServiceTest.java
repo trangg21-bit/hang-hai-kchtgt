@@ -230,7 +230,6 @@ class DikeRevetmentServiceTest {
                     .changedField("Loại kết cấu công trình")
                     .previousValue("RIVER_DIKE")
                     .newValue("SAND_DIKE")
-                    .reason("Cập nhật thông tin Loại kết cấu công trình")
                     .build();
 
             when(approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, TEST_ID))

@@ -419,7 +419,6 @@ public class DikeRevetmentService {
                         .changedField(field)
                         .previousValue(formatDisplayValue(field, oldVal))
                         .newValue(formatDisplayValue(field, newVal))
-                        .reason("Cập nhật thông tin " + fieldName)
                         .build());
             }
             } else {
@@ -430,7 +429,6 @@ public class DikeRevetmentService {
                         .approvalLevel(ApprovalLevel.LEVEL_2)
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
-                        .reason("Cập nhật sau phê duyệt")
                         .build());
             }
         }
@@ -599,7 +597,6 @@ public class DikeRevetmentService {
                     .approvedBy(userName)
                     .orgUnitName(orgUnitName)
                     .approvedDate(h.getApprovedDate())
-                    .reason(h.getReason())
                     .changedField(h.getChangedField())
                     .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
                     .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
@@ -867,7 +864,6 @@ public class DikeRevetmentService {
                         .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
-                        .reason("Tải lên tài liệu đính kèm: " + originalFilename)
                         .changedField("Tài liệu đính kèm")
                         .previousValue("—")
                         .newValue(originalFilename)
@@ -918,7 +914,6 @@ public class DikeRevetmentService {
                     .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
-                    .reason("Xóa tài liệu đính kèm: " + att.getFileName())
                     .changedField("Tài liệu đính kèm")
                     .previousValue(att.getFileName())
                     .newValue("—")

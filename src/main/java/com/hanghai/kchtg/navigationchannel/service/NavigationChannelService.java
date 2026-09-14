@@ -534,7 +534,6 @@ public class NavigationChannelService {
                     ? userNames.getOrDefault(h.getApprovedBy(), null)
                     : null);
             entry.setApprovedDate(h.getApprovedDate());
-            entry.setReason(h.getReason());
             entry.setChangedField(h.getChangedField());
             entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
             entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));

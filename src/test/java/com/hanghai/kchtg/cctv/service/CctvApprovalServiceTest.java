@@ -268,7 +268,6 @@ class CctvApprovalServiceTest {
                     .changedField("Tên thiết bị")
                     .previousValue("Camera cũ")
                     .newValue("Camera mới")
-                    .reason("Cập nhật thông tin Tên thiết bị")
                     .build();
 
             when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.CCTV, ID))

@@ -213,7 +213,6 @@ public class VhfApprovalService {
               .approvedBy(userName)
               .orgUnitName(orgUnitName)
               .approvedDate(h.getApprovedDate())
-              .reason(h.getReason())
               .changedField(h.getChangedField())
               .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
               .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))

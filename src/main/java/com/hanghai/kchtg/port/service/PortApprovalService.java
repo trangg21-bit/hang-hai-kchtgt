@@ -214,7 +214,6 @@ public class PortApprovalService {
                                         ? userMap.get(h.getApprovedBy()).getOrgUnit().getName()
                                         : null)
                         .approvedDate(h.getApprovedDate())
-                        .reason(h.getReason())
                         .changedField(h.getChangedField())
                         .previousValue(h.getPreviousValue())
                         .newValue(h.getNewValue())

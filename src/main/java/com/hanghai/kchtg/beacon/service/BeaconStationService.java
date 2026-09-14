@@ -195,7 +195,6 @@ public class BeaconStationService {
         entry.setApprovedBy(userName);
         entry.setOrgUnitName(orgUnitName);
         entry.setApprovedDate(h.getApprovedDate());
-        entry.setReason(h.getReason());
         entry.setChangedField(h.getChangedField());
         entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
         entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
@@ -600,7 +599,6 @@ public class BeaconStationService {
                         .changedField(field)
                         .previousValue(oldVal)
                         .newValue(newVal)
-                        .reason("Cập nhật thông tin " + fieldName)
                         .build());
             }
         }
@@ -866,7 +864,6 @@ public class BeaconStationService {
                     .changedField(fields)
                     .previousValue(previousJson)
                     .newValue(newJson)
-                    .reason(reason)
                     .build());
         }
     }
@@ -1108,7 +1105,6 @@ public class BeaconStationService {
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
-                        .reason("Thêm tài liệu đính kèm: " + uploadedNames)
                         .changedField("Tài liệu đính kèm")
                         .previousValue("—")
                         .newValue(uploadedNames)
@@ -1149,7 +1145,6 @@ public class BeaconStationService {
                         .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                         .approvedBy(SecurityUtils.getCurrentUserId())
                         .approvedDate(LocalDateTime.now())
-                        .reason("Xóa tài liệu đính kèm: " + attachment.getFileName())
                         .changedField("Tài liệu đính kèm")
                         .previousValue(attachment.getFileName())
                         .newValue("—")
