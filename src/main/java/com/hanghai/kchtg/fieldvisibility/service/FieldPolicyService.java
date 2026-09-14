@@ -1,8 +1,6 @@
 package com.hanghai.kchtg.fieldvisibility.service;
 
 import com.hanghai.kchtg.fieldvisibility.entity.FieldPolicy;
-import com.hanghai.kchtg.fieldvisibility.entity.FieldTargetType;
-import com.hanghai.kchtg.fieldvisibility.entity.SystemFieldCatalog;
 import com.hanghai.kchtg.fieldvisibility.repository.FieldPolicyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

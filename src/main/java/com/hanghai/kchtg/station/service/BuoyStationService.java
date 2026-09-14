@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.station.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -11,9 +10,7 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
@@ -48,7 +45,6 @@ public class BuoyStationService {
     private final ObjectMapper objectMapper;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
-    private final ChangeLogRepository changeLogRepository;
     private final PortRepository portRepository;
     private final UserRepository userRepository;
     private final BuoyRepository buoyRepository;
@@ -673,32 +669,4 @@ public class BuoyStationService {
 
     // -- JSON Comparison --
 
-    private boolean compareJsonNodes(String json1, String json2) {
-        try {
-            JsonNode node1 = objectMapper.readTree(json1);
-            JsonNode node2 = objectMapper.readTree(json2);
-            return node1.equals(node2);
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private String getChangedFields(String oldJson, String newJson) {
-        try {
-            Map<String, Object> oldMap = objectMapper.readValue(oldJson, Map.class);
-            Map<String, Object> newMap = objectMapper.readValue(newJson, Map.class);
-            List<String> changed = new ArrayList<>();
-            for (String key : newMap.keySet()) {
-                Object oldVal = oldMap.get(key);
-                Object newVal = newMap.get(key);
-                if (!Objects.equals(oldVal, newVal)) {
-                    changed.add(key);
-                }
-            }
-            return changed.isEmpty() ? "fields_updated" : String.join(", ", changed);
-        } catch (Exception e) {
-            return "fields_updated";
-        }
-    }
 }

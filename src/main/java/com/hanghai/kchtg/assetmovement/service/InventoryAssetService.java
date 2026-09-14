@@ -12,9 +12,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -96,11 +93,6 @@ public class InventoryAssetService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
-    }
-
-    private LocalDateTime toLocalDateTime(Instant instant) {
-        if (instant == null) return null;
-        return instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 
     private InventoryStatus parseInventoryStatus(String value) {

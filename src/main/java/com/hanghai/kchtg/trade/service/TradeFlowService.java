@@ -157,7 +157,6 @@ public class TradeFlowService {
             String[] cargos = {"Hàng container", "Hàng rời", "Dầu khí", "Than"};
             String[] periods = {"01/2026", "02/2026", "03/2026", "04/2026", "05/2026", "06/2026"};
 
-            int idx = 0;
             for (String source : ports) {
                 for (String dest : ports) {
                     if (source.equals(dest)) continue;
@@ -171,7 +170,6 @@ public class TradeFlowService {
                                     .period(period)
                                     .createdAt(LocalDate.of(2026, 1, 1))
                                     .build());
-                            idx++;
                         }
                     }
                 }

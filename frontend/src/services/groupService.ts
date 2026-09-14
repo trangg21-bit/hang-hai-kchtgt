@@ -3,8 +3,8 @@ import type { PaginatedResponse } from "../types/common";
 import { MOCK_GROUPS } from './mockData';
 
 const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 200));
-let groups: Group[] = [...MOCK_GROUPS];
-let memberMap: Record<string, GroupMember[]> = {};
+const groups: Group[] = [...MOCK_GROUPS];
+const memberMap: Record<string, GroupMember[]> = {};
 
 // Helper to generate mock members for a group
 function generateMembers(groupId: string, count: number): GroupMember[] {

@@ -26,6 +26,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -58,8 +59,6 @@ public class LogService {
     private final AccessLogRepository repository;
     private final LogRetentionPolicyRepository retentionPolicyRepository;
     private final LogAggregateRepository aggregateRepository;
-    private final String exportDir;
-
     public LogService(AccessLogService accessLogService,
                       AccessLogRepository repository,
                       LogRetentionPolicyRepository retentionPolicyRepository,
@@ -70,7 +69,6 @@ public class LogService {
         this.repository = repository;
         this.retentionPolicyRepository = retentionPolicyRepository;
         this.aggregateRepository = aggregateRepository;
-        this.exportDir = exportDir;
     }
 
     // ── Query delegation ─────────────────────────────────────────────
@@ -298,7 +296,7 @@ public class LogService {
         if (totalAccesses > 0) {
             successRate = BigDecimal.valueOf(successCount)
                     .multiply(BigDecimal.valueOf(100))
-                    .divide(BigDecimal.valueOf(totalAccesses), 2, BigDecimal.ROUND_HALF_UP);
+                    .divide(BigDecimal.valueOf(totalAccesses), 2, RoundingMode.HALF_UP);
         }
 
         // Upsert: update existing or create new

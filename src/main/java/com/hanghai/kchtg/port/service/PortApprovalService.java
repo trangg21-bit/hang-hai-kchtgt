@@ -8,7 +8,6 @@ import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -41,7 +40,6 @@ public class PortApprovalService {
     private final PortNotificationService notificationService;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
-    private final ChangeHistoryService changeHistoryService;
     private final PortCacheService portCacheService;
     private final InfrastructureApprovalService infrastructureApprovalService;
 
@@ -126,7 +124,7 @@ public class PortApprovalService {
         String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         // Capture full snapshot before mutation
-        Port snapshot = Port.builder()
+        Port.builder()
                 .id(entity.getId()).portCode(entity.getPortCode()).portName(entity.getPortName())
                 .province(entity.getProvince()).area(entity.getArea()).maxVesselCapacity(entity.getMaxVesselCapacity())
                 .orgUnitId(entity.getOrgUnitId()).portGroup(entity.getPortGroup())
@@ -143,7 +141,6 @@ public class PortApprovalService {
                 .buoyBerthCount(entity.getBuoyBerthCount()).anchorageCount(entity.getAnchorageCount())
                 .transshipmentCount(entity.getTransshipmentCount()).otherWaterAreas(entity.getOtherWaterAreas())
                 .remarks(entity.getRemarks()).build();
-
         if (reason == null || reason.isBlank()) {
             // Mô hình 2 trạng thái: Nháp → phê duyệt thẳng. Chỉ gọi workflow cũ khi
             // đang ở PENDING_APPROVAL (legacy) vì workflow yêu cầu đúng trạng thái đó.
@@ -156,7 +153,7 @@ public class PortApprovalService {
             entity.setApprovalStatus(ApprovalStatus.REJECTED);
         }
         entity.setUpdatedAt(LocalDateTime.now());
-        Port saved = portRepository.saveAndFlush(entity);
+        portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
 
         if (reason == null || reason.isBlank()) {

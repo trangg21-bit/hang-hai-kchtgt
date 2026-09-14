@@ -2,14 +2,12 @@ package com.hanghai.kchtg.group.service;
 
 import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
 import com.hanghai.kchtg.group.dto.CreateUserGroupRequest;
-import com.hanghai.kchtg.group.dto.UpdateUserGroupRequest;
 import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -42,8 +42,6 @@ public class ConnectionService {
     private final DataConnectionRepository repo;
     private final EncryptionUtil encryptionUtil;
     private final ConnectionHealthRepository healthRepo;
-    private final SyncLogRepository syncLogRepo;
-
     public ConnectionService(DataConnectionRepository repo,
                              EncryptionUtil encryptionUtil,
                              ConnectionHealthRepository healthRepo,
@@ -51,7 +49,6 @@ public class ConnectionService {
         this.repo = repo;
         this.encryptionUtil = encryptionUtil;
         this.healthRepo = healthRepo;
-        this.syncLogRepo = syncLogRepo;
     }
 
     // ── CRUD ─────────────────────────────────────────────────────────
@@ -209,7 +206,6 @@ public class ConnectionService {
                         .responseCode(status)
                         .build();
             } catch (Exception e) {
-                long elapsed = System.currentTimeMillis() - start;
                 log.warn("Health check attempt {} for {}: {}", attempt, connId, e.getMessage());
                 if (attempt < MAX_RETRIES) {
                     try {

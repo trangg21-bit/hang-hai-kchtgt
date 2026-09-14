@@ -34,6 +34,7 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 @Slf4j
 @Validated
 @DataScope
+@SuppressWarnings("deprecation")
 public class BerthController {
 
     private final BerthService berthService;

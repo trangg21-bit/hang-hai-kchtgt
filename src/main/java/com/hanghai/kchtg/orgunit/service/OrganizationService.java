@@ -602,7 +602,6 @@ public class OrganizationService {
                             + "Vui lòng xóa hoặc di chuyển các đơn vị con trước.");
         }
 
-        String details = String.format("Xóa đơn vị '%s'", unit.getName());
         unit.softDelete(SecurityUtils.getCurrentUserId());
         orgUnitRepo.save(unit);
         orgUnitCacheService.evictAfterCommit();

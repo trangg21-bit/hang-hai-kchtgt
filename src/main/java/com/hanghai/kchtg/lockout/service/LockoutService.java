@@ -13,7 +13,6 @@ import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.security.service.UserSecurityCacheService;
 import jakarta.servlet.http.HttpServletRequest;
 import com.hanghai.kchtg.lockout.repository.UserLockoutRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;

@@ -13,9 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -110,11 +107,6 @@ public class MovementRequestService {
         if (request.getAssetName() == null || request.getAssetName().isBlank()) {
             throw new IllegalArgumentException("Tên tài sản (tiêu đề) không được để trống");
         }
-    }
-
-    private LocalDateTime toLocalDateTime(Instant instant) {
-        if (instant == null) return null;
-        return instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 
     private MovementRequestResponse toResponse(MovementRequest entity) {

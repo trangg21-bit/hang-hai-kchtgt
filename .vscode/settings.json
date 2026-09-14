@@ -42,7 +42,7 @@
         "editor.formatOnSave": false
     },
     "java.configuration.updateBuildConfiguration": "automatic",
-    "java.compile.nullAnalysis.mode": "automatic",
+    "java.compile.nullAnalysis.mode": "disabled",
     "java.configuration.runtimes": [
         {
             "name": "JavaSE-17",

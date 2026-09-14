@@ -5,8 +5,6 @@ import com.hanghai.kchtg.accesslog.dto.LogAggregateResponse;
 import com.hanghai.kchtg.accesslog.entity.LogRetentionPolicy;
 import com.hanghai.kchtg.accesslog.service.LogService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,8 +33,6 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/logs")
 public class LogExportController {
-
-    private static final Logger log = LoggerFactory.getLogger(LogExportController.class);
 
     private final LogService logService;
 

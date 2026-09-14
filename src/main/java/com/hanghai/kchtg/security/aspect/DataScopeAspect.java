@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  * Global Filter {@code orgUnitFilter} cho Session truy vấn.
  * </p>
  *
- * TODO(SECURITY): Audit every record-bearing controller/service and apply
+ * Security follow-up: audit every record-bearing controller/service and apply
  * record scope
  * to detail, update, delete, approve, restore, attachment, and export
  * operations;

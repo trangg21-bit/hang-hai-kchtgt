@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
@@ -173,9 +172,4 @@ public class InventoryPlanService {
                 .build();
     }
 
-    private LocalDateTime toLocalDateTime(Instant instant) {
-        if (instant == null)
-            return null;
-        return instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
-    }
 }

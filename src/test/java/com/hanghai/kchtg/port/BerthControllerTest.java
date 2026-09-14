@@ -49,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(BerthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("BerthController web MVC tests — M-002")
+@SuppressWarnings("deprecation")
 class BerthControllerTest {
 
     @Autowired

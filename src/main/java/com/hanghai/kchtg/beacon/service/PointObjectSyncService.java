@@ -55,7 +55,9 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.LIGHTHOUSE);
-        double[] coords = getCoordinates(entity.getSpatialId());
+        double[] coordinates = getCoordinates(entity.getSpatialId());
+        point.setLongitude(coordinates[0]);
+        point.setLatitude(coordinates[1]);
         point.setDescription(entity.getLocation());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
@@ -91,7 +93,9 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.BUOY);
-        double[] coords = getCoordinates(entity.getSpatialId());
+        double[] coordinates = getCoordinates(entity.getSpatialId());
+        point.setLongitude(coordinates[0]);
+        point.setLatitude(coordinates[1]);
         point.setDescription(entity.getDescription());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());

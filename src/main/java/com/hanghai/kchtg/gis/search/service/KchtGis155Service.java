@@ -7,7 +7,6 @@ import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.gis.search.dto.GisObjectType;
@@ -55,6 +54,7 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@SuppressWarnings("deprecation")
 public class KchtGis155Service {
 
   private static final int MAX_PAGE_SIZE = 5000;
@@ -100,7 +100,6 @@ public class KchtGis155Service {
   private final NavigationChannelRepository navigationChannelRepository;
   private final com.hanghai.kchtg.port.repository.AnchorageRepository anchorageRepository;
   private final com.hanghai.kchtg.port.repository.TransferAreaRepository transferAreaRepository;
-  private final com.hanghai.kchtg.port.repository.StormShelterAreaRepository stormShelterAreaRepository;
   private final DikeRevetmentRepository dikeRevetmentRepository;
   private final ShipRepairFacilityRepository shipRepairFacilityRepository;
   private final BuoyStationRepository buoyStationRepository;
@@ -182,147 +181,6 @@ public class KchtGis155Service {
     return val.toString();
   }
 
-  private void explainAndLogPierQuery(UUID orgUnitId, String search, OperationalStatus hd, ApprovalStatus pd) {
-    String sql = "EXPLAIN ANALYZE SELECT id, ten_cau, ma_cau FROM public.cau_cang WHERE deleted_at IS NULL " +
-        "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
-        "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_cau) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_cau) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) "
-        +
-        "AND (CAST(:operationalStatus AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:operationalStatus AS integer)) "
-        +
-        "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
-    try {
-      jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
-      query.setParameter("orgUnitId", orgUnitId);
-      query.setParameter("search", search);
-      query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
-      query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
-      List<?> result = query.getResultList();
-
-      String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null,
-          pd != null ? pd.ordinal() : null);
-      StringBuilder sb = new StringBuilder();
-      sb.append("\n=================== EXPLAIN ANALYZE CAU_CANG ===================\n");
-      sb.append("--- [COPY-PASTE SELECT QUERY] ---\n")
-          .append(execSql.substring(16)).append(";\n\n")
-          .append("--- [COPY-PASTE EXPLAIN QUERY] ---\n")
-          .append(execSql).append(";\n\n");
-      sb.append("Plan:\n");
-      for (Object line : result) {
-        sb.append("  ").append(line).append("\n");
-      }
-      sb.append("===============================================================");
-      log.info(sb.toString());
-    } catch (Exception e) {
-      log.warn("Could not execute EXPLAIN ANALYZE for CAU_CANG: {}", e.getMessage());
-    }
-  }
-
-  private void explainAndLogBerthQuery(UUID orgUnitId, String search, OperationalStatus hd, ApprovalStatus pd) {
-    String sql = "EXPLAIN ANALYZE SELECT id, ten_ben, ma_ben FROM public.ben_cang WHERE deleted_at IS NULL " +
-        "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
-        "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_ben) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_ben) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) "
-        +
-        "AND (CAST(:operationalStatus AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:operationalStatus AS integer)) "
-        +
-        "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
-    try {
-      jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
-      query.setParameter("orgUnitId", orgUnitId);
-      query.setParameter("search", search);
-      query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
-      query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
-      List<?> result = query.getResultList();
-
-      String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null,
-          pd != null ? pd.ordinal() : null);
-      StringBuilder sb = new StringBuilder();
-      sb.append("\n=================== EXPLAIN ANALYZE BEN_CANG ===================\n");
-      sb.append("--- [COPY-PASTE SELECT QUERY] ---\n")
-          .append(execSql.substring(16)).append(";\n\n")
-          .append("--- [COPY-PASTE EXPLAIN QUERY] ---\n")
-          .append(execSql).append(";\n\n");
-      sb.append("Plan:\n");
-      for (Object line : result) {
-        sb.append("  ").append(line).append("\n");
-      }
-      sb.append("===============================================================");
-      log.info(sb.toString());
-    } catch (Exception e) {
-      log.warn("Could not execute EXPLAIN ANALYZE for BEN_CANG: {}", e.getMessage());
-    }
-  }
-
-  private void explainAndLogPortQuery(UUID orgUnitId, String search, OperationalStatus hd, ApprovalStatus pd) {
-    String sql = "EXPLAIN ANALYZE SELECT id, ten_cang, ma_cang FROM public.cang_bien WHERE deleted_at IS NULL " +
-        "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
-        "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_cang) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_cang) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) "
-        +
-        "AND (CAST(:operationalStatus AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:operationalStatus AS integer)) "
-        +
-        "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
-    try {
-      jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
-      query.setParameter("orgUnitId", orgUnitId);
-      query.setParameter("search", search);
-      query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
-      query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
-      List<?> result = query.getResultList();
-
-      String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null,
-          pd != null ? pd.ordinal() : null);
-      StringBuilder sb = new StringBuilder();
-      sb.append("\n=================== EXPLAIN ANALYZE CANG_BIEN ===================\n");
-      sb.append("--- [COPY-PASTE SELECT QUERY] ---\n")
-          .append(execSql.substring(16)).append(";\n\n")
-          .append("--- [COPY-PASTE EXPLAIN QUERY] ---\n")
-          .append(execSql).append(";\n\n");
-      sb.append("Plan:\n");
-      for (Object line : result) {
-        sb.append("  ").append(line).append("\n");
-      }
-      sb.append("===============================================================");
-      log.info(sb.toString());
-    } catch (Exception e) {
-      log.warn("Could not execute EXPLAIN ANALYZE for CANG_BIEN: {}", e.getMessage());
-    }
-  }
-
-  private void explainAndLogWaterZoneQuery(UUID orgUnitId, String search, OperationalStatus hd, ApprovalStatus pd) {
-    String sql = "EXPLAIN ANALYZE SELECT id, ten_vung_nuoc, ma_vung_nuoc FROM public.vung_nuoc WHERE deleted_at IS NULL "
-        +
-        "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
-        "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_vung_nuoc) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_vung_nuoc) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) "
-        +
-        "AND (CAST(:operationalStatus AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:operationalStatus AS integer)) "
-        +
-        "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
-    try {
-      jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
-      query.setParameter("orgUnitId", orgUnitId);
-      query.setParameter("search", search);
-      query.setParameter("operationalStatus", hd != null ? hd.ordinal() : null);
-      query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
-      List<?> result = query.getResultList();
-
-      String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null,
-          pd != null ? pd.ordinal() : null);
-      StringBuilder sb = new StringBuilder();
-      sb.append("\n=================== EXPLAIN ANALYZE VUNG_NUOC ===================\n");
-      sb.append("--- [COPY-PASTE SELECT QUERY] ---\n")
-          .append(execSql.substring(16)).append(";\n\n")
-          .append("--- [COPY-PASTE EXPLAIN QUERY] ---\n")
-          .append(execSql).append(";\n\n");
-      sb.append("Plan:\n");
-      for (Object line : result) {
-        sb.append("  ").append(line).append("\n");
-      }
-      sb.append("===============================================================");
-      log.info(sb.toString());
-    } catch (Exception e) {
-      log.warn("Could not execute EXPLAIN ANALYZE for VUNG_NUOC: {}", e.getMessage());
-    }
-  }
-
   private UUID firstNonNull(UUID... values) {
     for (UUID value : values) {
       if (value != null) {
@@ -330,10 +188,6 @@ public class KchtGis155Service {
       }
     }
     return null;
-  }
-
-  private boolean isApproved(ApprovalStatus status) {
-    return status == ApprovalStatus.APPROVED || status == ApprovalStatus.APPROVED_LEVEL2;
   }
 
   static double[] representativeCoordinate(String wkt, String geometryType) {
@@ -371,29 +225,6 @@ public class KchtGis155Service {
       result.setLatitude(coordinate[0]);
       result.setLongitude(coordinate[1]);
     }
-  }
-
-  private void populateSpatialAndFilter(List<KchtGisSearchResult> results, KchtGisSearchResult result,
-      UUID khongGianId, GisObjectType objectType, GisObjectType fallbackType) {
-    if (khongGianId != null) {
-      Optional<GisSpatialObject> spatialOpt = gisSpatialObjectRepository.findById(khongGianId);
-      if (spatialOpt.isPresent()) {
-        GisSpatialObject spatial = spatialOpt.get();
-        String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
-        result.setGeometryType(geomTypeStr);
-        result.setCoordinates(spatial.getCoordinates());
-        enrichRepresentativeCoordinate(result);
-
-        if (objectType != null && !objectType.name().equalsIgnoreCase(geomTypeStr)) {
-          return;
-        }
-      } else if (objectType != null) {
-        return;
-      }
-    } else if (objectType != null) {
-      return;
-    }
-    results.add(result);
   }
 
   private void populateSpatialAndFilterFromMap(List<KchtGisSearchResult> results, KchtGisSearchResult result,
@@ -508,9 +339,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = cbSpatialMap.get(cb.getId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(cb.getId() != null ? cb.getId().toString() : null)
                 .name(cb.getPortName())
@@ -557,9 +385,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = bcSpatialMap.get(bc.getId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(bc.getId() != null ? bc.getId().toString() : null)
                 .name(bc.getBerthName())
@@ -629,9 +454,6 @@ public class KchtGis155Service {
             double[] coords = parentBerthSpatial != null
                 ? parseFirstCoordinateFromWkt(parentBerthSpatial.getCoordinates())
                 : null;
-            Double latitude = coords != null ? coords[0] : null;
-            Double longitude = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(cc.getId() != null ? cc.getId().toString() : null)
                 .name(cc.getPierName())
@@ -671,9 +493,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = ccSpatialMap.get(cc.getId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(cc.getId() != null ? cc.getId().toString() : null)
                 .name(cc.getDryPortName())
@@ -714,9 +533,6 @@ public class KchtGis155Service {
             for (Cctv cctv : cctvs) {
               GisSpatialObject spatial = cctvSpatialMap.get(cctv.getId());
               double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
-              Double lat = coords != null ? coords[0] : null;
-              Double lng = coords != null ? coords[1] : null;
-
               KchtGisSearchResult r = KchtGisSearchResult.builder()
                   .id(cctv.getId() != null ? cctv.getId().toString() : null)
                   .name(cctv.getDeviceName())
@@ -968,9 +784,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = vnSpatialMap.get(vn.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double latitude = coords != null ? coords[0] : null;
-            Double longitude = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(vn.getId() != null ? vn.getId().toString() : null)
                 .name(vn.getWaterZoneName())
@@ -1012,9 +825,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = ncSpatialMap.get(nc.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(String.valueOf(nc.getId()))
                 .name(nc.getChannelName() != null && !nc.getChannelName().isEmpty()
@@ -1059,9 +869,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = dikeRevSpatialMap.get(dk.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(String.valueOf(dk.getId()))
                 .name(dk.getDikeRevetmentName())
@@ -1104,9 +911,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = csSpatialMap.get(cs.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(String.valueOf(cs.getId()))
                 .name(cs.getFacilityName())
@@ -1143,9 +947,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = beaconSpatialMap.get(beacon.getId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(beacon.getId() != null ? beacon.getId().toString() : null)
                 .name(beacon.getName())
@@ -1185,9 +986,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = buoySpatialMap.get(buoy.getId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(buoy.getId() != null ? buoy.getId().toString() : null)
                 .name(buoy.getName())
@@ -1447,9 +1245,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = vtsSpatialMap.get(vts.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(String.valueOf(vts.getId()))
                 .name(vts.getSystemName())
@@ -1498,9 +1293,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = radarSpatialMap.get(dtoId);
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double lat = coords != null ? coords[0] : null;
-            Double lng = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(String.valueOf(rs.getId()))
                 .name(rs.getStationName())
@@ -1554,9 +1346,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = bpSpatialMap.get(vn.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double latitude = coords != null ? coords[0] : null;
-            Double longitude = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(vn.getId() != null ? vn.getId().toString() : null)
                 .name(vn.getWaterZoneName())
@@ -1609,9 +1398,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = knSpatialMap.get(vn.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double latitude = coords != null ? coords[0] : null;
-            Double longitude = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(vn.getId() != null ? vn.getId().toString() : null)
                 .name(vn.getAnchorageName())
@@ -1664,9 +1450,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = kcSpatialMap.get(vn.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double latitude = coords != null ? coords[0] : null;
-            Double longitude = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(vn.getId() != null ? vn.getId().toString() : null)
                 .name(vn.getTransferAreaName())
@@ -1720,9 +1503,6 @@ public class KchtGis155Service {
             GisSpatialObject spatial = ktSpatialMap.get(vn.getSpatialId());
             double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
                 : null;
-            Double latitude = coords != null ? coords[0] : null;
-            Double longitude = coords != null ? coords[1] : null;
-
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(vn.getId() != null ? vn.getId().toString() : null)
                 .name(vn.getWaterZoneName())
@@ -1747,7 +1527,9 @@ public class KchtGis155Service {
             }
           }
           break;
-      }
+        default:
+          break;
+       }
       log.info("PERF: Type {} took {} ms, results size {}", type, System.currentTimeMillis() - tStart,
           results.size());
     }

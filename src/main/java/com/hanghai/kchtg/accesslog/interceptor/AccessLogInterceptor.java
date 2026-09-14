@@ -65,7 +65,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
     /** Record the start time for duration calculation. */
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if (handler instanceof HandlerMethod handlerMethod) {
+        if (handler instanceof HandlerMethod) {
             request.setAttribute("requestStartTime", System.currentTimeMillis());
         }
         return true;

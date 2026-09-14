@@ -61,7 +61,10 @@ public class PortPlanningResponse {
     private UUID updatedBy;
     private LocalDateTime updatedAt;
 
+    @Builder.Default
     private List<PlanningCategoryResponse> planningCategories = new ArrayList<>();
+    @Builder.Default
     private List<PortPlanningCargoForecastResponse> cargoForecasts = new ArrayList<>();
+    @Builder.Default
     private List<PlanningFileResponse> planningFiles = new ArrayList<>();
 }

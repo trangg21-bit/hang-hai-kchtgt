@@ -11,11 +11,9 @@ import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
-import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -34,8 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
@@ -61,7 +57,6 @@ class DikeRevetmentServiceTest {
     private static final UUID TEST_ID_2 = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Mock private DikeRevetmentRepository repo;
-    @Mock private DikeRevetmentAttachmentRepository attachmentRepo;
     @Mock private InfrastructureHistoryRepository approvalHistoryRepo;
     @Mock private InfrastructureApprovalService approvalService;
     @Mock private GisSpatialObjectService gisSpatialObjectService;
@@ -80,10 +75,8 @@ class DikeRevetmentServiceTest {
     @BeforeEach
     void setUp() {
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
-        when(attachmentRepo.findByDikeRevetmentId(any())).thenReturn(Collections.emptyList());
-
         service = new DikeRevetmentService(
-                repo, attachmentRepo, approvalHistoryRepo, approvalService, gisSpatialObjectService,
+                repo, approvalHistoryRepo, approvalService, gisSpatialObjectService,
                 orgUnitCacheService, orgUnitScopeService, portCacheService, userResolverService,
                 infrastructureAttachmentRepository, userRepository, jdbcTemplate);
 

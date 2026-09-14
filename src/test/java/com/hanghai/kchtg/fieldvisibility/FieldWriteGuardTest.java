@@ -108,7 +108,7 @@ class FieldWriteGuardTest {
                                 .hasMessageContaining("sensitiveField");
 
                 // Unchanged non-restricted field with same sensitiveField value -> passes
-                SampleDto identicalPayload = new SampleDto("Bob", "Existing Secret");
+                new SampleDto("Bob", "Existing Secret");
                 // But sensitiveField is not null in identicalPayload so validateObject triggers
                 // unless sensitiveField was null
                 SampleDto nullOldEntity = new SampleDto("Alice", null);

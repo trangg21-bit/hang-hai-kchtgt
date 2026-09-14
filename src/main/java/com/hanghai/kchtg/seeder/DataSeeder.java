@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.seeder;
 
-import com.hanghai.kchtg.beacon.entity.BeaconStation;
-import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
@@ -182,12 +180,6 @@ public class DataSeeder implements CommandLineRunner {
         }
         log.info("📦 Seeding 15 OrgUnits...");
 
-        String[] codes = {
-            "CUC_HHVT", "CV_HH_HP", "CV_HH_HCM", "CV_HH_QN", "CV_HH_DN",
-            "CV_HH_VT", "CV_HH_NT", "CV_HH_QNhon", "CV_HH_CT", "CV_HH_QB",
-            "CV_HH_TH", "CV_HH_NA", "CV_HH_HT", "CV_HH_QT", "CV_HH_TTH"
-        };
-
         String[] names = {
             "Cục Hàng hải và Đường thủy Việt Nam", "Cảng vụ Hàng hải Hải Phòng", "Cảng vụ Hàng hải TP. Hồ Chí Minh",
             "Cảng vụ Hàng hải Quảng Ninh", "Cảng vụ Hàng hải Đà Nẵng", "Cảng vụ Hàng hải Vũng Tàu",
@@ -275,43 +267,6 @@ public class DataSeeder implements CommandLineRunner {
         if (level == null || level <= 1) return OrgUnitRank.DEPARTMENT;
         if (level == 2) return OrgUnitRank.BRANCH;
         return OrgUnitRank.REPRESENTATIVE;
-    }
-
-    private void seedUserGroups() {
-        log.info("📦 Checking and seeding UserGroups...");
-
-        String[] codes = {
-            "GRP_ADMINS", "GRP_CV_SPECIALISTS", "GRP_CV_LEADERS", "GRP_TC_SPECIALISTS", "GRP_TC_LEADERS",
-            "GRP_TECH_MAINT", "GRP_MONITOR_BUOY", "GRP_OPERATOR_STATION", "GRP_REPORT_STAT", "GRP_DOC_RECEIVE",
-            "GRP_DOC_APPROVE", "GRP_PARTNER_OPERATOR", "GRP_CONSTRUCT_UNIT", "GRP_INSPECTOR", "GRP_TECH_SUPPORT"
-        };
-
-        String[] names = {
-            "Nhóm Quản Trị Viên", "Nhóm Chuyên Viên Cảng Vụ", "Nhóm Lãnh Đạo Cảng Vụ",
-            "Nhóm Chuyên Viên Tổng Cục", "Nhóm Lãnh Đạo Tổng Cục", "Nhóm Kỹ Thuật Viên Bảo Trì",
-            "Nhóm Giám Sát Phao Tiêu", "Nhóm Vận Hành Nhà Trạm", "Nhóm Báo Cáo Thống Kê",
-            "Nhóm Tiếp Nhận Hồ Sơ", "Nhóm Phê Duyệt Hồ Sơ", "Nhóm Đối Tác Khai Thác",
-            "Nhóm Đơn Vị Thi Công", "Nhóm Thanh Tra Hàng Hải", "Nhóm Hỗ Trợ Kỹ Thuật"
-        };
-
-        int seededCount = 0;
-        for (int i = 0; i < 15; i++) {
-            if (!groupRepo.existsByCode(codes[i])) {
-                UserGroup g = new UserGroup();
-                g.setName(names[i]);
-                g.setCode(codes[i]);
-                g.setDescription("Mô tả nhóm " + names[i]);
-                g.setStatus(GroupStatus.ACTIVE);
-                g.setPermissions(List.of("users:read", "users:create", "users:update"));
-                groupRepo.save(g);
-                seededCount++;
-            }
-        }
-        if (seededCount > 0) {
-            log.info("✅ Seeded {} UserGroups", seededCount);
-        } else {
-            log.info("⏭️ All 15 UserGroups already exist");
-        }
     }
 
     public void seedUsers() {
@@ -422,118 +377,6 @@ public class DataSeeder implements CommandLineRunner {
             connectionRepo.save(conn);
         }
         log.info("✅ Seeded 15 DataConnections");
-    }
-
-    private void seedBeaconStations() {
-        if (beaconStationRepo.count() > 0) {
-            log.info("⏭️ Beacon lights already exist, skipping...");
-            return;
-        }
-
-        log.info("📦 Seeding 15 BeaconStations...");
-        String[] names = {
-            "Đèn biển Hòn Dấu", "Hải đăng Cô Tô", "Đèn biển Long Châu",
-            "Đèn biển Ba Lạt", "Hải đăng Sơn Trà", "Đèn biển Cù Lao Xanh",
-            "Đèn biển Mũi Dinh", "Hải đăng Kê Gà", "Đèn biển Vũng Tàu",
-            "Đèn biển Cần Giờ", "Hải đăng Bạch Long Vĩ", "Đèn biển Cửa Hội",
-            "Đèn biển Lạch Giang", "Đèn biển Lệ Thủy", "Đèn biển Hòn Khoai"
-        };
-
-        String[] codes = {
-            "LH-HONDAU-001", "LH-COTO-002", "LH-LONGCHAU-003",
-            "LH-BALAT-004", "LH-SONTRA-005", "LH-CLXANH-006",
-            "LH-MUIDINH-007", "LH-KEGA-008", "LH-VUNGTAU-009",
-            "LH-CANGIO-010", "LH-BLV-011", "LH-CUAHOI-012",
-            "LH-LACHGIANG-013", "LH-LETHUY-014", "LH-HONKHOAI-015"
-        };
-
-        String[] types = {
-            "LIGHTHOUSE", "LIGHTHOUSE", "LIGHTHOUSE",
-            "BEACON_LIGHT", "LIGHTHOUSE", "BEACON_LIGHT",
-            "BEACON_MARK", "LIGHTHOUSE", "LIGHTHOUSE",
-            "BEACON_LIGHT", "LIGHTHOUSE", "BEACON_LIGHT",
-            "BEACON_MARK", "BEACON_LIGHT", "LIGHTHOUSE"
-        };
-
-        String[] statuses = {
-            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
-            "APPROVED_L2", "PUBLISHED", "REJECTED",
-            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
-            "APPROVED_L2", "PUBLISHED", "REJECTED",
-            "DRAFT", "PENDING_APPROVAL", "PUBLISHED"
-        };
-
-        double[] lats = { 20.666, 20.985, 20.622, 20.301, 16.121, 13.782, 11.481, 10.697, 10.329, 10.428, 20.133, 18.788, 20.021, 17.155, 8.431 };
-        double[] lons = { 106.815, 107.755, 107.159, 106.599, 108.291, 109.281, 109.019, 107.989, 107.072, 106.915, 107.721, 105.799, 106.277, 106.999, 104.831 };
-
-        for (int i = 0; i < 15; i++) {
-            BeaconStation b = new BeaconStation();
-            b.setCode(codes[i]);
-            b.setName(names[i]);
-            b.setType(types[i]);
-            b.setLightRange(12.5 + i % 5);
-            b.setTowerColor(i % 3 == 0 ? "Trắng chớp nhoáng" : (i % 3 == 1 ? "Đỏ chớp chu kỳ" : "Xanh lục"));
-            b.setStatus(statuses[i]);
-            b.setIsActive("PUBLISHED".equals(statuses[i]));
-            beaconStationRepo.save(b);
-        }
-        log.info("✅ Seeded 15 BeaconStations");
-    }
-
-    private void seedBuoys() {
-        if (buoyRepo.count() > 0) {
-            log.info("⏭️ Buoys already exist, skipping...");
-            return;
-        }
-
-        log.info("📦 Seeding 15 Buoys...");
-        String[] names = {
-            "Phao số 0 Hải Phòng", "Phao số 1 luồng Nam Triệu", "Phao số 2 Lạch Huyện",
-            "Phao giới hạn luồng Hòn Gai", "Phao ngầm Cửa Lò", "Phao tiêu Sơn Trà",
-            "Phao số 0 Đà Nẵng", "Phao báo hiệu Quy Nhơn", "Phao phân khu Nha Trang",
-            "Phao số 0 Vũng Tàu", "Phao giới hạn Soài Rạp", "Phao chỉ hướng Đồng Nai",
-            "Phao vùng nước an toàn Phú Quốc", "Phao tiêu Côn Đảo", "Phao báo nguy hiểm Thổ Chu"
-        };
-
-        String[] codes = {
-            "BY-HPH-000", "BY-NAMTRIEU-001", "BY-LACHHUYEN-002",
-            "BY-HONGAI-003", "BY-CUALO-004", "BY-SONTRA-005",
-            "BY-DANANG-000", "BY-QUYNHON-006", "BY-NHATRANG-007",
-            "BY-VUNGTAU-000", "BY-SOAIRAP-008", "BY-DONGNAI-009",
-            "BY-PHUQUOC-010", "BY-CONDAO-011", "BY-THOCHU-012"
-        };
-
-        String[] types = {
-            "SAFE_WATER", "CARDINAL", "CARDINAL",
-            "SECTOR", "SPECIAL", "CARDINAL",
-            "SAFE_WATER", "SPECIAL", "SECTOR",
-            "SAFE_WATER", "CARDINAL", "SPECIAL",
-            "SAFE_WATER", "SECTOR", "ISOLATED_DANGER"
-        };
-
-        String[] statuses = {
-            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
-            "APPROVED_L2", "PUBLISHED", "REJECTED",
-            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
-            "APPROVED_L2", "PUBLISHED", "REJECTED",
-            "DRAFT", "PENDING_APPROVAL", "PUBLISHED"
-        };
-
-        double[] lats = { 20.601, 20.722, 20.733, 20.911, 18.812, 16.133, 16.101, 13.711, 12.215, 10.222, 10.311, 10.601, 10.111, 8.655, 9.301 };
-        double[] lons = { 106.888, 106.822, 106.901, 107.033, 105.744, 108.201, 108.255, 109.211, 109.201, 107.011, 106.799, 106.811, 103.955, 106.601, 103.455 };
-
-        for (int i = 0; i < 15; i++) {
-            Buoy b = new Buoy();
-            b.setCode(codes[i]);
-            b.setName(names[i]);
-            b.setType(types[i]);
-            b.setRange(5.0 + i % 3);
-            b.setColor(i % 2 == 0 ? "Đỏ" : "Xanh lục");
-            b.setStatus(statuses[i]);
-            b.setIsActive("PUBLISHED".equals(statuses[i]));
-            buoyRepo.save(b);
-        }
-        log.info("✅ Seeded 15 Buoys");
     }
 
     private void seedMapSymbols() {

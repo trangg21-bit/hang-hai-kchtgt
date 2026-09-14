@@ -58,20 +58,6 @@ public class DocumentService {
             "image/tiff"
     );
 
-    private static final List<String> ALLOWED_EXTENSIONS = List.of(
-            "pdf",
-            "docx",
-            "doc",
-            "xls",
-            "xlsx",
-            "jpeg",
-            "jpg",
-            "png",
-            "webp",
-            "tiff",
-            "tif"
-    );
-
     private final DocumentRepository documentRepository;
     private final InfrastructureHistoryRepository historyRepository;
     private final PortRepository portRepository;
@@ -318,7 +304,6 @@ public class DocumentService {
                 return;
             }
 
-            String name = affectedFileName != null ? affectedFileName : "không rõ tên";
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(refId)
@@ -388,7 +373,4 @@ public class DocumentService {
         }
     }
 
-    private <T> Page<T> createPage(List<T> content, long totalElements, int page, int size) {
-        return new PageImpl<>(content, PageRequest.of(page, size), totalElements);
-    }
 }

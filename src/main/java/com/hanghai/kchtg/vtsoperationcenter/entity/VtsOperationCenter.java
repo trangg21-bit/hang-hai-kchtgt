@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.vtsoperationcenter.entity;
 
-import com.hanghai.kchtg.common.entity.ApprovableEntity;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
@@ -14,7 +12,6 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity

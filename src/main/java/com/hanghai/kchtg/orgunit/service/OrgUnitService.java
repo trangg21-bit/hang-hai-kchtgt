@@ -20,6 +20,7 @@ public class OrgUnitService {
 
     private final OrganizationService organizationService;
 
+    @Deprecated
     public OrgUnitService(OrganizationService organizationService) {
         this.organizationService = organizationService;
     }
@@ -27,21 +28,25 @@ public class OrgUnitService {
     // ── Delegated queries ────────────────────────────────────────────
 
     @Transactional(readOnly = true)
+    @Deprecated
     public List<OrgUnitResponse> findAll() {
         return organizationService.findAll();
     }
 
     @Transactional(readOnly = true)
+    @Deprecated
     public List<OrgUnitResponse> findTree() {
         return organizationService.buildTree();
     }
 
     @Transactional(readOnly = true)
+    @Deprecated
     public List<OrgUnitResponse> findByParentId(UUID parentId) {
         return organizationService.findByParentId(parentId);
     }
 
     @Transactional(readOnly = true)
+    @Deprecated
     public OrgUnitResponse findById(UUID id) {
         return organizationService.findById(id);
     }
@@ -51,14 +56,17 @@ public class OrgUnitService {
     // Note: create/update/delete on this deprecated service use null operator info.
     // For new development, call OrganizationService directly with operator context.
 
+    @Deprecated
     public OrgUnitResponse create(CreateOrgUnitRequest request) {
         return organizationService.create(request, null, null);
     }
 
+    @Deprecated
     public OrgUnitResponse update(UUID id, UpdateOrgUnitRequest request) {
         return organizationService.update(id, request, null, null);
     }
 
+    @Deprecated
     public void delete(UUID id) {
         organizationService.delete(id, null, null);
     }

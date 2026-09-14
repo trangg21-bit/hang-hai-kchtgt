@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.scada.service;
 
-import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.scada.dto.ScadaResponse;
 import com.hanghai.kchtg.scada.dto.ScadaOptionResponse;
 import com.hanghai.kchtg.scada.dto.CreateScadaRequest;
@@ -11,7 +10,6 @@ import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
@@ -439,7 +437,7 @@ public class ScadaService {
               .status(InfrastructureHistoryStatus.UPDATED)
               .approvedBy(currentUserId)
               .approvedDate(now)
-              .changedField(field)
+              .changedField(fieldName)
               .previousValue(formatDisplayValue(field, oldVal))
               .newValue(formatDisplayValue(field, newVal))
               .build());

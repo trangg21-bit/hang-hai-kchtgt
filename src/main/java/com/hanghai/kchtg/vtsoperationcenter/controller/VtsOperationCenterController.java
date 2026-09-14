@@ -10,7 +10,6 @@ import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.ApprovalRequest;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.util.ApprovalUtils;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;

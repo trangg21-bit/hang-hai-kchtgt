@@ -52,8 +52,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final String MOCK_TOKEN_PREFIX = "mock-";
-
     /**
      * Paths that do NOT require JWT authentication (allowlist for dev / health).
      */

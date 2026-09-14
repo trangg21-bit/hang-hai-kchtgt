@@ -5,7 +5,6 @@ import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -18,7 +17,6 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDate;
 import java.util.UUID;
 
-import lombok.Builder;
 import lombok.experimental.FieldNameConstants;
 
 @Entity

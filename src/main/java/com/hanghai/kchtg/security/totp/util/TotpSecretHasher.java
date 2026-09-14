@@ -3,7 +3,6 @@ package com.hanghai.kchtg.security.totp.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.SecureRandom;
@@ -55,7 +54,6 @@ public final class TotpSecretHasher {
         );
 
         try {
-            KeyGenerator dummy = KeyGenerator.getInstance("AES"); // no-op, just to trigger imports if needed
             SecretKey generatedKey = generateKey(spec);
             String saltHex = HexFormat.of().formatHex(salt);
             String hashHex = HexFormat.of().formatHex(generatedKey.getEncoded());

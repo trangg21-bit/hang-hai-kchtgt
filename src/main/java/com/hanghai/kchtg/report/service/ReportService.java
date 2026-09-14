@@ -1,18 +1,14 @@
 package com.hanghai.kchtg.report.service;
 
-import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
-import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.managedasset.entity.ManagedAsset;
 import com.hanghai.kchtg.managedasset.repository.ManagedAssetRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.port.entity.Berth;
-import com.hanghai.kchtg.port.entity.BerthType;
 import com.hanghai.kchtg.port.entity.Pier;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.BerthRepository;
@@ -61,14 +57,11 @@ public class ReportService {
     private final BccTemplateRenderer bccTemplateRenderer;
     private final ReportRepository reportRepo;
     private final ReportEntityRepository reportEntityRepo;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final PointObjectRepository pointRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final PortRepository portRepository;
     private final BerthRepository berthRepository;
     private final PierRepository pierRepository;
-    private final LineObjectRepository lineObjectRepository;
-    private final PolygonObjectRepository polygonObjectRepository;
     private final List<ReportHandler> reportHandlers;
     private final Bcc157Service bcc157Service;
     private final ManagedAssetRepository managedAssetRepository;
@@ -1068,65 +1061,12 @@ public class ReportService {
     /**
      * Formats TrangThaiHoatDong enum to a human-readable Vietnamese label.
      */
-    private String f148StatusLabel(
-            OperationalStatus status) {
-        if (status == null)
-            return "";
-        switch (status) {
-            case OPERATIONAL:
-                return "Đang hoạt động";
-            case SUSPENDED:
-                return "Tạm ngừng";
-            default:
-                return status.name();
-        }
-    }
-
     /**
      * Formats LoaiBen enum to a human-readable Vietnamese label.
      */
-    private String f148BerthTypeLabel(
-            BerthType berthType) {
-        if (berthType == null)
-            return "";
-        switch (berthType) {
-            case CONTAINER:
-                return "Bến container";
-            case GENERAL_CARGO:
-                return "Bến tổng hợp";
-            case SPECIALIZED:
-                return "Bến chuyên dụng";
-            case PASSENGER:
-                return "Bến hành khách";
-            case MOORING_BUOY:
-                return "Bến phao";
-            case INLAND_WATERWAY:
-                return "Bến thủy nội địa";
-            default:
-                return berthType.name();
-        }
-    }
-
     /**
      * Formats structureType (Integer from BenCang) to a human-readable label.
      */
-    private String f148StructureTypeLabel(Integer structureType) {
-        if (structureType == null)
-            return "";
-        switch (structureType) {
-            case 1:
-                return "Bê tông cốt thép";
-            case 2:
-                return "Thép";
-            case 3:
-                return "Kết cấu hỗn hợp";
-            case 4:
-                return "Phao nổi";
-            default:
-                return "Khác (" + structureType + ")";
-        }
-    }
-
     /**
      * Formats LocalDateTime to "MM/yyyy" string, or empty if null.
      */
@@ -3879,7 +3819,6 @@ public class ReportService {
 
                             for (Map.Entry<String, List<Map<String, Object>>> entry : groups.entrySet()) {
                                 String groupKey = entry.getKey();
-                                String groupNum = groupKey.split("\\.")[0];
                                 String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
 
                                 List<Map<String, Object>> groupItems = entry.getValue();
@@ -4069,7 +4008,7 @@ public class ReportService {
                                 }
 
                                 if (isFormula || isBlank || isStringEmpty) {
-                                    headerCell.setCellType(CellType.BLANK);
+                                    headerCell.setBlank();
 
                                     copyCell(detailCell, headerCell, new HashMap<>());
                                 }
@@ -5729,50 +5668,6 @@ public class ReportService {
      * POI cannot
      * handle for VALUE() functions and complex formulas.
      */
-    private void directComputeBcc157(Sheet sheet) {
-        try {
-            // Read source values from placeholder cells (rows are 0-indexed in POI)
-            // Excel rows: 14=rowIdx13, 15=rowIdx14, 16=rowIdx15, 17=rowIdx16,
-            // 19=rowIdx18, 20=rowIdx19, 21=rowIdx20, 22=rowIdx21,
-            // 24=rowIdx23, 25=rowIdx24
-            // Column D = colIdx 3, Column E = colIdx 4
-
-            double d14 = getCellNumericValue(sheet, 13, 3); // assetOpeningOriginalCost
-            double d15 = getCellNumericValue(sheet, 14, 3); // assetOriginalCostIncrease
-            double d16 = getCellNumericValue(sheet, 15, 3); // assetOriginalCostDecrease
-            double d19 = getCellNumericValue(sheet, 18, 3); // assetOpeningAccumulatedDepreciation
-            double d20 = getCellNumericValue(sheet, 19, 3); // assetDepreciationIncrease
-            double d21 = getCellNumericValue(sheet, 20, 3); // assetDepreciationDecrease
-
-            // Compute formula results
-            double d17 = d14 + d15 - d16; // Số dư cuối năm Nguyên giá
-            double d22 = d19 + d20 - d21; // Số dư cuối năm Hao mòn
-            double d24 = d14 - d19; // Giá trị còn lại Đầu năm
-            double d25 = d17 - d22; // Giá trị còn lại Cuối năm
-
-            // Write D column computed cells
-            setCellNumericValue(sheet, 16, 3, d17); // D17
-            setCellNumericValue(sheet, 21, 3, d22); // D22
-            setCellNumericValue(sheet, 23, 3, d24); // D24
-            setCellNumericValue(sheet, 24, 3, d25); // D25
-
-            // Write E column (Tổng cộng = D column values)
-            setCellNumericValue(sheet, 13, 4, d14); // E14 = D14
-            setCellNumericValue(sheet, 14, 4, d15); // E15 = D15
-            setCellNumericValue(sheet, 15, 4, d16); // E16 = D16
-            setCellNumericValue(sheet, 16, 4, d17); // E17 = D17
-            setCellNumericValue(sheet, 18, 4, d19); // E19 = D19
-            setCellNumericValue(sheet, 19, 4, d20); // E20 = D20
-            setCellNumericValue(sheet, 20, 4, d21); // E21 = D21
-            setCellNumericValue(sheet, 21, 4, d22); // E22 = D22
-            setCellNumericValue(sheet, 23, 4, d24); // E24 = D24
-            setCellNumericValue(sheet, 24, 4, d25); // E25 = D25
-
-        } catch (Exception e) {
-            log.warn("directComputeBcc157 failed: {}", e.getMessage());
-        }
-    }
-
     /**
      * Computes BCC_157 formula cells directly from the replacements map values.
      * This is more reliable than reading from the sheet because the replacements
@@ -5898,7 +5793,6 @@ public class ReportService {
         // Remove any formula the cell may have (from the copied template)
         cell.removeFormula();
         // Force type to NUMERIC — defeats any stale STRING placeholder
-        cell.setCellType(CellType.NUMERIC);
         // Set the computed value
         cell.setCellValue(value);
         // Apply format
@@ -6530,26 +6424,6 @@ public class ReportService {
         }
 
         return currentDestRow;
-    }
-
-    private String formatDouble(double dVal) {
-        if (Double.isNaN(dVal) || Double.isInfinite(dVal)) {
-            return "";
-        }
-
-        java.math.BigDecimal bd = java.math.BigDecimal.valueOf(dVal);
-
-        if (dVal == (long) dVal) {
-            return bd.toBigInteger().toString();
-        }
-
-        String plain = bd.toPlainString();
-
-        if (plain.indexOf('.') > 0) {
-            plain = plain.replaceAll("0+$", "").replaceAll("\\.$", "");
-        }
-
-        return plain;
     }
 
     private boolean isTableRow(Sheet sheet, int r) {

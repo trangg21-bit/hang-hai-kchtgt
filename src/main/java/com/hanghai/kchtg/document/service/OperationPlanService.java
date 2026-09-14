@@ -9,7 +9,6 @@ import com.hanghai.kchtg.document.entity.OperationPlanWork;
 import com.hanghai.kchtg.document.entity.OperationReport;
 import com.hanghai.kchtg.document.entity.OperationStatus;
 import com.hanghai.kchtg.document.repository.OperationConfirmationRepository;
-import com.hanghai.kchtg.document.repository.OperationDetailRepository;
 import com.hanghai.kchtg.document.repository.OperationPlanRepository;
 import com.hanghai.kchtg.document.repository.OperationReportRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -41,7 +40,6 @@ public class OperationPlanService {
     private static final DateTimeFormatter CODE_DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private final OperationPlanRepository operationPlanRepository;
-    private final OperationDetailRepository operationDetailRepository;
     private final OperationReportRepository operationReportRepository;
     private final OperationConfirmationRepository operationConfirmationRepository;
     private final OrgUnitScopeService orgUnitScopeService;

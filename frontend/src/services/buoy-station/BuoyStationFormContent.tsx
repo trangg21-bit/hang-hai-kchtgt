@@ -192,7 +192,7 @@ const parseInteger = (v: string | undefined): number => {
 
 const ddToDms = (v: number | null | undefined): { d: number | null; m: number | null; s: number | null } => {
   if (v == null || isNaN(v)) return { d: null, m: null, s: null };
-  let abs = Math.abs(v);
+  const abs = Math.abs(v);
   let d = Math.floor(abs);
   let mFloat = (abs - d) * 60;
   if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
