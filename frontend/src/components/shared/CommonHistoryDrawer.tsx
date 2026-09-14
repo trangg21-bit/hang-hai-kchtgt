@@ -770,55 +770,65 @@ function parseZoneChanges(field: string, prevRaw: string, newRaw: string): Histo
     };
   };
 
-  // Kiểm tra nếu có chuỗi zone chi tiết chứa Tọa độ / Loại hình
-  const prevDetail = extractZoneDetails(cleanPrev);
-  const newDetail = extractZoneDetails(cleanNew);
+  // Kiểm tra nếu có chuỗi zone chi tiết chứa Tọa độ / Loại hình / Biểu tượng
+  const anyHasDetails = prevItems.some((i) => /(Tọa độ|Loại hình|Biểu tượng):/i.test(i))
+    || newItems.some((i) => /(Tọa độ|Loại hình|Biểu tượng):/i.test(i))
+    || /(Tọa độ|Loại hình|Biểu tượng):/i.test(cleanPrev)
+    || /(Tọa độ|Loại hình|Biểu tượng):/i.test(cleanNew);
 
-  if ((prevDetail && (prevDetail.coord || prevDetail.geomType)) || (newDetail && (newDetail.coord || newDetail.geomType))) {
+  if (anyHasDetails) {
     const detailResults: HistoryChangeItem[] = [];
+    const maxCount = Math.max(prevItems.length, newItems.length, 1);
 
-    // 1. Loại đối tượng GIS
-    const oldGeom = prevDetail?.geomType || '';
-    const newGeom = newDetail?.geomType || '';
-    if ((oldGeom || newGeom) && oldGeom !== newGeom) {
-      detailResults.push({
-        field: 'Loại đối tượng GIS',
-        oldValue: oldGeom,
-        newValue: newGeom,
-      });
-    }
+    for (let i = 0; i < maxCount; i++) {
+      const pItem = prevItems[i] || (i === 0 ? cleanPrev : '');
+      const nItem = newItems[i] || (i === 0 ? cleanNew : '');
+      const prevDetail = extractZoneDetails(pItem);
+      const newDetail = extractZoneDetails(nItem);
 
-    // 2. Tọa độ GIS (kích hoạt renderCoordinatesDisplay chuẩn DMS)
-    const oldCoord = prevDetail?.coord || '';
-    const newCoord = newDetail?.coord || '';
-    if ((oldCoord || newCoord) && oldCoord !== newCoord) {
-      detailResults.push({
-        field: 'Tọa độ GIS',
-        oldValue: oldCoord,
-        newValue: newCoord,
-      });
-    }
+      // 1. Tên / mã vùng VTS
+      const oldName = prevDetail?.name || '';
+      const newName = newDetail?.name || '';
+      if ((oldName || newName) && oldName !== newName) {
+        detailResults.push({
+          field: 'Vùng VTS',
+          oldValue: oldName,
+          newValue: newName,
+        });
+      }
 
-    // 3. Biểu tượng bản đồ (nếu có)
-    const oldSym = prevDetail?.symbol || '';
-    const newSym = newDetail?.symbol || '';
-    if ((oldSym || newSym) && oldSym !== newSym) {
-      detailResults.push({
-        field: 'Biểu tượng bản đồ',
-        oldValue: oldSym,
-        newValue: newSym,
-      });
-    }
+      // 2. Loại đối tượng GIS
+      const oldGeom = prevDetail?.geomType || '';
+      const newGeom = newDetail?.geomType || '';
+      if ((oldGeom || newGeom) && oldGeom !== newGeom) {
+        detailResults.push({
+          field: 'Loại đối tượng GIS',
+          oldValue: oldGeom,
+          newValue: newGeom,
+        });
+      }
 
-    // 4. Tên / mã vùng VTS (nếu thay đổi tên)
-    const oldName = prevDetail?.name || '';
-    const newName = newDetail?.name || '';
-    if (oldName && newName && oldName !== newName) {
-      detailResults.push({
-        field: 'Vùng VTS',
-        oldValue: oldName,
-        newValue: newName,
-      });
+      // 3. Tọa độ GIS (kích hoạt renderCoordinatesDisplay chuẩn DMS)
+      const oldCoord = prevDetail?.coord || '';
+      const newCoord = newDetail?.coord || '';
+      if ((oldCoord || newCoord) && oldCoord !== newCoord) {
+        detailResults.push({
+          field: 'Tọa độ GIS',
+          oldValue: oldCoord,
+          newValue: newCoord,
+        });
+      }
+
+      // 4. Biểu tượng bản đồ (nếu có)
+      const oldSym = prevDetail?.symbol || '';
+      const newSym = newDetail?.symbol || '';
+      if ((oldSym || newSym) && oldSym !== newSym) {
+        detailResults.push({
+          field: 'Biểu tượng bản đồ',
+          oldValue: oldSym,
+          newValue: newSym,
+        });
+      }
     }
 
     if (detailResults.length > 0) {

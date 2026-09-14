@@ -557,6 +557,73 @@ public class VtsSystemService {
         return rawPage.map(z -> toZoneDto(z, symbolMap));
     }
 
+    public String formatZoneDesc(VtsZoneDto dto) {
+        if (dto == null) return "";
+        String name = dto.getName() != null ? dto.getName().trim() : "";
+        String code = dto.getCode() != null ? dto.getCode().trim() : "";
+        StringBuilder sb = new StringBuilder();
+        if (!name.isEmpty() && !code.isEmpty()) {
+            sb.append(name).append(" (").append(code).append(")");
+        } else if (!name.isEmpty()) {
+            sb.append(name);
+        } else {
+            sb.append(code);
+        }
+
+        if (dto.getCoordinates() != null && !dto.getCoordinates().trim().isEmpty()) {
+            sb.append(" - Tọa độ: ").append(dto.getCoordinates().trim());
+        }
+        if (dto.getGeometryType() != null) {
+            sb.append(" - Loại hình: ").append(dto.getGeometryType().name());
+        }
+        String symName = dto.getSymbolName();
+        if ((symName == null || symName.isBlank()) && dto.getSymbolId() != null && mapSymbolRepository != null) {
+            symName = mapSymbolRepository.findById(dto.getSymbolId()).map(MapSymbol::getName).orElse(null);
+        }
+        if (symName != null && !symName.isBlank()) {
+            sb.append(" - Biểu tượng: ").append(symName.trim());
+        }
+        return sb.toString();
+    }
+
+    public String formatZoneDesc(VtsZone oz) {
+        if (oz == null) return "";
+        String name = oz.getName() != null ? oz.getName().trim() : "";
+        String code = oz.getCode() != null ? oz.getCode().trim() : "";
+        StringBuilder sb = new StringBuilder();
+        if (!name.isEmpty() && !code.isEmpty()) {
+            sb.append(name).append(" (").append(code).append(")");
+        } else if (!name.isEmpty()) {
+            sb.append(name);
+        } else {
+            sb.append(code);
+        }
+
+        String coords = "";
+        GisGeometryType geom = null;
+        if (oz.getSpatialId() != null && gisSpatialObjectService != null) {
+            Optional<GisSpatialObject> sp = gisSpatialObjectService.findById(oz.getSpatialId());
+            if (sp.isPresent()) {
+                coords = sp.get().getCoordinates() != null ? sp.get().getCoordinates().trim() : "";
+                geom = sp.get().getGeometryType();
+            }
+        }
+        if (!coords.isEmpty()) {
+            sb.append(" - Tọa độ: ").append(coords);
+        }
+        if (geom != null) {
+            sb.append(" - Loại hình: ").append(geom.name());
+        }
+        if (oz.getSymbolId() != null && mapSymbolRepository != null) {
+            mapSymbolRepository.findById(oz.getSymbolId()).ifPresent(s -> {
+                if (s.getName() != null && !s.getName().isBlank()) {
+                    sb.append(" - Biểu tượng: ").append(s.getName().trim());
+                }
+            });
+        }
+        return sb.toString();
+    }
+
     @Transactional
     public VtsZoneDto createZone(UUID systemId, VtsZoneDto dto, UUID userId) {
         VtsSystem vtsSystem = repository.findById(systemId)
@@ -626,10 +693,9 @@ public class VtsSystemService {
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
                     .approvedDate(LocalDateTime.now())
-                    .changedField("vtsZones")
+                    .changedField("zones")
                     .previousValue(null)
-                    .newValue("Thêm vùng [" + saved.getCode() + "] " + saved.getName() + " ("
-                            + saved.getConditionStatus().name() + ")")
+                    .newValue("Thêm " + formatZoneDesc(saved))
                     .build());
         }
 
@@ -655,18 +721,7 @@ public class VtsSystemService {
             throw new IllegalArgumentException("Dữ liệu vùng VTS không được để trống");
         }
 
-        String oldCoord = "";
-        GisGeometryType oldGeom = null;
-        if (zone.getSpatialId() != null && gisSpatialObjectService != null) {
-            Optional<GisSpatialObject> sp = gisSpatialObjectService.findById(zone.getSpatialId());
-            if (sp.isPresent()) {
-                oldCoord = sp.get().getCoordinates() != null ? sp.get().getCoordinates().trim() : "";
-                oldGeom = sp.get().getGeometryType();
-            }
-        }
-        String oldDesc = "[" + zone.getCode() + "] " + zone.getName() + " ("
-                + (zone.getConditionStatus() != null ? zone.getConditionStatus().name() : "OPERATIONAL") + ")"
-                + (!oldCoord.isEmpty() ? " - Tọa độ: " + oldCoord : "");
+        String oldZoneDesc = formatZoneDesc(zone);
 
         if (dto.getCode() != null && !dto.getCode().trim().isEmpty()) {
             String trimmedCode = dto.getCode().trim();
@@ -688,9 +743,16 @@ public class VtsSystemService {
         }
         zone.setSymbolId(dto.getSymbolId());
 
+        GisGeometryType oldGeom = null;
+        if (zone.getSpatialId() != null && gisSpatialObjectService != null) {
+            Optional<GisSpatialObject> sp = gisSpatialObjectService.findById(zone.getSpatialId());
+            if (sp.isPresent()) {
+                oldGeom = sp.get().getGeometryType();
+            }
+        }
         GisGeometryType targetGeom = dto.getGeometryType() != null ? dto.getGeometryType()
                 : (oldGeom != null ? oldGeom : GisGeometryType.POLYGON);
-        String targetCoord = dto.getCoordinates() != null ? dto.getCoordinates().trim() : oldCoord;
+        String targetCoord = dto.getCoordinates() != null ? dto.getCoordinates().trim() : "";
         if (gisSpatialObjectService != null && !targetCoord.isEmpty()) {
             UUID sId = gisSpatialObjectService.syncSpatialObject(
                     zone.getSpatialId() != null ? zone.getSpatialId() : dto.getSpatialId(),
@@ -707,61 +769,22 @@ public class VtsSystemService {
         zone.setUpdatedBy(effectiveUserId);
 
         VtsZone saved = zoneRepository.save(zone);
-        String newCoord = targetCoord;
-        String newDesc = "[" + saved.getCode() + "] " + saved.getName() + " ("
-                + (saved.getConditionStatus() != null ? saved.getConditionStatus().name() : "OPERATIONAL") + ")"
-                + (!newCoord.isEmpty() ? " - Tọa độ: " + newCoord : "");
+        String newZoneDesc = formatZoneDesc(saved);
 
         // Ghi log lịch sử thay đổi khi hệ thống VTS đã được phê duyệt
         boolean wasApproved = vtsSystem.getApprovalStatus() == ApprovalStatus.APPROVED
                 || vtsSystem.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-        if (wasApproved) {
-            LocalDateTime now = LocalDateTime.now();
-            boolean isCoordsChanged = !Objects.equals(oldCoord != null ? oldCoord.trim() : "", newCoord != null ? newCoord.trim() : "");
-            boolean isGeomChanged = (oldGeom != null || targetGeom != null) && oldGeom != targetGeom;
-
-            if (isCoordsChanged) {
-                historyRepository.save(InfrastructureHistory.builder()
-                        .refId(systemId)
-                        .refType(InfrastructureType.VTS_SYSTEM)
-                        .status(InfrastructureHistoryStatus.UPDATED)
-                        .approvedBy(effectiveUserId)
-                        .approvedDate(now)
-                        .changedField(VtsSystemUpdateRequest.Fields.coordinates)
-                        .previousValue(!oldCoord.isEmpty() ? oldCoord : "Chưa có")
-                        .newValue(!newCoord.isEmpty() ? newCoord : "Chưa có")
-                        .build());
-            }
-
-            if (isGeomChanged) {
-                historyRepository.save(InfrastructureHistory.builder()
-                        .refId(systemId)
-                        .refType(InfrastructureType.VTS_SYSTEM)
-                        .status(InfrastructureHistoryStatus.UPDATED)
-                        .approvedBy(effectiveUserId)
-                        .approvedDate(now)
-                        .changedField(VtsSystemUpdateRequest.Fields.geometryType)
-                        .previousValue(oldGeom != null ? formatDisplayValue(VtsSystemUpdateRequest.Fields.geometryType, oldGeom.name()) : "Chưa có")
-                        .newValue(targetGeom != null ? formatDisplayValue(VtsSystemUpdateRequest.Fields.geometryType, targetGeom.name()) : "Chưa có")
-                        .build());
-            }
-
-            String oldBaseDesc = "[" + zone.getCode() + "] " + zone.getName() + " ("
-                    + (zone.getConditionStatus() != null ? zone.getConditionStatus().name() : "OPERATIONAL") + ")";
-            String newBaseDesc = "[" + saved.getCode() + "] " + saved.getName() + " ("
-                    + (saved.getConditionStatus() != null ? saved.getConditionStatus().name() : "OPERATIONAL") + ")";
-            if (!Objects.equals(oldBaseDesc, newBaseDesc)) {
-                historyRepository.save(InfrastructureHistory.builder()
-                        .refId(systemId)
-                        .refType(InfrastructureType.VTS_SYSTEM)
-                        .status(InfrastructureHistoryStatus.UPDATED)
-                        .approvedBy(effectiveUserId)
-                        .approvedDate(now)
-                        .changedField("Vùng VTS [" + saved.getCode() + "]")
-                        .previousValue(oldBaseDesc)
-                        .newValue(newBaseDesc)
-                        .build());
-            }
+        if (wasApproved && !Objects.equals(oldZoneDesc, newZoneDesc)) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(systemId)
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Vùng VTS [" + saved.getCode() + "]")
+                    .previousValue(oldZoneDesc)
+                    .newValue(newZoneDesc)
+                    .build());
         }
 
         return toZoneDto(saved);
@@ -782,8 +805,7 @@ public class VtsSystemService {
         VtsZone zone = zoneRepository.findByIdAndVtsSystemId(zoneId, systemId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng VTS với ID: " + zoneId));
 
-        String zoneDesc = "Xóa vùng [" + zone.getCode() + "] " + zone.getName() + " ("
-                + (zone.getConditionStatus() != null ? zone.getConditionStatus().name() : "OPERATIONAL") + ")";
+        String zoneDesc = formatZoneDesc(zone);
         String zoneName = zone.getName();
 
         if (zone.getSpatialId() != null && gisSpatialObjectService != null) {
@@ -804,7 +826,7 @@ public class VtsSystemService {
                     .status(InfrastructureHistoryStatus.UPDATED)
                     .approvedBy(effectiveUserId)
                     .approvedDate(LocalDateTime.now())
-                    .changedField("vtsZones")
+                    .changedField("zones")
                     .previousValue(zoneDesc)
                     .newValue(null)
                     .build());
@@ -1071,6 +1093,7 @@ public class VtsSystemService {
         return names;
     }
 
+    @Transactional
     public VtsSystemResponse update(UUID id, VtsSystemUpdateRequest request, UUID userId) {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
@@ -1172,10 +1195,7 @@ public class VtsSystemService {
                                 || (nzd.getCode() != null && oz.getCode() != null
                                         && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim())));
                 if (!exists) {
-                    String name = nzd.getName() != null ? nzd.getName().trim() : "";
-                    String code = nzd.getCode() != null ? nzd.getCode().trim() : "";
-                    addedList.add((!name.isEmpty() && !code.isEmpty()) ? name + " (" + code + ")"
-                            : (!name.isEmpty() ? name : code));
+                    addedList.add(formatZoneDesc(nzd));
                 }
             }
 
@@ -1189,14 +1209,11 @@ public class VtsSystemService {
                                 || (nzd.getCode() != null && oz.getCode() != null
                                         && oz.getCode().trim().equalsIgnoreCase(nzd.getCode().trim())));
                 if (!exists) {
-                    String name = oz.getName() != null ? oz.getName().trim() : "";
-                    String code = oz.getCode() != null ? oz.getCode().trim() : "";
-                    removedList.add((!name.isEmpty() && !code.isEmpty()) ? name + " (" + code + ")"
-                            : (!name.isEmpty() ? name : code));
+                    removedList.add(formatZoneDesc(oz));
                 }
             }
 
-            // 3. Identify modified zones (matching by ID or code, but changed name, status, coordinates or geometry)
+            // 3. Identify modified zones (matching by ID or code, but changed name, status, coordinates, geometry or symbol)
             List<String> modifiedOldList = new ArrayList<>();
             List<String> modifiedNewList = new ArrayList<>();
             for (VtsZoneDto nzd : newZoneDtos) {
@@ -1209,59 +1226,18 @@ public class VtsSystemService {
                         .findFirst();
                 if (matched.isPresent()) {
                     VtsZone oz = matched.get();
-                    String oldName = oz.getName() != null ? oz.getName().trim() : "";
-                    String newName = nzd.getName() != null ? nzd.getName().trim() : "";
                     ConditionStatus oldCond = oz.getConditionStatus() != null ? oz.getConditionStatus()
                             : ConditionStatus.OPERATIONAL;
                     ConditionStatus newCond = nzd.getConditionStatus() != null ? nzd.getConditionStatus()
                             : ConditionStatus.OPERATIONAL;
-                    String oldCoords = "";
-                    GisGeometryType oldGeom = null;
-                    if (oz.getSpatialId() != null && gisSpatialObjectService != null) {
-                        Optional<GisSpatialObject> sp = gisSpatialObjectService.findById(oz.getSpatialId());
-                        if (sp.isPresent()) {
-                            oldCoords = sp.get().getCoordinates() != null ? sp.get().getCoordinates().trim() : "";
-                            oldGeom = sp.get().getGeometryType();
-                        }
-                    }
-                    String newCoords = nzd.getCoordinates() != null ? nzd.getCoordinates().trim() : "";
-                    GisGeometryType newGeom = nzd.getGeometryType();
-
-                    UUID oldSymbolId = oz.getSymbolId();
-                    UUID newSymbolId = nzd.getSymbolId();
-                    boolean isSymbolChanged = !Objects.equals(oldSymbolId, newSymbolId);
-                    boolean isCoordsChanged = !Objects.equals(oldCoords, newCoords);
-                    boolean isGeomChanged = (oldGeom != null || newGeom != null) && oldGeom != newGeom;
-                    boolean isNameChanged = !Objects.equals(oldName, newName);
                     boolean isCondChanged = oldCond != newCond;
 
-                    if (isCoordsChanged) {
-                        previousValues.put(VtsSystemUpdateRequest.Fields.coordinates, !oldCoords.isEmpty() ? oldCoords : "Chưa có");
-                        customNewValues.put(VtsSystemUpdateRequest.Fields.coordinates, !newCoords.isEmpty() ? newCoords : "Chưa có");
-                    }
-                    if (isGeomChanged) {
-                        previousValues.put(VtsSystemUpdateRequest.Fields.geometryType, oldGeom != null ? oldGeom.name() : "Chưa có");
-                        customNewValues.put(VtsSystemUpdateRequest.Fields.geometryType, newGeom != null ? newGeom.name() : "Chưa có");
-                    }
-                    if (isSymbolChanged) {
-                        previousValues.put("symbolId", oldSymbolId != null ? oldSymbolId.toString() : "Chưa có");
-                        customNewValues.put("symbolId", newSymbolId != null ? newSymbolId.toString() : "Chưa có");
-                    }
+                    String oldDesc = formatZoneDesc(oz);
+                    String newDesc = formatZoneDesc(nzd);
 
-                    if (isNameChanged || isCondChanged) {
-                        List<String> oldParts = new ArrayList<>();
-                        List<String> newParts = new ArrayList<>();
-
-                        oldParts.add(oldName + " (" + oz.getCode() + ")");
-                        newParts.add(newName + " (" + nzd.getCode() + ")");
-
-                        if (isCondChanged) {
-                            oldParts.add(oldCond.name());
-                            newParts.add(newCond.name());
-                        }
-
-                        modifiedOldList.add(String.join(" - ", oldParts));
-                        modifiedNewList.add(String.join(" - ", newParts));
+                    if (!Objects.equals(oldDesc, newDesc) || isCondChanged) {
+                        modifiedOldList.add(oldDesc + (isCondChanged ? " (" + oldCond.name() + ")" : ""));
+                        modifiedNewList.add(newDesc + (isCondChanged ? " (" + newCond.name() + ")" : ""));
                     }
                 }
             }
@@ -1500,24 +1476,16 @@ public class VtsSystemService {
 
         // Only record field change history if the record was already approved (final level)
         if (hasFieldChanges && wasApproved) {
-            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-                String field = entry.getKey();
-                String oldVal = formatDisplayValue(field, entry.getValue());
-                String rawNew = (customNewValues != null && customNewValues.containsKey(field))
-                        ? customNewValues.get(field)
-                        : currentFieldValue(saved, field);
-                String newVal = formatDisplayValue(field, rawNew);
-                historyRepository.save(InfrastructureHistory.builder()
-                        .refId(saved.getId())
-                        .refType(InfrastructureType.VTS_SYSTEM)
-                        .status(InfrastructureHistoryStatus.UPDATED)
-                        .approvedBy(effectiveUserId)
-                        .approvedDate(now)
-                        .changedField(field)
-                        .previousValue(oldVal)
-                        .newValue(newVal)
-                        .build());
-            }
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(effectiveUserId)
+                    .approvedDate(now)
+                    .changedField(formatChangedFields(previousValues))
+                    .previousValue(formatPreviousValues(previousValues))
+                    .newValue(formatNewValues(saved, previousValues, customNewValues))
+                    .build());
         }
 
         return toLightResponse(saved);
