@@ -48,7 +48,6 @@ import {
   GlobalOutlined,
   CompassOutlined,
   SafetyCertificateOutlined,
-  CompassOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
