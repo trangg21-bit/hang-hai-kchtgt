@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * ============================================================
  * MENU-MODEL v2 — single source of truth cho điều hướng
@@ -41,7 +42,7 @@ const RadioSvg = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export const RadioIcon = (props: any) => <Icon component={RadioSvg} {...props} />;
+export const RadioIcon = (props: Partial<React.ComponentProps<typeof Icon>>) => <Icon component={RadioSvg} {...props} />;
 
 export type GroupId = 'kcht' | 'asset' | 'plan' | 'gis' | 'report' | 'admin';
 
@@ -109,7 +110,14 @@ const icons = {
 /* ============ CÂY BÁO CÁO THỐNG KÊ — 8 nhóm biểu mẫu chuyên ngành ============ */
 const reportTree: NavNode[] = [
   ...Object.entries(CATEGORY_MAP).map(([catKey, catInfo]) => {
-    const isEnabled = catKey === 'bckcht' || catKey === 'bcdl';
+    const isEnabled =
+      catKey === 'bckcht' ||
+      catKey === 'bcdl' ||
+      catKey === 'bcpttv' ||
+      catKey === 'bcdn' ||
+      catKey === 'bctt48' ||
+      catKey === 'bccndb' ||
+      catKey === 'bcthtn';
     return {
       key: `reports-${catKey}`,
       label: catInfo.label,
@@ -120,7 +128,7 @@ const reportTree: NavNode[] = [
         .map((r) => ({
           key: `/reports/${r.code}`,
           route: `/reports/${r.code}`,
-          label: `${r.code} - ${r.name}`,
+          label: r.name,
           icon: REPORT_ICONS[r.code] ?? icons.file,
           disabled: !isEnabled || r.status !== 'active',
         })),

@@ -165,29 +165,48 @@ Mỗi mã có template `template_export/<mã VMD>.xlsx`. “Default” là cờ 
   - Frontend: `npx eslint` 0 errors, 0 warnings.
   - Frontend: `npm test` 32/32 test files passed, 343/343 tests passed.
 
-### 3.7. BCCNDB — Chuyên ngành bảo đảm (10 mã)
+### 3.7. BCCNDB — Chuyên ngành bảo đảm (10 mã) [HOÀN THÀNH 100%]
 
-| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default |
-| --- | --- | --- | --- | --- |
-| `BCCNDB_195` | `F-180` | Biểu Tổng hợp thông tin chung | Không | Không |
-| `BCCNDB_196` | `F-181` | Biểu Tổng hợp thông tin kết cấu hạ tầng giao thông hàng hải | Không | Không |
-| `BCCNDB_197` | `F-182` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải | Không | Không |
-| `BCCNDB_198` | `F-183` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Cầu cảng | Không | Không |
-| `BCCNDB_199` | `F-184` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Luồng hàng hải | Không | Không |
-| `BCCNDB_200` | `F-185` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Phao tiêu báo hiệu và nhà trạm quản lý vận hành | Không | Không |
-| `BCCNDB_201` | `F-186` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đèn biển và nhà trạm gắn với đèn biển | Không | Không |
-| `BCCNDB_202` | `F-187` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đê, kè | Không | Không |
-| `BCCNDB_203` | `F-188` | Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải | Không | Không |
-| `BCCNDB_204` | `F-189` | Báo cáo tình hình hoạt động của báo hiệu hàng hải và công trình đê, kè | Không | Không |
+| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| `BCCNDB_195` | `F-180` | Biểu Tổng hợp thông tin chung | Không | Không | Hoàn thành |
+| `BCCNDB_196` | `F-181` | Biểu Tổng hợp thông tin kết cấu hạ tầng giao thông hàng hải | Không | Không | Hoàn thành |
+| `BCCNDB_197` | `F-182` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải | Không | Không | Hoàn thành |
+| `BCCNDB_198` | `F-183` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Cầu cảng | Không | Không | Hoàn thành |
+| `BCCNDB_199` | `F-184` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Luồng hàng hải | Không | Không | Hoàn thành |
+| `BCCNDB_200` | `F-185` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Phao tiêu báo hiệu và nhà trạm quản lý vận hành | Không | Không | Hoàn thành |
+| `BCCNDB_201` | `F-186` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đèn biển và nhà trạm gắn với đèn biển | Không | Không | Hoàn thành |
+| `BCCNDB_202` | `F-187` | Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đê, kè | Không | Không | Hoàn thành |
+| `BCCNDB_203` | `F-188` | Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải | Không | Không | Hoàn thành |
+| `BCCNDB_204` | `F-189` | Báo cáo tình hình hoạt động của báo hiệu hàng hải và công trình đê, kè | Không | Không | Hoàn thành |
 
-### 3.8. BCTHTN — Tổng hợp theo ngày (4 mã)
+- **Backend**:
+  - Triển khai đầy đủ 10 handlers (`F180ReportHandler` .. `F189ReportHandler`) truy vấn dữ liệu từ các Entity: `Port`, `Berth`, `Pier`, `NavigationChannel`, `Beacon`, `Lighthouse`, `DikeRevetment`, `ManagedAsset` (`ts_ql`), `MaintenancePlan`, kết xuất ra template Excel tương ứng `${zobjComReport.<key>.asText()}` và `${item.<key>.asText()}`.
+- **Frontend**:
+  - Kích hoạt nhóm danh mục `bccndb` trong `navigation.tsx` và `reports.ts`.
+  - Tên menu báo cáo hiển thị chuẩn theo `r.name` (`Biểu ...`), không mang tiền tố mã tính năng `F-...`.
+  - Bộ lọc chọn năm (`isYearReport = true`) tích hợp mượt mà trên `ReportViewer.tsx`.
 
-| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default |
-| --- | --- | --- | --- | --- |
-| `BCDL_180N` | `F-180N` | Biểu 12-T:Khối lượng hàng hóa, hành khách thông qua cảng biển theo ngày | Không | Không |
-| `BCDL_182N` | `F-182N` | Biểu 13-T:Lượt tàu thuyền vào, rời cảng biển | Không | Không |
-| `BCDL_183N` | `F-183N` | Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu thông qua cảng biển bằng đội tàu Việt Nam | Không | Không |
-| `BCDL_184N` | `F-184N` | Biểu 15-T:Khối lượng hàng hóa, hành khách thông qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý | Không | Không |
+### 3.8. BCTHTN — Tổng hợp theo ngày (4 mã) [HOÀN THÀNH 100%]
+
+| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| `BCDL_180N` | `F-180N` | Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng biển theo ngày | Không | Không | Hoàn thành |
+| `BCDL_182N` | `F-182N` | Biểu 13-T: Lượt tàu thuyền vào, rời cảng biển | Không | Không | Hoàn thành |
+| `BCDL_183N` | `F-183N` | Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu thông qua cảng biển bằng đội tàu Việt Nam | Không | Không | Hoàn thành |
+| `BCDL_184N` | `F-184N` | Biểu 15-T: Khối lượng hàng hóa, hành khách thông qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý | Không | Không | Hoàn thành |
+
+- **Backend**:
+  - Triển khai 4 handlers (`F180NReportHandler`, `F182NReportHandler`, `F183NReportHandler`, `F184NReportHandler`) tổng hợp chi tiết theo từng ngày (`fromDate` .. `toDate`) cho tàu biển, phương tiện thủy, luồng lạch và bến cảng.
+- **Frontend**:
+  - Nhận diện chính xác báo cáo khoảng ngày bằng regex `/^\d+$/.test(numStr)` (không bị `parseInt('180N', 10)` nuốt chữ N thành báo cáo năm).
+  - Kích hoạt nhóm `bcthtn` trong `navigation.tsx` và `reports.ts`.
+- **Kiểm thử tích hợp**:
+  - Backend: `BccndbAndBcthtnReportHandlerTest` đạt 4/4 tests pass (100%), BUILD SUCCESS.
+  - Frontend: `npm test` 40/40 test files pass, 377/377 unit tests pass.
+  - TypeScript: `npx tsc --noEmit` 0 errors.
+  - ESLint: 0 errors, 0 warnings trên toàn bộ các file báo cáo và điều hướng.
+  - Tuân thủ 100% `SKILL.md` về Master Summary Table, ReportColumnSelector, Header căn giữa và Footer space-between.
 
 ## 4. Thiết kế triển khai
 

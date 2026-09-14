@@ -319,7 +319,14 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       label: 'Báo cáo thống kê',
       children: [
         ...Object.entries(CATEGORY_MAP).map(([catKey, catInfo]) => {
-          const isEnabled = catKey === 'bckcht' || catKey === 'bcdl';
+          const isEnabled =
+            catKey === 'bckcht' ||
+            catKey === 'bcdl' ||
+            catKey === 'bcpttv' ||
+            catKey === 'bcdn' ||
+            catKey === 'bctt48' ||
+            catKey === 'bccndb' ||
+            catKey === 'bcthtn';
           return {
             key: `reports-${catKey}`,
             label: catInfo.label,
@@ -329,7 +336,7 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
               .filter((r) => r.category === catKey)
               .map((r) => ({
                 key: `/reports/${r.code}`,
-                label: `${r.code} - ${r.name}`,
+                label: r.name,
                 icon: REPORT_ICONS[r.code],
                 disabled: !isEnabled || r.status !== 'active',
               })),

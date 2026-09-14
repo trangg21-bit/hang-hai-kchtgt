@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
+  Button,
   Card,
   Modal,
   Table,
   Typography,
   Empty,
-  Badge,
   Alert,
+  Tooltip,
+  Space,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
 import {
@@ -17,6 +19,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   HistoryOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { isAxiosError } from 'axios';
@@ -34,7 +37,6 @@ import {
   textSecondary, textPrimary,
   spaceSm, spaceLg,
   fontSizeLg,
-  fontWeightBold,
 } from '../../tokens';
 import { colors, layout } from '../../theme';
 import {
@@ -48,6 +50,7 @@ import {
 import Pagination from '../../components/list-view/Pagination';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import * as themeTokenChk from '../../themetokenchk';
+import { ReportColumnSelector, ReportPreviewModal, type ColumnItem } from '../../components/reports';
 
 const { Text } = Typography;
 
@@ -68,75 +71,12 @@ interface ReportViewerFilters {
   [key: string]: unknown;
 }
 
-interface ReportColumnConfig {
-  width: number;
-  align: 'left' | 'center' | 'right';
-}
-
-function getReportColumnConfig(header: string): ReportColumnConfig {
-  const h = header.toLowerCase().trim();
-
-  let width = 160;
-  let align: 'left' | 'center' | 'right' = 'left';
-
-  if (h === 'stt') {
-    return { width: 65, align: 'center' };
-  }
-  if (h.includes('đơn vị tính') || h === 'đvt') {
-    width = 110;
-    align = 'center';
-  } else if (h.includes('mã')) {
-    width = 130;
-    align = 'center';
-  } else if (h.includes('thời điểm') || h.includes('ngày') || h.includes('năm')) {
-    width = 140;
-    align = 'center';
-  } else if (h.includes('chiều dài')) {
-    width = 200;
-    align = 'right';
-  } else if (h.includes('tàu') || h.includes('dwt')) {
-    width = 185;
-    align = 'right';
-  } else if (
-    h.includes('năng lực') ||
-    h.includes('gt') ||
-    h.includes('công suất') ||
-    h.includes('diện tích') ||
-    h.includes('chi phí') ||
-    h.includes('số lượng') ||
-    h.includes('khối lượng') ||
-    h.includes('tổng số') ||
-    h.includes('sức chở') ||
-    h.includes('mớn nước') ||
-    h.includes('độ sâu') ||
-    h.includes('dung tích') ||
-    h.includes('trọng tải') ||
-    h.includes('sản lượng')
-  ) {
-    width = 170;
-    align = 'right';
-  } else if (h.includes('danh mục') || h.includes('tên')) {
-    width = 340;
-    align = 'left';
-  } else if (h.includes('đơn vị') || h.includes('khai thác') || h.includes('quản lý')) {
-    width = 260;
-    align = 'left';
-  } else if (h.includes('địa điểm') || h.includes('vị trí') || h.includes('phạm vi')) {
-    width = 220;
-    align = 'left';
-  } else if (h.includes('công năng') || h.includes('chức năng') || h.includes('loại')) {
-    width = 220;
-    align = 'left';
-  } else if (h.includes('ghi chú')) {
-    width = 150;
-    align = 'left';
-  }
-
-  return {
-    width,
-    align,
-  };
-}
+const SUMMARY_COLUMNS: ColumnItem[] = [
+  { key: 'reportCode', label: 'Mã báo cáo' },
+  { key: 'reportName', label: 'Tên báo cáo' },
+  { key: 'orgUnitName', label: 'Đơn vị báo cáo' },
+  { key: 'periodText', label: 'Năm báo cáo' },
+];
 
 export default function ReportViewer() {
   const { code } = useParams<{ code: string }>();
@@ -145,11 +85,33 @@ export default function ReportViewer() {
   const template = REPORT_TEMPLATES.find((t) => t.code === reportCode);
 
   const [loadingPreview, setLoadingPreview] = useState<boolean>(false);
-  const [, setLoadingExport] = useState<'EXCEL' | 'PDF' | null>(null);
+  const [loadingExport, setLoadingExport] = useState<'EXCEL' | 'PDF' | null>(null);
   const [reportData, setReportData] = useState<ReportResponse | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
   const [reloadKey, setReloadKey] = useState<number>(0);
+
+  // Column visibility & Popup states
+  const [showStt, setShowStt] = useState<boolean>(true);
+  const [visibleSummaryKeys, setVisibleSummaryKeys] = useState<string[]>([
+    'reportCode',
+    'reportName',
+    'orgUnitName',
+    'periodText',
+  ]);
+  const [summaryColumnOrder, setSummaryColumnOrder] = useState<string[]>([
+    'reportCode',
+    'reportName',
+    'orgUnitName',
+    'periodText',
+  ]);
+  const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
+
+  const handleResetColumns = useCallback(() => {
+    setShowStt(true);
+    setVisibleSummaryKeys(['reportCode', 'reportName', 'orgUnitName', 'periodText']);
+    setSummaryColumnOrder(['reportCode', 'reportName', 'orgUnitName', 'periodText']);
+  }, []);
 
   // Filter states
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -182,9 +144,10 @@ export default function ReportViewer() {
     if (['F-142', 'F-166', 'F-172', 'F-173', 'F-175', 'F-176', 'F-178', 'F-179'].includes(reportCode)) return true;
     if (reportCode.startsWith('F-')) {
       const numStr = reportCode.substring(2);
-      const num = parseInt(numStr, 10);
-      if (!isNaN(num) && num >= 148 && num <= 160) {
-        return true;
+      if (/^\d+$/.test(numStr)) {
+        const num = parseInt(numStr, 10);
+        if (num >= 148 && num <= 160) return true;
+        if (num >= 180 && num <= 189) return true;
       }
     }
     return false;
@@ -664,83 +627,160 @@ export default function ReportViewer() {
     handleExport,
   ]);
 
-  const columns = useMemo(() => {
-    if (!reportData || reportData.headers.length === 0) return [];
-    return reportData.headers.map((h) => {
-      const colConfig = getReportColumnConfig(h);
-      return {
-        title: h,
-        dataIndex: h,
-        key: h,
-        width: colConfig.width,
-        align: colConfig.align,
-        onHeaderCell: () => ({
-          style: {
-            background: colors.bodyBg,
-            color: colors.sidebarBg,
-            fontWeight: fontWeightBold,
-            fontSize: 13,
-            whiteSpace: 'normal',
-            wordBreak: 'break-word',
-            lineHeight: 1.35,
-            textTransform: 'uppercase' as const,
-            padding: '10px 12px',
-            textAlign: colConfig.align,
-            verticalAlign: 'middle',
-          },
-        }),
-        onCell: (record: Record<string, unknown>) => {
-          const isBold = record._rowType === 'section' || record._rowType === 'port'
-            || (record['STT'] && record['STT'] !== '' && !isNaN(Number(record['STT'])));
-          return {
-            style: {
-              fontSize: 13.5,
-              fontWeight: isBold ? 700 : 400,
-              color: textPrimary,
-              textAlign: colConfig.align,
-              padding: '10px 14px',
-            },
-          };
-        },
-        render: (value: unknown) => {
-          if (value === null || value === undefined) return '-';
-          if (typeof value === 'number') {
-            if (value === 0) return '-';
-            return value.toLocaleString('vi-VN');
-          }
-          if (typeof value === 'boolean') return value ? <Badge status="success" text="Đúng" /> : <Badge status="error" text="Sai" />;
-          let strVal = String(value);
-          // Strip leading non-breaking spaces & whitespace for catalog straight alignment
-          if (colConfig.align === 'left' && (h.includes('danh mục') || h.includes('tên'))) {
-            strVal = strVal.replace(/^[\s\u00A0]+/, '');
-          }
-          const trimmed = strVal.trim();
-          if (trimmed === '' || (colConfig.align === 'right' && (trimmed === '0' || trimmed === '0.0' || trimmed === '0,0'))) {
-            return '-';
-          }
-          return (
+  const selectedOrgName = useMemo(() => {
+    if (!draftFilters.orgUnitId) return 'Tất cả các đơn vị';
+    const org = organizations.find((o) => o.id === draftFilters.orgUnitId);
+    return org ? org.name : 'Cục Hàng hải và Đường thủy Việt Nam';
+  }, [organizations, draftFilters.orgUnitId]);
+
+  const reportPeriodText = useMemo(() => {
+    if (isYearReport) {
+      return draftFilters.reportYear ? String(draftFilters.reportYear.year()) : String(dayjs().year());
+    }
+    if (draftFilters.dateRange?.[0] && draftFilters.dateRange?.[1]) {
+      return `${draftFilters.dateRange[0].format('DD/MM/YYYY')} - ${draftFilters.dateRange[1].format('DD/MM/YYYY')}`;
+    }
+    return draftFilters.reportPeriod || String(dayjs().year());
+  }, [isYearReport, draftFilters.reportYear, draftFilters.dateRange, draftFilters.reportPeriod]);
+
+  const summaryRows = useMemo(() => {
+    if (!template || !reportData) return [];
+    return [
+      {
+        key: '1',
+        stt: 1,
+        reportCode: template.vmdCode || template.code,
+        reportName: template.name,
+        orgUnitName: selectedOrgName,
+        periodText: reportPeriodText,
+      },
+    ];
+  }, [template, reportData, selectedOrgName, reportPeriodText]);
+
+  const summaryTableColumns = useMemo(() => {
+    const cols: Array<{
+      title: string;
+      dataIndex?: string;
+      key: string;
+      width?: number;
+      minWidth?: number;
+      align?: 'left' | 'center' | 'right';
+      fixed?: 'left' | 'right';
+      render?: (value: unknown, record: unknown, index: number) => React.ReactNode;
+    }> = [];
+
+    if (showStt) {
+      cols.push({
+        title: 'STT',
+        dataIndex: 'stt',
+        key: 'stt',
+        width: 65,
+        align: 'center',
+        render: (_: unknown, __: unknown, idx: number) => idx + 1,
+      });
+    }
+
+    summaryColumnOrder.forEach((colKey) => {
+      if (!visibleSummaryKeys.includes(colKey)) return;
+      if (colKey === 'reportCode') {
+        cols.push({
+          title: 'Mã báo cáo',
+          dataIndex: 'reportCode',
+          key: 'reportCode',
+          width: 140,
+          align: 'center',
+          render: (val: string) => (
+            <span style={{ fontWeight: 600, color: textPrimary }}>{val}</span>
+          ),
+        });
+      } else if (colKey === 'reportName') {
+        cols.push({
+          title: 'Tên báo cáo',
+          dataIndex: 'reportName',
+          key: 'reportName',
+          minWidth: 320,
+          render: (val: string) => (
             <span
-              title={trimmed}
               style={{
+                color: textPrimary,
+                fontWeight: 500,
                 display: 'inline-block',
                 maxWidth: '100%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                verticalAlign: 'middle',
               }}
+              title={val}
             >
-              {strVal}
+              {val}
             </span>
-          );
-        },
-      };
+          ),
+        });
+      } else if (colKey === 'orgUnitName') {
+        cols.push({
+          title: 'Đơn vị báo cáo',
+          dataIndex: 'orgUnitName',
+          key: 'orgUnitName',
+          width: 280,
+          render: (val: string) => <span style={{ color: textPrimary }}>{val}</span>,
+        });
+      } else if (colKey === 'periodText') {
+        cols.push({
+          title: isYearReport ? 'Năm báo cáo' : 'Kỳ báo cáo',
+          dataIndex: 'periodText',
+          key: 'periodText',
+          width: 130,
+          align: 'center',
+          render: (val: string) => <span style={{ color: textPrimary }}>{val}</span>,
+        });
+      }
     });
-  }, [reportData]);
 
-  const totalColumnsWidth = useMemo(() => {
-    return columns.reduce((acc, col) => acc + (col.width || 150), 0);
-  }, [columns]);
+    // Thao tác column
+    cols.push({
+      title: 'Thao tác',
+      key: 'actions',
+      width: 140,
+      align: 'center',
+      fixed: 'right',
+      render: () => (
+        <Space size={6}>
+          <Tooltip title="Xem trước chi tiết báo cáo">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined style={{ color: '#0E6FD6', fontSize: 16 }} />}
+              onClick={() => setPreviewModalOpen(true)}
+            />
+          </Tooltip>
+          <Tooltip title="Xuất Excel">
+            <Button
+              type="text"
+              size="small"
+              icon={<FileExcelOutlined style={{ color: statusOperational, fontSize: 16 }} />}
+              onClick={() => void handleExport('EXCEL')}
+              loading={loadingExport === 'EXCEL'}
+            />
+          </Tooltip>
+          <Tooltip title="Xuất PDF">
+            <Button
+              type="text"
+              size="small"
+              icon={<FileTextOutlined style={{ color: colors.error, fontSize: 16 }} />}
+              onClick={() => void handleExport('PDF')}
+              loading={loadingExport === 'PDF'}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    });
+
+    return cols;
+  }, [
+    showStt,
+    summaryColumnOrder,
+    visibleSummaryKeys,
+    isYearReport,
+    loadingExport,
+    handleExport,
+  ]);
 
   const customTokens = useMemo(() => ({
     ...themeTokenChk,
@@ -827,30 +867,61 @@ export default function ReportViewer() {
                 }
               />
             </div>
-          ) : reportData && reportData.rows.length > 0 ? (
+          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-              <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                <Table
-                  columns={columns}
-                  dataSource={reportData.rows.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((row, idx) => ({ ...row, key: (currentPage - 1) * pageSize + idx }))}
-                  pagination={false}
-                  className="list-view-table"
-                  tableLayout="fixed"
-                  scroll={{
-                    x: Math.max(totalColumnsWidth, layout.listTableMinWidth),
-                    y: 'calc(100vh - 280px)',
+              {/* Action bar on top of table */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 0 12px 0',
+                }}
+              >
+                <ReportColumnSelector
+                  columns={SUMMARY_COLUMNS}
+                  visibleKeys={visibleSummaryKeys}
+                  columnOrder={summaryColumnOrder}
+                  showStt={showStt}
+                  onShowSttChange={setShowStt}
+                  onChange={(keys, order) => {
+                    setVisibleSummaryKeys(keys);
+                    setSummaryColumnOrder(order);
                   }}
-                  onRow={(record: Record<string, string | number | boolean | null>) => {
-                    const sequenceNo = record['STT'];
-                    if (record._rowType === 'section' || sequenceNo === 'I' || sequenceNo === 'II') return { className: 'report-section-row' };
-                    if (sequenceNo && sequenceNo !== '' && !isNaN(Number(sequenceNo))) return { className: 'report-port-row' };
-                    return {};
+                  onReset={handleResetColumns}
+                />
+
+                <div style={{ fontSize: 13, color: textSecondary }}>
+                  {summaryRows.length > 0 ? '1-1 trong 1' : '0-0 trong 0'}
+                </div>
+              </div>
+
+              {/* Master Summary Table */}
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <Table
+                  columns={summaryTableColumns}
+                  dataSource={summaryRows}
+                  pagination={false}
+                  bordered
+                  size="middle"
+                  scroll={{ x: layout.listTableMinWidth }}
+                  locale={{
+                    emptyText: (
+                      <Empty
+                        description={
+                          <span style={{ color: textSecondary }}>
+                            Bấm nút Tổng hợp ở thanh công cụ bên trái để kết xuất dữ liệu.
+                          </span>
+                        }
+                      />
+                    ),
                   }}
                 />
               </div>
+
               <div style={{ marginTop: 'auto', paddingTop: 8 }}>
                 <Pagination
-                  total={reportData.summary?.total ?? reportData.rows.length}
+                  total={summaryRows.length}
                   current={currentPage}
                   pageSize={pageSize}
                   onChange={(page, size) => {
@@ -859,10 +930,6 @@ export default function ReportViewer() {
                   }}
                 />
               </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 280 }}>
-              <Empty description={<span style={{ color: textSecondary }}>Bấm nút Tổng hợp ở thanh công cụ bên trái để kết xuất dữ liệu.</span>} />
             </div>
           )}
         </FilterTableLayout>
@@ -931,6 +998,20 @@ export default function ReportViewer() {
             ]}
           />
         </Modal>
+
+        {/* Modal Xem trước chi tiết báo cáo */}
+        <ReportPreviewModal
+          open={previewModalOpen}
+          onClose={() => setPreviewModalOpen(false)}
+          reportCode={template.vmdCode || template.code}
+          reportName={template.name}
+          orgUnitName={selectedOrgName}
+          reportPeriodText={reportPeriodText}
+          reportData={reportData}
+          loading={loadingPreview}
+          onExport={handleExport}
+          loadingExport={loadingExport}
+        />
       </div>
     </ThemeTokenProvider>
   );

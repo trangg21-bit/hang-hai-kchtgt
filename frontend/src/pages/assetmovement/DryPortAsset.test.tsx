@@ -47,19 +47,23 @@ vi.mock('antd', async (importOriginal) => {
   };
 });
 
-vi.mock('../../store/authStore', () => ({
-  useAuthStore: vi.fn((selector) =>
-    selector({
-      user: {
-        id: 'user-admin',
-        username: 'admin',
-        fullName: 'Quản trị viên',
-        permissions: ['*'],
-      },
-      hasPermission: () => true,
-    }),
-  ),
-}));
+vi.mock('../../store/authStore', () => {
+  const mockAuthState = {
+    user: {
+      id: 'user-admin',
+      username: 'admin',
+      fullName: 'Quản trị viên',
+      permissions: ['*'],
+    },
+    hasPermission: () => true,
+  };
+  const fn = vi.fn((selector) => selector(mockAuthState)) as unknown as {
+    (selector: (s: typeof mockAuthState) => unknown): unknown;
+    getState: () => typeof mockAuthState;
+  };
+  fn.getState = () => mockAuthState;
+  return { useAuthStore: fn };
+});
 
 vi.mock('../../services/organizationService', () => ({
   organizationService: {

@@ -3,6 +3,7 @@ import {
   buildMapShareUrl,
   circleToPolygonCoordinates,
   parseSharedMapView,
+  shouldRenderKchtGeometry,
 } from '../utils/mapInteraction';
 
 describe('map interaction helpers', () => {
@@ -42,5 +43,12 @@ describe('map interaction helpers', () => {
     expect(coordinates[coordinates.length - 1]).toEqual(coordinates[0]);
     expect(coordinates.some(([longitude]) => longitude > 106)).toBe(true);
     expect(coordinates.some(([, latitude]) => latitude < 20)).toBe(true);
+  });
+
+  it('only renders complete KCHT geometry at the detailed zoom threshold', () => {
+    expect(shouldRenderKchtGeometry(5)).toBe(false);
+    expect(shouldRenderKchtGeometry(9.99)).toBe(false);
+    expect(shouldRenderKchtGeometry(10)).toBe(true);
+    expect(shouldRenderKchtGeometry(14)).toBe(true);
   });
 });
