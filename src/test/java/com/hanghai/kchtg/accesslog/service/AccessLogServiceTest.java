@@ -94,7 +94,8 @@ class AccessLogServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<AccessLog> page = new PageImpl<>(Collections.singletonList(sampleLog), pageable, 1);
         
-        when(repository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+        when(repository.findAll(org.mockito.ArgumentMatchers.<Specification<AccessLog>>any(), eq(pageable)))
+                .thenReturn(page);
 
         AccessLogFilterRequest filter = new AccessLogFilterRequest();
         filter.setUserId(userId);
@@ -108,7 +109,7 @@ class AccessLogServiceTest {
         assertEquals(1, result.getTotalElements());
         assertEquals("testuser", result.getContent().get(0).getUsername());
         
-        verify(repository).findAll(any(Specification.class), eq(pageable));
+        verify(repository).findAll(org.mockito.ArgumentMatchers.<Specification<AccessLog>>any(), eq(pageable));
     }
 
     @Test

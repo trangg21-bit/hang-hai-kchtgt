@@ -36,13 +36,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -571,9 +565,7 @@ public class DryPortService {
         if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
             throw new IllegalArgumentException("Chỉ được xóa cảng cạn ở trạng thái Nháp");
         }
-        DryPort snapshot = captureSnapshot(entity);
         UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
         entity.softDelete(operatorId);
         dryPortRepository.save(entity);
         if (entity.getSpatialId() != null) {
@@ -672,11 +664,6 @@ public class DryPortService {
     }
 
     private DryPortResponse toResponse(DryPort e, String preResolvedCreatorName, String preResolvedUpdaterName) {
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
-                : userResolverService.resolveName(e.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
-                : userResolverService.resolveName(e.getUpdatedBy());
-
         String opUnitName = e.getOperatingUnit();
         String resolvedOpName = resolveOperatingOrgName(e.getOperatingOrgId());
         String displayOpUnit = resolvedOpName != null ? resolvedOpName : opUnitName;

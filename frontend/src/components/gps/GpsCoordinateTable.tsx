@@ -43,7 +43,7 @@ const fmtInputNumber = (value: number | null | undefined): string =>
 
 const ddToDms = (dd: number): { d: number | null; m: number | null; s: number | null } => {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  let abs = Math.abs(dd);
+  const abs = Math.abs(dd);
   let d = Math.floor(abs);
   let mFloat = (abs - d) * 60;
   if (mFloat > 59.999999999) { d += 1; mFloat = 0; }

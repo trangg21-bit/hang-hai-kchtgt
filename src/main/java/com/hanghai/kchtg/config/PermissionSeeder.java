@@ -3,7 +3,6 @@ package com.hanghai.kchtg.config;
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -11,7 +10,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +17,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 @Order(1)
@@ -28,7 +25,6 @@ import java.util.stream.Collectors;
 public class PermissionSeeder implements CommandLineRunner {
 
         private final PermissionRepository permissionRepository;
-        private final UserRepository userRepository;
         private final JdbcTemplate jdbcTemplate;
 
         public PermissionSeeder(PermissionRepository permissionRepository, UserRepository userRepository) {
@@ -39,7 +35,6 @@ public class PermissionSeeder implements CommandLineRunner {
         public PermissionSeeder(PermissionRepository permissionRepository, UserRepository userRepository,
                         @Nullable JdbcTemplate jdbcTemplate) {
                 this.permissionRepository = permissionRepository;
-                this.userRepository = userRepository;
                 this.jdbcTemplate = jdbcTemplate;
         }
 

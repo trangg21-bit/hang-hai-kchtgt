@@ -10,7 +10,6 @@ import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

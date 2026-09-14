@@ -6,7 +6,6 @@ import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -77,6 +76,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void cachePermissions_shouldSaveJsonAtomicallyWithTtl() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -93,6 +93,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void cachePermissions_whenEmpty_shouldSaveEmptyArrayAtomicallyWithTtl() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -109,6 +110,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getPermissionsFromCache_shouldParseJsonIntoSet() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -122,6 +124,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getPermissionsFromCache_whenEmptyArray_shouldReturnEmptySet() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -135,6 +138,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getPermissionsFromCache_whenNull_shouldReturnNull() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);

@@ -6,8 +6,6 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.entity.ShipRepairYard;
-import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.port.repository.ShipRepairYardRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -37,8 +35,6 @@ import java.time.LocalDateTime;
 public class ShipRepairYardApprovalService {
 
     private final ShipRepairYardRepository shipRepairYardRepository;
-    private final ChangeLogRepository changeLogRepository;
-    private final ApprovalLogRepository approvalLogRepository;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
 
@@ -74,7 +70,7 @@ public class ShipRepairYardApprovalService {
             throw new IllegalArgumentException("Cấp phê duyệt không hợp lệ: " + cap);
         }
 
-        ApprovalLog approvalLogRecord = ApprovalLog.builder()
+        ApprovalLog.builder()
                 .entityType("ShipRepairYard")
                 .entityId(id.toString())
                 .decision("APPROVED")
@@ -99,7 +95,7 @@ public class ShipRepairYardApprovalService {
         entity.setApprovalStatus(isC2 ? ApprovalStatus.REJECTED_LEVEL2 : ApprovalStatus.REJECTED_LEVEL1);
         entity.setRejectionReason(reason);
 
-        ApprovalLog approvalLog = ApprovalLog.builder()
+        ApprovalLog.builder()
                 .entityType("ShipRepairYard")
                 .entityId(id.toString())
                 .decision("REJECTED")

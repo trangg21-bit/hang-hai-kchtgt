@@ -83,14 +83,13 @@ class ShareControllerTest {
     @Test
     @DisplayName("F-018-C-01: share_returns200 — POST /api/v1/datasharing/shares")
     void share_returns200() throws Exception {
-        SharedDataRequest request = SharedDataRequest.builder()
+        SharedDataRequest.builder()
                 .dataType("PORT")
                 .sharedWith("KCHTGT-CN")
                 .fileUrl("https://storage.example.com/data.csv")
                 .fileFormat("CSV")
                 .recordCount(100)
                 .build();
-
         SharedDataResponse response = SharedDataResponse.builder()
                 .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .code("SD-2026-0001")

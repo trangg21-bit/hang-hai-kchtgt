@@ -305,7 +305,7 @@ public class RadarStationService {
                             .approvalLevel(ApprovalLevel.LEVEL_2)
                             .status(InfrastructureHistoryStatus.UPDATED)
                             .approvedBy(updatedBy)
-                            .changedField(field)
+                            .changedField(fieldName)
                             .previousValue(formatDisplayValue(field, oldVal))
                             .newValue(formatDisplayValue(field, newVal))
                             .build());

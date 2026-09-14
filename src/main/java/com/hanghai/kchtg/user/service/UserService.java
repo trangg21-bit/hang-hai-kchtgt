@@ -72,7 +72,6 @@ public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
-    private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
     private static final String DEFAULT_INITIAL_PASSWORD = "Asdqwe@123";
 

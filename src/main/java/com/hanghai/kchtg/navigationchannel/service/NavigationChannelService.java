@@ -591,13 +591,6 @@ public class NavigationChannelService {
         return map;
     }
 
-    private String resolveUserName(UUID userId) {
-        if (userId == null)
-            return null;
-        Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
-        return map.getOrDefault(userId, null);
-    }
-
     @Transactional(readOnly = true)
     public List<HistoryEntry> getApprovalHistory(UUID id) {
         return getHistory(id);
@@ -985,43 +978,6 @@ public class NavigationChannelService {
 
     private String nullToEmpty(Object value) {
         return value == null ? "" : String.valueOf(value);
-    }
-
-    private String getFieldDisplayName(String field) {
-        if (field == null) return "";
-      return switch (field) {
-        case NavigationChannelUpdateRequest.Fields.channelName -> "Tên luồng hàng hải";
-        case NavigationChannelUpdateRequest.Fields.conditionStatus -> "Tình trạng";
-        case NavigationChannelUpdateRequest.Fields.orgUnitId -> "Đơn vị quản lý";
-        case NavigationChannelUpdateRequest.Fields.detailedLocation -> "Vị trí chi tiết";
-        case NavigationChannelUpdateRequest.Fields.managementStation -> "Trạm quản lý";
-        case NavigationChannelUpdateRequest.Fields.notes -> "Ghi chú";
-        case NavigationChannelUpdateRequest.Fields.routeDetails -> "Chi tiết tuyến luồng";
-        case NavigationChannelUpdateRequest.Fields.coordinateList -> "Danh sách tọa độ";
-        case NavigationChannelUpdateRequest.Fields.attachments -> "Tài liệu đính kèm";
-        case NavigationChannelUpdateRequest.Fields.coordinates -> "Tọa độ GIS";
-        default -> field;
-      };
-    }
-
-    private String formatChangedFields(Map<String, String> previousValues) {
-        return String.join(", ", previousValues.keySet());
-    }
-
-    private String formatPreviousValues(Map<String, String> previousValues) {
-        return previousValues.entrySet().stream()
-                .map(entry -> entry.getKey() + "=" + (entry.getValue() != null ? entry.getValue() : ""))
-                .collect(Collectors.joining("; "));
-    }
-
-    private String formatNewValues(NavigationChannel entity, Map<String, String> previousValues,
-            Map<String, String> manualNewValues) {
-        return previousValues.keySet().stream()
-                .map(field -> field + "="
-                        + (manualNewValues.containsKey(field)
-                                ? manualNewValues.get(field)
-                                : currentFieldValue(entity, field)))
-                .collect(Collectors.joining("; "));
     }
 
     /** Đọc giá trị hiện tại của field trên entity (sau update) — fallback "" khi không đọc được. */

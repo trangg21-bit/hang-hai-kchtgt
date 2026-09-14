@@ -283,15 +283,6 @@ public class BuoyService {
     }
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn Cảng biển (dùng cho lịch sử thay đổi). */
-    private static String geometryTypeLabel(GisGeometryType type) {
-        if (type == null) return null;
-        return switch (type) {
-            case POINT -> "Đối tượng điểm";
-            case LINE -> "Đối tượng đường";
-            case POLYGON -> "Đối tượng vùng";
-        };
-    }
-
     // -- UPDATE --
 
     @Transactional
@@ -909,10 +900,6 @@ public class BuoyService {
 
     private java.util.UUID getCurrentUserUnitId() {
         return null;
-    }
-
-    private java.util.UUID resolveCreatedBy(Buoy entity) {
-        return entity.getCreatedBy();
     }
 
     // -- BUG FIX #1: Shared ObjectMapper + JsonNode comparison --

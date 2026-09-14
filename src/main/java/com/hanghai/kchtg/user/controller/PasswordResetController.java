@@ -25,10 +25,7 @@ import java.util.Map;
 public class PasswordResetController {
 
     private static final Logger log = LoggerFactory.getLogger(PasswordResetController.class);
-    private static final String RESET_RATE_LIMIT_KEY_PREFIX = "password-reset:";
     private static final int MAX_RESET_REQUESTS = 3;
-    private static final int RESET_RATE_WINDOW_MINUTES = 15;
-
     private final PasswordResetService passwordResetService;
     private final RateLimiterService rateLimiterService;
 

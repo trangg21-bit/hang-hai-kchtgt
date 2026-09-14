@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Utility for generating and validating JWT tokens using HMAC-SHA256.

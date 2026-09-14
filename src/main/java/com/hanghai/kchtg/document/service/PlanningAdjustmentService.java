@@ -27,8 +27,6 @@ public class PlanningAdjustmentService {
 
     private final PlanningAdjustmentRepository planningAdjustmentRepository;
     private final AdjustmentApprovalRepository adjustmentApprovalRepository;
-    private final PortPlanningService portPlanningService;
-
     // ── CRUD ──────────────────────────────────────────────────────────
 
     @Transactional

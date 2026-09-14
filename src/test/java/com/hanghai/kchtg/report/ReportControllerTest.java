@@ -103,13 +103,12 @@ class ReportControllerTest {
     @Test
     @DisplayName("F-016-50: POST /api/v1/reports/generate — returns 200 with READY status")
     void generateReport_returns200() throws Exception {
-        ReportRequest request = ReportRequest.builder()
+        ReportRequest.builder()
                 .reportType(ReportType.SUMMARY)
                 .startDate(LocalDate.of(2026, 1, 1))
                 .endDate(LocalDate.of(2026, 12, 31))
                 .outputFormat(ReportFormat.PDF)
                 .build();
-
         String json = """
                 {
                   "reportType": "SUMMARY",

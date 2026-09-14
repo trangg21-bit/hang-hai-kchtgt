@@ -330,7 +330,7 @@ describe('Module 3: Tài sản khu tránh trú bão (docs/checklists/CHECKLIST-T
     expect(html).toContain('Hồ sơ tài sản');
     expect(html).toContain('Thông tin chi tiết');
     expect(html).toContain('Khai thác tài sản (1)');
-    expect(html).toContain('Thay đổi nguyên giá (1)');
+    expect(html).toContain('Lịch sử thay đổi nguyên giá (1)');
     expect(html).toMatch(/Xử lý.*theo dõi/);
     expect(html).toContain('TB-DN-01');
     expect(html).toContain('TS-TB-001');

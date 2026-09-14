@@ -29,7 +29,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.http.MediaType;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +51,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(PierController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @DisplayName("PierController web MVC tests — M-002")
+@SuppressWarnings("deprecation")
 class PierControllerTest {
 
     @Autowired

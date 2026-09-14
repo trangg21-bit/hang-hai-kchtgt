@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
-import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;

@@ -200,7 +200,7 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:create')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> create(
             @Valid @RequestBody CreateOrgUnitRequest request) {
-        User currentUser = getCurrentUser();
+        getCurrentUser();
         Operator op = getOperator();
         OrgUnitResponse response = organizationService.create(
                 request, op.id(), op.name(), orgUnitScopeService.currentUserScope());

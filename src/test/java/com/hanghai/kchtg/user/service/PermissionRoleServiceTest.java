@@ -60,28 +60,28 @@ class PermissionRoleServiceTest {
 
     @Test
     void directAndActiveGroupPermissionsAreCombined() {
-        User user = userWithPermission("vts:update");
+        User user = userWithPermission("orgunit:update");
         UserGroup group = new UserGroup();
         group.setStatus(GroupStatus.ACTIVE);
         group.setPermissions(java.util.List.of("vts:read", "VTS:history"));
         user.setGroups(java.util.List.of(group));
         when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
-        assertThat(permissionRoleService.checkPermission(userId, "vts", "update")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "orgunit", "update")).isTrue();
         assertThat(permissionRoleService.checkPermission(userId, "vts", "read")).isTrue();
         assertThat(permissionRoleService.checkPermission(userId, "vts", "history")).isTrue();
     }
 
     @Test
     void inactiveGroupPermissionsAreNotEffective() {
-        User user = userWithPermission("vts:update");
+        User user = userWithPermission("orgunit:update");
         UserGroup group = new UserGroup();
         group.setStatus(GroupStatus.INACTIVE);
         group.setPermissions(java.util.List.of("vts:read"));
         user.setGroups(java.util.List.of(group));
         when(userRepository.findByIdWithRelations(userId)).thenReturn(Optional.of(user));
 
-        assertThat(permissionRoleService.checkPermission(userId, "vts", "update")).isTrue();
+        assertThat(permissionRoleService.checkPermission(userId, "orgunit", "update")).isTrue();
         assertThat(permissionRoleService.checkPermission(userId, "vts", "read")).isFalse();
     }
 

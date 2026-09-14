@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.orgunit.service;
 
-import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.orgunit.dto.CandidateParentResponse;
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;

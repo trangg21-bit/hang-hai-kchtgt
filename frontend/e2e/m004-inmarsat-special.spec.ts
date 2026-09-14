@@ -630,7 +630,7 @@ const SEED_INMARSAT_STATIONS = [
 /* ------------------------------------------------------------------ */
 test.describe.serial('E2E Đài vệ tinh Inmarsat (/station/inmarsat) - 35 Records & Full Flows', () => {
   let token: string;
-  let seededIds: string[] = [];
+  const seededIds: string[] = [];
 
   test.beforeAll(async ({ request }) => {
     token = await getAdminToken(request);

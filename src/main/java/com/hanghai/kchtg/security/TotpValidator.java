@@ -23,8 +23,8 @@ public class TotpValidator {
 
     private static final Logger log = LoggerFactory.getLogger(TotpValidator.class);
 
-    private static final int TIME_STEP = 30; // seconds per TOTP period
-    private static final int TOLERANCE = 1;  // allow +/-1 step (= +/-30 s window)
+ // seconds per TOTP period
+  // allow +/-1 step (= +/-30 s window)
 
     private final GoogleAuthenticator gat;
 

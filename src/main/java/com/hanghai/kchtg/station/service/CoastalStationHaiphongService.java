@@ -14,7 +14,6 @@ import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.haiphong.*;
 import com.hanghai.kchtg.station.entity.CoastalStationHaiphong;
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
-import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationHaiphongRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -539,16 +538,6 @@ public class CoastalStationHaiphongService {
                 yield (c != null && !c.isBlank()) ? c : "—";
             }
             default -> "—";
-        };
-    }
-
-    private String formatObjectTypeDisplay(String objectType) {
-        if (objectType == null || objectType.isBlank()) return "—";
-        return switch (objectType.toUpperCase()) {
-            case "POINT" -> "Đối tượng điểm";
-            case "LINE" -> "Đối tượng đường";
-            case "POLYGON" -> "Đối tượng vùng";
-            default -> objectType;
         };
     }
 

@@ -15,13 +15,10 @@ import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.service.UserService;
 import com.hanghai.kchtg.user.service.UserPermissionService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.admin.entity.AdminAuditLog;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
-import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -44,7 +41,6 @@ import java.util.UUID;
 @RequestMapping({ "/api/users", "/api/v1/users" })
 public class UserController {
 
-    private static final int DEFAULT_PAGE_SIZE = 20;
     private static final int MAX_PAGE_SIZE = 100;
     private static final Map<String, String> USER_SORT_FIELDS = Map.of(
             "username", "username",
@@ -58,7 +54,6 @@ public class UserController {
     private final UserService userService;
     private final UserPermissionService userPermissionService;
     private final AdminAuditLogRepository adminAuditLogRepository;
-    private final PermissionCacheService permissionCacheService;
     private final UserRepository userRepository;
     private final OrgUnitCacheService orgUnitCacheService;
 
@@ -70,7 +65,6 @@ public class UserController {
         this.userService = userService;
         this.userPermissionService = userPermissionService;
         this.adminAuditLogRepository = adminAuditLogRepository;
-        this.permissionCacheService = permissionCacheService;
         this.userRepository = userRepository;
         this.orgUnitCacheService = orgUnitCacheService;
     }
@@ -298,22 +292,5 @@ public class UserController {
     }
 
     // ── User Roles Sub-resource Endpoints ────────────────────────────────────────
-
-    private void saveAuditLog(String action, String target, String details) {
-        if (adminAuditLogRepository == null)
-            return;
-        try {
-            UUID adminId = SecurityUtils.getCurrentUserId();
-            String adminName = null;
-            if (adminId == null) {
-                adminId = UUID.fromString("00000000-0000-0000-0000-000000000000");
-                adminName = "SYSTEM";
-            }
-            AdminAuditLog log = AdminAuditLog.create(adminId, adminName, action, target, details, "127.0.0.1",
-                    "System");
-            adminAuditLogRepository.save(log);
-        } catch (Exception ignored) {
-        }
-    }
 
 }

@@ -7,7 +7,6 @@ import com.hanghai.kchtg.aissystem.repository.AisSystemRepository;
 import com.hanghai.kchtg.common.dto.ApprovalRequest;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.user.entity.User;
@@ -35,7 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -66,9 +64,6 @@ public class AisSystemApprovalIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
-
-    @Autowired
-    private InfrastructureHistoryRepository historyRepository;
 
     private UUID orgUnitId;
     private UUID opCenterId;

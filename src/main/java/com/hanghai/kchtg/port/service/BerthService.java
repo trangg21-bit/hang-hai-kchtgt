@@ -24,10 +24,8 @@ import com.hanghai.kchtg.port.entity.Pier;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
@@ -36,7 +34,6 @@ import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.RecordSecurityLevel;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -67,7 +64,6 @@ public class BerthService {
     private final PortRepository portRepository;
     private final PierRepository pierRepository;
     private final ChangeHistoryService changeHistoryService;
-    private final AuditLogService auditLogService;
     private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final PortCacheService portCacheService;
@@ -494,7 +490,7 @@ public class BerthService {
             throw new IllegalStateException("Không thể xóa: bến cảng đang có " + pierCount + " cầu cảng liên kết");
         }
         // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cảng biển)
-        Berth snapshot = Berth.builder()
+        Berth.builder()
                 .berthCode(entity.getBerthCode())
                 .berthName(entity.getBerthName()).portId(entity.getPortId())
                 .waterway(entity.getWaterway())
@@ -524,7 +520,6 @@ public class BerthService {
                 .structureType(entity.getStructureType())
                 .spatialId(entity.getSpatialId())
                 .build();
-
         entity.softDelete(SecurityUtils.getCurrentUserId());
         berthRepository.save(entity);
         if (entity.getSpatialId() != null) {
@@ -544,21 +539,12 @@ public class BerthService {
         return toResponse(e, null, null, null);
     }
 
-    private BerthResponse toResponse(Berth e, String preResolvedPortName) {
-        return toResponse(e, preResolvedPortName, null, null);
-    }
-
     private BerthResponse toResponse(Berth e, String preResolvedPortName, String preResolvedCreatorName,
             String preResolvedUpdaterName) {
         String portName = preResolvedPortName;
         if (portName == null && e.getPortId() != null) {
             portName = portCacheService.getName(e.getPortId());
         }
-
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
-                : userResolverService.resolveName(e.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
-                : userResolverService.resolveName(e.getUpdatedBy());
 
         BigDecimal latitude = null;
         BigDecimal longitude = null;
@@ -859,7 +845,6 @@ public class BerthService {
             if (java.util.Objects.equals(oldVal, newVal)) {
                 return;
             }
-            String name = affectedFileName != null ? affectedFileName : "không rõ tên";
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             UUID actor = userId != null ? userId : SecurityUtils.getCurrentUserId();
             historyRepository.save(InfrastructureHistory.builder()
@@ -916,7 +901,6 @@ public class BerthService {
             if (java.util.Objects.equals(oldVal, newVal)) {
                 return;
             }
-            String name = affectedFileName != null ? affectedFileName : "không rõ tên";
             boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
             UUID actor = userId != null ? userId : SecurityUtils.getCurrentUserId();
             historyRepository.save(InfrastructureHistory.builder()

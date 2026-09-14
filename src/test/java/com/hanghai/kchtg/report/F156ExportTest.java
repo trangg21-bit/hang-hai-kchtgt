@@ -28,8 +28,8 @@ public class F156ExportTest {
 
     @Test
     void testDebugResolveFormulaCell() throws Exception {
-        Workbook wb = new XSSFWorkbook();
-        Sheet sheet = wb.createSheet("Test");
+        try (Workbook wb = new XSSFWorkbook()) {
+            Sheet sheet = wb.createSheet("Test");
         Row r13 = sheet.createRow(12); // Excel Row 13
         Cell cH = r13.createCell(7); cH.setCellValue(5.0);
         Cell cI = r13.createCell(8); cI.setCellValue(3.0);
@@ -52,8 +52,9 @@ public class F156ExportTest {
         cG.setCellFormula("SUM(VALUE(C13),VALUE(D13))");
         m.invoke(reportService, cG);
 
-        assertEquals(CellType.NUMERIC, cG.getCellType());
-        assertEquals(10.0, cG.getNumericCellValue(), 0.001);
+            assertEquals(CellType.NUMERIC, cG.getCellType());
+            assertEquals(10.0, cG.getNumericCellValue(), 0.001);
+        }
     }
 
     @Test

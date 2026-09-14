@@ -1,12 +1,8 @@
 package com.hanghai.kchtg.report.service;
 
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.port.entity.Berth;
-import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.BerthRepository;
-import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.entity.InlandWaterwayPortCall;
 import com.hanghai.kchtg.report.repository.InlandWaterwayPortCallRepository;
 import com.hanghai.kchtg.shipportcall.entity.ShipPortCall;
@@ -34,7 +30,6 @@ public class BcdlAggregationService {
     private final ShipPortCallRepository shipPortCallRepository;
     private final InlandWaterwayPortCallRepository inlandWaterwayPortCallRepository;
     private final OrgUnitRepository orgUnitRepository;
-    private final PortRepository portRepository;
     private final BerthRepository berthRepository;
 
     public boolean isOrgUnitRoot(UUID orgUnitId) {

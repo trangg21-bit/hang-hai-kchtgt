@@ -1,28 +1,20 @@
 package com.hanghai.kchtg.fieldvisibility;
 
-import com.hanghai.kchtg.beacon.dto.beacon_station.CreateBeaconStationRequest;
-import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.dikerevetment.dto.DikeRevetmentCreateRequest;
 import com.hanghai.kchtg.document.dto.LegalDocumentCreateRequest;
 import com.hanghai.kchtg.fieldvisibility.entity.FieldEffect;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelCreateRequest;
 import com.hanghai.kchtg.port.dto.berth.CreateBerthRequest;
-import com.hanghai.kchtg.port.dto.dryport.CreateDryPortRequest;
-import com.hanghai.kchtg.port.dto.pier.CreatePierRequest;
 import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
-import com.hanghai.kchtg.port.dto.waterzone.CreateWaterZoneRequest;
 import com.hanghai.kchtg.radarstation.dto.RadarStationCreateRequest;
 import com.hanghai.kchtg.shiprepairfacility.dto.ShipRepairFacilityCreateRequest;
-import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
-import com.hanghai.kchtg.vtssystem.dto.VtsSystemCreateRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Map;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

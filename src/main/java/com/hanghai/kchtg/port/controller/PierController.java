@@ -35,6 +35,7 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 @Slf4j
 @Validated
 @DataScope
+@SuppressWarnings("deprecation")
 public class PierController {
 
     private final PierService pierService;

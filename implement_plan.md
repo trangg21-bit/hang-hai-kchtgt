@@ -100,6 +100,7 @@ Mỗi mã có template `template_export/<mã VMD>.xlsx`. “Default” là cờ 
 | `BCDL_184` | `F-169` | Biểu 20-T: Khối lượng hàng hóa, lượt tàu thông qua cảng biển, bến trong khu vực quản lý | Có | Không | Hoàn thành (`F169ReportHandler`) |
 
 **Chi tiết kỹ thuật đã thực hiện**:
+
 - **Database Migrations (Flyway)**:
   - `V20260911111500__create_inland_waterway_port_call.sql`: Bảng `inland_waterway_port_call` cho phương tiện thủy nội địa.
   - `V20260911113000__create_bcdl_report_record.sql`: Bảng `bcdl_report_record` lưu snapshot báo cáo tổng hợp.
@@ -144,6 +145,7 @@ Mỗi mã có template `template_export/<mã VMD>.xlsx`. “Default” là cờ 
 | `BCTT48_194` | `F-179` | Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển | Có | Có | Hoàn thành |
 
 **Chi tiết triển khai kỹ thuật cho nhóm Nhập/Lưu (F-170 đến F-179) & Chuẩn hóa Form theo mẫu `asset/transfer-area`**:
+
 - **Backend**:
   - Flyway migration `V20260911140000__create_report_record.sql`: Tạo bảng snapshot đa năng `report_record` kế thừa `BaseEntity` (`created_at`, `updated_at`, `deleted_at`, JSON `report_data`, `version`).
   - Entity `ReportRecord`, Repository `ReportRecordRepository`, DTO `ReportRecordDto`, Service `ReportRecordService` (tự động phân giải tên đơn vị qua `OrgUnitCacheService.getName()`), Controller `ReportRecordController` (`/api/v1/report-records`).
@@ -422,7 +424,6 @@ Kèm migration/backfill, cấu hình font/renderer/resource, cách chuyển temp
 **Hoàn tất toàn bộ khi:** 53/53 mã đúng chức năng/số liệu/file theo nguồn đã đối chiếu; 20 mã nhập/lưu tương đương; quyền/scope đạt; không generic/placeholder thay nghiệp vụ; tài liệu đồng bộ và lỗi chặn nghiệm thu đã đóng. Sai số liệu, sai nguồn, mất dữ liệu và lộ dữ liệu là lỗi chặn chức năng liên quan.
 
 Lượt viết lại này chỉ tạo tài liệu kế hoạch tại root. Chưa clone code, thay template runtime, sửa DB hay thực hiện các vòng Test nêu trên. Các xác minh danh mục/template là căn cứ lập kế hoạch, không phải kết quả nghiệm thu ứng dụng.
-
 
 ## Cập nhật triển khai nhóm 1 — 10/09/2026
 

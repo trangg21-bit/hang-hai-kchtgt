@@ -31,7 +31,7 @@ import java.util.UUID;
  * Endpoints are deliberately accessible without JWT authentication so that
  * first-time users can complete the MFA setup flow.
  *
- * TODO(SECURITY): Replace arbitrary client-supplied userId access with a signed,
+ * Security limitation: arbitrary client-supplied userId access should be replaced with a signed,
  * short-lived enrollment session bound to the authenticated user or recovery flow.
  * Do not write TOTP secrets or verification codes into audit metadata/logs.
  * </p>
@@ -48,7 +48,6 @@ public class TotpSetupController {
     private final QRGenerationService qrGenerationService;
     private final RedisSessionService sessionService;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final AuditLogRepository auditLogRepository;
     private final TotpRateLimiter rateLimiter;
 
@@ -63,7 +62,6 @@ public class TotpSetupController {
         this.qrGenerationService = qrGenerationService;
         this.sessionService = sessionService;
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
         this.auditLogRepository = auditLogRepository;
         this.rateLimiter = rateLimiter;
     }

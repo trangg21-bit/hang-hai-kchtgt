@@ -68,10 +68,7 @@ public class ChartIntegrationService {
         cell.setStatus(ChartCell.Status.ACTIVE);
 
         // Resolve and save coordinates
-        double[] coords = calculateCenterCoordinate(parsedData.cellName);
-
-
-
+        calculateCenterCoordinate(parsedData.cellName);
         ChartCell savedCell = cellRepository.save(cell);
 
         // Delete old features if updating existing cell
@@ -172,10 +169,7 @@ public class ChartIntegrationService {
         cell.setStatus(ChartCell.Status.ACTIVE);
 
         // Resolve and save coordinates
-        double[] coords = calculateCenterCoordinate(parsedData.cellName);
-
-
-
+        calculateCenterCoordinate(parsedData.cellName);
         ChartCell savedCell = cellRepository.save(cell);
 
         // Delete old features if updating

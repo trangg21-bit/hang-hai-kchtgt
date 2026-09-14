@@ -2,7 +2,6 @@ package com.hanghai.kchtg.orgunit.service;
 
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,8 +29,6 @@ class MaterializedPathServiceTest {
     @Mock
     private org.springframework.data.jpa.repository.JpaRepository<OrgUnit, UUID> jpaRepo;
 
-    private EntityManager entityManager;
-
     @InjectMocks
     private MaterializedPathService service;
 
@@ -44,9 +41,6 @@ class MaterializedPathServiceTest {
         rootId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         parentId = UUID.fromString("00000000-0000-0000-0000-000000000002");
         childId = UUID.fromString("00000000-0000-0000-0000-000000000003");
-
-        // Setup EntityManager mock
-        entityManager = org.mockito.Mockito.mock(EntityManager.class);
     }
 
     // ── Path computation ─────────────────────────────────────────────

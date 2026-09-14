@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.cctvasset.dto;
 
-import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

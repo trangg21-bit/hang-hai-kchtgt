@@ -23,7 +23,7 @@ public class AssetSummaryReportService {
 
     /**
      * Sinh AssetSummaryReport cho khoảng thời gian [start, end].
-     * TODO: thay thế bằng truy vấn thực tế từ repository.
+     * Đây là dữ liệu mẫu legacy; luồng báo cáo nghiệp vụ thực tế dùng các report handler.
      */
     public AssetSummaryReport generateAssetSummary(LocalDate start, LocalDate end) {
         log.info("generateAssetSummary start={} end={}", start, end);

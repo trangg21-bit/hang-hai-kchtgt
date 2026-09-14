@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
-import com.hanghai.kchtg.common.entity.OperatingUnit;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
 import com.hanghai.kchtg.group.entity.*;
