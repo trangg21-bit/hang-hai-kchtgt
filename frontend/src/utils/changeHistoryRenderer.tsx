@@ -61,237 +61,45 @@ export const GLOBAL_KCHT_FIELD_LABELS: Record<string, string> = {
   status: 'Trạng thái',
   approvalStatus: 'Trạng thái',
   operationalStatus: 'Tình trạng',
-  portStatus: 'Tình trạng',
   condition: 'Tình trạng',
   conditionStatus: 'Tình trạng',
   isActive: 'Hoạt động',
 
   // Organizations & relations
   orgUnitId: 'Đơn vị quản lý',
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  usingOrgUnitId: 'Đơn vị sử dụng',
   unitId: 'Đơn vị quản lý',
-  operatingOrgId: 'Đơn vị khai thác',
+  operatorOrgUnitId: 'Đơn vị khai thác',
   operatingUnit: 'Đơn vị khai thác',
-  portId: 'Thuộc cảng biển',
-  berthId: 'Thuộc bến cảng',
-  pierId: 'Thuộc cầu cảng',
-  waterwayId: 'Thuộc luồng hàng hải',
-  navigationChannelId: 'Thuộc luồng hàng hải',
-  waterwayRouteId: 'Tuyến luồng',
-  buoyStationId: 'Thuộc nhà trạm phao tiêu',
 
   // Location & GIS
   province: 'Địa điểm (Tỉnh/Thành phố)',
   provinceId: 'Địa điểm (Tỉnh/Thành phố)',
   address: 'Địa chỉ',
   locationDetail: 'Địa điểm chi tiết',
-  detailedLocation: 'Địa điểm chi tiết',
-  region: 'Khu vực',
-  transportCorridor: 'Hành lang vận tải',
-  mapSymbolId: 'Biểu tượng',
-  coordinateSystem: 'Hệ quy chiếu',
-  displayRule: 'Quy tắc hiển thị',
-  displayFormat: 'Quy tắc hiển thị',
-  geometryType: 'Loại đối tượng',
   coordinates: 'Tọa độ GPS',
   latitude: 'Vĩ độ',
   longitude: 'Kinh độ',
-  'Tọa độ GIS': 'Tọa độ GPS',
-  'Tọa độ GPS': 'Tọa độ GPS',
-  'Loại đối tượng GIS': 'Loại đối tượng',
-  'Loại đối tượng': 'Loại đối tượng',
-  'File đính kèm': 'File đính kèm',
-  'Tài liệu đính kèm': 'File đính kèm',
-  attachments: 'File đính kèm',
-  wharfAreas: 'Khu bến',
-  'Khu bến': 'Khu bến',
-  'Danh sách khu bến': 'Khu bến',
-  wharfCode: 'Mã khu bến',
-  wharfName: 'Tên khu bến',
-  infrastructureList: 'Công trình KCHT trực thuộc',
-  'Công trình KCHT trực thuộc': 'Công trình KCHT trực thuộc',
-  'Danh sách hạ tầng': 'Công trình KCHT trực thuộc',
 
   // Technical & dimensions
   length: 'Chiều dài (m)',
   width: 'Chiều rộng (m)',
-  designLoad: 'Tải trọng thiết kế',
-  structureType: 'Loại kết cấu',
-  constructionGrade: 'Phân cấp công trình',
-  constructionDate: 'Thời điểm xây dựng',
-  constructionYear: 'Năm xây dựng',
   area: 'Diện tích (m²)',
   totalArea: 'Tổng diện tích (m²)',
-  usableArea: 'Diện tích sử dụng (m²)',
-  warehouseArea: 'Diện tích kho (m²)',
-  yardArea: 'Diện tích bãi (m²)',
-  workshopArea: 'Diện tích nhà xưởng (m²)',
-  staffCount: 'Số lượng nhân viên',
-  currentWaterDepth: 'Độ sâu hiện tại (m)',
-  waterDepth: 'Độ sâu khu nước (m)',
-  designBedElevation: 'Cao độ đáy thiết kế (m)',
-  mudElevation: 'Cao độ đáy bùn (m)',
-  bottomNature: 'Đặc tính đáy',
-  bottomType: 'Loại đáy',
-  waveRegime: 'Chế độ sóng',
-  tidalRegime: 'Chế độ thủy triều',
-  windRegime: 'Chế độ gió',
-  publishedVesselDWT: 'Trọng tải tàu công bố (DWT)',
-  maximumVesselDwt: 'Trọng tải tàu lớn nhất (DWT)',
-  maximumVesselLength: 'Chiều dài tàu lớn nhất (m)',
-  maximumVesselDraft: 'Mớn nước tàu lớn nhất (m)',
-  receivesLargeVessel: 'Nhận tàu lớn',
-  vesselType: 'Loại tàu',
-  vesselDwt: 'Cỡ tàu',
-  businessType: 'Loại hình doanh nghiệp',
-  activity: 'Hoạt động',
-  slipwayCount: 'Số lượng triền đà',
-  technicalStandard: 'Quy chuẩn kỹ thuật',
-  teuCapacity: 'Công suất khai thác (TEU)',
-  cargoThroughput: 'Sản lượng hàng hóa',
-  connectionMode: 'Phương thức kết nối giao thông',
-  operationalFunction: 'Công năng khai thác',
-  usageFunction: 'Công năng sử dụng',
-  waterAreaNeutralScope: 'Phạm vi vùng nước',
+  constructionYear: 'Năm xây dựng',
+  useDate: 'Ngày đưa vào sử dụng',
 
-  // Buoy / Beacon specific
-  classification: 'Phân loại',
-  classificationBuoy: 'Phân loại phao',
-  classificationMark: 'Phân loại tiêu',
-  color: 'Màu sắc',
-  shape: 'Hình dạng',
-  structure: 'Kết cấu',
-  bodyHeight: 'Chiều cao thân (m)',
-  diameter: 'Đường kính (m)',
-  beaconLight: 'Đèn hiệu',
-  towerHeight: 'Chiều cao tháp (m)',
-  lightHeight: 'Chiều cao tâm sáng (m)',
-  lightModel: 'Mẫu đèn',
-  towerColor: 'Màu tháp',
-  powerSupply: 'Nguồn cấp',
-  range: 'Tầm xa (Hải lý)',
-  lightCharacteristic: 'Đặc tính ánh sáng',
-  lightColor: 'Màu ánh sáng',
-  flashType: 'Kiểu chớp',
-  period: 'Chu kỳ (giây)',
-  commissionedDate: 'Ngày đưa vào khai thác',
-  lastRepairDate: 'Ngày sửa chữa gần nhất',
-  lastMaintenanceYear: 'Năm bảo trì gần nhất',
-  lastInspectionDate: 'Ngày kiểm tra gần nhất',
-  nextInspectionDate: 'Ngày kiểm tra kế tiếp',
-  safetyAssessmentDate: 'Ngày đánh giá an toàn',
-  maintenanceApprovalDate: 'Ngày duyệt bảo trì',
-
-  // Module-specific identities & codes
-  pierCode: 'Mã cầu cảng',
-  pierName: 'Tên cầu cảng',
-  pierType: 'Loại cầu cảng',
-  berthCode: 'Mã bến cảng',
-  berthName: 'Tên bến cảng',
-  dryPortCode: 'Mã cảng cạn',
-  dryPortName: 'Tên cảng cạn',
-  shipRepairYardCode: 'Mã cơ sở sửa chữa, đóng tàu',
-  shipRepairYardName: 'Tên cơ sở sửa chữa, đóng tàu',
-  anchorageCode: 'Mã khu neo đậu',
-  anchorageName: 'Tên khu neo đậu',
-  transferAreaCode: 'Mã khu chuyển tải',
-  transferAreaName: 'Tên khu chuyển tải',
-  stormShelterCode: 'Mã khu neo đậu tránh bão',
-  stormShelterName: 'Tên khu neo đậu tránh bão',
-  shelterCapacity: 'Sức chứa khu tránh bão',
-  buoyBerthCode: 'Mã bến phao',
-  buoyBerthName: 'Tên bến phao',
-  coastalStationCode: 'Mã đài TTDH',
-  coastalStationName: 'Tên đài TTDH',
-  stationType: 'Loại đài',
-  frequency: 'Tần số',
-  coverage: 'Vùng phủ sóng',
-  operator: 'Đơn vị khai thác',
-  securityLevel: 'Cấp bảo mật',
-  operatingPierCount: 'Số cầu đang khai thác',
-  publishedPierCount: 'Số cầu công bố',
-  investmentAgreementPierCount: 'Số cầu thỏa thuận đầu tư',
-  announcedAnchorageCount: 'Số khu neo đã công bố',
-  investmentAgreementAnchorageCount: 'Số khu neo thỏa thuận ĐTXD',
-  operatingAnchorageCount: 'Số khu neo đang khai thác',
-  operatingPositionCount: 'Số vị trí đang khai thác',
-  publishedPositionCount: 'Số vị trí công bố',
-  investmentAgreementPositionCount: 'Số vị trí thỏa thuận đầu tư',
-  announcedBuoyBerthCount: 'Số lượng bến phao công bố',
-  investmentAgreementBuoyBerthCount: 'Số bến phao thỏa thuận ĐTXD',
-  operatingBuoyBerthCount: 'Số bến phao đang khai thác',
-  waterAreaMooringScope: 'Phạm vi khu nước neo buộc tàu',
-  operationalFunctions: 'Công năng khai thác',
-  designThroughput: 'Năng lực thông qua thiết kế',
-  currentThroughput: 'Năng lực thông qua hiện trạng',
-  plannedThroughput: 'Quy hoạch năng lực thông qua',
-  maxVesselSize: 'Cỡ tàu tiếp nhận lớn nhất (DWT)',
-  latestCargoVolume: 'Sản lượng thực tế năm gần nhất',
-  investmentAgreement: 'Văn bản thỏa thuận',
-  activityStartDate: 'Thời gian hoạt động từ',
-  buoys: 'Danh sách phao tiêu thuộc trạm',
-
-  // Navigation channel specific
-  seaportId: 'Thuộc cảng biển',
-  operatingUnitId: 'Đơn vị vận hành',
-  channelCode: 'Mã luồng hàng hải',
-  channelName: 'Tên luồng hàng hải',
-  managementStation: 'Trạm quản lý luồng',
-  stationCount: 'Số lượng trạm',
-  stationStaffCount: 'Số lượng nhân sự tại trạm',
-  stationAreaSquareMeters: 'Diện tích trạm (m²)',
-  latestStationRepairMonth: 'Sửa chữa trạm gần nhất',
-  latestDredgingVolumeCubicMeters: 'KL nạo vét (m³)',
-  buoyCount: 'Số lượng phao',
-  beaconCount: 'Số lượng tiêu',
-  protectionScopeMeters: 'Phạm vi bảo vệ luồng (m)',
-  protectionNotes: 'Ghi chú phạm vi bảo vệ',
-  mapIconId: 'Biểu tượng',
-  coordinateReferenceSystem: 'Hệ quy chiếu',
-
-  // Equipment / Devices (CCTV, SCADA, Transmission, VHF, VTS)
-  deviceCode: 'Mã thiết bị',
-  deviceName: 'Tên thiết bị',
-  manufacturer: 'Hãng sản xuất',
-  model: 'Model',
-  quantity: 'Số lượng',
-  provinceName: 'Địa điểm (Tỉnh/TP)',
-  attachedInfrastructureType: 'Loại hạ tầng',
-  attachedInfrastructureId: 'Thuộc hạ tầng',
-  unitOfMeasure: 'Đơn vị tính',
-  yearOfUse: 'Năm đưa vào sử dụng',
-  specifications: 'Thông số kỹ thuật',
-  maintenanceInformation: 'Thông tin bảo trì',
-
-  // Legal / Decisions
+  // Documents & Notes
   documentNumber: 'Số văn bản',
   documentDate: 'Ngày văn bản',
-  openingAnnouncementDate: 'Ngày công bố mở',
-  openingDecision: 'Quyết định mở',
-  investmentAgreementDoc: 'Thỏa thuận đầu tư',
-  announcementTime: 'Thời điểm công bố mở',
-  announcementDecisionNumber: 'Quyết định công bố số',
-  announcementDecisionDate: 'Ngày ra quyết định công bố',
-  announcementOrg: 'Đơn vị ra quyết định công bố',
   remarks: 'Ghi chú',
   note: 'Ghi chú',
   description: 'Mô tả',
 
-  // Approval audit
-  submittedForApprovalAt: 'Ngày gửi phê duyệt',
-  submittedForApprovalBy: 'Người gửi phê duyệt',
-  level1ApprovedBy: 'Người duyệt Cảng vụ/Chi cục',
-  level1ApprovedDate: 'Ngày duyệt Cảng vụ/Chi cục',
-  level2ApprovedBy: 'Người duyệt Cục',
-  level2ApprovedDate: 'Ngày duyệt Cục',
-  level1ApprovalContent: 'Nội dung phê duyệt Cảng vụ/Chi cục',
-  level2ApprovalContent: 'Nội dung phê duyệt Cục',
-  portAuthorityApprovedAt: 'Ngày duyệt Cảng vụ/Chi cục',
-  portAuthorityApprovedBy: 'Người duyệt Cảng vụ/Chi cục',
-  portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ/Chi cục',
-  departmentApprovedAt: 'Ngày duyệt Cục',
-  departmentApprovedBy: 'Người duyệt Cục',
-  departmentApprovalContent: 'Nội dung phê duyệt Cục',
-  rejectionReason: 'Lý do từ chối',
+  // Attachments
+  attachments: 'File đính kèm',
+  attachmentName: 'Tài liệu đính kèm',
 };
 
 export function autoFormatHistoryValue(fn: string, raw: unknown): string | null {
@@ -371,6 +179,58 @@ export function autoFormatHistoryValue(fn: string, raw: unknown): string | null 
   };
   if (conditionMap[s.toUpperCase()]) {
     return conditionMap[s.toUpperCase()];
+  }
+
+  // 3b. Asset Type / Classification
+  const assetTypeMap: Record<string, string> = {
+    PORT_TERMINAL: 'Tài sản bến cảng',
+    TRANSFER_AREA: 'Tài sản khu chuyển tải',
+    STORM_SHELTER: 'Tài sản khu tránh, trú bão',
+    BUOY_BERTH: 'Tài sản bến phao',
+    PIER: 'Tài sản cầu cảng',
+    ANCHORAGE: 'Tài sản khu neo đậu',
+    ANCHORAGE_AREA: 'Tài sản khu neo đậu',
+    LIGHTHOUSE: 'Tài sản đèn biển',
+    DIKE_REVETMENT: 'Tài sản đê chắn sóng, kè bảo vệ',
+    DRY_PORT: 'Tài sản cảng cạn',
+    SHIP_REPAIR_YARD: 'Tài sản cơ sở sửa chữa, đóng tàu',
+    CHANNEL: 'Tài sản luồng hàng hải',
+    BUOY: 'Tài sản phao tiêu',
+    BEACON: 'Tài sản tiêu biển',
+    RADAR_STATION: 'Tài sản trạm radar',
+    VTS_SYSTEM: 'Tài sản hệ thống VTS',
+    VTS_OPERATION_CENTER: 'Tài sản trung tâm điều hành VTS',
+    VTS_ASSIST: 'Tài sản hệ thống phụ trợ VTS',
+    CCTV: 'Tài sản hệ thống CCTV',
+    TRANSMISSION: 'Tài sản hệ thống truyền dẫn',
+    VHF: 'Tài sản đài thông tin VHF',
+    SCADA: 'Tài sản hệ thống SCADA',
+    AIS_SYSTEM: 'Tài sản hệ thống trạm bờ AIS',
+    LRIT_STATION: 'Tài sản đài LRIT',
+    INMARSAT_STATION: 'Tài sản đài Inmarsat',
+    COSPAS_SARSAT_STATION: 'Tài sản đài Cospas-Sarsat',
+    TTXLTT_STATION: 'Tài sản đài TTXLTT',
+    TTDH_STATION: 'Tài sản đài TTDH',
+  };
+  if (assetTypeMap[s.toUpperCase()]) {
+    return assetTypeMap[s.toUpperCase()];
+  }
+
+  // 3c. Asset Usage Status
+  const usageStatusMap: Record<string, string> = {
+    MANAGED: 'Đang quản lý',
+    USING: 'Đang sử dụng',
+    UNUSED: 'Chưa sử dụng',
+    DISPOSED: 'Đã thanh lý',
+    DANG_QUAN_LY: 'Đang quản lý',
+    DANG_SU_DUNG: 'Đang sử dụng',
+    CHUA_SU_DUNG: 'Chưa sử dụng',
+    KHONG_SU_DUNG_DUOC: 'Không sử dụng được',
+    HU_HONG_CAN_SUA_CHUA: 'Hư hỏng cần sửa chữa',
+    DA_THANH_LY: 'Đã thanh lý',
+  };
+  if (usageStatusMap[s.toUpperCase()]) {
+    return usageStatusMap[s.toUpperCase()];
   }
 
   // 4. Structure Type (Pier/Berth/StormShelter)
@@ -601,7 +461,7 @@ export interface ChangeHistoryRendererOptions {
   emptyMessage?: string;
 }
 
-const DEFAULT_IGNORED_FIELDS = new Set([
+export const DEFAULT_IGNORED_FIELDS = new Set([
   'id',
   'spatialId',
   'infrastructureList_raw',
@@ -615,6 +475,17 @@ const DEFAULT_IGNORED_FIELDS = new Set([
   'Trạng thái phê duyệt',
   'deletedAt',
   'deletedBy',
+  'submittedAt',
+  'submittedBy',
+  'portAuthorityApprovedBy',
+  'portAuthorityApprovedAt',
+  'portAuthorityApprovalContent',
+  'departmentApprovedBy',
+  'departmentApprovedAt',
+  'departmentApprovalContent',
+  'approvedBy',
+  'approvedAt',
+  'approvedRemarks',
 ]);
 
 export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactNode {
@@ -837,10 +708,6 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
 
     if (ordered.length === 0) return null;
 
-    const meta = g.items?.[0] || {};
-    const barColor = actionPrimary;
-    const accent = historyAccentBarStyle(barColor);
-
     const paintValue = (fn: string, rawV: string | null) => {
       if (isBlankOrDash(rawV)) return '';
       if (fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') {
@@ -901,6 +768,27 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
       return isBlankOrDash(formatted) ? '' : formatted;
     };
 
+    const validRows = ordered
+      .map((x) => ({
+        ...x,
+        label: `${fieldLabel(x.field)}:`,
+        ov: paintValue(x.field, x.oldValue),
+        nv: paintValue(x.field, x.newValue),
+      }))
+      .filter((r) => {
+        const oBlank = isBlankOrDash(r.ov) || (typeof r.ov === 'string' && !r.ov.trim());
+        const nBlank = isBlankOrDash(r.nv) || (typeof r.nv === 'string' && !r.nv.trim());
+        if (oBlank && nBlank) return false;
+        if (typeof r.ov === 'string' && typeof r.nv === 'string' && r.ov.trim() === r.nv.trim()) return false;
+        return true;
+      });
+
+    if (validRows.length === 0) return null;
+
+    const meta = g.items?.[0] || {};
+    const barColor = actionPrimary;
+    const accent = historyAccentBarStyle(barColor);
+
     const unit = resolveUnitName ? resolveUnitName(g.items[0]) : (meta.orgUnitName || meta.unitName || '');
 
     return (
@@ -948,19 +836,16 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
           <Typography.Text style={historyInfoTitleStyle}>
             Thông tin thay đổi:
           </Typography.Text>
-          {ordered.map((x, ri) => {
-            const label = `${fieldLabel(x.field)}:`;
-            const ov = paintValue(x.field, x.oldValue);
-            const nv = paintValue(x.field, x.newValue);
+          {validRows.map((x, ri) => {
             return (
               <div key={x.rowId} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
-                <Typography.Text style={historyFieldLabelStyle}>{label}</Typography.Text>
-                <span style={historyOldValueStyle} title={typeof ov === 'string' && ov ? ov : undefined}>
-                  {ov}
+                <Typography.Text style={historyFieldLabelStyle}>{x.label}</Typography.Text>
+                <span style={historyOldValueStyle} title={typeof x.ov === 'string' && x.ov ? x.ov : undefined}>
+                  {x.ov}
                 </span>
                 <Typography.Text style={historyArrowStyle}>→</Typography.Text>
-                <span style={historyNewValueStyle} title={typeof nv === 'string' && nv ? nv : undefined}>
-                  {nv}
+                <span style={historyNewValueStyle} title={typeof x.nv === 'string' && x.nv ? x.nv : undefined}>
+                  {x.nv}
                 </span>
               </div>
             );

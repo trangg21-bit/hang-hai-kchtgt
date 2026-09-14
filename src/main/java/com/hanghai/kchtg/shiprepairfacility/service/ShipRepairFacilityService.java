@@ -412,13 +412,6 @@ public class ShipRepairFacilityService {
         return map;
     }
 
-    private String resolveUserName(UUID userId) {
-        if (userId == null)
-            return null;
-        Map<UUID, String> map = resolveUserNames(Collections.singletonList(userId));
-        return map.getOrDefault(userId, null);
-    }
-
     public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, Integer provinceId,
             String approvalStatus, String reviewStatus) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%"
@@ -456,7 +449,6 @@ public class ShipRepairFacilityService {
 
         GisGeometryType geomType = null;
         String coords = null;
-        UUID symbolId = null;
         if (entity.getSpatialId() != null) {
             java.util.Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialOpt.isPresent()) {
@@ -506,39 +498,6 @@ public class ShipRepairFacilityService {
         if (geomType == GisGeometryType.POLYGON)
             return GisSpatialObjectType.POLYGON_OTHER;
         return GisSpatialObjectType.LINE_OTHER;
-    }
-
-    private String getFieldDisplayName(String field) {
-        return switch (field) {
-            case "facilityName" -> "Tên cơ sở sửa chữa";
-            case "facilityType" -> "Loại cơ sở";
-            case "address" -> "Địa chỉ";
-            case "phone" -> "Số điện thoại";
-            case "email" -> "Email";
-            case "capacity" -> "Công suất";
-            case "authority" -> "Cơ quan thẩm quyền";
-            case "orgUnitId" -> "Đơn vị quản lý";
-            case "provinceId" -> "Tỉnh / Thành phố";
-            default -> field;
-        };
-    }
-
-    private String formatChangedFields(java.util.Map<String, String> previousValues) {
-        return String.join(", ", previousValues.keySet());
-    }
-
-    private String formatPreviousValues(java.util.Map<String, String> previousValues) {
-        return previousValues.entrySet().stream()
-                .map(entry -> entry.getKey() + "="
-                        + formatDisplayValue(entry.getKey(), entry.getValue()))
-                .collect(java.util.stream.Collectors.joining("; "));
-    }
-
-    private String formatNewValues(ShipRepairFacility entity, java.util.Map<String, String> previousValues) {
-        return previousValues.keySet().stream()
-                .map(field -> field + "="
-                        + formatDisplayValue(field, currentFieldValue(entity, field)))
-                .collect(java.util.stream.Collectors.joining("; "));
     }
 
     private String formatDisplayValue(String field, String rawValue) {

@@ -1,12 +1,12 @@
-import api from '../api';
 import { triggerBlobDownload } from '../../components/shared/InfrastructureAttachmentTab';
+import api from '../api';
 import type {
   PageResponse,
   TransmissionAsset,
-  TransmissionAssetPayload,
-  TransmissionAssetFilters,
-  TransmissionAssetExploitation,
   TransmissionAssetAdjustment,
+  TransmissionAssetExploitation,
+  TransmissionAssetFilters,
+  TransmissionAssetPayload,
 } from './types';
 
 const BASE_URL = '/v1/asset/transmission-assets';
@@ -38,6 +38,11 @@ export async function updateTransmissionAsset(id: string, payload: TransmissionA
 
 export async function deleteTransmissionAsset(id: string): Promise<void> {
   await api.delete(`${BASE_URL}/${id}`);
+}
+
+export async function fetchTransmissionAssetHistory(id: string): Promise<any> {
+  const res = await api.get(`${BASE_URL}/${id}/history`);
+  return res.data?.data;
 }
 
 export async function fetchTransmissionExploitations(assetId: string): Promise<TransmissionAssetExploitation[]> {

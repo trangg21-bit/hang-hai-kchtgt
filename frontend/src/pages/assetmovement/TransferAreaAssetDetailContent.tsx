@@ -318,7 +318,8 @@ export default function TransferAreaAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${effectiveAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: effectiveAttachments.length,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
@@ -407,7 +408,8 @@ export default function TransferAreaAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         customContent: () => (
           <div
             style={{
@@ -532,7 +534,8 @@ export default function TransferAreaAssetDetailContent({
       },
       {
         key: 'adjustments',
-        label: `Thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
         customContent: () => (
           <div
             style={{
@@ -803,11 +806,6 @@ export default function TransferAreaAssetDetailContent({
       onClose={onClose}
       record={r}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
     />
   );
 }

@@ -6,6 +6,7 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
@@ -19,9 +20,11 @@ import {
   CommonStatusTabs,
   TableColumnType,
   type TableOption,
+  type TableActionOption,
   type FilterOption,
   type ScreenHeaderAction,
 } from '../../components/list-view';
+import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -61,6 +64,7 @@ import InmarsatAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './InmarsatAssetOperationForm';
+import InmarsatAssetHistory, { useInmarsatHistory } from './InmarsatAssetHistory';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -69,6 +73,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -114,6 +119,12 @@ export default function InmarsatAssetList() {
     [inmarsatStations]
   );
 
+  const {
+    historyOpen, historyTarget, historyRecords, historyLoading,
+    historyFilters, filteredHistory, hasActiveHistoryFilter,
+    openHistory, setHistoryOpen, setHistoryFilters,
+  } = useInmarsatHistory({ orgName, inmarsatMap });
+
   const customTokens = useMemo(
     () => ({
       ...themeTokenChk,
@@ -135,10 +146,14 @@ export default function InmarsatAssetList() {
       setTotal(res.totalElements || 0);
 
       const baseFilters = { ...filters, approvalStatus: undefined, page: 0, size: 1 };
+      const emptyPage: { totalElements: number; content: InmarsatAsset[] } = {
+        totalElements: 0,
+        content: [],
+      };
       const [all, ...statusPages] = await Promise.all([
-        fetchInmarsatAssets(baseFilters).catch(() => ({ totalElements: 0, content: [] } as any)),
+        fetchInmarsatAssets(baseFilters).catch(() => emptyPage),
         ...STATUS_COUNT_KEYS.map((approvalStatus) =>
-          fetchInmarsatAssets({ ...baseFilters, approvalStatus }).catch(() => ({ totalElements: 0, content: [] } as any))
+          fetchInmarsatAssets({ ...baseFilters, approvalStatus }).catch(() => emptyPage)
         ),
       ]);
       const nextCounts: Record<string, number> = {
@@ -159,6 +174,7 @@ export default function InmarsatAssetList() {
   }, [filters, page, pageSize]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu khi trang/bộ lọc thay đổi
     void loadData();
   }, [loadData]);
 
@@ -309,7 +325,7 @@ export default function InmarsatAssetList() {
       triggerBlobDownload(fallbackBlob, fileName);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
-    [attachments, selected?.id]
+    [attachments, selected]
   );
 
   const openDetail = useCallback(async (record: InmarsatAsset) => {
@@ -668,47 +684,82 @@ export default function InmarsatAssetList() {
           allowSort: true,
         },
       ],
-      actions: (record: InmarsatAsset) => [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        },
-        {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => openOperation(record, 'exploit'),
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => openOperation(record, 'increase'),
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => openOperation(record, 'decrease'),
-        },
-        {
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
-        },
-      ],
+      actions: (record: InmarsatAsset) => {
+        const isArchived =
+          normalizeApprovalStatus(record.approvalStatus) === 'ARCHIVED' ||
+          Boolean((record as { deletedAt?: string | null }).deletedAt);
+
+        if (isArchived) {
+          return [
+            {
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ];
+        }
+
+        const rowActions: TableActionOption<InmarsatAsset>[] = [
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void openDetail(record),
+          },
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
+          },
+          {
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
+          },
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => openOperation(record, 'exploit'),
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => openOperation(record, 'increase'),
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => openOperation(record, 'decrease'),
+          },
+        ];
+
+        const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+        if (isDraft) {
+          rowActions.push({
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
+          });
+        }
+
+        return rowActions;
+      },
     }),
-    [inmarsatMap, openDetail, openEdit, openOperation, orgName]
+    [inmarsatMap, openDetail, openEdit, openHistory, openOperation, orgName]
   );
 
   const headerActions = useMemo<ScreenHeaderAction[]>(
@@ -725,7 +776,7 @@ export default function InmarsatAssetList() {
   );
 
   return (
-    <ThemeTokenProvider tokens={customTokens}>
+    <ThemeTokenProvider tokens={customTokens as unknown as import('../../context/ThemeTokenContext').ThemeToken}>
       <div
         className="inmarsat-asset-page-wrapper"
         style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
@@ -750,7 +801,6 @@ export default function InmarsatAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -866,6 +916,20 @@ export default function InmarsatAssetList() {
               )
               .finally(() => setSaving(false));
           }}
+        />
+        {/* ── History Drawer ── */}
+        <InmarsatAssetHistory
+          open={historyOpen}
+          target={historyTarget}
+          records={historyRecords}
+          loading={historyLoading}
+          filters={historyFilters}
+          filteredRecords={filteredHistory}
+          hasActiveFilter={hasActiveHistoryFilter}
+          orgName={orgName}
+          inmarsatMap={inmarsatMap}
+          onClose={() => setHistoryOpen(false)}
+          onFiltersChange={setHistoryFilters}
         />
       </div>
     </ThemeTokenProvider>

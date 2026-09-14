@@ -9,7 +9,7 @@ public class RejectRequest {
     @NotBlank
     private String cap;
 
-    @NotBlank
-    @Size(min = 10, message = "Lý do từ chối phải có ít nhất 10 ký tự")
+    @NotBlank(message = "Lý do từ chối không được để trống")
+    @Size(min = 10, max = 2000, message = "Lý do từ chối phải từ 10 đến 2000 ký tự")
     private String lyDo;
 }

@@ -1,15 +1,13 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
-import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
-import com.hanghai.kchtg.assetmovement.service.InfraAssetService;
-import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.security.annotation.DataScope;
-import lombok.RequiredArgsConstructor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -20,24 +18,37 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
+import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
+import com.hanghai.kchtg.assetmovement.service.InfraAssetService;
+import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.security.annotation.DataScope;
 
 @RestController
 @RequestMapping("/api/v1/asset/infra-assets")
-@RequiredArgsConstructor
 @DataScope
 public class InfraAssetController {
 
     private final InfraAssetService infraAssetService;
+
+    public InfraAssetController(InfraAssetService infraAssetService) {
+        this.infraAssetService = infraAssetService;
+    }
 
     /**
      * Whitelist các field DB thực sự có trong bảng infra_assets.
@@ -150,6 +161,13 @@ public class InfraAssetController {
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được xóa", null));
     }
 
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        Object history = infraAssetService.getHistory(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));
+    }
+
     // ── Attachment endpoints ─────────────────────────────────────────────
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -198,7 +216,7 @@ public class InfraAssetController {
         String contentType;
         try {
             contentType = Files.probeContentType(path);
-        } catch (Exception ignored) {
+        } catch (java.io.IOException ignored) {
             contentType = null;
         }
         MediaType mediaType = contentType == null

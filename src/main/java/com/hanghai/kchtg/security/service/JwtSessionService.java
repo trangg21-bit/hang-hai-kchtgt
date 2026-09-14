@@ -35,7 +35,6 @@ public class JwtSessionService {
     private static final int SALT_LENGTH = 16; // 128-bit salt
 
     private final JwtSessionRepository sessionRepository;
-    private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
     private final CacheManager cacheManager;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -45,7 +44,6 @@ public class JwtSessionService {
                              JwtUtil jwtUtil,
                              CacheManager cacheManager) {
         this.sessionRepository = sessionRepository;
-        this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.cacheManager = cacheManager;
     }

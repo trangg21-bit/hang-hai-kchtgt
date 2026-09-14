@@ -137,7 +137,6 @@ public class DataConnectionController {
     public ResponseEntity<ApiResponse<TestConnectionResponse>> testConnection(
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) TestConnectionRequest request) {
-
         // Use ConnectionService for checking
         ConnectionHealth health = service.healthCheck(id);
         TestConnectionResponse result = TestConnectionResponse.builder()

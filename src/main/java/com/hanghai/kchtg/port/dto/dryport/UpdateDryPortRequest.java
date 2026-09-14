@@ -10,7 +10,6 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data

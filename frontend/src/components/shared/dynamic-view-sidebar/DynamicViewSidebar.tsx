@@ -14,7 +14,7 @@ import {
   statusBadgeStyle,
   borderDefault,
   drawerTitleStyle,
-  DRAWER_WIDTH,
+  DRAWER_FORM_WIDTH,
 } from "../../../themetokenchk";
 import {
   type DynamicViewSidebarProps,
@@ -60,7 +60,7 @@ function formatFieldValue<T>(
   if (field.value) {
     rawValue = field.value(record);
   } else if (field.name && record && typeof record === "object") {
-    rawValue = (record as Record<string, unknown>)[field.name];
+    rawValue = (record as Record<PropertyKey, unknown>)[field.name];
   }
 
   if (field.render) {
@@ -111,6 +111,12 @@ function formatFieldValue<T>(
             : String(rawValue)}
         </span>
       );
+    }
+    case ViewFieldType.Year: {
+      const s = String(rawValue).trim();
+      const match = s.match(/\b(19\d{2}|20\d{2})\b/);
+      const yearStr = match ? match[0] : (dayjs(s).isValid() ? dayjs(s).format("YYYY") : s);
+      return <span>{yearStr}</span>;
     }
     case ViewFieldType.Badge: {
       const color =
@@ -239,7 +245,7 @@ function ViewSectionItem<T>({
 
             return (
               <div
-                key={field.name || `field-${idx}`}
+                key={String(field.name || `field-${idx}`)}
                 className={`chk-detail-row ${isFullWidth ? "chk-detail-row--full" : ""} ${field.className || ""}`}
                 style={field.style}
               >
@@ -259,7 +265,6 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
   title,
   record,
   onClose,
-  width,
   size,
   tabs,
   sections,
@@ -336,7 +341,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
                         const isFullWidth = field.colSpan === 24;
                         return (
                           <div
-                            key={field.name || `tab-field-${idx}`}
+                            key={String(field.name || `tab-field-${idx}`)}
                             className={`chk-detail-row ${isFullWidth ? "chk-detail-row--full" : ""} ${field.className || ""}`}
                             style={field.style}
                           >
@@ -388,7 +393,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
               const isFullWidth = field.colSpan === 24;
               return (
                 <div
-                  key={field.name || `field-${idx}`}
+                  key={String(field.name || `field-${idx}`)}
                   className={`chk-detail-row ${isFullWidth ? "chk-detail-row--full" : ""} ${field.className || ""}`}
                   style={field.style}
                 >
@@ -411,7 +416,7 @@ export function DynamicViewSidebar<T = Record<string, unknown>>({
 
   return (
     <AppDrawer
-      width={width || DRAWER_WIDTH}
+      width={DRAWER_FORM_WIDTH}
       size={size}
       rootClassName={rootClassName}
       className={className}

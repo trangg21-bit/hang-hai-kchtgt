@@ -29,7 +29,6 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class AccessLogService {
 
-
     private final AccessLogRepository repository;
 
     public AccessLogService(AccessLogRepository repository) {

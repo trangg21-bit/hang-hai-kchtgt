@@ -49,8 +49,6 @@ public class LegalDocumentService {
     private final LegalDocumentRepository legalDocumentRepository;
     private final AttachedDocumentRepository attachedDocumentRepository;
     private final SearchLogRepository searchLogRepository;
-    @SuppressWarnings("unused")
-    private final SearchResultRepository searchResultRepository;
     private final SearchSuggestionRepository searchSuggestionRepository;
     private final InfrastructureHistoryRepository approvalHistoryRepository;
     private final UserRepository userRepository;

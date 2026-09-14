@@ -59,9 +59,6 @@ public class LogService {
     private final AccessLogRepository repository;
     private final LogRetentionPolicyRepository retentionPolicyRepository;
     private final LogAggregateRepository aggregateRepository;
-    @SuppressWarnings("unused")
-    private final String exportDir;
-
     public LogService(AccessLogService accessLogService,
                       AccessLogRepository repository,
                       LogRetentionPolicyRepository retentionPolicyRepository,
@@ -72,7 +69,6 @@ public class LogService {
         this.repository = repository;
         this.retentionPolicyRepository = retentionPolicyRepository;
         this.aggregateRepository = aggregateRepository;
-        this.exportDir = exportDir;
     }
 
     // ── Query delegation ─────────────────────────────────────────────

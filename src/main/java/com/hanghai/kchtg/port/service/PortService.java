@@ -27,7 +27,6 @@ import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
@@ -36,7 +35,6 @@ import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -434,8 +432,8 @@ public class PortService {
         // queries) when the list is rendered.
         return results.map(e -> toResponse(
                 e,
-                userNamesMap.get(e.getCreatedBy()),
-                userNamesMap.get(e.getUpdatedBy()),
+                userNamesMap.get(e.getCreatedBy() != null ? e.getCreatedBy().toString() : null),
+                userNamesMap.get(e.getUpdatedBy() != null ? e.getUpdatedBy().toString() : null),
                 false));
     }
 
@@ -859,10 +857,6 @@ public class PortService {
 
     private PortResponse toResponse(Port entity) {
         return toResponse(entity, null, null, true);
-    }
-
-    private PortResponse toResponse(Port entity, String preResolvedCreatorName, String preResolvedUpdaterName) {
-        return toResponse(entity, preResolvedCreatorName, preResolvedUpdaterName, true);
     }
 
     private PortResponse toResponse(Port entity, String preResolvedCreatorName, String preResolvedUpdaterName,

@@ -603,7 +603,7 @@ export default forwardRef(function BeaconStationForm(
         }
       }
 
-      onFinish(true);
+      onFinish?.(true);
     } catch (err: unknown) {
       if (err instanceof Error) toast.error(err.message);
     } finally {

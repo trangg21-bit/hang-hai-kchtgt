@@ -538,7 +538,7 @@ public class PierService {
         }
 
         // Chụp snapshot trước khi xóa mềm để ghi lịch sử thay đổi (chuẩn Cảng biển)
-        Pier snapshot = Pier.builder()
+        Pier.builder()
                 .pierCode(entity.getPierCode())
                 .pierName(entity.getPierName()).berthId(entity.getBerthId())
                 .length(entity.getLength()).designLoad(entity.getDesignLoad())
@@ -584,7 +584,6 @@ public class PierService {
                 .portAuthorityApprovalContent(entity.getPortAuthorityApprovalContent())
                 .departmentApprovalContent(entity.getDepartmentApprovalContent())
                 .build();
-
         entity.softDelete(SecurityUtils.getCurrentUserId());
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         if (entity.getSpatialId() != null) {
@@ -596,15 +595,6 @@ public class PierService {
 
     private PierResponse toResponse(Pier e) {
         return toResponse(e, null, null, null, null);
-    }
-
-    private PierResponse toResponse(Pier e, String preResolvedBerthName) {
-        return toResponse(e, preResolvedBerthName, null, null, null);
-    }
-
-    private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName,
-            String preResolvedUpdaterName) {
-        return toResponse(e, preResolvedBerthName, preResolvedCreatorName, preResolvedUpdaterName, null);
     }
 
     private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName,
@@ -626,11 +616,6 @@ public class PierService {
         if (berthName == null && e.getBerthId() != null) {
             berthName = berthRepository.findById(e.getBerthId()).map(Berth::getBerthName).orElse(null);
         }
-
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
-                : userResolverService.resolveName(e.getCreatedBy() != null ? e.getCreatedBy() : null);
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
-                : userResolverService.resolveName(e.getUpdatedBy() != null ? e.getUpdatedBy() : null);
 
         PierResponse response = PierResponse.builder()
                 .id(e.getId())
@@ -719,16 +704,6 @@ public class PierService {
             case LINE -> "Đối tượng đường";
             case POLYGON -> "Đối tượng vùng";
         };
-    }
-
-    private GisGeometryType parseGeometryType(String typeStr) {
-        if (typeStr == null)
-            return GisGeometryType.LINE;
-        try {
-            return GisGeometryType.valueOf(typeStr.toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            return GisGeometryType.LINE;
-        }
     }
 
     private void applySaveAction(Pier entity, String action) {

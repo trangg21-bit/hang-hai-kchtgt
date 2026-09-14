@@ -17,7 +17,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class KchtCacheInvalidationAspect {
 
-
     private final KchtAssetCountService countService;
 
     public KchtCacheInvalidationAspect(KchtAssetCountService countService) {

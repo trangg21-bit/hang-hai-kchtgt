@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.port.service.shared;
 
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ApprovalWorkflowService {
-
-    private final InfrastructureHistoryRepository historyRepository;
 
     /**
      * Transition entity to approved.

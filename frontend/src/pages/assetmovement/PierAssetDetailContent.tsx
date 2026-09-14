@@ -291,7 +291,8 @@ export default function PierAssetDetailContent({
       },
       {
         key: 'attachments',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
         customContent: (
           <div style={{ padding: 12 }}>
             <InfrastructureAttachmentTab
@@ -381,7 +382,8 @@ export default function PierAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         customContent: (
           <div style={{ padding: 12 }}>
             <div
@@ -502,8 +504,9 @@ export default function PierAssetDetailContent({
         ),
       },
       {
-        key: 'price_history',
-        label: `Thay đổi nguyên giá (${increaseRows.length + decreaseRows.length})`,
+        key: 'adjustments',
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: increaseRows.length + decreaseRows.length,
         customContent: (
           <div
             style={{

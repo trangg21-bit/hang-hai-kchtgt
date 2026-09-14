@@ -24,7 +24,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import org.springframework.security.core.Authentication;
-import java.util.UUID;
 
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.security.annotation.DataScope;
@@ -35,6 +34,7 @@ import com.hanghai.kchtg.security.annotation.DataScope;
 @Slf4j
 @Validated
 @DataScope
+@SuppressWarnings("deprecation")
 public class PortController {
 
     private final PortService portService;

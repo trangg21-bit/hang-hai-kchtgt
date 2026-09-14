@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.station.controller;
 
-import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
@@ -34,7 +33,6 @@ public class BuoyStationController {
 
         private final BuoyStationService service;
         private final InfrastructureHistoryRepository historyRepository;
-        private final BuoyRepository buoyRepository;
         private final BuoyStationRepository phaoRepo;
         private final UserRepository userRepository;
 

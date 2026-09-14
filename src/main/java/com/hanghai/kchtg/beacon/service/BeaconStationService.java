@@ -6,15 +6,12 @@ import com.hanghai.kchtg.beacon.dto.BeaconHistoryEntry;
 import com.hanghai.kchtg.beacon.dto.beacon_station.BeaconStationResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_station.CreateBeaconStationRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_station.UpdateBeaconStationRequest;
-import com.hanghai.kchtg.beacon.entity.BeaconHistory;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconStation;
-import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
@@ -60,7 +57,6 @@ public class BeaconStationService {
 
     private final BeaconStationRepository beaconStationRepo;
     private final BuoyRepository buoyRepo;
-    private final BeaconHistoryRepository historyRepo;
     private final InfrastructureHistoryRepository infraHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
@@ -756,20 +752,6 @@ public class BeaconStationService {
 
     // -- HELPERS --
 
-    private void validateCoordinates(Double longitude, Double latitude) {
-        if (longitude == null || latitude == null) {
-            throw new IllegalArgumentException("Tọa độ không được để trống");
-        }
-        if (longitude < -180.0 || longitude > 180.0) {
-            throw new IllegalArgumentException(
-                    "Kinh độ phải trong khoảng -180~180 (WGS84)");
-        }
-        if (latitude < -90.0 || latitude > 90.0) {
-            throw new IllegalArgumentException(
-                    "Vĩ độ phải trong khoảng -90~90 (WGS84)");
-        }
-    }
-
     private void validateMaintenanceDates(LocalDate last, LocalDate next) {
         if (last != null && last.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException(
@@ -818,18 +800,6 @@ public class BeaconStationService {
             BeaconHistoryActionType action, String fields, String previousJson, String newJson, String customReason) {
         Long legacyUserId = resolveCurrentUserId();
         UUID currentUserId = SecurityUtils.getCurrentUserId();
-        BeaconHistory entry = BeaconHistory.builder()
-                .beaconType(BeaconType.BEACON_LIGHT)
-                .entityId(entity.getId())
-                .actionType(action)
-                .changedField(fields != null && fields.length() > 255 ? fields.substring(0, 255) : fields)
-                .previousValue(previousJson)
-                .newValue(newJson != null ? newJson : (action == BeaconHistoryActionType.REJECT ? "REJECTED" : null))
-                .changedBy(legacyUserId)
-                .changedAt(LocalDateTime.now())
-                .reason(customReason != null ? customReason : (action == BeaconHistoryActionType.REJECT ? newJson : null))
-                .build();
-
         if (infraHistoryRepo != null && entity.getId() != null) {
             InfrastructureHistoryStatus status = switch (action) {
                 case CREATE -> InfrastructureHistoryStatus.CREATED;
@@ -1023,36 +993,7 @@ public class BeaconStationService {
      * This avoids string comparison issues where the same data serializes
      * to different string representations.
      */
-    private boolean compareJsonNodes(String json1, String json2) {
-        try {
-            JsonNode node1 = objectMapper.readTree(json1);
-            JsonNode node2 = objectMapper.readTree(json2);
-            return node1.equals(node2);
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
     // -- BUG FIX #3: Actual field diff instead of static string --
-
-    @SuppressWarnings("unchecked")
-    private String getChangedFields(String oldJson, String newJson) {
-        try {
-            Map<String, Object> oldMap = objectMapper.readValue(oldJson, Map.class);
-            Map<String, Object> newMap = objectMapper.readValue(newJson, Map.class);
-            List<String> changed = new ArrayList<>();
-            for (String key : newMap.keySet()) {
-                Object oldVal = oldMap.get(key);
-                Object newVal = newMap.get(key);
-                if (!Objects.equals(oldVal, newVal)) {
-                    changed.add(key);
-                }
-            }
-            return changed.isEmpty() ? "fields_updated" : String.join(", ", changed);
-        } catch (Exception e) {
-            return "fields_updated";
-        }
-    }
 
     // -- ATTACHMENTS --
 

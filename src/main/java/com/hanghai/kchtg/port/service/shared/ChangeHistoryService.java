@@ -31,6 +31,9 @@ public class ChangeHistoryService {
 
     public static InfrastructureType resolveInfrastructureType(String entityName) {
         if (entityName == null) return InfrastructureType.SEAPORT;
+        try {
+            return InfrastructureType.valueOf(entityName.toUpperCase().trim());
+        } catch (IllegalArgumentException ignored) {}
         return switch (entityName.toUpperCase().trim()) {
             case "PORT", "CANG_BIEN", "SEAPORT" -> InfrastructureType.SEAPORT;
             case "BERTH", "BEN_CANG", "PORT_TERMINAL" -> InfrastructureType.PORT_TERMINAL;
@@ -64,6 +67,7 @@ public class ChangeHistoryService {
             case "INMARSAT", "INMARSAT_STATION" -> InfrastructureType.INMARSAT_STATION;
             case "COSPAS_SARSAT", "COSPAS_SARSAT_STATION" -> InfrastructureType.COSPAS_SARSAT_STATION;
             case "HAIPHONG", "HANOI_STATION" -> InfrastructureType.HANOI_STATION;
+            case "COASTAL_STATION_ASSET", "COASTAL_STATION", "COASTALSTATIONASSET", "TAI_SAN_DAI" -> InfrastructureType.COASTAL_STATION_ASSET;
             default -> InfrastructureType.SEAPORT;
         };
     }
@@ -173,7 +177,16 @@ public class ChangeHistoryService {
                 || name.equals("level1ApprovalContent")
                 || name.equals("level2ApprovalContent")
                 || name.equals("submittedAt")
-                || name.equals("submittedBy");
+                || name.equals("submittedBy")
+                || name.equals("portAuthorityApprovedBy")
+                || name.equals("portAuthorityApprovedAt")
+                || name.equals("portAuthorityApprovalContent")
+                || name.equals("departmentApprovedBy")
+                || name.equals("departmentApprovedAt")
+                || name.equals("departmentApprovalContent")
+                || name.equals("approvedBy")
+                || name.equals("approvedAt")
+                || name.equals("approvedRemarks");
     }
 
     private boolean valuesEqual(Object a, Object b) {

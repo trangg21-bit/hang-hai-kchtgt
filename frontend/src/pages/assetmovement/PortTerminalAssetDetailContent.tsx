@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   BankOutlined,
   SlidersOutlined,
@@ -21,8 +21,12 @@ import {
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
 import { fmtNum } from "../../utils/numFmt";
+import toast from "../../components/ToastNotification";
+import api from "../../services/api";
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
+  triggerBlobDownload,
+  resolveMimeType,
 } from "../../components/shared/InfrastructureAttachmentTab";
 import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
 import {
@@ -53,6 +57,7 @@ export interface PortTerminalAssetDetailContentProps {
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
   decreaseRows: AssetDecreaseResponse[];
+  onDownloadAttachment?: (id: string, fileName: string) => void;
 }
 
 export interface AdjustmentRowItem {
@@ -105,26 +110,18 @@ const sectionTitleStyle: React.CSSProperties = {
 
 const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: "Lưu tạm" },
-  NHAP: { color: statusDraft, label: "Lưu tạm" },
   PENDING_APPROVAL: {
     color: statusAttention,
-    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
+    label: "Chờ Cảng vụ duyệt",
   },
-  CHO_PHE_DUYET: {
-    color: statusAttention,
-    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-  },
-  APPROVED_LEVEL1: { color: actionPrimary, label: "Chờ phê duyệt cấp Cục" },
-  APPROVED_LEVEL2: { color: statusAttention, label: "Chờ phê duyệt cấp cục" },
-  APPROVED: { color: statusOperational, label: "Đã phê duyệt" },
-  DA_PHE_DUYET: { color: statusOperational, label: "Đã phê duyệt" },
+  APPROVED_LEVEL1: { color: "#0284C7", label: "Chờ Cục duyệt" },
+  APPROVED: { color: statusOperational, label: "Đã duyệt" },
   REJECTED_LEVEL1: {
     color: statusCritical,
-    label: "Từ chối cấp Cảng vụ/Chi cục",
+    label: "Cảng vụ từ chối",
   },
-  REJECTED_LEVEL2: { color: statusCritical, label: "Từ chối cấp cục" },
+  REJECTED_LEVEL2: { color: statusCritical, label: "Cục từ chối" },
   REJECTED: { color: statusCritical, label: "Từ chối" },
-  TU_CHOI: { color: statusCritical, label: "Từ chối" },
 };
 
 const fmtDateTime = (v?: string | null): string =>
@@ -143,6 +140,7 @@ export default function PortTerminalAssetDetailContent({
   exploitationRows,
   increaseRows,
   decreaseRows,
+  onDownloadAttachment,
 }: PortTerminalAssetDetailContentProps) {
   const infraMap = useMemo(
     () => relatedInfrastructureMap || berthMap || new Map(),
@@ -169,8 +167,13 @@ export default function PortTerminalAssetDetailContent({
 
   useEffect(() => {
     if (!r?.id) {
-      setDetailAttachments([]);
-      return;
+      let isMounted = true;
+      Promise.resolve().then(() => {
+        if (isMounted) setDetailAttachments([]);
+      });
+      return () => {
+        isMounted = false;
+      };
     }
     let isMounted = true;
     fetchInfraAssetAttachments(r.id)
@@ -231,16 +234,97 @@ export default function PortTerminalAssetDetailContent({
     };
   }, [r]);
 
-
+  const handleDownloadAttachment = useCallback(
+    async (id: string, fileName: string) => {
+      const att = detailAttachments.find(
+        (a) => a.id === id || a.fileName === fileName,
+      );
+      if (att?.originFileObj) {
+        triggerBlobDownload(
+          att.originFileObj,
+          fileName || att.originFileObj.name,
+        );
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (att?.file) {
+        triggerBlobDownload(att.file, fileName || att.file.name);
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (
+        att?.url &&
+        (att.url.startsWith("blob:") || att.url.startsWith("data:"))
+      ) {
+        triggerBlobDownload(att.url, fileName || "tai-lieu");
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      const targetPath =
+        att?.filePath ||
+        (r?.id && id && !id.startsWith("detail-att-")
+          ? `/v1/asset/infra-assets/${r.id}/attachments/${id}/download`
+          : undefined);
+      if (targetPath) {
+        try {
+          let cleanPath = targetPath;
+          if (cleanPath.startsWith("/api/")) {
+            cleanPath = cleanPath.replace(/^\/api/, "");
+          } else if (!cleanPath.startsWith("/")) {
+            cleanPath = `/${cleanPath}`;
+          }
+          const res = await api.get(cleanPath, { responseType: "blob" });
+          const serverContentType =
+            (typeof res.headers?.["content-type"] === "string"
+              ? res.headers["content-type"]
+              : "") || "";
+          const contentType = resolveMimeType(
+            fileName || att?.fileName || "tai-lieu",
+            serverContentType || "application/octet-stream",
+          );
+          const blob = new Blob([res.data], { type: contentType });
+          triggerBlobDownload(blob, fileName || att?.fileName || "tai-lieu");
+          toast.success(`Đã tải xuống tệp: ${fileName}`);
+          return;
+        } catch (err) {
+          console.warn(
+            "Download from server failed, falling back to local generated attachment:",
+            err,
+          );
+        }
+      }
+      if (onDownloadAttachment) {
+        onDownloadAttachment(id, fileName);
+        return;
+      }
+      const fallbackContentType = resolveMimeType(
+        fileName || "tai-lieu",
+        att?.fileType || "application/octet-stream",
+      );
+      const fallbackBlob = new Blob(
+        [
+          `Tài liệu đính kèm: ${fileName}\nThời gian: ${dayjs().format("DD/MM/YYYY HH:mm:ss")}\nĐược tải về từ Hệ thống Quản lý KCHT Hàng hải`,
+        ],
+        { type: fallbackContentType },
+      );
+      triggerBlobDownload(fallbackBlob, fileName || "tai-lieu");
+      toast.success(`Đã tải xuống tệp: ${fileName}`);
+    },
+    [detailAttachments, onDownloadAttachment, r],
+  );
 
   const viewTabs = useMemo<ViewTabConfig<PortTerminalAsset>[]>(() => {
     if (!r) return [];
 
-    const approvalInfo = APPROVAL_MAP[r.approvalStatus || ""] ||
-      APPROVAL_MAP[r.approvalStatus?.toUpperCase() || ""] || {
-        color: statusDraft,
-        label: r.approvalStatus || "",
-      };
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus.toUpperCase()] ?? {
+          color: textTertiary,
+          label: r.approvalStatus,
+        })
+      : {
+          color: textTertiary,
+          label: "—",
+        };
 
     return [
       {
@@ -295,19 +379,19 @@ export default function PortTerminalAssetDetailContent({
               {
                 label: screenConfig.relationCodeLabel,
                 value: (rec) => {
-                  const target: any = infraMap.get(
+                  const target = infraMap.get(
                     rec[screenConfig.relationField] || "",
                   );
-                  return target?.code || target?.berthCode || "—";
+                  return target?.code || "—";
                 },
               },
               {
                 label: screenConfig.relationNameLabel,
                 value: (rec) => {
-                  const target: any = infraMap.get(
+                  const target = infraMap.get(
                     rec[screenConfig.relationField] || "",
                   );
-                  return target?.name || target?.berthName || "—";
+                  return target?.name || "—";
                 },
               },
               {
@@ -571,7 +655,8 @@ export default function PortTerminalAssetDetailContent({
       },
       {
         key: "files",
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: "Hồ sơ tài sản",
+        badgeCount: detailAttachments.length,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
@@ -579,14 +664,15 @@ export default function PortTerminalAssetDetailContent({
               readonly={true}
               onUpload={() => {}}
               onDelete={() => {}}
-              onDownload={() => {}}
+              onDownload={handleDownloadAttachment}
             />
           </div>
         ),
       },
       {
         key: "exploitation",
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: "Khai thác tài sản",
+        badgeCount: exploitationRows.length,
         icon: <RocketOutlined />,
         customContent: () => (
           <div
@@ -714,7 +800,8 @@ export default function PortTerminalAssetDetailContent({
       },
       {
         key: "adjustments",
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: "Lịch sử thay đổi nguyên giá",
+        badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
         customContent: () => (
           <div
@@ -960,6 +1047,7 @@ export default function PortTerminalAssetDetailContent({
     detailAttachments,
     exploitationRows,
     combinedAdjustments,
+    handleDownloadAttachment,
   ]);
 
   return (
@@ -969,11 +1057,6 @@ export default function PortTerminalAssetDetailContent({
       record={r}
       title={`Chi tiết ${screenConfig.subjectLabel}${r ? ` - ${r.assetName}` : ""}`}
       tabs={viewTabs}
-      width={
-        typeof window !== "undefined"
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName={`berth-drawer-scope ${screenConfig.drawerClassName}`}
       className={`berth-drawer-scope ${screenConfig.drawerClassName}`}
     />

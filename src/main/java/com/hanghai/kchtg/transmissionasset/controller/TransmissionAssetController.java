@@ -1,15 +1,12 @@
 package com.hanghai.kchtg.transmissionasset.controller;
 
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
-import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.security.annotation.DataScope;
-import com.hanghai.kchtg.transmissionasset.dto.*;
-import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetAdjustment;
-import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetExploitation;
-import com.hanghai.kchtg.transmissionasset.service.TransmissionAssetService;
-import lombok.RequiredArgsConstructor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -20,15 +17,31 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.UUID;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
+import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.security.annotation.DataScope;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAdjustmentRequest;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAssetRequest;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionAssetResponse;
+import com.hanghai.kchtg.transmissionasset.dto.TransmissionExploitationRequest;
+import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetAdjustment;
+import com.hanghai.kchtg.transmissionasset.entity.TransmissionAssetExploitation;
+import com.hanghai.kchtg.transmissionasset.service.TransmissionAssetService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/asset/transmission-assets")
@@ -52,6 +65,12 @@ public class TransmissionAssetController {
             @PathVariable UUID id) {
         TransmissionAssetResponse response = service.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage') or @auth.check(authentication, 'transmission:history') or @auth.check(authentication, 'transmission:read') or @auth.check(authentication, 'data:read')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản HT truyền dẫn thành công", service.getHistory(id)));
     }
 
     private static final java.util.Set<String> SORTABLE_FIELDS = java.util.Set.of(

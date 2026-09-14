@@ -14,7 +14,6 @@ import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
-import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentAttachmentRepository;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
@@ -65,8 +64,6 @@ import java.nio.file.StandardCopyOption;
 public class DikeRevetmentService {
 
     private final DikeRevetmentRepository repo;
-    @SuppressWarnings("unused")
-    private final DikeRevetmentAttachmentRepository attachmentRepo;
     private final InfrastructureHistoryRepository approvalHistoryRepo;
     private final InfrastructureApprovalService approvalService;
     private final GisSpatialObjectService gisSpatialObjectService;

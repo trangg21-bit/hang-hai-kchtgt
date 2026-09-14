@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.backup.dto;
 
-import com.hanghai.kchtg.backup.entity.DatabaseBackup;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -21,7 +20,7 @@ public class BackupResponse {
 
     // ── Entity-to-DTO constructor ────────────────────────────────────
 
-    public BackupResponse(DatabaseBackup entity) {
+    public BackupResponse(com.hanghai.kchtg.backup.entity.DatabaseBackup entity) {
         this.id = entity.getId();
         this.filename = entity.getFilename();
         this.fileSize = entity.getFileSize();

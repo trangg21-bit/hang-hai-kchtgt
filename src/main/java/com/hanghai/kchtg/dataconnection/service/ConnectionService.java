@@ -42,9 +42,6 @@ public class ConnectionService {
     private final DataConnectionRepository repo;
     private final EncryptionUtil encryptionUtil;
     private final ConnectionHealthRepository healthRepo;
-    @SuppressWarnings("unused")
-    private final SyncLogRepository syncLogRepo;
-
     public ConnectionService(DataConnectionRepository repo,
                              EncryptionUtil encryptionUtil,
                              ConnectionHealthRepository healthRepo,
@@ -52,7 +49,6 @@ public class ConnectionService {
         this.repo = repo;
         this.encryptionUtil = encryptionUtil;
         this.healthRepo = healthRepo;
-        this.syncLogRepo = syncLogRepo;
     }
 
     // ── CRUD ─────────────────────────────────────────────────────────

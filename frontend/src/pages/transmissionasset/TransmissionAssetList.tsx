@@ -1,64 +1,68 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
   RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableActionOption,
+  type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import {
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchTransmissionOptions } from '../../services/transmission/api';
 import type { TransmissionOptionResponse } from '../../services/transmission/types';
 import {
-  fetchTransmissionAssets,
-  deleteTransmissionAsset,
-  createTransmissionAsset,
-  updateTransmissionAsset,
-  fetchTransmissionExploitations,
-  createTransmissionExploitation,
-  fetchTransmissionAdjustments,
   createTransmissionAdjustment,
-  fetchTransmissionAssetAttachments,
-  uploadTransmissionAssetAttachments,
+  createTransmissionAsset,
+  createTransmissionExploitation,
+  deleteTransmissionAsset,
   deleteTransmissionAssetAttachment,
   downloadTransmissionAssetAttachment,
+  fetchTransmissionAdjustments,
+  fetchTransmissionAssetAttachments,
+  fetchTransmissionAssets,
+  fetchTransmissionExploitations,
+  updateTransmissionAsset,
+  uploadTransmissionAssetAttachments,
 } from '../../services/transmissionAsset/api';
 import type {
   TransmissionAsset,
+  TransmissionAssetAdjustment,
+  TransmissionAssetExploitation,
   TransmissionAssetFilters,
   TransmissionAssetPayload,
-  TransmissionAssetExploitation,
-  TransmissionAssetAdjustment,
 } from '../../services/transmissionAsset/types';
-import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
+import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import TransmissionAssetDetailContent from './TransmissionAssetDetailContent';
+import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
+import TransmissionAssetHistory, { useTransmissionHistory } from './TransmissionAssetHistory';
 import TransmissionAssetOperationForm, {
   type OperationMode,
   type OperationValues,
@@ -71,6 +75,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -121,6 +126,12 @@ export default function TransmissionAssetList() {
     [transmissions]
   );
 
+  const {
+    historyOpen, historyTarget, historyRecords, historyLoading,
+    historyFilters, filteredHistory, hasActiveHistoryFilter,
+    openHistory, setHistoryOpen, setHistoryFilters,
+  } = useTransmissionHistory({ orgName, transmissionMap });
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -150,6 +161,7 @@ export default function TransmissionAssetList() {
   }, [filters, page, pageSize]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu khi trang/bộ lọc thay đổi
     void loadData();
   }, [loadData]);
 
@@ -284,7 +296,7 @@ export default function TransmissionAssetList() {
       setAttachments((prev) => prev.filter((a) => a.id !== id));
       toast.success('Đã xóa tệp đính kèm.');
     },
-    [selected?.id]
+    [selected]
   );
 
   const handleDownloadAttachment = useCallback(
@@ -334,7 +346,7 @@ export default function TransmissionAssetList() {
       triggerBlobDownload(dummyBlob, fileName);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
-    [attachments, selected?.id]
+    [attachments, selected]
   );
 
   const openDetail = useCallback(async (record: TransmissionAsset) => {
@@ -502,8 +514,7 @@ export default function TransmissionAssetList() {
         key: 'assetType',
         label: 'Loại tài sản',
         type: 'select',
-        disabled: true,
-        defaultValue: 'Tài sản HT truyền dẫn',
+        placeholder: 'Chọn loại tài sản',
         options: [{ value: 'Tài sản HT truyền dẫn', label: 'Tài sản HT truyền dẫn' }],
       },
       {
@@ -689,59 +700,94 @@ export default function TransmissionAssetList() {
           allowSort: true,
         },
       ],
-      actions: (record: TransmissionAsset) => [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        },
-        {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('exploit');
-            operationForm.resetFields();
+      actions: (record: TransmissionAsset) => {
+        const isArchived =
+          normalizeApprovalStatus(record.approvalStatus) === 'ARCHIVED' ||
+          Boolean((record as { deletedAt?: string | null }).deletedAt);
+
+        if (isArchived) {
+          return [
+            {
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void openDetail(record),
+            },
+            {
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ];
+        }
+
+        const rowActions: TableActionOption<TransmissionAsset>[] = [
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void openDetail(record),
           },
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('increase');
-            operationForm.resetFields();
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
           },
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('decrease');
-            operationForm.resetFields();
+          {
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
           },
-        },
-        {
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
-        },
-      ],
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('exploit');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('increase');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('decrease');
+              operationForm.resetFields();
+            },
+          },
+        ];
+
+        const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+        if (isDraft) {
+          rowActions.push({
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
+          });
+        }
+
+        return rowActions;
+      },
     }),
-    [openDetail, openEdit, operationForm, orgName, transmissionMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap]
   );
 
   const headerActions: ScreenHeaderAction[] = useMemo(
@@ -757,16 +803,8 @@ export default function TransmissionAssetList() {
     [openCreate]
   );
 
-  const customTokens = useMemo(
-    () => ({
-      ...themeTokenChk,
-      fontSizeMd: 13.5,
-    }),
-    []
-  );
-
   return (
-    <ThemeTokenProvider tokens={customTokens}>
+    <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
       <div
         className="transmission-asset-page-wrapper"
         style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}
@@ -791,7 +829,6 @@ export default function TransmissionAssetList() {
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -907,6 +944,20 @@ export default function TransmissionAssetList() {
               )
               .finally(() => setSaving(false));
           }}
+        />
+        {/* ── History Drawer ── */}
+        <TransmissionAssetHistory
+          open={historyOpen}
+          target={historyTarget}
+          records={historyRecords}
+          loading={historyLoading}
+          filters={historyFilters}
+          filteredRecords={filteredHistory}
+          hasActiveFilter={hasActiveHistoryFilter}
+          orgName={orgName}
+          transmissionMap={transmissionMap}
+          onClose={() => setHistoryOpen(false)}
+          onFiltersChange={setHistoryFilters}
         />
       </div>
     </ThemeTokenProvider>

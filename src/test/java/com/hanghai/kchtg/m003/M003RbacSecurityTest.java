@@ -99,11 +99,6 @@ class M003RbacSecurityTest {
     // Valid JSON bodies that satisfy @NotBlank constraints on each domain's PheDuyetRequest
     private static final String NC_APPROVE_BODY =
             "{\"nguoiPheDuyet\":\"Admin\",\"status\":\"APPROVED\"}";
-    private static final String DIKEREVETMENT_APPROVE_BODY =
-            "{\"nguoiPheDuyet\":\"Admin\",\"decision\":\"APPROVED\"}";
-    private static final String GENERIC_APPROVE_BODY =
-            "{\"decision\":\"APPROVED\"}";
-
     // =========================================================================
     // ALLOW path — SYSTEM_ADMIN → approve/c1 (200)
     // =========================================================================

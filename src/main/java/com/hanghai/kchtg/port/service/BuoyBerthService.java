@@ -25,11 +25,9 @@ import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.repository.BuoyBerthRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,10 +42,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -61,12 +56,10 @@ public class BuoyBerthService {
 
     private final BuoyBerthRepository buoyBerthRepository;
     private final PortRepository portRepository;
-    private final UserResolverService userResolverService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final AttachmentRepository attachmentRepository;
-    private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
     private final InfrastructureHistoryRepository historyRepository;
@@ -527,11 +520,6 @@ public class BuoyBerthService {
         } catch (Exception e) {
             log.warn("Không thể ghi lịch sử đính kèm cho bến phao {}: {}", buoyBerthId, e.getMessage());
         }
-    }
-
-    private void recordBuoyBerthAttachmentHistory(UUID buoyBerthId, String oldFilesSummary, String newFilesSummary,
-                                                  String affectedFileName, InfrastructureHistoryStatus status, UUID userId) {
-        recordBuoyBerthAttachmentHistory(buoyBerthId, oldFilesSummary, newFilesSummary, affectedFileName, status, userId, null);
     }
 
     public Attachment getAttachment(String entityType, UUID entityId, UUID attachmentId) {

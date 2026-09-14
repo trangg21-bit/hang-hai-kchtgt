@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useAuthStore } from './authStore';
+import api from '../services/api';
 
 // Simple in-memory localStorage mock for node test runner
 const storageMap: Record<string, string> = {};
@@ -9,10 +10,14 @@ const localStorageMock = {
   removeItem: (key: string) => { delete storageMap[key]; },
   clear: () => { Object.keys(storageMap).forEach(k => delete storageMap[k]); },
 };
-globalThis.localStorage = localStorageMock as any;
+globalThis.localStorage = localStorageMock as unknown as Storage;
 
 describe('authStore replaceAccessToken and multi-tab sync', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(api, 'get').mockResolvedValue({
+      data: { data: { permissionCodes: ['port:read'] } },
+    });
     localStorageMock.clear();
     useAuthStore.setState({
       user: {
@@ -99,7 +104,8 @@ describe('authStore replaceAccessToken and multi-tab sync', () => {
     useAuthStore.setState({ user: null, isAuthenticated: false, token: null });
 
     // Try logging in with malformed token
-    useAuthStore.getState().login('alice', 'password', 'invalid-token');
+    const malformedAccepted = useAuthStore.getState().login('alice', 'password', 'invalid-token');
+    expect(malformedAccepted).toBe(false);
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
 
@@ -110,7 +116,8 @@ describe('authStore replaceAccessToken and multi-tab sync', () => {
       iat: Math.floor(Date.now() / 1000) - 7200,
       exp: Math.floor(Date.now() / 1000) - 3600,
     });
-    useAuthStore.getState().login('alice', 'password', expiredJwt);
+    const expiredAccepted = useAuthStore.getState().login('alice', 'password', expiredJwt);
+    expect(expiredAccepted).toBe(false);
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
   });
@@ -151,5 +158,30 @@ describe('authStore replaceAccessToken and multi-tab sync', () => {
     expect(state.isAuthenticated).toBe(false);
     expect(state.user).toBeNull();
     expect(state.token).toBeNull();
+  });
+
+  it('should clear the complete session synchronously', () => {
+    localStorage.setItem('auth_token', 'valid.initial.token');
+
+    useAuthStore.getState().clearSession();
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.user).toBeNull();
+    expect(state.token).toBeNull();
+    expect(localStorage.getItem('auth_token')).toBeNull();
+  });
+
+  it('should invalidate the session when server-side session validation fails', async () => {
+    localStorage.setItem('auth_token', 'valid.initial.token');
+    vi.mocked(api.get).mockRejectedValueOnce(new Error('Session validation failed'));
+
+    await useAuthStore.getState().refreshPermissions();
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(false);
+    expect(state.user).toBeNull();
+    expect(state.token).toBeNull();
+    expect(localStorage.getItem('auth_token')).toBeNull();
   });
 });

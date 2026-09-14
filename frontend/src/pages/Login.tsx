@@ -96,6 +96,7 @@ const labelProps = (text: string) => ({
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
+  const clearSession = useAuthStore((s) => s.clearSession);
   const [submitting, setSubmitting] = useState(false);
   const [showTotp, setShowTotp] = useState(false);
   const [userId, setUserId] = useState('');
@@ -116,6 +117,7 @@ export default function LoginPage() {
       const { success, data, message: msg } = res.data;
 
       if (!success) {
+        clearSession();
         message.error(msg || 'Đăng nhập thất bại');
         setSubmitting(false);
         return;
@@ -135,19 +137,26 @@ export default function LoginPage() {
 
       const loginData = data as LoginData;
       if (loginData.token) {
-        login(loginData.username, '', loginData.token);
+        const loginSucceeded = login(loginData.username, '', loginData.token);
+        if (!loginSucceeded) {
+          message.error('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.');
+          navigate('/login', { replace: true });
+          return;
+        }
         message.success('Đăng nhập thành công');
-        navigate('/');
+        navigate('/', { replace: true });
       } else {
+        clearSession();
         message.error('Không nhận được token');
       }
     } catch (err: unknown) {
+      clearSession();
       const msg = getFriendlyAuthError(err, 'Đăng nhập thất bại. Vui lòng thử lại.');
       message.error(msg);
     } finally {
       setSubmitting(false);
     }
-  }, [login, navigate]);
+  }, [clearSession, login, navigate]);
 
   const handleTotpVerify = useCallback(async () => {
     if (!totpCode.trim()) {
@@ -160,6 +169,7 @@ export default function LoginPage() {
       const { success, data, message: msg } = res.data;
 
       if (!success) {
+        clearSession();
         message.error(msg || 'Mã TOTP không đúng');
         setSubmitting(false);
         return;
@@ -167,19 +177,26 @@ export default function LoginPage() {
 
       const totpData = data as { accessToken: string; user: { fullName: string; username?: string } };
       if (totpData.accessToken) {
-        login(totpData.user?.username || '', '', totpData.accessToken);
+        const loginSucceeded = login(totpData.user?.username || '', '', totpData.accessToken);
+        if (!loginSucceeded) {
+          message.error('Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.');
+          navigate('/login', { replace: true });
+          return;
+        }
         message.success('Đăng nhập thành công');
-        navigate('/');
+        navigate('/', { replace: true });
       } else {
+        clearSession();
         message.error('Không nhận được token');
       }
     } catch (err: unknown) {
+      clearSession();
       const msg = getFriendlyAuthError(err, 'Xác thực TOTP thất bại. Vui lòng thử lại.');
       message.error(msg);
     } finally {
       setSubmitting(false);
     }
-  }, [totpCode, userId, login, navigate]);
+  }, [clearSession, totpCode, userId, login, navigate]);
 
   const handleBackToLogin = useCallback(() => {
     setShowTotp(false);

@@ -74,7 +74,13 @@ api.interceptors.response.use(
       if (validationData && typeof validationData === 'object') {
         const errorList = Array.isArray(validationData)
           ? validationData.map((v) => (typeof v === 'string' ? v : v?.message || v?.defaultMessage || JSON.stringify(v)))
-          : Object.values(validationData).map((v) => (typeof v === 'string' ? v : (v as any)?.message || String(v)));
+          : Object.values(validationData).map((value) => {
+              if (typeof value === 'string') return value;
+              if (value && typeof value === 'object' && 'message' in value && typeof value.message === 'string') {
+                return value.message;
+              }
+              return String(value);
+            });
         const validErrors = errorList.filter(Boolean);
         if (validErrors.length > 0) {
           friendlyMsg = validErrors.join('; ');
@@ -170,14 +176,14 @@ api.interceptors.response.use(
       const isIntegrationRequest = error.config?.url?.includes('/v1/integration/share');
       if (!isIntegrationRequest && !isPublicAuthPage && !isAuthRequest) {
         showUniqueError(friendlyMsg);
-        localStorage.removeItem('auth_token');
+        useAuthStore.getState().clearSession();
         window.location.href = '/login';
       }
     } else if (status === 403) {
       const serverMsg = error.response?.data?.message;
       if (serverMsg === 'Tai khoan da bi khoa' || serverMsg === 'Tai khoan da bi khoa hoac bi xoa') {
         friendlyMsg = 'Tài khoản của bạn đã bị khóa hoặc đã bị xóa. Vui lòng liên hệ quản trị viên.';
-        localStorage.removeItem('auth_token');
+        useAuthStore.getState().clearSession();
         window.location.href = '/login?error=locked';
         error.message = friendlyMsg;
         return Promise.reject(error);
@@ -187,7 +193,7 @@ api.interceptors.response.use(
       if (!token) {
         if (!isAuthRequest && !isPublicAuthPage) {
           showUniqueError(friendlyMsg);
-          localStorage.removeItem('auth_token');
+          useAuthStore.getState().clearSession();
           window.location.href = '/login';
         }
       } else {
@@ -196,7 +202,7 @@ api.interceptors.response.use(
         }
       }
     } else {
-      if (!isAuthRequest && !isStationBuoysRequest && !isGenerateCodeRequest && !isAttachmentListRequest) {
+      if (!isAuthRequest && !isStationBuoysRequest && !isGenerateCodeRequest && !isAttachmentListRequest && !isHistoryRequest) {
         showUniqueError(friendlyMsg);
       }
     }

@@ -113,18 +113,15 @@ public class RegistrationService {
 
         } catch (RateLimitExceededException e) {
             // Audit rate-limit event
-            long duration = System.currentTimeMillis() - startTime;
             auditService.logFailure(null, identifier, "RATE_LIMITED", e.getMessage(), ipAddress, userAgent);
             throw e;
 
         } catch (RegistrationException e) {
-            long duration = System.currentTimeMillis() - startTime;
             auditService.logFailure(null, identifier, "REGISTER_FAILURE", e.getMessage(), ipAddress, userAgent);
             throw e;
 
         } catch (Exception e) {
             log.error("Unexpected error during registration for identifier={}", identifier, e);
-            long duration = System.currentTimeMillis() - startTime;
             auditService.logFailure(null, identifier, "REGISTER_FAILURE",
                     "Internal server error: " + e.getMessage(), ipAddress, userAgent);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi đăng ký tài khoản");

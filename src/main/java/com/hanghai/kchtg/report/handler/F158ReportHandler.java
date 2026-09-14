@@ -55,7 +55,7 @@ public class F158ReportHandler extends BaseReportHandler {
             VtsSystem vts = vtsCache.computeIfAbsent(vtsId, id ->
                 vtsSystemRepository.findById(id).orElse(null));
             if (vts == null) continue;
-            if (!"APPROVED".equals(vts.getApprovalStatus())) continue;
+            if (vts.getApprovalStatus() != ApprovalStatus.APPROVED) continue;
             if (vts.getDeletedAt() != null) continue;
             if (!skipFilter && !targetUnitId.equals(vts.getOrgUnitId())) continue;
             if (vts.getUpdatedAt() != null && vts.getUpdatedAt().getYear() > reportYear) continue;
@@ -102,7 +102,7 @@ public class F158ReportHandler extends BaseReportHandler {
             VtsSystem vts = vtsCache.computeIfAbsent(vtsId, id ->
                 vtsSystemRepository.findById(id).orElse(null));
             if (vts == null) continue;
-            if (!"APPROVED".equals(vts.getApprovalStatus())) continue;
+            if (vts.getApprovalStatus() != ApprovalStatus.APPROVED) continue;
             if (vts.getDeletedAt() != null) continue;
             if (!skipFilter && !targetUnitId.equals(vts.getOrgUnitId())) continue;
             if (vts.getUpdatedAt() != null && vts.getUpdatedAt().getYear() > reportYear) continue;

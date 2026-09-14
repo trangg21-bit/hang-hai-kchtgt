@@ -329,11 +329,6 @@ export default function DaiTtdhAssetOperationForm({
       sections={sections}
       footerActions={footerActions}
       footerAlign="center"
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(850, Math.floor(window.innerWidth * 0.9))
-          : 850
-      }
       rootClassName="daittdh-asset-operation-drawer"
       className="daittdh-asset-operation-drawer"
     />

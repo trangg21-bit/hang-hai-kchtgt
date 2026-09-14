@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
   RocketOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import {
   ScreenHeader,
@@ -23,6 +25,8 @@ import {
   type ScreenHeaderAction,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import AppDrawer from '../../components/shared/AppDrawer';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { pierCRUD } from '../../services/portService';
@@ -35,6 +39,7 @@ import {
   deletePierAsset,
   fetchAssetDecreaseList,
   fetchAssetIncreaseList,
+  fetchInfraAssetHistory,
   fetchKhaiThacList,
   fetchPierAssets,
   updatePierAsset,
@@ -42,6 +47,8 @@ import {
   fetchInfraAssetAttachments,
   deleteInfraAssetAttachment,
 } from '../../services/assetmovement/api';
+import { renderStandardHistoryCards, isBlankOrDash, DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import api from '../../services/api';
 import type {
   AssetDecreaseResponse,
@@ -58,6 +65,19 @@ import {
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
+import {
+  colors,
+  borderDefault,
+  radiusPill,
+  spaceSm,
+  spaceMd,
+  spaceXl,
+  fontSizeLg,
+  fontWeightBold,
+  textTertiary,
+  actionPrimary,
+  drawerTitleStyle,
+} from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import PierAssetForm, { type FormValues } from './PierAssetForm';
 import PierAssetDetailContent from './PierAssetDetailContent';
@@ -78,6 +98,41 @@ const STATUS_COUNT_KEYS = [
 type DrawerMode = 'create' | 'edit' | 'detail';
 
 const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+
+const PIER_ASSET_FIELD_LABELS: Record<string, string> = {
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  orgUnitId: 'Đơn vị quản lý',
+  usingOrgUnitId: 'Đơn vị sử dụng',
+  pierId: 'Mã cầu cảng',
+  assetType: 'Loại tài sản',
+  types: 'Phân loại tài sản',
+  assetCode: 'Mã tài sản',
+  assetName: 'Tên tài sản',
+  barcode: 'Barcode',
+  assetCondition: 'Tình trạng tài sản',
+  usageStatus: 'Hiện trạng sử dụng',
+  assetGroup: 'Nhóm tài sản',
+  assetSubgroup: 'Phân nhóm tài sản',
+  origin: 'Nguồn gốc',
+  address: 'Địa chỉ',
+  landArea: 'Diện tích đất (m²)',
+  floorArea: 'Diện tích sàn (m²)',
+  constructionYear: 'Năm xây dựng',
+  useDate: 'Ngày đưa vào sử dụng',
+  declarationDate: 'Ngày kê khai',
+  originalValue: 'Nguyên giá (VNĐ)',
+  depreciationRate: 'Tỷ lệ hao mòn (%/năm)',
+  accumulatedDepreciation: 'Hao mòn/khấu hao lũy kế (VNĐ)',
+  remainingValue: 'Giá trị còn lại (VNĐ)',
+  assignmentDecisionNumber: 'Số quyết định giao tài sản',
+  depreciationStartDate: 'Ngày bắt đầu tính hao mòn',
+  depreciationMonths: 'Thời gian sử dụng (tháng)',
+  depreciationEndDate: 'Ngày kết thúc tính hao mòn',
+  monthlyDepreciation: 'Mức hao mòn/khấu hao tháng (VNĐ)',
+  disposalMethod: 'Hình thức xử lý',
+  attachmentName: 'Tài liệu đính kèm',
+  attachments: 'Tài liệu đính kèm',
+};
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -114,6 +169,59 @@ export default function PierAssetList() {
 
   const orgName = useMemo(() => new Map(organizations.map(item => [item.id, item.name])), [organizations]);
   const pierMap = useMemo(() => new Map(piers.map(item => [item.id, item])), [piers]);
+
+  // ── History state (chuẩn /berth) ───────────────────────────────────────
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<PierAsset | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+
+  const openHistory = useCallback(async (r: PierAsset) => {
+    setHistoryTarget(r);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    setHistorySearch('');
+    setHistoryFrom('');
+    setHistoryTo('');
+    try {
+      const d = await fetchInfraAssetHistory(r.id);
+      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
+      setHistoryRecords(ch);
+    } catch {
+      toast.error('Không thể tải lịch sử thay đổi');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const filteredHistoryRecords = useMemo(() => {
+    return historyRecords.filter((rec) => {
+      if (DEFAULT_IGNORED_FIELDS.has(rec.changedField)) return false;
+      if (historySearch) {
+        const s = historySearch.toLowerCase();
+        const fName = (rec.changedField || '').toLowerCase();
+        const oVal = String(rec.oldValue || '').toLowerCase();
+        const nVal = String(rec.newValue || '').toLowerCase();
+        if (!fName.includes(s) && !oVal.includes(s) && !nVal.includes(s)) return false;
+      }
+      if (historyFrom && dayjs(rec.changedAt || rec.approvedDate).isBefore(dayjs(historyFrom), 'day')) {
+        return false;
+      }
+      if (historyTo && dayjs(rec.changedAt || rec.approvedDate).isAfter(dayjs(historyTo), 'day')) {
+        return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historySearch, historyFrom, historyTo]);
+
+  const historyFieldCount = useMemo(
+    () => filteredHistoryRecords.length,
+    [filteredHistoryRecords]
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -668,9 +776,12 @@ export default function PierAssetList() {
       { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
       { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
       { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
-      { key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) },
+      { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistory(record) },
+      ...(record.approvalStatus === 'DRAFT' || (record as any).status === 'DRAFT'
+        ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]
+        : []),
     ],
-  }), [pierMap, openDetail, openEdit, operationForm, orgName]);
+  }), [pierMap, openDetail, openEdit, openHistory, operationForm, orgName]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(() => [
     { key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreate },
@@ -696,15 +807,14 @@ export default function PierAssetList() {
           hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
-              counts={statusCounts}
               activeKey={filters.approvalStatus || 'all'}
-              onChange={(_key, queryStatus) => {
+              counts={statusCounts}
+              onChange={(_key, status) => {
                 setPage(1);
-                setFilters((prev) => ({ ...prev, approvalStatus: queryStatus }));
+                setFilters((prev) => ({ ...prev, approvalStatus: status }));
               }}
             />
           }
-          loading={loading}
           error={Boolean(error)}
           errorMessage={error}
           onRetry={loadData}
@@ -794,19 +904,131 @@ export default function PierAssetList() {
           itemName={deleteTarget?.assetName}
           itemCode={deleteTarget?.assetCode}
           description="Thao tác này không thể hoàn tác."
+          loading={saving}
           onCancel={() => setDeleteTarget(undefined)}
           onConfirm={async () => {
             if (!deleteTarget) return;
             try {
+              setSaving(true);
               await deletePierAsset(deleteTarget.id);
               toast.success('Xóa tài sản cầu cảng thành công.');
               setDeleteTarget(undefined);
               await loadData();
             } catch (cause: unknown) {
               toast.error(getErrorMessage(cause, 'Không thể xóa tài sản cầu cảng.'));
+            } finally {
+              setSaving(false);
             }
           }}
         />
+
+        {/* ── History Drawer (chuẩn /berth) ────────────────────────── */}
+        <AppDrawer
+          width="min(880px, 96vw)"
+          rootClassName="berth-drawer-scope"
+          className="berth-drawer-scope"
+          mask
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Space size={spaceSm} style={{ alignItems: 'center' }}>
+                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+                <span style={drawerTitleStyle}>
+                  {historyTarget ? `Lịch sử thay đổi — ${historyTarget.assetName}` : 'Lịch sử thay đổi'}
+                </span>
+                <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                  Tổng cộng {historyFieldCount}
+                </span>
+              </Space>
+            </div>
+          }
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          }}>
+          <div style={{ flexShrink: 0 }}>
+            {!historyLoading && (
+              <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+                <Input
+                  placeholder="Tìm kiếm nội dung thay đổi..."
+                  allowClear
+                  value={historySearch}
+                  onChange={e => setHistorySearch(e.target.value)}
+                  style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+                />
+                <DatePicker
+                  placeholder="Từ ngày"
+                  value={historyFrom ? dayjs(historyFrom) : null}
+                  onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <DatePicker
+                  placeholder="Đến ngày"
+                  value={historyTo ? dayjs(historyTo) : null}
+                  onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  style={{
+                    borderRadius: radiusPill,
+                    height: 40,
+                    fontSize: 13.5,
+                    background: actionPrimary,
+                    borderColor: actionPrimary,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {historyLoading ? (
+              <LoadingSkeleton rows={5} />
+            ) : filteredHistoryRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                <div style={{ color: textTertiary, fontSize: 13.5 }}>Chưa có thay đổi nào được ghi nhận</div>
+              </div>
+            ) : (
+              renderStandardHistoryCards({
+                records: filteredHistoryRecords,
+                fieldLabels: PIER_ASSET_FIELD_LABELS,
+                resolveUnitName: () => {
+                  const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+                  return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+                },
+                formatValue: (fn, raw) => {
+                  if (isBlankOrDash(raw)) return '';
+                  const normKey = (fn || '').toLowerCase();
+                  if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
+                    return orgName.get(raw!) || raw;
+                  }
+                  if (fn === 'pierId') {
+                    const item = pierMap.get(raw!);
+                    return item ? `${item.pierCode} - ${item.pierName}` : raw;
+                  }
+                  if (
+                    fn === 'originalValue' ||
+                    fn === 'remainingValue' ||
+                    fn === 'accumulatedDepreciation' ||
+                    fn === 'monthlyDepreciation' ||
+                    fn === 'value'
+                  ) {
+                    return formatHistoryNumber(raw);
+                  }
+                  return undefined;
+                },
+              })
+            )}
+          </div>
+        </AppDrawer>
       </div>
     </ThemeTokenProvider>
   );

@@ -25,11 +25,9 @@ import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.ShipRepairYardRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,14 +58,11 @@ public class ShipRepairYardService {
     private final ShipRepairYardRepository shipRepairYardRepository;
     private final PortRepository portRepository;
     private final PierRepository pierRepository;
-    private final UserResolverService userResolverService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final AttachmentRepository attachmentRepository;
-    private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
-    private final ChangeHistoryService changeHistoryService;
     private final InfrastructureHistoryRepository historyRepository;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")

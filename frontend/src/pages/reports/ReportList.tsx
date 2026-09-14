@@ -36,7 +36,15 @@ export default function ReportList() {
   const treeData = useMemo(() => {
     const data: TreeDataNode[] = [];
     Object.entries(CATEGORY_MAP).forEach(([key, info]) => {
-      const isImplemented = key === 'bcc' || key === 'bckcht' || key === 'bcdl' || key === 'bcpttv' || key === 'bcdn' || key === 'bctt48';
+      const isImplemented =
+        key === 'bcc' ||
+        key === 'bckcht' ||
+        key === 'bcdl' ||
+        key === 'bcpttv' ||
+        key === 'bcdn' ||
+        key === 'bctt48' ||
+        key === 'bccndb' ||
+        key === 'bcthtn';
       const list = filteredReports.filter((r) => r.category === key);
       if (list.length > 0) {
         data.push({

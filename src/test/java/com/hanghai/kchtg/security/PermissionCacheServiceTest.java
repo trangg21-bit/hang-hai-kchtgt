@@ -76,6 +76,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void cachePermissions_shouldSaveJsonAtomicallyWithTtl() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -92,6 +93,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void cachePermissions_whenEmpty_shouldSaveEmptyArrayAtomicallyWithTtl() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -108,6 +110,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getPermissionsFromCache_shouldParseJsonIntoSet() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -121,6 +124,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getPermissionsFromCache_whenEmptyArray_shouldReturnEmptySet() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);
@@ -134,6 +138,7 @@ class PermissionCacheServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void getPermissionsFromCache_whenNull_shouldReturnNull() {
         UUID userId = UUID.randomUUID();
         org.springframework.data.redis.core.ValueOperations<String, String> valueOps = mock(org.springframework.data.redis.core.ValueOperations.class);

@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import {
+  BankOutlined,
   DeploymentUnitOutlined,
   SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
 } from '@ant-design/icons';
@@ -17,26 +17,24 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
   colors,
-  actionPrimary,
-  textTertiary,
-  fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
-  statusAttention,
   statusCritical,
-  statusDraft,
+  textTertiary,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
-import CommonTable from '../../components/shared/common-table/CommonTable';
 import {
+  CommonTable,
   TableColumnType,
   type TableOption,
-} from '../../components/shared/common-table/table.model';
+  APPROVAL_MAP,
+  renderApprovalStatusBadge,
+} from '../../components/shared/common-table';
 import {
   fetchInmarsatAssetAttachments,
   downloadInmarsatAssetAttachment,
@@ -52,42 +50,6 @@ export interface InmarsatAssetDetailContentProps {
   exploitationRows: InmarsatAssetExploitation[];
   adjustmentRows: InmarsatAssetAdjustment[];
 }
-
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
-  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ từ chối' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục từ chối' },
-};
 
 export default function InmarsatAssetDetailContent({
   open,
@@ -123,7 +85,7 @@ export default function InmarsatAssetDetailContent({
           width: 220,
           render: (v) => (
             <span style={{ fontWeight: fontWeightBold }}>
-              {orgName.get(v as string) || '—'}
+              {orgName.get(v as string) || ''}
             </span>
           ),
         },
@@ -132,7 +94,7 @@ export default function InmarsatAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) || r?.assetName || '—',
+          render: (v) => (v as string) ?? '',
         },
         {
           title: 'Đơn vị tính',
@@ -195,7 +157,7 @@ export default function InmarsatAssetDetailContent({
         },
       ],
     }),
-    [orgName, r?.assetName]
+    [orgName]
   );
 
   const adjustmentTableOption = useMemo<TableOption<InmarsatAssetAdjustment>>(
@@ -309,14 +271,9 @@ export default function InmarsatAssetDetailContent({
         {
           title: 'Trạng thái',
           dataIndex: 'status',
-          type: TableColumnType.Status,
+          type: TableColumnType.Template,
           width: 140,
-          statusMapping: {
-            DRAFT: { label: 'Lưu tạm', color: '#93A3B3' },
-            CHO_PHE_DUYET: { label: 'Chờ duyệt', color: '#EDA100' },
-            APPROVED: { label: 'Đã duyệt', color: '#1BAF7A' },
-            REJECTED: { label: 'Từ chối', color: '#E34948' },
-          },
+          render: (_v, row) => renderApprovalStatusBadge(row.status),
         },
         {
           title: 'Ngày cập nhật',
@@ -332,12 +289,15 @@ export default function InmarsatAssetDetailContent({
   const viewTabs = useMemo<ViewTabConfig<InmarsatAsset>[]>(() => {
     if (!r) return [];
 
-    const rawStatus = r.approvalStatus != null ? String(r.approvalStatus) : '';
-    const approvalInfo = APPROVAL_MAP[rawStatus] ||
-      APPROVAL_MAP[rawStatus.toUpperCase()] || {
-        color: statusDraft,
-        label: rawStatus || '—',
-      };
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus.toUpperCase()] ?? {
+          color: textTertiary,
+          label: r.approvalStatus,
+        })
+      : {
+          color: textTertiary,
+          label: '',
+        };
 
     return [
       {
@@ -357,51 +317,54 @@ export default function InmarsatAssetDetailContent({
               {
                 name: 'assetName',
                 label: 'Tên tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: colors.sidebarBg,
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        fontWeight: fontWeightBold,
+                        color: colors.sidebarBg,
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Cơ quan quản lý cấp trên',
-                value: (rec) => orgName.get(rec.parentOrgUnitId || '') || '—',
+                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '') : ''),
               },
               {
                 label: 'Đơn vị quản lý',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.orgUnitId || '') || '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.orgUnitId && orgName.get(rec.orgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.orgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Đơn vị sử dụng',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.usingOrgUnitId || '') || '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.usingOrgUnitId && orgName.get(rec.usingOrgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.usingOrgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Mã đài Inmarsat',
                 value: (rec) =>
-                  inmarsatMap.get(rec.stationId || '')?.code || rec.stationCode || '—',
+                  (rec.stationId ? inmarsatMap.get(rec.stationId)?.code : undefined) ?? rec.stationCode ?? '',
               },
               {
                 label: 'Tên đài Inmarsat trực thuộc',
                 value: (rec) =>
-                  inmarsatMap.get(rec.stationId || '')?.name || rec.stationName || '—',
+                  (rec.stationId ? inmarsatMap.get(rec.stationId)?.name : undefined) ?? rec.stationName ?? '',
               },
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                render: (val) => String(val || 'Tài sản đài Inmarsat'),
+                render: (val) => (val ? String(val) : ''),
               },
               {
                 name: 'barcode',
@@ -410,42 +373,44 @@ export default function InmarsatAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: fontWeightMedium,
-                      background: '#ecfdf5',
-                      color: '#059669',
-                      border: '1px solid #a7f3d0',
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: fontWeightMedium,
+                        background: '#ecfdf5',
+                        color: '#059669',
+                        border: '1px solid #a7f3d0',
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                render: (val) => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: fontWeightMedium,
-                      background: '#eff6ff',
-                      color: '#2563eb',
-                      border: '1px solid #bfdbfe',
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: fontWeightMedium,
+                        background: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #bfdbfe',
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'assetGroup',
@@ -475,7 +440,9 @@ export default function InmarsatAssetDetailContent({
                 name: 'quantity',
                 label: 'Số lượng',
                 render: (val, rec) =>
-                  val != null ? `${fmtNum(Number(val))} ${rec.quantityUnit || 'Bộ'}` : '—',
+                  val != null && String(val).trim() !== ''
+                    ? `${fmtNum(Number(val))} ${rec.quantityUnit || 'Bộ'}`
+                    : '',
               },
               {
                 name: 'quantityUnit',
@@ -509,12 +476,14 @@ export default function InmarsatAssetDetailContent({
               {
                 name: 'landArea',
                 label: 'Diện tích đất (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'floorArea',
                 label: 'Diện tích sàn sử dụng (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'assetLocation',
@@ -541,50 +510,32 @@ export default function InmarsatAssetDetailContent({
         ),
       },
       {
-        key: 'exploitations',
+        key: 'exploitation',
         label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
+        icon: <BankOutlined />,
         customContent: (
           <div style={{ padding: '4px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <RocketOutlined style={{ color: actionPrimary }} />
-                  <span>Danh sách khai thác tài sản đài Inmarsat ({exploitationRows.length})</span>
-                </div>
-              </div>
-              <CommonTable
-                options={exploitationTableOption as unknown as TableOption<Record<string, unknown>>}
-                dataSource={exploitationRows as unknown as Record<string, unknown>[]}
-                total={exploitationRows.length}
-                page={1}
-                pageSize={100}
-                loading={false}
-              />
-            </div>
+            <CommonTable<InmarsatAssetExploitation>
+              options={exploitationTableOption}
+              dataSource={exploitationRows}
+              total={exploitationRows.length}
+            />
           </div>
         ),
       },
       {
         key: 'adjustments',
-        label: 'Tăng giảm tài sản',
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: adjustmentRows.length,
+        icon: <AuditOutlined />,
         customContent: (
           <div style={{ padding: '4px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <AuditOutlined style={{ color: actionPrimary }} />
-                  <span>Lịch sử tăng / giảm nguyên giá ({adjustmentRows.length})</span>
-                </div>
-              </div>
-              <CommonTable
-                options={adjustmentTableOption as unknown as TableOption<Record<string, unknown>>}
-                dataSource={adjustmentRows as unknown as Record<string, unknown>[]}
-                total={adjustmentRows.length}
-                page={1}
-                pageSize={100}
-                loading={false}
-              />
-            </div>
+            <CommonTable<InmarsatAssetAdjustment>
+              options={adjustmentTableOption}
+              dataSource={adjustmentRows}
+              total={adjustmentRows.length}
+            />
           </div>
         ),
       },
@@ -599,6 +550,7 @@ export default function InmarsatAssetDetailContent({
             fields: [
               {
                 label: 'Trạng thái phê duyệt',
+                colSpan: 24,
                 render: () => (
                   <span
                     style={{
@@ -612,6 +564,7 @@ export default function InmarsatAssetDetailContent({
                       color: approvalInfo.color,
                       backgroundColor: `${approvalInfo.color}15`,
                       border: `1px solid ${approvalInfo.color}40`,
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     <span
@@ -628,62 +581,62 @@ export default function InmarsatAssetDetailContent({
               },
               {
                 label: 'Cán bộ gửi phê duyệt',
-                value: (rec) => rec.submittedByName || '—',
+                value: (rec) => rec.submittedByName || '',
               },
               {
                 label: 'Ngày gửi phê duyệt',
                 value: (rec) =>
                   rec.submittedAt
                     ? dayjs(rec.submittedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Cán bộ phê duyệt Cảng vụ/Chi cục',
-                value: (rec) => rec.portAuthorityApprovedByName || '—',
+                value: (rec) => rec.portAuthorityApprovedByName || '',
               },
               {
                 label: 'Ngày Cảng vụ/Chi cục duyệt',
                 value: (rec) =>
                   rec.portAuthorityApprovedAt
                     ? dayjs(rec.portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Nội dung Cảng vụ duyệt',
-                value: (rec) => rec.portAuthorityApprovalContent || '—',
+                value: (rec) => rec.portAuthorityApprovalContent || '',
                 colSpan: 24,
               },
               {
                 label: 'Cán bộ phê duyệt Cục',
-                value: (rec) => rec.departmentApprovedByName || '—',
+                value: (rec) => rec.departmentApprovedByName || '',
               },
               {
                 label: 'Ngày Cục duyệt',
                 value: (rec) =>
                   rec.departmentApprovedAt
                     ? dayjs(rec.departmentApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Nội dung Cục duyệt',
-                value: (rec) => rec.departmentApprovalContent || '—',
+                value: (rec) => rec.departmentApprovalContent || '',
                 colSpan: 24,
               },
               {
                 label: 'Lý do từ chối (nếu có)',
-                value: (rec) => rec.rejectionReason || '—',
+                value: (rec) => rec.rejectionReason || '',
                 colSpan: 24,
               },
               {
                 label: 'Cán bộ cập nhật cuối',
-                value: (rec) => rec.updatedByName || '—',
+                value: (rec) => rec.updatedByName || '',
               },
               {
                 label: 'Ngày cập nhật cuối',
                 value: (rec) =>
                   rec.updatedAt
                     ? dayjs(rec.updatedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
             ],
           },
@@ -699,6 +652,7 @@ export default function InmarsatAssetDetailContent({
     exploitationTableOption,
     adjustmentRows,
     adjustmentTableOption,
+    handleDownloadDetail,
   ]);
 
   return (
@@ -708,7 +662,7 @@ export default function InmarsatAssetDetailContent({
         <span>
           Xem chi tiết tài sản đài Inmarsat —{' '}
           <span style={{ color: colors.sidebarBg }}>
-            {r?.assetName || '—'}
+            {r?.assetName || ''}
           </span>
           {r?.assetCode && (
             <span
@@ -727,11 +681,6 @@ export default function InmarsatAssetDetailContent({
       onClose={onClose}
       record={r}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="inmarsat-asset-view-drawer"
       className="inmarsat-asset-view-drawer"
     />

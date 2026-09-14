@@ -578,10 +578,6 @@ public class CoastalStationLRITService {
         return GisGeometryType.POINT;
     }
 
-    private GisGeometryType toGisGeometryType(String geometryType) {
-        return toGisGeometryType(geometryType, null);
-    }
-
     private BigDecimal[] extractFirstCoordinate(String wkt) {
         if (wkt == null || wkt.isBlank()) return null;
         try {
@@ -655,13 +651,6 @@ public class CoastalStationLRITService {
             case UNDER_CONSTRUCTION, NOT_YET_OPERATIONAL -> "Đang xây dựng";
             default -> "Đang hoạt động";
         };
-    }
-
-    private String formatConditionStatusDisplay(String conditionStatus) {
-        if (conditionStatus == null || conditionStatus.isBlank()) return "—";
-        ConditionStatus cs = parseConditionStatus(conditionStatus);
-        if (cs != null) return formatConditionStatusDisplay(cs);
-        return conditionStatus;
     }
 
     /** Tương tự: lưu tên tỉnh/thành thay cho số ID vốn vô nghĩa với người đọc. */

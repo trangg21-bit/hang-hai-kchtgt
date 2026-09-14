@@ -29,7 +29,7 @@ public class SearchController {
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<List<SearchHistoryResponse>>> getSearchHistory(
             @RequestParam(defaultValue = "20") int limit) {
-        // TODO: Get userId from SecurityContext
+        // Legacy search history is currently stored under the shared anonymous user.
         Long userId = 0L;
         List<SearchHistoryResponse> history = searchService.getSearchHistory(userId, limit);
         return ResponseEntity.ok(ApiResponse.success(history));
@@ -37,7 +37,7 @@ public class SearchController {
 
     @DeleteMapping("/history")
     public ResponseEntity<ApiResponse<Void>> clearSearchHistory() {
-        // TODO: Get userId from SecurityContext
+        // Legacy search history is currently stored under the shared anonymous user.
         Long userId = 0L;
         searchService.clearSearchHistory(userId);
         return ResponseEntity.ok(ApiResponse.success("Search history cleared", null));

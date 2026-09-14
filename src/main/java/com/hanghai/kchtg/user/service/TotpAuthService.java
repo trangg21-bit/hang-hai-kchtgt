@@ -313,7 +313,6 @@ public class TotpAuthService {
                 throw new IllegalArgumentException("Loại token không hợp lệ - không phải là refresh token");
             }
 
-            String username = claims.getSubject();
             String userIdStr = claims.get("user_id", String.class);
             UUID userId = UUID.fromString(userIdStr);
 

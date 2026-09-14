@@ -557,8 +557,7 @@ class UserServiceTest {
                 .toList();
 
         lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
-        lenient().when(authentication.getAuthorities())
-                .thenReturn((java.util.Collection) grantedAuthorities);
+        lenient().doReturn(grantedAuthorities).when(authentication).getAuthorities();
         SecurityContextHolder.setContext(securityContext);
     }
 }

@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Form } from "antd";
+import { Form, Button, Input, Space, DatePicker } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
   RocketOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import {
   ScreenHeader,
@@ -22,6 +24,10 @@ import {
   type ScreenHeaderAction,
 } from "../../components/list-view";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
+import { AppDrawer } from "../../components/shared/AppDrawer";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
+import { renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash } from "../../utils/changeHistoryRenderer";
+import { formatHistoryNumber } from "../../utils/numFmt";
 import toast from "../../components/ToastNotification";
 import {
   organizationService,
@@ -44,6 +50,7 @@ import {
   uploadInfraAssetAttachments,
   fetchInfraAssetAttachments,
   deleteInfraAssetAttachment,
+  fetchInfraAssetHistory,
 } from "../../services/assetmovement/api";
 import api from "../../services/api";
 import type {
@@ -59,7 +66,20 @@ import { type InfrastructureAttachmentItem } from "../../components/shared/Infra
 import { triggerBlobDownload } from "../../components/shared/infrastructureAttachmentUtils";
 import { useAuthStore } from "../../store/authStore";
 import * as themeTokenChk from "../../themetokenchk";
-import { fontWeightBold } from "../../themetokenchk";
+import {
+  colors,
+  actionPrimary,
+  borderDefault,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from "../../themetokenchk";
 import {
   ThemeTokenProvider,
   type ThemeToken,
@@ -90,6 +110,42 @@ const STATUS_COUNT_KEYS = [
 type DrawerMode = "create" | "edit" | "detail";
 
 const ASSET_CONDITIONS = ["Tốt", "Hư hỏng cần sửa chữa", "Không sử dụng được"];
+
+const PORT_TERMINAL_ASSET_FIELD_LABELS: Record<string, string> = {
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  orgUnitId: 'Đơn vị quản lý',
+  usingOrgUnitId: 'Đơn vị sử dụng',
+  berthId: 'Mã bến cảng',
+  portTerminalId: 'Mã bến cảng',
+  assetType: 'Loại tài sản',
+  types: 'Phân loại tài sản',
+  assetCode: 'Mã tài sản',
+  assetName: 'Tên tài sản',
+  barcode: 'Barcode',
+  assetCondition: 'Tình trạng tài sản',
+  usageStatus: 'Hiện trạng sử dụng',
+  assetGroup: 'Nhóm tài sản',
+  assetSubgroup: 'Phân nhóm tài sản',
+  origin: 'Nguồn gốc',
+  address: 'Địa chỉ',
+  landArea: 'Diện tích đất (m²)',
+  floorArea: 'Diện tích sàn (m²)',
+  constructionYear: 'Năm xây dựng',
+  useDate: 'Ngày đưa vào sử dụng',
+  declarationDate: 'Ngày kê khai',
+  originalValue: 'Nguyên giá (VNĐ)',
+  depreciationRate: 'Tỷ lệ hao mòn (%/năm)',
+  accumulatedDepreciation: 'Hao mòn/khấu hao lũy kế (VNĐ)',
+  remainingValue: 'Giá trị còn lại (VNĐ)',
+  assignmentDecisionNumber: 'Số quyết định giao tài sản',
+  depreciationStartDate: 'Ngày bắt đầu tính hao mòn',
+  depreciationMonths: 'Thời gian sử dụng (tháng)',
+  depreciationEndDate: 'Ngày kết thúc tính hao mòn',
+  monthlyDepreciation: 'Mức hao mòn/khấu hao tháng (VNĐ)',
+  disposalMethod: 'Hình thức xử lý',
+  attachmentName: 'Tài liệu đính kèm',
+  attachments: 'Tài liệu đính kèm',
+};
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as {
@@ -182,6 +238,59 @@ function PortTerminalAssetList({
   const [attachments, setAttachments] = useState<
     InfrastructureAttachmentItem[]
   >([]);
+
+  // ── History state (chuẩn /berth) ───────────────────────────────────────
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<PortTerminalAsset | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
+  const openHistory = useCallback(async (r: PortTerminalAsset) => {
+    setHistoryTarget(r);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    setHistorySearch("");
+    setHistoryFrom("");
+    setHistoryTo("");
+    try {
+      const d = await fetchInfraAssetHistory(r.id);
+      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
+      setHistoryRecords(ch);
+    } catch {
+      toast.error("Không thể tải lịch sử");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const filteredHistoryRecords = useMemo(() => {
+    return historyRecords.filter((rec) => {
+      const fn = rec.fieldName || rec.changedField;
+      if (fn && DEFAULT_IGNORED_FIELDS.has(fn)) return false;
+      if (historySearch) {
+        const s = historySearch.toLowerCase();
+        const matchField = String(fn || "").toLowerCase().includes(s);
+        const matchOld = String(rec.oldValue || rec.previousValue || "").toLowerCase().includes(s);
+        const matchNew = String(rec.newValue || rec.value || "").toLowerCase().includes(s);
+        if (!matchField && !matchOld && !matchNew) return false;
+      }
+      if (historyFrom && dayjs(rec.changedAt || rec.approvedDate).isBefore(dayjs(historyFrom), "day")) {
+        return false;
+      }
+      if (historyTo && dayjs(rec.changedAt || rec.approvedDate).isAfter(dayjs(historyTo), "day")) {
+        return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historySearch, historyFrom, historyTo]);
+
+  const historyFieldCount = useMemo(
+    () => filteredHistoryRecords.length,
+    [filteredHistoryRecords]
+  );
 
   const orgName = useMemo(
     () => new Map(organizations.map((item) => [item.id, item.name])),
@@ -865,9 +974,12 @@ function PortTerminalAssetList({
       { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
       { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
       { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
-      { key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) },
+      { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistory(record) },
+      ...(record.approvalStatus === 'DRAFT'
+        ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]
+        : []),
     ],
-  }), [openDetail, openEdit, operationForm, orgName, relatedInfrastructureMap]);
+  }), [openDetail, openEdit, openHistory, operationForm, orgName, relatedInfrastructureMap]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
@@ -1121,6 +1233,113 @@ function PortTerminalAssetList({
               .finally(() => setSaving(false));
           }}
         />
+        {/* ── History Drawer (chuẩn /berth) ────────────────────────── */}
+        <AppDrawer
+          width="min(880px, 96vw)"
+          rootClassName="berth-drawer-scope"
+          className="berth-drawer-scope"
+          mask
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Space size={spaceSm} style={{ alignItems: 'center' }}>
+                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+                <span style={drawerTitleStyle}>
+                  {historyTarget ? `Lịch sử thay đổi — ${historyTarget.assetName}` : 'Lịch sử thay đổi'}
+                </span>
+                <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                  Tổng cộng {historyFieldCount}
+                </span>
+              </Space>
+            </div>
+          }
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          }}>
+          <div style={{ flexShrink: 0 }}>
+            {!historyLoading && (
+              <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+                <Input
+                  placeholder="Tìm kiếm nội dung thay đổi..."
+                  allowClear
+                  value={historySearch}
+                  onChange={e => setHistorySearch(e.target.value)}
+                  style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+                />
+                <DatePicker
+                  placeholder="Từ ngày"
+                  value={historyFrom ? dayjs(historyFrom) : null}
+                  onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <DatePicker
+                  placeholder="Đến ngày"
+                  value={historyTo ? dayjs(historyTo) : null}
+                  onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  style={{
+                    borderRadius: radiusPill,
+                    height: 40,
+                    fontSize: fontSizeMd,
+                    background: actionPrimary,
+                    borderColor: actionPrimary,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {historyLoading ? (
+              <LoadingSkeleton rows={5} />
+            ) : filteredHistoryRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+              </div>
+            ) : (
+              renderStandardHistoryCards({
+                records: filteredHistoryRecords,
+                fieldLabels: PORT_TERMINAL_ASSET_FIELD_LABELS,
+                resolveUnitName: () => {
+                  const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+                  return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+                },
+                formatValue: (fn, raw) => {
+                  if (isBlankOrDash(raw)) return '';
+                  const normKey = (fn || '').toLowerCase();
+                  if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
+                    return orgName.get(raw!) || raw;
+                  }
+                  if (fn === 'berthId' || fn === 'portTerminalId') {
+                    const item = relatedInfrastructureMap.get(raw!);
+                    return item ? `${item.code} - ${item.name}` : raw;
+                  }
+                  if (
+                    fn === 'originalValue' ||
+                    fn === 'remainingValue' ||
+                    fn === 'accumulatedDepreciation' ||
+                    fn === 'monthlyDepreciation' ||
+                    fn === 'value'
+                  ) {
+                    return formatHistoryNumber(raw);
+                  }
+                  return undefined;
+                },
+              })
+            )}
+          </div>
+        </AppDrawer>
       </div>
     </ThemeTokenProvider>
   );

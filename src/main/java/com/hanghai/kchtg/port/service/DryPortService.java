@@ -36,9 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -568,11 +565,8 @@ public class DryPortService {
         if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
             throw new IllegalArgumentException("Chỉ được xóa cảng cạn ở trạng thái Nháp");
         }
-        DryPort snapshot = captureSnapshot(entity);
         UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
         entity.softDelete(operatorId);
-        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         dryPortRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -670,11 +664,6 @@ public class DryPortService {
     }
 
     private DryPortResponse toResponse(DryPort e, String preResolvedCreatorName, String preResolvedUpdaterName) {
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
-                : userResolverService.resolveName(e.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
-                : userResolverService.resolveName(e.getUpdatedBy());
-
         String opUnitName = e.getOperatingUnit();
         String resolvedOpName = resolveOperatingOrgName(e.getOperatingOrgId());
         String displayOpUnit = resolvedOpName != null ? resolvedOpName : opUnitName;
@@ -708,10 +697,9 @@ public class DryPortService {
                 .coordinateSystem(e.getCoordinateSystem()).displayRule(e.getDisplayRule())
                 .mapSymbolId(e.getMapSymbolId())
                 // Audit
-                .approvalStatus(e.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : e.getApprovalStatus())
+                .approvalStatus(e.getApprovalStatus())
                 .createdBy(e.getCreatedBy()).updatedBy(e.getUpdatedBy())
-                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
-                .deletedAt(e.getDeletedAt()).deletedBy(e.getDeletedBy());
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt());
 
         if (e.getSpatialId() != null) {
             builder.spatialId(e.getSpatialId());

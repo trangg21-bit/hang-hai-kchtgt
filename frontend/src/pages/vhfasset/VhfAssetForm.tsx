@@ -149,7 +149,7 @@ export default function VhfAssetForm({
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
                 initialValue: 'Tài sản HTTT liên lạc VHF',
-                disabled: true,
+                placeholder: 'Chọn loại tài sản',
                 options: [
                   { value: 'Tài sản HTTT liên lạc VHF', label: 'Tài sản HTTT liên lạc VHF' },
                 ],
@@ -488,11 +488,6 @@ export default function VhfAssetForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="vhf-asset-drawer-scope"
       className="vhf-asset-drawer-scope"
       tabs={formTabs}

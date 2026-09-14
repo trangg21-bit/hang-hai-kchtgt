@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.vtssystem.service;
 
 import com.hanghai.kchtg.common.entity.*;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
@@ -441,25 +440,6 @@ public class VtsSystemService {
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.operationStartDate);
     }
 
-    private User resolveCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
-                || "anonymousUser".equals(authentication.getPrincipal())) {
-            return null;
-        }
-        if (authentication.getPrincipal() instanceof User principalUser) {
-            return principalUser;
-        }
-        return userRepository.findByUsernameWithRelations(authentication.getName()).orElse(null);
-    }
-
-    private boolean isElevatedAdministrator() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_SYSTEM_ADMIN".equalsIgnoreCase(authority.getAuthority())
-                        || "ROLE_SUPER_ADMIN".equalsIgnoreCase(authority.getAuthority()));
-    }
-
     public VtsSystemResponse getById(UUID id) {
         return getById(id, false, false);
     }
@@ -766,7 +746,12 @@ public class VtsSystemService {
         zone.setUpdatedBy(effectiveUserId);
 
         VtsZone saved = zoneRepository.save(zone);
-        String newZoneDesc = formatZoneDesc(saved);
+        VtsZoneDto savedDto = toZoneDto(saved);
+        if (!targetCoord.isEmpty()) {
+            savedDto.setCoordinates(targetCoord);
+            savedDto.setGeometryType(targetGeom);
+        }
+        String newZoneDesc = formatZoneDesc(savedDto);
 
         // Ghi log lịch sử thay đổi khi hệ thống VTS đã được phê duyệt
         boolean wasApproved = vtsSystem.getApprovalStatus() == ApprovalStatus.APPROVED
@@ -784,7 +769,7 @@ public class VtsSystemService {
                     .build());
         }
 
-        return toZoneDto(saved);
+        return savedDto;
     }
 
     @Transactional
@@ -803,8 +788,6 @@ public class VtsSystemService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng VTS với ID: " + zoneId));
 
         String zoneDesc = formatZoneDesc(zone);
-        String zoneName = zone.getName();
-
         if (zone.getSpatialId() != null && gisSpatialObjectService != null) {
             gisSpatialObjectService.delete(zone.getSpatialId());
         }
@@ -843,12 +826,6 @@ public class VtsSystemService {
         return attachments.stream()
                 .map(a -> toAttachmentResponse(a, uploaderNames.get(a.getUploadedBy())))
                 .collect(Collectors.toList());
-    }
-
-    private void ensureExists(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id);
-        }
     }
 
     @Transactional(readOnly = true)
@@ -1766,10 +1743,6 @@ public class VtsSystemService {
                 .collect(Collectors.toList());
     }
 
-    private VtsSystemResponse toResponse(VtsSystem entity) {
-        return toResponse(entity, true, true, true, true);
-    }
-
     private VtsSystemResponse toResponse(VtsSystem entity, boolean includeZones, boolean includeAttachments) {
         return toResponse(entity, includeZones, includeAttachments, true, true);
     }
@@ -1907,10 +1880,6 @@ public class VtsSystemService {
                 .build();
     }
 
-    private String formatUserDisplayName(User user) {
-        return formatUserIdentity(user);
-    }
-
     private String formatZones(List<?> zones) {
         if (zones == null || zones.isEmpty()) {
             return "Chưa có";
@@ -1941,10 +1910,6 @@ public class VtsSystemService {
         }).filter(s -> !s.isBlank()).sorted().collect(Collectors.toList());
 
         return formatted.isEmpty() ? "Chưa có" : String.join(", ", formatted);
-    }
-
-    private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item) {
-        return toListItemResponse(item, Collections.emptyMap(), Collections.emptyMap());
     }
 
     private VtsSystemListItemResponse toListItemResponse(VtsSystemListProjection item, Map<UUID, String> userNameMap,
@@ -2075,50 +2040,6 @@ public class VtsSystemService {
                 && (request.getReason() == null || request.getReason().trim().isEmpty())) {
             throw new IllegalArgumentException("Lý do từ chối là bắt buộc");
         }
-    }
-
-    private String getFieldDisplayName(String field) {
-        if (field == null)
-            return "";
-        if (VtsSystem.Fields.systemName.equals(field))
-            return "Tên hệ thống";
-        if (VtsSystem.Fields.conditionStatus.equals(field))
-            return "Tình trạng";
-        if (BaseApprovableEntity.Fields.orgUnitId.equals(field))
-            return "Đơn vị quản lý";
-        if (VtsSystem.Fields.owningOrgId.equals(field))
-            return "Đơn vị chủ quản";
-        if (VtsSystem.Fields.operatingOrgId.equals(field))
-            return "Đơn vị vận hành";
-        if (VtsSystem.Fields.portId.equals(field))
-            return "Thuộc cảng biển";
-        if (VtsSystem.Fields.code.equals(field))
-            return "Mã hệ thống VTS";
-        if (BaseApprovableEntity.Fields.provinceId.equals(field) || "province".equals(field))
-            return "Địa điểm (Tỉnh/TP)";
-        if (VtsSystem.Fields.address.equals(field))
-            return "Địa điểm chi tiết";
-        if (VtsSystem.Fields.maritimeNotice.equals(field))
-            return "Thông báo hàng hải";
-        if (VtsSystem.Fields.operationStartDate.equals(field))
-            return "Thời gian bắt đầu hoạt động";
-        if (VtsSystem.Fields.scope.equals(field))
-            return "Phạm vi áp dụng";
-        if (VtsSystem.Fields.note.equals(field))
-            return "Ghi chú";
-        if (BaseApprovableEntity.Fields.approvalStatus.equals(field))
-            return "Trạng thái phê duyệt";
-        if (VtsSystem.Fields.zones.equals(field) || "zones".equals(field))
-            return "Vùng VTS";
-        if ("attachments".equals(field) || "attachmentList".equals(field) || "Tài liệu đính kèm".equals(field))
-            return "Tài liệu đính kèm";
-        if (EntityFields.DELETED_AT.equals(field))
-            return "Thời điểm xóa";
-        if (VtsSystemUpdateRequest.Fields.coordinates.equals(field))
-            return "Tọa độ GIS";
-        if (VtsSystemUpdateRequest.Fields.geometryType.equals(field))
-            return "Loại đối tượng GIS";
-        return field;
     }
 
     private String formatChangedFields(Map<String, String> previousValues) {
@@ -2439,10 +2360,6 @@ public class VtsSystemService {
      * Resolve the user's visible organisational subtree from parent_id. The
      * materialized path is display metadata only and must not decide access.
      */
-    private List<UUID> resolveSubtreeIdsByParentId(UUID rootId) {
-        return resolveSubtreeIdsByParentId(rootId, buildOrgUnitChildIndex());
-    }
-
     /**
      * Chỉ mục con-theo-cha dựng từ cache đơn vị. Tách riêng để một request cần
      * duyệt nhiều cây (phạm vi của người dùng + đơn vị được chọn ở bộ lọc) chỉ

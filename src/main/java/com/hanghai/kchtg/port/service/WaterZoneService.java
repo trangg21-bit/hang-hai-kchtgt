@@ -20,7 +20,6 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -179,8 +178,8 @@ public class WaterZoneService {
 
         return pageResult.map(e -> toResponse(e,
                 parentNameMap.get(e.getPortId()),
-                userNamesMap.get(e.getCreatedBy()),
-                userNamesMap.get(e.getUpdatedBy()),
+                userNamesMap.get(e.getCreatedBy() != null ? e.getCreatedBy().toString() : null),
+                userNamesMap.get(e.getUpdatedBy() != null ? e.getUpdatedBy().toString() : null),
                 spatialMap.get(e.getSpatialId())));
     }
 
@@ -301,15 +300,6 @@ public class WaterZoneService {
         return toResponse(e, null, null, null, null);
     }
 
-    private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName) {
-        return toResponse(e, preResolvedPortName, null, null, null);
-    }
-
-    private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName, String preResolvedCreatorName,
-            String preResolvedUpdaterName) {
-        return toResponse(e, preResolvedPortName, preResolvedCreatorName, preResolvedUpdaterName, null);
-    }
-
     private WaterZoneResponse toResponse(WaterZone e, String preResolvedPortName, String preResolvedCreatorName,
             String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
         GisGeometryType geomType = null;
@@ -330,11 +320,6 @@ public class WaterZoneService {
             portName = portCacheService.getName(e.getPortId());
         }
 
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
-                : userResolverService.resolveName(e.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
-                : userResolverService.resolveName(e.getUpdatedBy());
-
         return WaterZoneResponse.builder()
                 .id(e.getId())
                 .waterZoneCode(e.getWaterZoneCode()).waterZoneName(e.getWaterZoneName())
@@ -354,16 +339,6 @@ public class WaterZoneService {
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
                 .deletedAt(e.getDeletedAt()).deletedBy(e.getDeletedBy()).build();
-    }
-
-    private GisGeometryType parseGeometryType(String typeStr) {
-        if (typeStr == null)
-            return GisGeometryType.POLYGON;
-        try {
-            return GisGeometryType.valueOf(typeStr.toUpperCase());
-        } catch (IllegalArgumentException ex) {
-            return GisGeometryType.POLYGON;
-        }
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {

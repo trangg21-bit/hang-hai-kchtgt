@@ -10,6 +10,7 @@ export const ViewFieldType = {
   Money: 'money',
   Date: 'date',
   DateTime: 'datetime',
+  Year: 'year',
   Badge: 'badge',
   Tag: 'tag',
   Custom: 'custom',

@@ -289,8 +289,7 @@ class DataConnectionServiceTest {
         req.setSyncFrequency(SyncFrequency.MANUAL);
         req.setCredentials("secret");
 
-        ConnectionResponse response = service.create(req);
-
+        service.create(req);
         verify(encryptionUtil).encrypt("secret");
     }
 }

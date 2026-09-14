@@ -541,16 +541,6 @@ public class CoastalStationHaiphongService {
         };
     }
 
-    private String formatObjectTypeDisplay(String objectType) {
-        if (objectType == null || objectType.isBlank()) return "—";
-        return switch (objectType.toUpperCase()) {
-            case "POINT" -> "Đối tượng điểm";
-            case "LINE" -> "Đối tượng đường";
-            case "POLYGON" -> "Đối tượng vùng";
-            default -> objectType;
-        };
-    }
-
     public void deleteStation(UUID id) {
         CoastalStationHaiphong entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Đài TTXLTT với ID: " + id));

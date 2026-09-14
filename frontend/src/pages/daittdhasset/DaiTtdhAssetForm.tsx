@@ -138,9 +138,10 @@ export default function DaiTtdhAssetForm({
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                type: FormFieldType.Text,
-                disabled: true,
-                placeholder: 'Tài sản đài TTDH',
+                type: FormFieldType.Select,
+                initialValue: 'Tài sản đài TTDH',
+                placeholder: 'Chọn loại tài sản',
+                options: [{ value: 'Tài sản đài TTDH', label: 'Tài sản đài TTDH' }],
               },
               {
                 name: 'assetCode',
@@ -370,11 +371,6 @@ export default function DaiTtdhAssetForm({
       tabs={formTabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="daittdh-asset-drawer-scope"
       className="daittdh-asset-drawer-scope"
     />

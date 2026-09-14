@@ -671,10 +671,6 @@ class VtsSystemServiceTest {
                 .zones(List.of(zoneDto))
                 .build();
 
-        VtsSystemUpdateRequest oldReq = VtsSystemUpdateRequest.builder()
-                .zones(List.of())
-                .build();
-
         // Quy tắc 12: chỉ hồ sơ Lưu tạm/Bị trả về mới sửa được — bản mẫu mặc định đang Chờ duyệt
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));

@@ -493,7 +493,6 @@ export default function PierAssetForm({
       footerActions={actions}
       footerAlign="center"
       onClose={onClose}
-      width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
       rootClassName="pier-drawer-scope"
     />
   );

@@ -34,13 +34,23 @@ import java.util.UUID;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -56,6 +66,10 @@ public class CoastalStationAssetService {
     private final CoastalStationInmarsatRepository inmarsatRepository;
     private final AttachmentRepository attachmentRepository;
     private final UserResolverService userResolverService;
+    private final ChangeTrackingService changeTrackingService;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public CoastalStationAssetResponse create(CoastalStationAssetRequest request) {
@@ -81,7 +95,6 @@ public class CoastalStationAssetService {
                                                     LocalDate updatedFrom, LocalDate updatedTo, Pageable pageable) {
         Specification<CoastalStationAsset> specification = (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
-            predicates.add(cb.isNull(root.get("deletedAt")));
             if (assetCode != null && !assetCode.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetCode")), "%" + assetCode.trim().toLowerCase(Locale.ROOT) + "%"));
             }
@@ -105,9 +118,22 @@ public class CoastalStationAssetService {
                 predicates.add(cb.equal(root.get("assetType"), assetType.trim()));
             }
             if (approvalStatus != null && !approvalStatus.isBlank()) {
-                try {
-                    predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.fromString(approvalStatus)));
-                } catch (IllegalArgumentException ignored) {}
+                String upper = approvalStatus.trim().toUpperCase(Locale.ROOT);
+                if ("ARCHIVED".equals(upper) || "DELETED".equals(upper) || "DA_XOA".equals(upper)) {
+                    predicates.add(cb.or(
+                        cb.isNotNull(root.get("deletedAt")),
+                        cb.equal(root.get("approvalStatus"), ApprovalStatus.ARCHIVED)
+                    ));
+                } else {
+                    predicates.add(cb.isNull(root.get("deletedAt")));
+                    predicates.add(cb.notEqual(root.get("approvalStatus"), ApprovalStatus.ARCHIVED));
+                    try {
+                        predicates.add(cb.equal(root.get("approvalStatus"), ApprovalStatus.fromString(approvalStatus)));
+                    } catch (IllegalArgumentException ignored) {}
+                }
+            } else {
+                predicates.add(cb.isNull(root.get("deletedAt")));
+                predicates.add(cb.notEqual(root.get("approvalStatus"), ApprovalStatus.ARCHIVED));
             }
             if (updatedFrom != null) predicates.add(cb.greaterThanOrEqualTo(root.get("updatedAt"), updatedFrom.atStartOfDay()));
             if (updatedTo != null) predicates.add(cb.lessThan(root.get("updatedAt"), updatedTo.plusDays(1).atStartOfDay()));
@@ -119,28 +145,107 @@ public class CoastalStationAssetService {
     @Transactional
     public CoastalStationAssetResponse update(UUID id, CoastalStationAssetRequest request) {
         CoastalStationAsset entity = requireAsset(id);
+        CoastalStationAsset oldEntity = new CoastalStationAsset();
+        BeanUtils.copyProperties(entity, oldEntity);
+
         String assetCode = entity.getAssetCode();
         copyEditableFields(request, entity);
         entity.setAssetCode(assetCode);
         calculateValues(entity);
-        return toResponse(repository.save(entity));
+        CoastalStationAsset saved = repository.save(entity);
+
+        String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
+        changeTrackingService.recordChanges("COASTAL_STATION_ASSET", id.toString(), actorId, oldEntity, saved);
+
+        return toResponse(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
         CoastalStationAsset entity = requireAsset(id);
-        try {
-            attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("COASTAL_STATION_ASSET", id)
-                    .forEach(att -> {
+        if (entity.getApprovalStatus() != ApprovalStatus.DRAFT && entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
+            throw new IllegalStateException("Chỉ có thể xóa hồ sơ ở trạng thái Lưu tạm");
+        }
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        entity.softDelete(currentUserId);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
+        repository.save(entity);
+
+        InfrastructureHistoryUtils.recordSoftDelete(historyRepository, id, InfrastructureType.COASTAL_STATION_ASSET, currentUserId, "Xóa tài sản đài");
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getHistory(UUID id) {
+        requireAsset(id);
+        String entityId = id.toString();
+        String entityType = "CoastalStationAsset";
+
+        List<InfrastructureHistory> list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                InfrastructureType.COASTAL_STATION_ASSET, id);
+        if (list.isEmpty()) {
+            list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
+        }
+
+        java.util.Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        java.util.Map<UUID, User> userMap = userIds.isEmpty() ? java.util.Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
+
+        List<java.util.Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    java.util.Map<String, Object> m = new java.util.HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("refId", h.getRefId());
+                    m.put("refType", h.getRefType());
+                    m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
+                    m.put("fieldName", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("changedField", h.getChangedField() != null ? h.getChangedField() : "Trạng thái");
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("previousValue", h.getPreviousValue());
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
+                    String actorName = u != null && u.getFullName() != null && !u.getFullName().isBlank()
+                            ? u.getFullName()
+                            : (u != null ? u.getUsername() : (h.getApprovedBy() != null ? h.getApprovedBy().toString() : "Hệ thống"));
+                    String orgUnitName = "";
+                    if (u != null && u.getOrgUnit() != null) {
                         try {
-                            if (att.getFilePath() != null) {
-                                Files.deleteIfExists(java.nio.file.Paths.get(att.getFilePath()));
+                            orgUnitName = orgUnitCacheService.getName(u.getOrgUnit().getId());
+                            if (orgUnitName == null || orgUnitName.isBlank()) {
+                                orgUnitName = u.getOrgUnit().getName();
                             }
+                        } catch (Exception e) {
+                            orgUnitName = "";
+                        }
+                    }
+                    m.put("changedBy", actorName);
+                    m.put("approvedBy", actorName);
+                    m.put("approvedByName", actorName);
+                    m.put("actorName", actorName);
+                    m.put("orgUnitName", orgUnitName != null ? orgUnitName : "");
+                    m.put("unitName", orgUnitName != null ? orgUnitName : "");
+                    if (u != null && u.getOrgUnit() != null) {
+                        try {
+                            m.put("userOrgUnitId", u.getOrgUnit().getId().toString());
                         } catch (Exception ignored) {}
-                        attachmentRepository.delete(att);
-                    });
-        } catch (Exception ignored) {}
-        repository.delete(entity);
+                    }
+                    m.put("changedAt", h.getApprovedDate());
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
+                    return m;
+                })
+                .toList();
+
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("changeHistory", changeHistory);
+        return result;
     }
 
     // --- Exploitations (Tab 4) ---
@@ -254,16 +359,20 @@ public class CoastalStationAssetService {
 
         if (targetStationId != null) {
             final UUID sid = targetStationId;
-            daiTtdhRepository.findById(sid).ifPresentOrElse(
-                d -> {
-                    response.setStationCode(d.getDaiTtdhCode());
-                    response.setStationName(d.getDaiTtdhName());
-                },
-                () -> inmarsatRepository.findById(sid).ifPresent(inm -> {
-                    response.setStationCode(inm.getCode() != null ? inm.getCode() : inm.getDeviceCode());
-                    response.setStationName(inm.getName() != null ? inm.getName() : inm.getStationName());
-                })
-            );
+            try {
+                daiTtdhRepository.findById(sid).ifPresentOrElse(
+                    d -> {
+                        response.setStationCode(d.getDaiTtdhCode());
+                        response.setStationName(d.getDaiTtdhName());
+                    },
+                    () -> inmarsatRepository.findById(sid).ifPresent(inm -> {
+                        response.setStationCode(inm.getCode() != null ? inm.getCode() : inm.getDeviceCode());
+                        response.setStationName(inm.getName() != null ? inm.getName() : inm.getStationName());
+                    })
+                );
+            } catch (Exception e) {
+                log.warn("Không thể tải thông tin đài liên kết cho stationId {}: {}", sid, e.getMessage());
+            }
         }
 
         response.setUpdatedByName(userResolverService.resolveName(entity.getUpdatedBy()));

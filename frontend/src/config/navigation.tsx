@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * ============================================================
  * MENU-MODEL v2 — single source of truth cho điều hướng
@@ -41,7 +42,7 @@ const RadioSvg = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export const RadioIcon = (props: any) => <Icon component={RadioSvg} {...props} />;
+export const RadioIcon = (props: Partial<React.ComponentProps<typeof Icon>>) => <Icon component={RadioSvg} {...props} />;
 
 export type GroupId = 'kcht' | 'asset' | 'plan' | 'gis' | 'report' | 'admin';
 
@@ -109,7 +110,14 @@ const icons = {
 /* ============ CÂY BÁO CÁO THỐNG KÊ — 8 nhóm biểu mẫu chuyên ngành ============ */
 const reportTree: NavNode[] = [
   ...Object.entries(CATEGORY_MAP).map(([catKey, catInfo]) => {
-    const isEnabled = catKey === 'bckcht' || catKey === 'bcdl';
+    const isEnabled =
+      catKey === 'bckcht' ||
+      catKey === 'bcdl' ||
+      catKey === 'bcpttv' ||
+      catKey === 'bcdn' ||
+      catKey === 'bctt48' ||
+      catKey === 'bccndb' ||
+      catKey === 'bcthtn';
     return {
       key: `reports-${catKey}`,
       label: catInfo.label,
@@ -120,7 +128,7 @@ const reportTree: NavNode[] = [
         .map((r) => ({
           key: `/reports/${r.code}`,
           route: `/reports/${r.code}`,
-          label: `${r.code} - ${r.name}`,
+          label: r.name,
           icon: REPORT_ICONS[r.code] ?? icons.file,
           disabled: !isEnabled || r.status !== 'active',
         })),
@@ -218,16 +226,6 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: landingGroupIcons.asset,
     tree: [
       { key: '/asset/berth', route: '/asset/berth', label: 'Tài sản bến cảng', icon: icons.bank },
-      { key: '/asset/vts-system', route: '/asset/vts-system', label: 'Tài sản hệ thống VTS', icon: icons.compass },
-      { key: '/asset/radar-station', route: '/asset/radar-station', label: 'Tài sản trạm radar', icon: icons.compass },
-      { key: '/asset/ais-system', route: '/asset/ais-system', label: 'Tài sản hệ thống AIS', icon: icons.compass },
-      { key: '/asset/cctv-system', route: '/asset/cctv-system', label: 'Tài sản HT CCTV', icon: icons.compass },
-      { key: '/asset/scada-system', route: '/asset/scada-system', label: 'Tài sản HT SCADA', icon: icons.compass },
-      { key: '/asset/transmission', route: '/asset/transmission', label: 'Tài sản HT truyền dẫn', icon: icons.deployment },
-      { key: '/asset/vts-assist', route: '/asset/vts-assist', label: 'Tài sản hệ thống phụ trợ VTS', icon: icons.tool },
-      { key: '/asset/vhf', route: '/asset/vhf', label: 'Tài sản HTTT liên lạc VHF', icon: icons.api },
-      { key: '/asset/dai-ttdh', route: '/asset/dai-ttdh', label: 'Tài sản đài TTDH', icon: icons.radar },
-      { key: '/asset/inmarsat', route: '/asset/inmarsat', label: 'Tài sản đài Inmarsat', icon: icons.global },
       { key: '/asset/transfer-area', route: '/asset/transfer-area', label: 'Tài sản khu chuyển tải', icon: icons.swap },
       { key: '/asset/storm-shelter', route: '/asset/storm-shelter', label: 'Tài sản khu tránh, trú bão', icon: icons.safety },
       { key: '/asset/buoy-berth', route: '/asset/buoy-berth', label: 'Tài sản bến phao', icon: icons.container },
@@ -241,8 +239,16 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: '/asset/lrit', route: '/asset/lrit', label: 'Tài sản đài LRIT', icon: icons.compass },
       { key: '/asset/cospas-sarsat', route: '/asset/cospas-sarsat', label: 'Tài sản đài Cospas-Sarsat', icon: icons.safety },
       { key: '/asset/ttxltt', route: '/asset/ttxltt', label: 'Tài sản đài TTXLTT', icon: icons.bank },
+      { key: '/asset/vts-system', route: '/asset/vts-system', label: 'Tài sản hệ thống VTS', icon: icons.compass },
+      { key: '/asset/radar-station', route: '/asset/radar-station', label: 'Tài sản trạm radar', icon: icons.compass },
+      { key: '/asset/ais-system', route: '/asset/ais-system', label: 'Tài sản hệ thống AIS', icon: icons.compass },
+      { key: '/asset/cctv-system', route: '/asset/cctv-system', label: 'Tài sản HT CCTV', icon: icons.compass },
+      { key: '/asset/scada-system', route: '/asset/scada-system', label: 'Tài sản HT SCADA', icon: icons.compass },
+      { key: '/asset/transmission', route: '/asset/transmission', label: 'Tài sản HT truyền dẫn', icon: icons.deployment },
+      { key: '/asset/vts-assist', route: '/asset/vts-assist', label: 'Tài sản hệ thống phụ trợ VTS', icon: icons.tool },
+      { key: '/asset/vhf', route: '/asset/vhf', label: 'Tài sản HTTT liên lạc VHF', icon: icons.api },
+      { key: '/asset/dai-ttdh', route: '/asset/dai-ttdh', label: 'Tài sản đài TTDH', icon: icons.radar },
       { key: '/asset/inmarsat', route: '/asset/inmarsat', label: 'Tài sản đài Inmarsat', icon: icons.global },
-      { key: '/asset/ttdh', route: '/asset/ttdh', label: 'Tài sản đài TTDH', icon: icons.aim },
       { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản', icon: icons.plusCircle },
       { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản', icon: icons.minusCircle },
       { key: '/asset/inventory', route: '/asset/inventory', label: 'Kiểm kê tài sản', icon: icons.audit },

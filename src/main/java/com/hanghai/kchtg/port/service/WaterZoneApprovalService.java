@@ -7,7 +7,6 @@ import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.WaterZone;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
-import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -32,7 +31,6 @@ public class WaterZoneApprovalService {
     private final InfrastructureApprovalService infrastructureApprovalService;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
-    private final ApprovalWorkflowService approvalWorkflowService;
     private final PortNotificationService notificationService;
 
     // -- Phe duyet 2 cap (approval-2-level-spec 3.2) --

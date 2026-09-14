@@ -427,7 +427,7 @@ public class TransmissionService {
               .status(InfrastructureHistoryStatus.UPDATED)
               .approvedBy(currentUserId)
               .approvedDate(now)
-              .changedField(field)
+              .changedField(fieldName)
               .previousValue(formatDisplayValue(field, oldVal))
               .newValue(formatDisplayValue(field, newVal))
               .build());
@@ -701,15 +701,6 @@ public class TransmissionService {
         ? Sort.Direction.ASC
         : Sort.Direction.DESC;
     return Sort.by(dir, field).and(Sort.by(Sort.Direction.ASC, "id"));
-  }
-
-  private UUID parseUUID(String uuidStr) {
-    if (uuidStr == null || uuidStr.isBlank()) return null;
-    try {
-      return UUID.fromString(uuidStr);
-    } catch (Exception e) {
-      return null;
-    }
   }
 
   // ── ATTACHMENTS (File đính kèm) ───────────────────────────────────

@@ -60,6 +60,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("deprecation")
 class KchtGis155ServiceTest {
 
     @Mock private PortRepository portRepository;

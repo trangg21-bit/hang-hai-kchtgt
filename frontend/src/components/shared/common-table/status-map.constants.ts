@@ -12,18 +12,18 @@ import {
 export const APPROVAL_STATUS_MAP: Record<string, { label: string; color: string }> = {
   ALL: { label: 'Tất cả', color: actionPrimary },
   DRAFT: { label: 'Lưu tạm', color: statusDraft },
-  NHAP: { label: 'Lưu tạm', color: statusDraft },
   PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-  CHO_DUYET_CAP_1: { label: 'Chờ Cảng vụ duyệt', color: statusAttention },
-  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: actionPrimary },
-  CHO_DUYET_CAP_2: { label: 'Chờ Cục duyệt', color: actionPrimary },
+  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt', color: '#0284C7' },
   APPROVED: { label: 'Đã duyệt', color: statusOperational },
-  DA_DUYET: { label: 'Đã duyệt', color: statusOperational },
+  REJECTED_LEVEL1: { label: 'Cảng vụ từ chối', color: statusCritical },
+  REJECTED_LEVEL2: { label: 'Cục từ chối', color: statusCritical },
   REJECTED: { label: 'Từ chối', color: statusCritical },
-  TU_CHOI: { label: 'Từ chối', color: statusCritical },
-  REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ', color: statusCritical },
-  REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
+  ARCHIVED: { label: 'Đã xóa', color: statusCritical },
+  DA_XOA: { label: 'Đã xóa', color: statusCritical },
 };
+
+/** Alias tương thích cho APPROVAL_STATUS_MAP */
+export const APPROVAL_MAP = APPROVAL_STATUS_MAP;
 
 /**
  * Bản đồ ánh xạ tình trạng tài sản.

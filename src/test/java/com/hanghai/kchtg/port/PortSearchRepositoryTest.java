@@ -39,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@SuppressWarnings("deprecation")
 class PortSearchRepositoryTest {
 
     @Autowired

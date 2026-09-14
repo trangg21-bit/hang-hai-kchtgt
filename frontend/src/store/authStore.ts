@@ -35,8 +35,9 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   token: string | null;
-  login: (username: string, _password: string, token: string) => void;
+  login: (username: string, _password: string, token: string) => boolean;
   logout: () => Promise<void>;
+  clearSession: () => void;
   replaceAccessToken: (newToken: string, reqToken?: string | null) => void;
   refreshPermissions: () => Promise<void>;
   syncFromStorage: (storedToken: string | null) => void;
@@ -96,7 +97,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         claims.exp * 1000 < Date.now()
       ) {
         console.error('[authStore] Rejected invalid or expired token on login');
-        return;
+        get().clearSession();
+        return false;
       }
 
       const role = claims.role || 'ROLE_USER';
@@ -117,6 +119,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
       localStorage.setItem('auth_token', token);
       // Quyền không còn nằm trong JWT — nạp từ /users/me để gate UI chính xác.
       void get().refreshPermissions();
+      return true;
+    },
+
+    clearSession: () => {
+      set({ user: null, isAuthenticated: false, token: null });
+      localStorage.removeItem('auth_token');
     },
 
     replaceAccessToken: (newToken: string, reqToken?: string | null) => {
@@ -196,7 +204,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     syncFromStorage: (storedToken: string | null) => {
       if (!storedToken) {
         // Token was removed in another tab (logout)
-        set({ user: null, isAuthenticated: false, token: null });
+        get().clearSession();
         return;
       }
 
@@ -209,7 +217,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         claims.exp * 1000 < Date.now()
       ) {
         // Token in storage is malformed or expired
-        set({ user: null, isAuthenticated: false, token: null });
+        get().clearSession();
         return;
       }
 
@@ -247,8 +255,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       try {
         await api.post('/auth/logout');
       } catch { /* silent — still clear state even if API fails */ }
-      set({ user: null, isAuthenticated: false, token: null });
-      localStorage.removeItem('auth_token');
+      get().clearSession();
     },
 
     refreshPermissions: async () => {
@@ -277,11 +284,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
           },
         });
       } catch {
-        // Fallback to empty array on failure so UI does not hang
-        const state = get();
-        if (state.user && state.user.permissions === undefined) {
-          set({ user: { ...state.user, permissions: [] } });
-        }
+        // /users/me là bước xác nhận phiên phía server. Nếu bước này thất bại,
+        // không giữ giao diện ở trạng thái đăng nhập giả bằng token cũ.
+        get().clearSession();
       }
     },
   };

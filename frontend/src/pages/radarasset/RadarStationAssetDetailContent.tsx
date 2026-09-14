@@ -1,45 +1,47 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BankOutlined,
-  SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
+  BankOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
   ProfileOutlined,
+  RocketOutlined,
+  SlidersOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { RadarStationAsset } from '../../services/radarasset/types';
-import type {
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
-} from '../../services/assetmovement/types';
-import { fmtNum } from '../../utils/numFmt';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  colors,
-  actionPrimary,
-  textTertiary,
-  fontSizeMd,
-  fontWeightBold,
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-} from '../../themetokenchk';
+  CommonTable,
+  TableColumnType,
+  type TableOption,
+  renderApprovalStatusBadge,
+} from '../../components/shared/common-table';
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+} from '../../services/assetmovement/types';
+import type { RadarStationAsset } from '../../services/radarasset/types';
 import {
-  getOrGenerateAttachmentBlob,
-  getAttachmentPreviewUrl,
+  colors,
+  fontWeightBold,
+  fontWeightMedium,
+  statusCritical,
+  statusOperational,
+} from '../../themetokenchk';
+import {
   downloadAttachmentFile,
+  getAttachmentPreviewUrl,
+  getOrGenerateAttachmentBlob,
 } from '../../utils/attachmentStorage';
+import { fmtNum } from '../../utils/numFmt';
 
 export interface RadarStationAssetDetailContentProps {
   open: boolean;
@@ -52,49 +54,8 @@ export interface RadarStationAssetDetailContentProps {
   decreaseRows: AssetDecreaseResponse[];
 }
 
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
 
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: {
-    color: statusAttention,
-    label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED_LEVEL1: {
-    color: statusCritical,
-    label: 'Từ chối cấp Cảng vụ/Chi cục',
-  },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
-};
+export { renderApprovalStatusBadge };
 
 const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
@@ -114,31 +75,25 @@ export default function RadarStationAssetDetailContent({
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
   useEffect(() => {
-    if (!selectedRecord?.attachmentName) {
-      setAttachments([]);
-      return;
-    }
-    const names = selectedRecord.attachmentName
-      .split(',')
-      .map((name) => name.trim())
-      .filter(Boolean);
+    const names = selectedRecord?.attachmentName
+      ? selectedRecord.attachmentName.split(',').map((name) => name.trim()).filter(Boolean)
+      : [];
     let isMounted = true;
 
     const initialItems: InfrastructureAttachmentItem[] = names.map((name, i) => ({
       id: `att-${i + 1}`,
       fileName: name,
       fileSize: 1024 * 1024,
-      uploadedAt: selectedRecord.createdAt,
-      uploadedByName: selectedRecord.createdByName || 'Cán bộ cập nhật',
+      uploadedAt: selectedRecord?.createdAt,
+      uploadedByName: selectedRecord?.createdByName || 'Cán bộ cập nhật',
     }));
-    setAttachments(initialItems);
 
     Promise.all(
       names.map(async (name, i) => {
         try {
           const url = await getAttachmentPreviewUrl(name, {
-            assetCode: selectedRecord.assetCode,
-            assetName: selectedRecord.assetName,
+            assetCode: selectedRecord?.assetCode,
+            assetName: selectedRecord?.assetName,
           });
           return { id: `att-${i + 1}`, url };
         } catch {
@@ -147,8 +102,8 @@ export default function RadarStationAssetDetailContent({
       })
     ).then((resolved) => {
       if (!isMounted) return;
-      setAttachments((prev) =>
-        prev.map((item) => {
+      setAttachments(
+        initialItems.map((item) => {
           const match = resolved.find((r) => r.id === item.id);
           return match?.url ? { ...item, url: match.url } : item;
         })
@@ -181,6 +136,278 @@ export default function RadarStationAssetDetailContent({
       });
     },
     [selectedRecord?.assetCode, selectedRecord?.assetName]
+  );
+
+  const exploitationTableOption = useMemo<TableOption<AssetExploitationResponse>>(
+    () => ({
+      dataKey: 'id',
+      hideActionColumn: true,
+      enablePaging: false,
+      bordered: true,
+      scroll: { x: 'max-content', y: 350 },
+      mainColumns: [
+        {
+          title: 'Đơn vị khai thác',
+          dataIndex: 'operatorOrgUnitId',
+          type: TableColumnType.Text,
+          width: 220,
+          render: (v) => (
+            <span style={{ fontWeight: fontWeightBold }}>
+              {orgName.get(v as string) || (v as string) || '—'}
+            </span>
+          ),
+        },
+        {
+          title: 'Danh mục tài sản',
+          dataIndex: 'assetCategory',
+          type: TableColumnType.Text,
+          width: 200,
+          render: (v) => (v as string) || selectedRecord?.assetName || '—',
+        },
+        {
+          title: 'Đơn vị tính',
+          dataIndex: 'unitOfMeasure',
+          type: TableColumnType.Text,
+          width: 120,
+        },
+        {
+          title: 'Số lượng',
+          dataIndex: 'quantity',
+          type: TableColumnType.NumberFormatted,
+          width: 120,
+          align: 'right',
+        },
+        {
+          title: 'Thời hạn khai thác',
+          dataIndex: 'exploitationDeadline',
+          type: TableColumnType.Date,
+          width: 160,
+        },
+        {
+          title: 'Tổng tiền thu được (VNĐ)',
+          dataIndex: 'totalRevenue',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Chi phí liên quan (VNĐ)',
+          dataIndex: 'relatedCosts',
+          type: TableColumnType.Money,
+          width: 190,
+          align: 'right',
+        },
+        {
+          title: 'Nộp ngân sách nhà nước (VNĐ)',
+          dataIndex: 'stateBudgetPayment',
+          type: TableColumnType.Money,
+          width: 220,
+          align: 'right',
+        },
+        {
+          title: 'Số tiền thực hiện dự án (VNĐ)',
+          dataIndex: 'projectAmount',
+          type: TableColumnType.Money,
+          width: 220,
+          align: 'right',
+        },
+        {
+          title: 'Ghi chú',
+          dataIndex: 'description',
+          type: TableColumnType.Description,
+          width: 200,
+        },
+        {
+          title: 'Ngày cập nhật',
+          dataIndex: 'updatedAt',
+          type: TableColumnType.Date,
+          width: 140,
+        },
+      ],
+    }),
+    [orgName, selectedRecord?.assetName]
+  );
+
+  interface AdjustmentRowItem {
+    [key: string]: unknown;
+    id: string;
+    adjustmentType: 'TANG' | 'GIAM';
+    code?: string;
+    decisionNumber?: string;
+    decisionDate?: string;
+    adjustmentDate?: string;
+    adjustmentReason?: string;
+    originalValueBefore?: number;
+    originalValueAfter?: number;
+    remainingValueBefore?: number;
+    remainingValueAfter?: number;
+    notes?: string;
+    status?: string;
+  }
+
+  const combinedAdjustments = useMemo<AdjustmentRowItem[]>(() => {
+    const list: AdjustmentRowItem[] = [];
+    increaseRows.forEach((r) => {
+      list.push({
+        id: r.id,
+        adjustmentType: 'TANG',
+        code: r.increaseCode,
+        decisionNumber: r.adjustmentDetails?.decisionNumber,
+        decisionDate: r.adjustmentDetails?.decisionDate,
+        adjustmentDate: r.adjustmentDetails?.adjustmentDate,
+        adjustmentReason: r.adjustmentDetails?.adjustmentReason,
+        originalValueBefore: r.adjustmentDetails?.originalValueBefore,
+        originalValueAfter: r.adjustmentDetails?.originalValueAfter,
+        remainingValueBefore: r.adjustmentDetails?.remainingValueBefore,
+        remainingValueAfter: r.adjustmentDetails?.remainingValueAfter,
+        notes: r.adjustmentDetails?.adjustmentNotes,
+        status: r.status,
+      });
+    });
+    decreaseRows.forEach((r) => {
+      list.push({
+        id: r.id,
+        adjustmentType: 'GIAM',
+        code: r.decreaseCode,
+        decisionNumber: r.adjustmentDetails?.decisionNumber,
+        decisionDate: r.adjustmentDetails?.decisionDate,
+        adjustmentDate: r.adjustmentDetails?.adjustmentDate,
+        adjustmentReason: r.adjustmentDetails?.adjustmentReason,
+        originalValueBefore: r.adjustmentDetails?.originalValueBefore,
+        originalValueAfter: r.adjustmentDetails?.originalValueAfter,
+        remainingValueBefore: r.adjustmentDetails?.remainingValueBefore,
+        remainingValueAfter: r.adjustmentDetails?.remainingValueAfter,
+        notes: r.adjustmentDetails?.adjustmentNotes,
+        status: r.status,
+      });
+    });
+    return list;
+  }, [increaseRows, decreaseRows]);
+
+  const adjustmentTableOption = useMemo<TableOption<AdjustmentRowItem>>(
+    () => ({
+      dataKey: 'id',
+      hideActionColumn: true,
+      enablePaging: false,
+      bordered: true,
+      scroll: { x: 'max-content', y: 350 },
+      mainColumns: [
+        {
+          title: 'Loại biến động',
+          dataIndex: 'adjustmentType',
+          type: TableColumnType.Template,
+          width: 160,
+          render: (_v, row) =>
+            row.adjustmentType === 'TANG' ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: fontWeightMedium,
+                  background: `${statusOperational}15`,
+                  border: `1px solid ${statusOperational}40`,
+                  color: statusOperational,
+                }}
+              >
+                <PlusCircleOutlined /> Tăng nguyên giá
+              </span>
+            ) : (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: fontWeightMedium,
+                  background: `${statusCritical}15`,
+                  border: `1px solid ${statusCritical}40`,
+                  color: statusCritical,
+                }}
+              >
+                <MinusCircleOutlined /> Giảm nguyên giá
+              </span>
+            ),
+        },
+        {
+          title: 'Mã yêu cầu',
+          dataIndex: 'code',
+          type: TableColumnType.Text,
+          width: 160,
+        },
+        {
+          title: 'Số quyết định',
+          dataIndex: 'decisionNumber',
+          type: TableColumnType.Text,
+          width: 180,
+        },
+        {
+          title: 'Ngày ra quyết định',
+          dataIndex: 'decisionDate',
+          type: TableColumnType.Date,
+          width: 165,
+        },
+        {
+          title: 'Ngày điều chỉnh',
+          dataIndex: 'adjustmentDate',
+          type: TableColumnType.Date,
+          width: 150,
+        },
+        {
+          title: 'Nguyên giá trước (VNĐ)',
+          dataIndex: 'originalValueBefore',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Nguyên giá sau (VNĐ)',
+          dataIndex: 'originalValueAfter',
+          type: TableColumnType.Money,
+          width: 190,
+          align: 'right',
+        },
+        {
+          title: 'Giá trị còn lại trước (VNĐ)',
+          dataIndex: 'remainingValueBefore',
+          type: TableColumnType.Money,
+          width: 210,
+          align: 'right',
+        },
+        {
+          title: 'Giá trị còn lại sau (VNĐ)',
+          dataIndex: 'remainingValueAfter',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Lý do điều chỉnh',
+          dataIndex: 'adjustmentReason',
+          type: TableColumnType.Text,
+          width: 200,
+        },
+        {
+          title: 'Ghi chú',
+          dataIndex: 'notes',
+          type: TableColumnType.Description,
+          width: 200,
+        },
+        {
+          title: 'Trạng thái',
+          dataIndex: 'status',
+          type: TableColumnType.Template,
+          width: 140,
+          render: (_v, row) => renderApprovalStatusBadge(row.status),
+        },
+      ],
+    }),
+    []
   );
 
   const tabs = useMemo<ViewTabConfig<RadarStationAsset>[]>(() => {
@@ -378,25 +605,12 @@ export default function RadarStationAssetDetailContent({
       },
       {
         key: 'attachments',
-        label: `Hồ sơ tài sản (${attachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: attachments.length,
         icon: <ProfileOutlined />,
-        customContent: (
+        customContent: () => (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
-              refType="RADAR_STATION_ASSET"
-              refId={selectedRecord.id}
-              attachments={attachments}
-              readonly
-              onDownload={handleDownloadAttachment}
-              loadReadonlyPreviewImage={handleLoadReadonlyPreviewImage}
-            />
-          </div>
-        ),
-        customRender: () => (
-          <div style={{ padding: '8px 0' }}>
-            <InfrastructureAttachmentTab
-              refType="RADAR_STATION_ASSET"
-              refId={selectedRecord.id}
               attachments={attachments}
               readonly
               onDownload={handleDownloadAttachment}
@@ -501,207 +715,30 @@ export default function RadarStationAssetDetailContent({
       {
         key: 'exploitation',
         label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         icon: <RocketOutlined />,
-        customRender: () => (
-          <div style={{ padding: '8px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <RocketOutlined style={{ color: actionPrimary }} />
-                  <span>Danh sách hồ sơ khai thác tài sản</span>
-                </div>
-              </div>
-              {exploitationRows.length === 0 ? (
-                <div
-                  style={{
-                    padding: '24px 0',
-                    textAlign: 'center',
-                    color: textTertiary,
-                    fontSize: fontSizeMd,
-                  }}
-                >
-                  Chưa có hồ sơ khai thác nào được ghi nhận cho tài sản này
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {exploitationRows.map((row) => (
-                    <div
-                      key={row.id}
-                      style={{
-                        padding: '10px 14px',
-                        background: '#f8fafc',
-                        borderRadius: 6,
-                        border: '1px solid #e2e8f0',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Đơn vị khai thác</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {row.operatorOrgUnitId
-                            ? orgName.get(row.operatorOrgUnitId) || row.operatorOrgUnitId
-                            : '—'}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Thời hạn khai thác</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {fmtDate(row.exploitationDeadline)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Tổng thu (VNĐ)</div>
-                        <div style={{ fontWeight: fontWeightBold, color: statusOperational }}>
-                          {fmtNum(row.totalRevenue || row.doanhThu)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Nộp NSNN (VNĐ)</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {fmtNum(row.stateBudgetPayment)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        customContent: (
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<AssetExploitationResponse>
+              options={exploitationTableOption}
+              dataSource={exploitationRows}
+              total={exploitationRows.length}
+            />
           </div>
         ),
       },
       {
         key: 'adjustments',
         label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
-        customRender: () => (
-          <div style={{ padding: '8px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <PlusCircleOutlined style={{ color: statusOperational }} />
-                  <span>Lịch sử tăng nguyên giá</span>
-                </div>
-              </div>
-              {increaseRows.length === 0 ? (
-                <div
-                  style={{
-                    padding: '16px 0',
-                    textAlign: 'center',
-                    color: textTertiary,
-                    fontSize: fontSizeMd,
-                  }}
-                >
-                  Chưa có thông tin tăng nguyên giá
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {increaseRows.map((row) => (
-                    <div
-                      key={row.id}
-                      style={{
-                        padding: '10px 14px',
-                        background: '#f8fafc',
-                        borderRadius: 6,
-                        border: '1px solid #e2e8f0',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Mã yêu cầu / Số QĐ</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {row.increaseCode || row.adjustmentDetails?.decisionNumber || '—'}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Ngày quyết định</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {fmtDate(row.adjustmentDetails?.decisionDate)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Nguyên giá sau tăng</div>
-                        <div style={{ fontWeight: fontWeightBold, color: statusOperational }}>
-                          {fmtNum(row.adjustmentDetails?.originalValueAfter)} VNĐ
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Trạng thái</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {APPROVAL_MAP[row.approvalStatus]?.label || row.approvalStatus}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <MinusCircleOutlined style={{ color: statusCritical }} />
-                  <span>Lịch sử giảm nguyên giá</span>
-                </div>
-              </div>
-              {decreaseRows.length === 0 ? (
-                <div
-                  style={{
-                    padding: '16px 0',
-                    textAlign: 'center',
-                    color: textTertiary,
-                    fontSize: fontSizeMd,
-                  }}
-                >
-                  Chưa có thông tin giảm nguyên giá
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {decreaseRows.map((row) => (
-                    <div
-                      key={row.id}
-                      style={{
-                        padding: '10px 14px',
-                        background: '#f8fafc',
-                        borderRadius: 6,
-                        border: '1px solid #e2e8f0',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
-                        gap: 8,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Mã yêu cầu / Số QĐ</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {row.decreaseCode || row.adjustmentDetails?.decisionNumber || '—'}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Ngày quyết định</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {fmtDate(row.adjustmentDetails?.decisionDate)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Nguyên giá sau giảm</div>
-                        <div style={{ fontWeight: fontWeightBold, color: statusCritical }}>
-                          {fmtNum(row.adjustmentDetails?.originalValueAfter)} VNĐ
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 11, color: textTertiary }}>Trạng thái</div>
-                        <div style={{ fontWeight: fontWeightBold }}>
-                          {APPROVAL_MAP[row.approvalStatus]?.label || row.approvalStatus}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+        customContent: (
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<AdjustmentRowItem>
+              options={adjustmentTableOption}
+              dataSource={combinedAdjustments}
+              total={combinedAdjustments.length}
+            />
           </div>
         ),
       },
@@ -716,31 +753,10 @@ export default function RadarStationAssetDetailContent({
             fields: [
               {
                 name: 'approvalStatus',
-                label: 'Trạng thái',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-                render: (v) => {
-                  const statusInfo = APPROVAL_MAP[v as string] || {
-                    color: textTertiary,
-                    label: (v as string) || '—',
-                  };
-                  return (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 10px',
-                        borderRadius: 999,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        background: `${statusInfo.color}15`,
-                        border: `1px solid ${statusInfo.color}40`,
-                        color: statusInfo.color,
-                      }}
-                    >
-                      {statusInfo.label}
-                    </span>
-                  );
-                },
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Custom,
+                colSpan: 24,
+                render: (v) => renderApprovalStatusBadge(v as string),
               },
               {
                 name: 'updatedByName',
@@ -787,20 +803,20 @@ export default function RadarStationAssetDetailContent({
             fields: [
               {
                 name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                label: 'Cán bộ phê duyệt',
                 type: ViewFieldType.Text,
                 colSpan: 12,
               },
               {
                 name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                label: 'Ngày phê duyệt',
                 type: ViewFieldType.Date,
                 colSpan: 12,
                 render: (v) => fmtDateTime(v as string),
               },
               {
                 name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                label: 'Nội dung phê duyệt',
                 type: ViewFieldType.Text,
                 colSpan: 24,
               },
@@ -812,20 +828,20 @@ export default function RadarStationAssetDetailContent({
             fields: [
               {
                 name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
+                label: 'Cán bộ phê duyệt',
                 type: ViewFieldType.Text,
                 colSpan: 12,
               },
               {
                 name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt cấp Cục',
+                label: 'Ngày phê duyệt',
                 type: ViewFieldType.Date,
                 colSpan: 12,
                 render: (v) => fmtDateTime(v as string),
               },
               {
                 name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cục',
+                label: 'Nội dung phê duyệt',
                 type: ViewFieldType.Text,
                 colSpan: 24,
               },
@@ -836,9 +852,10 @@ export default function RadarStationAssetDetailContent({
     ];
   }, [
     attachments,
-    decreaseRows,
     exploitationRows,
-    increaseRows,
+    exploitationTableOption,
+    combinedAdjustments,
+    adjustmentTableOption,
     orgName,
     radarStationMap,
     selectedRecord,
@@ -861,10 +878,8 @@ export default function RadarStationAssetDetailContent({
         </span>
       }
       record={selectedRecord}
-      data={selectedRecord}
       tabs={tabs}
       onClose={onClose}
-      width="90vw"
       rootClassName="radar-asset-drawer-scope"
     />
   );

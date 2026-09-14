@@ -305,7 +305,8 @@ export default function StormShelterAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
         customContent: (
           <div style={{ paddingTop: 8 }}>
             <InfrastructureAttachmentTab
@@ -396,7 +397,8 @@ export default function StormShelterAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         customContent: (
           <div style={{ paddingTop: 8 }}>
             <div
@@ -526,7 +528,8 @@ export default function StormShelterAssetDetailContent({
       },
       {
         key: 'adjustments',
-        label: `Thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
         customContent: () => (
           <div
             style={{

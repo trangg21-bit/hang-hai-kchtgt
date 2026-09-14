@@ -7,7 +7,6 @@ import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.entity.ApprovalLog;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
@@ -42,6 +41,7 @@ import com.hanghai.kchtg.port.service.PortCacheService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PortApprovalService unit tests — F-011/F-013")
+@SuppressWarnings("deprecation")
 class PortApprovalServiceTest {
 
     @InjectMocks

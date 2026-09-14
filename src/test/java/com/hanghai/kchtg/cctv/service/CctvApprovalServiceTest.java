@@ -5,7 +5,6 @@ import com.hanghai.kchtg.cctv.dto.CctvResponse;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.cctv.repository.CctvRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;

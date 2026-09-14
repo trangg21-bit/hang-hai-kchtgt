@@ -16,7 +16,6 @@ import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.station.dto.inmarsat.*;
 import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;

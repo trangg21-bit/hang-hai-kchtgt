@@ -10,6 +10,7 @@ import {
   createCoastalStationExploitation,
   fetchCoastalStationAdjustments,
   createCoastalStationAdjustment,
+  fetchCoastalStationAssetHistory,
 } from '../coastalStationAsset/api';
 import type {
   PageResponse,
@@ -59,6 +60,13 @@ export async function updateDaiTtdhAsset(
 export async function deleteDaiTtdhAsset(id: string): Promise<void> {
   return deleteCoastalStationAsset(id);
 }
+
+export async function fetchDaiTtdhAssetHistory(
+  id: string
+): Promise<{ changeHistory?: Record<string, unknown>[] } | Record<string, unknown>[]> {
+  return fetchCoastalStationAssetHistory(id);
+}
+
 
 export async function fetchDaiTtdhExploitations(
   assetId: string

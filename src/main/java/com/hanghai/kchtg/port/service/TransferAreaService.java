@@ -30,11 +30,9 @@ import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.TransferAreaMooringWaterAreaAnchorPointRepository;
 import com.hanghai.kchtg.port.repository.TransferAreaMooringWaterAreaRepository;
 import com.hanghai.kchtg.port.repository.TransferAreaRepository;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +49,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -62,12 +59,10 @@ public class TransferAreaService {
 
     private final TransferAreaRepository transferAreaRepository;
     private final PortRepository portRepository;
-    private final UserResolverService userResolverService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final AttachmentRepository attachmentRepository;
-    private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final TransferAreaMooringWaterAreaRepository transferAreaMooringWaterAreaRepository;
     private final TransferAreaMooringWaterAreaAnchorPointRepository transferAreaMooringWaterAreaAnchorPointRepository;
@@ -784,11 +779,6 @@ public class TransferAreaService {
         } catch (Exception e) {
             log.warn("Không ghi được lịch sử file đính kèm Khu chuyển tải [{}]: {}", transferAreaId, e.getMessage());
         }
-    }
-
-    private void recordTransferAreaAttachmentHistory(UUID transferAreaId, String oldFilesSummary, String newFilesSummary,
-                                                      String affectedFileName, InfrastructureHistoryStatus status) {
-        recordTransferAreaAttachmentHistory(transferAreaId, oldFilesSummary, newFilesSummary, affectedFileName, status, null);
     }
 
     /**

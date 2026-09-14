@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Form, InputNumber } from 'antd';
+import { InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { BankOutlined, SlidersOutlined, ProfileOutlined } from '@ant-design/icons';
@@ -10,11 +10,7 @@ import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  colors,
-  fontWeightBold,
-  radiusPill,
-} from '../../themetokenchk';
+import { radiusPill } from '../../themetokenchk';
 import {
   DynamicFormSidebar,
   FormFieldType,
@@ -509,6 +505,8 @@ export default function ScadaSystemAssetForm({
       onDeleteAttachment,
       onDownloadAttachment,
       form,
+      handleLoadReadonlyPreviewImage,
+      selected?.id,
     ]
   );
 
@@ -548,7 +546,6 @@ export default function ScadaSystemAssetForm({
       actions={sidebarActions}
       footerAlign="center"
       onClose={onClose}
-      width={1000}
     />
   );
 }

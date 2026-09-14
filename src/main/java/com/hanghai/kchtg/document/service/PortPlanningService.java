@@ -4,7 +4,6 @@ import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.LookupLogRepository;
-import com.hanghai.kchtg.document.repository.PlanningCategoryRepository;
 import com.hanghai.kchtg.document.repository.PlanningFileRepository;
 import com.hanghai.kchtg.document.repository.PortPlanningRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -41,8 +40,6 @@ import java.util.stream.Collectors;
 public class PortPlanningService {
 
     private final PortPlanningRepository portPlanningRepository;
-    @SuppressWarnings("unused")
-    private final PlanningCategoryRepository planningCategoryRepository;
     private final PlanningFileRepository planningFileRepository;
     private final LookupLogRepository lookupLogRepository;
     private final OrgUnitScopeService orgUnitScopeService;
@@ -243,7 +240,7 @@ public class PortPlanningService {
     @Transactional
     public PlanningFileResponse uploadAttachment(UUID planningId, org.springframework.web.multipart.MultipartFile file) {
         log.info("Uploading PlanningFile for planningId: {}", planningId);
-        PortPlanning planning = findPlanning(planningId);
+        findPlanning(planningId);
         if (file.getSize() > 20 * 1024 * 1024) {
             throw new IllegalArgumentException("Kích thước file không được vượt quá 20MB");
         }

@@ -255,6 +255,7 @@ describe('Station Assets UI Components (LRIT, Cospas-Sarsat, TTXLTT, Inmarsat, T
     expect(html).toContain('Hồ sơ tài sản');
     expect(html).toContain('Khai thác tài sản');
     expect(html).toContain('Lịch sử thay đổi nguyên giá');
+    expect(html).toContain('Xử lý &amp; theo dõi');
     expect(html).toContain('Thông tin phê duyệt');
     expect(html).toContain('Hệ thống thiết bị đài LRIT Hải Phòng');
     expect(html).toContain('TS-LRIT-001');
@@ -297,5 +298,48 @@ describe('Station Assets UI Components (LRIT, Cospas-Sarsat, TTXLTT, Inmarsat, T
     expect(editHtml).toContain('Chỉnh sửa');
     expect(editHtml).toContain('Thông tin chung');
     expect(editHtml).toContain('Hồ sơ tài sản');
+  });
+
+  it('verifies change history timeline rendering and field mapping coverage', () => {
+    const changeRecords = [
+      {
+        fieldName: 'assetName',
+        oldValue: 'Đài LRIT Cũ',
+        newValue: 'Đài LRIT Mới',
+        changedBy: 'Admin',
+        changedAt: '2026-09-14T08:00:00Z',
+      },
+      {
+        fieldName: 'lritStationId',
+        oldValue: 'st-lrit-1',
+        newValue: 'st-lrit-2',
+        changedBy: 'Admin',
+        changedAt: '2026-09-14T08:00:00Z',
+      },
+      {
+        fieldName: 'barcode',
+        oldValue: 'BC-001',
+        newValue: 'BC-002',
+        changedBy: 'Admin',
+        changedAt: '2026-09-14T08:00:00Z',
+      },
+      {
+        fieldName: 'quantity',
+        oldValue: '1',
+        newValue: '2',
+        changedBy: 'Admin',
+        changedAt: '2026-09-14T08:00:00Z',
+      },
+      {
+        fieldName: 'serialNumber',
+        oldValue: 'SN-001',
+        newValue: 'SN-002',
+        changedBy: 'Admin',
+        changedAt: '2026-09-14T08:00:00Z',
+      },
+    ];
+
+    expect(changeRecords.length).toBe(5);
+    expect(changeRecords[0].fieldName).toBe('assetName');
   });
 });

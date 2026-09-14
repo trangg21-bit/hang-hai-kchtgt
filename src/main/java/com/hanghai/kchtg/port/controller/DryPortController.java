@@ -34,6 +34,7 @@ import org.springframework.http.HttpHeaders;
 @Slf4j
 @Validated
 @DataScope
+@SuppressWarnings("deprecation")
 public class DryPortController {
 
     private final DryPortService dryPortService;

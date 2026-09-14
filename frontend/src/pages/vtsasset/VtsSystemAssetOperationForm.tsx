@@ -372,7 +372,6 @@ export default function VtsSystemAssetOperationForm({
       tabs={tabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={typeof window !== 'undefined' ? Math.min(960, Math.floor(window.innerWidth * 0.9)) : 960}
     />
   );
 }

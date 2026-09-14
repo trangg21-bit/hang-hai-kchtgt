@@ -541,7 +541,6 @@ public class DaiTtdhService {
             return;
         }
 
-        boolean uploaded = status == InfrastructureHistoryStatus.ATTACHMENT_UPLOADED;
         historyRepository.save(InfrastructureHistory.builder()
                 .refId(daiTtdhId)
                 .refType(InfrastructureType.DAI_TTDH)

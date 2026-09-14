@@ -3,10 +3,8 @@ import {
   BankOutlined,
   SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
-  ProfileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ScadaSystemAsset } from '../../services/scadaasset/types';
@@ -15,20 +13,18 @@ import type {
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
-import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import {
-  colors,
   actionPrimary,
-  textTertiary,
-  fontSizeMd,
   fontWeightBold,
+  fontWeightMedium,
   statusOperational,
   statusAttention,
   statusCritical,
   statusDraft,
+  radiusPill,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
@@ -36,10 +32,19 @@ import {
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
 import {
+  CommonTable,
+  TableColumnType,
+  type TableOption,
+  APPROVAL_MAP,
+  renderApprovalStatusBadge,
+} from '../../components/shared/common-table';
+import {
   getOrGenerateAttachmentBlob,
   getAttachmentPreviewUrl,
   downloadAttachmentFile,
 } from '../../utils/attachmentStorage';
+
+export { renderApprovalStatusBadge };
 
 export interface ScadaSystemAssetDetailContentProps {
   open: boolean;
@@ -52,50 +57,6 @@ export interface ScadaSystemAssetDetailContentProps {
   decreaseRows: AssetDecreaseResponse[];
   attachments?: InfrastructureAttachmentItem[];
 }
-
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: {
-    color: statusAttention,
-    label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED_LEVEL1: {
-    color: statusCritical,
-    label: 'Từ chối cấp Cảng vụ/Chi cục',
-  },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
-};
 
 const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
@@ -116,7 +77,7 @@ export default function ScadaSystemAssetDetailContent({
   const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
   useEffect(() => {
-    let initialList: InfrastructureAttachmentItem[] = [];
+    let initialList: InfrastructureAttachmentItem[];
     if (attachments && attachments.length > 0) {
       initialList = attachments;
     } else if (selectedRecord?.attachmentName && selectedRecord.attachmentName.trim()) {
@@ -159,8 +120,6 @@ export default function ScadaSystemAssetDetailContent({
         },
       ];
     }
-    setDetailAttachments(initialList);
-
     let isMounted = true;
     Promise.all(
       initialList.map(async (item) => {
@@ -176,8 +135,8 @@ export default function ScadaSystemAssetDetailContent({
       })
     ).then((resolved) => {
       if (!isMounted) return;
-      setDetailAttachments((prev) =>
-        prev.map((item) => {
+      setDetailAttachments(
+        initialList.map((item) => {
           const match = resolved.find((r) => r.id === item.id);
           return match?.url ? { ...item, url: match.url } : item;
         })
@@ -210,6 +169,276 @@ export default function ScadaSystemAssetDetailContent({
       });
     },
     [selectedRecord?.assetCode, selectedRecord?.assetName]
+  );
+
+  const exploitationTableOption = useMemo<TableOption<AssetExploitationResponse>>(
+    () => ({
+      dataKey: 'id',
+      hideActionColumn: true,
+      enablePaging: false,
+      bordered: true,
+      scroll: { x: 'max-content', y: 350 },
+      mainColumns: [
+        {
+          title: 'Đơn vị khai thác',
+          dataIndex: 'operatorOrgUnitId',
+          type: TableColumnType.Text,
+          width: 220,
+          render: (v) => (
+            <span style={{ fontWeight: fontWeightBold }}>
+              {orgName.get(v as string) || (v as string) || '—'}
+            </span>
+          ),
+        },
+        {
+          title: 'Danh mục tài sản',
+          dataIndex: 'assetCategory',
+          type: TableColumnType.Text,
+          width: 200,
+        },
+        {
+          title: 'Đơn vị tính',
+          dataIndex: 'unitOfMeasure',
+          type: TableColumnType.Text,
+          width: 120,
+        },
+        {
+          title: 'Số lượng',
+          dataIndex: 'quantity',
+          type: TableColumnType.NumberFormatted,
+          width: 120,
+          align: 'right',
+        },
+        {
+          title: 'Thời hạn khai thác',
+          dataIndex: 'exploitationDeadline',
+          type: TableColumnType.Date,
+          width: 160,
+        },
+        {
+          title: 'Tổng tiền thu được (VNĐ)',
+          dataIndex: 'totalRevenue',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Chi phí liên quan (VNĐ)',
+          dataIndex: 'relatedCosts',
+          type: TableColumnType.Money,
+          width: 190,
+          align: 'right',
+        },
+        {
+          title: 'Nộp ngân sách nhà nước (VNĐ)',
+          dataIndex: 'stateBudgetPayment',
+          type: TableColumnType.Money,
+          width: 220,
+          align: 'right',
+        },
+        {
+          title: 'Số tiền thực hiện dự án (VNĐ)',
+          dataIndex: 'projectAmount',
+          type: TableColumnType.Money,
+          width: 220,
+          align: 'right',
+        },
+        {
+          title: 'Ghi chú',
+          dataIndex: 'description',
+          type: TableColumnType.Description,
+          width: 200,
+        },
+        {
+          title: 'Ngày cập nhật',
+          dataIndex: 'updatedAt',
+          type: TableColumnType.Date,
+          width: 140,
+        },
+      ],
+    }),
+    [orgName]
+  );
+
+  interface AdjustmentRowItem {
+    id: string;
+    adjustmentType: 'TANG' | 'GIAM';
+    code?: string;
+    decisionNumber?: string;
+    decisionDate?: string;
+    adjustmentDate?: string;
+    adjustmentReason?: string;
+    originalValueBefore?: number;
+    originalValueAfter?: number;
+    remainingValueBefore?: number;
+    remainingValueAfter?: number;
+    notes?: string;
+    status?: string;
+  }
+
+  const combinedAdjustments = useMemo<AdjustmentRowItem[]>(() => {
+    const list: AdjustmentRowItem[] = [];
+    increaseRows.forEach((row) => {
+      list.push({
+        id: row.id,
+        adjustmentType: 'TANG',
+        code: row.increaseCode,
+        decisionNumber: row.adjustmentDetails?.decisionNumber,
+        decisionDate: row.adjustmentDetails?.decisionDate,
+        adjustmentDate: row.adjustmentDetails?.adjustmentDate,
+        adjustmentReason: row.adjustmentDetails?.adjustmentReason,
+        originalValueBefore: row.adjustmentDetails?.originalValueBefore,
+        originalValueAfter: row.adjustmentDetails?.originalValueAfter,
+        remainingValueBefore: row.adjustmentDetails?.remainingValueBefore,
+        remainingValueAfter: row.adjustmentDetails?.remainingValueAfter,
+        notes: row.adjustmentDetails?.adjustmentNotes,
+        status: row.status,
+      });
+    });
+    decreaseRows.forEach((row) => {
+      list.push({
+        id: row.id,
+        adjustmentType: 'GIAM',
+        code: row.decreaseCode,
+        decisionNumber: row.adjustmentDetails?.decisionNumber,
+        decisionDate: row.adjustmentDetails?.decisionDate,
+        adjustmentDate: row.adjustmentDetails?.adjustmentDate,
+        adjustmentReason: row.adjustmentDetails?.adjustmentReason,
+        originalValueBefore: row.adjustmentDetails?.originalValueBefore,
+        originalValueAfter: row.adjustmentDetails?.originalValueAfter,
+        remainingValueBefore: row.adjustmentDetails?.remainingValueBefore,
+        remainingValueAfter: row.adjustmentDetails?.remainingValueAfter,
+        notes: row.adjustmentDetails?.adjustmentNotes,
+        status: row.status,
+      });
+    });
+    return list;
+  }, [increaseRows, decreaseRows]);
+
+  const adjustmentTableOption = useMemo<TableOption<AdjustmentRowItem>>(
+    () => ({
+      dataKey: 'id',
+      hideActionColumn: true,
+      enablePaging: false,
+      bordered: true,
+      scroll: { x: 'max-content', y: 350 },
+      mainColumns: [
+        {
+          title: 'Loại biến động',
+          dataIndex: 'adjustmentType',
+          type: TableColumnType.Template,
+          width: 160,
+          render: (_v, row) =>
+            row.adjustmentType === 'TANG' ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: fontWeightMedium,
+                  background: `${statusOperational}15`,
+                  border: `1px solid ${statusOperational}40`,
+                  color: statusOperational,
+                }}
+              >
+                <PlusCircleOutlined /> Tăng nguyên giá
+              </span>
+            ) : (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: fontWeightMedium,
+                  background: `${statusCritical}15`,
+                  border: `1px solid ${statusCritical}40`,
+                  color: statusCritical,
+                }}
+              >
+                <MinusCircleOutlined /> Giảm nguyên giá
+              </span>
+            ),
+        },
+        {
+          title: 'Mã yêu cầu',
+          dataIndex: 'code',
+          type: TableColumnType.Text,
+          width: 160,
+        },
+        {
+          title: 'Số quyết định',
+          dataIndex: 'decisionNumber',
+          type: TableColumnType.Text,
+          width: 180,
+        },
+        {
+          title: 'Ngày ra quyết định',
+          dataIndex: 'decisionDate',
+          type: TableColumnType.Date,
+          width: 165,
+        },
+        {
+          title: 'Ngày điều chỉnh',
+          dataIndex: 'adjustmentDate',
+          type: TableColumnType.Date,
+          width: 150,
+        },
+        {
+          title: 'Nguyên giá trước (VNĐ)',
+          dataIndex: 'originalValueBefore',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Nguyên giá sau (VNĐ)',
+          dataIndex: 'originalValueAfter',
+          type: TableColumnType.Money,
+          width: 190,
+          align: 'right',
+        },
+        {
+          title: 'Giá trị còn lại trước (VNĐ)',
+          dataIndex: 'remainingValueBefore',
+          type: TableColumnType.Money,
+          width: 210,
+          align: 'right',
+        },
+        {
+          title: 'Giá trị còn lại sau (VNĐ)',
+          dataIndex: 'remainingValueAfter',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Lý do điều chỉnh',
+          dataIndex: 'adjustmentReason',
+          type: TableColumnType.Text,
+          width: 200,
+        },
+        {
+          title: 'Ghi chú',
+          dataIndex: 'notes',
+          type: TableColumnType.Description,
+          width: 200,
+        },
+        {
+          title: 'Trạng thái',
+          dataIndex: 'status',
+          type: TableColumnType.Template,
+          width: 140,
+          render: (_v, row) => renderApprovalStatusBadge(row.status),
+        },
+      ],
+    }),
+    []
   );
 
   const tabs = useMemo<ViewTabConfig<ScadaSystemAsset>[]>(() => {
@@ -422,21 +651,10 @@ export default function ScadaSystemAssetDetailContent({
       },
       {
         key: 'attachments',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
         icon: <ProfileOutlined />,
-        customContent: (
-          <div style={{ padding: '8px 0' }}>
-            <InfrastructureAttachmentTab
-              refType="SCADA_SYSTEM_ASSET"
-              refId={selectedRecord.id}
-              attachments={detailAttachments}
-              readonly
-              onDownload={handleDownloadAttachment}
-              loadReadonlyPreviewImage={handleLoadReadonlyPreviewImage}
-            />
-          </div>
-        ),
-        customRender: () => (
+        customContent: () => (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
               refType="SCADA_SYSTEM_ASSET"
@@ -546,401 +764,31 @@ export default function ScadaSystemAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
-        icon: <RocketOutlined />,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
+        icon: <BankOutlined />,
         customContent: (
-          <div style={{ padding: '8px 0' }}>
-            {exploitationRows.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', color: textTertiary }}>
-                Chưa có hồ sơ khai thác tài sản
-              </div>
-            ) : (
-              exploitationRows.map((r) => (
-                <div key={r.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <span style={sectionTitleStyle}>
-                      <RocketOutlined style={{ color: actionPrimary }} />
-                      Năm khai thác: {r.exploitationYear || '—'}
-                    </span>
-                    <span style={{ fontSize: 12, color: textTertiary }}>
-                      Cập nhật: {fmtDateTime(r.updatedAt || r.createdAt)}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '8px 16px',
-                      fontSize: 13,
-                    }}
-                  >
-                    <div>
-                      <strong>Đơn vị khai thác:</strong>{' '}
-                      {r.operatorOrgUnitId ? orgName.get(r.operatorOrgUnitId) || '—' : '—'}
-                    </div>
-                    <div>
-                      <strong>Thời hạn khai thác:</strong>{' '}
-                      {fmtDate(r.exploitationDeadline)}
-                    </div>
-                    <div>
-                      <strong>Số lượng:</strong> {r.quantity != null ? fmtNum(r.quantity) : '—'}{' '}
-                      {r.unitOfMeasure || ''}
-                    </div>
-                    <div>
-                      <strong>Tổng số tiền thu được:</strong>{' '}
-                      {fmtNum(r.totalRevenue || r.doanhThu)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Chi phí có liên quan:</strong>{' '}
-                      {fmtNum(r.relatedCosts || r.depreciation)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Nộp NSNN:</strong> {fmtNum(r.stateBudgetPayment)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Số tiền thực hiện dự án:</strong> {fmtNum(r.projectAmount)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Ghi chú:</strong> {r.notes || r.description || '—'}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        ),
-        customRender: () => (
-          <div style={{ padding: '8px 0' }}>
-            {exploitationRows.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', color: textTertiary }}>
-                Chưa có hồ sơ khai thác tài sản
-              </div>
-            ) : (
-              exploitationRows.map((r) => (
-                <div key={r.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <span style={sectionTitleStyle}>
-                      <RocketOutlined style={{ color: actionPrimary }} />
-                      Năm khai thác: {r.exploitationYear || '—'}
-                    </span>
-                    <span style={{ fontSize: 12, color: textTertiary }}>
-                      Cập nhật: {fmtDateTime(r.updatedAt || r.createdAt)}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '8px 16px',
-                      fontSize: 13,
-                    }}
-                  >
-                    <div>
-                      <strong>Đơn vị khai thác:</strong>{' '}
-                      {r.operatorOrgUnitId ? orgName.get(r.operatorOrgUnitId) || '—' : '—'}
-                    </div>
-                    <div>
-                      <strong>Thời hạn khai thác:</strong>{' '}
-                      {fmtDate(r.exploitationDeadline)}
-                    </div>
-                    <div>
-                      <strong>Số lượng:</strong> {r.quantity != null ? fmtNum(r.quantity) : '—'}{' '}
-                      {r.unitOfMeasure || ''}
-                    </div>
-                    <div>
-                      <strong>Tổng số tiền thu được:</strong>{' '}
-                      {fmtNum(r.totalRevenue || r.doanhThu)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Chi phí có liên quan:</strong>{' '}
-                      {fmtNum(r.relatedCosts || r.depreciation)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Nộp NSNN:</strong> {fmtNum(r.stateBudgetPayment)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Số tiền thực hiện dự án:</strong> {fmtNum(r.projectAmount)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Ghi chú:</strong> {r.notes || r.description || '—'}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<AssetExploitationResponse>
+              options={exploitationTableOption}
+              dataSource={exploitationRows}
+              total={exploitationRows.length}
+            />
           </div>
         ),
       },
       {
-        key: 'value_changes',
-        label: `Thay đổi nguyên giá (${increaseRows.length + decreaseRows.length})`,
-        icon: <PlusCircleOutlined />,
+        key: 'adjustments',
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
+        icon: <AuditOutlined />,
         customContent: (
-          <div style={{ padding: '8px 0' }}>
-            <h4
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: statusOperational,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: 10,
-              }}
-            >
-              <PlusCircleOutlined /> Lịch sử tăng nguyên giá ({increaseRows.length})
-            </h4>
-            {increaseRows.length === 0 ? (
-              <div style={{ padding: '8px 0 16px 0', color: textTertiary }}>
-                Chưa có yêu cầu tăng nguyên giá
-              </div>
-            ) : (
-              increaseRows.map((r) => (
-                <div key={r.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <span style={sectionTitleStyle}>
-                      <PlusCircleOutlined style={{ color: statusOperational }} />
-                      Mã yêu cầu: {r.increaseCode} — Lý do: {r.reason}
-                    </span>
-                    <span style={{ fontSize: 12, color: textTertiary }}>
-                      Trạng thái: {APPROVAL_MAP[r.approvalStatus]?.label || r.approvalStatus}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '8px 16px',
-                      fontSize: 13,
-                    }}
-                  >
-                    <div>
-                      <strong>Số QĐ:</strong> {r.adjustmentDetails?.decisionNumber || '—'}
-                    </div>
-                    <div>
-                      <strong>Ngày QĐ:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.decisionDate)}
-                    </div>
-                    <div>
-                      <strong>Ngày tăng:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.adjustmentDate)}
-                    </div>
-                    <div>
-                      <strong>Nguyên giá trước:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueBefore)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Nguyên giá sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueAfter)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Giá trị còn lại sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.remainingValueAfter)} VNĐ
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-
-            <h4
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: statusCritical,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginTop: 16,
-                marginBottom: 10,
-              }}
-            >
-              <MinusCircleOutlined /> Lịch sử giảm nguyên giá ({decreaseRows.length})
-            </h4>
-            {decreaseRows.length === 0 ? (
-              <div style={{ padding: '8px 0 16px 0', color: textTertiary }}>
-                Chưa có yêu cầu giảm nguyên giá
-              </div>
-            ) : (
-              decreaseRows.map((r) => (
-                <div key={r.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <span style={sectionTitleStyle}>
-                      <MinusCircleOutlined style={{ color: statusCritical }} />
-                      Mã yêu cầu: {r.decreaseCode} — Lý do: {r.reason}
-                    </span>
-                    <span style={{ fontSize: 12, color: textTertiary }}>
-                      Trạng thái: {APPROVAL_MAP[r.approvalStatus]?.label || r.approvalStatus}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '8px 16px',
-                      fontSize: 13,
-                    }}
-                  >
-                    <div>
-                      <strong>Số QĐ:</strong> {r.adjustmentDetails?.decisionNumber || '—'}
-                    </div>
-                    <div>
-                      <strong>Ngày QĐ:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.decisionDate)}
-                    </div>
-                    <div>
-                      <strong>Ngày giảm:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.adjustmentDate)}
-                    </div>
-                    <div>
-                      <strong>Nguyên giá trước:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueBefore)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Nguyên giá sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueAfter)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Giá trị còn lại sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.remainingValueAfter)} VNĐ
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        ),
-        customRender: () => (
-          <div style={{ padding: '8px 0' }}>
-            <h4
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: statusOperational,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: 10,
-              }}
-            >
-              <PlusCircleOutlined /> Lịch sử tăng nguyên giá ({increaseRows.length})
-            </h4>
-            {increaseRows.length === 0 ? (
-              <div style={{ padding: '8px 0 16px 0', color: textTertiary }}>
-                Chưa có yêu cầu tăng nguyên giá
-              </div>
-            ) : (
-              increaseRows.map((r) => (
-                <div key={r.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <span style={sectionTitleStyle}>
-                      <PlusCircleOutlined style={{ color: statusOperational }} />
-                      Mã yêu cầu: {r.increaseCode} — Lý do: {r.reason}
-                    </span>
-                    <span style={{ fontSize: 12, color: textTertiary }}>
-                      Trạng thái: {APPROVAL_MAP[r.approvalStatus]?.label || r.approvalStatus}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '8px 16px',
-                      fontSize: 13,
-                    }}
-                  >
-                    <div>
-                      <strong>Số QĐ:</strong> {r.adjustmentDetails?.decisionNumber || '—'}
-                    </div>
-                    <div>
-                      <strong>Ngày QĐ:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.decisionDate)}
-                    </div>
-                    <div>
-                      <strong>Ngày tăng:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.adjustmentDate)}
-                    </div>
-                    <div>
-                      <strong>Nguyên giá trước:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueBefore)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Nguyên giá sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueAfter)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Giá trị còn lại sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.remainingValueAfter)} VNĐ
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-
-            <h4
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: statusCritical,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginTop: 16,
-                marginBottom: 10,
-              }}
-            >
-              <MinusCircleOutlined /> Lịch sử giảm nguyên giá ({decreaseRows.length})
-            </h4>
-            {decreaseRows.length === 0 ? (
-              <div style={{ padding: '8px 0 16px 0', color: textTertiary }}>
-                Chưa có yêu cầu giảm nguyên giá
-              </div>
-            ) : (
-              decreaseRows.map((r) => (
-                <div key={r.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <span style={sectionTitleStyle}>
-                      <MinusCircleOutlined style={{ color: statusCritical }} />
-                      Mã yêu cầu: {r.decreaseCode} — Lý do: {r.reason}
-                    </span>
-                    <span style={{ fontSize: 12, color: textTertiary }}>
-                      Trạng thái: {APPROVAL_MAP[r.approvalStatus]?.label || r.approvalStatus}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '8px 16px',
-                      fontSize: 13,
-                    }}
-                  >
-                    <div>
-                      <strong>Số QĐ:</strong> {r.adjustmentDetails?.decisionNumber || '—'}
-                    </div>
-                    <div>
-                      <strong>Ngày QĐ:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.decisionDate)}
-                    </div>
-                    <div>
-                      <strong>Ngày giảm:</strong>{' '}
-                      {fmtDate(r.adjustmentDetails?.adjustmentDate)}
-                    </div>
-                    <div>
-                      <strong>Nguyên giá trước:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueBefore)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Nguyên giá sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.originalValueAfter)} VNĐ
-                    </div>
-                    <div>
-                      <strong>Giá trị còn lại sau:</strong>{' '}
-                      {fmtNum(r.adjustmentDetails?.remainingValueAfter)} VNĐ
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<AdjustmentRowItem>
+              options={adjustmentTableOption}
+              dataSource={combinedAdjustments}
+              total={combinedAdjustments.length}
+            />
           </div>
         ),
       },
@@ -956,30 +804,9 @@ export default function ScadaSystemAssetDetailContent({
               {
                 name: 'approvalStatus',
                 label: 'Trạng thái phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-                render: (v) => {
-                  const statusInfo = APPROVAL_MAP[v as string] || {
-                    color: textTertiary,
-                    label: v || '—',
-                  };
-                  return (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 10px',
-                        borderRadius: 999,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        background: `${statusInfo.color}15`,
-                        border: `1px solid ${statusInfo.color}40`,
-                        color: statusInfo.color,
-                      }}
-                    >
-                      {statusInfo.label}
-                    </span>
-                  );
-                },
+                type: ViewFieldType.Custom,
+                colSpan: 24,
+                render: (v) => renderApprovalStatusBadge(v as string),
               },
               {
                 name: 'status',
@@ -1104,7 +931,6 @@ export default function ScadaSystemAssetDetailContent({
       record={selectedRecord}
       tabs={tabs}
       onClose={onClose}
-      width={1000}
     />
   );
 }

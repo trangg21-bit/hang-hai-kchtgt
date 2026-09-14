@@ -128,6 +128,8 @@ export interface TableColumnOption<T = Record<string, unknown>> {
  * Cấu hình hành động trên từng dòng (Action Menu / Button).
  */
 export interface TableActionOption<T = Record<string, unknown>> {
+  /** Khóa định danh hành động */
+  key?: string;
   /** Tên hành động hiển thị trên menu */
   title?: string;
   /** Nhãn hành động (alias cho title) */

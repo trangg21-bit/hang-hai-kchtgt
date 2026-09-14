@@ -62,6 +62,32 @@ import {
 3. **Chỉ lấy chuẩn 1 trường, không fallback toán tử linh tinh**:
    Không dùng toán tử `??`, `||`, ternary bừa bãi khi trích xuất giá trị hiển thị.
 
+4. **Chiều rộng phải giống DynamicFormSidebar và không cho phép tùy chỉnh từng màn**:
+   - `DynamicViewSidebar` dùng trực tiếp `DRAWER_FORM_WIDTH`, cùng nguồn với `DynamicFormSidebar`.
+   - **CẤM** khai báo prop `width` trong `DynamicViewSidebarProps` và **CẤM** truyền `width` tại mọi `XxxAssetDetailContent.tsx`.
+   - Không dùng các biến thể `900`, `980`, `1000`, `1040`, `60vw`, `90vw` hoặc biểu thức `Math.min(window.innerWidth, ...)` cho Drawer chi tiết tài sản.
+   - `rootClassName`/`className` chỉ được dùng để định danh scope style, không được đổi chiều rộng Drawer.
+   - Sau khi sửa, quét `rg -n -A 30 "<DynamicViewSidebar" frontend/src` và xác nhận không còn `width=` trong khối gọi component.
+
+5. **Hai tab vòng đời tài sản phải đồng nhất trên toàn bộ menu Tài sản KCHT hàng hải**:
+   - **TUYỆT ĐỐI CẤM sửa / hack vào common-component (`DynamicViewSidebar.tsx`)**:
+     - Các component dùng chung của hệ thống phải giữ nguyên bản, không được tự ý viết hàm normalizer (`normalizeAssetLifecycleTab`), không can thiệp logic ngầm ép key/label bên trong common component.
+     - Mọi quy chuẩn chuẩn hóa hiển thị bắt buộc phải được ghi rõ trong SKILL này và cấu hình chính xác, tường minh tại từng file `XxxAssetDetailContent.tsx`.
+   - **Đồng nhất 1 loại hiển thị duy nhất: BẢNG (`CommonTable` kèm `TableOption`)**:
+     - CẢ HAI tab `exploitation` và `adjustments` **BẮT BUỘC** hiển thị dữ liệu dạng bảng qua `CommonTable` với `TableOption`.
+     - **TUYỆT ĐỐI CẤM** dùng dạng danh sách thẻ / card / div tự chế (`div.chk-detail-row`, `div.chk-detail-grid`, `sectionBoxStyle` lồng `map()` thủ công, v.v.). Mọi màn hình tài sản phải có giao diện bảng đồng nhất 100%.
+   - **Tab khai thác tài sản**:
+     - Khóa duy nhất: `key: 'exploitation'`, tiêu đề: `label: 'Khai thác tài sản'`, số lượng: `badgeCount: exploitationRows.length`.
+     - Icon: `<BankOutlined />`.
+     - Bảng `CommonTable<AssetExploitationResponse>` gồm 11 cột chuẩn: Đơn vị khai thác (rộng 220), Danh mục tài sản (200), ĐVT (120), Số lượng (120, align right), Thời hạn khai thác (160, Date), Tổng tiền thu được VNĐ (200, Money, align right), Chi phí liên quan VNĐ (190, Money, align right), Nộp NSNN VNĐ (220, Money, align right), Số tiền DA VNĐ (220, Money, align right), Ghi chú (200), Ngày cập nhật (140, Date).
+   - **Tab lịch sử thay đổi nguyên giá**:
+     - Khóa duy nhất: `key: 'adjustments'`, tiêu đề: `label: 'Lịch sử thay đổi nguyên giá'`, số lượng: `badgeCount: combinedAdjustments.length`.
+     - Icon: `<AuditOutlined />`.
+     - Bảng `CommonTable<AdjustmentRowItem>` gồm 12 cột chuẩn: Loại biến động (Tag Tăng/Giảm dạng pill với màu semantic), Mã yêu cầu (160), Số quyết định (180), Ngày ra quyết định (165, Date), Ngày điều chỉnh (150, Date), Nguyên giá trước VNĐ (200, Money, align right), Nguyên giá sau VNĐ (190, Money, align right), Giá trị còn lại trước VNĐ (210, Money, align right), Giá trị còn lại sau VNĐ (200, Money, align right), Lý do điều chỉnh (200), Ghi chú (200), Trạng thái phê duyệt (140, Template/Status pill).
+   - Nội dung tùy biến của tab view bắt buộc khai báo bằng `customContent`; **CẤM** dùng `customRender` vì `DynamicViewSidebar` không đọc prop này và sẽ tạo tab trắng.
+   - Không nhúng số lượng trực tiếp vào `label` (như `"Khai thác tài sản (0)"`); số lượng phải truyền qua `badgeCount` để component lõi định dạng badge thống nhất.
+   - Mọi nội dung tab tùy biến phải nằm trong vùng cuộn chuẩn do `DynamicViewSidebar` cung cấp; không đặt lại chiều rộng Drawer hoặc tạo vùng cuộn ngang riêng ngoài bảng.
+
 ---
 
 ## 3. Các loại trường hiển thị (`ViewFieldType`)
@@ -215,6 +241,46 @@ export default function AssetDetailDrawer({
 />
 ```
 
+### 4.3. Cấu hình Chuẩn cho 2 Tab Vòng Đời Tài sản (BẢNG TableOption)
+
+Tuyệt đối không dùng dạng thẻ/card. Khai báo 2 tab bằng `CommonTable` kèm `TableOption`:
+
+```tsx
+// 1. Tab Khai thác tài sản
+{
+  key: 'exploitation',
+  label: 'Khai thác tài sản',
+  badgeCount: exploitationRows.length,
+  icon: <BankOutlined />,
+  customContent: (
+    <div style={{ padding: '4px 0' }}>
+      <CommonTable<AssetExploitationResponse>
+        options={exploitationTableOption}
+        dataSource={exploitationRows}
+        total={exploitationRows.length}
+      />
+    </div>
+  ),
+}
+
+// 2. Tab Lịch sử thay đổi nguyên giá
+{
+  key: 'adjustments',
+  label: 'Lịch sử thay đổi nguyên giá',
+  badgeCount: combinedAdjustments.length,
+  icon: <AuditOutlined />,
+  customContent: (
+    <div style={{ padding: '4px 0' }}>
+      <CommonTable<AdjustmentRowItem>
+        options={adjustmentTableOption}
+        dataSource={combinedAdjustments}
+        total={combinedAdjustments.length}
+      />
+    </div>
+  ),
+}
+```
+
 ---
 
 ## 5. Checklist Kiểm tra Hoàn tất (Zero Errors Verification)
@@ -225,3 +291,6 @@ export default function AssetDetailDrawer({
 - [ ] 4. Dọn sạch 100% Unused Imports / Unused Variables.
 - [ ] 5. Chạy `npx tsc --noEmit` đạt mã 0 (0 lỗi).
 - [ ] 6. Chạy `npx eslint` đạt mã 0 (0 errors, 0 warnings).
+- [ ] 7. `DynamicViewSidebar` và `DynamicFormSidebar` cùng dùng `DRAWER_FORM_WIDTH`; model và mọi màn tài sản không còn prop `width` tùy chỉnh.
+- [ ] 8. Tất cả màn tài sản dùng đúng hai key/label `exploitation` và `adjustments`, truyền số lượng bằng `badgeCount`.
+- [ ] 9. Không còn `customRender` trong bất kỳ `XxxAssetDetailContent.tsx`; tab tùy biến đều dùng `customContent` và hiển thị được cả khi danh sách rỗng.

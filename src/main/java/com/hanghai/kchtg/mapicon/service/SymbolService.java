@@ -144,7 +144,7 @@ public class SymbolService {
 
     @Transactional
     public SymbolUsage recordUsage(UUID symbolId, UUID objectId, String objectType, UUID usedBy) {
-        SymbolLibrary symbol = libraryRepo.findById(symbolId)
+        libraryRepo.findById(symbolId)
                 .orElseThrow(() -> new EntityNotFoundException("Symbol not found: " + symbolId));
         SymbolUsage usage = SymbolUsage.create(symbolId, objectId, objectType, usedBy);
         return usageRepo.save(usage);

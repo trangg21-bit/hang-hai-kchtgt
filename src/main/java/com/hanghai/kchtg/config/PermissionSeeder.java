@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Component
 @Order(1)
@@ -26,8 +25,6 @@ import java.util.stream.Collectors;
 public class PermissionSeeder implements CommandLineRunner {
 
         private final PermissionRepository permissionRepository;
-        @SuppressWarnings("unused")
-        private final UserRepository userRepository;
         private final JdbcTemplate jdbcTemplate;
 
         public PermissionSeeder(PermissionRepository permissionRepository, UserRepository userRepository) {
@@ -38,7 +35,6 @@ public class PermissionSeeder implements CommandLineRunner {
         public PermissionSeeder(PermissionRepository permissionRepository, UserRepository userRepository,
                         @Nullable JdbcTemplate jdbcTemplate) {
                 this.permissionRepository = permissionRepository;
-                this.userRepository = userRepository;
                 this.jdbcTemplate = jdbcTemplate;
         }
 

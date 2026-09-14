@@ -36,7 +36,6 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final TotpAuthService totpAuthService;
 
@@ -45,7 +44,6 @@ public class AuthController {
                           TokenService tokenService,
                           TotpAuthService totpAuthService) {
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         this.totpAuthService = totpAuthService;
     }

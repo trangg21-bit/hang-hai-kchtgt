@@ -389,11 +389,6 @@ export function BuoyBerthAssetOperationForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(960, Math.floor(window.innerWidth * 0.95))
-          : 960
-      }
       rootClassName="buoy-berth-drawer-scope"
       className="buoy-berth-drawer-scope"
       tabs={tabs}

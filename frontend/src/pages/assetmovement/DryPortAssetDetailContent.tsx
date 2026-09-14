@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, Button } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
-  CompassOutlined,
+  BankOutlined,
   SlidersOutlined,
   AuditOutlined,
   RocketOutlined,
@@ -17,12 +15,15 @@ import type {
   AssetDecreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
-import { fetchInfraAssetAttachments } from '../../services/assetmovement/api';
 import { fmtNum } from '../../utils/numFmt';
-import DetailTable from '../../components/shared/DetailTable';
+import toast from '../../components/ToastNotification';
+import api from '../../services/api';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
+  triggerBlobDownload,
+  resolveMimeType,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { fetchInfraAssetAttachments } from '../../services/assetmovement/api';
 import {
   colors,
   actionPrimary,
@@ -33,8 +34,6 @@ import {
   statusAttention,
   statusCritical,
   statusDraft,
-  radiusPill,
-  DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
@@ -51,6 +50,7 @@ export interface DryPortAssetDetailContentProps {
   exploitationRows: AssetExploitationResponse[];
   increaseRows: AssetIncreaseResponse[];
   decreaseRows: AssetDecreaseResponse[];
+  onDownloadAttachment?: (id: string, fileName: string) => void;
 }
 
 export interface AdjustmentRowItem {
@@ -106,198 +106,29 @@ const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   NHAP: { color: statusDraft, label: 'Lưu tạm' },
   PENDING_APPROVAL: {
     color: statusAttention,
-    label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    label: 'Chờ Cảng vụ duyệt',
   },
   CHO_PHE_DUYET: {
     color: statusAttention,
-    label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    label: 'Chờ Cảng vụ duyệt',
   },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ Cục duyệt' },
+  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
+  DA_PHE_DUYET: { color: statusOperational, label: 'Đã duyệt' },
   REJECTED_LEVEL1: {
     color: statusCritical,
-    label: 'Từ chối cấp Cảng vụ/Chi cục',
+    label: 'Cảng vụ từ chối',
   },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục từ chối' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
 };
 
 const fmtDateTime = (v?: string | null): string =>
-  v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
+  v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '';
 const fmtDate = (v?: string | null): string =>
-  v ? dayjs(v).format('DD/MM/YYYY') : '—';
-
-const parseStoredDetails = (value?: string): Record<string, unknown> => {
-  if (!value) return {};
-  try {
-    return JSON.parse(value) as Record<string, unknown>;
-  } catch {
-    return { notes: value };
-  }
-};
-
-const getAdjustmentDetailData = (
-  row: AdjustmentRowItem,
-  assetRecord?: DryPortAsset,
-) => {
-  const details: Record<string, unknown> = {
-    ...(row.adjustmentDetails || parseStoredDetails(row.reason)),
-  };
-
-  const decisionNumber = String(
-    details.decisionNumber ||
-      details.decisionNo ||
-      details.soQuyetDinh ||
-      row.increaseCode ||
-      row.decreaseCode ||
-      '—',
-  );
-  const decisionDate = String(
-    details.decisionDate ||
-      details.decisionSignedDate ||
-      details.ngayRaQuyetDinh ||
-      row.createdAt ||
-      '—',
-  );
-  const effectiveDate = String(
-    details.effectiveDate ||
-      details.adjustmentDate ||
-      details.ngayTangGiam ||
-      row.updatedAt ||
-      row.createdAt ||
-      '—',
-  );
-  const reasonText = String(
-    details.reason || details.lyDo || row.reason || row.decreaseReason || '—',
-  );
-  const notesText = String(
-    details.notes ||
-      details.ghiChu ||
-      (row as unknown as Record<string, unknown>).notes ||
-      '—',
-  );
-
-  const originalBefore = Number(
-    details.originalValueBefore ??
-      details.nguyenGiaTruoc ??
-      assetRecord?.originalValue ??
-      0,
-  );
-  const deltaAmount = Number(
-    details.adjustmentAmount ??
-      details.amount ??
-      (row as unknown as Record<string, unknown>).increaseAmount ??
-      (row as unknown as Record<string, unknown>).decreaseAmount ??
-      0,
-  );
-  const originalAfter =
-    Number(details.originalValueAfter ?? details.nguyenGiaSau) ||
-    (row.changeType === 'Tăng nguyên giá'
-      ? originalBefore + deltaAmount
-      : Math.max(0, originalBefore - deltaAmount));
-
-  const remainingBefore = Number(
-    details.remainingValueBefore ??
-      details.giaTriConLaiTruoc ??
-      assetRecord?.remainingValue ??
-      0,
-  );
-  const remainingAfter =
-    Number(details.remainingValueAfter ?? details.giaTriConLaiSau) ||
-    (row.changeType === 'Tăng nguyên giá'
-      ? remainingBefore + deltaAmount
-      : Math.max(0, remainingBefore - deltaAmount));
-
-  const declarationDate = String(
-    details.declarationDate || assetRecord?.declarationDate || '—',
-  );
-  const depreciationRate = String(
-    details.depreciationRate ?? assetRecord?.depreciationRate ?? '—',
-  );
-  const depreciationStartDate = String(
-    details.depreciationStartDate || assetRecord?.depreciationStartDate || '—',
-  );
-  const depreciationMonths = String(
-    details.depreciationMonths ?? assetRecord?.depreciationMonths ?? '—',
-  );
-  const depreciationEndDate = String(
-    details.depreciationEndDate || assetRecord?.depreciationEndDate || '—',
-  );
-  const accumulatedDepreciation = Number(
-    details.accumulatedDepreciation ??
-      assetRecord?.accumulatedDepreciation ??
-      0,
-  );
-  const monthlyDepreciation = Number(
-    details.monthlyDepreciation ?? assetRecord?.monthlyDepreciation ?? 0,
-  );
-  const disposalMethod = String(
-    details.disposalMethod || assetRecord?.disposalMethod || '—',
-  );
-
-  const submittedDate = String(
-    details.submittedAt ||
-      (row.status === 'CHO_PHE_DUYET' || row.status === 'PENDING_APPROVAL'
-        ? row.createdAt
-        : '—'),
-  );
-  const submittedBy = String(
-    details.submittedByName || details.submittedBy || row.createdByName || '—',
-  );
-  const approvedPortDate = String(
-    details.portAuthorityApprovedAt ||
-      (row.status === 'APPROVED' || row.status === 'APPROVED_LEVEL1'
-        ? row.updatedAt
-        : '—'),
-  );
-  const approvedPortBy = String(
-    details.portAuthorityApprovedByName || details.portAuthorityApprovedBy || '—',
-  );
-  const approvedPortContent = String(
-    details.portAuthorityApprovalContent || '—',
-  );
-  const approvedDeptDate = String(
-    details.departmentApprovedAt ||
-      (row.status === 'APPROVED' ? row.updatedAt : '—'),
-  );
-  const approvedDeptBy = String(
-    details.departmentApprovedByName || details.departmentApprovedBy || '—',
-  );
-  const approvedDeptContent = String(
-    details.departmentApprovalContent || '—',
-  );
-
-  return {
-    decisionNumber,
-    decisionDate,
-    effectiveDate,
-    reasonText,
-    notesText,
-    originalBefore,
-    originalAfter,
-    remainingBefore,
-    remainingAfter,
-    declarationDate,
-    depreciationRate,
-    depreciationStartDate,
-    depreciationMonths,
-    depreciationEndDate,
-    accumulatedDepreciation,
-    monthlyDepreciation,
-    disposalMethod,
-    submittedDate,
-    submittedBy,
-    approvedPortDate,
-    approvedPortBy,
-    approvedPortContent,
-    approvedDeptDate,
-    approvedDeptBy,
-    approvedDeptContent,
-  };
-};
+  v ? dayjs(v).format('DD/MM/YYYY') : '';
 
 export default function DryPortAssetDetailContent({
   open,
@@ -308,337 +139,252 @@ export default function DryPortAssetDetailContent({
   exploitationRows,
   increaseRows,
   decreaseRows,
+  onDownloadAttachment,
 }: DryPortAssetDetailContentProps) {
-  const [selectedAdjustment, setSelectedAdjustment] =
-    useState<AdjustmentRowItem | null>(null);
+  const combinedAdjustments = useMemo(() => {
+    return [
+      ...increaseRows.map((row) => ({
+        ...row,
+        changeType: 'Tăng nguyên giá' as const,
+        icon: <PlusCircleOutlined style={{ color: statusOperational }} />,
+      })),
+      ...decreaseRows.map((row) => ({
+        ...row,
+        changeType: 'Giảm nguyên giá' as const,
+        icon: <MinusCircleOutlined style={{ color: statusCritical }} />,
+      })),
+    ];
+  }, [increaseRows, decreaseRows]);
 
-  const fallbackAttachments = useMemo<InfrastructureAttachmentItem[]>(() => {
-    if (!r?.attachmentName) return [];
-    return r.attachmentName.split(',').map((name, i) => ({
-      id: `detail-att-${i}`,
-      fileName: name.trim(),
-      fileSize: 1024 * 512,
-      uploadedByName: r.updatedByName || r.submittedByName || 'Cán bộ quản lý',
-      uploadedDate: r.updatedAt || r.createdAt || dayjs().toISOString(),
-    }));
-  }, [r]);
-
-  const [realAttachments, setRealAttachments] = useState<InfrastructureAttachmentItem[] | null>(null);
+  const [detailAttachments, setDetailAttachments] = useState<
+    InfrastructureAttachmentItem[]
+  >([]);
 
   useEffect(() => {
-    if (!r?.id) return;
+    if (!r?.id) {
+      let isMounted = true;
+      Promise.resolve().then(() => {
+        if (isMounted) setDetailAttachments([]);
+      });
+      return () => {
+        isMounted = false;
+      };
+    }
     let isMounted = true;
-    void fetchInfraAssetAttachments(r.id)
+    fetchInfraAssetAttachments(r.id)
       .then((realAtts) => {
         if (!isMounted) return;
         if (realAtts && realAtts.length > 0) {
-          setRealAttachments(
+          setDetailAttachments(
             realAtts.map((att) => ({
               id: att.id,
               fileName: att.fileName,
               fileSize: att.fileSize,
               fileType: att.contentType,
               uploadedByName: att.uploadedByName || r.updatedByName || '—',
-              uploadedDate: att.uploadedAt || (r.updatedAt ? dayjs(r.updatedAt).toISOString() : dayjs().toISOString()),
+              uploadedDate:
+                att.uploadedAt ||
+                (r.updatedAt
+                  ? dayjs(r.updatedAt).toISOString()
+                  : dayjs().toISOString()),
               filePath: `/v1/asset/infra-assets/${r.id}/attachments/${att.id}/download`,
             })),
           );
+        } else if (r.attachmentName) {
+          setDetailAttachments(
+            r.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: r.updatedByName || '—',
+              uploadedDate: r.updatedAt
+                ? dayjs(r.updatedAt).toISOString()
+                : dayjs().toISOString(),
+            })),
+          );
         } else {
-          setRealAttachments(null);
+          setDetailAttachments([]);
         }
       })
       .catch(() => {
-        if (isMounted) setRealAttachments(null);
+        if (!isMounted) return;
+        if (r.attachmentName) {
+          setDetailAttachments(
+            r.attachmentName.split(',').map((name, i) => ({
+              id: `detail-att-${i}`,
+              fileName: name.trim(),
+              fileSize: 1024 * 1024,
+              uploadedByName: r.updatedByName || '—',
+              uploadedDate: r.updatedAt
+                ? dayjs(r.updatedAt).toISOString()
+                : dayjs().toISOString(),
+            })),
+          );
+        } else {
+          setDetailAttachments([]);
+        }
       });
     return () => {
       isMounted = false;
     };
-  }, [r?.id, r?.updatedAt, r?.updatedByName]);
+  }, [r]);
 
-  const detailAttachments = (realAttachments && realAttachments.length > 0) ? realAttachments : fallbackAttachments;
-
-  const combinedAdjustments = useMemo<AdjustmentRowItem[]>(() => {
-    const incItems: AdjustmentRowItem[] = increaseRows.map((inc) => ({
-      id: inc.id,
-      assetId: inc.assetId,
-      assetName: inc.assetName,
-      quantity: inc.increaseQuantity || 1,
-      unitOfMeasure: inc.unitOfMeasure || 'Hệ thống',
-      reason: inc.reason || 'Tăng nguyên giá tài sản',
-      status: inc.status || 'CHO_PHE_DUYET',
-      changeType: 'Tăng nguyên giá',
-      icon: <PlusCircleOutlined style={{ color: statusOperational }} />,
-      increaseCode: inc.increaseCode,
-      adjustmentDetails: inc.adjustmentDetails,
-      createdBy: inc.createdBy || '',
-      createdByName: inc.createdByName || '',
-      createdAt: inc.createdAt || '',
-      updatedAt: inc.updatedAt || '',
-    }));
-
-    const decItems: AdjustmentRowItem[] = decreaseRows.map((dec) => ({
-      id: dec.id,
-      assetId: dec.assetId,
-      assetName: dec.assetName,
-      quantity: dec.decreaseQuantity || 1,
-      unitOfMeasure: dec.unitOfMeasure || 'Hệ thống',
-      reason: dec.reason || 'Giảm nguyên giá tài sản',
-      status: dec.status || 'CHO_PHE_DUYET',
-      changeType: 'Giảm nguyên giá',
-      icon: <MinusCircleOutlined style={{ color: statusCritical }} />,
-      decreaseCode: dec.decreaseCode,
-      decreaseReason: dec.decreaseReason,
-      decreaseType: dec.decreaseType,
-      adjustmentDetails: dec.adjustmentDetails,
-      createdBy: dec.createdBy || '',
-      createdByName: dec.createdByName || '',
-      createdAt: dec.createdAt || '',
-      updatedAt: dec.updatedAt || '',
-    }));
-
-    return [...incItems, ...decItems].sort((a, b) =>
-      dayjs(b.createdAt).diff(dayjs(a.createdAt)),
-    );
-  }, [increaseRows, decreaseRows]);
-
-  const adjustmentColumns: ColumnsType<AdjustmentRowItem> = useMemo(
-    () => [
-      {
-        title: 'STT',
-        key: 'stt',
-        width: 60,
-        align: 'center',
-        render: (_v, _r, index) => index + 1,
-      },
-      {
-        title: 'Loại thay đổi nguyên giá',
-        dataIndex: 'changeType',
-        key: 'changeType',
-        width: 170,
-        render: (type: string, row: AdjustmentRowItem) => (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontWeight: 500,
-              color:
-                type === 'Tăng nguyên giá'
-                  ? statusOperational
-                  : statusCritical,
-            }}
-          >
-            {row.icon}
-            <span>{type}</span>
-          </span>
-        ),
-      },
-      {
-        title: 'Số QĐ tăng/giảm nguyên giá',
-        key: 'decisionNumber',
-        width: 190,
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return det.decisionNumber !== '—'
-            ? det.decisionNumber
-            : row.increaseCode || row.decreaseCode || '—';
-        },
-      },
-      {
-        title: 'Ngày ra QĐ tăng/giảm nguyên giá',
-        key: 'decisionDate',
-        width: 160,
-        align: 'center',
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return fmtDate(det.decisionDate);
-        },
-      },
-      {
-        title: 'Ngày tăng/giảm nguyên giá',
-        key: 'effectiveDate',
-        width: 160,
-        align: 'center',
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return fmtDate(det.effectiveDate);
-        },
-      },
-      {
-        title: 'Lý do tăng/giảm nguyên giá',
-        dataIndex: 'reason',
-        key: 'reason',
-        width: 170,
-        render: (val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return det.reasonText !== '—'
-            ? det.reasonText
-            : val || row.decreaseReason || '—';
-        },
-      },
-      {
-        title: 'Ghi chú (điều chỉnh)',
-        key: 'notes',
-        width: 180,
-        ellipsis: true,
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return det.notesText;
-        },
-      },
-      {
-        title: 'Nguyên giá trước khi tăng/giảm',
-        key: 'originalBefore',
-        width: 180,
-        align: 'right',
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return det.originalBefore > 0
-            ? `${fmtNum(det.originalBefore)} VNĐ`
-            : '—';
-        },
-      },
-      {
-        title: 'Nguyên giá sau khi tăng/giảm',
-        key: 'originalAfter',
-        width: 180,
-        align: 'right',
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return det.originalAfter > 0
-            ? `${fmtNum(det.originalAfter)} VNĐ`
-            : '—';
-        },
-      },
-      {
-        title: 'Giá trị còn lại trước khi tăng/giảm',
-        key: 'remainingBefore',
-        width: 180,
-        align: 'right',
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return det.remainingBefore > 0
-            ? `${fmtNum(det.remainingBefore)} VNĐ`
-            : '—';
-        },
-      },
-      {
-        title: 'Giá trị còn lại sau khi tăng/giảm',
-        key: 'remainingAfter',
-        width: 180,
-        align: 'right',
-        render: (_val, row) => {
-          const det = getAdjustmentDetailData(row, r);
-          return det.remainingAfter > 0
-            ? `${fmtNum(det.remainingAfter)} VNĐ`
-            : '—';
-        },
-      },
-      {
-        title: 'Ngày cập nhật',
-        dataIndex: 'updatedAt',
-        key: 'updatedAt',
-        width: 160,
-        align: 'center',
-        render: (val: string, row) => fmtDate(val || row.createdAt),
-      },
-      {
-        title: 'Cán bộ cập nhật',
-        dataIndex: 'createdByName',
-        key: 'createdByName',
-        width: 160,
-        render: (val: string) => val || '—',
-      },
-      {
-        title: 'Trạng thái thay đổi nguyên giá',
-        dataIndex: 'status',
-        key: 'status',
-        width: 160,
-        align: 'center',
-        render: (status: string) => {
-          const s = APPROVAL_MAP[status] || {
-            color: statusDraft,
-            label: status || 'Lưu tạm',
-          };
-          return (
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '2px 8px',
-                borderRadius: radiusPill,
-                fontSize: 12,
-                fontWeight: 500,
-                background: `${s.color}15`,
-                border: `1px solid ${s.color}40`,
-                color: s.color,
-              }}
-            >
-              {s.label}
-            </span>
+  const handleDownloadAttachment = useCallback(
+    async (id: string, fileName: string) => {
+      const att = detailAttachments.find(
+        (a) => a.id === id || a.fileName === fileName,
+      );
+      if (att?.originFileObj) {
+        triggerBlobDownload(
+          att.originFileObj,
+          fileName || att.originFileObj.name,
+        );
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (att?.file) {
+        triggerBlobDownload(att.file, fileName || att.file.name);
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      if (
+        att?.url &&
+        (att.url.startsWith('blob:') || att.url.startsWith('data:'))
+      ) {
+        triggerBlobDownload(att.url, fileName || 'tai-lieu');
+        toast.success(`Đã tải xuống tệp: ${fileName}`);
+        return;
+      }
+      const targetPath =
+        att?.filePath ||
+        (r?.id && id && !id.startsWith('detail-att-')
+          ? `/v1/asset/infra-assets/${r.id}/attachments/${id}/download`
+          : undefined);
+      if (targetPath) {
+        try {
+          let cleanPath = targetPath;
+          if (cleanPath.startsWith('/api/')) {
+            cleanPath = cleanPath.replace(/^\/api/, '');
+          } else if (!cleanPath.startsWith('/')) {
+            cleanPath = `/${cleanPath}`;
+          }
+          const res = await api.get(cleanPath, { responseType: 'blob' });
+          const serverContentType =
+            (typeof res.headers?.['content-type'] === 'string'
+              ? res.headers['content-type']
+              : '') || '';
+          const contentType = resolveMimeType(
+            fileName || att?.fileName || 'tai-lieu',
+            serverContentType || 'application/octet-stream',
           );
-        },
-      },
-    ],
-    [r],
+          const blob = new Blob([res.data], { type: contentType });
+          triggerBlobDownload(blob, fileName || att?.fileName || 'tai-lieu');
+          toast.success(`Đã tải xuống tệp: ${fileName}`);
+          return;
+        } catch (err) {
+          console.warn(
+            'Download from server failed, falling back to local generated attachment:',
+            err,
+          );
+        }
+      }
+      if (onDownloadAttachment) {
+        onDownloadAttachment(id, fileName);
+        return;
+      }
+      const fallbackContentType = resolveMimeType(
+        fileName || 'tai-lieu',
+        att?.fileType || 'application/octet-stream',
+      );
+      const fallbackBlob = new Blob(
+        [
+          `Tài liệu đính kèm: ${fileName}\nThời gian: ${dayjs().format('DD/MM/YYYY HH:mm:ss')}\nĐược tải về từ Hệ thống Quản lý KCHT Hàng hải`,
+        ],
+        { type: fallbackContentType },
+      );
+      triggerBlobDownload(fallbackBlob, fileName || 'tai-lieu');
+      toast.success(`Đã tải xuống tệp: ${fileName}`);
+    },
+    [detailAttachments, onDownloadAttachment, r],
   );
 
   const viewTabs = useMemo<ViewTabConfig<DryPortAsset>[]>(() => {
-    const approvalInfo = APPROVAL_MAP[r?.approvalStatus || ''] || {
-      color: statusDraft,
-      label: r?.approvalStatus || 'Lưu tạm',
-    };
+    if (!r) return [];
 
-    const dryPortItem = r?.dryPortId ? dryPortMap.get(r.dryPortId) : undefined;
-    const dryPortLabelText = dryPortItem
-      ? `${dryPortItem.name}${dryPortItem.code ? ` (${dryPortItem.code})` : ''}`
-      : r?.dryPortId || '—';
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus.toUpperCase()] ?? {
+          color: textTertiary,
+          label: r.approvalStatus,
+        })
+      : {
+          color: textTertiary,
+          label: '—',
+        };
+
+    const dryPortItem = r.dryPortId ? dryPortMap.get(r.dryPortId) : undefined;
 
     return [
       {
         key: 'general',
         label: 'Thông tin chung',
+        icon: <BankOutlined />,
         sections: [
           {
             key: 'basic_info',
             title: '1. Thông tin cơ bản & Quản lý vận hành',
-            icon: <CompassOutlined />,
+            icon: <BankOutlined />,
             fields: [
               {
-                name: 'parentOrgUnitId',
+                name: 'assetCode',
+                label: 'Mã tài sản',
+                type: ViewFieldType.Tag,
+              },
+              {
+                name: 'assetName',
+                label: 'Tên tài sản',
+                render: (val) => (
+                  <span
+                    style={{
+                      fontWeight: fontWeightBold,
+                      color: colors.sidebarBg,
+                    }}
+                  >
+                    {String(val || '')}
+                  </span>
+                ),
+              },
+              {
                 label: 'Cơ quan quản lý cấp trên',
-                value: (rec) =>
-                  rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) || '—') : '—',
+                value: (rec) => orgName.get(rec.parentOrgUnitId || '') || '—',
               },
               {
-                name: 'orgUnitId',
                 label: 'Đơn vị quản lý',
-                value: (rec) =>
-                  rec.orgUnitId ? (orgName.get(rec.orgUnitId) || '—') : '—',
+                render: (_v, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {orgName.get(rec.orgUnitId || '') || '—'}
+                  </span>
+                ),
               },
               {
-                name: 'usingOrgUnitId',
                 label: 'Đơn vị sử dụng',
-                value: (rec) =>
-                  rec.usingOrgUnitId ? (orgName.get(rec.usingOrgUnitId) || '—') : '—',
+                render: (_v, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {orgName.get(rec.usingOrgUnitId || '') || '—'}
+                  </span>
+                ),
               },
               {
-                name: 'dryPortId',
                 label: 'Mã cảng cạn',
-                value: () => dryPortLabelText,
+                value: () => dryPortItem?.code || dryPortItem?.name || r.dryPortId || '—',
+              },
+              {
+                label: 'Tên cảng cạn',
+                value: () => dryPortItem?.name || '—',
               },
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
                 value: () => 'Tài sản cảng cạn',
-              },
-              {
-                name: 'assetCode',
-                label: 'Mã tài sản',
-              },
-              {
-                name: 'assetName',
-                label: 'Tên tài sản',
-                colSpan: 24,
               },
               {
                 name: 'barcode',
@@ -651,9 +397,9 @@ export default function DryPortAssetDetailContent({
                 badgeColor: (val) =>
                   val === 'Tốt'
                     ? statusOperational
-                    : val === 'Hư hỏng cần sửa chữa'
-                      ? statusAttention
-                      : statusCritical,
+                    : val === 'Không sử dụng được'
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
@@ -678,19 +424,12 @@ export default function DryPortAssetDetailContent({
                 name: 'origin',
                 label: 'Nguồn gốc',
               },
-            ],
-          },
-          {
-            key: 'summary_indices',
-            title: 'Chỉ số tổng hợp',
-            icon: <SlidersOutlined />,
-            fields: [
               {
                 label: 'Số lượng',
                 value: (rec) =>
                   rec.quantity != null
                     ? `${fmtNum(rec.quantity)} ${rec.quantityUnit || ''}`.trim()
-                    : '—',
+                    : '',
               },
               {
                 name: 'quantityUnit',
@@ -715,6 +454,7 @@ export default function DryPortAssetDetailContent({
               {
                 name: 'constructionYear',
                 label: 'Năm xây dựng',
+                type: ViewFieldType.Year,
               },
               {
                 name: 'useDate',
@@ -723,7 +463,7 @@ export default function DryPortAssetDetailContent({
               },
               {
                 name: 'landArea',
-                label: 'Diện tích (đất, sàn sử dụng: m²)',
+                label: 'Diện tích đất, sàn sử dụng (m²)',
                 type: ViewFieldType.Number,
                 suffix: 'm²',
               },
@@ -748,19 +488,6 @@ export default function DryPortAssetDetailContent({
         ],
       },
       {
-        key: 'files',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
-        icon: <SlidersOutlined />,
-        customContent: () => (
-          <div style={{ paddingTop: 6 }}>
-            <InfrastructureAttachmentTab
-              attachments={detailAttachments}
-              readonly={true}
-            />
-          </div>
-        ),
-      },
-      {
         key: 'details',
         label: 'Thông tin chi tiết',
         sections: [
@@ -783,7 +510,7 @@ export default function DryPortAssetDetailContent({
               {
                 name: 'depreciationRate',
                 label: 'Tỷ lệ hao mòn/Khấu hao (%)',
-                render: (val) => (val != null ? `${val}%` : '—'),
+                render: (val) => (val != null ? `${val}%` : ''),
               },
               {
                 name: 'remainingValue',
@@ -807,7 +534,7 @@ export default function DryPortAssetDetailContent({
               {
                 name: 'depreciationMonths',
                 label: 'Số tháng tính khấu hao',
-                render: (val) => (val != null ? `${val} tháng` : '—'),
+                render: (val) => (val != null ? `${val} tháng` : ''),
               },
               {
                 name: 'depreciationEndDate',
@@ -832,11 +559,111 @@ export default function DryPortAssetDetailContent({
               },
             ],
           },
+          {
+            key: 'approval_info',
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined />,
+            collapsible: true,
+            defaultCollapsed: false,
+            fields: [
+              {
+                label: 'Trạng thái',
+                type: ViewFieldType.Badge,
+                value: () => approvalInfo.label,
+                badgeColor: () => approvalInfo.color,
+              },
+              {
+                name: 'updatedAt',
+                label: 'Ngày cập nhật',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'updatedByName',
+                label: 'Cán bộ cập nhật',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '')}
+                  </span>
+                ),
+              },
+              {
+                name: 'submittedAt',
+                label: 'Ngày gửi phê duyệt',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'submittedByName',
+                label: 'Người gửi phê duyệt',
+              },
+              {
+                name: 'portAuthorityApprovedAt',
+                label: 'Ngày duyệt cấp 1',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec.portAuthorityApprovedAt || rec.approvedLevel1At,
+              },
+              {
+                name: 'portAuthorityApprovedByName',
+                label: 'Người duyệt cấp 1',
+                value: (rec) => rec.portAuthorityApprovedByName || rec.approvedLevel1ByName,
+              },
+              {
+                name: 'portAuthorityApprovalContent',
+                label: 'Nội dung phê duyệt cấp 1',
+                colSpan: 24,
+                value: (rec) => rec.portAuthorityApprovalContent || rec.approvalContentLevel1,
+              },
+              {
+                name: 'departmentApprovedAt',
+                label: 'Ngày duyệt cấp 2',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec.departmentApprovedAt || rec.approvedLevel2At,
+              },
+              {
+                name: 'departmentApprovedByName',
+                label: 'Người duyệt cấp 2',
+                value: (rec) => rec.departmentApprovedByName || rec.approvedLevel2ByName,
+              },
+              {
+                name: 'departmentApprovalContent',
+                label: 'Nội dung phê duyệt cấp 2',
+                colSpan: 24,
+                value: (rec) => rec.departmentApprovalContent || rec.approvalContentLevel2,
+              },
+              {
+                name: 'rejectionReason',
+                label: 'Lý do từ chối',
+                colSpan: 24,
+                hidden: (rec) => !rec.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
+              },
+            ],
+          },
         ],
       },
       {
+        key: 'files',
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
+        customContent: () => (
+          <div style={{ paddingTop: 6 }}>
+            <InfrastructureAttachmentTab
+              attachments={detailAttachments}
+              readonly={true}
+              onUpload={() => {}}
+              onDelete={() => {}}
+              onDownload={handleDownloadAttachment}
+            />
+          </div>
+        ),
+      },
+      {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
         icon: <RocketOutlined />,
         customContent: () => (
           <div
@@ -874,25 +701,25 @@ export default function DryPortAssetDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Đơn vị khai thác</span>
                       <span className="chk-detail-value">
-                        {orgName.get(row.operatorOrgUnitId || '') || '—'}
+                        {orgName.get(row.operatorOrgUnitId || '') || ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Danh mục tài sản</span>
                       <span className="chk-detail-value">
-                        {row.assetCategory || r?.assetName || '—'}
+                        {row.assetCategory || '—'}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Đơn vị tính</span>
                       <span className="chk-detail-value">
-                        {row.unitOfMeasure || '—'}
+                        {row.unitOfMeasure || ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Số lượng</span>
                       <span className="chk-detail-value">
-                        {row.quantity != null ? fmtNum(row.quantity) : '—'}
+                        {row.quantity != null ? fmtNum(row.quantity) : ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -900,7 +727,9 @@ export default function DryPortAssetDetailContent({
                         Thời hạn khai thác
                       </span>
                       <span className="chk-detail-value">
-                        {fmtDate(row.exploitationDeadline)}
+                        {row.exploitationDeadline
+                          ? fmtDate(row.exploitationDeadline)
+                          : '—'}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -910,7 +739,7 @@ export default function DryPortAssetDetailContent({
                       <span className="chk-detail-value">
                         {(row.totalRevenue ?? row.doanhThu) != null
                           ? `${fmtNum(row.totalRevenue ?? row.doanhThu)} VNĐ`
-                          : '—'}
+                          : ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -920,7 +749,7 @@ export default function DryPortAssetDetailContent({
                       <span className="chk-detail-value">
                         {(row.relatedCosts ?? row.depreciation) != null
                           ? `${fmtNum(row.relatedCosts ?? row.depreciation)} VNĐ`
-                          : '—'}
+                          : ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -928,7 +757,7 @@ export default function DryPortAssetDetailContent({
                       <span className="chk-detail-value">
                         {row.stateBudgetPayment != null
                           ? `${fmtNum(row.stateBudgetPayment)} VNĐ`
-                          : '—'}
+                          : ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -938,19 +767,19 @@ export default function DryPortAssetDetailContent({
                       <span className="chk-detail-value">
                         {row.projectAmount != null
                           ? `${fmtNum(row.projectAmount)} VNĐ`
-                          : '—'}
+                          : ''}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Cán bộ cập nhật</span>
                       <span className="chk-detail-value">
-                        {row.createdByName || '—'}
+                        {row.createdByName || ''}
                       </span>
                     </div>
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Ghi chú</span>
                       <span className="chk-detail-value">
-                        {row.description || '—'}
+                        {row.description || ''}
                       </span>
                     </div>
                   </div>
@@ -962,21 +791,164 @@ export default function DryPortAssetDetailContent({
       },
       {
         key: 'adjustments',
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
         customContent: () => (
-          <div style={{ paddingTop: 6 }}>
-            <DetailTable<AdjustmentRowItem>
-              columns={adjustmentColumns}
-              dataSource={combinedAdjustments}
-              rowKey="id"
-              scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-              onRow={(record) => ({
-                onClick: () => setSelectedAdjustment(record),
-                style: { cursor: 'pointer' },
-              })}
-              emptyText="Chưa có lịch sử thay đổi nguyên giá nào."
-            />
+          <div
+            style={{
+              paddingTop: 6,
+              paddingRight: 4,
+              overflowY: 'auto',
+              maxHeight: 'calc(100vh - 190px)',
+              minHeight: 350,
+            }}
+          >
+            {combinedAdjustments.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '40px 0',
+                  color: textTertiary,
+                  fontSize: fontSizeMd,
+                }}
+              >
+                Chưa có lịch sử thay đổi nguyên giá nào.
+              </div>
+            ) : (
+              combinedAdjustments.map((row, index) => {
+                const details = row.adjustmentDetails;
+                return (
+                  <div key={row.id} style={sectionBoxStyle}>
+                    <div style={sectionHeaderStyle}>
+                      <div style={sectionTitleStyle}>
+                        {row.icon}
+                        <span>
+                          {row.changeType} — Lần {index + 1}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="chk-detail-grid">
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">Loại thay đổi</span>
+                        <span className="chk-detail-value">
+                          {row.changeType}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Số QĐ điều chỉnh
+                        </span>
+                        <span className="chk-detail-value">
+                          {String(
+                            details?.decisionNumber ||
+                              ('increaseCode' in row ? row.increaseCode : '') ||
+                              ('decreaseCode' in row ? row.decreaseCode : '') ||
+                              '—',
+                          )}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Ngày ra quyết định
+                        </span>
+                        <span className="chk-detail-value">
+                          {details?.decisionDate
+                            ? fmtDate(details.decisionDate)
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Ngày thay đổi nguyên giá
+                        </span>
+                        <span className="chk-detail-value">
+                          {details?.adjustmentDate
+                            ? fmtDate(details.adjustmentDate)
+                            : '—'}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Lý do điều chỉnh
+                        </span>
+                        <span className="chk-detail-value">
+                          {String(
+                            details?.adjustmentReason ||
+                              ('decreaseReason' in row
+                                ? row.decreaseReason
+                                : '') ||
+                              row.reason ||
+                              '—',
+                          )}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Nguyên giá trước điều chỉnh
+                        </span>
+                        <span className="chk-detail-value">
+                          {details?.originalValueBefore != null
+                            ? `${fmtNum(details.originalValueBefore as number)} VNĐ`
+                            : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Nguyên giá sau điều chỉnh
+                        </span>
+                        <span className="chk-detail-value">
+                          {details?.originalValueAfter != null
+                            ? `${fmtNum(details.originalValueAfter as number)} VNĐ`
+                            : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Giá trị còn lại trước
+                        </span>
+                        <span className="chk-detail-value">
+                          {details?.remainingValueBefore != null
+                            ? `${fmtNum(details.remainingValueBefore as number)} VNĐ`
+                            : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Giá trị còn lại sau
+                        </span>
+                        <span className="chk-detail-value">
+                          {details?.remainingValueAfter != null
+                            ? `${fmtNum(details.remainingValueAfter as number)} VNĐ`
+                            : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label">
+                          Cán bộ thực hiện
+                        </span>
+                        <span className="chk-detail-value">
+                          {row.createdByName || ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label">
+                          Ghi chú điều chỉnh
+                        </span>
+                        <span className="chk-detail-value">
+                          {String(
+                            details?.adjustmentNotes ||
+                              details?.notes ||
+                              row.reason ||
+                              '',
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         ),
       },
@@ -986,7 +958,7 @@ export default function DryPortAssetDetailContent({
         sections: [
           {
             key: 'approval_info',
-            title: '3. Thông tin phê duyệt',
+            title: 'Xử lý & theo dõi',
             icon: <AuditOutlined />,
             fields: [
               {
@@ -1022,29 +994,35 @@ export default function DryPortAssetDetailContent({
                 name: 'portAuthorityApprovedAt',
                 label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
                 type: ViewFieldType.DateTime,
+                value: (rec) => rec.portAuthorityApprovedAt || rec.approvedLevel1At,
               },
               {
                 name: 'portAuthorityApprovedByName',
                 label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                value: (rec) => rec.portAuthorityApprovedByName || rec.approvedLevel1ByName,
               },
               {
                 name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt Cảng vụ/Chi cục',
+                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
                 colSpan: 24,
+                value: (rec) => rec.portAuthorityApprovalContent || rec.approvalContentLevel1,
               },
               {
                 name: 'departmentApprovedAt',
                 label: 'Ngày phê duyệt cấp Cục',
                 type: ViewFieldType.DateTime,
+                value: (rec) => rec.departmentApprovedAt || rec.approvedLevel2At,
               },
               {
                 name: 'departmentApprovedByName',
                 label: 'Cán bộ phê duyệt cấp Cục',
+                value: (rec) => rec.departmentApprovedByName || rec.approvedLevel2ByName,
               },
               {
                 name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt Cục',
+                label: 'Nội dung phê duyệt cấp Cục',
                 colSpan: 24,
+                value: (rec) => rec.departmentApprovalContent || rec.approvalContentLevel2,
               },
               {
                 name: 'rejectionReason',
@@ -1069,328 +1047,18 @@ export default function DryPortAssetDetailContent({
     detailAttachments,
     exploitationRows,
     combinedAdjustments,
-    adjustmentColumns,
+    handleDownloadAttachment,
   ]);
 
-  const selectedDet = useMemo(() => {
-    if (!selectedAdjustment) return null;
-    return getAdjustmentDetailData(selectedAdjustment, r);
-  }, [selectedAdjustment, r]);
-
   return (
-    <>
-      <DynamicViewSidebar<DryPortAsset>
-        open={open}
-        onClose={onClose}
-        record={r}
-        title={`Chi tiết tài sản cảng cạn${r ? ` - ${r.assetName}` : ''}`}
-        tabs={viewTabs}
-        width={
-          typeof window !== 'undefined'
-            ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-            : 1000
-        }
-        rootClassName="berth-drawer-scope dry-port-drawer-scope"
-        className="berth-drawer-scope dry-port-drawer-scope"
-      />
-
-      <Modal
-        title={
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 16,
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-            }}
-          >
-            {selectedAdjustment?.icon}
-            <span>
-              Chi tiết thay đổi nguyên giá — {selectedAdjustment?.changeType}
-            </span>
-          </div>
-        }
-        open={Boolean(selectedAdjustment)}
-        onCancel={() => setSelectedAdjustment(null)}
-        footer={[
-          <Button
-            key="close"
-            type="primary"
-            style={{ borderRadius: radiusPill }}
-            onClick={() => setSelectedAdjustment(null)}
-          >
-            Đóng
-          </Button>,
-        ]}
-        width={850}
-        destroyOnHidden
-      >
-        {selectedAdjustment && selectedDet && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 16,
-              paddingTop: 8,
-              maxHeight: 'calc(80vh - 120px)',
-              overflowY: 'auto',
-            }}
-          >
-            {/* Box 1: Thông tin quyết định điều chỉnh */}
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <SlidersOutlined style={{ color: actionPrimary }} />
-                  <span>1. Thông tin quyết định điều chỉnh</span>
-                </div>
-              </div>
-              <div className="chk-detail-grid">
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Loại thay đổi</span>
-                  <span className="chk-detail-value">
-                    <span
-                      style={{
-                        padding: '2px 8px',
-                        borderRadius: radiusPill,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        background:
-                          selectedAdjustment.changeType === 'Tăng nguyên giá'
-                            ? '#1BAF7A15'
-                            : '#E3494815',
-                        color:
-                          selectedAdjustment.changeType === 'Tăng nguyên giá'
-                            ? '#1BAF7A'
-                            : '#E34948',
-                      }}
-                    >
-                      {selectedAdjustment.changeType}
-                    </span>
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Số QĐ tăng/giảm</span>
-                  <span className="chk-detail-value">
-                    {selectedDet.decisionNumber}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Ngày ra quyết định</span>
-                  <span className="chk-detail-value">
-                    {fmtDate(selectedDet.decisionDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Ngày tăng/giảm nguyên giá
-                  </span>
-                  <span className="chk-detail-value">
-                    {fmtDate(selectedDet.effectiveDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Lý do tăng/giảm nguyên giá
-                  </span>
-                  <span className="chk-detail-value">
-                    {selectedDet.reasonText}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Trạng thái</span>
-                  <span className="chk-detail-value">
-                    {selectedAdjustment.status}
-                  </span>
-                </div>
-                <div className="chk-detail-row chk-detail-row--full">
-                  <span className="chk-detail-label">Ghi chú (điều chỉnh)</span>
-                  <span className="chk-detail-value">
-                    {selectedDet.notesText}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Box 2: Giá trị nguyên giá & Giá trị còn lại trước/sau */}
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <AuditOutlined style={{ color: actionPrimary }} />
-                  <span>2. Biến động giá trị tài sản</span>
-                </div>
-              </div>
-              <div className="chk-detail-grid">
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Nguyên giá trước</span>
-                  <span className="chk-detail-value">
-                    {fmtNum(selectedDet.originalBefore)} VNĐ
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Nguyên giá sau</span>
-                  <span
-                    className="chk-detail-value"
-                    style={{ fontWeight: 600, color: actionPrimary }}
-                  >
-                    {fmtNum(selectedDet.originalAfter)} VNĐ
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Giá trị còn lại trước
-                  </span>
-                  <span className="chk-detail-value">
-                    {fmtNum(selectedDet.remainingBefore)} VNĐ
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Giá trị còn lại sau</span>
-                  <span
-                    className="chk-detail-value"
-                    style={{ fontWeight: 600, color: actionPrimary }}
-                  >
-                    {fmtNum(selectedDet.remainingAfter)} VNĐ
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Box 3: Thông tin chi tiết khấu hao sau thay đổi */}
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <SlidersOutlined style={{ color: actionPrimary }} />
-                  <span>3. Thông tin chi tiết khấu hao</span>
-                </div>
-              </div>
-              <div className="chk-detail-grid">
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Ngày kê khai tài sản</span>
-                  <span className="chk-detail-value">
-                    {fmtDate(selectedDet.declarationDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Tỷ lệ hao mòn/Khấu hao
-                  </span>
-                  <span className="chk-detail-value">
-                    {selectedDet.depreciationRate}%
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Ngày tính khấu hao</span>
-                  <span className="chk-detail-value">
-                    {fmtDate(selectedDet.depreciationStartDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Số tháng tính khấu hao
-                  </span>
-                  <span className="chk-detail-value">
-                    {selectedDet.depreciationMonths} tháng
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Ngày hết khấu hao</span>
-                  <span className="chk-detail-value">
-                    {fmtDate(selectedDet.depreciationEndDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Khấu hao lũy kế</span>
-                  <span className="chk-detail-value">
-                    {fmtNum(selectedDet.accumulatedDepreciation)} VNĐ
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Khấu hao tháng</span>
-                  <span className="chk-detail-value">
-                    {fmtNum(selectedDet.monthlyDepreciation)} VNĐ
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Hình thức xử lý tài sản
-                  </span>
-                  <span className="chk-detail-value">
-                    {selectedDet.disposalMethod}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Box 4: Thông tin phê duyệt thay đổi nguyên giá */}
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <AuditOutlined style={{ color: actionPrimary }} />
-                  <span>4. Thông tin phê duyệt điều chỉnh</span>
-                </div>
-              </div>
-              <div className="chk-detail-grid">
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Ngày gửi phê duyệt</span>
-                  <span className="chk-detail-value">
-                    {fmtDateTime(selectedDet.submittedDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Cán bộ gửi</span>
-                  <span className="chk-detail-value">
-                    {selectedDet.submittedBy}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Ngày phê duyệt Cảng vụ/Chi cục
-                  </span>
-                  <span className="chk-detail-value">
-                    {fmtDateTime(selectedDet.approvedPortDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">
-                    Cán bộ phê duyệt Cảng vụ/Chi cục
-                  </span>
-                  <span className="chk-detail-value">
-                    {selectedDet.approvedPortBy}
-                  </span>
-                </div>
-                <div className="chk-detail-row chk-detail-row--full">
-                  <span className="chk-detail-label">
-                    Nội dung duyệt Cảng vụ/Chi cục
-                  </span>
-                  <span className="chk-detail-value">
-                    {selectedDet.approvedPortContent}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Ngày phê duyệt Cục</span>
-                  <span className="chk-detail-value">
-                    {fmtDateTime(selectedDet.approvedDeptDate)}
-                  </span>
-                </div>
-                <div className="chk-detail-row">
-                  <span className="chk-detail-label">Cán bộ phê duyệt Cục</span>
-                  <span className="chk-detail-value">
-                    {selectedDet.approvedDeptBy}
-                  </span>
-                </div>
-                <div className="chk-detail-row chk-detail-row--full">
-                  <span className="chk-detail-label">Nội dung duyệt Cục</span>
-                  <span className="chk-detail-value">
-                    {selectedDet.approvedDeptContent}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
-    </>
+    <DynamicViewSidebar<DryPortAsset>
+      open={open}
+      onClose={onClose}
+      record={r}
+      title={`Chi tiết tài sản cảng cạn${r ? ` - ${r.assetName}` : ''}`}
+      tabs={viewTabs}
+      rootClassName="berth-drawer-scope dryport-drawer-scope"
+      className="berth-drawer-scope dryport-drawer-scope"
+    />
   );
 }

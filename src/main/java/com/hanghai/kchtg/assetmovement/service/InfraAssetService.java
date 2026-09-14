@@ -1,19 +1,22 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
-import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
-import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
-import com.hanghai.kchtg.assetmovement.entity.InfraAsset;
-import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
-import com.hanghai.kchtg.assetmovement.repository.InfraAssetRepository;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.port.repository.AttachmentRepository;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.criteria.Predicate;
-import lombok.RequiredArgsConstructor;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -23,27 +26,67 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
+import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
+import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
+import com.hanghai.kchtg.assetmovement.entity.InfraAsset;
+import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
+import com.hanghai.kchtg.assetmovement.repository.InfraAssetRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class InfraAssetService {
     private final InfraAssetRepository repository;
     private final UserResolverService userResolverService;
     private final AttachmentRepository attachmentRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
+    private final ChangeHistoryService changeHistoryService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
+
+    public InfraAssetService(
+            InfraAssetRepository repository,
+            UserResolverService userResolverService,
+            AttachmentRepository attachmentRepository,
+            InfrastructureHistoryRepository historyRepository,
+            UserRepository userRepository) {
+        this(repository, userResolverService, attachmentRepository, historyRepository, userRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public InfraAssetService(
+            InfraAssetRepository repository,
+            UserResolverService userResolverService,
+            AttachmentRepository attachmentRepository,
+            InfrastructureHistoryRepository historyRepository,
+            UserRepository userRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) ChangeHistoryService changeHistoryService) {
+        this.repository = repository;
+        this.userResolverService = userResolverService;
+        this.attachmentRepository = attachmentRepository;
+        this.historyRepository = historyRepository;
+        this.userRepository = userRepository;
+        this.changeHistoryService = changeHistoryService;
+    }
 
     @Transactional
     public InfraAssetResponse create(InfraAssetRequest request) {
@@ -187,19 +230,222 @@ public class InfraAssetService {
     @Transactional
     public InfraAssetResponse update(UUID id, InfraAssetRequest request) {
         InfraAsset entity = requireAsset(id);
+        ApprovalStatus previousStatus = entity.getApprovalStatus();
+        boolean wasApproved = previousStatus == ApprovalStatus.APPROVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL2;
+
+        InfraAsset snapshot = new InfraAsset();
+        BeanUtils.copyProperties(entity, snapshot);
+
         String assetCode = entity.getAssetCode();
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy()
+                    : (entity.getCreatedBy() != null ? entity.getCreatedBy() : UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        }
+        LocalDateTime now = LocalDateTime.now();
+        InfrastructureType refType = mapAssetTypeToInfrastructureType(entity.getAssetType());
+
+        // Track changes in "Thông tin chung"
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "parentOrgUnitId", entity.getParentOrgUnitId(), request.getParentOrgUnitId());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "usingOrgUnitId", entity.getUsingOrgUnitId(), request.getUsingOrgUnitId());
+
+        // Station references (chọn đúng trường theo assetType, tránh nhân đôi)
+        if (entity.getAssetType() == InfraAssetType.LRIT_STATION) {
+            UUID oldStation = entity.getLritStationId() != null ? entity.getLritStationId() : entity.getStationId();
+            UUID newStation = request.getLritStationId() != null ? request.getLritStationId() : request.getStationId();
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "lritStationId", oldStation, newStation);
+        } else if (entity.getAssetType() == InfraAssetType.TTDH_STATION) {
+            UUID oldStation = entity.getTtdhStationId() != null ? entity.getTtdhStationId() : entity.getStationId();
+            UUID newStation = request.getTtdhStationId() != null ? request.getTtdhStationId() : request.getStationId();
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "ttdhStationId", oldStation, newStation);
+        } else if (entity.getAssetType() == InfraAssetType.INMARSAT_STATION) {
+            UUID oldStation = entity.getInmarsatStationId() != null ? entity.getInmarsatStationId() : entity.getStationId();
+            UUID newStation = request.getInmarsatStationId() != null ? request.getInmarsatStationId() : request.getStationId();
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "inmarsatStationId", oldStation, newStation);
+        } else if (entity.getAssetType() == InfraAssetType.COSPAS_SARSAT_STATION) {
+            UUID oldStation = entity.getCospasSarsatStationId() != null ? entity.getCospasSarsatStationId() : entity.getStationId();
+            UUID newStation = request.getCospasSarsatStationId() != null ? request.getCospasSarsatStationId() : request.getStationId();
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "cospasSarsatStationId", oldStation, newStation);
+        } else if (entity.getAssetType() == InfraAssetType.TTXLTT_STATION) {
+            UUID oldStation = entity.getTtxlttStationId() != null ? entity.getTtxlttStationId() : entity.getStationId();
+            UUID newStation = request.getTtxlttStationId() != null ? request.getTtxlttStationId() : request.getStationId();
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "ttxlttStationId", oldStation, newStation);
+        } else if (entity.getAssetType() == InfraAssetType.DRY_PORT) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "dryPortId", entity.getDryPortId(), request.getDryPortId());
+        } else {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "stationId", entity.getStationId(), request.getStationId());
+        }
+
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "assetName", entity.getAssetName(), request.getAssetName());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "barcode", entity.getBarcode(), request.getBarcode());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "assetCondition", entity.getAssetCondition(), request.getAssetCondition());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "usageStatus", entity.getUsageStatus(), request.getUsageStatus());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "assetGroup", entity.getAssetGroup(), request.getAssetGroup());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "assetSubgroup", entity.getAssetSubgroup(), request.getAssetSubgroup());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "origin", entity.getOrigin(), request.getOrigin());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "quantity", entity.getQuantity(), request.getQuantity());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "quantityUnit", entity.getQuantityUnit(), request.getQuantityUnit());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "model", entity.getModel(), request.getModel());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "serialNumber", entity.getSerialNumber(), request.getSerialNumber());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "countryOfOrigin", entity.getCountryOfOrigin(), request.getCountryOfOrigin());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "manufacturer", entity.getManufacturer(), request.getManufacturer());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "constructionYear", entity.getConstructionYear(), request.getConstructionYear());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "useDate", entity.getUseDate(), request.getUseDate());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "landArea", entity.getLandArea(), request.getLandArea());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "floorArea", entity.getFloorArea(), request.getFloorArea());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "assetLocation", entity.getAssetLocation(), request.getAssetLocation());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "address", entity.getAddress(), request.getAddress());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "location", entity.getLocation(), request.getLocation());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "technicalSpecs", entity.getTechnicalSpecs(), request.getTechnicalSpecs());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "fundingSource", entity.getFundingSource(), request.getFundingSource());
+
+        // Details tab & Financial fields
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "declarationDate", entity.getDeclarationDate(), request.getDeclarationDate());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "originalValue", entity.getOriginalValue(), request.getOriginalValue());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "depreciationRate", entity.getDepreciationRate(), request.getDepreciationRate());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "assignmentDecisionNumber", entity.getAssignmentDecisionNumber(), request.getAssignmentDecisionNumber());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "depreciationStartDate", entity.getDepreciationStartDate(), request.getDepreciationStartDate());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "depreciationMonths", entity.getDepreciationMonths(), request.getDepreciationMonths());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "depreciationEndDate", entity.getDepreciationEndDate(), request.getDepreciationEndDate());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "accumulatedDepreciation", entity.getAccumulatedDepreciation(), request.getAccumulatedDepreciation());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "monthlyDepreciation", entity.getMonthlyDepreciation(), request.getMonthlyDepreciation());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "disposalMethod", entity.getDisposalMethod(), request.getDisposalMethod());
+
+        // Approval & Status
+        String oldApproval = entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : null;
+        String newApproval = request.getApprovalStatus();
+        if (newApproval != null && !newApproval.isBlank()) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "approvalStatus", oldApproval, newApproval);
+        }
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "portAuthorityApprovalContent", entity.getPortAuthorityApprovalContent(), request.getPortAuthorityApprovalContent());
+        recordFieldChangeIfDifferent(id, refType, currentUserId, now, "departmentApprovalContent", entity.getDepartmentApprovalContent(), request.getDepartmentApprovalContent());
+
         copyEditableFields(request, entity);
         entity.setAssetCode(assetCode);
         if (entity.getTypes() == null && entity.getAssetType() != null) {
             entity.setTypes(entity.getAssetType().name());
         }
         calculateValues(entity);
-        return toResponse(repository.save(entity));
+        InfraAsset saved = repository.save(entity);
+
+        if (wasApproved && changeHistoryService != null) {
+            UUID operatorId = SecurityUtils.getCurrentUserId();
+            String actorId = operatorId != null ? operatorId.toString() : "system";
+            changeHistoryService.recordChanges("InfraAsset", saved.getId().toString(), actorId, snapshot, saved);
+        }
+
+        return toResponse(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
-        repository.delete(requireAsset(id));
+        InfraAsset entity = requireAsset(id);
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy()
+                    : (entity.getCreatedBy() != null ? entity.getCreatedBy() : UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        }
+        String oldStatus = entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : "Lưu tạm";
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
+        repository.save(entity);
+
+        InfrastructureType refType = mapAssetTypeToInfrastructureType(entity.getAssetType());
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(refType)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.DELETED)
+                .approvedBy(currentUserId)
+                .approvedDate(LocalDateTime.now())
+                .changedField("approvalStatus")
+                .previousValue(oldStatus)
+                .newValue("Đã xóa")
+                .build());
+    }
+
+    private boolean areValuesEqual(Object oldVal, Object newVal) {
+        if (oldVal == null && newVal == null) return true;
+        if (oldVal == null || newVal == null) {
+            String sOld = oldVal != null ? String.valueOf(oldVal).trim() : "";
+            String sNew = newVal != null ? String.valueOf(newVal).trim() : "";
+            return sOld.isEmpty() && sNew.isEmpty();
+        }
+
+        if (oldVal instanceof BigDecimal || newVal instanceof BigDecimal ||
+            oldVal instanceof Number || newVal instanceof Number) {
+            try {
+                BigDecimal bdOld = new BigDecimal(String.valueOf(oldVal).trim());
+                BigDecimal bdNew = new BigDecimal(String.valueOf(newVal).trim());
+                return bdOld.compareTo(bdNew) == 0;
+            } catch (Exception ignored) {
+            }
+        }
+
+        String sOld = String.valueOf(oldVal).trim();
+        String sNew = String.valueOf(newVal).trim();
+        return Objects.equals(sOld, sNew);
+    }
+
+    private String formatValueForHistory(Object val) {
+        if (val == null) return "";
+        if (val instanceof BigDecimal bd) {
+            return bd.stripTrailingZeros().toPlainString();
+        }
+        return String.valueOf(val).trim();
+    }
+
+    private void recordFieldChangeIfDifferent(
+            UUID assetId,
+            InfrastructureType refType,
+            UUID userId,
+            LocalDateTime now,
+            String fieldName,
+            Object oldVal,
+            Object newVal) {
+        if (areValuesEqual(oldVal, newVal)) {
+            return;
+        }
+
+        String oldStr = formatValueForHistory(oldVal);
+        String newStr = formatValueForHistory(newVal);
+
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(assetId)
+                .refType(refType)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.UPDATED)
+                .approvedBy(userId)
+                .approvedDate(now)
+                .changedField(fieldName)
+                .previousValue(oldStr)
+                .newValue(newStr)
+                .build());
+    }
+
+    private InfrastructureType mapAssetTypeToInfrastructureType(InfraAssetType assetType) {
+        if (assetType == null) return InfrastructureType.LRIT_STATION;
+        return switch (assetType) {
+            case LRIT_STATION -> InfrastructureType.LRIT_STATION;
+            case TTDH_STATION -> InfrastructureType.DAI_TTDH;
+            case INMARSAT_STATION -> InfrastructureType.INMARSAT_STATION;
+            case COSPAS_SARSAT_STATION -> InfrastructureType.COSPAS_SARSAT_STATION;
+            case TTXLTT_STATION -> InfrastructureType.HANOI_STATION;
+            case DRY_PORT -> InfrastructureType.DRY_PORT;
+            case TRANSFER_AREA -> InfrastructureType.TRANSSHIPMENT_AREA;
+            case STORM_SHELTER -> InfrastructureType.STORM_SHELTER_AREA;
+            case BUOY_BERTH -> InfrastructureType.BUOY_BERTH;
+            case PIER -> InfrastructureType.PIER;
+            case ANCHORAGE -> InfrastructureType.ANCHORAGE_AREA;
+            case LIGHTHOUSE -> InfrastructureType.LIGHTHOUSE;
+            case NAVIGATION_CHANNEL -> InfrastructureType.NAVIGATION_CHANNEL;
+            case DIKE_REVETMENT -> InfrastructureType.DIKE_REVETMENT;
+            case RADAR_STATION -> InfrastructureType.RADAR_STATION;
+            case BUOY -> InfrastructureType.BUOY;
+            default -> InfrastructureType.PORT_TERMINAL;
+        };
     }
 
     public long countByStatus(String status) {
@@ -216,7 +462,11 @@ public class InfraAssetService {
                 && repository.findByAssetCode(requestedCode.trim()).isEmpty()) {
             return requestedCode.trim();
         }
+        if (assetType == null) {
+            throw new IllegalArgumentException("Loại tài sản không được để trống khi sinh mã");
+        }
         String prefix = switch (assetType) {
+            case PORT_TERMINAL -> "TS-BC-";
             case LRIT_STATION -> "TS-LRIT-";
             case TTDH_STATION -> "TS-TTDH-";
             case INMARSAT_STATION -> "TS-INMARSAT-";
@@ -234,7 +484,6 @@ public class InfraAssetService {
             case DIKE_REVETMENT -> "TS-DK-";
             case RADAR_STATION -> "TS-RD-";
             case AUXILIARY_EQUIPMENT -> "TS-TBPT-";
-            default -> "TS-BC-";
         };
         String code;
         do {
@@ -245,7 +494,10 @@ public class InfraAssetService {
 
     private void copyEditableFields(InfraAssetRequest source, InfraAsset target) {
         BeanUtils.copyProperties(source, target, "assetCode", "status", "approvalStatus",
-                "remainingValue", "createdAt", "createdBy", "updatedAt", "updatedBy");
+                "remainingValue", "createdAt", "createdBy", "updatedAt", "updatedBy",
+                "submittedBy", "submittedAt", "portAuthorityApprovedBy", "portAuthorityApprovedAt",
+                "portAuthorityApprovalContent", "departmentApprovedBy", "departmentApprovedAt",
+                "departmentApprovalContent", "approvedBy", "approvedAt", "approvedRemarks");
         if (source.getStatus() != null && !source.getStatus().isBlank()) {
             try {
                 target.setStatus(AssetStatus.valueOf(source.getStatus()));
@@ -333,6 +585,7 @@ public class InfraAssetService {
     public List<InfraAssetAttachmentResponse> uploadAttachments(UUID assetId, List<MultipartFile> files, UUID userId) {
         InfraAsset asset = requireAsset(assetId);
         Path basePath = Paths.get(attachmentPath).toAbsolutePath().normalize();
+        String oldNames = asset.getAttachmentName();
 
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -365,6 +618,9 @@ public class InfraAssetService {
         asset.setAttachmentName(mergedNames);
         repository.save(asset);
 
+        InfrastructureType refType = mapAssetTypeToInfrastructureType(asset.getAssetType());
+        recordFieldChangeIfDifferent(assetId, refType, userId, LocalDateTime.now(), "attachments", oldNames, mergedNames);
+
         return allAttachments.stream().map(this::toAttachmentResponse).collect(Collectors.toList());
     }
 
@@ -390,6 +646,7 @@ public class InfraAssetService {
         if (!attachment.getEntityId().equals(assetId)) {
             throw new IllegalArgumentException("File không thuộc tài sản này");
         }
+        String oldNames = asset.getAttachmentName();
         try {
             Files.deleteIfExists(Paths.get(attachment.getFilePath()));
         } catch (Exception ignored) {
@@ -402,6 +659,9 @@ public class InfraAssetService {
                 .collect(Collectors.joining(", "));
         asset.setAttachmentName(mergedNames);
         repository.save(asset);
+
+        InfrastructureType refType = mapAssetTypeToInfrastructureType(asset.getAssetType());
+        recordFieldChangeIfDifferent(assetId, refType, userId, LocalDateTime.now(), "attachments", oldNames, mergedNames);
     }
 
     private InfraAssetAttachmentResponse toAttachmentResponse(Attachment entity) {
@@ -417,5 +677,66 @@ public class InfraAssetService {
                 .uploadedByName(userResolverService.resolveName(entity.getUploadedBy()))
                 .uploadedAt(entity.getUploadedAt())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getHistory(UUID id) {
+        InfraAsset entity = requireAsset(id);
+        String entityId = id.toString();
+        String entityType = entity.getAssetType() != null ? entity.getAssetType().name() : "InfraAsset";
+
+        List<InfrastructureHistory> list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
+                                (a, b) -> a));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("fieldName", h.getChangedField());
+                    m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    m.put("orgUnitId", entity.getOrgUnitId());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("decision", h.getStatus().name());
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("orgUnitId", entity.getOrgUnitId());
+                    return m;
+                })
+                .toList();
+
+        return Map.of(
+                "entityId", entityId,
+                "entityType", entityType,
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
+                "changeHistory", changeHistory,
+                "approvalLog", approvalLog,
+                "histories", list
+        );
     }
 }

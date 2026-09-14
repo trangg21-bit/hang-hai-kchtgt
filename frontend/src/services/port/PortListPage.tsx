@@ -993,7 +993,7 @@ export default function PortListPage() {
   // DMS ↔ DD conversion helpers
   const ddToDms = (dd: number): { d: number | null; m: number | null; s: number | null } => {
     if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-    let abs = Math.abs(dd);
+    const abs = Math.abs(dd);
     let d = Math.floor(abs);
     let mFloat = (abs - d) * 60;
     if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
@@ -1119,7 +1119,7 @@ export default function PortListPage() {
       }
       return true;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [historyRecords, historyFilters, orgMap, symbolMap]);
   const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
 

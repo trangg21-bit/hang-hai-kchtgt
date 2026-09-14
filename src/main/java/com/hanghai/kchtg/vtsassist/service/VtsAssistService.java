@@ -475,7 +475,7 @@ public class VtsAssistService {
               .status(InfrastructureHistoryStatus.UPDATED)
               .approvedBy(currentUserId)
               .approvedDate(now)
-              .changedField(field)
+              .changedField(fieldName)
               .previousValue(formatDisplayValue(field, oldVal))
               .newValue(formatDisplayValue(field, newVal))
               .build());

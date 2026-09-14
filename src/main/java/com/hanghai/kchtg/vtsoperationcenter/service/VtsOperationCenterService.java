@@ -18,7 +18,6 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -86,16 +85,6 @@ public class VtsOperationCenterService {
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
-
-    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
-        if (geomType == null || geomType == GisGeometryType.POINT) {
-            return GisSpatialObjectType.POINT_OTHER;
-        }
-        if (geomType == GisGeometryType.POLYGON) {
-            return GisSpatialObjectType.POLYGON_OTHER;
-        }
-        return GisSpatialObjectType.LINE_OTHER;
-    }
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
@@ -347,7 +336,7 @@ public class VtsOperationCenterService {
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
                         .approvedDate(now)
-                        .changedField(field)
+                        .changedField(fieldName)
                         .previousValue(oldVal)
                         .newValue(newVal)
                         .build());

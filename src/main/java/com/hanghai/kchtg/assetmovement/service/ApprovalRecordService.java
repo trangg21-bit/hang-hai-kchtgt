@@ -14,8 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -112,11 +110,6 @@ public class ApprovalRecordService {
         if (request.getResult() == null || request.getResult().isBlank()) {
             throw new IllegalArgumentException("result không được để trống");
         }
-    }
-
-    private LocalDateTime toLocalDateTime(Instant instant) {
-        if (instant == null) return null;
-        return instant.atZone(ZoneId.systemDefault()).toLocalDateTime();
     }
 
     private ApprovalRecordResponse toResponse(ApprovalRecord entity) {

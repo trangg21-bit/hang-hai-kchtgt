@@ -22,14 +22,12 @@ public class RegisterConfigController {
     private static final Logger log = LoggerFactory.getLogger(RegisterConfigController.class);
 
     private final PasswordPolicyValidator passwordPolicyValidator;
-    private final RateLimiterService rateLimiterService;
     private final ClientEncryptionService clientEncryptionService;
 
     public RegisterConfigController(PasswordPolicyValidator passwordPolicyValidator,
                                      RateLimiterService rateLimiterService,
                                      ClientEncryptionService clientEncryptionService) {
         this.passwordPolicyValidator = passwordPolicyValidator;
-        this.rateLimiterService = rateLimiterService;
         this.clientEncryptionService = clientEncryptionService;
     }
 

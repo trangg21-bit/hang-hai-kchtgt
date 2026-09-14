@@ -32,12 +32,9 @@ import com.hanghai.kchtg.port.repository.BuoyBerthRepository;
 import com.hanghai.kchtg.port.repository.MooringWaterAreaAnchorPointRepository;
 import com.hanghai.kchtg.port.repository.MooringWaterAreaRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.service.PortCacheService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,13 +62,11 @@ public class AnchorageService {
 
     private final AnchorageRepository anchorageRepository;
     private final PortRepository portRepository;
-    private final UserResolverService userResolverService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final AttachmentRepository attachmentRepository;
     private final BuoyBerthRepository buoyBerthRepository;
-    private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final MooringWaterAreaRepository mooringWaterAreaRepository;
     private final MooringWaterAreaAnchorPointRepository mooringWaterAreaAnchorPointRepository;
@@ -954,8 +949,4 @@ public class AnchorageService {
         }
     }
 
-    private void recordAnchorageAttachmentHistory(UUID anchorageId, String oldFilesSummary, String newFilesSummary,
-                                                  String affectedFileName, InfrastructureHistoryStatus status) {
-        recordAnchorageAttachmentHistory(anchorageId, oldFilesSummary, newFilesSummary, affectedFileName, status, null);
-    }
 }

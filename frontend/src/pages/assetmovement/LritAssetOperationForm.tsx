@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { RocketOutlined, AuditOutlined, SlidersOutlined } from '@ant-design/icons';
+import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { LritAsset } from '../../services/assetmovement/types';
 import { fmtInputNumber } from '../../utils/numFmt';
@@ -38,6 +38,7 @@ export interface OperationValues {
   depreciationEndDate?: Dayjs;
   accumulatedDepreciation?: number;
   disposalMethod?: string;
+  [key: string]: unknown;
 }
 
 const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
@@ -57,17 +58,19 @@ export interface LritAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  drawerClassName?: string;
   onClose: () => void;
   onSubmit: () => Promise<void> | void;
 }
 
-export default function LritAssetOperationForm({
+export function LritAssetOperationForm({
   open,
   operationMode,
   selected,
   organizations,
   form,
   saving,
+  drawerClassName = 'berth-drawer-scope',
   onClose,
   onSubmit,
 }: LritAssetOperationFormProps) {
@@ -77,8 +80,8 @@ export default function LritAssetOperationForm({
       operationMode === 'exploit'
         ? 'Khai thác tài sản'
         : operationMode === 'increase'
-        ? 'Tăng nguyên giá tài sản'
-        : 'Giảm nguyên giá tài sản';
+          ? 'Tăng nguyên giá tài sản'
+          : 'Giảm nguyên giá tài sản';
     return `${actionText} — ${selected.assetName || ''}`;
   }, [operationMode, selected]);
 
@@ -101,11 +104,11 @@ export default function LritAssetOperationForm({
               rules: [{ required: true, message: 'Đơn vị khai thác là bắt buộc' }],
             },
             {
-              name: 'assetCategory' as keyof OperationValues,
+              name: 'assetCategory',
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
               initialValue: selected.assetName,
-              valueFormatter: () => selected.assetName || '—',
+              valueFormatter: () => selected.assetName || '',
             },
             {
               name: 'unitOfMeasure',
@@ -126,11 +129,13 @@ export default function LritAssetOperationForm({
               name: 'exploitationDeadline',
               label: 'Thời hạn khai thác',
               type: FormFieldType.Date,
+              required: true,
               placeholder: 'Chọn thời hạn',
+              rules: [{ required: true, message: 'Thời hạn khai thác là bắt buộc' }],
             },
             {
               name: 'totalRevenue',
-              label: 'Doanh thu (VNĐ)',
+              label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
               formatter: fmtInputNumber,
@@ -138,7 +143,7 @@ export default function LritAssetOperationForm({
             },
             {
               name: 'relatedCosts',
-              label: 'Chi phí (VNĐ)',
+              label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
               formatter: fmtInputNumber,
@@ -154,7 +159,7 @@ export default function LritAssetOperationForm({
             },
             {
               name: 'projectAmount',
-              label: 'Kinh phí dự án (VNĐ)',
+              label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
               formatter: fmtInputNumber,
@@ -228,17 +233,36 @@ export default function LritAssetOperationForm({
             label: 'Nguyên giá trước điều chỉnh',
             type: FormFieldType.Readonly,
             valueFormatter: () =>
-              selected.originalValue != null ? `${fmtInputNumber(selected.originalValue)} VNĐ` : '—',
+              selected.originalValue != null ? `${fmtInputNumber(selected.originalValue)} VNĐ` : '',
           },
           {
             name: 'originalValue',
-            label: `Nguyên giá ${actionLabel} (VNĐ)`,
+            label: 'Nguyên giá sau điều chỉnh (VNĐ)',
             type: FormFieldType.Number,
             required: true,
             min: 0,
             formatter: fmtInputNumber,
             placeholder: '0',
-            rules: [{ required: true, message: `Nguyên giá ${actionLabel} là bắt buộc` }],
+            rules: [{ required: true, message: 'Nguyên giá sau điều chỉnh là bắt buộc' }],
+          },
+          {
+            name: 'remainingValueBefore' as keyof OperationValues,
+            label: 'Giá trị còn lại trước',
+            type: FormFieldType.Readonly,
+            valueFormatter: () =>
+              selected.remainingValue != null ? `${fmtInputNumber(selected.remainingValue)} VNĐ` : '',
+          },
+          {
+            name: 'remainingValueAfter' as keyof OperationValues,
+            label: 'Giá trị còn lại sau',
+            type: FormFieldType.Readonly,
+            computedValue: (_f, vals) => {
+              const orig = Number(vals.originalValue);
+              if (isNaN(orig) || vals.originalValue == null) return undefined;
+              const acc = Number(vals.accumulatedDepreciation) || 0;
+              return Math.max(0, orig - acc);
+            },
+            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : ''),
           },
           {
             name: 'declarationDate',
@@ -281,11 +305,25 @@ export default function LritAssetOperationForm({
           },
           {
             name: 'accumulatedDepreciation',
-            label: 'Khấu hao lũy kế (VNĐ)',
+            label: 'Khấu hao lũy kế',
             type: FormFieldType.Number,
             min: 0,
             formatter: fmtInputNumber,
             placeholder: '0',
+          },
+          {
+            name: 'monthlyDepreciation',
+            label: 'Khấu hao tháng',
+            type: FormFieldType.Readonly,
+            computedValue: (_f, vals) => {
+              const orig = Number(vals.originalValue);
+              const months = Number(vals.depreciationMonths);
+              if (!isNaN(orig) && orig > 0 && !isNaN(months) && months > 0) {
+                return Math.round((orig / months) * 100) / 100;
+              }
+              return undefined;
+            },
+            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : ''),
           },
           {
             name: 'notes',
@@ -303,43 +341,32 @@ export default function LritAssetOperationForm({
   const tabs = useMemo<FormTabConfig<OperationValues>[]>(() => {
     if (!sections || sections.length === 0) return [];
     const tabIcon =
-      operationMode === 'exploit' ? <RocketOutlined /> : <SlidersOutlined />;
-    const tabLabel =
-      operationMode === 'exploit'
-        ? 'Khai thác tài sản'
-        : operationMode === 'increase'
-        ? 'Tăng nguyên giá'
-        : 'Giảm nguyên giá';
+      operationMode === 'exploit' ? <RocketOutlined /> : <AuditOutlined />;
     return [
       {
         key: 'general',
-        label: tabLabel,
+        label: 'Thông tin chung',
         icon: tabIcon,
         sections,
       },
     ];
   }, [sections, operationMode]);
 
-  const footerActions: FormSidebarAction[] = useMemo(
-    () => [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        disabled: saving,
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label: 'Lưu thông tin',
-        variant: 'primary',
-        loading: saving,
-        disabled: saving,
-        onClick: () => void onSubmit(),
-      },
-    ],
-    [saving, onClose, onSubmit],
-  );
+  const footerActions = useMemo<FormSidebarAction[]>(() => [
+    {
+      key: 'cancel',
+      label: 'Hủy',
+      variant: 'outline',
+      onClick: onClose,
+    },
+    {
+      key: 'submit',
+      label: 'Lưu thông tin',
+      variant: 'primary',
+      loading: saving,
+      onClick: onSubmit,
+    },
+  ], [onClose, onSubmit, saving]);
 
   if (!operationMode || !selected) return null;
 
@@ -349,15 +376,13 @@ export default function LritAssetOperationForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
-      rootClassName="lrit-drawer-scope"
-      className="lrit-drawer-scope"
+      rootClassName={`berth-drawer-scope ${drawerClassName}`}
+      className={`berth-drawer-scope ${drawerClassName}`}
       tabs={tabs}
       footerActions={footerActions}
+      footerAlign="center"
     />
   );
 }
+
+export default LritAssetOperationForm;

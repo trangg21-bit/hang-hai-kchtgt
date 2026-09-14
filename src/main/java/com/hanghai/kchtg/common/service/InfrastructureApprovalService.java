@@ -53,7 +53,6 @@ public class InfrastructureApprovalService {
 
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus == null) {
-            currentStatus = ApprovalStatus.DRAFT;
         }
 
         // Chỉ được submit từ DRAFT, PROPOSED hoặc các trạng thái bị từ chối
@@ -324,7 +323,6 @@ public class InfrastructureApprovalService {
 
         assertDeletable(entity);
         assertDeletableBy(entity, userId);
-
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
 
         // Lịch sử chỉ ghi khi phê duyệt cấp cuối — không ghi xóa nháp.

@@ -33,11 +33,9 @@ import com.hanghai.kchtg.port.repository.StormShelterMooringWaterAreaAnchorPoint
 import com.hanghai.kchtg.port.repository.StormShelterMooringWaterAreaRepository;
 import com.hanghai.kchtg.port.repository.StormShelterAreaRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,13 +65,11 @@ public class StormShelterAreaService {
 
     private final StormShelterAreaRepository stormShelterAreaRepository;
     private final PortRepository portRepository;
-    private final UserResolverService userResolverService;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OrgUnitScopeService orgUnitScopeService;
     private final PortCacheService portCacheService;
     private final AttachmentRepository attachmentRepository;
     private final BuoyBerthRepository buoyBerthRepository;
-    private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final StormShelterMooringWaterAreaRepository stormShelterMooringWaterAreaRepository;
     private final StormShelterMooringWaterAreaAnchorPointRepository stormShelterMooringWaterAreaAnchorPointRepository;
@@ -599,11 +595,6 @@ public class StormShelterAreaService {
             log.warn("[StormShelterAreaService] Không ghi được lịch sử file đính kèm (stormShelterAreaId={}): {}",
                     stormShelterAreaId, e.getMessage());
         }
-    }
-
-    private void recordStormShelterAttachmentHistory(UUID stormShelterAreaId, String oldFilesSummary, String newFilesSummary,
-                                                     String affectedFileName, InfrastructureHistoryStatus status) {
-        recordStormShelterAttachmentHistory(stormShelterAreaId, oldFilesSummary, newFilesSummary, affectedFileName, status, null);
     }
 
     /** Nhãn hiển thị loại hình GIS theo chuẩn VTS CHK (dùng cho lịch sử thay đổi). */

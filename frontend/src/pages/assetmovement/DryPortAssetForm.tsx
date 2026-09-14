@@ -3,9 +3,8 @@ import { Form, InputNumber, Select } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import {
-  CompassOutlined,
+  BankOutlined,
   SlidersOutlined,
-  AuditOutlined,
 } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type {
@@ -15,7 +14,7 @@ import type {
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
-import { fmtInputNumber, fmtNum } from '../../utils/numFmt';
+import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -26,9 +25,6 @@ import {
   radiusPill,
   spaceSm,
   spaceFormField,
-  statusOperational,
-  statusDraft,
-  textSecondary,
 } from '../../themetokenchk';
 import {
   DynamicFormSidebar,
@@ -46,23 +42,13 @@ export type DryPortFormValues = Omit<
   | 'depreciationStartDate'
   | 'depreciationEndDate'
 > & {
+  assetType?: DryPortAssetPayload['assetType'];
   constructionYear?: Dayjs;
   useDate?: Dayjs;
   declarationDate?: Dayjs;
   depreciationStartDate?: Dayjs;
   depreciationEndDate?: Dayjs;
   attachmentName?: string;
-  // Khai thác tài sản (TAB 4)
-  operatorOrgUnitId?: string;
-  assetCategory?: string;
-  unitOfMeasure?: string;
-  exploitationQuantity?: number;
-  exploitationDeadline?: Dayjs;
-  totalRevenue?: number;
-  relatedCosts?: number;
-  stateBudgetPayment?: number;
-  projectAmount?: number;
-  description?: string;
 };
 
 const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
@@ -111,10 +97,6 @@ export default function DryPortAssetForm({
   organizations,
   dryPorts,
   attachments,
-  exploitationRows = [],
-  increaseRows = [],
-  decreaseRows = [],
-  orgName,
   saving,
   saveAction,
   onClose,
@@ -123,6 +105,9 @@ export default function DryPortAssetForm({
   onDeleteAttachment,
   onDownloadAttachment,
 }: DryPortAssetFormProps) {
+  const effectiveDrawerMode = drawerMode || (selected ? 'edit' : 'create');
+  const effectiveSelected = selected;
+
   const dryPortOptions = useMemo(
     () =>
       dryPorts.map((item) => ({
@@ -132,19 +117,6 @@ export default function DryPortAssetForm({
     [dryPorts],
   );
 
-  const combinedAdjustments = useMemo(() => {
-    return [
-      ...increaseRows.map((row) => ({
-        ...row,
-        changeType: 'Tăng nguyên giá',
-      })),
-      ...decreaseRows.map((row) => ({
-        ...row,
-        changeType: 'Giảm nguyên giá',
-      })),
-    ];
-  }, [increaseRows, decreaseRows]);
-
   const formTabs = useMemo<FormTabConfig<DryPortFormValues>[]>(() => {
     return [
       {
@@ -153,8 +125,8 @@ export default function DryPortAssetForm({
         sections: [
           {
             key: 'basic_info',
-            title: '1. Thông tin cơ bản & Quản lý vận hành',
-            icon: <CompassOutlined />,
+            title: 'Thông tin cơ bản & Quản lý vận hành',
+            icon: <BankOutlined />,
             fields: [
               {
                 name: 'parentOrgUnitId',
@@ -168,7 +140,9 @@ export default function DryPortAssetForm({
                 type: FormFieldType.TreeSelect,
                 organizations,
                 required: true,
-                rules: [{ required: true, message: 'Đơn vị quản lý là bắt buộc' }],
+                rules: [
+                  { required: true, message: 'Đơn vị quản lý là bắt buộc' },
+                ],
               },
               {
                 name: 'usingOrgUnitId',
@@ -176,7 +150,9 @@ export default function DryPortAssetForm({
                 type: FormFieldType.TreeSelect,
                 organizations,
                 required: true,
-                rules: [{ required: true, message: 'Đơn vị sử dụng là bắt buộc' }],
+                rules: [
+                  { required: true, message: 'Đơn vị sử dụng là bắt buộc' },
+                ],
               },
               {
                 name: 'dryPortId',
@@ -185,7 +161,12 @@ export default function DryPortAssetForm({
                 options: dryPortOptions,
                 placeholder: 'Chọn cảng cạn',
                 required: true,
-                rules: [{ required: true, message: 'Mã cảng cạn là bắt buộc' }],
+                rules: [
+                  {
+                    required: true,
+                    message: 'Mã cảng cạn là bắt buộc',
+                  },
+                ],
               },
               {
                 name: 'assetType',
@@ -193,7 +174,9 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Select,
                 initialValue: 'DRY_PORT',
                 disabled: true,
-                options: [{ value: 'DRY_PORT', label: 'Tài sản cảng cạn' }],
+                options: [
+                  { value: 'DRY_PORT', label: 'Tài sản cảng cạn' },
+                ],
               },
               {
                 name: 'assetCode',
@@ -205,9 +188,7 @@ export default function DryPortAssetForm({
               {
                 name: 'assetName',
                 label: 'Tên tài sản',
-                type: FormFieldType.TextArea,
-                colSpan: 24,
-                rows: 2,
+                type: FormFieldType.Text,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -262,19 +243,12 @@ export default function DryPortAssetForm({
                 placeholder: 'Chọn nguồn gốc',
                 options: ORIGINS.map((v) => ({ value: v, label: v })),
               },
-            ],
-          },
-          {
-            key: 'summary_indices',
-            title: 'Chỉ số tổng hợp',
-            icon: <SlidersOutlined />,
-            fields: [
               {
                 name: 'quantityGroup',
                 label: '',
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customRender: () => (
+                customContent: () => (
                   <div style={{ display: 'flex', gap: spaceSm }}>
                     <div style={{ flex: 1 }}>
                       <Form.Item
@@ -296,11 +270,15 @@ export default function DryPortAssetForm({
                           min={0}
                           formatter={fmtInputNumber}
                           placeholder="0"
-                          style={{ width: '100%', borderRadius: radiusPill }}
+                          style={{
+                            borderRadius: radiusPill,
+                            height: 40,
+                            width: '100%',
+                          }}
                         />
                       </Form.Item>
                     </div>
-                    <div style={{ width: 120 }}>
+                    <div style={{ width: 140 }}>
                       <Form.Item
                         name="quantityUnit"
                         label={
@@ -318,9 +296,13 @@ export default function DryPortAssetForm({
                       >
                         <Select
                           allowClear
-                          placeholder="ĐVT"
-                          style={{ width: '100%', borderRadius: radiusPill }}
-                          options={UNITS.map((u) => ({ label: u, value: u }))}
+                          placeholder="Đơn vị"
+                          options={UNITS.map((v) => ({ value: v, label: v }))}
+                          style={{
+                            borderRadius: radiusPill,
+                            height: 40,
+                            width: '100%',
+                          }}
                         />
                       </Form.Item>
                     </div>
@@ -354,19 +336,18 @@ export default function DryPortAssetForm({
               {
                 name: 'constructionYear',
                 label: 'Năm xây dựng',
-                type: FormFieldType.DatePicker,
-                picker: 'year',
+                type: FormFieldType.Year,
                 placeholder: 'Chọn năm',
               },
               {
                 name: 'useDate',
                 label: 'Ngày sử dụng tài sản',
                 type: FormFieldType.Date,
-                placeholder: 'Chọn ngày sử dụng',
+                placeholder: 'Chọn ngày',
               },
               {
                 name: 'landArea',
-                label: 'Diện tích (đất, sàn sử dụng: m²)',
+                label: 'Diện tích đất, sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
                 placeholder: '0',
@@ -401,10 +382,11 @@ export default function DryPortAssetForm({
       {
         key: 'files',
         label: `Hồ sơ tài sản (${attachments.length})`,
-        customContent: () => (
+        customContent: (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
               attachments={attachments}
+              readonly={false}
               onUpload={onUploadAttachment}
               onDelete={onDeleteAttachment}
               onDownload={onDownloadAttachment}
@@ -417,8 +399,8 @@ export default function DryPortAssetForm({
         label: 'Thông tin chi tiết',
         sections: [
           {
-            key: 'financial_info',
-            title: '2. Thông tin giá trị & Khấu hao tài sản',
+            key: 'depreciation_info',
+            title: 'Thông tin giá trị & Khấu hao tài sản',
             icon: <SlidersOutlined />,
             fields: [
               {
@@ -455,7 +437,7 @@ export default function DryPortAssetForm({
                   );
                 },
                 valueFormatter: (val) =>
-                  val != null ? fmtInputNumber(Number(val)) : '—',
+                  val != null ? fmtInputNumber(Number(val)) : '',
               },
               {
                 name: 'valueUnit',
@@ -509,7 +491,7 @@ export default function DryPortAssetForm({
                   return undefined;
                 },
                 valueFormatter: (val) =>
-                  val != null ? fmtInputNumber(Number(val)) : '—',
+                  val != null ? fmtInputNumber(Number(val)) : '',
               },
               {
                 name: 'disposalMethod',
@@ -523,296 +505,21 @@ export default function DryPortAssetForm({
           },
         ],
       },
-      {
-        key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
-        customContent: () => (
-          <div style={{ paddingTop: 6 }}>
-            {exploitationRows.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: textSecondary,
-                  fontSize: fontSizeMd,
-                }}
-              >
-                Chưa có lịch sử khai thác tài sản nào.
-              </div>
-            ) : (
-              <div
-                style={{
-                  overflowX: 'auto',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 8,
-                }}
-              >
-                <table
-                  style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    fontSize: fontSizeMd,
-                  }}
-                >
-                  <thead>
-                    <tr
-                      style={{
-                        background: '#f8fafc',
-                        borderBottom: '1px solid #e2e8f0',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <th style={{ padding: '10px 12px' }}>STT</th>
-                      <th style={{ padding: '10px 12px' }}>Đơn vị khai thác</th>
-                      <th style={{ padding: '10px 12px' }}>Danh mục tài sản</th>
-                      <th style={{ padding: '10px 12px' }}>Số lượng</th>
-                      <th style={{ padding: '10px 12px' }}>Thời hạn</th>
-                      <th style={{ padding: '10px 12px' }}>Doanh thu (VNĐ)</th>
-                      <th style={{ padding: '10px 12px' }}>Chi phí (VNĐ)</th>
-                      <th style={{ padding: '10px 12px' }}>Nộp NSNN (VNĐ)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exploitationRows.map((row, idx) => (
-                      <tr
-                        key={row.id || idx}
-                        style={{ borderBottom: '1px solid #f1f5f9' }}
-                      >
-                        <td style={{ padding: '8px 12px' }}>{idx + 1}</td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {orgName ? orgName(row.operatorOrgUnitId) : row.operatorOrgUnitId || '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.assetCategory || '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.quantity != null
-                            ? `${fmtNum(row.quantity)} ${row.unitOfMeasure || ''}`
-                            : '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.exploitationDeadline || '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {(row.totalRevenue ?? row.doanhThu) != null
-                            ? fmtNum(row.totalRevenue ?? row.doanhThu)
-                            : '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {(row.relatedCosts ?? row.depreciation) != null
-                            ? fmtNum(row.relatedCosts ?? row.depreciation)
-                            : '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.stateBudgetPayment != null
-                            ? fmtNum(row.stateBudgetPayment)
-                            : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'adjustments',
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
-        customContent: () => (
-          <div style={{ paddingTop: 6 }}>
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: textSecondary,
-                  fontSize: fontSizeMd,
-                }}
-              >
-                Chưa có lịch sử thay đổi nguyên giá nào.
-              </div>
-            ) : (
-              <div
-                style={{
-                  overflowX: 'auto',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 8,
-                }}
-              >
-                <table
-                  style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    fontSize: fontSizeMd,
-                  }}
-                >
-                  <thead>
-                    <tr
-                      style={{
-                        background: '#f8fafc',
-                        borderBottom: '1px solid #e2e8f0',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <th style={{ padding: '10px 12px' }}>STT</th>
-                      <th style={{ padding: '10px 12px' }}>Loại thay đổi</th>
-                      <th style={{ padding: '10px 12px' }}>Số QĐ</th>
-                      <th style={{ padding: '10px 12px' }}>Ngày điều chỉnh</th>
-                      <th style={{ padding: '10px 12px' }}>Số tiền (VNĐ)</th>
-                      <th style={{ padding: '10px 12px' }}>Lý do</th>
-                      <th style={{ padding: '10px 12px' }}>Ghi chú</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combinedAdjustments.map((row, idx) => (
-                      <tr
-                        key={row.id || idx}
-                        style={{ borderBottom: '1px solid #f1f5f9' }}
-                      >
-                        <td style={{ padding: '8px 12px' }}>{idx + 1}</td>
-                        <td style={{ padding: '8px 12px' }}>
-                          <span
-                            style={{
-                              padding: '2px 8px',
-                              borderRadius: radiusPill,
-                              fontSize: 12,
-                              fontWeight: 500,
-                              background:
-                                row.changeType === 'Tăng nguyên giá'
-                                  ? '#1BAF7A15'
-                                  : '#E3494815',
-                              color:
-                                row.changeType === 'Tăng nguyên giá'
-                                  ? '#1BAF7A'
-                                  : '#E34948',
-                            }}
-                          >
-                            {row.changeType}
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.increaseCode || row.decreaseCode || '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.createdAt ? String(row.createdAt).slice(0, 10) : '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.changeType === 'Tăng nguyên giá'
-                            ? `+${fmtNum((row as AssetIncreaseResponse).increaseAmount)}`
-                            : `-${fmtNum((row as AssetDecreaseResponse).decreaseAmount)}`}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.reason || '—'}
-                        </td>
-                        <td style={{ padding: '8px 12px' }}>
-                          {row.notes || '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'tracking',
-        label: 'Xử lý & theo dõi',
-        sections: [
-          {
-            key: 'audit_info',
-            title: 'Xử lý & theo dõi',
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                name: 'approvalStatusCustom' as unknown as keyof DryPortFormValues,
-                label: 'Trạng thái',
-                type: FormFieldType.Custom,
-                colSpan: 12,
-                customRender: () => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 10px',
-                      borderRadius: radiusPill,
-                      fontSize: fontSizeMd,
-                      fontWeight: 500,
-                      background: `${selected?.approvalStatus === 'APPROVED' ? statusOperational : statusDraft}15`,
-                      border: `1px solid ${selected?.approvalStatus === 'APPROVED' ? statusOperational : statusDraft}40`,
-                      color:
-                        selected?.approvalStatus === 'APPROVED'
-                          ? statusOperational
-                          : statusDraft,
-                    }}
-                  >
-                    {selected?.approvalStatus || 'Lưu tạm'}
-                  </span>
-                ),
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.updatedByName || '—',
-              },
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.submittedByName || '—',
-              },
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.portAuthorityApprovedByName || '—',
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
-                type: FormFieldType.Readonly,
-                colSpan: 24,
-                initialValue: selected?.portAuthorityApprovalContent || '—',
-              },
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
-                type: FormFieldType.Readonly,
-                initialValue: selected?.departmentApprovedByName || '—',
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cục',
-                type: FormFieldType.Readonly,
-                colSpan: 24,
-                initialValue: selected?.departmentApprovalContent || '—',
-              },
-            ],
-          },
-        ],
-      },
     ];
   }, [
     organizations,
     dryPortOptions,
     attachments,
-    exploitationRows,
-    combinedAdjustments,
-    orgName,
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
-    selected,
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'edit') {
+    if (effectiveDrawerMode === 'edit') {
       const isDraft =
-        !selected?.approvalStatus ||
-        ['DRAFT', 'NHAP'].includes(selected.approvalStatus.toUpperCase());
+        !effectiveSelected?.approvalStatus ||
+        ['DRAFT', 'NHAP'].includes(effectiveSelected.approvalStatus.toUpperCase());
       const actions: FormSidebarAction[] = [];
 
       if (isDraft) {
@@ -859,14 +566,14 @@ export default function DryPortAssetForm({
         onClick: () => void onSave('APPROVED'),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [effectiveDrawerMode, effectiveSelected, saving, saveAction, onSave]);
 
   const title = useMemo(() => {
-    if (drawerMode === 'edit') {
-      return `Chỉnh sửa thông tin — ${selected?.assetName || 'Tài sản cảng cạn'}`;
+    if (effectiveDrawerMode === 'edit') {
+      return `Chỉnh sửa thông tin — ${effectiveSelected?.assetName || 'Tài sản cảng cạn'}`;
     }
     return 'Thêm mới tài sản cảng cạn';
-  }, [drawerMode, selected]);
+  }, [effectiveDrawerMode, effectiveSelected]);
 
   return (
     <DynamicFormSidebar<DryPortFormValues>
@@ -874,13 +581,8 @@ export default function DryPortAssetForm({
       title={title}
       onClose={onClose}
       form={form}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
-      rootClassName="berth-drawer-scope dry-port-drawer-scope"
-      className="berth-drawer-scope dry-port-drawer-scope"
+      rootClassName="berth-drawer-scope dryport-drawer-scope"
+      className="berth-drawer-scope dryport-drawer-scope"
       tabs={formTabs}
       footerActions={footerActions}
       footerAlign="center"

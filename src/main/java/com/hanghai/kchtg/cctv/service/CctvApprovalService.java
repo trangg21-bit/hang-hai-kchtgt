@@ -60,8 +60,6 @@ public class CctvApprovalService {
   private final InfrastructureApprovalService approvalService;
   private final CctvService cctvService;
   private final InfrastructureHistoryRepository historyRepository;
-  @SuppressWarnings("unused")
-  private final ChangeLogRepository changeLogRepository;
   private final UserRepository userRepository;
   private final OrgUnitCacheService orgUnitCacheService;
   private final OrgUnitScopeService orgUnitScopeService;
@@ -97,7 +95,6 @@ public class CctvApprovalService {
     this.approvalService = approvalService;
     this.cctvService = cctvService;
     this.historyRepository = historyRepository;
-    this.changeLogRepository = changeLogRepository;
     this.userRepository = userRepository;
     this.orgUnitCacheService = orgUnitCacheService;
     this.orgUnitScopeService = orgUnitScopeService;

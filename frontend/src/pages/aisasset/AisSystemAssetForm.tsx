@@ -471,7 +471,7 @@ export default function AisSystemAssetForm({
                 label: 'Khấu hao tháng (VNĐ)',
                 type: FormFieldType.Custom,
                 colSpan: 12,
-                customContent: () => (
+                customRender: () => (
                   <Form.Item noStyle shouldUpdate>
                     {({ getFieldValue }) => {
                       const orig = Number(getFieldValue('originalValue')) || 0;
@@ -516,6 +516,7 @@ export default function AisSystemAssetForm({
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
+    handleLoadReadonlyPreviewImage,
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
@@ -579,7 +580,6 @@ export default function AisSystemAssetForm({
       footerAlign="center"
       onClose={onClose}
       onValuesChange={handleValuesChange}
-      width={typeof window !== 'undefined' ? Math.min(1040, Math.floor(window.innerWidth * 0.95)) : 1040}
       rootClassName="ais-asset-drawer-scope"
     />
   );

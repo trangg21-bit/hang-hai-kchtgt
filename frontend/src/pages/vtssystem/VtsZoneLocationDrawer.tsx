@@ -1315,7 +1315,7 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
               if (isViewMode) {
                 if (viewPoints.length > 0) {
                   const rawWkt = (zone?.coordinates || '').replace(/^SRID=\d+\s*;/i, '').trim();
-                  let geom: 'POINT' | 'LINE' | 'POLYGON' = (zone?.geometryType as any) || 'POINT';
+                  const geom: 'POINT' | 'LINE' | 'POLYGON' = (zone?.geometryType as any) || 'POINT';
                   let wkt = rawWkt;
                   if (!wkt) {
                     if (geom === 'LINE') {

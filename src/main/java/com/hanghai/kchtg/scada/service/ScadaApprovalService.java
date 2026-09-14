@@ -38,31 +38,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.Nullable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.port.repository.ChangeLogRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.scada.dto.ApprovalRequest;
-import com.hanghai.kchtg.scada.dto.ScadaResponse;
-import com.hanghai.kchtg.scada.entity.Scada;
-import com.hanghai.kchtg.scada.repository.ScadaRepository;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 
-import jakarta.persistence.EntityNotFoundException;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Approval service for SCADA entity.
@@ -78,7 +62,6 @@ public class ScadaApprovalService {
   private final InfrastructureApprovalService approvalService;
   private final ScadaService scadaService;
   private final InfrastructureHistoryRepository historyRepository;
-  private final ChangeLogRepository changeLogRepository;
   private final UserRepository userRepository;
   private final OrgUnitCacheService orgUnitCacheService;
   private final OrgUnitScopeService orgUnitScopeService;
@@ -114,7 +97,6 @@ public class ScadaApprovalService {
     this.approvalService = approvalService;
     this.scadaService = scadaService;
     this.historyRepository = historyRepository;
-    this.changeLogRepository = changeLogRepository;
     this.userRepository = userRepository;
     this.orgUnitCacheService = orgUnitCacheService;
     this.orgUnitScopeService = orgUnitScopeService;

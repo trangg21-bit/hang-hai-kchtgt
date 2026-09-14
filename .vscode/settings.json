@@ -1,0 +1,58 @@
+{
+    "editor.formatOnSave": false,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "always",
+        "source.removeUnusedImports": "always",
+        "source.fixAll.eslint": "explicit"
+    },
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "[typescript]": {
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
+    },
+    "[typescriptreact]": {
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
+    },
+    "[javascript]": {
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
+    },
+    "[javascriptreact]": {
+        "editor.formatOnSave": false,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "always",
+            "source.removeUnusedImports": "always"
+        }
+    },
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    "[java]": {
+        "editor.formatOnSave": false
+    },
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-17",
+            "path": "C:\\Users\\huyna\\.antigravity-ide\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64",
+            "default": true
+        },
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Users\\huyna\\.antigravity-ide\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64"
+        }
+    ],
+    "java.debug.settings.onBuildFailureProceed": true
+}

@@ -1,14 +1,13 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ConfigProvider, App as AntApp, theme } from 'antd';
-import { metronicTheme } from './theme';
-import { appLocale } from './themetokenchk';
+import { App as AntApp, ConfigProvider, Spin, theme } from 'antd';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import AppLayout from './components/AppLayout';
+import PermissionGuard from './components/PermissionGuard';
 import { setStaticMessage, setStaticModal } from './components/ToastNotification';
 import { useAuthStore } from './store/authStore';
-import AppLayout from './components/AppLayout';
-import { Spin } from 'antd';
-import PermissionGuard from './components/PermissionGuard';
+import { metronicTheme } from './theme';
+import { appLocale } from './themetokenchk';
 
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const PointObjectList = lazy(() => import('./pages/gis/PointObjectList'));
@@ -103,7 +102,7 @@ const DaiTtdhAssetList = lazy(() => import('./pages/daittdhasset/DaiTtdhAssetLis
 const DryPortAssetList = lazy(() => import('./pages/assetmovement/DryPortAssetList'));
 const LritAssetList = lazy(() => import('./pages/assetmovement/LritAssetList'));
 const TtdhAssetList = lazy(() => import('./pages/assetmovement/TtdhAssetList'));
-const InmarsatAssetList = lazy(() => import('./pages/assetmovement/InmarsatAssetList'));
+const InmarsatAssetList = lazy(() => import('./pages/inmarsatasset/InmarsatAssetList'));
 const CospasSarsatAssetList = lazy(() => import('./pages/assetmovement/CospasSarsatAssetList'));
 const TtxlttAssetList = lazy(() => import('./pages/assetmovement/TtxlttAssetList'));
 const TransferAreaAssetList = lazy(() => import('./pages/assetmovement/TransferAreaAssetList'));
@@ -168,7 +167,7 @@ export default function App() {
               <Route path="/reset-password/:token" element={<PasswordResetPage mode="reset" />} />
 
               {/* Protected routes — inside layout */}
-              <Route element={<AppLayout />}>
+              <Route element={<AuthenticatedLayout />}>
                 {/* Landing v2 (M-024): 6 khối chức năng trong AppLayout — PortalHome fullscreen đã gỡ */}
                 <Route path="/" element={<HomePage />} />
                 {/* Dashboard KPI page */}
@@ -381,6 +380,12 @@ export default function App() {
 function UnknownRouteRedirect() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
+}
+
+function AuthenticatedLayout() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const token = useAuthStore((s) => s.token);
+  return isAuthenticated && token ? <AppLayout /> : <Navigate to="/login" replace />;
 }
 
 function RegisterAntdStatic() {

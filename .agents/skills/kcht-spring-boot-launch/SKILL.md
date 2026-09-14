@@ -34,6 +34,9 @@ Skill này hướng dẫn AI và lập trình viên cấu hình, vận hành và
 ### 2.2. Lỗi xung đột Port 8080
 Khi chạy backend nhiều lần hoặc tắt không dứt điểm cửa sổ debug, tiến trình `java.exe` cũ vẫn chạy ngầm chiếm cổng 8080 (TCP LISTENING). Lần khởi động tiếp theo sẽ bị crash do không thể bind socket cổng 8080.
 
+### 2.3. Flyway báo `Found more than one migration with version ...`
+Flyway định danh migration bằng phần version giữa `V` và `__`; hai tên file khác nhau nhưng dùng cùng version vẫn làm Spring Boot dừng khởi động. Phải kiểm tra cả `src/main/resources/db/migration` và bản sao cũ trong `target/classes/db/migration`. Sau khi đổi tên hoặc xóa migration, luôn chạy `mvn clean` để loại artifact cũ.
+
 ---
 
 ## 3. Giải pháp Chuẩn mực Bắt buộc (MANDATORY)
@@ -51,6 +54,12 @@ Thêm cấu hình chạy trực tiếp với `"noDebug": true`. Khi người dù
 Extension Java debugger (`vscode-java-debug`) trong VS Code / Antigravity IDE gặp lỗi timeout / stall khi đợi callback từ `preLaunchTask`, khiến tiến trình debug bị treo lại ngay sau khi task hoàn tất và không bao giờ chuyển tiếp sang khởi động JVM. Vì vậy:
 - **KHÔNG** đặt `"preLaunchTask"` trong `.vscode/launch.json`.
 - Khi cần giải phóng port 8080, chạy thủ công qua script `.\scripts\free-port-8080.ps1` hoặc task `Free Port 8080` từ menu Terminal.
+
+### Quy tắc 5: Mỗi Flyway version chỉ thuộc một migration
+- Trước khi thêm/đổi migration, quét toàn bộ `src/main/resources/db/migration` theo phần version của mẫu `V<version>__<description>.sql`; không chỉ so sánh cả tên file.
+- Không tái sử dụng version đã tồn tại. Với version timestamp, chọn timestamp chưa dùng và giữ đúng thứ tự thời gian.
+- Sau khi đổi tên migration, chạy `mvn clean test -Dtest=FlywayMigrationVersionUniquenessTest` trước khi khởi động ứng dụng.
+- Không sửa lịch sử Flyway để che lỗi version trùng; phải sửa tên migration trong source và làm sạch `target`.
 
 ---
 
@@ -134,3 +143,5 @@ curl.exe -s -i "http://localhost:8080/api/v1/auth/me"
 - [ ] 2. Kiểm tra `vmArgs` có `-Djava.net.preferIPv4Stack=true` hay chưa.
 - [ ] 3. Kiểm tra xem cổng 8080 có bị chiếm dụng bởi PID khác hay không (`Get-NetTCPConnection -LocalPort 8080`).
 - [ ] 4. Nếu chỉ cần chạy mà không debug breakpoint, ưu tiên chọn cấu hình `Spring Boot - KchtgApplication (Run - Local)` có `noDebug: true`.
+- [ ] 5. Quét version Flyway trùng trong `src/main/resources/db/migration`; chạy `FlywayMigrationVersionUniquenessTest`.
+- [ ] 6. Nếu vừa đổi/xóa migration, chạy `mvn clean` và xác nhận `target/classes/db/migration` không còn bản cũ.

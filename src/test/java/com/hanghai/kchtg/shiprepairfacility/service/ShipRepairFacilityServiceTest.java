@@ -304,8 +304,7 @@ class ShipRepairFacilityServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
-        ShipRepairFacilityResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-
+        service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getApproverLevel1());
@@ -324,8 +323,7 @@ class ShipRepairFacilityServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
-        ShipRepairFacilityResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
-
+        service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
         assertEquals("Không đủ điều kiện", entity.getRejectionReason());
     }
@@ -349,8 +347,7 @@ class ShipRepairFacilityServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
-        ShipRepairFacilityResponse response = service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-
+        service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
         assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel2());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), entity.getApproverLevel2());
@@ -369,8 +366,7 @@ class ShipRepairFacilityServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
-        ShipRepairFacilityResponse response = service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
-
+        service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
         assertEquals(ApprovalStatus.REJECTED, entity.getApprovalStatus());
         assertEquals("Không phù hợp", entity.getRejectionReason());
     }
@@ -511,4 +507,3 @@ class ShipRepairFacilityServiceTest {
         assertEquals(ApprovalStatus.REJECTED, responses.get(0).getApprovalStatus());
     }
 }
-

@@ -290,28 +290,17 @@ export default function InmarsatAssetForm({
       {
         key: 'attachments',
         label: 'Hồ sơ tài sản',
-        sections: [
-          {
-            key: 'docs',
-            title: 'Tệp đính kèm tài liệu & Hồ sơ kỹ thuật',
-            fields: [
-              {
-                name: 'attachmentName',
-                label: '',
-                type: FormFieldType.Custom,
-                colSpan: 24,
-                customContent: () => (
-                  <InfrastructureAttachmentTab
-                    attachments={attachments}
-                    onUpload={onUploadAttachment}
-                    onDelete={onDeleteAttachment}
-                    onDownload={onDownloadAttachment}
-                  />
-                ),
-              },
-            ],
-          },
-        ],
+        customContent: (
+          <div style={{ padding: '0 4px', marginBottom: 12 }}>
+            <InfrastructureAttachmentTab
+              attachments={attachments}
+              readonly={false}
+              onUpload={onUploadAttachment}
+              onDelete={onDeleteAttachment}
+              onDownload={onDownloadAttachment}
+            />
+          </div>
+        ),
       },
     ];
   }, [
@@ -387,11 +376,6 @@ export default function InmarsatAssetForm({
       tabs={formTabs}
       footerActions={footerActions}
       footerAlign="center"
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="inmarsat-asset-drawer-scope"
       className="inmarsat-asset-drawer-scope"
     />

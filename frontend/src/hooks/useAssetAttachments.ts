@@ -222,7 +222,7 @@ export function useAssetAttachments({
       triggerBlobDownload(fallbackBlob, fileName);
       toast.success(`Đã tải xuống tệp: ${fileName}`);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [onDownloadAttachment, activeAttachments, record?.id, downloadAttachment, fallbackLabel]
   );
 

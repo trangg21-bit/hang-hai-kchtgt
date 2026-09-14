@@ -51,15 +51,12 @@ class LogServiceTest {
     private LogService logService;
 
     private UUID logId;
-    private UUID userId;
-
     @BeforeEach
     void setUp() {
         logService = new LogService(accessLogService, repository, retentionPolicyRepository, aggregateRepository, "", "./logs");
         ReflectionTestUtils.setField(logService, "accessLogService", accessLogService);
 
         logId = UUID.randomUUID();
-        userId = UUID.randomUUID();
     }
 
     @Test

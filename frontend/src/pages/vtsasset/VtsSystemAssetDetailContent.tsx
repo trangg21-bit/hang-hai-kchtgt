@@ -1,45 +1,50 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BankOutlined,
-  SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
+  BankOutlined,
   MinusCircleOutlined,
-  ProfileOutlined,
+  PlusCircleOutlined,
+  SlidersOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { VtsSystemAsset } from '../../services/vtsasset/types';
-import type {
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
-} from '../../services/assetmovement/types';
-import { fmtNum } from '../../utils/numFmt';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  colors,
-  actionPrimary,
-  textTertiary,
-  fontSizeMd,
-  fontWeightBold,
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-} from '../../themetokenchk';
+  CommonTable,
+  TableColumnType,
+  type TableOption,
+  APPROVAL_MAP,
+  renderApprovalStatusBadge,
+} from '../../components/shared/common-table';
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+} from '../../services/assetmovement/types';
+import type { VtsSystemAsset } from '../../services/vtsasset/types';
 import {
-  getOrGenerateAttachmentBlob,
-  getAttachmentPreviewUrl,
+  actionPrimary,
+  fontWeightBold,
+  fontWeightMedium,
+  radiusPill,
+  statusAttention,
+  statusCritical,
+  statusDraft,
+  statusOperational,
+} from '../../themetokenchk';
+import {
   downloadAttachmentFile,
+  getAttachmentPreviewUrl,
+  getOrGenerateAttachmentBlob,
 } from '../../utils/attachmentStorage';
+
+export { renderApprovalStatusBadge };
 
 export interface VtsSystemAssetDetailContentProps {
   open: boolean;
@@ -51,50 +56,6 @@ export interface VtsSystemAssetDetailContentProps {
   increaseRows: AssetIncreaseResponse[];
   decreaseRows: AssetDecreaseResponse[];
 }
-
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: {
-    color: statusAttention,
-    label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED_LEVEL1: {
-    color: statusCritical,
-    label: 'Từ chối cấp Cảng vụ/Chi cục',
-  },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
-};
 
 const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
@@ -111,42 +72,20 @@ export default function VtsSystemAssetDetailContent({
   increaseRows,
   decreaseRows,
 }: VtsSystemAssetDetailContentProps) {
-  const combinedAdjustments = useMemo(() => {
-    return [
-      ...increaseRows.map((row) => ({
-        ...row,
-        changeType: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined style={{ color: statusOperational }} />,
-      })),
-      ...decreaseRows.map((row) => ({
-        ...row,
-        changeType: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined style={{ color: statusCritical }} />,
-      })),
-    ];
-  }, [increaseRows, decreaseRows]);
-
   const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
   useEffect(() => {
-    if (!r?.attachmentName) {
-      setDetailAttachments([]);
-      return;
-    }
-    const names = r.attachmentName
-      .split(',')
-      .map((name) => name.trim())
-      .filter(Boolean);
+    const names = r?.attachmentName
+      ? r.attachmentName.split(',').map((name) => name.trim()).filter(Boolean)
+      : [];
     let isMounted = true;
 
     const initialItems: InfrastructureAttachmentItem[] = names.map((name, i) => ({
       id: `vts-detail-att-${i}`,
       fileName: name,
       fileSize: 1024 * 1024,
-      uploadedByName: r.updatedByName || r.submittedByName || 'Cán bộ quản lý',
-      uploadedDate: r.updatedAt
-        ? dayjs(r.updatedAt).toISOString()
-        : dayjs().toISOString(),
+      uploadedByName: r?.updatedByName || r?.submittedByName || 'Cán bộ quản lý',
+      uploadedAt: r?.updatedAt || r?.createdAt || new Date().toISOString(),
     }));
     setDetailAttachments(initialItems);
 
@@ -154,8 +93,8 @@ export default function VtsSystemAssetDetailContent({
       names.map(async (name, i) => {
         try {
           const url = await getAttachmentPreviewUrl(name, {
-            assetCode: r.assetCode,
-            assetName: r.assetName,
+            assetCode: r?.assetCode,
+            assetName: r?.assetName,
           });
           return { id: `vts-detail-att-${i}`, url };
         } catch {
@@ -164,8 +103,8 @@ export default function VtsSystemAssetDetailContent({
       })
     ).then((resolved) => {
       if (!isMounted) return;
-      setDetailAttachments((prev) =>
-        prev.map((item) => {
+      setDetailAttachments(
+        initialItems.map((item) => {
           const match = resolved.find((res) => res.id === item.id);
           return match?.url ? { ...item, url: match.url } : item;
         })
@@ -198,6 +137,276 @@ export default function VtsSystemAssetDetailContent({
       });
     },
     [r?.assetCode, r?.assetName]
+  );
+
+  const exploitationTableOption = useMemo<TableOption<AssetExploitationResponse>>(
+    () => ({
+      dataKey: 'id',
+      hideActionColumn: true,
+      enablePaging: false,
+      bordered: true,
+      scroll: { x: 'max-content', y: 350 },
+      mainColumns: [
+        {
+          title: 'Đơn vị khai thác',
+          dataIndex: 'operatorOrgUnitId',
+          type: TableColumnType.Text,
+          width: 220,
+          render: (v) => (
+            <span style={{ fontWeight: fontWeightBold }}>
+              {orgName.get(v as string) || (v as string) || '—'}
+            </span>
+          ),
+        },
+        {
+          title: 'Danh mục tài sản',
+          dataIndex: 'assetCategory',
+          type: TableColumnType.Text,
+          width: 200,
+        },
+        {
+          title: 'Đơn vị tính',
+          dataIndex: 'unitOfMeasure',
+          type: TableColumnType.Text,
+          width: 120,
+        },
+        {
+          title: 'Số lượng',
+          dataIndex: 'quantity',
+          type: TableColumnType.NumberFormatted,
+          width: 120,
+          align: 'right',
+        },
+        {
+          title: 'Thời hạn khai thác',
+          dataIndex: 'exploitationDeadline',
+          type: TableColumnType.Date,
+          width: 160,
+        },
+        {
+          title: 'Tổng tiền thu được (VNĐ)',
+          dataIndex: 'totalRevenue',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Chi phí liên quan (VNĐ)',
+          dataIndex: 'relatedCosts',
+          type: TableColumnType.Money,
+          width: 190,
+          align: 'right',
+        },
+        {
+          title: 'Nộp ngân sách nhà nước (VNĐ)',
+          dataIndex: 'stateBudgetPayment',
+          type: TableColumnType.Money,
+          width: 220,
+          align: 'right',
+        },
+        {
+          title: 'Số tiền thực hiện dự án (VNĐ)',
+          dataIndex: 'projectAmount',
+          type: TableColumnType.Money,
+          width: 220,
+          align: 'right',
+        },
+        {
+          title: 'Ghi chú',
+          dataIndex: 'description',
+          type: TableColumnType.Description,
+          width: 200,
+        },
+        {
+          title: 'Ngày cập nhật',
+          dataIndex: 'updatedAt',
+          type: TableColumnType.Date,
+          width: 140,
+        },
+      ],
+    }),
+    [orgName]
+  );
+
+  interface AdjustmentRowItem {
+    id: string;
+    adjustmentType: 'TANG' | 'GIAM';
+    code?: string;
+    decisionNumber?: string;
+    decisionDate?: string;
+    adjustmentDate?: string;
+    adjustmentReason?: string;
+    originalValueBefore?: number;
+    originalValueAfter?: number;
+    remainingValueBefore?: number;
+    remainingValueAfter?: number;
+    notes?: string;
+    status?: string;
+  }
+
+  const combinedAdjustments = useMemo<AdjustmentRowItem[]>(() => {
+    const list: AdjustmentRowItem[] = [];
+    increaseRows.forEach((row) => {
+      list.push({
+        id: row.id,
+        adjustmentType: 'TANG',
+        code: row.increaseCode,
+        decisionNumber: row.adjustmentDetails?.decisionNumber,
+        decisionDate: row.adjustmentDetails?.decisionDate,
+        adjustmentDate: row.adjustmentDetails?.adjustmentDate,
+        adjustmentReason: row.adjustmentDetails?.adjustmentReason,
+        originalValueBefore: row.adjustmentDetails?.originalValueBefore,
+        originalValueAfter: row.adjustmentDetails?.originalValueAfter,
+        remainingValueBefore: row.adjustmentDetails?.remainingValueBefore,
+        remainingValueAfter: row.adjustmentDetails?.remainingValueAfter,
+        notes: row.adjustmentDetails?.adjustmentNotes,
+        status: row.status,
+      });
+    });
+    decreaseRows.forEach((row) => {
+      list.push({
+        id: row.id,
+        adjustmentType: 'GIAM',
+        code: row.decreaseCode,
+        decisionNumber: row.adjustmentDetails?.decisionNumber,
+        decisionDate: row.adjustmentDetails?.decisionDate,
+        adjustmentDate: row.adjustmentDetails?.adjustmentDate,
+        adjustmentReason: row.adjustmentDetails?.adjustmentReason,
+        originalValueBefore: row.adjustmentDetails?.originalValueBefore,
+        originalValueAfter: row.adjustmentDetails?.originalValueAfter,
+        remainingValueBefore: row.adjustmentDetails?.remainingValueBefore,
+        remainingValueAfter: row.adjustmentDetails?.remainingValueAfter,
+        notes: row.adjustmentDetails?.adjustmentNotes,
+        status: row.status,
+      });
+    });
+    return list;
+  }, [increaseRows, decreaseRows]);
+
+  const adjustmentTableOption = useMemo<TableOption<AdjustmentRowItem>>(
+    () => ({
+      dataKey: 'id',
+      hideActionColumn: true,
+      enablePaging: false,
+      bordered: true,
+      scroll: { x: 'max-content', y: 350 },
+      mainColumns: [
+        {
+          title: 'Loại biến động',
+          dataIndex: 'adjustmentType',
+          type: TableColumnType.Template,
+          width: 160,
+          render: (_v, row) =>
+            row.adjustmentType === 'TANG' ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: fontWeightMedium,
+                  background: `${statusOperational}15`,
+                  border: `1px solid ${statusOperational}40`,
+                  color: statusOperational,
+                }}
+              >
+                <PlusCircleOutlined /> Tăng nguyên giá
+              </span>
+            ) : (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 10px',
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: fontWeightMedium,
+                  background: `${statusCritical}15`,
+                  border: `1px solid ${statusCritical}40`,
+                  color: statusCritical,
+                }}
+              >
+                <MinusCircleOutlined /> Giảm nguyên giá
+              </span>
+            ),
+        },
+        {
+          title: 'Mã yêu cầu',
+          dataIndex: 'code',
+          type: TableColumnType.Text,
+          width: 160,
+        },
+        {
+          title: 'Số quyết định',
+          dataIndex: 'decisionNumber',
+          type: TableColumnType.Text,
+          width: 180,
+        },
+        {
+          title: 'Ngày ra quyết định',
+          dataIndex: 'decisionDate',
+          type: TableColumnType.Date,
+          width: 165,
+        },
+        {
+          title: 'Ngày điều chỉnh',
+          dataIndex: 'adjustmentDate',
+          type: TableColumnType.Date,
+          width: 150,
+        },
+        {
+          title: 'Nguyên giá trước (VNĐ)',
+          dataIndex: 'originalValueBefore',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Nguyên giá sau (VNĐ)',
+          dataIndex: 'originalValueAfter',
+          type: TableColumnType.Money,
+          width: 190,
+          align: 'right',
+        },
+        {
+          title: 'Giá trị còn lại trước (VNĐ)',
+          dataIndex: 'remainingValueBefore',
+          type: TableColumnType.Money,
+          width: 210,
+          align: 'right',
+        },
+        {
+          title: 'Giá trị còn lại sau (VNĐ)',
+          dataIndex: 'remainingValueAfter',
+          type: TableColumnType.Money,
+          width: 200,
+          align: 'right',
+        },
+        {
+          title: 'Lý do điều chỉnh',
+          dataIndex: 'adjustmentReason',
+          type: TableColumnType.Text,
+          width: 200,
+        },
+        {
+          title: 'Ghi chú',
+          dataIndex: 'notes',
+          type: TableColumnType.Description,
+          width: 200,
+        },
+        {
+          title: 'Trạng thái',
+          dataIndex: 'status',
+          type: TableColumnType.Template,
+          width: 140,
+          render: (_v, row) => renderApprovalStatusBadge(row.status),
+        },
+      ],
+    }),
+    []
   );
 
   const viewTabs = useMemo<ViewTabConfig<VtsSystemAsset>[]>(() => {
@@ -373,7 +582,8 @@ export default function VtsSystemAssetDetailContent({
       },
       {
         key: 'files',
-        label: `Hồ sơ tài sản (${detailAttachments.length})`,
+        label: 'Hồ sơ tài sản',
+        badgeCount: detailAttachments.length,
         customContent: () => (
           <div style={{ paddingTop: 6 }}>
             <InfrastructureAttachmentTab
@@ -463,179 +673,31 @@ export default function VtsSystemAssetDetailContent({
       },
       {
         key: 'exploitation',
-        label: `Khai thác tài sản (${exploitationRows.length})`,
-        customContent: () => (
-          <div
-            style={{
-              paddingTop: 6,
-              paddingRight: 4,
-              overflowY: 'auto',
-              maxHeight: 'calc(100vh - 190px)',
-              minHeight: 350,
-            }}
-          >
-            {exploitationRows.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: textTertiary,
-                  fontSize: fontSizeMd,
-                }}
-              >
-                Chưa có lịch sử khai thác tài sản nào.
-              </div>
-            ) : (
-              exploitationRows.map((row, index) => (
-                <div key={row.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <div style={sectionTitleStyle}>
-                      <RocketOutlined style={{ color: actionPrimary }} />
-                      <span>
-                        Lần {index + 1} — {fmtDateTime(row.updatedAt)}
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      rowGap: 8,
-                      columnGap: 24,
-                    }}
-                  >
-                    <div>
-                      <strong>Đơn vị khai thác:</strong>{' '}
-                      {orgName.get(row.operatorOrgUnitId || '') || '—'}
-                    </div>
-                    <div>
-                      <strong>Danh mục tài sản:</strong>{' '}
-                      {row.assetCategory || '—'}
-                    </div>
-                    <div>
-                      <strong>Đơn vị tính:</strong> {row.unitOfMeasure || '—'}
-                    </div>
-                    <div>
-                      <strong>Số lượng:</strong>{' '}
-                      {row.quantity != null ? fmtNum(row.quantity) : '—'}
-                    </div>
-                    <div>
-                      <strong>Thời hạn khai thác:</strong>{' '}
-                      {fmtDate(row.exploitationDeadline)}
-                    </div>
-                    <div>
-                      <strong>Tổng số tiền thu được:</strong>{' '}
-                      {row.totalRevenue != null ? `${fmtNum(row.totalRevenue)} VNĐ` : '—'}
-                    </div>
-                    <div>
-                      <strong>Chi phí có liên quan:</strong>{' '}
-                      {row.relatedCosts != null ? `${fmtNum(row.relatedCosts)} VNĐ` : '—'}
-                    </div>
-                    <div>
-                      <strong>Nộp NSNN:</strong>{' '}
-                      {row.stateBudgetPayment != null ? `${fmtNum(row.stateBudgetPayment)} VNĐ` : '—'}
-                    </div>
-                    <div>
-                      <strong>Số tiền được thực hiện DA:</strong>{' '}
-                      {row.projectAmount != null ? `${fmtNum(row.projectAmount)} VNĐ` : '—'}
-                    </div>
-                    <div>
-                      <strong>Ghi chú:</strong> {row.description || '—'}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+        label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
+        icon: <BankOutlined />,
+        customContent: (
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<AssetExploitationResponse>
+              options={exploitationTableOption}
+              dataSource={exploitationRows}
+              total={exploitationRows.length}
+            />
           </div>
         ),
       },
       {
         key: 'adjustments',
-        label: `Lịch sử thay đổi nguyên giá (${combinedAdjustments.length})`,
-        customContent: () => (
-          <div
-            style={{
-              paddingTop: 6,
-              paddingRight: 4,
-              overflowY: 'auto',
-              maxHeight: 'calc(100vh - 190px)',
-              minHeight: 350,
-            }}
-          >
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: textTertiary,
-                  fontSize: fontSizeMd,
-                }}
-              >
-                Chưa có lịch sử thay đổi nguyên giá nào.
-              </div>
-            ) : (
-              combinedAdjustments.map((row) => (
-                <div key={row.id} style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <div style={sectionTitleStyle}>
-                      {row.icon}
-                      <span>
-                        {row.changeType} — {fmtDate(row.adjustmentDetails?.adjustmentDate)}
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      rowGap: 8,
-                      columnGap: 24,
-                    }}
-                  >
-                    <div>
-                      <strong>Số QĐ tăng/giảm:</strong>{' '}
-                      {row.adjustmentDetails?.decisionNumber || '—'}
-                    </div>
-                    <div>
-                      <strong>Ngày ra QĐ:</strong>{' '}
-                      {fmtDate(row.adjustmentDetails?.decisionDate)}
-                    </div>
-                    <div>
-                      <strong>Lý do tăng/giảm:</strong>{' '}
-                      {row.adjustmentDetails?.adjustmentReason || '—'}
-                    </div>
-                    <div>
-                      <strong>Ghi chú:</strong>{' '}
-                      {row.adjustmentDetails?.adjustmentNotes || '—'}
-                    </div>
-                    <div>
-                      <strong>Nguyên giá trước:</strong>{' '}
-                      {row.adjustmentDetails?.originalValueBefore != null
-                        ? `${fmtNum(row.adjustmentDetails.originalValueBefore)} VNĐ`
-                        : '—'}
-                    </div>
-                    <div>
-                      <strong>Nguyên giá sau:</strong>{' '}
-                      {row.adjustmentDetails?.originalValueAfter != null
-                        ? `${fmtNum(row.adjustmentDetails.originalValueAfter)} VNĐ`
-                        : '—'}
-                    </div>
-                    <div>
-                      <strong>Giá trị còn lại trước:</strong>{' '}
-                      {row.adjustmentDetails?.remainingValueBefore != null
-                        ? `${fmtNum(row.adjustmentDetails.remainingValueBefore)} VNĐ`
-                        : '—'}
-                    </div>
-                    <div>
-                      <strong>Giá trị còn lại sau:</strong>{' '}
-                      {row.adjustmentDetails?.remainingValueAfter != null
-                        ? `${fmtNum(row.adjustmentDetails.remainingValueAfter)} VNĐ`
-                        : '—'}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: combinedAdjustments.length,
+        icon: <AuditOutlined />,
+        customContent: (
+          <div style={{ padding: '4px 0' }}>
+            <CommonTable<AdjustmentRowItem>
+              options={adjustmentTableOption}
+              dataSource={combinedAdjustments}
+              total={combinedAdjustments.length}
+            />
           </div>
         ),
       },
@@ -650,31 +712,10 @@ export default function VtsSystemAssetDetailContent({
             fields: [
               {
                 name: 'approvalStatus',
-                label: 'Trạng thái',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-                render: (v) => {
-                  const statusInfo = APPROVAL_MAP[v as string] || {
-                    color: textTertiary,
-                    label: (v as string) || '—',
-                  };
-                  return (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 10px',
-                        borderRadius: 999,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        background: `${statusInfo.color}15`,
-                        border: `1px solid ${statusInfo.color}40`,
-                        color: statusInfo.color,
-                      }}
-                    >
-                      {statusInfo.label}
-                    </span>
-                  );
-                },
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Custom,
+                colSpan: 24,
+                render: (v) => renderApprovalStatusBadge(v as string),
               },
               {
                 name: 'updatedByName',
@@ -721,13 +762,13 @@ export default function VtsSystemAssetDetailContent({
             fields: [
               {
                 name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ',
+                label: 'Cán bộ phê duyệt',
                 type: ViewFieldType.Text,
                 colSpan: 12,
               },
               {
                 name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                label: 'Ngày phê duyệt',
                 type: ViewFieldType.Date,
                 colSpan: 12,
                 render: (v) => fmtDateTime(v as string),
@@ -746,13 +787,13 @@ export default function VtsSystemAssetDetailContent({
             fields: [
               {
                 name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
+                label: 'Cán bộ phê duyệt',
                 type: ViewFieldType.Text,
                 colSpan: 12,
               },
               {
                 name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt cấp Cục',
+                label: 'Ngày phê duyệt',
                 type: ViewFieldType.Date,
                 colSpan: 12,
                 render: (v) => fmtDateTime(v as string),
@@ -798,7 +839,6 @@ export default function VtsSystemAssetDetailContent({
       title={`Chi tiết tài sản hệ thống VTS${r ? ` - ${r.assetName}` : ''}`}
       onClose={onClose}
       tabs={viewTabs}
-      width={typeof window !== 'undefined' ? Math.min(1040, Math.floor(window.innerWidth * 0.95)) : 1040}
     />
   );
 }

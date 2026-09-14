@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import {
+  BankOutlined,
   DeploymentUnitOutlined,
   SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
 } from '@ant-design/icons';
@@ -20,25 +20,24 @@ import InfrastructureAttachmentTab, {
 import {
   colors,
   actionPrimary,
-  textTertiary,
-  fontSizeMd,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
-  statusAttention,
   statusCritical,
-  statusDraft,
+  textTertiary,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
-import CommonTable from '../../components/shared/common-table/CommonTable';
 import {
+  CommonTable,
   TableColumnType,
   type TableOption,
-} from '../../components/shared/common-table/table.model';
+  APPROVAL_MAP,
+  renderApprovalStatusBadge,
+} from '../../components/shared/common-table';
 import {
   fetchVtsAssistAssetAttachments,
   downloadVtsAssistAssetAttachment,
@@ -56,42 +55,6 @@ export interface VtsAssistAssetDetailContentProps {
   attachments?: InfrastructureAttachmentItem[];
   onDownloadAttachment?: (id: string, fileName: string) => void;
 }
-
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
-
-const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { color: '#0284C7', label: 'Chờ Cục duyệt' },
-  APPROVED: { color: statusOperational, label: 'Đã duyệt' },
-  REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ từ chối' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Cục từ chối' },
-};
 
 export default function VtsAssistAssetDetailContent({
   open,
@@ -131,7 +94,7 @@ export default function VtsAssistAssetDetailContent({
           width: 220,
           render: (v) => (
             <span style={{ fontWeight: fontWeightBold }}>
-              {orgName.get(v as string) || '—'}
+              {orgName.get(v as string) || ''}
             </span>
           ),
         },
@@ -140,7 +103,7 @@ export default function VtsAssistAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) || r?.assetName || '—',
+          render: (v) => (v as string) ?? '',
         },
         {
           title: 'Đơn vị tính',
@@ -203,7 +166,7 @@ export default function VtsAssistAssetDetailContent({
         },
       ],
     }),
-    [orgName, r?.assetName]
+    [orgName]
   );
 
   const adjustmentTableOption = useMemo<TableOption<VtsAssistAssetAdjustment>>(
@@ -317,14 +280,9 @@ export default function VtsAssistAssetDetailContent({
         {
           title: 'Trạng thái',
           dataIndex: 'status',
-          type: TableColumnType.Status,
+          type: TableColumnType.Template,
           width: 140,
-          statusMapping: {
-            DRAFT: { label: 'Lưu tạm', color: '#93A3B3' },
-            PENDING_APPROVAL: { label: 'Chờ duyệt', color: '#EDA100' },
-            APPROVED: { label: 'Đã duyệt', color: '#1BAF7A' },
-            REJECTED: { label: 'Từ chối', color: '#E34948' },
-          },
+          render: (_v, row) => renderApprovalStatusBadge(row.status),
         },
         {
           title: 'Ngày cập nhật',
@@ -340,11 +298,15 @@ export default function VtsAssistAssetDetailContent({
   const viewTabs = useMemo<ViewTabConfig<VtsAssistAsset>[]>(() => {
     if (!r) return [];
 
-    const approvalInfo = APPROVAL_MAP[r.approvalStatus || ''] ||
-      APPROVAL_MAP[r.approvalStatus?.toUpperCase() || ''] || {
-        color: statusDraft,
-        label: r.approvalStatus || '—',
-      };
+    const approvalInfo = r.approvalStatus
+      ? (APPROVAL_MAP[r.approvalStatus.toUpperCase()] ?? {
+          color: textTertiary,
+          label: r.approvalStatus,
+        })
+      : {
+          color: textTertiary,
+          label: '',
+        };
 
     return [
       {
@@ -364,51 +326,54 @@ export default function VtsAssistAssetDetailContent({
               {
                 name: 'assetName',
                 label: 'Tên tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: colors.sidebarBg,
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        fontWeight: fontWeightBold,
+                        color: colors.sidebarBg,
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Cơ quan quản lý cấp trên',
-                value: (rec) => orgName.get(rec.parentOrgUnitId || '') || '—',
+                value: (rec) => (rec.parentOrgUnitId ? (orgName.get(rec.parentOrgUnitId) ?? '') : ''),
               },
               {
                 label: 'Đơn vị quản lý',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.orgUnitId || '') || '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.orgUnitId && orgName.get(rec.orgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.orgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Đơn vị sử dụng',
-                render: (_v, rec) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {orgName.get(rec.usingOrgUnitId || '') || '—'}
-                  </span>
-                ),
+                render: (_v, rec) =>
+                  rec.usingOrgUnitId && orgName.get(rec.usingOrgUnitId) ? (
+                    <span style={{ fontWeight: fontWeightBold }}>
+                      {orgName.get(rec.usingOrgUnitId)}
+                    </span>
+                  ) : '',
               },
               {
                 label: 'Mã thiết bị',
                 value: (rec) =>
-                  vtsAssistMap.get(rec.transmissionId || '')?.code || rec.transmissionCode || '—',
+                  (rec.transmissionId ? vtsAssistMap.get(rec.transmissionId)?.code : undefined) ?? rec.transmissionCode ?? '',
               },
               {
                 label: 'Tên hệ thống phụ trợ VTS',
                 value: (rec) =>
-                  vtsAssistMap.get(rec.transmissionId || '')?.name || rec.transmissionName || '—',
+                  (rec.transmissionId ? vtsAssistMap.get(rec.transmissionId)?.name : undefined) ?? rec.transmissionName ?? '',
               },
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                render: (val) => String(val || 'Tài sản hệ thống phụ trợ VTS'),
+                render: (val) => (val ? String(val) : ''),
               },
               {
                 name: 'barcode',
@@ -417,42 +382,44 @@ export default function VtsAssistAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                render: (val) => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: fontWeightMedium,
-                      background: '#ecfdf5',
-                      color: '#059669',
-                      border: '1px solid #a7f3d0',
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: fontWeightMedium,
+                        background: '#ecfdf5',
+                        color: '#059669',
+                        border: '1px solid #a7f3d0',
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                render: (val) => (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                      fontSize: 12,
-                      fontWeight: fontWeightMedium,
-                      background: '#eff6ff',
-                      color: '#2563eb',
-                      border: '1px solid #bfdbfe',
-                    }}
-                  >
-                    {String(val || '—')}
-                  </span>
-                ),
+                render: (val) =>
+                  val ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        fontWeight: fontWeightMedium,
+                        background: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #bfdbfe',
+                      }}
+                    >
+                      {String(val)}
+                    </span>
+                  ) : '',
               },
               {
                 name: 'assetGroup',
@@ -482,7 +449,9 @@ export default function VtsAssistAssetDetailContent({
                 name: 'quantity',
                 label: 'Số lượng',
                 render: (val, rec) =>
-                  val != null ? `${fmtNum(Number(val))} ${rec.quantityUnit || 'Bộ'}` : '—',
+                  val != null && String(val).trim() !== ''
+                    ? `${fmtNum(Number(val))} ${rec.quantityUnit || 'Bộ'}`
+                    : '',
               },
               {
                 name: 'quantityUnit',
@@ -516,12 +485,14 @@ export default function VtsAssistAssetDetailContent({
               {
                 name: 'landArea',
                 label: 'Diện tích đất (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'floorArea',
                 label: 'Diện tích sàn sử dụng (m²)',
-                render: (val) => (val != null ? `${fmtNum(Number(val))} m²` : '—'),
+                render: (val) =>
+                  val != null && String(val).trim() !== '' ? `${fmtNum(Number(val))} m²` : '',
               },
               {
                 name: 'assetLocation',
@@ -626,50 +597,32 @@ export default function VtsAssistAssetDetailContent({
         ],
       },
       {
-        key: 'exploitations',
+        key: 'exploitation',
         label: 'Khai thác tài sản',
+        badgeCount: exploitationRows.length,
+        icon: <BankOutlined />,
         customContent: (
           <div style={{ padding: '4px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <RocketOutlined style={{ color: actionPrimary }} />
-                  <span>Danh sách khai thác tài sản hệ thống phụ trợ VTS ({exploitationRows.length})</span>
-                </div>
-              </div>
-              <CommonTable
-                options={exploitationTableOption as unknown as TableOption<Record<string, unknown>>}
-                dataSource={exploitationRows as unknown as Record<string, unknown>[]}
-                total={exploitationRows.length}
-                page={1}
-                pageSize={100}
-                loading={false}
-              />
-            </div>
+            <CommonTable<VtsAssistAssetExploitation>
+              options={exploitationTableOption}
+              dataSource={exploitationRows}
+              total={exploitationRows.length}
+            />
           </div>
         ),
       },
       {
         key: 'adjustments',
-        label: 'Tăng giảm tài sản',
+        label: 'Lịch sử thay đổi nguyên giá',
+        badgeCount: adjustmentRows.length,
+        icon: <AuditOutlined />,
         customContent: (
           <div style={{ padding: '4px 0' }}>
-            <div style={sectionBoxStyle}>
-              <div style={sectionHeaderStyle}>
-                <div style={sectionTitleStyle}>
-                  <AuditOutlined style={{ color: actionPrimary }} />
-                  <span>Lịch sử tăng / giảm nguyên giá ({adjustmentRows.length})</span>
-                </div>
-              </div>
-              <CommonTable
-                options={adjustmentTableOption as unknown as TableOption<Record<string, unknown>>}
-                dataSource={adjustmentRows as unknown as Record<string, unknown>[]}
-                total={adjustmentRows.length}
-                page={1}
-                pageSize={100}
-                loading={false}
-              />
-            </div>
+            <CommonTable<VtsAssistAssetAdjustment>
+              options={adjustmentTableOption}
+              dataSource={adjustmentRows}
+              total={adjustmentRows.length}
+            />
           </div>
         ),
       },
@@ -684,6 +637,7 @@ export default function VtsAssistAssetDetailContent({
             fields: [
               {
                 label: 'Trạng thái phê duyệt',
+                colSpan: 24,
                 render: () => (
                   <span
                     style={{
@@ -713,62 +667,62 @@ export default function VtsAssistAssetDetailContent({
               },
               {
                 label: 'Cán bộ gửi phê duyệt',
-                value: (rec) => rec.submittedByName || '—',
+                value: (rec) => rec.submittedByName || '',
               },
               {
                 label: 'Ngày gửi phê duyệt',
                 value: (rec) =>
                   rec.submittedAt
                     ? dayjs(rec.submittedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Cán bộ phê duyệt Cảng vụ/Chi cục',
-                value: (rec) => rec.portAuthorityApprovedByName || '—',
+                value: (rec) => rec.portAuthorityApprovedByName || '',
               },
               {
                 label: 'Ngày Cảng vụ/Chi cục duyệt',
                 value: (rec) =>
                   rec.portAuthorityApprovedAt
                     ? dayjs(rec.portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Nội dung Cảng vụ duyệt',
-                value: (rec) => rec.portAuthorityApprovalContent || '—',
+                value: (rec) => rec.portAuthorityApprovalContent || '',
                 colSpan: 24,
               },
               {
                 label: 'Cán bộ phê duyệt Cục',
-                value: (rec) => rec.departmentApprovedByName || '—',
+                value: (rec) => rec.departmentApprovedByName || '',
               },
               {
                 label: 'Ngày Cục duyệt',
                 value: (rec) =>
                   rec.departmentApprovedAt
                     ? dayjs(rec.departmentApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
               {
                 label: 'Nội dung Cục duyệt',
-                value: (rec) => rec.departmentApprovalContent || '—',
+                value: (rec) => rec.departmentApprovalContent || '',
                 colSpan: 24,
               },
               {
                 label: 'Lý do từ chối (nếu có)',
-                value: (rec) => rec.rejectionReason || '—',
+                value: (rec) => rec.rejectionReason || '',
                 colSpan: 24,
               },
               {
                 label: 'Cán bộ cập nhật cuối',
-                value: (rec) => rec.updatedByName || '—',
+                value: (rec) => rec.updatedByName || '',
               },
               {
                 label: 'Ngày cập nhật cuối',
                 value: (rec) =>
                   rec.updatedAt
                     ? dayjs(rec.updatedAt).format('DD/MM/YYYY HH:mm')
-                    : '—',
+                    : '',
               },
             ],
           },
@@ -794,7 +748,7 @@ export default function VtsAssistAssetDetailContent({
         <span>
           Xem chi tiết tài sản hệ thống phụ trợ VTS —{' '}
           <span style={{ color: colors.sidebarBg }}>
-            {r?.assetName || '—'}
+            {r?.assetName || ''}
           </span>
           {r?.assetCode && (
             <span
@@ -813,11 +767,6 @@ export default function VtsAssistAssetDetailContent({
       onClose={onClose}
       record={r}
       tabs={viewTabs}
-      width={
-        typeof window !== 'undefined'
-          ? Math.min(1000, Math.floor(window.innerWidth * 0.95))
-          : 1000
-      }
       rootClassName="vts-assist-asset-view-drawer"
       className="vts-assist-asset-view-drawer"
     />
