@@ -53,12 +53,11 @@ import { normalizeSafeNumber } from '../../utils/numFmt';
 import {
   statusOperational, statusCritical, actionPrimary, statusAttention,
   textPrimary, textSecondary, textTertiary, borderDefault,
-  fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  spaceMd, spaceSm, spaceXs, spaceXl, spaceFormField, radiusPill,
+  fontSizeMd, fontSizeLg, fontWeightBold,
+  spaceMd, spaceSm, spaceXl, spaceFormField, radiusPill,
   drawerTitleStyle, drawerFooterStyle, DRAWER_WIDTH,
   primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
   statusBadgeStyle, cellTitleStyle, cellSubtitleStyle, icons,
-  fontSizeSm,
   formatUserDisplayName, isUuidString,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
@@ -252,15 +251,29 @@ function ddToDms(dd: number | null | undefined): { d: number; m: number; s: numb
   return { d, m, s };
 }
 
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-}
-
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BuoyListPage() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s: any) => s.user);
+
+  // ── Đơn vị quản lý & phân cấp qua hook chuẩn useOrgUnitFilter ────
+  const {
+    orgUnitId: managingUnitId,
+    setOrgUnitId: setManagingUnitId,
+    resetOrgUnit,
+    organizations,
+    orgLevel2Map,
+    orgMap,
+    isReady: orgUnitReady,
+  } = useOrgUnitFilter();
+
+  const organizationsRef = useRef<Organization[]>([]);
+  useEffect(() => {
+    organizationsRef.current = organizations;
+  }, [organizations]);
+
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // ── Filter state ─────────────────────────────────────────────────
 
@@ -503,10 +516,10 @@ export default function BuoyListPage() {
   }, []);
 
   useEffect(() => {
-    if (managingUnitId !== undefined && !initialLoadDone) {
+    if (orgUnitReady && !initialLoadDone) {
       setInitialLoadDone(true);
     }
-  }, [managingUnitId, initialLoadDone]);
+  }, [orgUnitReady, initialLoadDone]);
 
   // ── Fetch main data (client-side filter + paginate, D-3) ────────
   const fetchData = useCallback(async () => {
@@ -795,9 +808,11 @@ export default function BuoyListPage() {
         const n = typeof v === 'number' ? v : Number(v);
         return isNaN(n) ? undefined : n;
       };
-      const payload: CreateBuoyRequest = {
+      const payload: Partial<CreateBuoyRequest> = {
         code,
         name,
+        latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
+        longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
         unitId: values.unitId || undefined,
         orgUnitId: values.unitId || undefined,
         buoyStationId: values.buoyStationId || undefined,

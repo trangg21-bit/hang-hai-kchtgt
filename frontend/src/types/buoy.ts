@@ -138,8 +138,8 @@ export interface CreateBuoyRequest {
   name: string;
   code: string;
   type?: BuoyType;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   geometryType?: string;
   mapSymbolId?: string;
   coordinateSystem?: number;
@@ -148,7 +148,7 @@ export interface CreateBuoyRequest {
   color?: string;
   shape?: string;
   lightCharacteristic?: string;
-  range: number;
+  range?: number;
   description?: string;
   unitId?: string;
   lastInspectionDate?: string;
@@ -170,7 +170,7 @@ export interface CreateBuoyRequest {
   diameter?: number;
   beaconLight?: string; // Tên trường DB giữ nguyên là beacon_light, ngữ nghĩa UI: 'Đèn hiệu'
   towerHeight?: number;
-  lightHeight: number;
+  lightHeight?: number;
   lightModel?: string;
   towerColor?: string;
   powerSupply?: string;
