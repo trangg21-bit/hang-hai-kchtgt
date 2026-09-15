@@ -935,7 +935,14 @@ export default function ReportViewer() {
           open={pdfPreviewOpen}
           title={`Xem trước PDF: ${template.name}`}
           footer={null}
-          width="90vw"
+          width="96vw"
+          style={{ top: 10, maxWidth: '98vw' }}
+          styles={{
+            body: {
+              padding: '4px 8px 8px',
+              height: 'calc(100vh - 85px)',
+            },
+          }}
           centered
           destroyOnHidden
           onCancel={() => {
@@ -946,7 +953,7 @@ export default function ReportViewer() {
             setPdfPreviewError(undefined);
           }}
         >
-          <div style={{ height: 'calc(100vh - 180px)', minHeight: 480 }}>
+          <div style={{ height: '100%', minHeight: 480 }}>
             {pdfPreviewLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <Spin tip="Đang tạo bản xem trước PDF..." />
