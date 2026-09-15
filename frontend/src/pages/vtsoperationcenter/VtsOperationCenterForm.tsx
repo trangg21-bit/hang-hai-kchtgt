@@ -45,6 +45,8 @@ import {
 import { fmtInputNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import AppDrawer from '../../components/shared/AppDrawer';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
+import { useKchtPermissions } from '../../hooks/useKchtPermissions';
 
 export const DEFAULT_GIS_SYMBOLS = [
   { id: '1', code: 'SYM-VTS', name: 'Trung tâm điều hành VTS', image: '' },
@@ -262,10 +264,11 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const userUnitType = currentUser?.unitType || '';
-  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
-  const canSaveAndApprove = hasPerm('vtsoperationcenter:approvec2') || hasPerm('vts:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isCucLevel;
+  const kchtPerms = useKchtPermissions('vtsoperationcenter', {
+    extraCreatePerms: ['vts:create'],
+    extraUpdatePerms: ['vts:update'],
+    extraApproveL2Perms: ['vts:approvec2'],
+  });
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -776,67 +779,23 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         </span>
       }
       footer={
-        isDetailMode ? null : (
-          <>
-            {isCreateMode ? (
-              <>
-                <Button
-                  onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'draft'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu tạm
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'submit'}
-                  style={primaryButtonStyle}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              </>
-            ) : (
-              <>
-                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
-                  <>
-                    <Button
-                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'draft'}
-                      style={outlineButtonStyle}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  </>
-                )}
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              </>
-            )}
-          </>
-        )
+        <KchtFormFooter
+          mode={currentMode}
+          resource="vtsoperationcenter"
+          record={record}
+          loading={isSubmitting}
+          activeAction={actionType}
+          options={{
+            extraCreatePerms: ['vts:create'],
+            extraUpdatePerms: ['vts:update'],
+            extraApproveL2Perms: ['vts:approvec2'],
+          }}
+          onSubmit={(action) => {
+            actionTypeRef.current = action;
+            setActionType(action);
+            form.submit();
+          }}
+        />
       }
     >
       {isDetailMode ? (

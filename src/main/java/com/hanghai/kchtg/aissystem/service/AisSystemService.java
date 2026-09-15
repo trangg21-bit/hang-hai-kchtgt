@@ -351,6 +351,7 @@ public class AisSystemService {
                 AisSystemRequest.Fields.symbolId);
 
         if (request.isFieldPresent("provinceId") && request.getProvinceId() == null) entity.setProvinceId(null);
+        if (request.isFieldPresent("operatingOrgId") && request.getOperatingOrgId() == null) entity.setOperatingOrgId(null);
         if (request.isFieldPresent("detailedLocation") && request.getDetailedLocation() == null) entity.setDetailedLocation(null);
         if (request.isFieldPresent("model") && request.getModel() == null) entity.setModel(null);
         if (request.isFieldPresent("specifications") && request.getSpecifications() == null) entity.setSpecifications(null);
@@ -1299,6 +1300,13 @@ public class AisSystemService {
         GisGeometryType geometryType = null;
         if (entity.getSpatialId() != null) {
             Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            if (spatialOpt.isPresent()) {
+                GisSpatialObject spatial = spatialOpt.get();
+                coordinates = spatial.getCoordinates();
+                geometryType = spatial.getGeometryType();
+            }
+        } else if (entity.getId() != null) {
+            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.AIS_SYSTEM);
             if (spatialOpt.isPresent()) {
                 GisSpatialObject spatial = spatialOpt.get();
                 coordinates = spatial.getCoordinates();

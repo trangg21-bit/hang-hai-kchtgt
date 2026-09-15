@@ -1,6 +1,7 @@
 import api from '../api';
 import {
   fetchCoastalStationAssets,
+  fetchCoastalStationAssetCounts,
   fetchCoastalStationAsset,
   createCoastalStationAsset,
   updateCoastalStationAsset,
@@ -29,6 +30,20 @@ export async function fetchInmarsatAssets(
   return fetchCoastalStationAssets({
     ...params,
     assetType: INMARSAT_ASSET_TYPE,
+  });
+}
+
+export async function fetchInmarsatAssetCounts(
+  params: InmarsatAssetFilters
+): Promise<Record<string, number>> {
+  return fetchCoastalStationAssetCounts({
+    ...params,
+    assetType: INMARSAT_ASSET_TYPE,
+    approvalStatus: undefined,
+    page: undefined,
+    size: undefined,
+    sortBy: undefined,
+    sortDir: undefined,
   });
 }
 
@@ -131,5 +146,4 @@ export {
   fetchCoastalStationAssetHistory as fetchInmarsatAssetHistory,
   type CoastalStationAssetAttachmentResponse as InmarsatAssetAttachmentResponse,
 } from '../coastalStationAsset/api';
-
 

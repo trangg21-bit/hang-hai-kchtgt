@@ -864,7 +864,7 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
 
         {/* Content */}
         <Content
-          className={location.pathname === '/vts-system' ? 'vts-list-content' : undefined}
+          className={['/vts-system', '/station/cospas-sarsat'].includes(location.pathname) ? 'vts-list-content' : undefined}
           style={{
             padding: location.pathname === '/gis/map' ? 0 : 24,
             height: 'calc(100vh - 64px)',

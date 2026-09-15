@@ -123,7 +123,7 @@ public class CoastalStationLRITController {
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài LRIT")
     @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:read', 'specialstation:read', 'data:read')")
-    public ResponseEntity<Page<CoastalStationLRITResponse>> search(
+    public ResponseEntity<Page<CoastalStationLRITListResponse>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             // Bộ lọc riêng theo Tên đài / Mã đài (khác `keyword` là tìm chung nhiều cột)
@@ -148,7 +148,7 @@ public class CoastalStationLRITController {
                 pageable.getPageNumber(), safeSize, resolveListSort(pageable.getSort(), sortBy, sortDir, sort));
 
         ConditionStatus parsedCondition = CoastalStationLRITService.parseConditionStatus(conditionStatus);
-        Page<CoastalStationLRITResponse> results = service.searchPaged(
+        Page<CoastalStationLRITListResponse> results = service.searchPaged(
                 orgUnitId, keyword, name, code, operatingOrgId, provinceId, parsedCondition, approvalStatus,
                 updatedBy, updatedFrom, updatedTo, sanitizedPageable);
         return ResponseEntity.ok(results);

@@ -1,34 +1,41 @@
 package com.hanghai.kchtg.station.controller;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import com.hanghai.kchtg.station.dto.cospas.*;
 import com.hanghai.kchtg.station.entity.CoastalStationCospasSarsat;
 import com.hanghai.kchtg.station.service.CoastalStationCospasSarsatService;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import com.hanghai.kchtg.security.annotation.DataScope;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/stations/cospas-sarsat")
+@RequestMapping({"/api/v1/stations/cospas-sarsat", "/api/v1/stations/cospas"})
 @Validated
 @RequiredArgsConstructor
-@Tag(name = "Cospas-Sarsat Coastal Station")
+@Tag(name = "Cospas-Sarsat Coastal Station", description = "Quản lý Đài thông tin vệ tinh Cospas-Sarsat")
 @DataScope
 public class CoastalStationCospasSarsatController {
 
+    private static final int MAX_PAGE_SIZE = 200;
+
     private final CoastalStationCospasSarsatService service;
 
-    @PostMapping("/create")
-    @Operation(summary = "Create a new Cospas-Sarsat station")
+    @PostMapping({"", "/create"})
+    @Operation(summary = "Tạo mới Đài Cospas-Sarsat")
     public ResponseEntity<CoastalStationCospasSarsat> createStation(
             @Valid @RequestBody CoastalStationCospasSarsatRequest request) {
         CoastalStationCospasSarsat created = service.createStation(request);
@@ -36,7 +43,7 @@ public class CoastalStationCospasSarsatController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update an existing Cospas-Sarsat station")
+    @Operation(summary = "Cập nhật Đài Cospas-Sarsat")
     public ResponseEntity<CoastalStationCospasSarsat> updateStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationCospasSarsatUpdateRequest request) {
@@ -45,104 +52,150 @@ public class CoastalStationCospasSarsatController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Soft-delete a Cospas-Sarsat station")
+    @Operation(summary = "Xóa mềm Đài Cospas-Sarsat (chỉ khi DRAFT)")
     public ResponseEntity<Void> deleteStation(@PathVariable UUID id) {
         service.deleteStation(id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping({"", "/"})
-    @Operation(summary = "Get all active Cospas-Sarsat stations (root)")
-    public ResponseEntity<List<CoastalStationCospasSarsat>> getAllStationsRoot() {
-        List<CoastalStationCospasSarsat> stations = service.getAllStations();
-        return ResponseEntity.ok(stations);
-    }
-
-    @GetMapping("/options")
-    @Operation(summary = "Get Cospas-Sarsat stations for dropdown options")
-    public ResponseEntity<List<CoastalStationCospasSarsatResponse>> getOptions(
-            @RequestParam(required = false) UUID orgUnitId) {
-        return ResponseEntity.ok(service.getOptions(orgUnitId));
-    }
-
-    @GetMapping("/list")
-    @Operation(summary = "Get all active Cospas-Sarsat stations")
-    public ResponseEntity<List<CoastalStationCospasSarsat>> getAllStations() {
-        List<CoastalStationCospasSarsat> stations = service.getAllStations();
-        return ResponseEntity.ok(stations);
-    }
-
     @GetMapping("/{id}")
-    @Operation(summary = "Get a Cospas-Sarsat station by ID")
+    @Operation(summary = "Xem chi tiết Đài Cospas-Sarsat theo ID")
     public ResponseEntity<CoastalStationCospasSarsatResponse> getStationById(@PathVariable UUID id) {
         CoastalStationCospasSarsat entity = service.getStationById(id);
         CoastalStationCospasSarsatResponse response = service.buildResponse(entity);
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping
+    @Operation(summary = "Tìm kiếm phân trang danh sách Đài Cospas-Sarsat chuẩn VTS")
+    public ResponseEntity<?> searchOrList(
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) ConditionStatus conditionStatus,
+            @RequestParam(required = false) ApprovalStatus approvalStatus,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(defaultValue = "true") boolean includeCounts,
+            @RequestParam(required = false) String sort) {
+
+        // Tương thích ngược: nếu không truyền tham số phân trang / bộ lọc nào, trả về danh sách đầy đủ
+        if (page == null && size == null && keyword == null && orgUnitId == null && conditionStatus == null && approvalStatus == null && provinceId == null) {
+            return ResponseEntity.ok(service.getAllStations());
+        }
+
+        int pageNum = page != null ? Math.max(0, page) : 0;
+        int pageSize = size != null ? Math.min(Math.max(size, 1), MAX_PAGE_SIZE) : 10;
+        Sort sortOrder = Sort.by(Sort.Direction.DESC, "createdAt");
+        if (sort != null && !sort.isBlank()) {
+            String[] parts = sort.split(",");
+            String prop = parts[0].trim();
+            Sort.Direction dir = (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            sortOrder = Sort.by(dir, prop).and(sortOrder);
+        }
+
+        Pageable pageable = PageRequest.of(pageNum, pageSize, sortOrder);
+        Page<CoastalStationCospasSarsatResponse> pageResult = service.searchPaged(
+                orgUnitId, provinceId, conditionStatus, approvalStatus, keyword, updatedFrom, updatedTo, pageable);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", pageResult.getContent());
+        response.put("totalElements", pageResult.getTotalElements());
+        response.put("totalPages", pageResult.getTotalPages());
+        response.put("size", pageResult.getSize());
+        response.put("number", pageResult.getNumber());
+
+        if (includeCounts) {
+            response.put("statusCounts", service.countByApprovalStatus(orgUnitId, provinceId, conditionStatus, keyword, updatedFrom, updatedTo));
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/counts")
+    @Operation(summary = "Đếm số lượng bản ghi theo từng tab trạng thái phê duyệt")
+    public ResponseEntity<Map<String, Long>> getCounts(
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) Integer provinceId,
+            @RequestParam(required = false) ConditionStatus conditionStatus,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo) {
+        return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, provinceId, conditionStatus, keyword, updatedFrom, updatedTo));
+    }
+
+    @GetMapping("/options")
+    @Operation(summary = "Lấy danh sách chọn nhẹ Đài Cospas-Sarsat (chỉ APPROVED & OPERATIONAL)")
+    public ResponseEntity<List<CoastalStationCospasSarsatOptionResponse>> getOptions(
+            @RequestParam(required = false) UUID orgUnitId) {
+        return ResponseEntity.ok(service.getOptions(orgUnitId));
+    }
+
+    @GetMapping("/list")
+    @Operation(summary = "Lấy toàn bộ danh sách Đài Cospas-Sarsat (chưa xóa)")
+    public ResponseEntity<List<CoastalStationCospasSarsat>> getAllStations() {
+        return ResponseEntity.ok(service.getAllStations());
+    }
+
     @GetMapping("/search")
-    @Operation(summary = "Search Cospas-Sarsat stations by keyword")
-    public ResponseEntity<List<CoastalStationCospasSarsat>> searchStations(
-            @RequestParam String keyword) {
-        List<CoastalStationCospasSarsat> results = service.searchStations(keyword);
-        return ResponseEntity.ok(results);
+    @Operation(summary = "Tìm kiếm Đài Cospas-Sarsat theo từ khóa đơn giản")
+    public ResponseEntity<List<CoastalStationCospasSarsat>> searchStations(@RequestParam String keyword) {
+        return ResponseEntity.ok(service.searchStations(keyword));
     }
 
     @GetMapping("/by-code/{code}")
-    @Operation(summary = "Find a Cospas-Sarsat station by code")
+    @Operation(summary = "Tìm Đài Cospas-Sarsat theo mã")
     public ResponseEntity<CoastalStationCospasSarsat> findByCode(@PathVariable String code) {
-        Optional<CoastalStationCospasSarsat> station = service.findByCode(code);
-        return station.<ResponseEntity<CoastalStationCospasSarsat>>map(ResponseEntity::ok)
+        return service.findByCode(code)
+                .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // --- QUY TRÌNH PHÊ DUYỆT 2 CẤP ---
+
     @PostMapping("/{id}/submit")
     @Operation(summary = "Gửi phê duyệt cấp Cảng vụ/Chi cục")
-    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:create', 'coastalstationcospassarsat:update', 'specialstation:create', 'specialstation:update', 'station:create', 'station:update', 'data:create')")
     public ResponseEntity<CoastalStationCospasSarsat> submit(@PathVariable UUID id) {
         return ResponseEntity.ok(service.submit(id));
     }
 
     @PostMapping("/{id}/approve-l1")
-    @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
-    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approvec1', 'station:approve', 'data:approvec1', 'data:approve')")
+    @Operation(summary = "Phê duyệt vòng 1 (Cảng vụ / Chi cục)")
     public ResponseEntity<CoastalStationCospasSarsat> approveLevel1(@PathVariable UUID id) {
         return ResponseEntity.ok(service.approveLevel1(id));
     }
 
     @PostMapping("/{id}/approve-l2")
-    @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
-    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:approvec2', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approvec2', 'station:approve', 'data:approvec2', 'data:approve')")
+    @Operation(summary = "Phê duyệt vòng 2 (Cục Hàng hải)")
     public ResponseEntity<CoastalStationCospasSarsat> approveLevel2(@PathVariable UUID id) {
         return ResponseEntity.ok(service.approveLevel2(id));
     }
 
-    /** @deprecated dùng /approve-l1 hoặc /approve-l2 — endpoint này giữ để tương thích client cũ. */
-    @Deprecated
-    @PostMapping("/{id}/approve")
-    @Operation(summary = "Approve a Cospas-Sarsat station (legacy — tự chọn vòng theo trạng thái hiện tại)")
-    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approvec2', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approve', 'data:approve')")
-    public ResponseEntity<CoastalStationCospasSarsat> approveStation(
+    @PostMapping("/{id}/reject")
+    @Operation(summary = "Từ chối phê duyệt")
+    public ResponseEntity<CoastalStationCospasSarsat> reject(
             @PathVariable UUID id,
-            @Valid @RequestBody CoastalStationCospasSarsatApprovalRequest request) {
-        CoastalStationCospasSarsat approved = service.approveStation(id, Boolean.TRUE.equals(request.getApproved()));
-        return ResponseEntity.ok(approved);
+            @RequestBody(required = false) Map<String, Object> body) {
+        String reason = body != null && body.get("rejectionReason") != null
+                ? body.get("rejectionReason").toString()
+                : "Từ chối phê duyệt";
+        return ResponseEntity.ok(service.reject(id, reason));
     }
 
-    @PostMapping("/{id}/reject")
-    @Operation(summary = "Từ chối phê duyệt kèm lý do (tối thiểu 10 ký tự)")
-    @PreAuthorize("hasAnyAuthority('coastalstationcospassarsat:reject', 'coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approvec2', 'coastalstationcospassarsat:approve', 'specialstation:approve', 'station:approve', 'data:approve')")
-    public ResponseEntity<CoastalStationCospasSarsat> rejectStation(
+    // Tương thích ngược với endpoint /approve cũ
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<CoastalStationCospasSarsat> approveLegacy(
             @PathVariable UUID id,
-            @Valid @RequestBody CoastalStationCospasSarsatApprovalRequest request) {
-        CoastalStationCospasSarsat rejected = service.reject(id, request.getRejectionReason());
-        return ResponseEntity.ok(rejected);
+            @RequestBody(required = false) Map<String, Object> body) {
+        boolean approved = body == null || !Boolean.FALSE.equals(body.get("approved"));
+        return ResponseEntity.ok(service.approveStation(id, approved));
     }
 
     @GetMapping("/{id}/history")
-    @Operation(summary = "Get change history for a Cospas-Sarsat station")
+    @Operation(summary = "Xem lịch sử thay đổi của Đài Cospas-Sarsat")
     public ResponseEntity<List<CoastalStationCospasSarsatHistoryResponse>> getHistory(@PathVariable UUID id) {
-        List<CoastalStationCospasSarsatHistoryResponse> history = service.getHistory(id);
-        return ResponseEntity.ok(history);
+        return ResponseEntity.ok(service.getHistory(id));
     }
 }

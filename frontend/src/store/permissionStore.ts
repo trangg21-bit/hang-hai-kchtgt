@@ -28,7 +28,6 @@ const RESOURCE_PARENT_DOMAINS: Record<string, string[]> = {
   coastalstationinmarsat: ['specialstation', 'coastalstation', 'station', 'data'],
   coastalstationhaiphong: ['specialstation', 'coastalstation', 'station', 'data'],
   coastalstationcospassarsat: ['specialstation', 'coastalstation', 'station', 'data'],
-  vtsoperationcenter: ['vts'],
   portplanning: ['document'],
   planningadjustment: ['document'],
   operationplan: ['document'],

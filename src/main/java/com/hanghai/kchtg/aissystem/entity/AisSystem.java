@@ -52,7 +52,7 @@ public class AisSystem extends BaseApprovableEntity {
     @JoinColumn(name = "radar_station_id", insertable = false, updatable = false)
     private RadarStation radarStation;
 
-    @Column(name = "operating_org_id", nullable = false)
+    @Column(name = "operating_org_id")
     private UUID operatingOrgId;
 
     @Column(name = "detailed_location", length = 500)

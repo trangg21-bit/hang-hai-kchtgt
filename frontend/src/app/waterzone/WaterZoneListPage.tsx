@@ -43,6 +43,9 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { documentApi } from '../document/api';
 import { z } from 'zod';
 import { vungNuocCreateSchema, vungNuocUpdateSchema } from './schema';
@@ -103,6 +106,12 @@ export const translateFieldName = (fieldName: string): string => {
 export default function WaterZoneListPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const currentUser = useAuthStore((s) => s.user);
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const canCreate = hasPerm('waterzone:create') || hasPerm('data:create') || isAdmin;
+  const canApprove = hasPerm('waterzone:approvec1') || hasPerm('waterzone:approvec2') || hasPerm('waterzone:approve') || hasPerm('data:approvec1') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin;
 
   const [search, setSearch] = useState('');
   const [filterMaVung, setFilterMaVung] = useState('');
@@ -547,43 +556,45 @@ export default function WaterZoneListPage() {
               }}
             />
           </Tooltip>
-          <Tooltip title="Sửa">
-            <Button
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={async () => {
-                try {
-                  setIsLoading(true);
-                  const data = await waterZoneApi.findById(record.id);
-                  setSelectedRecord(data);
-                  updateForm.setFieldsValue({
-                    waterZoneCode: data.waterZoneCode,
-                    waterZoneName: data.waterZoneName,
-                    portId: data.portId,
-                    area: data.area,
-                    doSauMax: data.doSauMax,
-                    doSauTrungBinh: data.doSauTrungBinh,
-                    loaiVungNuoc: data.loaiVungNuoc,
-                    operationalStatus: data.operationalStatus,
-                    bieuTuongId: data.bieuTuongId,
-                    loaiHinhHoc: data.loaiHinhHoc || 'POLYGON',
-                    gisLocation: {
+          {canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'waterzone' }) && (
+            <Tooltip title="Sửa">
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={async () => {
+                  try {
+                    setIsLoading(true);
+                    const data = await waterZoneApi.findById(record.id);
+                    setSelectedRecord(data);
+                    updateForm.setFieldsValue({
+                      waterZoneCode: data.waterZoneCode,
+                      waterZoneName: data.waterZoneName,
+                      portId: data.portId,
+                      area: data.area,
+                      doSauMax: data.doSauMax,
+                      doSauTrungBinh: data.doSauTrungBinh,
+                      loaiVungNuoc: data.loaiVungNuoc,
+                      operationalStatus: data.operationalStatus,
+                      bieuTuongId: data.bieuTuongId,
                       loaiHinhHoc: data.loaiHinhHoc || 'POLYGON',
-                      toaDo: data.toaDo || '',
-                      bieuTuongId: data.bieuTuongId
-                    }
-                  });
-                  setUpdateModalVisible(true);
-                } catch (err) {
-                  toast.error('Không thể tải thông tin vùng nước');
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-            />
-          </Tooltip>
-          {record.approvalStatus === 'CHO_PHE_DUYET' && (
+                      gisLocation: {
+                        loaiHinhHoc: data.loaiHinhHoc || 'POLYGON',
+                        toaDo: data.toaDo || '',
+                        bieuTuongId: data.bieuTuongId
+                      }
+                    });
+                    setUpdateModalVisible(true);
+                  } catch (err) {
+                    toast.error('Không thể tải thông tin vùng nước');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+              />
+            </Tooltip>
+          )}
+          {record.approvalStatus === 'CHO_PHE_DUYET' && canApprove && (
             <>
               <Tooltip title="Phê duyệt">
                 <Popconfirm
@@ -608,7 +619,7 @@ export default function WaterZoneListPage() {
               </Tooltip>
             </>
           )}
-          {record.approvalStatus === 'CHO_PHE_DUYET' && (
+          {canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'waterzone' }) && (
             <Tooltip title="Xóa">
               <Popconfirm
                 title="Xác nhận xóa"
@@ -622,27 +633,29 @@ export default function WaterZoneListPage() {
               </Popconfirm>
             </Tooltip>
           )}
-          <Tooltip title="Lịch sử">
-            <Button
-              type="link"
-              size="small"
-              icon={<HistoryOutlined />}
-              onClick={async () => {
-                try {
-                  setLoadingHistory(true);
-                  setSelectedRecord(record);
-                  setHistoryModalVisible(true);
-                  const { waterZoneApi } = await import('./api');
-                  const histData = await waterZoneApi.getHistory(record.id);
-                  setHistoryRecords(histData.changeHistory || []);
-                } catch (err) {
-                  toast.error('Không thể tải lịch sử thay đổi');
-                } finally {
-                  setLoadingHistory(false);
-                }
-              }}
-            />
-          </Tooltip>
+          {(hasPerm('waterzone:history') || hasPerm('data:read') || isAdmin) && (
+            <Tooltip title="Lịch sử">
+              <Button
+                type="link"
+                size="small"
+                icon={<HistoryOutlined />}
+                onClick={async () => {
+                  try {
+                    setLoadingHistory(true);
+                    setSelectedRecord(record);
+                    setHistoryModalVisible(true);
+                    const { waterZoneApi } = await import('./api');
+                    const histData = await waterZoneApi.getHistory(record.id);
+                    setHistoryRecords(histData.changeHistory || []);
+                  } catch (err) {
+                    toast.error('Không thể tải lịch sử thay đổi');
+                  } finally {
+                    setLoadingHistory(false);
+                  }
+                }}
+              />
+            </Tooltip>
+          )}
         </Space>
       ),
     },
@@ -703,9 +716,11 @@ export default function WaterZoneListPage() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateModalVisible(true); }}>
-                Tạo vùng nước
-              </Button>
+              {canCreate && (
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => { createForm.resetFields(); setCreateModalVisible(true); }}>
+                  Tạo vùng nước
+                </Button>
+              )}
             </Space>
           </Col>
         </Row>
@@ -1189,7 +1204,7 @@ export default function WaterZoneListPage() {
 
             <div style={{ marginTop: 24, textAlign: 'right' }}>
               <Space>
-                {selectedRecord.approvalStatus === 'CHO_PHE_DUYET' && (
+                {selectedRecord.approvalStatus === 'CHO_PHE_DUYET' && canApprove && (
                   <>
                     <Popconfirm
                       title="Phê duyệt vùng nước?"
@@ -1208,36 +1223,40 @@ export default function WaterZoneListPage() {
                     </Button>
                   </>
                 )}
-                <Button icon={<UploadOutlined />} onClick={() => { setDetailModalVisible(false); navigate(`/document/upload/water-zone/${selectedRecord.id}`); }}>
-                  Upload Giấy tờ
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={() => {
-                    setDetailModalVisible(false);
-                    updateForm.setFieldsValue({
-                      waterZoneCode: selectedRecord.waterZoneCode,
-                      waterZoneName: selectedRecord.waterZoneName,
-                      portId: selectedRecord.portId,
-                      area: selectedRecord.area,
-                      doSauMax: selectedRecord.doSauMax,
-                      doSauTrungBinh: selectedRecord.doSauTrungBinh,
-                      loaiVungNuoc: selectedRecord.loaiVungNuoc,
-                      operationalStatus: selectedRecord.operationalStatus,
-                      bieuTuongId: selectedRecord.bieuTuongId,
-                      loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POLYGON',
-                      gisLocation: {
+                {(hasPerm('document:create') || isAdmin) && (
+                  <Button icon={<UploadOutlined />} onClick={() => { setDetailModalVisible(false); navigate(`/document/upload/water-zone/${selectedRecord.id}`); }}>
+                    Upload Giấy tờ
+                  </Button>
+                )}
+                {canEditApprovalRecord(selectedRecord.approvalStatus, { hasPerm, resource: 'waterzone' }) && (
+                  <Button
+                    type="primary"
+                    icon={<EditOutlined />}
+                    onClick={() => {
+                      setDetailModalVisible(false);
+                      updateForm.setFieldsValue({
+                        waterZoneCode: selectedRecord.waterZoneCode,
+                        waterZoneName: selectedRecord.waterZoneName,
+                        portId: selectedRecord.portId,
+                        area: selectedRecord.area,
+                        doSauMax: selectedRecord.doSauMax,
+                        doSauTrungBinh: selectedRecord.doSauTrungBinh,
+                        loaiVungNuoc: selectedRecord.loaiVungNuoc,
+                        operationalStatus: selectedRecord.operationalStatus,
+                        bieuTuongId: selectedRecord.bieuTuongId,
                         loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POLYGON',
-                        toaDo: selectedRecord.toaDo || '',
-                        bieuTuongId: selectedRecord.bieuTuongId
-                      }
-                    });
-                    setUpdateModalVisible(true);
-                  }}
-                >
-                  Chỉnh sửa
-                </Button>
+                        gisLocation: {
+                          loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POLYGON',
+                          toaDo: selectedRecord.toaDo || '',
+                          bieuTuongId: selectedRecord.bieuTuongId
+                        }
+                      });
+                      setUpdateModalVisible(true);
+                    }}
+                  >
+                    Chỉnh sửa
+                  </Button>
+                )}
                 <Button onClick={closeDetailModal}>Đóng</Button>
               </Space>
             </div>

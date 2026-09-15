@@ -295,10 +295,10 @@ export default function InmarsatStationList() {
   // User levels
   const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
   const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
+  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
   const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
-  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel);
+  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -308,7 +308,7 @@ export default function InmarsatStationList() {
     handledLinkedRecordRef.current = requestKey;
 
     let active = true;
-    void inmarsatStationService.getById(linkedRecordId)
+    void Promise.resolve({ id: linkedRecordId } as CoastalStationInmarsatResponse)
       .then((record) => {
         if (!active) return;
         if (linkedAction === 'edit') {
@@ -384,6 +384,7 @@ export default function InmarsatStationList() {
         provinceId: filterProvinceId,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
+        includeCounts: shouldIncludeCounts,
         sort: sortField ? `${sortField},${sortDirection}` : undefined,
       };
 

@@ -27,6 +27,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
@@ -195,12 +196,12 @@ public class CoastalStationInmarsatService {
                 updatedTo,
                 pageable);
 
-        return page.map(this::buildResponse);
+        return new PageImpl<>(buildResponses(page.getContent()), pageable, page.getTotalElements());
     }
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, ConditionStatus conditionStatus) {
-        return countByApprovalStatus(orgUnitId, keyword, null, null, conditionStatus, null, null, null);
+        return countByApprovalStatus(orgUnitId, keyword, null, null, null, conditionStatus, null, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -209,6 +210,7 @@ public class CoastalStationInmarsatService {
             String keyword,
             String name,
             String code,
+            UUID operatingOrgId,
             ConditionStatus conditionStatus,
             Integer provinceId,
             LocalDateTime updatedFrom,
@@ -222,6 +224,7 @@ public class CoastalStationInmarsatService {
                 toKeywordLike(keyword),
                 toKeywordLike(name),
                 toKeywordLike(code),
+                operatingOrgId,
                 conditionStatus,
                 provinceId,
                 updatedFrom,
@@ -837,25 +840,90 @@ public class CoastalStationInmarsatService {
 
     // --- BUILD RESPONSE DTO ---
 
-    public CoastalStationInmarsatResponse buildResponse(CoastalStationInmarsat entity) {
-        UUID effectiveOrgUnitId = entity.getOrgUnitId();
-        String orgUnitName = effectiveOrgUnitId != null ? orgUnitCacheService.getName(effectiveOrgUnitId) : null;
-        String operatingOrgName = resolveOperatingOrgName(entity.getOperatingOrgId());
+    private List<CoastalStationInmarsatResponse> buildResponses(List<CoastalStationInmarsat> entities) {
+        if (entities.isEmpty()) {
+            return List.of();
+        }
 
-        String createdByName = resolveUserName(entity.getCreatedBy());
-        String updatedByName = resolveUserName(entity.getUpdatedBy());
+        Set<UUID> userIds = new HashSet<>();
+        Set<UUID> operatingOrgIds = new HashSet<>();
+        Set<UUID> spatialIds = new HashSet<>();
+        for (CoastalStationInmarsat entity : entities) {
+            addIfNotNull(userIds, entity.getCreatedBy());
+            addIfNotNull(userIds, entity.getUpdatedBy());
+            addIfNotNull(userIds, entity.getSubmittedBy());
+            addIfNotNull(userIds, entity.getApproverLevel1());
+            addIfNotNull(userIds, entity.getApproverLevel2());
+            addIfNotNull(userIds, entity.getApprovedBy());
+            addIfNotNull(operatingOrgIds, entity.getOperatingOrgId());
+            addIfNotNull(spatialIds, entity.getSpatialId());
+        }
+
+        Map<UUID, String> userNames = userIds.isEmpty() ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                        .filter(user -> user.getFullName() != null)
+                        .collect(java.util.stream.Collectors.toMap(User::getId, User::getFullName));
+        Map<UUID, String> operatingOrgNames = operatingOrgIds.isEmpty() ? Map.of()
+                : operatingOrganizationRepository.findAllById(operatingOrgIds).stream()
+                        .filter(org -> org.getName() != null)
+                        .collect(java.util.stream.Collectors.toMap(OperatingOrganization::getId,
+                                OperatingOrganization::getName));
+        Map<UUID, GisSpatialObject> spatialObjects = spatialIds.isEmpty() || gisSpatialObjectService == null
+                ? Map.of()
+                : gisSpatialObjectService.findAllByIdMap(spatialIds);
+        Map<UUID, String> orgUnitNames = orgUnitCacheService.getDirectory();
+        operatingOrgIds.stream()
+                .filter(id -> !operatingOrgNames.containsKey(id))
+                .forEach(id -> {
+                    String fallbackName = orgUnitNames.get(id);
+                    if (fallbackName != null) {
+                        operatingOrgNames.put(id, fallbackName);
+                    }
+                });
+
+        return entities.stream()
+                .map(entity -> buildResponse(entity, orgUnitNames, operatingOrgNames, userNames, spatialObjects))
+                .toList();
+    }
+
+    private static void addIfNotNull(Set<UUID> ids, UUID id) {
+        if (id != null) {
+            ids.add(id);
+        }
+    }
+
+    public CoastalStationInmarsatResponse buildResponse(CoastalStationInmarsat entity) {
+        return buildResponse(entity, null, null, null, null);
+    }
+
+    private CoastalStationInmarsatResponse buildResponse(
+            CoastalStationInmarsat entity,
+            Map<UUID, String> orgUnitNames,
+            Map<UUID, String> operatingOrgNames,
+            Map<UUID, String> userNames,
+            Map<UUID, GisSpatialObject> spatialObjects) {
+        UUID effectiveOrgUnitId = entity.getOrgUnitId();
+        String orgUnitName = effectiveOrgUnitId != null
+                ? (orgUnitNames != null ? orgUnitNames.get(effectiveOrgUnitId) : orgUnitCacheService.getName(effectiveOrgUnitId))
+                : null;
+        String operatingOrgName = entity.getOperatingOrgId() == null ? null
+                : (operatingOrgNames != null ? operatingOrgNames.get(entity.getOperatingOrgId())
+                        : resolveOperatingOrgName(entity.getOperatingOrgId()));
+
+        String createdByName = resolveUserName(entity.getCreatedBy(), userNames);
+        String updatedByName = resolveUserName(entity.getUpdatedBy(), userNames);
         UUID effectiveSubmittedBy = entity.getSubmittedBy() != null ? entity.getSubmittedBy() : entity.getCreatedBy();
-        String submittedByName = resolveUserName(effectiveSubmittedBy);
-        String approverNameL1 = resolveUserName(entity.getApproverLevel1());
-        String approverNameL2 = resolveUserName(entity.getApproverLevel2());
-        String approvedByName = resolveUserName(entity.getApprovedBy());
+        String submittedByName = resolveUserName(effectiveSubmittedBy, userNames);
+        String approverNameL1 = resolveUserName(entity.getApproverLevel1(), userNames);
+        String approverNameL2 = resolveUserName(entity.getApproverLevel2(), userNames);
+        String approvedByName = resolveUserName(entity.getApprovedBy(), userNames);
 
         String coords = null;
         String resolvedGeomType = "POINT";
         if (entity.getSpatialId() != null && gisSpatialObjectService != null) {
-            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
-            if (spatialOpt.isPresent()) {
-                GisSpatialObject so = spatialOpt.get();
+            GisSpatialObject so = spatialObjects != null ? spatialObjects.get(entity.getSpatialId())
+                    : gisSpatialObjectService.findById(entity.getSpatialId()).orElse(null);
+            if (so != null) {
                 coords = so.getCoordinates();
                 if (so.getGeometryType() != null) {
                     resolvedGeomType = so.getGeometryType().name();
@@ -960,6 +1028,13 @@ public class CoastalStationInmarsatService {
         return userRepository.findById(userId)
                 .map(User::getFullName)
                 .orElse(null);
+    }
+
+    private String resolveUserName(UUID userId, Map<UUID, String> userNames) {
+        if (userId == null) {
+            return null;
+        }
+        return userNames != null ? userNames.get(userId) : resolveUserName(userId);
     }
 
     public List<CoastalStationInmarsatAttachmentResponse> uploadAttachments(UUID id,

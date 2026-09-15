@@ -819,10 +819,10 @@ export default function HanoiStationList() {
     const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1Name === currentUser?.fullName));
     const userUnitType = currentUser?.unitType || '';
     const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-    const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
+    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
 
     const isApproverL1Perm = hasPerm('coastalstationhaiphong:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin;
-    const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('coastalstationhaiphong:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel;
+    const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('coastalstationhaiphong:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin;
 
     const canEdit = canEditApprovalRecord(record.approvalStatus, {
       hasPerm,

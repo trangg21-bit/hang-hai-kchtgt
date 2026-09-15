@@ -106,6 +106,7 @@ export interface DataTableProps {
   rowActions?: (record: any) => { key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }[];
   children?: React.ReactNode;
   scroll?: { x?: number | string; y?: number | string };
+  resetScrollKey?: any;
   [key: string]: any;
 }
 
@@ -143,7 +144,7 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
 };
 
 const DataTable: React.FC<DataTableProps> = ({
-  columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, ...rest
+  columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, resetScrollKey, ...rest
 }) => {
   const t = useThemeToken();
   const {
@@ -155,6 +156,7 @@ const DataTable: React.FC<DataTableProps> = ({
   const actionColumnHeaderCellStyle = actionColumnHeaderCellStyleFor(t);
 
   const tableShellRef = useRef<HTMLDivElement>(null);
+  const initialLoadDoneRef = useRef(false);
   const [measuredTableWidth, setMeasuredTableWidth] = useState<number>();
   const resolvedScroll = scroll;
 
@@ -168,14 +170,29 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   useEffect(() => {
-    resetHorizontalScroll();
-    const frameId = window.requestAnimationFrame(resetHorizontalScroll);
-    const timer = setTimeout(resetHorizontalScroll, 100);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      clearTimeout(timer);
-    };
+    if (!initialLoadDoneRef.current && !loading) {
+      initialLoadDoneRef.current = true;
+      resetHorizontalScroll();
+      const frameId = window.requestAnimationFrame(resetHorizontalScroll);
+      const timer = setTimeout(resetHorizontalScroll, 100);
+      return () => {
+        window.cancelAnimationFrame(frameId);
+        clearTimeout(timer);
+      };
+    }
   }, [loading]);
+
+  useEffect(() => {
+    if (resetScrollKey !== undefined) {
+      resetHorizontalScroll();
+      const frameId = window.requestAnimationFrame(resetHorizontalScroll);
+      const timer = setTimeout(resetHorizontalScroll, 100);
+      return () => {
+        window.cancelAnimationFrame(frameId);
+        clearTimeout(timer);
+      };
+    }
+  }, [resetScrollKey]);
 
   useLayoutEffect(() => {
     const shell = tableShellRef.current;

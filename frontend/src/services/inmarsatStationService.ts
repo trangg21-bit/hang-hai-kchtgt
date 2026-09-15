@@ -31,6 +31,7 @@ export interface InmarsatListParams {
   approvalStatus?: string;
   updatedFrom?: string;
   updatedTo?: string;
+  includeCounts?: boolean;
   page?: number;
   size?: number;
   sort?: string;
@@ -62,6 +63,7 @@ export const inmarsatStationService = {
       approvalStatus: params?.approvalStatus,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      includeCounts: params?.includeCounts,
       page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
       size: params?.size || 10,
       sort: params?.sort,

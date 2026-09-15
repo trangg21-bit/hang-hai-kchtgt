@@ -55,6 +55,7 @@ import { fmtInputNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
@@ -246,8 +247,10 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
-  const canSaveAndApprove = hasPerm('aissystem:approvec2') || isCucLevel;
+  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const canCreate = hasPerm('aissystem:create') || hasPerm('data:create') || isAdmin;
+  const canUpdate = canEditApprovalRecord(record?.approvalStatus, { hasPerm, resource: 'aissystem' });
+  const canSaveAndApprove = (hasPerm('aissystem:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -272,6 +275,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   }, [mode]);
 
   useEffect(() => {
+    if (isDetailMode) return;
     if (orgUnits && orgUnits.length > 0) {
       setInternalOrgUnits(orgUnits);
     } else {
@@ -279,24 +283,30 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         if (res?.data && Array.isArray(res.data)) setInternalOrgUnits(res.data);
       }).catch(() => {});
     }
-  }, [orgUnits]);
+  }, [isDetailMode, orgUnits]);
 
   // Load dropdown lists
   useEffect(() => {
-    if (opCenterOptions && opCenterOptions.length > 0) {
-      setOpCenters(opCenterOptions);
-    } else {
-      vtsOperationCenterService.getOptions().then((res) => {
-        if (Array.isArray(res)) setOpCenters(res.map((c) => ({ id: c.id, name: c.name, orgUnitId: c.orgUnitId })));
-      }).catch(() => {});
-    }
+    if (!isDetailMode) {
+      if (opCenterOptions && opCenterOptions.length > 0) {
+        setOpCenters(opCenterOptions);
+      } else {
+        vtsOperationCenterService.getOptions().then((res) => {
+          if (Array.isArray(res)) setOpCenters(res.map((c) => ({ id: c.id, name: c.name, orgUnitId: c.orgUnitId })));
+        }).catch(() => {});
+      }
 
-    if (radarStationOptions && radarStationOptions.length > 0) {
-      setRadarStations(radarStationOptions);
-    } else {
-      radarStationService.getOptions().then((res) => {
-        if (Array.isArray(res)) setRadarStations(res.map((r) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
-      }).catch(() => {});
+      if (radarStationOptions && radarStationOptions.length > 0) {
+        setRadarStations(radarStationOptions.map((r: any) => ({
+          id: r.id,
+          name: r.name || r.stationName || r.code || r.id,
+          orgUnitId: r.orgUnitId,
+        })));
+      } else {
+        radarStationService.getOptions().then((res) => {
+          if (Array.isArray(res)) setRadarStations(res.map((r: any) => ({ id: r.id, name: r.name || r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
+        }).catch(() => {});
+      }
     }
 
     symbolService.getOptions().then((res) => {
@@ -314,14 +324,16 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       }).catch(() => {});
     });
 
-    if (operatingOrganizationOptions && operatingOrganizationOptions.length > 0) {
-      setOperatingOrganizations(operatingOrganizationOptions);
-    } else {
-      vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
-        if (Array.isArray(res) && res.length > 0) setOperatingOrganizations(res);
-      }).catch(() => {});
+    if (!isDetailMode) {
+      if (operatingOrganizationOptions && operatingOrganizationOptions.length > 0) {
+        setOperatingOrganizations(operatingOrganizationOptions);
+      } else {
+        vtsSystemCRUD.getOperatingOrganizationOptions().then((res) => {
+          if (Array.isArray(res) && res.length > 0) setOperatingOrganizations(res);
+        }).catch(() => {});
+      }
     }
-  }, [opCenterOptions, radarStationOptions, operatingOrganizationOptions]);
+  }, [isDetailMode, opCenterOptions, radarStationOptions, operatingOrganizationOptions]);
 
   useEffect(() => {
     const symId = record?.symbolId || (initialData as any)?.symbolId;
@@ -416,6 +428,32 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         .then((full) => {
           setRecord(full);
           setAttachments(full.attachments || []);
+          if (full.radarStationId) {
+            setRadarStations((prev) => {
+              if (prev.some((r) => r.id === full.radarStationId)) return prev;
+              return [
+                ...prev,
+                {
+                  id: full.radarStationId!,
+                  name: full.radarStationName || full.radarStationId!,
+                  orgUnitId: full.orgUnitId,
+                },
+              ];
+            });
+          }
+          if (full.vtsOperationCenterId) {
+            setOpCenters((prev) => {
+              if (prev.some((c) => c.id === full.vtsOperationCenterId)) return prev;
+              return [
+                ...prev,
+                {
+                  id: full.vtsOperationCenterId!,
+                  name: full.vtsOperationCenterName || full.vtsOperationCenterId!,
+                  orgUnitId: full.orgUnitId,
+                },
+              ];
+            });
+          }
           const initialLocId = full.vtsOperationCenterId ? `op_${full.vtsOperationCenterId}` : full.radarStationId ? `radar_${full.radarStationId}` : undefined;
           const geom = full.geometryType || undefined;
           form.setFieldsValue({
@@ -523,14 +561,14 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const filteredOpCenters = useMemo(() => {
     if (!effectiveOrgUnitId) return opCenters;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
-    return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId));
-  }, [opCenters, effectiveOrgUnitId, orgUnits]);
+    return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId) || c.id === record?.vtsOperationCenterId);
+  }, [opCenters, effectiveOrgUnitId, orgUnits, record?.vtsOperationCenterId]);
 
   const filteredRadarStations = useMemo(() => {
     if (!effectiveOrgUnitId) return radarStations;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
-    return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId));
-  }, [radarStations, effectiveOrgUnitId, orgUnits]);
+    return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId) || r.id === record?.radarStationId);
+  }, [radarStations, effectiveOrgUnitId, orgUnits, record?.radarStationId]);
 
   const combinedLocationOptions = useMemo(() => [
     {
@@ -774,33 +812,39 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           <>
             {isCreateMode ? (
               <>
-                <Button
-                  onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'draft'}
-                  style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-                >
-                  Lưu tạm
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'submit'}
-                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
-                >
-                  Lưu và phê duyệt
-                </Button>
+                {canCreate && (
+                  <>
+                    <Button
+                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'draft'}
+                      style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+                    >
+                      Lưu tạm
+                    </Button>
+                    <Button
+                      type="primary"
+                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'submit'}
+                      style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                    >
+                      Lưu và gửi phê duyệt
+                    </Button>
+                  </>
+                )}
+                {canSaveAndApprove && canCreate && (
+                  <Button
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                    loading={isSubmitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                )}
               </>
             ) : (
               <>
-                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
+                {canUpdate && (!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
                   <>
                     <Button
                       onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
@@ -828,7 +872,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                   >
                     Lưu và phê duyệt
                   </Button>
-                ) : (
+                ) : canUpdate ? (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
@@ -837,7 +881,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                   >
                     Cập nhật
                   </Button>
-                )}
+                ) : null}
               </>
             )}
           </>

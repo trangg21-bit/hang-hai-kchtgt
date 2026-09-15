@@ -50,6 +50,8 @@ import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import VtsSystemDetailContent from './VtsSystemDetailContent';
 import VtsZoneLocationDrawer from './VtsZoneLocationDrawer';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
+import { useKchtPermissions } from '../../hooks/useKchtPermissions';
 
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -260,16 +262,13 @@ export default function VtsSystemForm({
     setSelectedZoneForLocation(updatedZone);
   };
 
-  const userUnitType = (currentUser as any)?.unitType || (currentUser as any)?.orgUnitType;
-  const isAdmin = (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role?.includes('ADMIN');
-  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
-  const canSaveAndApprove = hasPerm('vts:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isCucLevel;
+  const kchtPerms = useKchtPermissions('vts');
 
   const attachmentsEditable = isCreateMode ||
     record?.approvalStatus === ApprovalStatus.DRAFT ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
-    (record?.approvalStatus === ApprovalStatus.APPROVED && canSaveAndApprove);
+    (record?.approvalStatus === ApprovalStatus.APPROVED && kchtPerms.canSaveAndApprove);
 
   const handleUploadAttachment = async (file: File) => {
     if (file.size > 20 * 1024 * 1024) {
@@ -816,92 +815,18 @@ export default function VtsSystemForm({
         </span>
       }
       footer={
-        isDetailMode ? null : (
-          <>
-            {isCreateMode ? (
-              <>
-                <Button
-                  onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'draft'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu tạm
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'submit'}
-                  style={primaryButtonStyle}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-                {canSaveAndApprove && (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
-            ) : (
-              <>
-                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) ? (
-                  <>
-                    <Button
-                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'draft'}
-                      style={outlineButtonStyle}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                    {canSaveAndApprove && (
-                      <Button
-                        type="primary"
-                        onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                        loading={isSubmitting && actionType === 'approve'}
-                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                      >
-                        Lưu và phê duyệt
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'update'}
-                      style={primaryButtonStyle}
-                    >
-                      Cập nhật
-                    </Button>
-                    {canSaveAndApprove && (
-                      <Button
-                        type="primary"
-                        onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                        loading={isSubmitting && actionType === 'approve'}
-                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                      >
-                        Lưu và phê duyệt
-                      </Button>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </>
-        )
+        <KchtFormFooter
+          mode={propMode}
+          resource="vts"
+          record={record}
+          loading={isSubmitting}
+          activeAction={actionType}
+          onSubmit={(action) => {
+            actionTypeRef.current = action;
+            setActionType(action);
+            form.submit();
+          }}
+        />
       }
     >
       <style>{detailTableStyle}</style>

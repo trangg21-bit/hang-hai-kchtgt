@@ -50,6 +50,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
+import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
@@ -163,8 +164,15 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
   const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
-  const canApproveL2 = (hasPerm('coastalstationhaiphong:approvec2') || hasPerm('coastalstationhaiphong:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel);
+  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
+  const canApproveL2 = (hasPerm('coastalstationhaiphong:approvec2') || hasPerm('coastalstationhaiphong:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canCreate = hasPerm('coastalstationhaiphong:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
+    hasPerm,
+    resource: 'coastalstationhaiphong',
+    extraUpdatePerms: ['specialstation:update', 'data:update'],
+    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'data:approvec2', 'data:approve'],
+  });
 
   const isDetailMode = mode === 'detail';
   const isEditMode = mode === 'edit';
@@ -714,33 +722,39 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
     if (isCreateMode) {
       return (
         <>
-          <Button
-            onClick={() => { actionTypeRef.current = 'draft'; form.submit(); }}
-            loading={isSubmitting && actionTypeRef.current === 'draft'}
-            style={outlineButtonStyle}
-          >
-            Lưu tạm
-          </Button>
-          <Button
-            type="primary"
-            onClick={() => { actionTypeRef.current = 'submit'; form.submit(); }}
-            loading={isSubmitting && actionTypeRef.current === 'submit'}
-            style={primaryButtonStyle}
-          >
-            Lưu và gửi phê duyệt
-          </Button>
-          <Button
-            type="primary"
-            onClick={() => { actionTypeRef.current = 'approve'; form.submit(); }}
-            loading={isSubmitting && actionTypeRef.current === 'approve'}
-            style={{
-              ...primaryButtonStyle,
-              background: statusOperational,
-              borderColor: statusOperational,
-            }}
-          >
-            Lưu và phê duyệt
-          </Button>
+          {canCreate && (
+            <>
+              <Button
+                onClick={() => { actionTypeRef.current = 'draft'; form.submit(); }}
+                loading={isSubmitting && actionTypeRef.current === 'draft'}
+                style={outlineButtonStyle}
+              >
+                Lưu tạm
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => { actionTypeRef.current = 'submit'; form.submit(); }}
+                loading={isSubmitting && actionTypeRef.current === 'submit'}
+                style={primaryButtonStyle}
+              >
+                Lưu và gửi phê duyệt
+              </Button>
+            </>
+          )}
+          {canApproveL2 && canCreate && (
+            <Button
+              type="primary"
+              onClick={() => { actionTypeRef.current = 'approve'; form.submit(); }}
+              loading={isSubmitting && actionTypeRef.current === 'approve'}
+              style={{
+                ...primaryButtonStyle,
+                background: statusOperational,
+                borderColor: statusOperational,
+              }}
+            >
+              Lưu và phê duyệt
+            </Button>
+          )}
         </>
       );
     }
@@ -752,7 +766,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
     return (
       <>
-        {isDraftOrRejected && (
+        {canUpdate && isDraftOrRejected && (
           <>
             <Button
               onClick={() => { actionTypeRef.current = 'update'; form.submit(); }}
@@ -785,7 +799,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
             Lưu và phê duyệt
           </Button>
         )}
-        {!isDraftOrRejected && !canApproveL2 && (
+        {canUpdate && !canApproveL2 && (
           <Button
             type="primary"
             onClick={() => { actionTypeRef.current = 'update'; form.submit(); }}

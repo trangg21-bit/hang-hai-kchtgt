@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.aissystem.repository;
 
+import com.hanghai.kchtg.aissystem.controller.AisSystemController;
 import com.hanghai.kchtg.aissystem.entity.AisSystem;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
@@ -139,6 +140,57 @@ class AisSystemRepositoryTest {
 
         assertEquals(1, page.getTotalElements());
         assertEquals(1, page.getContent().size());
+    }
+
+    @Test
+    void testSearch_CaseInsensitiveNameSortWithCodeTiebreaker() {
+        AisSystem s1 = createAisSystem("AIS-02", "ais alpha");
+        AisSystem s2 = createAisSystem("AIS-01", "AIS ALPHA");
+        AisSystem s3 = createAisSystem("AIS-03", "Beta");
+        repository.saveAll(List.of(s1, s2, s3));
+        entityManager.flush();
+
+        Sort sort = AisSystemController.resolveListSort("name", "ASC", null);
+        List<String> codes = repository.search(false, List.of(), null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
+                PageRequest.of(0, 20, sort))
+                .getContent().stream().map(AisSystem::getCode).toList();
+
+        assertEquals(List.of("AIS-01", "AIS-02", "AIS-03"), codes);
+    }
+
+    @Test
+    void testSearch_ProvinceAlphabeticalSort() {
+        AisSystem hcm = createAisSystem("AIS-HCM", "Trạm HCM");
+        hcm.setProvinceId(79); // TP. Hồ Chí Minh
+        AisSystem ag = createAisSystem("AIS-AG", "Trạm An Giang");
+        ag.setProvinceId(89); // An Giang
+        AisSystem dn = createAisSystem("AIS-DN", "Trạm Đà Nẵng");
+        dn.setProvinceId(48); // Đà Nẵng
+
+        repository.saveAll(List.of(hcm, ag, dn));
+        entityManager.flush();
+
+        Sort sortAsc = AisSystemController.resolveListSort("provinceId", "ASC", null);
+        List<String> codesAsc = repository.search(false, List.of(), null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
+                PageRequest.of(0, 20, sortAsc))
+                .getContent().stream().map(AisSystem::getCode).toList();
+
+        // An Giang (89) -> Đà Nẵng (48) -> TP. Hồ Chí Minh (79)
+        assertEquals(List.of("AIS-AG", "AIS-DN", "AIS-HCM"), codesAsc);
+    }
+
+    @Test
+    void testSearch_OperatingOrgIdCanBeNull() {
+        AisSystem entity = createAisSystem("AIS-NULL-OP", "Trạm Không ĐVKT");
+        entity.setOperatingOrgId(null);
+        repository.save(entity);
+        entityManager.flush();
+
+        var found = repository.findByIdAndDeletedAtIsNull(entity.getId());
+        org.junit.jupiter.api.Assertions.assertTrue(found.isPresent());
+        org.junit.jupiter.api.Assertions.assertNull(found.get().getOperatingOrgId());
     }
 
     private AisSystem createAisSystem(String code, String name) {

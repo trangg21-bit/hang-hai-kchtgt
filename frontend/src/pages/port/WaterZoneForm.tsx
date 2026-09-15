@@ -8,6 +8,9 @@ import { BECBANG_STATUS_MAP, type CangBenStatus } from '../../types/port';
 import FormField from '../../components/FormField';
 import { radiusPill, fontSizeMd, borderDefault, textSecondary, actionPrimary } from '../../tokens';
 import toast, { message } from '../../components/ToastNotification';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 
 export default function WaterZoneForm() {
   const navigate = useNavigate();
@@ -18,6 +21,16 @@ export default function WaterZoneForm() {
   const [entityData, setEntityData] = useState<{ status: CangBenStatus } | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
   const [cangBienOptions, setCangBienOptions] = useState<{ value: string; label: string }[]>([]);
+
+  const currentUser = useAuthStore((s) => s.user);
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const canCreate = hasPerm('waterzone:create') || hasPerm('data:create') || isAdmin;
+  const canUpdate = canEditApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
+  const canSubmit = (entityData?.status === 'DRAFT' || (entityData?.status as any) === 'REJECTED') && (hasPerm('waterzone:update') || hasPerm('data:update') || isAdmin);
+  const canDelete = canDeleteApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
+  const canApprove1 = (hasPerm('waterzone:approvec1') || hasPerm('waterzone:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin);
+  const canApprove2 = (hasPerm('waterzone:approvec2') || hasPerm('waterzone:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
 
   useEffect(() => {
     (async () => {
@@ -269,10 +282,12 @@ export default function WaterZoneForm() {
 
           <Form.Item style={{ marginTop: 24 }}>
             <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}
-                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
-                {isEdit ? 'Cập nhật' : 'Tạo vùng nước'}
-              </Button>
+              {(isEdit ? canUpdate : canCreate) && (
+                <Button type="primary" htmlType="submit" loading={submitting}
+                  style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
+                  {isEdit ? 'Cập nhật' : 'Tạo vùng nước'}
+                </Button>
+              )}
               <Button onClick={() => navigate('/WaterZone')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
@@ -287,22 +302,22 @@ export default function WaterZoneForm() {
           </Typography.Text>
           <Space wrap>
             <Button type="dashed" onClick={() => navigate(`/history?entityId=${id}&type=VUNG_NUOC`)}>Lịch sử thay đổi</Button>
-            {entityData.status === 'DRAFT' && (
+            {entityData.status === 'DRAFT' && canSubmit && (
               <Button icon={<SendOutlined />} onClick={handleSubmitApproval}>Gửi duyệt</Button>
             )}
-            {entityData.status === 'PENDING_APPROVAL' && (
+            {entityData.status === 'PENDING_APPROVAL' && canApprove1 && (
               <>
                 <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL1}>Phê duyệt L1</Button>
                 <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-            {entityData.status === 'APPROVED_L1' && (
+            {entityData.status === 'APPROVED_L1' && canApprove2 && (
               <>
                 <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL2}>Phê duyệt L2</Button>
                 <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-            {entityData.status === 'DRAFT' && (
+            {canDelete && (
               <Button danger onClick={handleDelete}>Xóa</Button>
             )}
           </Space>

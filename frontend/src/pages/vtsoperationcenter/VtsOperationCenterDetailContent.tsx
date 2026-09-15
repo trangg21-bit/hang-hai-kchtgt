@@ -425,7 +425,8 @@ export default function VtsOperationCenterDetailContent({
         .search({
           vtsOperationCenterId: recordId,
           page: 1,
-          pageSize: 100,
+          size: 100,
+          includeCounts: false,
         } as any)
         .catch(() => ({ data: [] })),
     ])

@@ -446,11 +446,24 @@ public class RadarStationService {
 
     @Transactional(readOnly = true)
     public List<RadarStationOptionResponse> getOptions(UUID orgUnitId) {
-        return repository.findAllApprovedOptions(orgUnitId).stream()
+        boolean orgFiltered = orgUnitId != null;
+        List<UUID> targetOrgUnitIds = List.of();
+        if (orgFiltered) {
+            targetOrgUnitIds = orgUnitScopeService != null
+                    ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
+                    : List.of(orgUnitId);
+            if (targetOrgUnitIds.isEmpty()) {
+                targetOrgUnitIds = List.of(orgUnitId);
+            }
+        } else {
+            targetOrgUnitIds = List.of(UUID.randomUUID());
+        }
+        return repository.findAllApprovedOptions(orgFiltered, targetOrgUnitIds).stream()
                 .map(r -> RadarStationOptionResponse.builder()
                         .id(r.getId())
                         .code(r.getCode())
                         .stationName(r.getStationName())
+                        .name(r.getStationName())
                         .orgUnitId(r.getOrgUnitId())
                         .build())
                 .toList();

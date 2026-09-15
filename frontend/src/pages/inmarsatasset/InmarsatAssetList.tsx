@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -30,6 +30,7 @@ import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
 import {
   fetchInmarsatAssets,
+  fetchInmarsatAssetCounts,
   deleteInmarsatAsset,
   createInmarsatAsset,
   updateInmarsatAsset,
@@ -99,6 +100,10 @@ export default function InmarsatAssetList() {
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const statusCountFilterKey = useRef<string>();
+  const statusCountLoadingKey = useRef<string>();
+  const statusCountRequestVersion = useRef(0);
+  const latestStatusCountFilterKey = useRef<string>();
   const [filters, setFilters] = useState<InmarsatAssetFilters>({});
   const [draftFilters, setDraftFilters] = useState<InmarsatAssetFilters & { updatedRange?: [Dayjs | null, Dayjs | null] }>({});
   const [drawerMode, setDrawerMode] = useState<DrawerMode>();
@@ -137,36 +142,50 @@ export default function InmarsatAssetList() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetchInmarsatAssets({
+      const filterKey = JSON.stringify(filters);
+      const requestVersion = statusCountRequestVersion.current;
+      latestStatusCountFilterKey.current = filterKey;
+      const shouldLoadCounts =
+        statusCountFilterKey.current !== filterKey && statusCountLoadingKey.current !== filterKey;
+      if (shouldLoadCounts) {
+        statusCountLoadingKey.current = filterKey;
+      }
+      const listRequest = fetchInmarsatAssets({
         ...filters,
         page: page - 1,
         size: pageSize,
       });
+      const countRequest = shouldLoadCounts
+        ? fetchInmarsatAssetCounts(filters).catch(() => null)
+        : Promise.resolve(null);
+      const [res, rawCounts] = await Promise.all([listRequest, countRequest]);
       setData(res.content || []);
       setTotal(res.totalElements || 0);
 
-      const baseFilters = { ...filters, approvalStatus: undefined, page: 0, size: 1 };
-      const emptyPage: { totalElements: number; content: InmarsatAsset[] } = {
-        totalElements: 0,
-        content: [],
-      };
-      const [all, ...statusPages] = await Promise.all([
-        fetchInmarsatAssets(baseFilters).catch(() => emptyPage),
-        ...STATUS_COUNT_KEYS.map((approvalStatus) =>
-          fetchInmarsatAssets({ ...baseFilters, approvalStatus }).catch(() => emptyPage)
-        ),
-      ]);
-      const nextCounts: Record<string, number> = {
-        all: all?.totalElements || 0,
-        ...Object.fromEntries(
-          STATUS_COUNT_KEYS.map((key, index) => [key, statusPages[index]?.totalElements || 0])
-        ),
-      };
-      const rejectedTotal = (nextCounts.REJECTED_LEVEL1 || 0) + (nextCounts.REJECTED_LEVEL2 || 0);
-      nextCounts.REJECTED_LEVEL1 = rejectedTotal;
-      delete nextCounts.REJECTED_LEVEL2;
-      setStatusCounts(nextCounts);
+      if (
+        rawCounts &&
+        requestVersion === statusCountRequestVersion.current &&
+        latestStatusCountFilterKey.current === filterKey
+      ) {
+        const nextCounts: Record<string, number> = {
+          all: Number(rawCounts.ALL ?? rawCounts.all ?? 0),
+          ...Object.fromEntries(
+            STATUS_COUNT_KEYS.map((key) => [key, Number(rawCounts[key] ?? 0)])
+          ),
+        };
+        const rejectedTotal = (nextCounts.REJECTED_LEVEL1 || 0) + (nextCounts.REJECTED_LEVEL2 || 0);
+        nextCounts.REJECTED_LEVEL1 = rejectedTotal;
+        delete nextCounts.REJECTED_LEVEL2;
+        setStatusCounts(nextCounts);
+        statusCountFilterKey.current = filterKey;
+        statusCountLoadingKey.current = undefined;
+      } else if (shouldLoadCounts && statusCountLoadingKey.current === filterKey) {
+        statusCountLoadingKey.current = undefined;
+      }
     } catch (cause: unknown) {
+      if (shouldLoadCounts && statusCountLoadingKey.current === filterKey) {
+        statusCountLoadingKey.current = undefined;
+      }
       setError(getErrorMessage(cause, 'Không thể tải danh sách tài sản đài Inmarsat.'));
     } finally {
       setLoading(false);
@@ -389,6 +408,9 @@ export default function InmarsatAssetList() {
 
         setDrawerMode(undefined);
         form.resetFields();
+        statusCountFilterKey.current = undefined;
+        statusCountLoadingKey.current = undefined;
+        statusCountRequestVersion.current += 1;
         await loadData();
       } catch (cause: unknown) {
         if (!isValidationError(cause)) {
@@ -468,6 +490,9 @@ export default function InmarsatAssetList() {
       }
       setOperationMode(undefined);
       operationForm.resetFields();
+      statusCountFilterKey.current = undefined;
+      statusCountLoadingKey.current = undefined;
+      statusCountRequestVersion.current += 1;
       await loadData();
     } catch (cause: unknown) {
       if (!isValidationError(cause)) {
@@ -909,6 +934,9 @@ export default function InmarsatAssetList() {
                 setData((prev) => prev.filter((item) => item.id !== deleteTarget.id));
                 setTotal((prev) => Math.max(0, prev - 1));
                 setDeleteTarget(undefined);
+                statusCountFilterKey.current = undefined;
+                statusCountLoadingKey.current = undefined;
+                statusCountRequestVersion.current += 1;
                 return loadData();
               })
               .catch((cause: unknown) =>

@@ -91,29 +91,73 @@ public class AisSystemController {
             Map.entry("updatedAt", "t.updatedAt"),
             Map.entry("createdAt", "t.createdAt"));
 
+    public static final String PROVINCE_ORDER_EXPR = """
+        (CASE t.provinceId
+            WHEN 89 THEN 1 WHEN 77 THEN 2 WHEN 24 THEN 3 WHEN 6 THEN 4 WHEN 95 THEN 5
+            WHEN 27 THEN 6 WHEN 83 THEN 7 WHEN 52 THEN 8 WHEN 74 THEN 9 WHEN 70 THEN 10
+            WHEN 60 THEN 11 WHEN 96 THEN 12 WHEN 92 THEN 13 WHEN 4 THEN 14 WHEN 48 THEN 15
+            WHEN 66 THEN 16 WHEN 67 THEN 17 WHEN 11 THEN 18 WHEN 75 THEN 19 WHEN 87 THEN 20
+            WHEN 64 THEN 21 WHEN 2 THEN 22 WHEN 35 THEN 23 WHEN 1 THEN 24 WHEN 42 THEN 25
+            WHEN 30 THEN 26 WHEN 31 THEN 27 WHEN 93 THEN 28 WHEN 17 THEN 29 WHEN 33 THEN 30
+            WHEN 56 THEN 31 WHEN 91 THEN 32 WHEN 62 THEN 33 WHEN 12 THEN 34 WHEN 68 THEN 35
+            WHEN 20 THEN 36 WHEN 10 THEN 37 WHEN 80 THEN 38 WHEN 36 THEN 39 WHEN 40 THEN 40
+            WHEN 37 THEN 41 WHEN 58 THEN 42 WHEN 25 THEN 43 WHEN 54 THEN 44 WHEN 44 THEN 45
+            WHEN 49 THEN 46 WHEN 51 THEN 47 WHEN 22 THEN 48 WHEN 45 THEN 49 WHEN 94 THEN 50
+            WHEN 14 THEN 51 WHEN 72 THEN 52 WHEN 34 THEN 53 WHEN 19 THEN 54 WHEN 38 THEN 55
+            WHEN 46 THEN 56 WHEN 82 THEN 57 WHEN 79 THEN 58 WHEN 84 THEN 59 WHEN 8 THEN 60
+            WHEN 86 THEN 61 WHEN 26 THEN 62 WHEN 15 THEN 63 ELSE 999 END)
+        """.replaceAll("\\s+", " ").trim();
+
     /**
      * Dùng {@link JpaSort#unsafe} vì thuộc tính đã được qualify sẵn theo alias và
-     * có trường hợp là biểu thức COALESCE — {@code Sort.by} sẽ từ chối cả hai.
-     * An toàn vì giá trị luôn lấy từ danh sách trắng ở trên, không phải chuỗi thô
-     * của client.
+     * có trường hợp là biểu thức COALESCE / CASE — {@code Sort.by} sẽ từ chối cả hai.
+     * An toàn vì giá trị luôn lấy từ danh sách trắng ở trên hoặc biểu thức kiểm soát chặt chẽ,
+     * không phải chuỗi thô của client.
      */
-    private static Sort resolveListSort(String sortBy, String sortDir, String sort) {
+    public static Sort resolveListSort(String sortBy, String sortDir, String sort) {
         Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
+        String field = null;
+        Sort.Direction direction = Sort.Direction.DESC;
+
         if (sort != null && !sort.isBlank()) {
             String[] parts = sort.split(",");
-            String property = SORTABLE_LIST_FIELDS.get(parts[0].trim());
-            if (property != null) {
-                Sort.Direction direction = parts.length > 1 && "ASC".equalsIgnoreCase(parts[1].trim())
-                        ? Sort.Direction.ASC : Sort.Direction.DESC;
-                return JpaSort.unsafe(direction, property).and(defaultSort);
+            field = parts[0].trim();
+            if (parts.length > 1 && "ASC".equalsIgnoreCase(parts[1].trim())) {
+                direction = Sort.Direction.ASC;
+            }
+        } else if (sortBy != null && !sortBy.isBlank()) {
+            field = sortBy.trim();
+            if ("ASC".equalsIgnoreCase(sortDir)) {
+                direction = Sort.Direction.ASC;
             }
         }
-        String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
+
+        if (field == null) {
+            return defaultSort;
+        }
+
+        if ("name".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.name)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
+                    .and(defaultSort);
+        }
+
+        if ("code".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.code)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+
+        if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, PROVINCE_ORDER_EXPR)
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+
+        String property = SORTABLE_LIST_FIELDS.get(field);
         if (property == null) {
             return defaultSort;
         }
-        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
         return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 

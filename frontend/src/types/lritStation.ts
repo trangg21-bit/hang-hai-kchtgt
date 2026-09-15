@@ -57,6 +57,27 @@ export interface LritStationItem {
   updatedDate?: string;
 }
 
+export interface LritStationListResponse {
+  id: string;
+  code: string;
+  name: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  operatingOrgId?: string;
+  operatingOrgName?: string;
+  provinceId?: number;
+  provinceName?: string;
+  conditionStatus?: string;
+  approvalStatus?: string;
+  rejectionReason?: string;
+  approverLevel1?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedByName?: string;
+  updatedAt?: string;
+}
+
 export interface CreateLritStationRequest {
   orgUnitId?: string | null;
   operatingOrgId?: string | null;
@@ -109,10 +130,11 @@ export interface LritStationListParams {
   size?: number;
   sortBy?: string;
   sortDir?: string;
+  includeCounts?: boolean;
 }
 
 export interface LritStationSearchResponse {
-  items: LritStationItem[];
+  items: LritStationListResponse[];
   total: number;
   page: number;
   size: number;

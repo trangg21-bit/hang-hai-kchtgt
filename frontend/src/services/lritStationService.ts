@@ -2,6 +2,7 @@ import api from './api';
 import { toArray, toSingle } from './resilient';
 import type {
   LritStationItem,
+  LritStationListResponse,
   CreateLritStationRequest,
   UpdateLritStationRequest,
   LritStationListParams,
@@ -11,6 +12,7 @@ import type { HistoryEntry } from '../types/radarStation';
 
 export type {
   LritStationItem,
+  LritStationListResponse,
   CreateLritStationRequest,
   UpdateLritStationRequest,
   LritStationListParams,
@@ -69,15 +71,15 @@ export const lritStationService = {
     });
     const [res, countsRes] = await Promise.all([
       api.get(`${BASE_PATH}?${sp}`),
-      api.get(`${BASE_PATH}/counts?${countsSp}`),
+      params?.includeCounts === false ? Promise.resolve(null) : api.get(`${BASE_PATH}/counts?${countsSp}`),
     ]);
     const data = res.data?.data || res.data || {};
     const items = data.content || (Array.isArray(data) ? data : []);
     const total = data.totalElements ?? items.length;
-    const counts = countsRes.data?.data || countsRes.data || {};
+    const counts = countsRes ? (countsRes.data?.data || countsRes.data || {}) : {};
 
     return {
-      items,
+      items: toArray<LritStationListResponse>(items),
       total,
       page: (data.number ?? 0) + 1,
       size: data.size ?? (params?.size || 20),

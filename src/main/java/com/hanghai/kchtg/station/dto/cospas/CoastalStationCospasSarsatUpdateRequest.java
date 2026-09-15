@@ -1,26 +1,11 @@
 package com.hanghai.kchtg.station.dto.cospas;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
-@AllArgsConstructor
-public class CoastalStationCospasSarsatUpdateRequest {
-
-    private String stationCode;
-    private String stationName;
-    private String frequency;
-    private String coverageArea;
-    private String beaconProtocol;
-    private String emergencyChannel;
-    private String antennaType;
-    private String locationAddress;
-    private String contactPerson;
-    private String contactPhone;
-    private Double signalRange;
-    private String operatingMode;
+@EqualsAndHashCode(callSuper = true)
+public class CoastalStationCospasSarsatUpdateRequest extends CoastalStationCospasSarsatRequest {
 }

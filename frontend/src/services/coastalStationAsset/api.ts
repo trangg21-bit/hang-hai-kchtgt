@@ -24,6 +24,17 @@ export async function fetchCoastalStationAssets(
   return res.data.data;
 }
 
+export async function fetchCoastalStationAssetCounts(
+  params: CoastalStationAssetFilters
+): Promise<Record<string, number>> {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') sp.set(key, String(value));
+  });
+  const res = await api.get(`${BASE_URL}/counts?${sp}`);
+  return res.data?.data ?? res.data ?? {};
+}
+
 export async function fetchCoastalStationAsset(id: string): Promise<CoastalStationAsset> {
   const res = await api.get(`${BASE_URL}/${id}`);
   return res.data.data;

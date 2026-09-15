@@ -205,6 +205,7 @@ export interface InmarsatStationDetailContentProps {
   selectedRecord: CoastalStationInmarsatResponse;
   symbols?: any[];
   attachments?: any[];
+  attachmentsLoaded?: boolean;
   onClose?: () => void;
 }
 
@@ -360,6 +361,7 @@ export default function InmarsatStationDetailContent({
   selectedRecord,
   symbols = [],
   attachments = [],
+  attachmentsLoaded = false,
 }: InmarsatStationDetailContentProps) {
   const [record, setRecord] = useState<CoastalStationInmarsatResponse>(selectedRecord);
   const [activeTab, setActiveTab] = useState('general');
@@ -381,7 +383,7 @@ export default function InmarsatStationDetailContent({
   }, [selectedRecord]);
 
   useEffect(() => {
-    if (attachments && attachments.length > 0) {
+    if (attachmentsLoaded) {
       setAttachmentList(attachments);
       return;
     }
@@ -402,7 +404,7 @@ export default function InmarsatStationDetailContent({
     return () => {
       active = false;
     };
-  }, [selectedRecord?.id, attachments, activeTab]);
+  }, [selectedRecord?.id, attachments, attachmentsLoaded, activeTab]);
 
   const handlePreviewImage = async (file: any) => {
     try {

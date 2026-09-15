@@ -202,6 +202,7 @@ export interface LritStationDetailContentProps {
   selectedRecord: LritStationItem;
   symbols?: any[];
   attachments?: any[];
+  attachmentsLoaded?: boolean;
   onClose?: () => void;
 }
 
@@ -326,6 +327,7 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
   selectedRecord,
   symbols = [],
   attachments = [],
+  attachmentsLoaded = false,
 }) => {
   const [record, setRecord] = useState<LritStationItem>(selectedRecord);
   const [attachmentList, setAttachmentList] = useState<any[]>(attachments);
@@ -345,7 +347,7 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
   }, [selectedRecord]);
 
   useEffect(() => {
-    if (attachments && attachments.length > 0) {
+    if (attachmentsLoaded) {
       setAttachmentList(attachments);
       return;
     }
@@ -354,7 +356,7 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
       const items = Array.isArray(res) ? res : (res?.data || []);
       setAttachmentList(items);
     }).catch(() => {});
-  }, [selectedRecord?.id, attachments, activeTab]);
+  }, [selectedRecord?.id, attachments, attachmentsLoaded, activeTab]);
 
   const effectiveRecord = record || selectedRecord;
   const points = parseWktToPoints(effectiveRecord);

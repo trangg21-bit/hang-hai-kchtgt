@@ -19,37 +19,59 @@ export function isMinistryLevelUser(
   organizations?: readonly OrgUnitTreeOption[]
 ): boolean {
   if (!user) return true; // Chưa đăng nhập hoặc fallback an toàn -> không giới hạn
-  const role = (user.role || (user as any).roleName || '').toUpperCase();
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN') return true;
-  if (user.orgUnitCode === MINISTRY_ROOT_CODE || String(user.orgUnitId) === MINISTRY_ROOT_ID) return true;
 
-  if (organizations && user.orgUnitId) {
-    const org = organizations.find((o) => String(o.id) === String(user.orgUnitId));
-    if (org) {
-      const code = (org.code || '').toUpperCase();
-      const name = (org.name || '').toLowerCase();
-      if (code === MINISTRY_ROOT_CODE || name.includes('bộ giao thông')) {
-        return true;
+  // Nếu user đã được gán đơn vị trực thuộc cụ thể (không phải G17 Bộ GTVT), thì không phải cấp Bộ chung
+  if (user.orgUnitId) {
+    const orgIdStr = String(user.orgUnitId);
+    if (orgIdStr === MINISTRY_ROOT_ID || user.orgUnitCode === MINISTRY_ROOT_CODE) {
+      return true;
+    }
+    if (organizations && organizations.length > 0) {
+      const org = organizations.find((o) => String(o.id) === orgIdStr);
+      if (org) {
+        const code = (org.code || '').toUpperCase();
+        const name = (org.name || '').toLowerCase();
+        if (code === MINISTRY_ROOT_CODE || name.includes('bộ giao thông')) {
+          return true;
+        }
       }
     }
+    return false;
   }
 
+  const role = (user.role || (user as any).roleName || '').toUpperCase();
+  if (role === 'SUPER_ADMIN' || role === 'ADMIN') return true;
   return false;
 }
 
 /**
  * Xác định giá trị orgUnitId mặc định cho bộ lọc:
- * - Nếu thuộc cấp Bộ GTVT / Super Admin: trả về undefined ("Tất cả").
- * - Nếu thuộc cấp dưới (Cục, Cảng vụ, Chi cục, Vishipel...): trả về chính orgUnitId của user.
+ * - Khi bắt đầu vào màn danh sách, filter mặc định chọn đầu tiên là đơn vị mà user đấy trực thuộc.
+ * - Nếu user có orgUnitId hợp lệ (khác G17 Bộ GTVT): trả về chính orgUnitId của user.
+ * - Nếu user thuộc cấp Bộ GTVT (G17) hoặc không có đơn vị trực thuộc: trả về undefined ("Tất cả").
  */
 export function resolveDefaultOrgUnitId(
   user: User | null | undefined,
   organizations?: readonly OrgUnitTreeOption[]
 ): string | undefined {
-  if (isMinistryLevelUser(user, organizations)) {
-    return undefined; // Cấp Bộ GTVT -> Mặc định chọn tất cả
+  if (!user || !user.orgUnitId) {
+    return undefined;
   }
-  return user?.orgUnitId ? String(user.orgUnitId) : undefined;
+  const orgIdStr = String(user.orgUnitId);
+  if (orgIdStr === MINISTRY_ROOT_ID || user.orgUnitCode === MINISTRY_ROOT_CODE) {
+    return undefined;
+  }
+  if (organizations && organizations.length > 0) {
+    const org = organizations.find((o) => String(o.id) === orgIdStr);
+    if (org) {
+      const code = (org.code || '').toUpperCase();
+      const name = (org.name || '').toLowerCase();
+      if (code === MINISTRY_ROOT_CODE || name.includes('bộ giao thông')) {
+        return undefined;
+      }
+    }
+  }
+  return orgIdStr;
 }
 
 /**
@@ -115,13 +137,14 @@ export function useOrgUnitFilter(options?: UseOrgUnitFilterOptions) {
         if (cancelled) return;
         const list = Array.isArray(data) ? data : [];
         setOrganizations(list);
-        if (!initializedRef.current) {
+        const defId = resolveDefaultOrgUnitId(currentUser, list);
+        if (!initializedRef.current || (defaultOrgUnitRef.current === undefined && defId !== undefined)) {
           initializedRef.current = true;
-          const defId = resolveDefaultOrgUnitId(currentUser, list);
           defaultOrgUnitRef.current = defId;
           const autoDefault = options?.autoDefault !== false;
-          if (options?.initialValue === undefined && autoDefault) {
+          if (options?.initialValue === undefined && autoDefault && defId !== undefined) {
             setOrgUnitIdState(defId);
+            options?.onChange?.(defId);
           }
           options?.onDefaultResolved?.(defId);
           setIsReady(true);
