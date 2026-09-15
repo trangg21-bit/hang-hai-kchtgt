@@ -368,6 +368,7 @@ public class AnchorageService {
         UUID operatorId = SecurityUtils.getCurrentUserId();
 
         entity.softDelete(operatorId);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         anchorageRepository.save(entity);
 
         // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete)
@@ -584,7 +585,7 @@ public class AnchorageService {
                 .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 // Technical fields
                 .shapeDescription(entity.getShapeDescription())
                 .area(entity.getArea())
@@ -620,6 +621,8 @@ public class AnchorageService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .build();
 
         if (entity.getSpatialId() != null) {

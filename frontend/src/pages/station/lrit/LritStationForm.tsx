@@ -34,7 +34,7 @@ import { LRIT_SERVICE_OPTIONS } from '../../../types/lritStation';
 import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y,
+  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
   fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
   borderDefault,
@@ -566,8 +566,8 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
     const action = actionTypeRef.current;
     setIsSubmitting(true);
     try {
-      let wkt: string | undefined = undefined;
-      let firstPt: { latitude: number; longitude: number } | undefined = undefined;
+      let wkt: string | null = null;
+      let firstPt: { latitude: number; longitude: number } | null = null;
 
       if (values.geometryType || coordinateList.length > 0) {
         const geom = values.geometryType || 'POINT';
@@ -606,34 +606,34 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       if (action === 'submit') actionParam = 'SUBMIT';
       else if (action === 'approve') actionParam = 'APPROVE';
 
-      const payload: CreateLritStationRequest = {
+      const payload = {
         code: values.code,
         name: values.name?.trim(),
-        orgUnitId: values.orgUnitId,
-        operatingOrgId: values.operatingOrgId,
-        provinceId: values.provinceId,
-        locationAddress: values.locationAddress?.trim(),
-        conditionStatus: values.conditionStatus,
-        services: values.services,
-        servicesProvided: Array.isArray(values.services) ? values.services.join(', ') : values.services,
-        coverageArea: values.coverageArea?.trim(),
-        terminalId: values.terminalId?.trim(),
-        imoNumber: values.imoNumber?.trim(),
-        reportingInterval: values.reportingInterval,
-        antennaHeight: values.antennaHeight,
-        powerOutput: values.powerOutput,
-        antennaType: values.antennaType?.trim(),
-        dataFormat: values.dataFormat?.trim(),
-        communicationChannel: values.communicationChannel?.trim(),
-        contactPerson: values.contactPerson?.trim(),
-        contactPhone: values.contactPhone?.trim(),
-        description: values.description?.trim(),
-        geometryType: values.geometryType || undefined,
-        symbolId: values.symbolId || undefined,
-        coordinateSystem: values.geometryType ? values.coordinateSystem : undefined,
-        displayRule: values.geometryType ? values.displayRule : undefined,
-        latitude: firstPt?.latitude,
-        longitude: firstPt?.longitude,
+        orgUnitId: values.orgUnitId ?? null,
+        operatingOrgId: values.operatingOrgId ?? null,
+        provinceId: values.provinceId ?? null,
+        locationAddress: values.locationAddress?.trim() ?? null,
+        conditionStatus: values.conditionStatus ?? null,
+        services: values.services ?? null,
+        servicesProvided: Array.isArray(values.services) ? (values.services.length ? values.services.join(', ') : null) : (values.services ?? null),
+        coverageArea: values.coverageArea?.trim() ?? null,
+        terminalId: values.terminalId?.trim() ?? null,
+        imoNumber: values.imoNumber?.trim() ?? null,
+        reportingInterval: values.reportingInterval ?? null,
+        antennaHeight: values.antennaHeight ?? null,
+        powerOutput: values.powerOutput ?? null,
+        antennaType: values.antennaType?.trim() ?? null,
+        dataFormat: values.dataFormat?.trim() ?? null,
+        communicationChannel: values.communicationChannel?.trim() ?? null,
+        contactPerson: values.contactPerson?.trim() ?? null,
+        contactPhone: values.contactPhone?.trim() ?? null,
+        description: values.description?.trim() ?? null,
+        geometryType: values.geometryType ?? null,
+        symbolId: values.symbolId ?? null,
+        coordinateSystem: values.geometryType ? values.coordinateSystem : null,
+        displayRule: values.geometryType ? values.displayRule : null,
+        latitude: firstPt?.latitude ?? null,
+        longitude: firstPt?.longitude ?? null,
         coordinates: wkt,
       };
 
@@ -712,8 +712,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
     <AppDrawer
       rootClassName="lrit-drawer-scope"
       className="lrit-drawer-scope"
-      style={{ maxWidth: '96vw' }}
-      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
+      width={DRAWER_WIDTH}
       open={Boolean(open)}
       onClose={onClose || onCancel || (() => {})}
       styles={{

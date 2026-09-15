@@ -155,7 +155,7 @@ import {
   historyArrowStyle,
 } from "../../themetokenchk";
 import dayjs from "dayjs";
-import { cellTitleStyle, cellSubtitleStyle } from "../../themetokenchk";
+import { cellTitleStyle, cellSubtitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import * as themeTokenChk from "../../themetokenchk";
 import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
 import { DetailTable } from "../../components/shared/DetailTable";
@@ -335,7 +335,7 @@ const ScadaListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
-      { key: "DELETED", status: "DELETED" },
+      { key: "ARCHIVED", status: "ARCHIVED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -363,7 +363,7 @@ const ScadaListPage = () => {
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
         (counts.REJECTED_LEVEL2 || 0) +
-        (counts.DELETED || 0)
+        (counts.ARCHIVED || counts.DELETED || 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
@@ -2149,11 +2149,11 @@ const ScadaListPage = () => {
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
           {
-            key: "DELETED",
+            key: "ARCHIVED",
             label: "Đã xóa",
-            count: tabCounts["DELETED"] ?? 0,
+            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "DELETED",
+            active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -2202,8 +2202,7 @@ const ScadaListPage = () => {
       <Drawer
         {...drawerProps}
         size={undefined}
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         rootClassName={THEME_SCOPE_CLASS}
         className="scada-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống SCADA{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
@@ -2989,7 +2988,7 @@ const ScadaListPage = () => {
 
       {/* ── Create Drawer ─────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="scada-drawer-scope"
         className="scada-drawer-scope"
         title={
@@ -3078,7 +3077,7 @@ const ScadaListPage = () => {
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="scada-drawer-scope"
         className="scada-drawer-scope"
         title={
@@ -3177,7 +3176,7 @@ const ScadaListPage = () => {
 
       {/* ── History Drawer ─────────────────────────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName={THEME_SCOPE_CLASS}
         className="scada-drawer-scope"
         mask

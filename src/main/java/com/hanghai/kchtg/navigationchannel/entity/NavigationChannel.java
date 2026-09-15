@@ -26,6 +26,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "navigation_channel")
 @Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

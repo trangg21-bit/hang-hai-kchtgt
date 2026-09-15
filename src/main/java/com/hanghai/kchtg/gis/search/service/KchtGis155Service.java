@@ -1259,10 +1259,11 @@ public class KchtGis155Service {
                     + (vts.getAddress() != null ? vts.getAddress() : "")
                     + ", Tình trạng: "
                     + (vts.getConditionStatus() != null ? switch (vts.getConditionStatus()) {
-                      case OPERATIONAL -> "Đang hoạt động";
-                      case STOPPED -> "Dừng hoạt động";
+                      case OPERATIONAL -> "Đang khai thác/vận hành";
+                      case STOPPED, SUSPENDED -> "Dừng khai thác/vận hành";
                       case MAINTENANCE -> "Đang bảo trì";
-                      case UNDER_CONSTRUCTION -> "Đang xây dựng";
+                      case UNDER_CONSTRUCTION, NOT_YET_OPERATIONAL -> "Chưa khai thác/vận hành";
+                      default -> "Đang khai thác/vận hành";
                     } : ""))
                 .build();
             if (objectType != null) {
@@ -1529,7 +1530,7 @@ public class KchtGis155Service {
           break;
         default:
           break;
-       }
+      }
       log.info("PERF: Type {} took {} ms, results size {}", type, System.currentTimeMillis() - tStart,
           results.size());
     }

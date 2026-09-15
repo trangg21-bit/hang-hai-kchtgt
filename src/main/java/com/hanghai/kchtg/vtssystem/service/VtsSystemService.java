@@ -339,9 +339,6 @@ public class VtsSystemService {
         if (request.getConditionStatus() == null) {
             throw new IllegalArgumentException("Tình trạng không được để trống");
         }
-        if (request.getMaritimeNotice() == null || request.getMaritimeNotice().isBlank()) {
-            throw new IllegalArgumentException("Thông báo hàng hải không được để trống");
-        }
         validateReferenceScope(resolveDataScope(), request.getOrgUnitId(), request.getOwningOrgId(),
                 request.getOperatingOrgId(), request.getPortId());
     }
@@ -427,7 +424,7 @@ public class VtsSystemService {
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.owningOrgId);
         if (request.getOperatingOrgId() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.operatingOrgId);
-        if (request.getPortId() != null)
+        if (request.isPortIdPresent() || request.getPortId() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.portId);
         if (request.getScope() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.scope);
@@ -439,7 +436,7 @@ public class VtsSystemService {
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.address);
         if (request.getMaritimeNotice() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.maritimeNotice);
-        if (request.getOperationStartDate() != null)
+        if (request.isOperationStartDatePresent() || request.getOperationStartDate() != null)
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.operationStartDate);
     }
 
@@ -1109,7 +1106,7 @@ public class VtsSystemService {
                 entity.getOrgUnitId(),
                 request.getOwningOrgId() != null ? request.getOwningOrgId() : entity.getOwningOrgId(),
                 request.getOperatingOrgId() != null ? request.getOperatingOrgId() : entity.getOperatingOrgId(),
-                request.getPortId() != null ? request.getPortId() : entity.getPortId());
+                (request.isPortIdPresent() || request.getPortId() != null) ? request.getPortId() : entity.getPortId());
 
         validateWriteGuard(request);
 
@@ -1120,6 +1117,21 @@ public class VtsSystemService {
                 BaseApprovableEntity.Fields.orgUnitId,
                 VtsSystemUpdateRequest.Fields.coordinates,
                 VtsSystemUpdateRequest.Fields.geometryType);
+
+        // The generic updater intentionally skips nulls. Handle an explicit JSON null
+        // separately so the edit form can clear nullable fields without changing PATCH semantics.
+        if (request.isPortIdPresent() && request.getPortId() == null && entity.getPortId() != null) {
+            FieldVisibilityContext.assertWritable(VtsSystem.Fields.portId);
+            previousValues.put(VtsSystem.Fields.portId, String.valueOf(entity.getPortId()));
+            entity.setPortId(null);
+        }
+        if (request.isOperationStartDatePresent()
+                && request.getOperationStartDate() == null
+                && entity.getOperationStartDate() != null) {
+            FieldVisibilityContext.assertWritable(VtsSystem.Fields.operationStartDate);
+            previousValues.put(VtsSystem.Fields.operationStartDate, String.valueOf(entity.getOperationStartDate()));
+            entity.setOperationStartDate(null);
+        }
 
         String oldCoordinates = null;
         GisGeometryType oldGeometryType = null;
@@ -2105,14 +2117,32 @@ public class VtsSystemService {
             }
         }
         if (VtsSystem.Fields.conditionStatus.equals(field)) {
-            if (ConditionStatus.OPERATIONAL.name().equals(rawValue))
-                return "Đang hoạt động";
-            if (ConditionStatus.STOPPED.name().equals(rawValue))
-                return "Dừng hoạt động";
-            if (ConditionStatus.MAINTENANCE.name().equals(rawValue))
+            if (ConditionStatus.OPERATIONAL.name().equals(rawValue)
+                    || "DANG_KHAI_THAC".equals(rawValue)
+                    || "DANG_HOAT_DONG".equals(rawValue)
+                    || "0".equals(rawValue)) {
+                return "Đang khai thác/vận hành";
+            }
+            if (ConditionStatus.NOT_YET_OPERATIONAL.name().equals(rawValue)
+                    || ConditionStatus.UNDER_CONSTRUCTION.name().equals(rawValue)
+                    || "CHUA_KHAI_THAC".equals(rawValue)
+                    || "CHUA_HOAT_DONG".equals(rawValue)
+                    || "4".equals(rawValue)
+                    || "3".equals(rawValue)) {
+                return "Chưa khai thác/vận hành";
+            }
+            if (ConditionStatus.SUSPENDED.name().equals(rawValue)
+                    || ConditionStatus.STOPPED.name().equals(rawValue)
+                    || "DUNG_KHAI_THAC".equals(rawValue)
+                    || "DUNG_HOAT_DONG".equals(rawValue)
+                    || "TAM_DUNG".equals(rawValue)
+                    || "5".equals(rawValue)
+                    || "1".equals(rawValue)) {
+                return "Dừng khai thác/vận hành";
+            }
+            if (ConditionStatus.MAINTENANCE.name().equals(rawValue) || "2".equals(rawValue)) {
                 return "Đang bảo trì";
-            if (ConditionStatus.UNDER_CONSTRUCTION.name().equals(rawValue))
-                return "Đang xây dựng";
+            }
             return rawValue;
         }
         if (BaseApprovableEntity.Fields.approvalStatus.equals(field)) {

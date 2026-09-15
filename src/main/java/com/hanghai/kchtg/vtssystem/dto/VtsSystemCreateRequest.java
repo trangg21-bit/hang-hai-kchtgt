@@ -50,7 +50,6 @@ public class VtsSystemCreateRequest {
 
     private String address;
 
-    @NotBlank(message = "Thông báo hàng hải không được để trống")
     private String maritimeNotice;
 
     private LocalDate operationStartDate;

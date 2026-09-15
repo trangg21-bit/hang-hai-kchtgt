@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -103,11 +104,22 @@ public class VtsOperationCenterController {
             Map.entry("updatedByName", "u.fullName"),
             Map.entry("updatedAt", "t.updatedAt"),
             Map.entry("updatedDate", "t.updatedAt"),
-            Map.entry("createdAt", "t.createdAt"));
+            Map.entry("createdAt", "t.createdAt"),
+            Map.entry("submittedByName", "uSub.fullName"),
+            Map.entry("submittedAt", "t.submittedAt"),
+            Map.entry("submittedDate", "t.submittedAt"),
+            Map.entry("approverLevel1Name", "uApp1.fullName"),
+            Map.entry("approvedDateLevel1", "t.approvedDateLevel1"),
+            Map.entry("approverLevel2Name", "uApp2.fullName"),
+            Map.entry("approvedDateLevel2", "t.approvedDateLevel2"));
 
     private static Sort resolveListSort(String sortBy, String sortDir) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, "t.createdAt");
-        String property = sortBy == null ? null : SORTABLE_LIST_FIELDS.get(sortBy.trim());
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
+        if (sortBy == null || sortBy.isBlank()) {
+            return defaultSort;
+        }
+        String cleanSortBy = sortBy.trim();
+        String property = SORTABLE_LIST_FIELDS.get(cleanSortBy);
         if (property == null) {
             return defaultSort;
         }
@@ -115,7 +127,7 @@ public class VtsOperationCenterController {
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
         // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
-        return Sort.by(direction, property).and(defaultSort);
+        return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 
     @PreAuthorize("isAuthenticated()")

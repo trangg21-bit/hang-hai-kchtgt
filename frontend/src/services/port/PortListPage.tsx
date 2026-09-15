@@ -131,7 +131,7 @@ import {
   historyArrowStyle,
   historyInfoTitleStyle,
   historyChangeRowStyle,
-  historyCreateRowStyle,
+  DRAWER_WIDTH,
 } from '../../themetokenchk';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -700,7 +700,6 @@ export const translateFieldName = (fieldName: string): string => {
     openingDecision: 'Quyết định mở',
     investmentAgreement: 'Thỏa thuận đầu tư',
     structureType: 'Loại kết cấu',
-    provinceId: 'Mã tỉnh/thành',
     activityStatus: 'Trạng thái hoạt động',
     // Pier (Cầu cảng)
     pierCode: 'Mã cầu cảng',
@@ -727,9 +726,7 @@ export const translateFieldName = (fieldName: string): string => {
     // Common
     width: 'Chiều rộng (m)',
     length: 'Chiều dài (m)',
-    operationalStatus: 'Trạng thái hoạt động',
     approvalStatus: 'Trạng thái phê duyệt',
-    orgUnitId: 'Đơn vị quản lý',
     operationalCapacity: 'Công năng khai thác',
     bieuTuongId: 'Biểu tượng',
     iconId: 'Biểu tượng',
@@ -742,9 +739,6 @@ export const translateFieldName = (fieldName: string): string => {
     conditionStatus: 'Tình trạng',
     navigationChannelId: 'Thuộc luồng hàng hải',
     // Collections (fallback label)
-    wharfAreas: 'Khu bến',
-    infrastructureList: 'Công trình KCHT trực thuộc',
-    attachments: 'File đính kèm',
     attachmentList: 'File đính kèm',
   };
   return map[fieldName] || fieldName;
@@ -761,14 +755,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Cảng vụ trả về' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Cục trả về' },
-  ARCHIVED: { color: statusDraft, label: 'Đã xóa (lịch sử)' },
-  // ── legacy ──
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
-  PROPOSED: { color: statusAttention, label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL2: { color: statusOperational, label: 'Đã duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -1786,7 +1773,7 @@ export default function PortListPage() {
   }, [page, pageSize, debouncedName, debouncedCode, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus]);
 
   const fetchTabCounts = useCallback(async () => {
-    const statuses = ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'];
+    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'ARCHIVED'];
     const counts: Record<string, number> = {};
     await Promise.all([
       ...statuses.map(async (status) => {
@@ -2171,8 +2158,10 @@ export default function PortListPage() {
         dataIndex: 'approvalStatus',
         width: 170,
         sortable: true,
-        sortOrder: sortField === 'approvalStatus' ? sortOrder : null,
-        render: (v: string) => <ApprovalStatusBadge status={v} />,
+        render: (v: string, record: CangBienResponse) => {
+          const isArchived = filterApprovalStatus === 'ARCHIVED' || Boolean(record?.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
+          return <ApprovalStatusBadge status={isArchived ? 'ARCHIVED' : v} />;
+        },
       },
       {
         key: 'updatedBy',
@@ -2182,7 +2171,7 @@ export default function PortListPage() {
         ellipsis: false,
         sortable: true,
         sortOrder: (sortField === 'updatedByName' || sortField === 'updatedAt' || sortField === 'updatedBy') ? sortOrder : null,
-        render: (v: string | null, record: CangBienResponse) => {
+        render: (_v: string | null, record: CangBienResponse) => {
           const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, (record as any).createdByName);
           const date = record.updatedAt || (record as any).createdAt;
           return (
@@ -2241,24 +2230,6 @@ export default function PortListPage() {
     };
   }, [historyModalOpen, selectedRecord?.id]);
 
-  const loadMoreHistory = async () => {
-    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
-    setLoadingMoreHistory(true);
-    try {
-      const nextPage = historyPage + 1;
-      const history = await fetchportHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE);
-      if (history && history.length > 0) {
-        const filteredMore = history.filter((r: any) => r && !['spatialId', 'infrastructureList_raw'].includes(r.changedField));
-        setHistoryRecords(prev => [...prev, ...filteredMore]);
-        setHistoryPage(nextPage);
-        setHasMoreHistory(history.length === HISTORY_PAGE_SIZE);
-      } else {
-        setHistoryPage(nextPage);
-        setHasMoreHistory(false);
-      }
-    } catch { /* ignore */ }
-    finally { setLoadingMoreHistory(false); }
-  };
   // ── Render ───────────────────────────────────────────────────────
   return (
     <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
@@ -2463,7 +2434,11 @@ export default function PortListPage() {
             statusTabs={[
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
               { key: 'DRAFT', label: 'Lưu tạm', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
+              { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: tabCounts['PENDING_APPROVAL'] ?? 0, color: statusAttention, active: activeStatusTab === 'PENDING_APPROVAL' },
+              { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: tabCounts['APPROVED_LEVEL1'] ?? 0, color: '#0284C7', active: activeStatusTab === 'APPROVED_LEVEL1' },
               { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
+              { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: tabCounts['REJECTED_LEVEL1'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL1' },
+              { key: 'ARCHIVED', label: 'Đã xóa', count: tabCounts['ARCHIVED'] ?? 0, color: statusCritical, active: activeStatusTab === 'ARCHIVED' },
             ]}
             onStatusTabChange={(key) => {
               setActiveStatusTab(key === 'all' ? '' : key);
@@ -2514,7 +2489,7 @@ export default function PortListPage() {
               Thêm mới Cảng biển
             </span>
           }
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="port-drawer-scope"
           className="port-drawer-scope"
           destroyOnHidden
@@ -2593,8 +2568,7 @@ export default function PortListPage() {
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
       {(!isIframeModal || action === 'edit') && (
         <AppDrawer
-          size={isIframeModal ? '100%' : 1000}
-          width={isIframeModal ? '100%' : 'min(920px, 96vw)'}
+          width={isIframeModal ? '100%' : DRAWER_WIDTH}
           rootClassName="port-drawer-scope"
           className="port-drawer-scope"
           destroyOnHidden
@@ -2658,8 +2632,7 @@ export default function PortListPage() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       {(!isIframeModal || action === 'detail') && (
         <AppDrawer
-          size={isIframeModal ? '100%' : 1000}
-          width={isIframeModal ? '100%' : 'min(1000px, 96vw)'}
+          width={isIframeModal ? '100%' : DRAWER_WIDTH}
           rootClassName="port-drawer-scope"
           className="port-drawer-scope"
           mask={!isIframeModal}
@@ -2701,8 +2674,7 @@ export default function PortListPage() {
 
       {/* ── Chi tiết KCHT khác (Drawer lồng — không chuyển trang) ── */}
       <AppDrawer
-        size={isIframeModal ? '100%' : 1000}
-        width={isIframeModal ? '100%' : 'min(1000px, 96vw)'}
+        width={isIframeModal ? '100%' : DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         mask={!isIframeModal}
@@ -2745,8 +2717,7 @@ export default function PortListPage() {
 
       {/* ── Pier Detail Drawer (sibling — tránh drawer lồng bị đẩy kích thước) ── */}
       <AppDrawer
-        size={isIframeModal ? '100%' : 1000}
-        width={isIframeModal ? '100%' : 'min(1000px, 96vw)'}
+        width={isIframeModal ? '100%' : DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         mask={!isIframeModal}
@@ -2786,7 +2757,7 @@ export default function PortListPage() {
 
       {/* ── History drawer (timeline theo chuẩn màn Bến cảng) ── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         mask

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.vtsoperationcenter.dto;
 
+import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
@@ -8,16 +9,18 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 
 import java.util.UUID;
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldNameConstants
-public class VtsOperationCenterRequest {
+public class VtsOperationCenterRequest extends FieldPresenceTrackedRequest {
 
     @NotBlank(message = "Mã trung tâm điều hành VTS không được để trống")
     @Size(max = 50, message = "Mã trung tâm tối đa 50 ký tự")
@@ -53,6 +56,56 @@ public class VtsOperationCenterRequest {
     private String coordinates;
     private UUID symbolId;
     private ApprovalStatus approvalStatus;
+
+    public void setVtsSystemId(UUID vtsSystemId) {
+        markFieldPresent("vtsSystemId");
+        this.vtsSystemId = vtsSystemId;
+    }
+
+    public void setPortId(UUID portId) {
+        markFieldPresent("portId");
+        this.portId = portId;
+    }
+
+    public void setDetailedLocation(String detailedLocation) {
+        markFieldPresent("detailedLocation");
+        this.detailedLocation = detailedLocation;
+    }
+
+    public void setCoverage(String coverage) {
+        markFieldPresent("coverage");
+        this.coverage = coverage;
+    }
+
+    public void setNote(String note) {
+        markFieldPresent("note");
+        this.note = note;
+    }
+
+    public void setSpatialId(UUID spatialId) {
+        markFieldPresent("spatialId");
+        this.spatialId = spatialId;
+    }
+
+    public void setGeometryType(GisGeometryType geometryType) {
+        markFieldPresent("geometryType");
+        this.geometryType = geometryType;
+    }
+
+    public void setCoordinates(String coordinates) {
+        markFieldPresent("coordinates");
+        this.coordinates = coordinates;
+    }
+
+    public void setSymbolId(UUID symbolId) {
+        markFieldPresent("symbolId");
+        this.symbolId = symbolId;
+    }
+
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        markFieldPresent("approvalStatus");
+        this.approvalStatus = approvalStatus;
+    }
 
     public static Builder builder() {
         return new Builder();

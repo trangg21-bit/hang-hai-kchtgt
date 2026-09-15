@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Tabs, Button, Select, Tooltip, Modal, Space } from 'antd';
+import { Tabs, Button, Select, Tooltip, Modal } from 'antd';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -29,9 +29,6 @@ import {
   fontWeightMedium,
   fontSizeSm,
   fontSizeLg,
-  spaceSm,
-  spaceMd,
-  spaceFormField,
   textSecondary,
   textTertiary,
   statusOperational,
@@ -43,8 +40,10 @@ import {
   outlineButtonStyle,
   surfaceCard,
   DRAWER_TABLE_SCROLL_Y,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  getVtsConditionStatusColor,
+  getVtsConditionStatusLabel,
+  formatUserDisplayName,
+  isUuidString,
 } from '../../themetokenchk';
 import { getProvinceNameById } from '../../types/common';
 import DetailTable from '../../components/shared/DetailTable';
@@ -147,8 +146,8 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return null;
-  const label = getConditionStatusLabel(status);
-  const color = getConditionStatusColor(status);
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
   return (
     <span
       style={{
@@ -361,7 +360,6 @@ export default function VtsOperationCenterDetailContent({
   incidentList,
 }: VtsOperationCenterDetailContentProps) {
   const [record, setRecord] = useState<VtsOperationCenterResponse>(selectedRecord);
-
   // States toggle
   const [approvalOpen, setApprovalOpen] = useState(true);
   const [operationOpen, setOperationOpen] = useState(true);
@@ -371,8 +369,6 @@ export default function VtsOperationCenterDetailContent({
 
   // Tệp đính kèm
   const [attachmentList, setAttachmentList] = useState<any[]>(selectedRecord.attachments || []);
-  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-  const [filesLoaded, setFilesLoaded] = useState(false);
 
   // KCHT khác thuộc Trung tâm điều hành — chuẩn Bến cảng
   const [infraTypeFilter, setInfraTypeFilter] = useState<string>('');
@@ -398,7 +394,6 @@ export default function VtsOperationCenterDetailContent({
 
   useEffect(() => {
     let mounted = true;
-    setFilesLoaded(false);
     setInfraLoaded(false);
     setLoadedInfra([]);
     vtsOperationCenterService.getById(selectedRecord.id)
@@ -407,7 +402,6 @@ export default function VtsOperationCenterDetailContent({
         setRecord(data);
         if (Array.isArray(data.attachments)) {
           setAttachmentList(data.attachments);
-          setFilesLoaded(true);
         }
       })
       .catch(() => {});
@@ -463,16 +457,6 @@ export default function VtsOperationCenterDetailContent({
 
   // Lazy load attachments & other infra
   const handleTabChange = (key: string) => {
-    if (key === 'files' && !filesLoaded && selectedRecord?.id) {
-      setIsLoadingFiles(true);
-      vtsOperationCenterService.listAttachments(selectedRecord.id)
-        .then((files: any) => {
-          setAttachmentList(files || []);
-          setFilesLoaded(true);
-        })
-        .catch(() => {})
-        .finally(() => setIsLoadingFiles(false));
-    }
     if (key === 'other_infra' && !infraLoaded && selectedRecord?.id) {
       loadOtherInfra(selectedRecord.id);
     }
@@ -701,43 +685,59 @@ export default function VtsOperationCenterDetailContent({
 
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
+                      <div className="chk-detail-row chk-detail-row--full">
                         <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
                         <span className="chk-detail-value">{renderApprovalBadge(record.approvalStatus)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
-                          {record.updatedByName || record.createdByName ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.updatedByName || record.createdByName}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(record.updatedBy, record.updatedByName, undefined, record.createdBy, record.createdByName);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.updatedByName && !isUuidString(record.updatedByName)) return <span style={{ fontWeight: fontWeightBold }}>{record.updatedByName}</span>;
+                            if (record.createdByName && !isUuidString(record.createdByName)) return <span style={{ fontWeight: fontWeightBold }}>{record.createdByName}</span>;
+                            return '';
+                          })()}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                        <span className="chk-detail-value">
+                          {fmtDateTime((record as any).updatedDate || (record as any).updatedAt || record.createdDate || (record as any).createdAt)}
                         </span>
                       </div>
 
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                         <span className="chk-detail-value">
-                          {record.submittedByName ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.submittedByName}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(undefined, record.submittedByName, undefined);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.submittedByName && !isUuidString(record.submittedByName)) return <span style={{ fontWeight: fontWeightBold }}>{record.submittedByName}</span>;
+                            return '';
+                          })()}
                         </span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                        <span className="chk-detail-value">{fmtDateTime(record.submittedDate || record.submittedAt)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(record.submittedDate || (record as any).submittedAt)}</span>
                       </div>
 
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">
-                          {record.approverLevel1Name || record.approverLevel1 ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel1Name || record.approverLevel1}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(record.approverLevel1, record.approverLevel1Name, undefined);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.approverLevel1Name && !isUuidString(record.approverLevel1Name)) return <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel1Name}</span>;
+                            return '';
+                          })()}
                         </span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel1)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel1 || (record as any).approvedAtLevel1)}</span>
                       </div>
 
                       <div className="chk-detail-row chk-detail-row--full">
@@ -748,14 +748,17 @@ export default function VtsOperationCenterDetailContent({
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
-                          {record.approverLevel2Name || record.approverLevel2 ? (
-                            <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel2Name || record.approverLevel2}</span>
-                          ) : ''}
+                          {(() => {
+                            const name = formatUserDisplayName(record.approverLevel2, record.approverLevel2Name, undefined);
+                            if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                            if (record.approverLevel2Name && !isUuidString(record.approverLevel2Name)) return <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel2Name}</span>;
+                            return '';
+                          })()}
                         </span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel2)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(record.approvedDateLevel2 || (record as any).approvedAtLevel2)}</span>
                       </div>
 
                       <div className="chk-detail-row chk-detail-row--full">
@@ -881,7 +884,7 @@ export default function VtsOperationCenterDetailContent({
             children: (
               <DetailTable
                   dataSource={attachmentList}
-                  emptyText={isLoadingFiles ? "Đang tải tài liệu đính kèm..." : "Chưa có tài liệu đính kèm"}
+                  emptyText="Chưa có tài liệu đính kèm"
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
                   rowKey={(f: any) => f.id || f.fileName}
                   columns={[

@@ -35,7 +35,6 @@ export const APPROVAL_STATUS_STYLE: Record<string, { label: string; color: strin
   REJECTED_LEVEL2: { label: 'Từ chối cấp Cục', color: statusCritical },
   APPROVED: { label: 'Đã phê duyệt', color: statusOperational },
   ARCHIVED: { label: 'Đã xóa', color: statusCritical },
-  DELETED: { label: 'Đã xóa', color: statusCritical },
 };
 
 /** Nhãn tiếng Việt của một mã trạng thái (chấp nhận cả mã legacy). */
@@ -58,6 +57,7 @@ export const APPROVAL_STATUS_OPTIONS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ].map((value) => ({ value, label: APPROVAL_STATUS_STYLE[value].label }));
 
 /** Trạng thái → tên token màu, để badge đổi theo bộ theme đang áp. */
@@ -69,7 +69,6 @@ const STATUS_COLOR_TOKEN: Record<string, 'statusDraft' | 'statusAttention' | 'st
   REJECTED_LEVEL2: 'statusCritical',
   APPROVED: 'statusOperational',
   ARCHIVED: 'statusCritical',
-  DELETED: 'statusCritical',
 };
 
 export default function ApprovalStatusBadge({ status, size = 'default', labelOverrides }: ApprovalStatusBadgeProps) {

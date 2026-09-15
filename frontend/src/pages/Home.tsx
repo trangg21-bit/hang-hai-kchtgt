@@ -345,7 +345,7 @@ export default function HomePage() {
 
       {/* Nội dung theo Tab đã chọn */}
       {activeTab === 'dashboard' ? (
-        <DashboardPage />
+        <DashboardPage hideHeader={true} />
       ) : (
         <>
           {/* Section header */}

@@ -38,6 +38,8 @@ public class PortResponse {
     private String updatedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
     private UUID mapSymbolId;
     private String mapSymbolName;
     private UUID spatialId;

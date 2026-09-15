@@ -50,7 +50,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
           AND (:approvalStatus IS NULL 
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
@@ -160,15 +162,12 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.provinceId AS provinceId,
                t.operationStartDate AS operationStartDate
         FROM VtsSystem t
-        LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
         LEFT JOIN OperatingOrganization op ON op.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
-        LEFT JOIN OrgUnit own ON own.id = t.owningOrgId
-        LEFT JOIN Port p ON p.id = t.portId
-        LEFT JOIN User u ON u.id = t.updatedBy
-        LEFT JOIN User uCreate ON uCreate.id = t.createdBy
         WHERE (
-            (:approvalStatus IS NULL)
+            (:approvalStatus IS NULL
+                AND t.deletedAt IS NULL
+                AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
             OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
             OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
                 t.approvalStatus = :approvalStatus
@@ -187,7 +186,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:systemName AS string))
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)
           AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate <= :toDate)
           AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
@@ -197,7 +198,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         SELECT COUNT(t)
         FROM VtsSystem t
         WHERE (
-            (:approvalStatus IS NULL)
+            (:approvalStatus IS NULL
+                AND t.deletedAt IS NULL
+                AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
             OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
             OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
                 t.approvalStatus = :approvalStatus
@@ -216,7 +219,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:systemName AS string))
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)
           AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate <= :toDate)
           AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
@@ -343,7 +348,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                 CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string)
               ))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
         GROUP BY t.approvalStatus
         """)
     List<Object[]> countByApprovalStatus(
@@ -369,7 +376,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.systemName)) AS string) LIKE CAST(:systemName AS string))
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)
           AND (CAST(:toDate AS java.time.LocalDate) IS NULL OR t.operationStartDate <= :toDate)
           AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)

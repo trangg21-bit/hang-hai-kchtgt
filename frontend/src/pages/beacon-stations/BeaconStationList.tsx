@@ -45,7 +45,6 @@ import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
-import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { portCRUD } from '../../services/portService';
@@ -56,8 +55,7 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
-import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { fmtNum } from '../../utils/numFmt';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -69,7 +67,7 @@ import {
   spaceXs, spaceSm, spaceMd, spaceFormField, spaceXl,
   surfaceCard,
   statusOperational, statusDraft, statusCritical, statusAttention,
-  drawerTitleStyle, drawerFooterStyle, selectStyle,
+  drawerTitleStyle, drawerFooterStyle, DRAWER_WIDTH, selectStyle,
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
   inputStyle, colors, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle,
   confirmModalBodyStyle,
@@ -93,8 +91,6 @@ import * as themeTokenChk from '../../themetokenchk';
 
 // Cỡ chữ màn /beacon-stations: 13.5px chuẩn /berth (bỏ token tĩnh themetokenchk fontSizeMd=13px).
 const fontSizeMd = 13.5;
-
-const pillStyle = { borderRadius: radiusPill, height: 40 };
 
 // Đơn vị vận hành — DropDownList chuẩn KCHT (SelectCateOther theo danh mục đơn vị vận hành)
 const OPERATOR_OPTIONS = DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.name, label: o.name }));
@@ -205,7 +201,7 @@ const BEACON_APPROVAL_STATUS_LABELS: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp Cục',
-  DELETED: 'Đã xóa',
+  ARCHIVED: 'Đã xóa',
 };
 
 const STATUS_TAB_LIST = [
@@ -216,7 +212,7 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED', label: BEACON_APPROVAL_STATUS_LABELS.APPROVED, color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: BEACON_APPROVAL_STATUS_LABELS.REJECTED_LEVEL1, color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: BEACON_APPROVAL_STATUS_LABELS.REJECTED_LEVEL2, color: statusCritical },
-  { key: 'DELETED', label: BEACON_APPROVAL_STATUS_LABELS.DELETED, color: statusCritical },
+  { key: 'ARCHIVED', label: BEACON_APPROVAL_STATUS_LABELS.ARCHIVED, color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
@@ -227,7 +223,7 @@ const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  DELETED: 'DELETED',
+  ARCHIVED: 'ARCHIVED',
 };
 
 // Status badge config — semantic token colors (AGENTS.md: no hardcoded hex)
@@ -248,7 +244,7 @@ const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> 
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  DELETED: { color: statusCritical, label: 'Đã xóa' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 // Tình trạng hoạt động — semantic tokens (integer enum khớp backend OperationalStatus)
@@ -310,7 +306,6 @@ export default function BeaconStationList() {
     hasPerm('beaconstation:approvec2') || hasPerm('beaconstation:approve')
     || hasPerm('data:approvec2') || hasPerm('*');
 
-  const authUser = useAuthStore((s) => s.user);
   // ── Filter state ─────────────────────────────────────────────────
   const [inputName, setInputName] = useState('');
   const [inputCode, setInputCode] = useState('');
@@ -460,7 +455,7 @@ export default function BeaconStationList() {
             setFilterUnitId(defaultId === '__all__' ? undefined : defaultId);
           } catch {
             defaultOrgUnitId.current = orgs[0].id;
-            setFilterOrgUnitId(orgs[0].id);
+            setFilterUnitId(orgs[0].id);
           }
         }
       }
@@ -764,7 +759,7 @@ export default function BeaconStationList() {
   // ── Row actions (popup chuẩn themetokenchk — thứ tự: Xem chi tiết, Chỉnh sửa, Lịch sử,
   //  rồi nhóm Phê duyệt/Từ chối, cuối cùng Xóa) ──
   const rowActions = useCallback((record: BeaconStation) => {
-    const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.status === 'DELETED');
+    const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.status === 'ARCHIVED' || record.status === 'DELETED');
     if (isDeleted) {
       const actions: any[] = [];
       if (hasPerm('beaconstation:read') || hasPerm('beaconstation:view')) {
@@ -1003,8 +998,8 @@ export default function BeaconStationList() {
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 200,
       render: (status: string, record: BeaconStation) => {
-        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'DELETED');
-        const displayStatus = isDeleted ? 'DELETED' : status;
+        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'ARCHIVED' || status === 'DELETED');
+        const displayStatus = isDeleted ? 'ARCHIVED' : status;
         const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
@@ -1277,9 +1272,9 @@ export default function BeaconStationList() {
         {
           label: 'Trạng thái phê duyệt',
           value: (() => {
-            const isDel = Boolean(detailRecord.deletedAt || detailRecord.deletedBy || detailRecord.status === 'DELETED');
+            const isDel = Boolean(detailRecord.deletedAt || detailRecord.deletedBy || detailRecord.status === 'ARCHIVED' || detailRecord.status === 'DELETED');
             if (isDel) {
-              const s = BEACON_STATUS_STYLE_MAP.DELETED || { color: statusCritical, label: 'Đã xóa' };
+              const s = BEACON_STATUS_STYLE_MAP.ARCHIVED || { color: statusCritical, label: 'Đã xóa' };
               return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
             }
             return <ApprovalStatusBadge status={detailRecord.status} labelOverrides={BEACON_APPROVAL_STATUS_LABELS} />;
@@ -2251,7 +2246,7 @@ export default function BeaconStationList() {
         open={drawerVisible && isDetailMode && !!detailRecord}
         destroyOnHidden
         onClose={closeDrawer}
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        width={DRAWER_WIDTH}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px', overflow: 'hidden' },
@@ -2267,7 +2262,7 @@ export default function BeaconStationList() {
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="beacon-station-drawer-scope"
         className="beacon-station-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới thông tin đèn biển và nhà trạm gắn với đèn biển</span>}
@@ -2336,7 +2331,7 @@ export default function BeaconStationList() {
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="beacon-station-drawer-scope"
         className="beacon-station-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa — {editingRecord?.name || editingRecord?.code}</span>}
@@ -2538,7 +2533,7 @@ export default function BeaconStationList() {
 
       {/* ── History Drawer (đồng bộ chuẩn /berth) ──────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="beacon-drawer-scope"
         className="beacon-drawer-scope"
         mask

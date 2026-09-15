@@ -291,6 +291,7 @@ public class ShipRepairYardService {
             throw new IllegalArgumentException("Chỉ được xóa cơ sở sửa chữa, đóng tàu ở trạng thái Nháp");
         }
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         shipRepairYardRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -482,7 +483,7 @@ public class ShipRepairYardService {
                 .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 // Thông tin đặc thù CSSCĐT
                 .usageFunction(entity.getUsageFunction())
                 .workshopArea(entity.getWorkshopArea())
@@ -511,6 +512,8 @@ public class ShipRepairYardService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .build();
 
         if (entity.getSpatialId() != null) {

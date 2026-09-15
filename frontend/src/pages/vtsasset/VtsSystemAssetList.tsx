@@ -558,8 +558,17 @@ export default function VtsSystemAssetList() {
   const handleFilterApply = useCallback(() => {
     setPage(1);
     const range = draftFilters.updatedRange as [Dayjs | null, Dayjs | null] | undefined;
+    const trimmedCode = draftFilters.assetCode?.trim() || undefined;
+    const trimmedName = draftFilters.assetName?.trim() || undefined;
+    setDraftFilters((prev) => ({
+      ...prev,
+      assetCode: trimmedCode,
+      assetName: trimmedName,
+    }));
     setFilters({
       ...draftFilters,
+      assetCode: trimmedCode,
+      assetName: trimmedName,
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),
     });

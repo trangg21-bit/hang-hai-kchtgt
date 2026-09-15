@@ -264,7 +264,33 @@ public class VtsOperationCenterService {
             previousValues.put(VtsOperationCenterRequest.Fields.geometryType, oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
         }
 
-        if (request.getCoordinates() != null) {
+        if (request.isFieldPresent("vtsSystemId") && request.getVtsSystemId() == null) {
+            entity.setVtsSystemId(null);
+        }
+        if (request.isFieldPresent("portId") && request.getPortId() == null) {
+            entity.setPortId(null);
+        }
+        if (request.isFieldPresent("detailedLocation") && request.getDetailedLocation() == null) {
+            entity.setDetailedLocation(null);
+        }
+        if (request.isFieldPresent("coverage") && request.getCoverage() == null) {
+            entity.setCoverage(null);
+        }
+        if (request.isFieldPresent("note") && request.getNote() == null) {
+            entity.setNote(null);
+        }
+        if (request.isFieldPresent("symbolId") && request.getSymbolId() == null) {
+            entity.setSymbolId(null);
+        }
+        if (request.isFieldPresent("spatialId") && request.getSpatialId() == null
+                && !request.isFieldPresent("coordinates")) {
+            if (entity.getSpatialId() != null) {
+                gisSpatialObjectService.delete(entity.getSpatialId());
+            }
+            entity.setSpatialId(null);
+        }
+
+        if (request.isFieldPresent("coordinates")) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     entity.getSpatialId(),
@@ -874,7 +900,7 @@ public class VtsOperationCenterService {
         }
     }
 
-
+    
     public InfrastructureAttachment getAttachment(UUID id, UUID attId) {
         VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
@@ -962,10 +988,10 @@ public class VtsOperationCenterService {
         }
         if (VtsOperationCenter.Fields.conditionStatus.equals(field)
                 || getFieldDisplayName(VtsOperationCenter.Fields.conditionStatus).equals(field)) {
-            if (ConditionStatus.OPERATIONAL.name().equals(rawValue)) return "Đang hoạt động";
-            if (ConditionStatus.STOPPED.name().equals(rawValue)) return "Dừng hoạt động";
-            if (ConditionStatus.MAINTENANCE.name().equals(rawValue)) return "Đang bảo trì";
-            if (ConditionStatus.UNDER_CONSTRUCTION.name().equals(rawValue)) return "Đang xây dựng";
+            if (ConditionStatus.OPERATIONAL.name().equals(rawValue) || "DANG_KHAI_THAC".equals(rawValue) || "DANG_HOAT_DONG".equals(rawValue) || "0".equals(rawValue)) return "Đang khai thác/vận hành";
+            if (ConditionStatus.NOT_YET_OPERATIONAL.name().equals(rawValue) || ConditionStatus.UNDER_CONSTRUCTION.name().equals(rawValue) || "CHUA_KHAI_THAC".equals(rawValue) || "CHUA_HOAT_DONG".equals(rawValue) || "4".equals(rawValue) || "3".equals(rawValue)) return "Chưa khai thác/vận hành";
+            if (ConditionStatus.SUSPENDED.name().equals(rawValue) || ConditionStatus.STOPPED.name().equals(rawValue) || "DUNG_KHAI_THAC".equals(rawValue) || "DUNG_HOAT_DONG".equals(rawValue) || "TAM_DUNG".equals(rawValue) || "5".equals(rawValue) || "1".equals(rawValue)) return "Dừng khai thác/vận hành";
+            if (ConditionStatus.MAINTENANCE.name().equals(rawValue) || "2".equals(rawValue)) return "Đang bảo trì";
             return rawValue;
         }
         if (BaseApprovableEntity.Fields.approvalStatus.equals(field)

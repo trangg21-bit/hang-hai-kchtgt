@@ -56,4 +56,6 @@ public class DaiTtdhResponse {
     private UUID updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
 }

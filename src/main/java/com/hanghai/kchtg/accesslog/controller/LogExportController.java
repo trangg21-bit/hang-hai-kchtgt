@@ -21,10 +21,9 @@ import java.util.UUID;
  * REST Controller cho việc xuat log, xem thong ke, canh bao, va config retention policy.
  * <p>
  * Base path: {@code /api/logs}
+ * </p>
  * <p>
- * F-005 changes:
- * - CSV export changed from FileSystemResource to StreamingResponseBody (G3)
- * - Alert threshold changed to 5 failures/1hr (G4)
+ * Migration:
  * - Added aggregate endpoints (G6)
  * - Added retention policy endpoints (G5)
  * - Extended @PreAuthorize for new BA roles

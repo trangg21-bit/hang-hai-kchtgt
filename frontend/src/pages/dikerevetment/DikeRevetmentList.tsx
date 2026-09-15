@@ -44,10 +44,9 @@ import type {
   DikeRevetmentType,
   CreateDikeRevetmentRequest,
   UpdateDikeRevetmentRequest,
-  ApprovalStatus,
 } from '../../types/dikeRevetment';
 import { DIKE_REVETMENT_STATUS_LABELS } from '../../types/dikeRevetment';
-import { fmtNum, fmtInputNumber } from '../../utils/numFmt';
+import { fmtNum } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
 import { portCRUD } from '../../services/portService';
@@ -105,6 +104,7 @@ import {
   formRowGutter,
   drawerTitleStyle,
   drawerFooterStyle,
+  DRAWER_WIDTH,
   requiredMarkStyle,
   getRangePickerProps,
   getSidebarDatePickerProps,
@@ -301,7 +301,7 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED', label: DIKE_REVETMENT_STATUS_LABELS.APPROVED, color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: DIKE_REVETMENT_STATUS_LABELS.REJECTED_LEVEL1, color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: DIKE_REVETMENT_STATUS_LABELS.REJECTED_LEVEL2, color: statusCritical },
-  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
+  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -312,7 +312,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  DELETED: 'DELETED',
+  ARCHIVED: 'ARCHIVED',
 };
 
 export function isDikeRevetmentDeleted(record?: Partial<DikeRevetmentResponse> | null): boolean {
@@ -549,16 +549,6 @@ const renderDmsGroup = (
     </div>
   );
 };
-
-// Chuẩn /vts-operation-center (y hệt màn /vts-assist): đảm bảo đủ số tọa độ tối thiểu theo loại hình
-// (POINT 1 / LINE 2 / POLYGON 3) — chuyển loại GIỮ điểm đã nhập, chỉ thêm/bớt theo mức tối thiểu.
-function adjustGpsListForGeometry(list: { lat: number; lng: number }[], geom: string): { lat: number; lng: number }[] {
-  const min = geom === 'POINT' ? 1 : geom === 'LINE' ? 2 : 3;
-  let next = [...list];
-  if (geom === 'POINT') next = next.slice(0, 1);
-  while (next.length < min) next.push({ lat: NaN, lng: NaN });
-  return next;
-}
 
 /** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
@@ -989,7 +979,7 @@ export default function DikeRevetmentList() {
   // Tab counts — đếm theo từng trạng thái, BẮT BUỘC áp ĐÚNG bộ lọc như danh sách
   // để tổng 6 tab con khớp tổng "Tất cả" (tránh lệch 71 vs 76 khi có filter nghiệp vụ)
   const fetchTabCounts = useCallback(async () => {
-    const statuses: string[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'DELETED'];
+    const statuses: string[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'ARCHIVED'];
     const filterScope = {
       orgUnitId: filterUnitId && filterUnitId !== '__all__' ? filterUnitId : undefined,
       code: filterCode.trim() || undefined,
@@ -2033,7 +2023,6 @@ export default function DikeRevetmentList() {
     const actions: any[] = [];
     const canRead = hasPerm('dikerevetment:read');
     const canUpdate = hasPerm('dikerevetment:update');
-    const canDelete = hasPerm('dikerevetment:delete');
 
     // Bản ghi đã xóa: chỉ còn Xem chi tiết và Xem lịch sử
     if (isDikeRevetmentDeleted(record)) {
@@ -2896,8 +2885,7 @@ export default function DikeRevetmentList() {
       <AppDrawer
         className="dike-revetment-drawer-scope"
         rootClassName="dike-revetment-drawer-scope"
-        width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         title={
           <span style={isDetailMode || editingRecord ? drawerTitleStyle : { ...drawerTitleStyle, fontSize: 16 }}>
             {isDetailMode
@@ -3647,7 +3635,7 @@ export default function DikeRevetmentList() {
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="dike-revetment-drawer-scope"
         className="dike-revetment-drawer-scope"
         mask

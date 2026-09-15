@@ -72,4 +72,8 @@ public class BerthResponse {
     private String portAuthorityApprovalContent;
     private String departmentApprovalContent;
     private String rejectionReason;
+
+    // ── Audit (soft-delete) ──
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
 }

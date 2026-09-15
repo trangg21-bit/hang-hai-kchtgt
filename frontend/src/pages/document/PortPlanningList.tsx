@@ -72,6 +72,7 @@ import {
   drawerFormScrollStyle,
   drawerTabBarStyle,
   drawerTitleStyle,
+  DRAWER_WIDTH,
   getDatePickerProps,
   labelProps,
 } from '../../themetokenchk';
@@ -960,7 +961,7 @@ export default function PortPlanningList() {
       </FilterTableLayout>
 
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="port-planning-drawer-scope"
         className="port-planning-drawer-scope"
         title={

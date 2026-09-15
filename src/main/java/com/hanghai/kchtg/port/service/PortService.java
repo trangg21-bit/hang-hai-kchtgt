@@ -776,6 +776,7 @@ public class PortService {
         }
 
         entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         portRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -860,9 +861,9 @@ public class PortService {
 
     private PortResponse toResponse(Port entity, String preResolvedCreatorName, String preResolvedUpdaterName,
                                     boolean includeChildCollections) {
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName 
                 : userResolverService.resolveName(entity.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName 
                 : userResolverService.resolveName(entity.getUpdatedBy());
         // Fallback to UUID substring if name resolution returns null
         if (createdBy == null && entity.getCreatedBy() != null) createdBy = entity.getCreatedBy().toString().substring(0, 8);
@@ -876,7 +877,7 @@ public class PortService {
                 .area(entity.getArea())
                 .maxVesselCapacity(entity.getMaxVesselCapacity())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 .orgUnitId(entity.getOrgUnitId()).orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .portGroup(entity.getPortGroup())
                 .mapSymbolId(entity.getMapSymbolId())
@@ -886,6 +887,8 @@ public class PortService {
                 .updatedByName(updatedBy)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 // Extended fields
                 .detailedLocation(entity.getDetailedLocation())
                 .portClass(entity.getPortClass())

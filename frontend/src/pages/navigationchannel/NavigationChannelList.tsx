@@ -84,6 +84,7 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', statuses: ['APPROVED_LEVEL1'] },
   { key: 'APPROVED', label: 'Đã duyệt', statuses: ['APPROVED'] },
   { key: 'REJECTED', label: 'Từ chối', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
+  { key: 'ARCHIVED', label: 'Đã xóa', statuses: ['ARCHIVED'] },
 ];
 
 const TAB_COLOR: Record<string, string> = {
@@ -93,6 +94,7 @@ const TAB_COLOR: Record<string, string> = {
   APPROVED_LEVEL1: actionPrimary,
   APPROVED: statusOperational,
   REJECTED: statusCritical,
+  ARCHIVED: statusCritical,
 };
 
 // ── Lịch sử thay đổi (chuẩn VTS CHK) ─────────────────────────────────
@@ -123,6 +125,7 @@ function historyFieldName(fn: string): string { return historyFieldLabels[fn] ||
 /** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
 function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
   const item = group.items?.[0] || {};
+  const level = Number(item?.approvalLevel || 0);
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
 
@@ -908,8 +911,11 @@ export default function NavigationChannelList() {
         key: 'approvalStatus',
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
-        width: 160,
-        render: (v: ApprovalStatus) => (v ? <ApprovalStatusBadge status={v} /> : null),
+        render: (v: ApprovalStatus, record: NavigationChannelResponse) => {
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || (v as string) === 'ARCHIVED' || (v as string) === 'DELETED';
+          const eff = isArchived ? ('ARCHIVED' as ApprovalStatus) : v;
+          return eff ? <ApprovalStatusBadge status={eff} /> : null;
+        },
       },
       {
         key: 'updatedAt',

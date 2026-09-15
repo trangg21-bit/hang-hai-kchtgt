@@ -3,15 +3,18 @@ import { FilterOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useFilter } from '../context/FilterContext';
 import { VIETNAM_PROVINCE_OPTIONS } from '../types/common';
 import {
-  surfacePage,
+  colors,
+  actionPrimary,
+  surfaceCard,
   textSecondary,
-  textTertiary,
-  radiusSm,
-  borderDefault as line,
+  radiusMd,
+  borderDefault,
   spaceSm,
   spaceMd,
   fontSizeMd,
-} from '../tokens-dashboard';
+  fontWeightBold,
+  shadowSm,
+} from '../themetokenchk';
 
 const YEAR_OPTIONS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
@@ -63,41 +66,48 @@ export default function FilterBar() {
   return (
     <div
       style={{
-        background: surfacePage,
-        borderRadius: radiusSm,
-        border: `1px solid ${line}`,
-        padding: `${spaceSm}px ${spaceMd}px`,
+        background: surfaceCard,
+        borderRadius: radiusMd,
+        border: `1px solid ${borderDefault}`,
+        boxShadow: shadowSm,
+        padding: '10px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: spaceMd,
         flexWrap: 'wrap',
         width: '100%',
         boxSizing: 'border-box',
-        marginBottom: spaceMd,
+        marginBottom: 16,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
-        <FilterOutlined style={{ color: textSecondary, fontSize: 15 }} />
-        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>Bộ lọc</span>
+        <FilterOutlined style={{ color: actionPrimary, fontSize: 16 }} />
+        <span style={{ fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg }}>Bộ lọc</span>
       </div>
-      <Select size='small' value={year} onChange={(val) => setYear(val)} style={{ width: 100 }} options={YEAR_OPTIONS.map((y) => ({ value: y, label: y.toString() }))} />
       <Select
-        size='small'
+        size="middle"
+        value={year}
+        onChange={(val) => setYear(val)}
+        style={{ width: 110 }}
+        options={YEAR_OPTIONS.map((y) => ({ value: y, label: y.toString() }))}
+      />
+      <Select
+        size="middle"
         value={province ?? ALL_VALUE}
         onChange={(val) => setProvince(val === ALL_VALUE ? null : val)}
-        style={{ width: 180 }}
+        style={{ width: 190 }}
         options={[{ value: ALL_VALUE, label: ALL_VALUE }, ...VIETNAM_PROVINCE_OPTIONS]}
       />
       <Select
-        size='small'
+        size="middle"
         value={infraType ?? ALL_VALUE}
         onChange={(val) => setInfraType(val === ALL_VALUE ? null : val)}
-        style={{ width: 170 }}
+        style={{ width: 220 }}
         options={[{ value: ALL_VALUE, label: ALL_VALUE }, ...INFRA_TYPE_OPTIONS]}
       />
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: spaceSm }}>
-        <ClockCircleOutlined style={{ color: textTertiary, fontSize: fontSizeMd }} />
-        <span style={{ fontSize: fontSizeMd, color: textTertiary }}>Cập nhật lúc {lastUpdated}</span>
+        <ClockCircleOutlined style={{ color: textSecondary, fontSize: 14 }} />
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>Cập nhật lúc {lastUpdated}</span>
       </div>
     </div>
   );

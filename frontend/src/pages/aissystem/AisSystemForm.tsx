@@ -48,6 +48,7 @@ import {
   statusCritical, statusOperational, actionPrimary,
   readonlyInputStyle, inputStyle, selectStyle,
   DRAWER_TABLE_SCROLL_Y, getDatePickerProps, spaceXs,
+  DRAWER_WIDTH,
   textAreaStyle,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
@@ -670,27 +671,27 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         }
       }
 
-      const payload: CreateAisSystemRequest = {
+      const payload = {
         code: values.code?.trim(),
         name: values.name?.trim(),
-        vtsOperationCenterId: vtsCenterId,
-        radarStationId: radarId,
+        vtsOperationCenterId: vtsCenterId ?? null,
+        radarStationId: radarId ?? null,
         operatingOrgId: values.operatingOrgId,
         orgUnitId: values.orgUnitId,
-        provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
+        provinceId: values.provinceId != null ? Number(values.provinceId) : null,
         unitOfMeasure: values.unitOfMeasure,
         quantity: values.quantity,
-        model: values.model?.trim() || undefined,
-        manufacturer: values.manufacturer?.trim() || undefined,
-        commissioningYear: values.commissioningYear ? (dayjs.isDayjs(values.commissioningYear) ? values.commissioningYear.year() : Number(values.commissioningYear)) : undefined,
+        model: values.model?.trim() ?? null,
+        manufacturer: values.manufacturer?.trim() ?? null,
+        commissioningYear: values.commissioningYear ? (dayjs.isDayjs(values.commissioningYear) ? values.commissioningYear.year() : Number(values.commissioningYear)) : null,
         conditionStatus: values.conditionStatus,
-        detailedLocation: values.detailedLocation?.trim() || undefined,
-        specifications: values.specifications?.trim() || undefined,
-        maintenanceInfo: values.maintenanceInfo?.trim() || undefined,
-        note: values.note?.trim() || undefined,
-        geometryType: geomType,
-        symbolId: values.symbolId || undefined,
-        coordinates: wkt,
+        detailedLocation: values.detailedLocation?.trim() ?? null,
+        specifications: values.specifications?.trim() ?? null,
+        maintenanceInfo: values.maintenanceInfo?.trim() ?? null,
+        note: values.note?.trim() ?? null,
+        geometryType: geomType ?? null,
+        symbolId: values.symbolId ?? null,
+        coordinates: wkt ?? null,
       };
 
       if (isCreateMode) {
@@ -751,8 +752,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     <AppDrawer
       rootClassName="ais-drawer-scope vts-drawer-scope berth-drawer-scope"
       className="ais-drawer-scope vts-drawer-scope berth-drawer-scope"
-      style={{ maxWidth: '96vw' }}
-      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
+      width={DRAWER_WIDTH}
       placement="right"
       open={Boolean(open)}
       onClose={handleClose}

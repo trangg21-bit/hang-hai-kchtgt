@@ -26,8 +26,14 @@ public interface DaiTtdhRepository extends JpaRepository<DaiTtdh, UUID> {
             "FROM dai_ttdh WHERE dai_ttdh_code LIKE 'DTTDH-%'", nativeQuery = true)
     Integer findMaxDaiTtdhSeq();
 
-    @Query("SELECT d FROM DaiTtdh d WHERE d.deletedAt IS NULL AND " +
-            "((:includeAll = true) OR d.orgUnitId IN (:orgUnitIds)) " +
+    @Query("SELECT d FROM DaiTtdh d WHERE " +
+            "((:approvalStatus IS NULL AND d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (d.deletedAt IS NOT NULL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            " OR (d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
+            "     d.approvalStatus = :approvalStatus " +
+            "     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            " ))) " +
+            "AND ((:includeAll = true) OR d.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR " +
             "  (CAST(function('immutable_unaccent', LOWER(d.daiTtdhCode)) AS string) LIKE " +
             "   CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) " +
@@ -41,7 +47,6 @@ public interface DaiTtdhRepository extends JpaRepository<DaiTtdh, UUID> {
             "  CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:daiTtdhName AS string), '%'))) AS string)) " +
             "AND (:stationLevel IS NULL OR d.stationLevel = :stationLevel) " +
             "AND (:provinceId IS NULL OR d.provinceId = :provinceId) " +
-            "AND (:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) " +
             "AND ((:operationalStatusNull = true AND d.operationalStatus IS NULL) OR " +
             "  (:operationalStatusNull = false AND (:operationalStatus IS NULL OR d.operationalStatus = :operationalStatus))) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR d.updatedAt >= :updatedFrom) " +

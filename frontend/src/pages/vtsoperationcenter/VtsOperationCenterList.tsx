@@ -45,11 +45,17 @@ const filterLabelStyle: React.CSSProperties = {
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
 
-const CONDITION_COLOR: Record<ConditionStatus, string> = {
-  [ConditionStatus.OPERATIONAL]: statusOperational,
-  [ConditionStatus.STOPPED]: statusCritical,
-  [ConditionStatus.MAINTENANCE]: statusAttention,
-  [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+const CONDITION_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  DANG_HOAT_DONG: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  UNDER_CONSTRUCTION: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  STOPPED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  MAINTENANCE: { color: statusAttention, label: 'Đang bảo trì' },
 };
 
 const VtsOperationCenterGlobalStyles = React.memo(() => (
@@ -526,13 +532,21 @@ export default function VtsOperationCenterList() {
   );
 
   const handleFilterSearch = (vals: Record<string, unknown>) => {
-    setFilterName(typeof vals.name === 'string' ? vals.name.trim() : '');
-    setFilterCode(typeof vals.code === 'string' ? vals.code.trim() : '');
+    const name = typeof vals.name === 'string' ? vals.name.trim() : '';
+    const code = typeof vals.code === 'string' ? vals.code.trim() : '';
+    setFilterValues((prev) => ({
+      ...prev,
+      name,
+      code,
+    }));
+    setFilterName(name);
+    setFilterCode(code);
     setFilterConditionStatus(vals.conditionStatus as ConditionStatus | undefined);
     setFilterOrgUnitId(vals.orgUnitId as string | undefined);
     setFilterPortId(vals.portId as string | undefined);
     setFilterVtsSystemId(vals.vtsSystemId as string | undefined);
-    setFilterProvinceId(typeof vals.provinceId === 'number' ? vals.provinceId : undefined);
+    const provinceId = vals.provinceId != null && vals.provinceId !== '' ? Number(vals.provinceId) : undefined;
+    setFilterProvinceId(Number.isNaN(provinceId) ? undefined : provinceId);
     const dateRange = vals.updateDateRange as [dayjs.Dayjs | null, dayjs.Dayjs | null] | undefined;
     setFilterUpdatedFrom(dateRange?.[0] ? dayjs(dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
     setFilterUpdatedTo(dateRange?.[1] ? dayjs(dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
@@ -568,7 +582,7 @@ export default function VtsOperationCenterList() {
     },
     {
       key: 'name',
-      label: 'Tên / Mã trung tâm điều hành VTS',
+      label: 'Tên/Mã TTDH VTS',
       dataIndex: 'name',
       width: 260,
       fixed: 'left' as const,
@@ -624,43 +638,46 @@ export default function VtsOperationCenterList() {
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
     },
     {
-      key: 'province',
+      key: 'detailedLocation',
       label: 'Địa điểm (Tỉnh/TP)',
-      dataIndex: 'provinceId',
-      width: 180,
+      dataIndex: 'detailedLocation',
+      width: 260,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      sortOrder: sortOrderFor('provinceId'),
-      render: (_: unknown, r: VtsOperationCenterListItem) => {
-        const val = r.provinceName || getProvinceNameById(r.provinceId) || '—';
-        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</div>;
+      sortOrder: sortOrderFor('detailedLocation'),
+      render: (val: string, record: VtsOperationCenterListItem) => {
+        const provinceName = record.provinceName || (record.provinceId ? getProvinceNameById(record.provinceId) : '');
+        const fullAddress = val && provinceName ? `${val}, ${provinceName}` : (val || provinceName || '—');
+        return (
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullAddress}>
+            {fullAddress}
+          </div>
+        );
       },
     },
     {
       key: 'conditionStatus',
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
-      width: 160,
+      width: 220,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
-        const label = CONDITION_STATUS_MAP[v as ConditionStatus] || v;
-        const color = CONDITION_COLOR[v as ConditionStatus] || textSecondary;
-        return (
-          <span style={statusBadgeStyle(color)}>
-            {label}
-          </span>
-        );
+        const s = CONDITION_STYLE_MAP[v] || {
+          color: themeTokenChk.getVtsConditionStatusColor(v),
+          label: themeTokenChk.getVtsConditionStatusLabel(v) || v || '—',
+        };
+        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
     },
     {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 280,
+      width: 180,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
@@ -681,10 +698,112 @@ export default function VtsOperationCenterList() {
       ),
     },
     {
+      key: 'submittedByName',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'submittedByName',
+      width: 200,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('submittedByName'),
+      render: (_: unknown, record: VtsOperationCenterListItem) => {
+        const name = record.submittedByName || '—';
+        const date = record.submittedAt;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel1Name',
+      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+      dataIndex: 'approverLevel1Name',
+      width: 240,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approverLevel1Name'),
+      render: (_: unknown, record: VtsOperationCenterListItem) => {
+        const name = record.approverLevel1Name || '—';
+        const date = record.approvedDateLevel1;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel2Name',
+      label: 'Cán bộ phê duyệt cấp Cục',
+      dataIndex: 'approverLevel2Name',
+      width: 200,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approverLevel2Name'),
+      render: (_: unknown, record: VtsOperationCenterListItem) => {
+        const name = record.approverLevel2Name || '—';
+        const date = record.approvedDateLevel2;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       key: 'updatedByName',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
-      width: 220,
+      width: 200,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
@@ -887,6 +1006,11 @@ export default function VtsOperationCenterList() {
                   allowClear
                   value={(filterValues.name as string) || ''}
                   onChange={(event) => setFilterValues((prev) => ({ ...prev, name: event.target.value }))}
+                  onBlur={() => {
+                    if (typeof filterValues.name === 'string') {
+                      setFilterValues((prev) => ({ ...prev, name: prev.name.trim() }));
+                    }
+                  }}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={{ borderRadius: radiusPill, height: 40 }}
                 />
@@ -952,6 +1076,11 @@ export default function VtsOperationCenterList() {
                       allowClear
                       value={(filterValues.code as string) || ''}
                       onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
+                      onBlur={() => {
+                        if (typeof filterValues.code === 'string') {
+                          setFilterValues((prev) => ({ ...prev, code: prev.code.trim() }));
+                        }
+                      }}
                       onPressEnter={() => handleFilterSearch(filterValues)}
                       style={{ borderRadius: radiusPill, height: 40 }}
                     />
@@ -966,7 +1095,7 @@ export default function VtsOperationCenterList() {
                       filterOption={(input, option) =>
                         normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
                       }
-                      value={filterValues.provinceId as number | undefined}
+                      value={filterValues.provinceId != null ? String(filterValues.provinceId) : undefined}
                       onChange={(value) => setFilterValues((prev) => ({ ...prev, provinceId: value }))}
                       options={VIETNAM_PROVINCE_OPTIONS}
                       style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -1031,6 +1160,30 @@ export default function VtsOperationCenterList() {
           onLoadMore={loadMoreHistory}
           loadingMore={loadingMoreHistory}
           variant="berth"
+          fieldLabelMap={{
+            conditionStatus: 'Tình trạng',
+            coverage: 'Vùng phủ sóng',
+            detailedLocation: 'Địa điểm chi tiết',
+            portId: 'Thuộc cảng biển',
+            vtsSystemId: 'Thuộc hệ thống VTS',
+            provinceId: 'Địa điểm (Tỉnh/TP)',
+            geometryType: 'Loại đối tượng GIS',
+            coordinates: 'Tọa độ GIS',
+            symbolId: 'Biểu tượng bản đồ',
+          }}
+          formatValue={(fieldName, value) => {
+            if (value == null || value === '') return '';
+            const fn = String(fieldName || '').toLowerCase();
+            if (fn.includes('condition') || fn.includes('tinhtrang') || fn === 'tinhtranghoatdong') {
+              return themeTokenChk.getVtsConditionStatusLabel(value);
+            }
+            if (fn === 'operationstartdate' || fn.includes('startdate')) {
+              if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) {
+                return dayjs(value).format('DD/MM/YYYY');
+              }
+            }
+            return undefined;
+          }}
         />
 
         {/* Approval Modal */}

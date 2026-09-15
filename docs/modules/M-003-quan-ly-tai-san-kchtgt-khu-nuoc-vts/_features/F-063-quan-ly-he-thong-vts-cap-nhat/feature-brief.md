@@ -50,7 +50,7 @@ Form Cập nhật giống hệt form Tạo mới (F-062), gồm 4 nhóm:
 | 8 | Thời gian bắt đầu hoạt động | DatePicker | Có | Không | **Có dữ liệu:** hiển thị ngày (VD: "17/04/2026"). **Không có:** hiển thị placeholder "Chọn thời gian bắt đầu hoạt động" | Định dạng DD/MM/YYYY |
 | 9 | Phạm vi áp dụng | TextArea + counter | Có | Không | **Có dữ liệu:** hiển thị nội dung + "n/2000" (VD: "Việt Nam" → "8/2000"). **Không có:** hiển thị placeholder "Nhập phạm vi áp dụng" + "0/2000" | |
 | 10 | Thông báo hàng hải | TextArea + counter | Có | Không | **Có dữ liệu:** hiển thị nội dung + "n/2000". **Không có:** hiển thị placeholder "Nhập thông báo hàng hải" + "0/2000" | |
-| 11 | Tình trạng | Dropdown | Có | Có | **Có dữ liệu:** hiển thị giá trị đã lưu. **Không có:** hiển thị placeholder "Chọn tình trạng" | Options: "Đang hoạt động", "Dừng hoạt động", "Đang bảo trì", "Đang xây dựng" |
+| 11 | Tình trạng | Dropdown | Có | Có | **Có dữ liệu:** hiển thị giá trị đã lưu. **Không có:** hiển thị placeholder "Chọn tình trạng" | Options: "Chưa khai thác/vận hành", "Đang khai thác/vận hành", "Dừng khai thác/vận hành" (chuẩn 3 trạng thái KCHT) |
 
 ### Nhóm 3 — Danh sách vùng VTS
 

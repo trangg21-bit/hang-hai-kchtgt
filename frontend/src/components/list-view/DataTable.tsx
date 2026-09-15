@@ -175,7 +175,7 @@ const DataTable: React.FC<DataTableProps> = ({
       window.cancelAnimationFrame(frameId);
       clearTimeout(timer);
     };
-  }, []);
+  }, [loading]);
 
   useLayoutEffect(() => {
     const shell = tableShellRef.current;

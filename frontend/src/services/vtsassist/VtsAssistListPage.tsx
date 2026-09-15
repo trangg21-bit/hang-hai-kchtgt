@@ -3,7 +3,6 @@ import { fmtNum } from "../../utils/numFmt";
 import {
   parseWktToCoordinates,
   serializeCoordinatesToWkt,
-  adjustCoordinateListForGeometry,
   validateDmsCoordinates,
   ddToDms,
   dmsToDd,
@@ -130,6 +129,7 @@ import {
   readonlyInputStyle,
   getSidebarDatePickerProps,
   DRAWER_TABLE_SCROLL_Y,
+  DRAWER_WIDTH,
   requiredMarkStyle,
   historyGroupGridStyle,
   historyTimeStyle,
@@ -850,7 +850,7 @@ const VtsAssistListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
-      { key: "DELETED", status: "DELETED" },
+      { key: "ARCHIVED", status: "ARCHIVED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -878,7 +878,7 @@ const VtsAssistListPage = () => {
         counts.APPROVED +
         counts.REJECTED_LEVEL1 +
         counts.REJECTED_LEVEL2 +
-        (counts.DELETED || 0)
+        (counts.ARCHIVED || counts.DELETED || 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
@@ -2485,7 +2485,7 @@ const VtsAssistListPage = () => {
   const handleCreate = useCallback(
     async (values: Record<string, unknown>) => {
       // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
-      const hasCoordinates = gpsCoordList.some((c) => c.lat !== 0 || c.lng !== 0);
+      const hasCoordinates = gpsCoordList.some((c) => c.latD != null || c.lngD != null || c.latM != null || c.lngM != null);
       const hasLocation = Boolean(values.geometryType || hasCoordinates);
       if (hasCoordinates && !values.geometryType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
@@ -2564,7 +2564,7 @@ const VtsAssistListPage = () => {
       if (!updateTarget) return;
 
       // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
-      const hasCoordinates = updateGpsCoordList.some((c) => c.lat !== 0 || c.lng !== 0);
+      const hasCoordinates = updateGpsCoordList.some((c) => c.latD != null || c.lngD != null || c.latM != null || c.lngM != null);
       const hasLocation = Boolean(updateGeometryType || hasCoordinates);
       if (hasCoordinates && !updateGeometryType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
@@ -3129,11 +3129,11 @@ const VtsAssistListPage = () => {
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
           {
-            key: "DELETED",
+            key: "ARCHIVED",
             label: "Đã xóa",
-            count: tabCounts["DELETED"] ?? 0,
+            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "DELETED" || filterValues.approvalStatus === "ARCHIVED",
+            active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -3319,7 +3319,7 @@ const VtsAssistListPage = () => {
                               label: 'Trạng thái phê duyệt',
                               value: (() => {
                                 const isDeleted = Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy || selectedRecord.approvalStatus === 'DELETED' || selectedRecord.approvalStatus === 'ARCHIVED');
-                                return renderApprovalBadge(isDeleted ? 'DELETED' : selectedRecord.approvalStatus);
+                                return renderApprovalBadge(isDeleted ? 'ARCHIVED' : selectedRecord.approvalStatus);
                               })(),
                             },
                             { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName || null}</span> },
@@ -3879,8 +3879,7 @@ const VtsAssistListPage = () => {
 
       {/* ── Create Drawer ─────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         rootClassName="vtsassist-drawer-scope"
         className="vtsassist-drawer-scope"
         title={
@@ -4380,8 +4379,7 @@ const VtsAssistListPage = () => {
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         rootClassName="vtsassist-drawer-scope"
         className="vtsassist-drawer-scope"
         title={
@@ -4879,7 +4877,7 @@ const VtsAssistListPage = () => {
 
       {/* ── History Drawer ─────────────────────────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="vtsassist-drawer-scope"
         className="vtsassist-drawer-scope"
         mask

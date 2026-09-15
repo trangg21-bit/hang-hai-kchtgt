@@ -41,6 +41,7 @@ import {
   spaceSm,
   drawerTitleStyle,
   drawerFooterStyle,
+  DRAWER_WIDTH,
   primaryButtonStyle,
   outlineButtonStyle,
   surfacePage,
@@ -586,7 +587,7 @@ export default function SymbolList() {
 
         {/* ── Create AppDrawer ─────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới biểu tượng trên bản đồ</span>}
@@ -628,7 +629,7 @@ export default function SymbolList() {
 
         {/* ── Edit AppDrawer ───────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={
@@ -688,7 +689,7 @@ export default function SymbolList() {
 
         {/* ── View Detail AppDrawer ────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={

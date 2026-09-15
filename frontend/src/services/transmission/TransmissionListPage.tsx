@@ -53,7 +53,7 @@ import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
-import { cellTitleStyle, cellSubtitleStyle } from "../../themetokenchk";
+import { cellTitleStyle, cellSubtitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import * as themeTokenChk from "../../themetokenchk";
 import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { useAuthStore } from "../../store/authStore";
@@ -339,7 +339,7 @@ const TransmissionListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
-      { key: "DELETED", status: "DELETED" },
+      { key: "ARCHIVED", status: "ARCHIVED" },
     ];
     const results = await Promise.allSettled(
       statuses.map((s) =>
@@ -367,7 +367,7 @@ const TransmissionListPage = () => {
         (counts.APPROVED ?? 0) +
         (counts.REJECTED_LEVEL1 ?? 0) +
         (counts.REJECTED_LEVEL2 ?? 0) +
-        (counts.DELETED ?? 0)
+        (counts.ARCHIVED ?? counts.DELETED ?? 0)
     );
   }, [filterValues.orgUnitId, filterDeviceName]);
 
@@ -897,8 +897,7 @@ const TransmissionListPage = () => {
         width: 180,
         type: "status" as const,
         render: (val: string, record: TransmissionResponse) => {
-          const isDeleted = isTransmissionDeleted(record);
-          return renderApprovalBadge(val, isDeleted);
+          return renderApprovalBadge(val, record);
         },
       },
     ];
@@ -1023,6 +1022,32 @@ const TransmissionListPage = () => {
     }
     return val;
   }
+
+  const historyTimestamp = (item: any): string =>
+    item.approvedDate || item.changedAt || item.createdAt || '';
+
+  const historyField = (item: any): string =>
+    item.changedField || item.fieldName || '';
+
+  const historyOldValue = (item: any): string | null =>
+    item.previousValue ?? item.oldValue ?? null;
+
+  const historyNewValue = (item: any): string | null =>
+    item.newValue ?? null;
+
+  const historyActor = (item: any): string => {
+    const raw = item?.approvedBy || item?.changedBy || '';
+    return raw || null;
+  };
+
+  const HISTORY_FIELD_ORDER = [
+    'deviceName', 'deviceCode', 'manufacturer', 'model', 'quantity',
+    'orgUnitId', 'operatingUnitId', 'provinceName', 'detailedLocation',
+    'attachedInfrastructureType', 'attachedInfrastructureId', 'unitOfMeasure',
+    'yearOfUse', 'operationalStatus', 'approvalStatus', 'specifications',
+    'maintenanceInformation', 'note', 'objectType', 'mapSymbolId',
+    'coordinateSystem', 'displayRule', 'Lý do từ chối', 'Trạng thái',
+  ];
 
   const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
     const item = group.items?.[0] || {};
@@ -2234,11 +2259,11 @@ const TransmissionListPage = () => {
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
           {
-            key: "DELETED",
+            key: "ARCHIVED",
             label: "Đã xóa",
-            count: tabCounts["DELETED"] ?? 0,
+            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "DELETED",
+            active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
         ]}
         onStatusTabChange={(key) => {
@@ -2286,8 +2311,7 @@ const TransmissionListPage = () => {
       <AppDrawer
         {...drawerProps}
         size={undefined}
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         rootClassName="transmission-drawer-scope"
         className="transmission-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống truyền dẫn{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
@@ -3133,7 +3157,7 @@ const TransmissionListPage = () => {
 
             {/* ── Create Drawer (đồng bộ chuẩn /berth) ───────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="transmission-drawer-scope"
         className="transmission-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới hệ thống truyền dẫn</span>}
@@ -3213,7 +3237,7 @@ const TransmissionListPage = () => {
 
       {/* ── Edit Drawer (đồng bộ chuẩn /berth) ─────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="transmission-drawer-scope"
         className="transmission-drawer-scope"
         title={
@@ -3338,7 +3362,7 @@ const TransmissionListPage = () => {
 
 {/* ── History Drawer (đồng bộ chuẩn /berth) ─────────────────── */}
       <AppDrawer
-        width={isIframeModal ? '100%' : 'min(880px, 96vw)'}
+        width={isIframeModal ? '100%' : DRAWER_WIDTH}
         rootClassName="transmission-drawer-scope"
         className="transmission-drawer-scope"
         mask={!isIframeModal}

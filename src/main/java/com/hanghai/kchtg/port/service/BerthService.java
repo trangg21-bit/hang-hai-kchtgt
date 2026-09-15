@@ -521,6 +521,7 @@ public class BerthService {
                 .spatialId(entity.getSpatialId())
                 .build();
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         berthRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -579,7 +580,7 @@ public class BerthService {
                 .channelDepth(e.getChannelDepth())
                 .operationalFunction(e.getOperationalFunction())
                 .operationalStatus(e.getOperationalStatus())
-                .approvalStatus(e.getApprovalStatus())
+                .approvalStatus(e.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : e.getApprovalStatus())
                 .orgUnitId(e.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
@@ -606,6 +607,7 @@ public class BerthService {
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                .deletedAt(e.getDeletedAt()).deletedBy(e.getDeletedBy())
                 // Two-level approval fields
                 .activityStatus(e.getActivityStatus())
                 .submittedForApprovalAt(e.getSubmittedForApprovalAt())

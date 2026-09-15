@@ -3,7 +3,6 @@ package com.hanghai.kchtg.security;
 import com.hanghai.kchtg.security.service.TokenClaimsBuilder;
 import com.hanghai.kchtg.user.entity.User;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;

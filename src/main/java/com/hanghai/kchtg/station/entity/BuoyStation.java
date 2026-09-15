@@ -27,7 +27,7 @@ import lombok.experimental.FieldNameConstants;
 @AllArgsConstructor
 @SuperBuilder
 @FieldNameConstants
-@SQLRestriction("deleted_at IS NULL")
+@SQLRestriction("1=1")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "unit_id IN (:orgUnitIds)")
 public class BuoyStation extends BaseEntity {
 

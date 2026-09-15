@@ -19,6 +19,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "dike_revetment")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

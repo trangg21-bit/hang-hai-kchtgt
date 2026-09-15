@@ -436,6 +436,7 @@ public class NavigationChannelService {
         approvalService.assertDeletable(nc);
 
         nc.softDelete(operatorId);
+        nc.setApprovalStatus(ApprovalStatus.ARCHIVED);
         if (nc.getSpatialId() != null) {
             gisSpatialObjectService.delete(nc.getSpatialId());
         }
@@ -737,7 +738,7 @@ public class NavigationChannelService {
                 .orgUnitId(nc.getOrgUnitId())
                 .orgUnitName(resolvedOrgUnitName)
                 .provinceId(nc.getProvinceId())
-                .approvalStatus(nc.getApprovalStatus())
+                .approvalStatus(nc.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : nc.getApprovalStatus())
                 .submittedAt(nc.getSubmittedAt())
                 .submittedBy(nc.getSubmittedBy())
                 .approverLevel1(nc.getApproverLevel1())

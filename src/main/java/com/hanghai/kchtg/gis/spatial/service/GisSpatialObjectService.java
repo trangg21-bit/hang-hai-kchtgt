@@ -15,7 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -146,6 +151,21 @@ public class GisSpatialObjectService {
     public Optional<GisSpatialObject> findById(UUID id) {
         if (id == null) return Optional.empty();
         return repository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, GisSpatialObject> findAllByIdMap(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        var nonNullIds = ids.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (nonNullIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return repository.findAllById(nonNullIds).stream()
+                .collect(Collectors.toMap(GisSpatialObject::getId, item -> item, (first, second) -> first));
     }
 
     @Transactional(readOnly = true)

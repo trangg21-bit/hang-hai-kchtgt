@@ -23,7 +23,7 @@ import type {
   CreateVtsSystemRequest,
   UpdateVtsSystemRequest,
 } from '../../types/vtsSystem';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   requiredMarkStyle, inputStyle, textAreaStyle,
@@ -34,6 +34,7 @@ import {
   generateTempId,
   getDatePickerProps,
   DRAWER_TABLE_SCROLL_Y,
+  DRAWER_WIDTH,
   borderDefault,
   rowActionButtonStyle,
   icons,
@@ -237,29 +238,38 @@ export default function VtsSystemForm({
 
   // Child Drawer xem chi tiết / chỉnh sửa vị trí vùng VTS
   const [zoneLocationDrawerOpen, setZoneLocationDrawerOpen] = useState(false);
-  const [zoneLocationDrawerMode, setZoneLocationDrawerMode] = useState<'view' | 'edit'>('view');
+  const [zoneLocationDrawerMode, setZoneLocationDrawerMode] = useState<'view' | 'edit' | 'create'>('view');
   const [selectedZoneForLocation, setSelectedZoneForLocation] = useState<any>(null);
   const [selectedZoneLocationIndex, setSelectedZoneLocationIndex] = useState<number | null>(null);
 
-  const handleOpenZoneLocation = (r: any, idx: number, mode: 'view' | 'edit') => {
+  const handleOpenZoneLocation = (r: any, idx: number | null, mode: 'view' | 'edit' | 'create') => {
     setSelectedZoneForLocation(r);
     setSelectedZoneLocationIndex(idx);
     setZoneLocationDrawerMode(mode);
     setZoneLocationDrawerOpen(true);
   };
 
-  const handleSaveZoneLocation = (updatedZone: any, zoneIndex: number) => {
-    setZoneList((prev) =>
-      prev.map((item, i) => (i === zoneIndex ? { ...item, ...updatedZone } : item))
-    );
-    setSelectedZoneForLocation((prev: any) => ({ ...prev, ...updatedZone }));
+  const handleSaveZoneLocation = (updatedZone: any, zoneIndex: number | null) => {
+    if (zoneIndex == null || zoneIndex < 0) {
+      setZoneList((prev) => [...prev, updatedZone]);
+    } else {
+      setZoneList((prev) =>
+        prev.map((item, i) => (i === zoneIndex ? { ...item, ...updatedZone } : item))
+      );
+    }
+    setSelectedZoneForLocation(updatedZone);
   };
+
+  const userUnitType = (currentUser as any)?.unitType || (currentUser as any)?.orgUnitType;
+  const isAdmin = (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role?.includes('ADMIN');
+  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
+  const canSaveAndApprove = hasPerm('vts:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isCucLevel;
 
   const attachmentsEditable = isCreateMode ||
     record?.approvalStatus === ApprovalStatus.DRAFT ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
-    (record?.approvalStatus === ApprovalStatus.APPROVED && (hasPerm('vts:approvec2') || hasPerm('vts:approve') || hasPerm('data:approvec2') || hasPerm('data:approve')));
+    (record?.approvalStatus === ApprovalStatus.APPROVED && canSaveAndApprove);
 
   const handleUploadAttachment = async (file: File) => {
     if (file.size > 20 * 1024 * 1024) {
@@ -388,15 +398,13 @@ export default function VtsSystemForm({
         if (!mounted) return;
         setRecord(data);
         populateForm(data);
-        // Chi tiết đã kèm sẵn vùng VTS và tài liệu đính kèm — dùng luôn thay vì
-        // để hai effect lazy-load gọi lại /zones và /attachments khi đổi tab.
         if (Array.isArray(data.zones)) {
           setZoneList(data.zones.map((z: any, idx: number) => ({
             ...z,
             code: z.code || `VTS-Z0${idx + 1}`,
             name: z.name || '',
-            conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
-            status: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
+            conditionStatus: normalizeConditionStatus(z.conditionStatus || z.status),
+            status: normalizeConditionStatus(z.conditionStatus || z.status),
           })));
           setZonesLoaded(true);
         }
@@ -428,8 +436,8 @@ export default function VtsSystemForm({
               ...z,
               code: z.code || `VTS-Z0${idx + 1}`,
               name: z.name || '',
-              conditionStatus: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
-              status: z.conditionStatus || z.status || ConditionStatus.OPERATIONAL,
+              conditionStatus: normalizeConditionStatus(z.conditionStatus || z.status),
+              status: normalizeConditionStatus(z.conditionStatus || z.status),
             }))
           );
           setZonesLoaded(true);
@@ -467,7 +475,7 @@ export default function VtsSystemForm({
       operationStartDate: data.operationStartDate ? dayjs(data.operationStartDate) : undefined,
       scope: data.scope,
       maritimeNotice: data.maritimeNotice,
-      conditionStatus: data.conditionStatus || ConditionStatus.OPERATIONAL,
+      conditionStatus: normalizeConditionStatus(data.conditionStatus),
       note: data.note,
     });
 
@@ -625,16 +633,18 @@ export default function VtsSystemForm({
         orgUnitId: values.orgUnitId,
         owningOrgId: values.owningOrgId || values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
-        portId: values.portId,
-        code: values.code,
-        systemName: values.systemName,
+        // Keep null in the JSON payload so clearing the select clears the saved relation.
+        portId: values.portId ?? null,
+        code: typeof values.code === 'string' ? values.code.trim() : values.code,
+        systemName: typeof values.systemName === 'string' ? values.systemName.trim() : values.systemName,
         provinceId: Number(values.provinceId),
-        address: values.address,
-        operationStartDate: values.operationStartDate ? dayjs(values.operationStartDate).format('YYYY-MM-DD') : undefined,
-        scope: values.scope,
-        maritimeNotice: values.maritimeNotice,
+        address: typeof values.address === 'string' ? values.address.trim() : values.address,
+        // Keep null in the JSON payload so clearing the date clears the saved value.
+        operationStartDate: values.operationStartDate ? dayjs(values.operationStartDate).format('YYYY-MM-DD') : null,
+        scope: typeof values.scope === 'string' ? values.scope.trim() : values.scope,
+        maritimeNotice: typeof values.maritimeNotice === 'string' ? values.maritimeNotice.trim() : values.maritimeNotice,
         conditionStatus: values.conditionStatus,
-        note: values.note,
+        note: typeof values.note === 'string' ? values.note.trim() : values.note,
         zones: zoneList.map((z: any) => ({
           id: (z.id && !String(z.id).startsWith('temp-') && !String(z.id).startsWith('zone-')) ? z.id : undefined,
           code: z.code.trim(),
@@ -789,8 +799,7 @@ export default function VtsSystemForm({
       <AppDrawer
       rootClassName="vts-drawer-scope"
       className="vts-drawer-scope"
-      style={isDetailMode ? { maxWidth: '96vw' } : undefined}
-      width={isDetailMode ? (typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000) : 'min(920px, 96vw)'}
+      width={DRAWER_WIDTH}
       open={Boolean(open)}
       onClose={onCancel || (() => {})}
       styles={{
@@ -826,18 +835,20 @@ export default function VtsSystemForm({
                 >
                   Lưu và gửi phê duyệt
                 </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
+                {canSaveAndApprove && (
+                  <Button
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                    loading={isSubmitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                )}
               </>
             ) : (
               <>
-                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
+                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) ? (
                   <>
                     <Button
                       onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
@@ -854,16 +865,39 @@ export default function VtsSystemForm({
                     >
                       Lưu và gửi phê duyệt
                     </Button>
+                    {canSaveAndApprove && (
+                      <Button
+                        type="primary"
+                        onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                        loading={isSubmitting && actionType === 'approve'}
+                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                      >
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="primary"
+                      onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'update'}
+                      style={primaryButtonStyle}
+                    >
+                      Cập nhật
+                    </Button>
+                    {canSaveAndApprove && (
+                      <Button
+                        type="primary"
+                        onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                        loading={isSubmitting && actionType === 'approve'}
+                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                      >
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
                   </>
                 )}
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
               </>
             )}
           </>
@@ -955,10 +989,18 @@ export default function VtsSystemForm({
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tên hệ thống VTS</span>}
                               name="systemName"
-                              rules={[{ required: true, message: 'Vui lòng nhập tên hệ thống VTS' }]}
+                              rules={[{ required: true, message: 'Vui lòng nhập tên hệ thống VTS', whitespace: true }]}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input placeholder="Nhập tên hệ thống VTS" maxLength={255} showCount style={inputStyle} />
+                              <Input
+                                placeholder="Nhập tên hệ thống VTS"
+                                maxLength={255}
+                                showCount
+                                style={inputStyle}
+                                onBlur={(e) => {
+                                  form.setFieldValue('systemName', e.target.value.trim());
+                                }}
+                              />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
@@ -1112,7 +1154,6 @@ export default function VtsSystemForm({
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thông báo hàng hải</span>}
                               name="maritimeNotice"
-                              rules={[{ required: true, message: 'Vui lòng nhập thông báo hàng hải' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input.TextArea placeholder="Nhập thông báo hàng hải" rows={3} maxLength={2000} showCount style={textAreaStyle} />
@@ -1148,8 +1189,7 @@ export default function VtsSystemForm({
                             type="primary"
                             icon={<PlusOutlined />}
                             onClick={() => {
-                              setZoneList((prev) => [
-                                ...prev,
+                              handleOpenZoneLocation(
                                 {
                                   id: generateTempId('zone'),
                                   code: '',
@@ -1157,7 +1197,9 @@ export default function VtsSystemForm({
                                   conditionStatus: ConditionStatus.OPERATIONAL,
                                   status: ConditionStatus.OPERATIONAL,
                                 },
-                              ]);
+                                null,
+                                'create'
+                              );
                             }}
                             style={{
                               ...primaryButtonStyle,
@@ -1233,7 +1275,7 @@ export default function VtsSystemForm({
                           width: 160,
                           render: (_val, r: any) => (
                             <Select
-                              value={r.conditionStatus || r.status || ConditionStatus.OPERATIONAL}
+                              value={normalizeConditionStatus(r.conditionStatus || r.status)}
                               options={CONDITION_STATUS_OPTIONS}
                               onChange={(selVal) => {
                                 setZoneList((prev) =>

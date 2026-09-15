@@ -288,6 +288,7 @@ public class WaterZoneService {
         WaterZone entity = waterZoneRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + id));
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -327,7 +328,8 @@ public class WaterZoneService {
                 .area(e.getArea())
                 .maxDepth(e.getMaxDepth()).avgDepth(e.getAvgDepth())
                 .waterZoneType(e.getWaterZoneType()).operationalStatus(e.getOperationalStatus())
-                .approvalStatus(e.getApprovalStatus()).orgUnitId(e.getOrgUnitId())
+                .approvalStatus(e.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : e.getApprovalStatus())
+                .orgUnitId(e.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(e.getOrgUnitId()))
                 .mapSymbolId(e.getMapSymbolId())
                 .spatialId(e.getSpatialId())
@@ -335,7 +337,8 @@ public class WaterZoneService {
                 .coordinates(coords)
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
-                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
+                .deletedAt(e.getDeletedAt()).deletedBy(e.getDeletedBy()).build();
     }
 
     private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {

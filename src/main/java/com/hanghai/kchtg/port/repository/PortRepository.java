@@ -66,13 +66,19 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
     @Query("SELECT p FROM Port p WHERE p.deletedAt IS NULL ORDER BY p.portName ASC")
     List<Port> findAllActiveForCache();
 
-    @Query("SELECT p FROM Port p WHERE p.deletedAt IS NULL " +
+    @Query("SELECT p FROM Port p WHERE " +
+            "((:approvalStatus IS NULL AND p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (p.deletedAt IS NOT NULL OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            "  OR (p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
+            "      p.approvalStatus = :approvalStatus " +
+            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  )) " +
+            ") " +
             "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:portCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.portCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:portCode AS string), '%'))) AS string)) " +
             "AND (CAST(:portName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.portName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:portName AS string), '%'))) AS string)) " +
             "AND (CAST(:province AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.province)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:province AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR p.operationalStatus = :operationalStatus) " +
-            "AND (:approvalStatus IS NULL OR p.approvalStatus = :approvalStatus) " +
             "AND (:portGroup IS NULL OR p.portGroup = :portGroup) " +
             "AND (:portClass IS NULL OR p.portClass = :portClass) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR p.updatedAt >= :updatedFrom) " +

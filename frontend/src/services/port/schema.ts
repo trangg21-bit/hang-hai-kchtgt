@@ -193,15 +193,23 @@ export const trangThaiPheDuyetBadge = (status: string): { color: string; label: 
     norm === 'PENDING_APPROVAL' ||
     norm === 'CHỜ_PHÊ_DUYỆT'.normalize('NFC').toUpperCase()
   ) {
-    return { color: 'orange', label: 'Chờ phê duyệt' };
+    return { color: 'orange', label: 'Chờ Cảng vụ duyệt' };
+  }
+  if (norm === 'APPROVED_LEVEL1') {
+    return { color: 'blue', label: 'Chờ Cục duyệt' };
   }
   if (
     norm === 'DA_PHE_DUYET' ||
     norm === 'APPROVED' ||
-    norm === 'APPROVED' ||
     norm === 'ĐƯỢC_PHÊ_DUYỆT'.normalize('NFC').toUpperCase()
   ) {
     return { color: 'green', label: 'Đã phê duyệt' };
+  }
+  if (norm === 'REJECTED_LEVEL1') {
+    return { color: 'red', label: 'Cảng vụ trả về' };
+  }
+  if (norm === 'REJECTED_LEVEL2') {
+    return { color: 'red', label: 'Cục trả về' };
   }
   if (
     norm === 'TU_CHOI' ||
@@ -211,7 +219,10 @@ export const trangThaiPheDuyetBadge = (status: string): { color: string; label: 
     return { color: 'red', label: 'Từ chối' };
   }
   if (norm === 'DRAFT') {
-    return { color: 'default', label: 'Nháp' };
+    return { color: 'default', label: 'Lưu tạm' };
+  }
+  if (norm === 'ARCHIVED' || norm === 'DELETED') {
+    return { color: 'red', label: 'Đã xóa' };
   }
   return { color: 'default', label: status };
 };

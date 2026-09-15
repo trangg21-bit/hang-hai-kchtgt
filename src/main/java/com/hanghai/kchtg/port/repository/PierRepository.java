@@ -40,7 +40,14 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
 
     long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
-    @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL " +
+    @Query("SELECT p FROM Pier p WHERE " +
+            "((:approvalStatus IS NULL AND p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (p.deletedAt IS NOT NULL OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            "  OR (p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
+            "      p.approvalStatus = :approvalStatus " +
+            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  )) " +
+            ") " +
             "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(p.pierCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(p.pierName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
             "AND (CAST(:pierCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.pierCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:pierCode AS string), '%'))) AS string)) " +
@@ -50,7 +57,6 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
             "AND (:pierType IS NULL OR p.pierType = :pierType) " +
             "AND (CAST(:province AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(p.province)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:province AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR p.operationalStatus = :operationalStatus) " +
-            "AND (:approvalStatus IS NULL OR p.approvalStatus = :approvalStatus) " +
             "AND (:navigationChannelId IS NULL OR p.navigationChannelId = :navigationChannelId) " +
             "AND (:constructionGrade IS NULL OR p.constructionGrade = :constructionGrade) " +
             "AND (:structureType IS NULL OR p.structureType = :structureType) " +

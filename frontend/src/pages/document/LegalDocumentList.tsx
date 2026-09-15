@@ -59,6 +59,7 @@ import {
   statusDraft,
   radiusSm,
   drawerProps,
+  DRAWER_WIDTH,
   drawerTitleStyle,
   drawerCloseBtnStyle,
   drawerFooterStyle,
@@ -579,6 +580,8 @@ export default function LegalDocumentList() {
 
       <Drawer
         {...drawerProps}
+        size={undefined}
+        width={DRAWER_WIDTH}
         title={
           <span style={drawerTitleStyle}>
             {isViewing

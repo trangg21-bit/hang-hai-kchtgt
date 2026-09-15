@@ -21,6 +21,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @SuperBuilder
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+@org.hibernate.annotations.SQLRestriction("1=1")
 public class ShipRepairFacility extends BaseApprovableEntity {
 
     @Column(name = "facility_name", nullable = false, length = 255)

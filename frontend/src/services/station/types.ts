@@ -53,37 +53,37 @@ export interface CoastalStationVTSResponse {
 // --- COASTAL STATION INMARSAT (M-004: F-098..F-103) ---
 
 export interface CoastalStationInmarsatRequest {
-  orgUnitId?: string;
-  operatingOrgId?: string;
+  orgUnitId?: string | null;
+  operatingOrgId?: string | null;
   code?: string;
   deviceCode?: string;
   name?: string;
   stationName?: string;
-  provinceId?: number;
-  locationAddress?: string;
-  locationDetail?: string;
-  conditionStatus?: string;
-  coverageZone?: string;
-  coverageArea?: string;
-  services?: string;
-  frequency?: string;
+  provinceId?: number | null;
+  locationAddress?: string | null;
+  locationDetail?: string | null;
+  conditionStatus?: string | null;
+  coverageZone?: string | null;
+  coverageArea?: string | null;
+  services?: string | null;
+  frequency?: string | null;
   modemType?: string;
   sarCode?: string;
   satelliteSystem?: string;
-  notes?: string;
+  notes?: string | null;
   description?: string;
   contactPerson?: string;
   contactPhone?: string;
   spatialId?: string;
   objectType?: string;
-  geometryType?: string;
-  symbol?: string;
-  symbolId?: string;
-  coordinateSystem?: string;
-  displayRule?: string;
-  latitude?: number;
-  longitude?: number;
-  coordinates?: string;
+  geometryType?: string | null;
+  symbol?: string | null;
+  symbolId?: string | null;
+  coordinateSystem?: string | null;
+  displayRule?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  coordinates?: string | null;
 }
 
 export interface CoastalStationInmarsatUpdateRequest extends CoastalStationInmarsatRequest {}

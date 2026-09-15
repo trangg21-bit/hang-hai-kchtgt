@@ -59,7 +59,7 @@ import {
   Tabs,
   Typography,
 } from "antd";
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
+import { FilterOrgUnitTreeSelect } from "../../components/org-unit";
 import {
   PlusOutlined,
   SearchOutlined,
@@ -116,6 +116,7 @@ import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
 import toast from "../../components/ToastNotification";
 import * as themeTokenChk from "../../themetokenchk";
+import { DRAWER_WIDTH } from "../../themetokenchk";
 import api from "../api";
 
 // ── Đơn vị đo (unit of measure) labels ──────────────────────────────
@@ -172,13 +173,10 @@ import {
   actionPrimary,
   borderDefault,
   surfaceCard,
-  surfacePage,
   radiusPill,
-  radiusSm,
   spaceXs,
   spaceSm,
   spaceMd,
-  spaceLg,
   spaceXl,
   spaceFormField,
   drawerProps,
@@ -195,7 +193,6 @@ import {
   cellSubtitleStyle,
   icons,
   fontSizeLg,
-  inputStyle,
   historyGroupGridStyle,
   historyTimeStyle,
   historyMetaRowStyle,
@@ -577,7 +574,6 @@ const VhfListPage = () => {
 
   // Bộ lọc
   const [filterCollapsed, setFilterCollapsed] = useState(false);
-  const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterValues, setFilterValues] = useState({
     orgUnitId: "" as string,
     deviceName: "",
@@ -602,7 +598,6 @@ const VhfListPage = () => {
   const [totalAll, setTotalAll] = useState(0);
 
   // Quản lý Modal & Drawer
-  const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | 'view' | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
   const [detailApprovalOpen, setDetailApprovalOpen] = useState(true);
@@ -631,9 +626,6 @@ const VhfListPage = () => {
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
   const [submitting, setSubmitting] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const formRef = useRef<VhfFormRef>(null);
-  const [form] = Form.useForm();
 
   // ── Delete confirmation modal (chuẩn /berth) ────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -994,7 +986,7 @@ const VhfListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
-      { key: "DELETED", status: "DELETED" },
+      { key: "ARCHIVED", status: "ARCHIVED" },
     ];
     try {
       const results = await Promise.allSettled(
@@ -1096,12 +1088,6 @@ const VhfListPage = () => {
     updateForm.resetFields();
     setUpdateTarget(record);
     setUpdateModalOpen(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setDrawerMode(null);
-    setSelectedRecord(null);
-    form.resetFields();
   };
 
   // ── Delete confirmation (chuẩn /berth) ──────────────────────────
@@ -2202,11 +2188,11 @@ const VhfListPage = () => {
               active: filterValues.approvalStatus === "REJECTED_LEVEL2",
             },
             {
-              key: "DELETED",
+              key: "ARCHIVED",
               label: "Đã xóa",
-              count: tabCounts["DELETED"] ?? 0,
+              count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
               color: statusCritical,
-              active: filterValues.approvalStatus === "DELETED",
+              active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
             },
           ]}
           onStatusTabChange={(key) => {
@@ -2241,7 +2227,7 @@ const VhfListPage = () => {
 
         {/* ── Create Drawer ─────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="vhf-drawer-scope"
           className="vhf-drawer-scope"
           title={
@@ -2331,7 +2317,7 @@ const VhfListPage = () => {
 
         {/* ── Edit Drawer ───────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="vhf-drawer-scope"
           className="vhf-drawer-scope"
           title={
@@ -2433,8 +2419,7 @@ const VhfListPage = () => {
         <Drawer
           {...drawerProps}
           size={undefined}
-          width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-          style={{ maxWidth: '96vw' }}
+          width={DRAWER_WIDTH}
           rootClassName={THEME_SCOPE_CLASS}
           className="vhf-drawer-scope"
           title={
@@ -3159,7 +3144,7 @@ const VhfListPage = () => {
 
         {/* ── DRAWER LỊCH SỬ THAY ĐỔI (Đồng bộ chuẩn /berth, /radar-station) ── */}
         <AppDrawer
-          width="min(880px, 96vw)"
+          width={DRAWER_WIDTH}
           placement="right"
           open={historyModalVisible}
           rootClassName="vhf-drawer-scope"

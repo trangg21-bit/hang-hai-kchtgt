@@ -170,6 +170,30 @@ class VtsSystemServiceTest {
     }
 
     @Test
+    void testCreate_WhenMaritimeNoticeIsNull_Success() {
+        VtsSystemCreateRequest req = VtsSystemCreateRequest.builder()
+                .systemName("VTS Không Có TBHH")
+                .code("VTS-NO-NOTICE")
+                .conditionStatus(com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
+                .orgUnitId(UUID.fromString("00000000-0000-0000-0000-000000000010"))
+                .owningOrgId(UUID.fromString("00000000-0000-0000-0000-000000000011"))
+                .operatingOrgId(UUID.fromString("00000000-0000-0000-0000-000000000012"))
+                .provinceId(1)
+                .maritimeNotice(null)
+                .build();
+
+        VtsSystem saved = VtsSystem.builder()
+                .systemName("VTS Không Có TBHH").approvalStatus(ApprovalStatus.DRAFT)
+                .build();
+        saved.setId(TEST_ID);
+        when(repository.save(any())).thenReturn(saved);
+
+        VtsSystemResponse res = service.create(req, UUID.randomUUID());
+        assertNotNull(res);
+        verify(repository, times(1)).save(any());
+    }
+
+    @Test
     void testGetById() {
         UUID managingUnitId = entity.getOrgUnitId();
         UUID owningUnitId = UUID.fromString("00000000-0000-0000-0000-000000000011");
@@ -352,6 +376,33 @@ class VtsSystemServiceTest {
         assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         verify(repository, times(1)).save(any());
         verify(historyRepository, times(1)).save(any());
+    }
+
+    @Test
+    void testUpdate_ClearsPortAndOperationStartDate_WhenJsonNullIsExplicit() {
+        UUID portId = UUID.fromString("00000000-0000-0000-0000-000000000020");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setPortId(portId);
+        entity.setOperationStartDate(java.time.LocalDate.of(2026, 9, 15));
+
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder().build();
+        // Calling the setters models Jackson deserializing explicit JSON null values.
+        updateReq.setPortId(null);
+        updateReq.setOperationStartDate(null);
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.update(TEST_ID, updateReq, UUID.randomUUID());
+
+        assertNull(entity.getPortId());
+        assertNull(entity.getOperationStartDate());
+        org.mockito.ArgumentCaptor<InfrastructureHistory> historyCaptor =
+                org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        InfrastructureHistory history = historyCaptor.getValue();
+        assertEquals(InfrastructureHistoryStatus.UPDATED, history.getStatus());
+        assertTrue(history.getChangedField().contains("portId"));
+        assertTrue(history.getChangedField().contains("operationStartDate"));
     }
 
     @Test
@@ -1131,6 +1182,11 @@ class VtsSystemServiceTest {
                 .build();
         zoneSpatial.setId(zoneSpatialId);
         when(gisSpatialObjectService.findById(zoneSpatialId)).thenReturn(Optional.of(zoneSpatial));
+        when(gisSpatialObjectService.syncSpatialObject(any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    zoneSpatial.setCoordinates(inv.getArgument(4));
+                    return zoneSpatialId;
+                });
 
         com.hanghai.kchtg.vtssystem.entity.VtsZone existingZone = com.hanghai.kchtg.vtssystem.entity.VtsZone.builder()
                 .id(zoneId)

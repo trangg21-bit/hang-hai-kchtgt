@@ -31,7 +31,7 @@ export type BuoyStatus =
   | 'PROPOSED'
   | 'APPROVED_LEVEL2'
   | 'REJECTED'
-  | 'DELETED'
+  | 'ARCHIVED'
   | string;
 
 export const BUOY_STATUS_MAP: Record<string, { color: string; label: string }> = {
@@ -50,7 +50,7 @@ export const BUOY_STATUS_MAP: Record<string, { color: string; label: string }> =
   REJECTED_LEVEL1: { color: 'red', label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_L2: { color: 'red', label: 'Từ chối cấp Cục' },
   REJECTED_LEVEL2: { color: 'red', label: 'Từ chối cấp Cục' },
-  DELETED: { color: 'default', label: 'Đã xóa' },
+  ARCHIVED: { color: 'default', label: 'Đã xóa' },
 };
 
 // ── Entity Interfaces ───────────────────────────────────────────────

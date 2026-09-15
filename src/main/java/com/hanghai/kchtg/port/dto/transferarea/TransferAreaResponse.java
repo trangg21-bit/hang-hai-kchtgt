@@ -75,4 +75,6 @@ public class TransferAreaResponse {
     private UUID updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
 }

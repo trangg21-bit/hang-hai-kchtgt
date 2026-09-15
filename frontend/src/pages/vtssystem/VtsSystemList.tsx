@@ -40,12 +40,16 @@ const filterLabelStyle: React.CSSProperties = {
 };
 
 const CONDITION_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  OPERATIONAL: { color: statusOperational, label: 'Đang hoạt động' },
-  STOPPED: { color: statusCritical, label: 'Dừng hoạt động' },
-  MAINTENANCE: { color: statusAttention, label: 'Đang bảo trì' },
-  UNDER_CONSTRUCTION: { color: actionPrimary, label: 'Đang xây dựng' },
+  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  DANG_HOAT_DONG: { color: statusOperational, label: 'Đang khai thác/vận hành' },
   NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  UNDER_CONSTRUCTION: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
   SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  STOPPED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  MAINTENANCE: { color: statusAttention, label: 'Đang bảo trì' },
 };
 
 const HISTORY_PAGE_SIZE = 20;
@@ -606,7 +610,8 @@ export default function VtsSystemList() {
       key: 'conditionStatus',
       label: 'Tình trạng',
       dataIndex: 'conditionStatus',
-      width: 160,
+      // Badge dài nhất "Chưa khai thác/vận hành" cần đủ chỗ cả padding của ô.
+      width: 220,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
@@ -620,7 +625,7 @@ export default function VtsSystemList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 280,
+      width: 180,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
@@ -779,6 +784,11 @@ export default function VtsSystemList() {
     const conditionStatus = values.conditionStatus as ConditionStatus | undefined;
     const approvalStatus = values.approvalStatus as ApprovalStatus | undefined;
 
+    setFilterValues((prev) => ({
+      ...prev,
+      systemName,
+      code,
+    }));
     setFilterSystemName(systemName);
     setFilterCode(code);
     setFilterOrgUnitId(orgUnitId);
@@ -879,6 +889,11 @@ export default function VtsSystemList() {
                 allowClear
                 value={filterValues.systemName || ''}
                 onChange={(event) => setFilterValues((prev) => ({ ...prev, systemName: event.target.value }))}
+                onBlur={() => {
+                  if (typeof filterValues.systemName === 'string') {
+                    setFilterValues((prev) => ({ ...prev, systemName: prev.systemName.trim() }));
+                  }
+                }}
                 onPressEnter={() => handleFilterSearch(filterValues)}
                 style={{ borderRadius: radiusPill, height: 40 }}
               />
@@ -925,6 +940,11 @@ export default function VtsSystemList() {
                     allowClear
                     value={filterValues.code || ''}
                     onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
+                    onBlur={() => {
+                      if (typeof filterValues.code === 'string') {
+                        setFilterValues((prev) => ({ ...prev, code: prev.code.trim() }));
+                      }
+                    }}
                     onPressEnter={() => handleFilterSearch(filterValues)}
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
@@ -1014,6 +1034,27 @@ export default function VtsSystemList() {
         onLoadMore={loadMoreHistory}
         loadingMore={loadingMoreHistory}
         variant="berth"
+        fieldLabelMap={{
+          scope: 'Phạm vi áp dụng',
+          maritimeNotice: 'Thông báo hàng hải',
+          operationStartDate: 'Thời gian bắt đầu hoạt động',
+          address: 'Địa điểm chi tiết',
+          operatingOrgId: 'Đơn vị khai thác',
+          owningOrgId: 'Đơn vị chủ quản',
+        }}
+        formatValue={(fieldName, value) => {
+          if (value == null || value === '') return '';
+          const fn = String(fieldName || '').toLowerCase();
+          if (fn.includes('condition') || fn.includes('tinhtrang') || fn === 'tinhtranghoatdong') {
+            return themeTokenChk.getVtsConditionStatusLabel(value);
+          }
+          if (fn === 'operationstartdate' || fn.includes('startdate')) {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) {
+              return dayjs(value).format('DD/MM/YYYY');
+            }
+          }
+          return undefined;
+        }}
       />
 
       {/* Approval Modal */}

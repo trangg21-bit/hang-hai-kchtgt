@@ -42,6 +42,8 @@ public class ShipRepairFacilityResponse {
     private UUID updatedBy;
     private LocalDateTime updatedDate;
     private Boolean isDeleted;
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
     private List<ShipRepairFacilityAttachmentResponse> attachments;
 
     private UUID spatialId;

@@ -324,6 +324,7 @@ public class BuoyBerthService {
             throw new IllegalArgumentException("Chỉ được xóa bến phao ở trạng thái Nháp");
         }
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         buoyBerthRepository.save(entity);
         // Không ghi lịch sử khi xóa bản ghi Nháp (chuẩn Cảng biển / Bến cảng / Cầu cảng).
         if (entity.getSpatialId() != null) {
@@ -567,7 +568,7 @@ public class BuoyBerthService {
                 .provinceId(entity.getProvinceId())
                 .detailedLocation(entity.getDetailedLocation())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 .operatingOrgId(entity.getOperatingOrgId())
                 .operatingOrgName(resolveOperatingOrgName(entity.getOperatingOrgId()))
                 // Technical & survey fields
@@ -607,6 +608,8 @@ public class BuoyBerthService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .build();
 
         if (entity.getSpatialId() != null) {

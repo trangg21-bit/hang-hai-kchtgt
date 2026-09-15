@@ -18,7 +18,6 @@ export type RadarStationStatus =
   | 'REJECTED_LEVEL1'
   | 'REJECTED_LEVEL2'
   | 'APPROVED'
-  | 'DELETED'
   | 'ARCHIVED'
   | 'PROPOSED'
   | 'APPROVED_LEVEL2'
@@ -35,7 +34,6 @@ export const RADAR_STATION_STATUS_MAP: Record<string, { label: string }> = {
   APPROVED: { label: 'Đã phê duyệt' },
   APPROVED_LEVEL2: { label: 'Đã phê duyệt' },
   REJECTED: { label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  DELETED: { label: 'Đã xóa' },
   ARCHIVED: { label: 'Đã xóa' },
 };
 

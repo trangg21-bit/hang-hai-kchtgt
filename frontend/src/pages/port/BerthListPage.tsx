@@ -7,7 +7,6 @@ import {
   Select,
   DatePicker,
   Space,
-  Typography,
   Form,
 } from 'antd';
 import {
@@ -54,13 +53,10 @@ import {
   textTertiary,
   borderDefault,
   fontSizeLg,
-  fontSizeSm,
-  fontWeightMedium,
   fontWeightBold,
   radiusPill,
   spaceMd,
   spaceSm,
-  spaceXs,
   spaceXl,
   spaceFormField,
   drawerTitleStyle,
@@ -68,22 +64,11 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   requiredMarkStyle,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
   icons,
   statusBadgeStyle,
   cellTitleStyle,
   cellSubtitleStyle,
+  DRAWER_WIDTH,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
@@ -98,19 +83,13 @@ const fontSizeMd = 13.5;
 // ── Constants ────────────────────────────────────────────────────────
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -126,6 +105,7 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -136,6 +116,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
+  ARCHIVED: 'ARCHIVED',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
@@ -224,12 +205,12 @@ export function historyFieldValue(
   if (normKey === 'approvalstatus' || normKey === 'trangthai' || normKey === 'trang thai' || normKey === 'trang thai phe duyet') {
     const m: Record<string, string> = {
       DRAFT: 'Lưu tạm',
-      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-      APPROVED_LEVEL2: 'Chờ phê duyệt cấp cục',
+      PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
       APPROVED: 'Đã phê duyệt',
-      REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
       REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-      REJECTED_LEVEL2: 'Từ chối cấp cục',
+      REJECTED_LEVEL2: 'Từ chối cấp Cục',
+      ARCHIVED: 'Đã xóa',
     };
     return m[val.toUpperCase()] || val;
   }
@@ -315,79 +296,7 @@ export function formatBerthHistoryValue(
   return mapped;
 }
 
-function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
-  const item = group.items?.[0] || {};
-  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-  const level = Number(item.approvalLevel || 0);
 
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
-    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-
-  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
-    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-  }
-
-  // Ưu tiên lý do ghi sẵn cho hành động duyệt/từ chối (chuẩn VTS CHK)
-  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
-    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
-    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-  }
-
-  const approvalChange = changes.find((c: any) => {
-    const k = (c.field || '').toLowerCase();
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
-  });
-
-  if (approvalChange) {
-    const nv = String(approvalChange.newValue || '').toLowerCase();
-    if (nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('approved_level1') || nv.includes('cuc duyet') || nv === 'cho cuc duyet') {
-      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    }
-    if (nv === 'da duyet' || nv.includes('approved')) {
-      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    }
-    if (nv.includes('tu choi') || nv.includes('rejected')) {
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cho cang vu duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
-      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-    }
-  }
-
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1')) {
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (level === 2 || String(item.approvalLevel).includes('LEVEL_2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
-
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -1239,11 +1148,15 @@ export default function BerthList() {
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, ellipsis: false,
         cellTitle: (record: Berth) => {
-          const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()];
-          return s ? s.label : (record.approvalStatus || '');
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || record.approvalStatus === 'ARCHIVED';
+          const eff = isArchived ? 'ARCHIVED' : record.approvalStatus;
+          const s = APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff?.toUpperCase()];
+          return s ? s.label : (eff || '');
         },
-        render: (v: string) => {
-          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()]);
+        render: (v: string, record: Berth) => {
+          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
+          const eff = isArchived ? 'ARCHIVED' : v;
+          const s = eff && (APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff?.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         } },
       {
@@ -1478,7 +1391,7 @@ export default function BerthList() {
 
       {/* ── Create Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="berth-drawer-scope"
         className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến cảng</span>}
@@ -1506,7 +1419,7 @@ export default function BerthList() {
 
       {/* ── Edit Drawer ────────────────────────────────────────────── */}
       <AppDrawer
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="berth-drawer-scope"
         className="berth-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chỉnh sửa thông tin — {editBerthName || 'Bến cảng'}</span>}
@@ -1621,8 +1534,7 @@ export default function BerthList() {
 
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: isEmbeddedAction ? '100%' : '96vw' }}
+        width={DRAWER_WIDTH}
         rootClassName="berth-drawer-scope"
         className="berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết bến cảng{detailRecord ? ` - ${detailRecord.berthName}` : ''}</span>}
@@ -1749,7 +1661,7 @@ export default function BerthList() {
 
       {/* ── History Drawer ──────────────────────────────────────── */}
       <AppDrawer
-        width="min(880px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="berth-drawer-scope"
         className="berth-drawer-scope"
         mask

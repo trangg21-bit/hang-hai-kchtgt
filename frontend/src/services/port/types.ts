@@ -23,6 +23,8 @@ export interface CangBienResponse {
   updatedByName: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
   // Extended fields (V53)
   detailedLocation: string | null;
   portClass: number | null;

@@ -1,5 +1,7 @@
 export const ConditionStatus = {
+  NOT_YET_OPERATIONAL: 'NOT_YET_OPERATIONAL',
   OPERATIONAL: 'OPERATIONAL',
+  SUSPENDED: 'SUSPENDED',
   STOPPED: 'STOPPED',
   MAINTENANCE: 'MAINTENANCE',
   UNDER_CONSTRUCTION: 'UNDER_CONSTRUCTION',
@@ -122,13 +124,13 @@ export interface CreateVtsSystemRequest {
   orgUnitId: string;
   owningOrgId?: string;
   operatingOrgId?: string;
-  portId?: string;
+  portId?: string | null;
   province?: string;
   provinceId: number;
   address?: string;
   scope?: string;
   maritimeNotice?: string;
-  operationStartDate?: string;
+  operationStartDate?: string | null;
   conditionStatus: ConditionStatus;
   approvalStatus?: ApprovalStatus;
   note?: string;
@@ -185,37 +187,64 @@ export interface SearchResponse<T> {
   size: number;
 }
 
-// Vietnamese display labels (keep Vietnamese labels)
+// Vietnamese display labels (Chuẩn 3 trạng thái KCHT: Chưa khai thác/vận hành, Đang khai thác/vận hành, Dừng khai thác/vận hành)
 export const CONDITION_STATUS_OPTIONS = [
-  { value: ConditionStatus.OPERATIONAL, label: 'Đang hoạt động' },
-  { value: ConditionStatus.STOPPED, label: 'Dừng hoạt động' },
-  { value: ConditionStatus.MAINTENANCE, label: 'Đang bảo trì' },
-  { value: ConditionStatus.UNDER_CONSTRUCTION, label: 'Đang xây dựng' },
+  { value: ConditionStatus.NOT_YET_OPERATIONAL, label: 'Chưa khai thác/vận hành' },
+  { value: ConditionStatus.OPERATIONAL, label: 'Đang khai thác/vận hành' },
+  { value: ConditionStatus.SUSPENDED, label: 'Dừng khai thác/vận hành' },
 ];
 
-export const CONDITION_STATUS_MAP: Record<string, string> = {
-  OPERATIONAL: 'Đang hoạt động',
-  STOPPED: 'Dừng hoạt động',
-  MAINTENANCE: 'Đang bảo trì',
-  UNDER_CONSTRUCTION: 'Đang xây dựng',
-  NOT_OPERATIONAL: 'Dừng hoạt động',
+export const normalizeConditionStatus = (status?: unknown): ConditionStatus => {
+  if (status == null || status === '' || status === '—') return ConditionStatus.OPERATIONAL;
+  const s = String(status).toUpperCase();
+  if (
+    s === 'STOPPED' ||
+    s === 'SUSPENDED' ||
+    s === 'DUNG_KHAI_THAC' ||
+    s === 'DUNG_HOAT_DONG' ||
+    s === 'TAM_DUNG' ||
+    s === '1' ||
+    s === '5'
+  ) {
+    return ConditionStatus.SUSPENDED;
+  }
+  if (
+    s === 'UNDER_CONSTRUCTION' ||
+    s === 'NOT_YET_OPERATIONAL' ||
+    s === 'CHUA_KHAI_THAC' ||
+    s === 'CHUA_HOAT_DONG' ||
+    s === '3' ||
+    s === '4'
+  ) {
+    return ConditionStatus.NOT_YET_OPERATIONAL;
+  }
+  return ConditionStatus.OPERATIONAL;
 };
 
-export const APPROVAL_STATUS_MAP: Record<string, string> = {
-  DRAFT: 'Lưu tạm',
-  PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
-  APPROVED: 'Đã phê duyệt',
-  ARCHIVED: 'Lưu trữ',
-  REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-  REJECTED_LEVEL2: 'Từ chối cấp Cục',
+export const CONDITION_STATUS_MAP: Record<string, string> = {
+  NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+  CHUA_KHAI_THAC: 'Chưa khai thác/vận hành',
+  UNDER_CONSTRUCTION: 'Chưa khai thác/vận hành',
+  OPERATIONAL: 'Đang khai thác/vận hành',
+  DANG_KHAI_THAC: 'Đang khai thác/vận hành',
+  DANG_HOAT_DONG: 'Đang khai thác/vận hành',
+  SUSPENDED: 'Dừng khai thác/vận hành',
+  STOPPED: 'Dừng khai thác/vận hành',
+  DUNG_KHAI_THAC: 'Dừng khai thác/vận hành',
+  NOT_OPERATIONAL: 'Dừng khai thác/vận hành',
+  MAINTENANCE: 'Đang bảo trì',
 };
 
 export const CONDITION_STATUS_TAG_MAP: Record<string, { label: string; color: string }> = {
-  OPERATIONAL: { label: 'Đang hoạt động', color: 'success' },
-  STOPPED: { label: 'Dừng hoạt động', color: 'default' },
+  NOT_YET_OPERATIONAL: { label: 'Chưa khai thác/vận hành', color: 'warning' },
+  CHUA_KHAI_THAC: { label: 'Chưa khai thác/vận hành', color: 'warning' },
+  OPERATIONAL: { label: 'Đang khai thác/vận hành', color: 'success' },
+  DANG_KHAI_THAC: { label: 'Đang khai thác/vận hành', color: 'success' },
+  SUSPENDED: { label: 'Dừng khai thác/vận hành', color: 'error' },
+  STOPPED: { label: 'Dừng khai thác/vận hành', color: 'error' },
+  DUNG_KHAI_THAC: { label: 'Dừng khai thác/vận hành', color: 'error' },
   MAINTENANCE: { label: 'Đang bảo trì', color: 'warning' },
-  UNDER_CONSTRUCTION: { label: 'Đang xây dựng', color: 'processing' },
+  UNDER_CONSTRUCTION: { label: 'Chưa khai thác/vận hành', color: 'warning' },
 };
 
 export const APPROVAL_STATUS_TAG_MAP: Record<string, { label: string; color: string }> = {

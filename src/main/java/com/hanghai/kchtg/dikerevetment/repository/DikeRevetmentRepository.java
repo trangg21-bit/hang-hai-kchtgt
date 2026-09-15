@@ -39,7 +39,7 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
     boolean existsByCode(String code);
 
     @Query("SELECT d FROM DikeRevetment d WHERE " +
-            "(:isDeleted IS NULL OR (:isDeleted = true AND (d.deletedAt IS NOT NULL OR d.deletedBy IS NOT NULL)) OR (:isDeleted = false AND d.deletedAt IS NULL AND d.deletedBy IS NULL)) AND " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (d.deletedAt IS NOT NULL OR d.deletedBy IS NOT NULL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) OR (:isDeleted = false AND d.deletedAt IS NULL AND d.deletedBy IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) AND " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
             "(:seaportId IS NULL OR d.seaportId = :seaportId) AND " +
             "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +

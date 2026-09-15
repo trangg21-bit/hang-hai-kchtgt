@@ -190,13 +190,16 @@ export default function WaterZoneList() {
     },
     {
       key: 'approvalStatus', label: 'Trạng thái phê duyệt', dataIndex: 'approvalStatus', width: 170, align: 'center' as const,
-      render: (status: string) => <ApprovalStatusBadge status={status} />,
+      render: (status: string, record: any) => {
+        const isArchived = filterStatus === 'ARCHIVED' || Boolean(record?.deletedAt) || status === 'ARCHIVED';
+        return <ApprovalStatusBadge status={isArchived ? 'ARCHIVED' : status} />;
+      },
     },
     {
       key: 'createdAt', label: 'Ngày tạo', dataIndex: 'createdAt', width: 160, align: 'center' as const,
       render: (v: string) => v ? <span style={{ color: textSecondary }}>{new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : '—',
     },
-  ], [page, pageSize]);
+  ], [page, pageSize, filterStatus]);
 
   const rowActions = useCallback((record: WaterZone) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];

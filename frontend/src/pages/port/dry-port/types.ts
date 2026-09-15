@@ -71,6 +71,8 @@ export interface DryPort {
   updatedByName?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface DryPortFilterParams {

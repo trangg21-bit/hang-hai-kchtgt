@@ -62,14 +62,18 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         LEFT JOIN Port p ON p.id = t.portId
         LEFT JOIN VtsSystem vs ON vs.id = t.vtsSystemId
         LEFT JOIN User u ON u.id = t.updatedBy
+        LEFT JOIN User uSub ON uSub.id = t.submittedBy
+        LEFT JOIN User uApp1 ON uApp1.id = t.approverLevel1
+        LEFT JOIN User uApp2 ON uApp2.id = t.approverLevel2
         WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
           AND (:portId IS NULL OR t.portId = :portId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL
-               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION))
+          AND ((:approvalStatus IS NULL AND t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
                OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
                     t.approvalStatus = :approvalStatus
                     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
@@ -146,7 +150,9 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
           AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
           AND (:portId IS NULL OR t.portId = :portId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
           AND (CAST(:keyword AS string) IS NULL OR (

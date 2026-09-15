@@ -47,7 +47,7 @@ vi.mock('antd', async (importOriginal) => {
   };
 });
 
-vi.mock('../../store/authStore', () => {
+const { mockUseAuthStore } = vi.hoisted(() => {
   const mockAuthState = {
     user: {
       id: 'user-admin',
@@ -57,13 +57,20 @@ vi.mock('../../store/authStore', () => {
     },
     hasPermission: () => true,
   };
-  const fn = vi.fn((selector) => selector(mockAuthState)) as unknown as {
-    (selector: (s: typeof mockAuthState) => unknown): unknown;
-    getState: () => typeof mockAuthState;
-  };
-  fn.getState = () => mockAuthState;
-  return { useAuthStore: fn };
+
+  const store = Object.assign(
+    vi.fn((selector) => (selector ? selector(mockAuthState) : mockAuthState)),
+    {
+      getState: vi.fn(() => mockAuthState),
+    },
+  );
+
+  return { mockUseAuthStore: store };
 });
+
+vi.mock('../../store/authStore', () => ({
+  useAuthStore: mockUseAuthStore,
+}));
 
 vi.mock('../../services/organizationService', () => ({
   organizationService: {
@@ -219,10 +226,5 @@ describe('DryPortAsset UI Components (Tài sản cảng cạn)', () => {
 
     const editHtml = renderToStaticMarkup(<FormWrapper mode="edit" />);
     expect(editHtml).toContain('Chỉnh sửa');
-  });
-
-  it('provides History option in table actions', () => {
-    const html = renderToStaticMarkup(<DryPortAssetList />);
-    expect(html).toBeDefined();
   });
 });

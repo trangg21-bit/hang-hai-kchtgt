@@ -45,6 +45,7 @@ import {
   spaceSm,
   drawerTitleStyle,
   drawerFooterStyle,
+  DRAWER_WIDTH,
   primaryButtonStyle,
   outlineButtonStyle,
   icons,
@@ -678,7 +679,7 @@ export default function MapLayerList() {
 
         {/* ── Create AppDrawer ─────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới lớp bản đồ</span>}
@@ -720,7 +721,7 @@ export default function MapLayerList() {
 
         {/* ── Edit AppDrawer ───────────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={
@@ -780,7 +781,7 @@ export default function MapLayerList() {
 
         {/* ── View Detail AppDrawer ────────────────────────────────── */}
         <AppDrawer
-          width="min(920px, 96vw)"
+          width={DRAWER_WIDTH}
           rootClassName="chk-drawer-scope"
           className="chk-drawer-scope"
           title={

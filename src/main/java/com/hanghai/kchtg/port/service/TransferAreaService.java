@@ -339,6 +339,7 @@ public class TransferAreaService {
         UUID operatorId = SecurityUtils.getCurrentUserId();
 
         entity.softDelete(operatorId);
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         transferAreaRepository.save(entity);
 
         // Xóa mềm các khu nước neo buộc tàu con (cascade soft-delete)
@@ -540,7 +541,7 @@ public class TransferAreaService {
                 .detailedLocation(entity.getDetailedLocation())
                 .operationalFunctions(entity.getOperationalFunctions())
                 .operationalStatus(entity.getOperationalStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 // Technical fields
                 .shapeDescription(entity.getShapeDescription())
                 .area(entity.getArea())
@@ -578,6 +579,8 @@ public class TransferAreaService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .deletedAt(entity.getDeletedAt())
+                .deletedBy(entity.getDeletedBy())
                 .build();
 
         if (entity.getSpatialId() != null) {

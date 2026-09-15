@@ -58,6 +58,8 @@ export interface Port {
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
+  deletedBy?: string;
   // Extended fields (V53)
   diaDiemChiTiet?: string;
   phanCap?: number;
@@ -187,6 +189,8 @@ export interface Berth {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
   // Extended fields (hh.csdl legacy Qlkc038Dto)
   provinceId?: number;
   detailedLocation?: string;
@@ -340,6 +344,8 @@ export interface Pier {
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
+  deletedBy?: string;
   submittedForApprovalAt?: string;
   submittedForApprovalBy?: string;
   portAuthorityApprovedAt?: string;
@@ -419,6 +425,8 @@ export interface DryPort {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateDryPortRequest {
@@ -512,6 +520,8 @@ export interface WaterZone {
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateVungNuocRequest {
@@ -609,6 +619,8 @@ export interface Anchorage {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface AnchorPointPayload { name?: string; latitude?: number; longitude?: number; }
@@ -748,6 +760,8 @@ export interface TransferArea {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateTransferAreaRequest {
@@ -877,6 +891,8 @@ export interface StormShelterArea {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateStormShelterRequest {
@@ -1009,6 +1025,8 @@ export interface BuoyBerth {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateBuoyBerthRequest {
@@ -1128,6 +1146,8 @@ export interface DaiTtdh {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateDaiTtdhRequest {
@@ -1222,6 +1242,8 @@ export interface ShipRepairYard {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateShipRepairYardRequest {

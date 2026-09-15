@@ -89,4 +89,8 @@ public class PierResponse {
     private String departmentApprovedBy;
     private String portAuthorityApprovalContent;
     private String departmentApprovalContent;
+
+    // ── Audit (soft-delete) ──
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
 }

@@ -15,6 +15,7 @@ import {
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   statusOperational, statusAttention, statusCritical,
   DRAWER_TABLE_SCROLL_Y, drawerTitleStyle, drawerCloseBtnStyle, cellTitleStyle, cellSubtitleStyle,
+  DRAWER_WIDTH,
 } from '../../themetokenchk';
 import type { CangBienResponse, PortWharfAreaItem } from './types';
 import { trangThaiPheDuyetBadge } from './schema';
@@ -964,7 +965,7 @@ export default function PortDetailContent({
         destroyOnClose
         push={false}
         closable={false}
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu bến</span>}

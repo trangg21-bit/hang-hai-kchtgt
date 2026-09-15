@@ -15,6 +15,7 @@ import {
   DeleteOutlined,
   EyeOutlined,
   EditOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
 import {
   sidebarBg,
@@ -34,6 +35,8 @@ import {
   spaceFormField,
   spaceSm,
   spaceXs,
+  renderVtsConditionStatusPillBadge,
+  DRAWER_WIDTH,
 } from '../../themetokenchk';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DetailTable from '../../components/shared/DetailTable';
@@ -51,15 +54,15 @@ import {
   ddToDms,
   dmsToDd,
 } from '../../utils/gisGeometry';
-import type { VtsZoneDto } from '../../types/vtsSystem';
+import { ConditionStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../types/vtsSystem';
 
 export interface VtsZoneLocationDrawerProps {
   open: boolean;
-  mode: 'view' | 'edit';
+  mode: 'view' | 'edit' | 'create';
   zone: VtsZoneDto | any | null;
   zoneIndex: number | null;
   onClose: () => void;
-  onSave?: (updatedZone: any, zoneIndex: number) => void;
+  onSave?: (updatedZone: any, zoneIndex: number | null) => void;
 }
 
 interface DmsPoint {
@@ -144,6 +147,14 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
   onSave,
 }) => {
   const isViewMode = mode === 'view';
+  const isCreateMode = mode === 'create';
+
+  const [zoneCode, setZoneCode] = useState<string>('');
+  const [zoneName, setZoneName] = useState<string>('');
+  const [zoneConditionStatus, setZoneConditionStatus] = useState<ConditionStatus | string>(
+    ConditionStatus.OPERATIONAL,
+  );
+  const [zoneNameError, setZoneNameError] = useState<string | null>(null);
 
   const [geometryType, setGeometryType] = useState<string | undefined>(undefined);
   const [symbolId, setSymbolId] = useState<string | undefined>(undefined);
@@ -155,6 +166,11 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
   // Sync state from zone prop when opened
   useEffect(() => {
     if (!open || !zone) return;
+
+    setZoneCode(zone.code || '');
+    setZoneName(zone.name || '');
+    setZoneConditionStatus(normalizeConditionStatus(zone.conditionStatus || zone.status));
+    setZoneNameError(null);
 
     const currentGeom = zone.geometryType || undefined;
     setGeometryType(currentGeom);
@@ -317,79 +333,87 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
   };
 
   const handleSave = () => {
-    if (coordinateList.length > 0) {
-      const dmsCoordList = coordinateList.map((c) => ({
-        latD: c.latD,
-        latM: c.latM,
-        latS: c.latS,
-        lngD: c.lngD,
-        lngM: c.lngM,
-        lngS: c.lngS,
-      }));
-
-      const dmsVal = validateDmsCoordinates(dmsCoordList, geometryType);
-      if (!dmsVal.valid) {
-        setGpsError(dmsVal.errorMessage || dmsVal.error || 'Tọa độ không hợp lệ');
+    if (!isViewMode) {
+      if (!zoneName || !zoneName.trim()) {
+        setZoneNameError('Tên vùng VTS là bắt buộc');
+        toast.error('Vui lòng nhập tên vùng VTS');
         return;
       }
-
-      const ddPoints = coordinateList
-        .filter(
-          (c) =>
-            (c.latD != null || c.latM != null || c.latS != null) &&
-            (c.lngD != null || c.lngM != null || c.lngS != null),
-        )
-        .map((c) => ({
-          latitude: dmsToDd(c.latD, c.latM, c.latS),
-          longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
-        }))
-        .filter((c) => c.latitude != null && c.longitude != null) as {
-        latitude: number;
-        longitude: number;
-      }[];
-
-      let wkt = '';
-      if (ddPoints.length > 0) {
-        wkt = serializeCoordinatesToWkt(ddPoints, geometryType || 'POLYGON');
-      }
-
-      const selectedSym = symbols.find((s: any) => String(s.id) === String(symbolId));
-
-      if (onSave && zoneIndex !== null) {
-        onSave(
-          {
-            ...zone,
-            geometryType: geometryType || 'POLYGON',
-            coordinates: wkt,
-            symbolId: symbolId || undefined,
-            symbolName: selectedSym?.name || zone?.symbolName,
-            symbolCode: selectedSym?.code || zone?.symbolCode,
-            symbolImage: selectedSym?.image || zone?.symbolImage,
-          },
-          zoneIndex,
-        );
-      }
-      toast.success('Cập nhật thông tin vị trí thành công');
-      onClose();
-    } else {
-      const selectedSym = symbols.find((s: any) => String(s.id) === String(symbolId));
-      if (onSave && zoneIndex !== null) {
-        onSave(
-          {
-            ...zone,
-            geometryType: geometryType || undefined,
-            coordinates: undefined,
-            symbolId: symbolId || undefined,
-            symbolName: selectedSym?.name || zone?.symbolName,
-            symbolCode: selectedSym?.code || zone?.symbolCode,
-            symbolImage: selectedSym?.image || zone?.symbolImage,
-          },
-          zoneIndex,
-        );
-      }
-      toast.success('Cập nhật thông tin vị trí thành công');
-      onClose();
     }
+
+    let wkt: string | undefined = undefined;
+    if (coordinateList.length > 0) {
+      const hasAnyValue = coordinateList.some(
+        (c) =>
+          c.latD != null ||
+          c.latM != null ||
+          c.latS != null ||
+          c.lngD != null ||
+          c.lngM != null ||
+          c.lngS != null,
+      );
+
+      if (hasAnyValue || geometryType) {
+        const dmsCoordList = coordinateList.map((c) => ({
+          latD: c.latD,
+          latM: c.latM,
+          latS: c.latS,
+          lngD: c.lngD,
+          lngM: c.lngM,
+          lngS: c.lngS,
+        }));
+
+        const dmsVal = validateDmsCoordinates(dmsCoordList, geometryType);
+        if (!dmsVal.valid) {
+          setGpsError(dmsVal.errorMessage || dmsVal.error || 'Tọa độ không hợp lệ');
+          return;
+        }
+
+        const ddPoints = coordinateList
+          .filter(
+            (c) =>
+              (c.latD != null || c.latM != null || c.latS != null) &&
+              (c.lngD != null || c.lngM != null || c.lngS != null),
+          )
+          .map((c) => ({
+            latitude: dmsToDd(c.latD, c.latM, c.latS),
+            longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+          }))
+          .filter((c) => c.latitude != null && c.longitude != null) as {
+          latitude: number;
+          longitude: number;
+        }[];
+
+        if (ddPoints.length > 0) {
+          wkt = serializeCoordinatesToWkt(ddPoints, geometryType || 'POLYGON');
+        }
+      }
+    }
+
+    const selectedSym = symbols.find((s: any) => String(s.id) === String(symbolId));
+
+    if (onSave) {
+      onSave(
+        {
+          ...zone,
+          code: (zoneCode || '').trim(),
+          name: (zoneName || '').trim(),
+          conditionStatus: zoneConditionStatus,
+          status: zoneConditionStatus,
+          geometryType: geometryType || (wkt ? 'POLYGON' : undefined),
+          coordinates: wkt,
+          symbolId: symbolId || undefined,
+          symbolName: selectedSym?.name || zone?.symbolName,
+          symbolCode: selectedSym?.code || zone?.symbolCode,
+          symbolImage: selectedSym?.image || zone?.symbolImage,
+        },
+        zoneIndex,
+      );
+    }
+    toast.success(
+      isCreateMode ? 'Thêm mới thông tin vùng VTS thành công' : 'Cập nhật thông tin vùng VTS thành công',
+    );
+    onClose();
   };
 
   const renderDmsGroup = (
@@ -569,21 +593,25 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
       zIndex={1010}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {isViewMode ? (
+          {isCreateMode ? (
+            <ApartmentOutlined style={{ color: actionPrimary }} />
+          ) : isViewMode ? (
             <EyeOutlined style={{ color: actionPrimary }} />
           ) : (
             <EditOutlined style={{ color: actionPrimary }} />
           )}
           <span style={{ fontWeight: fontWeightBold, color: sidebarBg, fontSize: 16 }}>
-            {isViewMode
-              ? `Chi tiết thông tin vị trí - ${zone?.name || zone?.code || 'Vùng VTS'}`
-              : `Chỉnh sửa thông tin vị trí - ${zone?.name || zone?.code || 'Vùng VTS'}`}
+            {isCreateMode
+              ? 'Thêm mới thông tin vùng VTS'
+              : isViewMode
+              ? `Chi tiết thông tin vùng VTS - ${zoneName || zoneCode || zone?.name || zone?.code || 'Vùng VTS'}`
+              : `Chỉnh sửa thông tin vùng VTS - ${zoneName || zoneCode || zone?.name || zone?.code || 'Vùng VTS'}`}
           </span>
         </div>
       }
-      width="min(920px, 96vw)"
+      width={DRAWER_WIDTH}
       styles={{
-        body: { padding: '12px 24px 12px 24px', overflow: 'hidden' },
+        body: { padding: '12px 24px 12px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column' },
         footer: { padding: '10px 24px' },
       }}
       footer={
@@ -616,14 +644,156 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
         )
       }
     >
+      <style>{`
+        .vts-zone-detail-table {
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 !important;
+          min-height: 0 !important;
+        }
+        .vts-zone-detail-table .ant-table-wrapper {
+          flex: 1 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 0 !important;
+        }
+        .vts-zone-detail-table .ant-spin-nested-loading {
+          flex: 1 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 0 !important;
+        }
+        .vts-zone-detail-table .ant-spin-container {
+          flex: 1 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 0 !important;
+        }
+        .vts-zone-detail-table .ant-table {
+          flex: 1 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 0 !important;
+        }
+        .vts-zone-detail-table .ant-table-container {
+          flex: 1 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          min-height: 0 !important;
+        }
+        .vts-zone-detail-table .ant-table-body {
+          min-height: 190px !important;
+          max-height: 190px !important;
+          height: 190px !important;
+        }
+        .ant-drawer .vts-zone-detail-table .chk-detail-table-pagination,
+        .ant-drawer:has(.ant-drawer-footer) .vts-zone-detail-table .chk-detail-table-pagination {
+          position: static !important;
+          bottom: auto !important;
+          right: auto !important;
+          z-index: auto !important;
+          margin-top: auto !important;
+          margin-bottom: 0 !important;
+          padding: 10px 0 0 0 !important;
+          display: flex !important;
+          justify-content: flex-end !important;
+          align-items: center !important;
+          width: 100% !important;
+        }
+      `}</style>
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          height: '100%',
-          overflow: 'hidden',
+          minHeight: '100%',
+          flex: 1,
         }}
       >
+        {/* ── Section 0: Thông tin chung vùng VTS ── */}
+        <div style={{ ...sectionBoxStyle, flexShrink: 0, marginBottom: 12 }}>
+          <div style={sectionHeaderStyle}>
+            <div style={sectionTitleStyle}>
+              <ApartmentOutlined style={{ color: actionPrimary }} />
+              <span>Thông tin chung vùng VTS</span>
+            </div>
+          </div>
+
+          {isViewMode ? (
+            <div className="chk-detail-grid">
+              <div className="chk-detail-row">
+                <span className="chk-detail-label sec-col1-label">Mã vùng</span>
+                <span className="chk-detail-value">{zoneCode || zone?.code || '—'}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label sec-col2-label">Tên vùng VTS</span>
+                <span className="chk-detail-value">{zoneName || zone?.name || '—'}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label sec-col1-label">Tình trạng</span>
+                <span className="chk-detail-value">
+                  {renderVtsConditionStatusPillBadge(zoneConditionStatus || zone?.conditionStatus || zone?.status)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <Row gutter={[16, 0]}>
+              <Col span={8}>
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: sidebarBg, marginBottom: 6 }}>
+                    Mã vùng
+                  </div>
+                  <Input
+                    placeholder="Nhập mã vùng"
+                    value={zoneCode}
+                    maxLength={50}
+                    showCount
+                    onChange={(e) => setZoneCode(e.target.value)}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: sidebarBg, marginBottom: 6 }}>
+                    Tên vùng VTS <span style={{ color: '#ef4444' }}>*</span>
+                  </div>
+                  <Input
+                    placeholder="Nhập tên vùng VTS"
+                    value={zoneName}
+                    maxLength={255}
+                    showCount
+                    status={zoneNameError ? 'error' : undefined}
+                    onChange={(e) => {
+                      setZoneName(e.target.value);
+                      if (zoneNameError) setZoneNameError(null);
+                    }}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
+                  {zoneNameError && (
+                    <div style={{ color: statusCritical, fontSize: fontSizeSm, marginTop: 4 }}>
+                      {zoneNameError}
+                    </div>
+                  )}
+                </div>
+              </Col>
+              <Col span={8}>
+                <div style={{ marginBottom: spaceFormField }}>
+                  <div style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium, color: sidebarBg, marginBottom: 6 }}>
+                    Tình trạng <span style={{ color: '#ef4444' }}>*</span>
+                  </div>
+                  <Select
+                    placeholder="Chọn tình trạng"
+                    value={normalizeConditionStatus(zoneConditionStatus)}
+                    onChange={(val) => setZoneConditionStatus(val)}
+                    options={CONDITION_STATUS_OPTIONS}
+                    style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                  />
+                </div>
+              </Col>
+            </Row>
+          )}
+        </div>
+
         {/* ── Section 1: Thông số đối tượng bản đồ ── */}
         <div style={{ ...sectionBoxStyle, flexShrink: 0, marginBottom: 12 }}>
           <div style={sectionHeaderStyle}>
@@ -790,9 +960,9 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            minHeight: 0,
+            minHeight: 310,
             marginBottom: 0,
-            paddingBottom: 8,
+            padding: '14px 18px 16px 18px',
           }}
         >
           <div
@@ -945,8 +1115,9 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
 
           {isViewMode ? (
             <DetailTable
-              scrollY="calc(100vh - 430px)"
-              emptyHeightAuto={true}
+              className="vts-zone-detail-table"
+              scrollY={190}
+              emptyHeightAuto={false}
               dataSource={viewPoints.map((p, i) => ({ ...p, _idx: i }))}
               emptyText="Chưa có tọa độ GPS nào"
               rowKey="_idx"
@@ -972,9 +1143,10 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
             />
           ) : (
             <DetailTable
+              className="vts-zone-detail-table"
               size="small"
-              scrollY="calc(100vh - 520px)"
-              emptyHeightAuto={true}
+              scrollY={190}
+              emptyHeightAuto={false}
               dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
               rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
               emptyText="Chưa có tọa độ GPS nào"

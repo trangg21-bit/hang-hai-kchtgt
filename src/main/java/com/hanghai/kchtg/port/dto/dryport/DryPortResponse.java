@@ -57,4 +57,8 @@ public class DryPortResponse {
     private String investmentAgreementDoc;
     private Integer coordinateSystem;
     private Integer displayRule;
+
+    // ── Audit (soft-delete) ──
+    private LocalDateTime deletedAt;
+    private UUID deletedBy;
 }

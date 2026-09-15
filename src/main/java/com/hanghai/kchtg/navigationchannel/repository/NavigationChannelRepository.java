@@ -27,13 +27,18 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
     List<NavigationChannel> findByChannelNameContainingAndDeletedAtIsNull(String channelName);
 
     @Query("SELECT l FROM NavigationChannel l WHERE " +
-            "l.deletedAt IS NULL AND " +
+            "((:approvalStatus IS NULL AND l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (l.deletedAt IS NOT NULL OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            "  OR (l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
+            "      l.approvalStatus = :approvalStatus " +
+            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  )) " +
+            ") AND " +
             "(:orgUnitId IS NULL OR l.orgUnitId = :orgUnitId) AND " +
             "(:seaportId IS NULL OR l.seaportId = :seaportId) AND " +
             "(:provinceId IS NULL OR l.provinceId = :provinceId) AND " +
             "(:conditionStatus IS NULL OR l.conditionStatus = :conditionStatus) AND " +
-            "(:keyword IS NULL OR LOWER(l.channelName) LIKE :keyword) AND " +
-            "(:approvalStatus IS NULL OR l.approvalStatus = :approvalStatus)")
+            "(:keyword IS NULL OR LOWER(l.channelName) LIKE :keyword)")
     Page<NavigationChannel> searchDocuments(
             @org.springframework.data.repository.query.Param("orgUnitId") UUID orgUnitId,
             @org.springframework.data.repository.query.Param("seaportId") UUID seaportId,

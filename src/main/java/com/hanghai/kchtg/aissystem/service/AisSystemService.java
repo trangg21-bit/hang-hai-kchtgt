@@ -279,7 +279,11 @@ public class AisSystemService {
             throw new IllegalArgumentException("Mã thiết bị AIS '" + request.getCode() + "' đã được sử dụng");
         }
 
-        if (request.getVtsOperationCenterId() != null || request.getRadarStationId() != null) {
+        boolean locationProvided = request.isFieldPresent("vtsOperationCenterId")
+                || request.isFieldPresent("radarStationId")
+                || request.getVtsOperationCenterId() != null
+                || request.getRadarStationId() != null;
+        if (locationProvided) {
             if (request.getVtsOperationCenterId() != null && request.getRadarStationId() != null) {
                 throw new IllegalArgumentException("Chỉ được chọn 1 trong 2: Trung tâm điều hành VTS hoặc Trạm Radar");
             }
@@ -303,6 +307,9 @@ public class AisSystemService {
                 }
                 entity.setRadarStationId(request.getRadarStationId());
                 entity.setVtsOperationCenterId(null);
+            } else {
+                entity.setVtsOperationCenterId(null);
+                entity.setRadarStationId(null);
             }
         }
 
@@ -319,8 +326,8 @@ public class AisSystemService {
         }
 
         UUID oldSymbolId = entity.getSymbolId();
-        if (request.getSymbolId() != null) {
-            if (!request.getSymbolId().trim().isEmpty()) {
+        if (request.isFieldPresent("symbolId") || request.getSymbolId() != null) {
+            if (request.getSymbolId() != null && !request.getSymbolId().trim().isEmpty()) {
                 try {
                     UUID newSymbolId = UUID.fromString(request.getSymbolId().trim());
                     entity.setSymbolId(newSymbolId);
@@ -343,6 +350,15 @@ public class AisSystemService {
                 AisSystemRequest.Fields.radarStationId,
                 AisSystemRequest.Fields.symbolId);
 
+        if (request.isFieldPresent("provinceId") && request.getProvinceId() == null) entity.setProvinceId(null);
+        if (request.isFieldPresent("detailedLocation") && request.getDetailedLocation() == null) entity.setDetailedLocation(null);
+        if (request.isFieldPresent("model") && request.getModel() == null) entity.setModel(null);
+        if (request.isFieldPresent("specifications") && request.getSpecifications() == null) entity.setSpecifications(null);
+        if (request.isFieldPresent("manufacturer") && request.getManufacturer() == null) entity.setManufacturer(null);
+        if (request.isFieldPresent("commissioningYear") && request.getCommissioningYear() == null) entity.setCommissioningYear(null);
+        if (request.isFieldPresent("maintenanceInfo") && request.getMaintenanceInfo() == null) entity.setMaintenanceInfo(null);
+        if (request.isFieldPresent("note") && request.getNote() == null) entity.setNote(null);
+
         if (request.getCoordinates() != null && !Objects.equals(request.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
             previousValues.put(AisSystemRequest.Fields.coordinates, oldCoordinates != null ? oldCoordinates : "Chưa có");
         }
@@ -350,7 +366,7 @@ public class AisSystemService {
             previousValues.put(AisSystemRequest.Fields.geometryType, oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
         }
 
-        if (request.getCoordinates() != null) {
+        if (request.isFieldPresent("coordinates")) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
                     entity.getSpatialId(),

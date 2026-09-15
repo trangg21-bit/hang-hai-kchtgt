@@ -14,6 +14,7 @@ import {
   outlineButtonStyle, primaryButtonStyle,
   statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
   DRAWER_TABLE_SCROLL_Y,
+  DRAWER_WIDTH,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
@@ -1427,7 +1428,7 @@ export default function PortForm({
         destroyOnClose
         push={false}
         closable={false}
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         title={
@@ -1550,7 +1551,7 @@ export default function PortForm({
         destroyOnClose
         push={false}
         closable={false}
-        width="min(920px, 96vw)"
+        width={DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu bến</span>}
