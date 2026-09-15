@@ -971,6 +971,11 @@ function CommonTableInternal<T extends Record<string, unknown>>(
           padding-right: 0 !important;
           padding-inline: 0 !important;
         }
+        .common-table-shell .common-table-action-cell .ant-btn.ant-dropdown-open {
+          background: ${themeToken.actionPrimary} !important;
+          border-color: ${themeToken.actionPrimary} !important;
+          color: ${themeToken.colors.textOnDark} !important;
+        }
         /* ── Cỡ chữ 13.5px chuẩn toàn bảng ── */
         .common-table-shell,
         .common-table-shell .ant-table,

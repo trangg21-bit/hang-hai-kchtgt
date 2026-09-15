@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.handler;
 
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -11,9 +12,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public abstract class BaseReportHandler implements ReportHandler {
 
@@ -56,11 +63,45 @@ public abstract class BaseReportHandler implements ReportHandler {
 
     protected boolean isOrgUnitRoot(UUID targetUnitId) {
         if (targetUnitId == null) {
-            return false;
+            return true;
         }
         return orgUnitRepository.findById(targetUnitId)
-                .map(u -> u.getParentId() == null)
+                .map(u -> u.getParentId() == null
+                        || "G17.43".equalsIgnoreCase(u.getCode())
+                        || "G17".equalsIgnoreCase(u.getCode())
+                        || (u.getName() != null && (u.getName().toLowerCase().contains("cục hàng hải") || u.getName().toLowerCase().contains("bộ giao thông"))))
                 .orElse(false);
+    }
+
+    protected Set<UUID> getSubtreeOrgUnitIds(UUID targetUnitId) {
+        if (targetUnitId == null) {
+            return Collections.emptySet();
+        }
+        if (orgUnitCacheService == null) {
+            return Set.of(targetUnitId);
+        }
+        List<OrgUnitResponse> allUnits = orgUnitCacheService.getList();
+        if (allUnits == null || allUnits.isEmpty()) {
+            return Set.of(targetUnitId);
+        }
+        Map<UUID, List<UUID>> childIdsByParent = allUnits.stream()
+                .filter(unit -> unit.getId() != null && unit.getParentId() != null)
+                .collect(Collectors.groupingBy(
+                        OrgUnitResponse::getParentId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(OrgUnitResponse::getId, Collectors.toList())));
+
+        Set<UUID> result = new HashSet<>();
+        List<UUID> queue = new ArrayList<>();
+        queue.add(targetUnitId);
+        for (int index = 0; index < queue.size(); index++) {
+            UUID currentId = queue.get(index);
+            if (!result.add(currentId)) {
+                continue;
+            }
+            queue.addAll(childIdsByParent.getOrDefault(currentId, Collections.emptyList()));
+        }
+        return result;
     }
 
     protected int getReportYear(ReportPreviewRequest request) {

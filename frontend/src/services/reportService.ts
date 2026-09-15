@@ -45,7 +45,8 @@ export const reportService = {
 
     if (!filename) {
       const isExcel = request.format === 'EXCEL';
-      const extension = isExcel ? '.xlsx' : '.txt';
+      const isWord = request.format === 'WORD';
+      const extension = isExcel ? '.xlsx' : (isWord ? '.docx' : '.pdf');
       filename = `baocao_${request.reportCode.toLowerCase()}_${Date.now()}${extension}`;
     }
     console.log("Final download filename:", filename);

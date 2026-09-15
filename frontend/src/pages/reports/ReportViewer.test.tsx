@@ -1,5 +1,5 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import ReportViewer from './ReportViewer';
@@ -62,7 +62,7 @@ describe('ReportViewer UI Standard', () => {
     vi.clearAllMocks();
   });
 
-  it('renders ReportViewer for F-152 with master summary table and "Chọn chỉ tiêu"', () => {
+  it('renders ReportViewer for F-152 with the shared table and no top-level controls', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/reports/F-152']}>
         <Routes>
@@ -73,8 +73,40 @@ describe('ReportViewer UI Standard', () => {
 
     // Verify report name in header
     expect(html).toContain('Biểu 06-N: Thống kê vùng đón trả hoa tiêu');
-    // Verify "Chọn chỉ tiêu" button
-    expect(html).toContain('Chọn chỉ tiêu');
+    expect(html).not.toContain('Chọn chỉ tiêu');
+    expect(html).not.toContain('Xuất Excel');
+    expect(html).not.toContain('Xuất PDF');
+
+    // The export and preview actions are configured as standard CommonTable dropdown items
+    const source = readFileSync(new URL('./ReportViewer.tsx', import.meta.url), 'utf8');
+    expect(source).not.toContain('Chọn chỉ tiêu');
+    expect(source).not.toContain("'1-1 trong 1'");
+    expect(source).toContain('<CommonTable');
+    expect(source).toContain("enablePaging: true");
+    expect(source).toContain("width: 500");
+    expect(source).toContain("minWidth: 420");
+    expect(source).toContain("width: 360");
+    expect(source).toContain("minWidth: 320");
+    expect(source).not.toContain("label: 'Xem trước chi tiết báo cáo'");
+    expect(source).toContain("label: 'Xem trước PDF'");
+    expect(source).toContain('icon: <EyeOutlined />');
+    expect(source).toContain("label: 'Xuất Excel'");
+    expect(source).toContain('icon: <FileExcelOutlined />');
+    expect(source).toContain("label: 'Xuất PDF'");
+    expect(source).toContain('icon: <FileTextOutlined />');
+    expect(source).toContain('reportPdfPreviewService.getPdfBlob');
+    expect(source).toContain('new AbortController()');
+    expect(source).toContain('window.URL.revokeObjectURL');
+    expect(source).toContain('<iframe');
+    expect(source).toContain('#zoom=page-width&view=FitH');
+    expect(source).toContain('width="90vw"');
+    expect(source).toContain('centered');
+    const pdfPreviewServiceSource = readFileSync(
+      new URL('../../services/reportPdfPreviewService.ts', import.meta.url),
+      'utf8',
+    );
+    expect(pdfPreviewServiceSource).toContain("type: 'application/pdf'");
+
     // Verify filter apply button label "Tổng hợp"
     expect(html).toContain('Tổng hợp');
   });
