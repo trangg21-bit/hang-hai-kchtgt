@@ -89,6 +89,42 @@ export const GLOBAL_KCHT_FIELD_LABELS: Record<string, string> = {
   totalArea: 'Tổng diện tích (m²)',
   constructionYear: 'Năm xây dựng',
   useDate: 'Ngày đưa vào sử dụng',
+  landArea: 'Diện tích đất (m²)',
+  floorArea: 'Diện tích sàn (m²)',
+  model: 'Model',
+  serialNumber: 'Số serial',
+  countryOfOrigin: 'Xuất xứ',
+  manufacturer: 'Hãng sản xuất',
+  assetLocation: 'Vị trí tài sản',
+  quantity: 'Số lượng',
+  quantityUnit: 'Đơn vị tính',
+  assetGroup: 'Nhóm tài sản',
+  assetSubgroup: 'Phân nhóm tài sản',
+  origin: 'Nguồn gốc',
+  barcode: 'Barcode',
+  assetCondition: 'Tình trạng tài sản',
+  usageStatus: 'Hiện trạng sử dụng',
+
+  // Financial & Depreciation
+  originalValue: 'Nguyên giá (VNĐ)',
+  depreciationRate: 'Tỷ lệ hao mòn (%/năm)',
+  accumulatedDepreciation: 'Hao mòn/khấu hao lũy kế (VNĐ)',
+  remainingValue: 'Giá trị còn lại (VNĐ)',
+  assignmentDecisionNumber: 'Số quyết định giao tài sản',
+  depreciationStartDate: 'Ngày bắt đầu tính hao mòn',
+  depreciationMonths: 'Thời gian sử dụng (tháng)',
+  depreciationEndDate: 'Ngày kết thúc tính hao mòn',
+  monthlyDepreciation: 'Mức hao mòn/khấu hao tháng (VNĐ)',
+  declarationDate: 'Ngày kê khai',
+  disposalMethod: 'Hình thức xử lý',
+
+  // Reference IDs
+  beaconStationId: 'Mã đèn biển/nhà trạm',
+  dikeRevetmentId: 'Mã đê kè',
+  anchorageId: 'Mã khu neo đậu',
+  berthId: 'Mã bến cảng',
+  pierId: 'Mã cầu cảng',
+  buoyId: 'Mã phao tiêu',
 
   // Documents & Notes
   documentNumber: 'Số văn bản',
@@ -360,7 +396,7 @@ export function parseWharfAreaHistory(rawV: unknown): ParsedWharfAreaHistoryItem
   const text = String(rawV).trim();
 
   // Tách từng khu bến: ưu tiên phân cách xuống dòng '\n' hoặc dấu ';'
-  let segments: string[] = [];
+  let segments: string[];
   if (text.includes('\n')) {
     segments = text.split(/\r?\n/).map((s) => s.replace(/;$/, '').trim()).filter(Boolean);
   } else if (text.includes(';')) {
@@ -450,13 +486,40 @@ export function renderWharfAreaHistory(rawV: unknown): React.ReactNode {
   );
 }
 
+export interface RawHistoryRecord {
+  id?: string;
+  refId?: string;
+  entityId?: string;
+  entityType?: string;
+  refType?: string | number;
+  status?: string | number;
+  fieldName?: string;
+  changedField?: string;
+  oldValue?: string | null;
+  previousValue?: string | null;
+  newValue?: string | null;
+  value?: string | null;
+  changedBy?: string | null;
+  createdBy?: string | null;
+  approvedBy?: string | null;
+  actorName?: string | null;
+  changedAt?: string | null;
+  createdAt?: string | null;
+  approvedDate?: string | null;
+  reason?: string | null;
+  orgUnitId?: string | null;
+  orgUnitName?: string | null;
+  unitName?: string | null;
+  [key: string]: unknown;
+}
+
 export interface ChangeHistoryRendererOptions {
-  records: any[];
+  records: RawHistoryRecord[];
   fieldLabels?: Record<string, string> | ((field: string) => string);
   groupOrder?: string[];
   formatValue?: (field: string, rawVal: string | null) => React.ReactNode | string | undefined;
-  resolveUnitName?: (record: any) => string;
-  resolveActorName?: (actor: string, record: any) => string;
+  resolveUnitName?: (record: RawHistoryRecord) => string;
+  resolveActorName?: (actor: string, record: RawHistoryRecord) => string;
   ignoredFields?: Set<string>;
   emptyMessage?: string;
 }
@@ -533,14 +596,28 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
     return String(bt) < String(at) ? -1 : String(bt) > String(at) ? 1 : 0;
   });
 
+  const normalizeGroupFn = (fn: string): string => {
+    const t = (fn || '').trim();
+    if (t === 'attachments' || t === 'Tài liệu đính kèm' || t === 'File đính kèm') {
+      return 'attachments';
+    }
+    return t;
+  };
+
   // Gom nhóm trong khoảng 10 giây (chuẩn Cảng biển)
-  const groups: { tsMs: number; ts: string; actor: string; items: any[] }[] = [];
+  const groups: { tsMs: number; ts: string; actor: string; items: RawHistoryRecord[] }[] = [];
   for (const r of sorted) {
     const ts = r.changedAt || r.createdAt || r.approvedDate || '';
     const timeMs = ts ? new Date(ts).getTime() || 0 : 0;
     const actor = String(r.changedBy ?? r.createdBy ?? r.approvedBy ?? r.actorName ?? '');
     const g = groups[groups.length - 1];
-    if (g && g.actor === actor && Math.abs(g.tsMs - timeMs) <= 10000) {
+    const rawFn = normalizeGroupFn(r.changedField ?? r.fieldName ?? '');
+    const alreadyHasField = Boolean(
+      rawFn &&
+      g &&
+      g.items.some((it: RawHistoryRecord) => normalizeGroupFn(it.changedField ?? it.fieldName ?? '') === rawFn)
+    );
+    if (g && g.actor === actor && Math.abs(g.tsMs - timeMs) <= 10000 && !alreadyHasField) {
       g.items.push(r);
     } else {
       groups.push({ tsMs: timeMs, ts, actor, items: [r] });
@@ -548,8 +625,8 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
   }
 
   const cards = groups.map((g, gi) => {
-    const attachmentItems: any[] = [];
-    const nonAttachmentItems: any[] = [];
+    const attachmentItems: RawHistoryRecord[] = [];
+    const nonAttachmentItems: RawHistoryRecord[] = [];
 
     for (const it of g.items) {
       const rawFn = (it.changedField ?? it.fieldName ?? '').trim();
@@ -611,17 +688,23 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
           mUp[1].split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => addedFileNames.add(f));
         }
         const st = it.status;
-        if (st === 8 || st === 'ATTACHMENT_DELETED') {
-          const raw = it.previousValue ?? it.oldValue;
-          if (raw && isBlankOrDash(it.newValue ?? it.value)) {
-            String(raw).split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => deletedFileNames.add(f));
+        const rawOld = norm(it.previousValue ?? it.oldValue);
+        const rawNew = norm(it.newValue ?? it.value);
+        if (st === 8 || st === 'ATTACHMENT_DELETED' || (!isBlankOrDash(rawOld) && isBlankOrDash(rawNew))) {
+          if (rawOld) {
+            String(rawOld).split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => deletedFileNames.add(f));
           }
         }
-        if (st === 7 || st === 'ATTACHMENT_UPLOADED') {
-          const raw = it.newValue ?? it.value;
-          if (raw && isBlankOrDash(it.previousValue ?? it.oldValue)) {
-            String(raw).split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => addedFileNames.add(f));
+        if (st === 7 || st === 'ATTACHMENT_UPLOADED' || (isBlankOrDash(rawOld) && !isBlankOrDash(rawNew))) {
+          if (rawNew) {
+            String(rawNew).split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f: string) => addedFileNames.add(f));
           }
+        }
+        if (!isBlankOrDash(rawOld) && !isBlankOrDash(rawNew) && rawOld !== rawNew) {
+          const oldList = String(rawOld).split(',').map((s: string) => s.trim()).filter(Boolean);
+          const newList = String(rawNew).split(',').map((s: string) => s.trim()).filter(Boolean);
+          oldList.filter((f: string) => !newList.includes(f)).forEach((f: string) => deletedFileNames.add(f));
+          newList.filter((f: string) => !oldList.includes(f)).forEach((f: string) => addedFileNames.add(f));
         }
       }
 

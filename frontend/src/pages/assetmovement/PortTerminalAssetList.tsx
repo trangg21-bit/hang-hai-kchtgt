@@ -26,7 +26,7 @@ import {
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
-import { renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash } from "../../utils/changeHistoryRenderer";
+import { renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, type RawHistoryRecord } from "../../utils/changeHistoryRenderer";
 import { formatHistoryNumber } from "../../utils/numFmt";
 import toast from "../../components/ToastNotification";
 import {
@@ -117,6 +117,9 @@ const PORT_TERMINAL_ASSET_FIELD_LABELS: Record<string, string> = {
   usingOrgUnitId: 'Đơn vị sử dụng',
   berthId: 'Mã bến cảng',
   portTerminalId: 'Mã bến cảng',
+  anchorageId: 'Mã khu neo đậu',
+  beaconStationId: 'Mã đèn biển và nhà trạm gắn liền với đèn biển',
+  dikeRevetmentId: 'Mã đê kè',
   assetType: 'Loại tài sản',
   types: 'Phân loại tài sản',
   assetCode: 'Mã tài sản',
@@ -127,7 +130,14 @@ const PORT_TERMINAL_ASSET_FIELD_LABELS: Record<string, string> = {
   assetGroup: 'Nhóm tài sản',
   assetSubgroup: 'Phân nhóm tài sản',
   origin: 'Nguồn gốc',
+  quantity: 'Số lượng',
+  quantityUnit: 'Đơn vị tính',
+  model: 'Model',
+  serialNumber: 'Số serial',
+  countryOfOrigin: 'Xuất xứ',
+  manufacturer: 'Hãng sản xuất',
   address: 'Địa chỉ',
+  assetLocation: 'Vị trí tài sản',
   landArea: 'Diện tích đất (m²)',
   floorArea: 'Diện tích sàn (m²)',
   constructionYear: 'Năm xây dựng',
@@ -242,7 +252,7 @@ function PortTerminalAssetList({
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<PortTerminalAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [historyFrom, setHistoryFrom] = useState("");
@@ -805,7 +815,7 @@ function PortTerminalAssetList({
         label: "Loại tài sản",
         type: "select",
         placeholder: "Chọn loại tài sản",
-        options: [{ value: "PORT_TERMINAL", label: "Tài sản bến cảng" }],
+        options: [{ value: screenConfig.assetType, label: screenConfig.title }],
       },
       {
         key: "assetCode",
@@ -884,18 +894,26 @@ function PortTerminalAssetList({
         render: (v) => orgName.get(v as string) || '',
       },
       {
-        title: 'MÃ BẾN CẢNG',
-        dataIndex: 'berthId',
+        title: screenConfig.relationColumnTitle,
+        dataIndex: screenConfig.relationField,
         type: TableColumnType.Text,
-        width: 190,
-        render: (v) => relatedInfrastructureMap.get(v as string)?.code || '',
+        width: screenConfig.relationColumnWidth,
+        render: (v, record) => {
+          const relId = (v || record[screenConfig.relationField]) as string | undefined;
+          const item = relId ? relatedInfrastructureMap.get(relId) : undefined;
+          return item ? (
+            <span title={`${item.code} - ${item.name}`}>
+              {item.code}
+            </span>
+          ) : (relId || '—');
+        },
       },
       {
         title: 'LOẠI TÀI SẢN',
         dataIndex: 'assetType',
         type: TableColumnType.Text,
-        width: 160,
-        render: () => 'Tài sản bến cảng',
+        width: 220,
+        render: () => screenConfig.title,
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -979,7 +997,7 @@ function PortTerminalAssetList({
         ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]
         : []),
     ],
-  }), [openDetail, openEdit, openHistory, operationForm, orgName, relatedInfrastructureMap]);
+  }), [openDetail, openEdit, openHistory, operationForm, orgName, relatedInfrastructureMap, screenConfig]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
@@ -1321,7 +1339,13 @@ function PortTerminalAssetList({
                   if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
                     return orgName.get(raw!) || raw;
                   }
-                  if (fn === 'berthId' || fn === 'portTerminalId') {
+                  if (
+                    fn === 'berthId' ||
+                    fn === 'portTerminalId' ||
+                    fn === 'beaconStationId' ||
+                    fn === 'anchorageId' ||
+                    fn === 'dikeRevetmentId'
+                  ) {
                     const item = relatedInfrastructureMap.get(raw!);
                     return item ? `${item.code} - ${item.name}` : raw;
                   }
