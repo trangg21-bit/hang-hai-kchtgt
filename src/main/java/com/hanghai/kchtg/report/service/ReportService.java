@@ -6,8 +6,10 @@ import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
 import com.hanghai.kchtg.managedasset.entity.ManagedAsset;
 import com.hanghai.kchtg.managedasset.repository.ManagedAssetRepository;
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.entity.Pier;
 import com.hanghai.kchtg.port.entity.Port;
@@ -42,6 +44,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Service core cho quản lý báo cáo M-016 (Báo cáo & Tổng hợp).
@@ -59,6 +62,7 @@ public class ReportService {
     private final ReportEntityRepository reportEntityRepo;
     private final PointObjectRepository pointRepository;
     private final OrgUnitRepository orgUnitRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
     private final PortRepository portRepository;
     private final BerthRepository berthRepository;
     private final PierRepository pierRepository;
@@ -182,9 +186,9 @@ public class ReportService {
             return getPreviewF146(request);
         } else if ("F-147".equalsIgnoreCase(reportCodeStr)) {
             return getPreviewF147(request);
-        } else if ("F-148".equalsIgnoreCase(reportCodeStr)) {
+        } else if ("F-148".equalsIgnoreCase(reportCodeStr) || "BCKCHT_163".equalsIgnoreCase(reportCodeStr)) {
             return getPreviewF148(request);
-        } else if ("F-149".equalsIgnoreCase(reportCodeStr)) {
+        } else if ("F-149".equalsIgnoreCase(reportCodeStr) || "BCKCHT_164".equalsIgnoreCase(reportCodeStr)) {
             return getPreviewF149(request);
         } else {
             for (ReportHandler handler : reportHandlers) {
@@ -938,17 +942,9 @@ public class ReportService {
     }
 
     private ReportResponse getPreviewF148(ReportPreviewRequest request) {
-        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-
-        boolean isRoot = false;
-
-        if (targetUnitId != null) {
-            isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> u.getParentId() == null)
-                    .orElse(false);
-        }
-
-        final boolean skipFilter = targetUnitId == null || isRoot;
+        UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        boolean skipFilter = isOrgUnitRoot(targetUnitId);
+        Set<UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
 
         final Integer filterNhom = request.getPortGroup();
 
@@ -958,7 +954,8 @@ public class ReportService {
         // 1. Query Port (ports) as root — matching hh.csdl hierarchy: Cảng biển → Bến
         // cảng → Cầu cảng
         List<Port> allPorts = portRepository.findAll().stream()
-                .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                .filter(cb -> cb.getDeletedAt() == null)
+                .filter(cb -> skipFilter || (cb.getOrgUnitId() != null && allowedUnitIds.contains(cb.getOrgUnitId())))
                 .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                 .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                 .toList();
@@ -1278,18 +1275,14 @@ public class ReportService {
 
     private ReportResponse getPreviewF149(ReportPreviewRequest request) {
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-        boolean isRoot = false;
-        if (targetUnitId != null) {
-            isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> u.getParentId() == null)
-                    .orElse(false);
-        }
-        final boolean skipFilter = targetUnitId == null || isRoot;
+        boolean skipFilter = isOrgUnitRoot(targetUnitId);
+        Set<java.util.UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
         final Integer filterNhom = request.getPortGroup();
         final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear()
                 : LocalDate.now().getYear();
         List<Port> ports = portRepository.findAll().stream()
-                .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                .filter(cb -> cb.getDeletedAt() == null)
+                .filter(cb -> skipFilter || (cb.getOrgUnitId() != null && allowedUnitIds.contains(cb.getOrgUnitId())))
                 .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                 .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                 .toList();
@@ -3492,28 +3485,23 @@ public class ReportService {
                         : LocalDate.now().getYear();
                 Map<String, String> replacements = buildReplacements(request, reportYear);
 
-                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
                 List<PointObject> points = getFilteredPoints(targetUnitId,
                         reportYear);
 
-                if ("F-148".equalsIgnoreCase(request.getReportCode())) {
+                if ("F-148".equalsIgnoreCase(request.getReportCode()) || "BCKCHT_163".equalsIgnoreCase(request.getReportCode())) {
                     // Custom hierarchical export for F-148 (BCKCHT_163)
                     // Hierarchy: Port → BenCang → Pier (same as getPreviewF148 +
                     // appendF148Hierarchy)
 
-                    boolean isRoot = false;
-                    if (targetUnitId != null) {
-                        isRoot = orgUnitRepository.findById(targetUnitId)
-                                .map(u -> u.getParentId() == null)
-                                .orElse(false);
-                    }
-
-                    final boolean skipFilter = targetUnitId == null || isRoot;
+                    boolean skipFilter = isOrgUnitRoot(targetUnitId);
+                    Set<UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
                     final Integer filterNhom = request.getPortGroup();
 
                     // 1. Query Port as root — same as getPreviewF148
                     List<Port> allPorts = portRepository.findAll().stream()
-                            .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                            .filter(cb -> cb.getDeletedAt() == null)
+                            .filter(cb -> skipFilter || (cb.getOrgUnitId() != null && allowedUnitIds.contains(cb.getOrgUnitId())))
                             .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                             .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                             .toList();
@@ -3673,24 +3661,18 @@ public class ReportService {
                     finalizeWorkbookSheet(workbook);
 
                     return outputWorkbook(workbook, destSheet, isExcel);
-                } else if ("F-149".equalsIgnoreCase(request.getReportCode())) {
+                } else if ("F-149".equalsIgnoreCase(request.getReportCode()) || "BCKCHT_164".equalsIgnoreCase(request.getReportCode())) {
                     // Custom hierarchical export for F-149 (BCKCHT_164) using real Port
                     // entities
 
-                    boolean isRoot = false;
-
-                    if (targetUnitId != null) {
-                        isRoot = orgUnitRepository.findById(targetUnitId)
-                                .map(u -> u.getParentId() == null)
-                                .orElse(false);
-                    }
-
-                    final boolean skipFilter = targetUnitId == null || isRoot;
+                    boolean skipFilter = isOrgUnitRoot(targetUnitId);
+                    Set<UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
 
                     final Integer filterNhom = request.getPortGroup();
 
                     List<Port> ports = portRepository.findAll().stream()
-                            .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                            .filter(cb -> cb.getDeletedAt() == null)
+                            .filter(cb -> skipFilter || (cb.getOrgUnitId() != null && allowedUnitIds.contains(cb.getOrgUnitId())))
                             .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
                             .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                             .toList();
@@ -4762,20 +4744,57 @@ public class ReportService {
         return null;
     }
 
-    private List<PointObject> getFilteredPoints(java.util.UUID targetUnitId,
-            int reportYear) {
-        boolean isRoot = false;
-
-        if (targetUnitId != null) {
-            isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> u.getParentId() == null)
-                    .orElse(false);
+    private boolean isOrgUnitRoot(UUID targetUnitId) {
+        if (targetUnitId == null) {
+            return true;
         }
+        return orgUnitRepository.findById(targetUnitId)
+                .map(u -> u.getParentId() == null
+                        || "G17.43".equalsIgnoreCase(u.getCode())
+                        || "G17".equalsIgnoreCase(u.getCode())
+                        || (u.getName() != null && (u.getName().toLowerCase().contains("cục hàng hải") || u.getName().toLowerCase().contains("bộ giao thông"))))
+                .orElse(false);
+    }
 
-        final boolean skipFilter = targetUnitId == null || isRoot;
+    private Set<UUID> getSubtreeOrgUnitIds(UUID targetUnitId) {
+        if (targetUnitId == null) {
+            return Collections.emptySet();
+        }
+        if (orgUnitCacheService == null) {
+            return Set.of(targetUnitId);
+        }
+        List<OrgUnitResponse> allUnits = orgUnitCacheService.getList();
+        if (allUnits == null || allUnits.isEmpty()) {
+            return Set.of(targetUnitId);
+        }
+        Map<UUID, List<UUID>> childIdsByParent = allUnits.stream()
+                .filter(unit -> unit.getId() != null && unit.getParentId() != null)
+                .collect(Collectors.groupingBy(
+                        OrgUnitResponse::getParentId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(OrgUnitResponse::getId, Collectors.toList())));
+
+        Set<UUID> result = new HashSet<>();
+        List<UUID> queue = new ArrayList<>();
+        queue.add(targetUnitId);
+        for (int index = 0; index < queue.size(); index++) {
+            UUID currentId = queue.get(index);
+            if (!result.add(currentId)) {
+                continue;
+            }
+            queue.addAll(childIdsByParent.getOrDefault(currentId, Collections.emptyList()));
+        }
+        return result;
+    }
+
+    private List<PointObject> getFilteredPoints(UUID targetUnitId,
+            int reportYear) {
+        boolean skipFilter = isOrgUnitRoot(targetUnitId);
+        Set<UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
 
         return pointRepository.findAll().stream()
-                .filter(p -> skipFilter || targetUnitId.equals(p.getUnitId()))
+                .filter(p -> p.getDeletedAt() == null)
+                .filter(p -> skipFilter || (p.getUnitId() != null && allowedUnitIds.contains(p.getUnitId())))
                 .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
                 .toList();
     }

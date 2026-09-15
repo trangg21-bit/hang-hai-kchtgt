@@ -1,0 +1,10 @@
+{
+  "at": 1789376620528,
+  "kind": "tripwire_breach",
+  "change_class": "C0",
+  "breach_kind": "file_budget",
+  "triage_id": "TRI-1789375789550-3329",
+  "loc_changed": 9,
+  "files_touched": 2,
+  "detail": "Intake tripwire — file budget: writing \"frontend/src/pages/reports/ReportViewer.test.tsx\" would touch 3 distinct files, over the C0 limit of 2. Files already touched: [frontend/src/components/shared/common-table/CommonTable.tsx, frontend/src/pages/reports/ReportViewer.tsx]. The edit is refused. FIX: add \"frontend/src/pages/reports/ReportViewer.test.tsx\" to your candidate_files, re-run intake_triag…"
+}

@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.report.service;
 
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.report.entity.InlandWaterwayPortCall;
@@ -15,7 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service tính toán và tổng hợp dữ liệu cho phân hệ báo cáo BCDL (F-161 đến F-169).
@@ -31,19 +43,55 @@ public class BcdlAggregationService {
     private final InlandWaterwayPortCallRepository inlandWaterwayPortCallRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final BerthRepository berthRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     public boolean isOrgUnitRoot(UUID orgUnitId) {
         if (orgUnitId == null) return true;
         return orgUnitRepository.findById(orgUnitId)
-                .map(u -> u.getParentId() == null)
+                .map(u -> u.getParentId() == null
+                        || "G17.43".equalsIgnoreCase(u.getCode())
+                        || "G17".equalsIgnoreCase(u.getCode())
+                        || (u.getName() != null && (u.getName().toLowerCase().contains("cục hàng hải") || u.getName().toLowerCase().contains("bộ giao thông"))))
                 .orElse(false);
+    }
+
+    public Set<UUID> getSubtreeOrgUnitIds(UUID targetUnitId) {
+        if (targetUnitId == null) {
+            return Collections.emptySet();
+        }
+        if (orgUnitCacheService == null) {
+            return Set.of(targetUnitId);
+        }
+        List<OrgUnitResponse> allUnits = orgUnitCacheService.getList();
+        if (allUnits == null || allUnits.isEmpty()) {
+            return Set.of(targetUnitId);
+        }
+        Map<UUID, List<UUID>> childIdsByParent = allUnits.stream()
+                .filter(unit -> unit.getId() != null && unit.getParentId() != null)
+                .collect(Collectors.groupingBy(
+                        OrgUnitResponse::getParentId,
+                        LinkedHashMap::new,
+                        Collectors.mapping(OrgUnitResponse::getId, Collectors.toList())));
+
+        Set<UUID> result = new HashSet<>();
+        List<UUID> queue = new ArrayList<>();
+        queue.add(targetUnitId);
+        for (int index = 0; index < queue.size(); index++) {
+            UUID currentId = queue.get(index);
+            if (!result.add(currentId)) {
+                continue;
+            }
+            queue.addAll(childIdsByParent.getOrDefault(currentId, Collections.emptyList()));
+        }
+        return result;
     }
 
     public List<ShipPortCall> getFilteredShipPortCalls(UUID targetUnitId, LocalDate fromDate, LocalDate toDate) {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
+        Set<UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
         return shipPortCallRepository.findAll().stream()
                 .filter(s -> s.getDeletedAt() == null)
-                .filter(s -> skipFilter || targetUnitId.equals(s.getOrgUnitId()))
+                .filter(s -> skipFilter || (s.getOrgUnitId() != null && allowedUnitIds.contains(s.getOrgUnitId())))
                 .filter(s -> {
                     LocalDate d = s.getReportDate() != null ? s.getReportDate()
                             : s.getArrivalDate() != null ? s.getArrivalDate() : s.getDepartureDate();
@@ -57,9 +105,10 @@ public class BcdlAggregationService {
 
     public List<InlandWaterwayPortCall> getFilteredInlandPortCalls(UUID targetUnitId, LocalDate fromDate, LocalDate toDate) {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
+        Set<UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
         return inlandWaterwayPortCallRepository.findAll().stream()
                 .filter(s -> s.getDeletedAt() == null)
-                .filter(s -> skipFilter || targetUnitId.equals(s.getOrgUnitId()))
+                .filter(s -> skipFilter || (s.getOrgUnitId() != null && allowedUnitIds.contains(s.getOrgUnitId())))
                 .filter(s -> {
                     LocalDate d = s.getReportDate() != null ? s.getReportDate()
                             : s.getArrivalDate() != null ? s.getArrivalDate() : s.getDepartureDate();
@@ -613,9 +662,10 @@ public class BcdlAggregationService {
 
         // Khởi tạo từ danh mục bến cảng hiện hữu
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
+        Set<UUID> allowedUnitIds = skipFilter ? Collections.emptySet() : getSubtreeOrgUnitIds(targetUnitId);
         List<Berth> berths = berthRepository.findAll().stream()
                 .filter(b -> b.getDeletedAt() == null)
-                .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
+                .filter(b -> skipFilter || (b.getOrgUnitId() != null && allowedUnitIds.contains(b.getOrgUnitId())))
                 .toList();
 
         for (Berth b : berths) {

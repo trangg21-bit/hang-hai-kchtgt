@@ -1,15 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  Button,
   Card,
   Modal,
-  Table,
   Typography,
   Empty,
   Alert,
-  Tooltip,
-  Space,
+  Spin,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
 import {
@@ -33,12 +30,10 @@ import type { ReportRequest, ReportResponse } from '../../types/report';
 import { REPORT_TEMPLATES } from './ReportList';
 import { organizationService, type Organization } from '../../services/organizationService';
 import {
-  statusOperational,
-  textSecondary, textPrimary,
+  textPrimary,
   spaceSm, spaceLg,
-  fontSizeLg,
 } from '../../tokens';
-import { colors, layout } from '../../theme';
+import { colors } from '../../theme';
 import {
   ScreenHeader,
   DataTable,
@@ -47,10 +42,10 @@ import {
   type FilterOption,
   type ScreenHeaderAction,
 } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import * as themeTokenChk from '../../themetokenchk';
-import { ReportColumnSelector, ReportPreviewModal, type ColumnItem } from '../../components/reports';
+import { CommonTable, TableColumnType } from '../../components/shared/common-table';
+import { reportPdfPreviewService } from '../../services/reportPdfPreviewService';
 
 const { Text } = Typography;
 
@@ -71,13 +66,6 @@ interface ReportViewerFilters {
   [key: string]: unknown;
 }
 
-const SUMMARY_COLUMNS: ColumnItem[] = [
-  { key: 'reportCode', label: 'Mã báo cáo' },
-  { key: 'reportName', label: 'Tên báo cáo' },
-  { key: 'orgUnitName', label: 'Đơn vị báo cáo' },
-  { key: 'periodText', label: 'Năm báo cáo' },
-];
-
 export default function ReportViewer() {
   const { code } = useParams<{ code: string }>();
 
@@ -85,33 +73,17 @@ export default function ReportViewer() {
   const template = REPORT_TEMPLATES.find((t) => t.code === reportCode);
 
   const [loadingPreview, setLoadingPreview] = useState<boolean>(false);
-  const [loadingExport, setLoadingExport] = useState<'EXCEL' | 'PDF' | null>(null);
+  const [, setLoadingExport] = useState<'EXCEL' | 'PDF' | null>(null);
   const [reportData, setReportData] = useState<ReportResponse | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(20);
   const [reloadKey, setReloadKey] = useState<number>(0);
 
-  // Column visibility & Popup states
-  const [showStt, setShowStt] = useState<boolean>(true);
-  const [visibleSummaryKeys, setVisibleSummaryKeys] = useState<string[]>([
-    'reportCode',
-    'reportName',
-    'orgUnitName',
-    'periodText',
-  ]);
-  const [summaryColumnOrder, setSummaryColumnOrder] = useState<string[]>([
-    'reportCode',
-    'reportName',
-    'orgUnitName',
-    'periodText',
-  ]);
-  const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
-
-  const handleResetColumns = useCallback(() => {
-    setShowStt(true);
-    setVisibleSummaryKeys(['reportCode', 'reportName', 'orgUnitName', 'periodText']);
-    setSummaryColumnOrder(['reportCode', 'reportName', 'orgUnitName', 'periodText']);
-  }, []);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>();
+  const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
+  const [pdfPreviewError, setPdfPreviewError] = useState<string>();
+  const pdfPreviewRequestRef = useRef<AbortController | undefined>(undefined);
 
   // Filter states
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -177,12 +149,11 @@ export default function ReportViewer() {
     };
 
     void loadOrgs();
-  }, [reportCode]);
+  }, []);
 
   const fetchPreview = useCallback(async () => {
     if (!reportCode) return;
 
-    setCurrentPage(1);
     setLoadingPreview(true);
     setPreviewError(null);
     try {
@@ -225,51 +196,53 @@ export default function ReportViewer() {
     }
   }, [reportCode, draftFilters, isYearReport, isSpecialContentReport, isPeriodReport]);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- tải dữ liệu khi trang hoặc reloadKey thay đổi */
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- tải dữ liệu khi trang hoặc reloadKey thay đổi
-    setCurrentPage(1);
-    setPageSize(20);
+    void reloadKey;
     if (template?.status === 'active') {
       void fetchPreview();
     } else {
       setReportData(null);
     }
   }, [fetchPreview, template, reloadKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const buildExportRequest = useCallback((format: 'EXCEL' | 'PDF'): ReportRequest => {
+    const request: ReportRequest = {
+      reportCode,
+      format,
+      orgUnitId: draftFilters.orgUnitId,
+      portGroup: draftFilters.portGroup,
+      reportPeriod: draftFilters.reportPeriod,
+      dataSource: reportCode === 'F-142' ? draftFilters.dataSource : undefined,
+      processingMethods: reportCode === 'F-147' ? draftFilters.processingMethods : undefined,
+    };
+
+    if (isYearReport && draftFilters.reportYear) {
+      request.startDate = draftFilters.reportYear.startOf('year').format('YYYY-MM-DD');
+      request.endDate = draftFilters.reportYear.endOf('year').format('YYYY-MM-DD');
+    } else if (isSpecialContentReport) {
+      request.bcNoiDung = draftFilters.bcNoiDung;
+      request.startDate = dayjs().startOf('year').format('YYYY-MM-DD');
+      request.endDate = dayjs().endOf('year').format('YYYY-MM-DD');
+    } else if (reportCode === 'F-147') {
+      request.bcNoiDung = draftFilters.processingMethods?.length
+        ? draftFilters.processingMethods.join(',')
+        : undefined;
+      if (draftFilters.dateRange?.[0]) request.startDate = draftFilters.dateRange[0].format('YYYY-MM-DD');
+      if (draftFilters.dateRange?.[1]) request.endDate = draftFilters.dateRange[1].format('YYYY-MM-DD');
+    } else if (isPeriodReport) {
+      if (draftFilters.dateRange?.[0]) request.startDate = draftFilters.dateRange[0].format('YYYY-MM-DD');
+      if (draftFilters.dateRange?.[1]) request.endDate = draftFilters.dateRange[1].format('YYYY-MM-DD');
+    }
+
+    return request;
+  }, [reportCode, draftFilters, isYearReport, isSpecialContentReport, isPeriodReport]);
 
   const handleExport = useCallback(async (format: 'EXCEL' | 'PDF') => {
     setLoadingExport(format);
     try {
-      const request: ReportRequest = {
-        reportCode,
-        format,
-        orgUnitId: draftFilters.orgUnitId,
-        portGroup: draftFilters.portGroup,
-        reportPeriod: draftFilters.reportPeriod,
-        dataSource: reportCode === 'F-142' ? draftFilters.dataSource : undefined,
-        processingMethods: reportCode === 'F-147' ? draftFilters.processingMethods : undefined,
-      };
-
-      if (isYearReport) {
-        if (draftFilters.reportYear) {
-          request.startDate = draftFilters.reportYear.startOf('year').format('YYYY-MM-DD');
-          request.endDate = draftFilters.reportYear.endOf('year').format('YYYY-MM-DD');
-        }
-      } else if (isSpecialContentReport) {
-        request.bcNoiDung = draftFilters.bcNoiDung;
-        request.startDate = dayjs().startOf('year').format('YYYY-MM-DD');
-        request.endDate = dayjs().endOf('year').format('YYYY-MM-DD');
-      } else if (reportCode === 'F-147') {
-        request.bcNoiDung = draftFilters.processingMethods && draftFilters.processingMethods.length > 0
-          ? draftFilters.processingMethods.join(',')
-          : undefined;
-        if (draftFilters.dateRange?.[0]) request.startDate = draftFilters.dateRange[0].format('YYYY-MM-DD');
-        if (draftFilters.dateRange?.[1]) request.endDate = draftFilters.dateRange[1].format('YYYY-MM-DD');
-      } else if (isPeriodReport) {
-        if (draftFilters.dateRange?.[0]) request.startDate = draftFilters.dateRange[0].format('YYYY-MM-DD');
-        if (draftFilters.dateRange?.[1]) request.endDate = draftFilters.dateRange[1].format('YYYY-MM-DD');
-      }
-
-      await reportService.exportReport(request);
+      await reportService.exportReport(buildExportRequest(format));
       message.success(`Xuất ${format === 'EXCEL' ? 'Excel' : 'PDF'} thành công!`);
     } catch (err: unknown) {
       console.error(err);
@@ -277,7 +250,45 @@ export default function ReportViewer() {
     } finally {
       setLoadingExport(null);
     }
-  }, [reportCode, draftFilters, isYearReport, isSpecialContentReport, isPeriodReport]);
+  }, [buildExportRequest]);
+
+  const handlePreviewPdf = useCallback(async () => {
+    pdfPreviewRequestRef.current?.abort();
+    const controller = new AbortController();
+    pdfPreviewRequestRef.current = controller;
+    setPdfPreviewOpen(true);
+    setPdfPreviewLoading(true);
+    setPdfPreviewError(undefined);
+    setPdfPreviewUrl(undefined);
+    try {
+      const blob = await reportPdfPreviewService.getPdfBlob(
+        buildExportRequest('PDF'),
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      const objectUrl = window.URL.createObjectURL(blob);
+      if (controller.signal.aborted) {
+        window.URL.revokeObjectURL(objectUrl);
+        return;
+      }
+      setPdfPreviewUrl(objectUrl);
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return;
+      console.error(err);
+      setPdfPreviewError('Không thể tải bản xem trước PDF');
+    } finally {
+      if (pdfPreviewRequestRef.current === controller) {
+        pdfPreviewRequestRef.current = undefined;
+        setPdfPreviewLoading(false);
+      }
+    }
+  }, [buildExportRequest]);
+
+  useEffect(() => () => pdfPreviewRequestRef.current?.abort(), []);
+
+  useEffect(() => () => {
+    if (pdfPreviewUrl) window.URL.revokeObjectURL(pdfPreviewUrl);
+  }, [pdfPreviewUrl]);
 
   const handleClearFilters = useCallback(() => {
     const defaultOrg = organizations.find((o: Organization) => o.code === 'G17.43') || organizations[0];
@@ -291,6 +302,8 @@ export default function ReportViewer() {
       processingMethods: [],
     });
     setReportData(null);
+    setCurrentPage(1);
+    setPageSize(20);
   }, [organizations]);
 
   const editBccReport = useCallback(async (action: 'edit' | 'delete' | 'history' = 'edit') => {
@@ -596,26 +609,6 @@ export default function ReportViewer() {
       }
     }
 
-    // Common export actions
-    actions.push({
-      key: 'export-excel',
-      label: 'Xuất Excel',
-      variant: 'subtle',
-      icon: <FileExcelOutlined style={{ color: statusOperational, fontSize: fontSizeLg }} />,
-      borderColor: `${statusOperational}80`,
-      color: statusOperational,
-      onClick: () => void handleExport('EXCEL'),
-    });
-    actions.push({
-      key: 'export-pdf',
-      label: 'Xuất PDF',
-      variant: 'subtle',
-      icon: <FileTextOutlined style={{ color: colors.error, fontSize: fontSizeLg }} />,
-      borderColor: `${colors.error}80`,
-      color: colors.error,
-      onClick: () => void handleExport('PDF'),
-    });
-
     return actions;
   }, [
     reportCode,
@@ -624,7 +617,6 @@ export default function ReportViewer() {
     draftFilters.dataSource,
     editBccReport,
     handleRecordAction,
-    handleExport,
   ]);
 
   const selectedOrgName = useMemo(() => {
@@ -666,121 +658,78 @@ export default function ReportViewer() {
       minWidth?: number;
       align?: 'left' | 'center' | 'right';
       fixed?: 'left' | 'right';
+      type: typeof TableColumnType.Template;
       render?: (value: unknown, record: unknown, index: number) => React.ReactNode;
-    }> = [];
-
-    if (showStt) {
-      cols.push({
-        title: 'STT',
-        dataIndex: 'stt',
-        key: 'stt',
-        width: 65,
+    }> = [
+      {
+        type: TableColumnType.Template,
+        title: 'Mã báo cáo',
+        dataIndex: 'reportCode',
+        key: 'reportCode',
+        width: 140,
         align: 'center',
-        render: (_: unknown, __: unknown, idx: number) => idx + 1,
-      });
-    }
-
-    summaryColumnOrder.forEach((colKey) => {
-      if (!visibleSummaryKeys.includes(colKey)) return;
-      if (colKey === 'reportCode') {
-        cols.push({
-          title: 'Mã báo cáo',
-          dataIndex: 'reportCode',
-          key: 'reportCode',
-          width: 140,
-          align: 'center',
-          render: (val: string) => (
-            <span style={{ fontWeight: 600, color: textPrimary }}>{val}</span>
-          ),
-        });
-      } else if (colKey === 'reportName') {
-        cols.push({
-          title: 'Tên báo cáo',
-          dataIndex: 'reportName',
-          key: 'reportName',
-          minWidth: 320,
-          render: (val: string) => (
-            <span
-              style={{
-                color: textPrimary,
-                fontWeight: 500,
-                display: 'inline-block',
-                maxWidth: '100%',
-              }}
-              title={val}
-            >
-              {val}
-            </span>
-          ),
-        });
-      } else if (colKey === 'orgUnitName') {
-        cols.push({
-          title: 'Đơn vị báo cáo',
-          dataIndex: 'orgUnitName',
-          key: 'orgUnitName',
-          width: 280,
-          render: (val: string) => <span style={{ color: textPrimary }}>{val}</span>,
-        });
-      } else if (colKey === 'periodText') {
-        cols.push({
-          title: isYearReport ? 'Năm báo cáo' : 'Kỳ báo cáo',
-          dataIndex: 'periodText',
-          key: 'periodText',
-          width: 130,
-          align: 'center',
-          render: (val: string) => <span style={{ color: textPrimary }}>{val}</span>,
-        });
-      }
-    });
-
-    // Thao tác column
-    cols.push({
-      title: 'Thao tác',
-      key: 'actions',
-      width: 140,
-      align: 'center',
-      fixed: 'right',
-      render: () => (
-        <Space size={6}>
-          <Tooltip title="Xem trước chi tiết báo cáo">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined style={{ color: '#0E6FD6', fontSize: 16 }} />}
-              onClick={() => setPreviewModalOpen(true)}
-            />
-          </Tooltip>
-          <Tooltip title="Xuất Excel">
-            <Button
-              type="text"
-              size="small"
-              icon={<FileExcelOutlined style={{ color: statusOperational, fontSize: 16 }} />}
-              onClick={() => void handleExport('EXCEL')}
-              loading={loadingExport === 'EXCEL'}
-            />
-          </Tooltip>
-          <Tooltip title="Xuất PDF">
-            <Button
-              type="text"
-              size="small"
-              icon={<FileTextOutlined style={{ color: colors.error, fontSize: 16 }} />}
-              onClick={() => void handleExport('PDF')}
-              loading={loadingExport === 'PDF'}
-            />
-          </Tooltip>
-        </Space>
-      ),
-    });
+        render: (val: string) => (
+          <span style={{ fontWeight: 600, color: textPrimary }}>{val}</span>
+        ),
+      },
+      {
+        type: TableColumnType.Template,
+        title: 'Tên báo cáo',
+        dataIndex: 'reportName',
+        key: 'reportName',
+        width: 500,
+        minWidth: 420,
+        render: (val: string) => (
+          <span
+            style={{
+              color: textPrimary,
+              fontWeight: 500,
+              display: 'inline-block',
+              maxWidth: '100%',
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+            }}
+            title={val}
+          >
+            {val}
+          </span>
+        ),
+      },
+      {
+        type: TableColumnType.Template,
+        title: 'Đơn vị báo cáo',
+        dataIndex: 'orgUnitName',
+        key: 'orgUnitName',
+        width: 360,
+        minWidth: 320,
+        render: (val: string) => (
+          <span
+            style={{
+              color: textPrimary,
+              display: 'inline-block',
+              maxWidth: '100%',
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+            }}
+            title={val}
+          >
+            {val}
+          </span>
+        ),
+      },
+      {
+        type: TableColumnType.Template,
+        title: isYearReport ? 'Năm báo cáo' : 'Kỳ báo cáo',
+        dataIndex: 'periodText',
+        key: 'periodText',
+        width: 130,
+        align: 'center',
+        render: (val: string) => <span style={{ color: textPrimary }}>{val}</span>,
+      },
+    ];
 
     return cols;
-  }, [
-    showStt,
-    summaryColumnOrder,
-    visibleSummaryKeys,
-    isYearReport,
-    loadingExport,
-    handleExport,
-  ]);
+  }, [isYearReport]);
 
   const customTokens = useMemo(() => ({
     ...themeTokenChk,
@@ -868,69 +817,46 @@ export default function ReportViewer() {
               />
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-              {/* Action bar on top of table */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 0 12px 0',
-                }}
-              >
-                <ReportColumnSelector
-                  columns={SUMMARY_COLUMNS}
-                  visibleKeys={visibleSummaryKeys}
-                  columnOrder={summaryColumnOrder}
-                  showStt={showStt}
-                  onShowSttChange={setShowStt}
-                  onChange={(keys, order) => {
-                    setVisibleSummaryKeys(keys);
-                    setSummaryColumnOrder(order);
-                  }}
-                  onReset={handleResetColumns}
-                />
-
-                <div style={{ fontSize: 13, color: textSecondary }}>
-                  {summaryRows.length > 0 ? '1-1 trong 1' : '0-0 trong 0'}
-                </div>
-              </div>
-
-              {/* Master Summary Table */}
-              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-                <Table
-                  columns={summaryTableColumns}
-                  dataSource={summaryRows}
-                  pagination={false}
-                  bordered
-                  size="middle"
-                  scroll={{ x: layout.listTableMinWidth }}
-                  locale={{
-                    emptyText: (
-                      <Empty
-                        description={
-                          <span style={{ color: textSecondary }}>
-                            Bấm nút Tổng hợp ở thanh công cụ bên trái để kết xuất dữ liệu.
-                          </span>
-                        }
-                      />
-                    ),
-                  }}
-                />
-              </div>
-
-              <div style={{ marginTop: 'auto', paddingTop: 8 }}>
-                <Pagination
-                  total={summaryRows.length}
-                  current={currentPage}
-                  pageSize={pageSize}
-                  onChange={(page, size) => {
-                    setCurrentPage(page);
-                    setPageSize(size);
-                  }}
-                />
-              </div>
-            </div>
+            <CommonTable
+              options={{
+                mainColumns: summaryTableColumns,
+                hideSttColumn: false,
+                actions: [
+                  {
+                    key: 'preview-pdf',
+                    label: 'Xem trước PDF',
+                    icon: <EyeOutlined />,
+                    onClick: () => void handlePreviewPdf(),
+                  },
+                  {
+                    key: 'export-excel',
+                    label: 'Xuất Excel',
+                    icon: <FileExcelOutlined />,
+                    onClick: () => void handleExport('EXCEL'),
+                  },
+                  {
+                    key: 'export-pdf',
+                    label: 'Xuất PDF',
+                    icon: <FileTextOutlined />,
+                    onClick: () => void handleExport('PDF'),
+                  },
+                ],
+                enablePaging: true,
+                bordered: true,
+              }}
+              dataSource={summaryRows}
+              total={summaryRows.length}
+              page={currentPage}
+              pageSize={pageSize}
+              onPageChange={(page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              }}
+              loading={loadingPreview}
+              emptyState={(
+                <Empty description="Bấm nút Tổng hợp ở thanh công cụ bên trái để kết xuất dữ liệu." />
+              )}
+            />
           )}
         </FilterTableLayout>
 
@@ -999,19 +925,37 @@ export default function ReportViewer() {
           />
         </Modal>
 
-        {/* Modal Xem trước chi tiết báo cáo */}
-        <ReportPreviewModal
-          open={previewModalOpen}
-          onClose={() => setPreviewModalOpen(false)}
-          reportCode={template.vmdCode || template.code}
-          reportName={template.name}
-          orgUnitName={selectedOrgName}
-          reportPeriodText={reportPeriodText}
-          reportData={reportData}
-          loading={loadingPreview}
-          onExport={handleExport}
-          loadingExport={loadingExport}
-        />
+        <Modal
+          open={pdfPreviewOpen}
+          title={`Xem trước PDF: ${template.name}`}
+          footer={null}
+          width="90vw"
+          centered
+          destroyOnHidden
+          onCancel={() => {
+            pdfPreviewRequestRef.current?.abort();
+            setPdfPreviewOpen(false);
+            setPdfPreviewLoading(false);
+            setPdfPreviewUrl(undefined);
+            setPdfPreviewError(undefined);
+          }}
+        >
+          <div style={{ height: 'calc(100vh - 180px)', minHeight: 480 }}>
+            {pdfPreviewLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <Spin tip="Đang tạo bản xem trước PDF..." />
+              </div>
+            ) : pdfPreviewError ? (
+              <Alert type="error" showIcon message={pdfPreviewError} />
+            ) : pdfPreviewUrl ? (
+              <iframe
+                src={`${pdfPreviewUrl}#zoom=page-width&view=FitH`}
+                title={`Bản xem trước PDF ${template.name}`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
+            ) : null}
+          </div>
+        </Modal>
       </div>
     </ThemeTokenProvider>
   );
