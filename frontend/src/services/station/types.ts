@@ -185,28 +185,57 @@ export interface CoastalStationInmarsatHistoryResponse {
 export interface CoastalStationCospasSarsatRequest {
   stationCode: string;
   stationName: string;
-  frequency?: string;
+  unitId?: string;
+  orgUnitId?: string;
+  operatingOrgId?: string;
+  provinceId?: number;
+  locationAddress?: string;
+  conditionStatus?: string;
   coverageArea?: string;
+  services?: string[];
+  frequency?: string;
+  description?: string;
+  note?: string;
   beaconProtocol?: string;
   emergencyChannel?: string;
   antennaType?: string;
-  locationAddress?: string;
   contactPerson?: string;
   contactPhone?: string;
   signalRange?: number;
   operatingMode?: string;
+  // GIS Fields
+  objectType?: string;
+  geometryType?: string;
+  symbolId?: string;
+  coordinateSystem?: string;
+  displayRule?: string;
+  coordinates?: Array<{ latitude: number; longitude: number; pointOrder?: number }>;
+  wktGeometry?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface CoastalStationCospasSarsatResponse {
   id: string;
+  code?: string;
   stationCode: string;
+  name?: string;
   stationName: string;
-  frequency?: string;
+  unitId?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  operatingOrgId?: string;
+  provinceId?: number;
+  locationAddress?: string;
+  conditionStatus?: string;
   coverageArea?: string;
+  services?: string[];
+  frequency?: string;
+  description?: string;
+  note?: string;
   beaconProtocol?: string;
   emergencyChannel?: string;
   antennaType?: string;
-  locationAddress?: string;
   contactPerson?: string;
   contactPhone?: string;
   signalRange?: number;
@@ -216,16 +245,45 @@ export interface CoastalStationCospasSarsatResponse {
   approvalLevel?: number;
   submittedAt?: string;
   submittedBy?: string;
+  submittedByName?: string;
   approverLevel1?: string;
+  approverLevel1Name?: string;
   approvedDateLevel1?: string;
+  level1ApprovalContent?: string;
   approverLevel2?: string;
+  approverLevel2Name?: string;
   approvedDateLevel2?: string;
+  level2ApprovalContent?: string;
   approvedBy?: string;
+  approvedByName?: string;
   approvedDate?: string;
   rejectionReason?: string;
+  owningOrgId?: string;
+  owningOrgName?: string;
   createdAt?: string;
   updatedAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
   deletedAt?: string;
+  // GIS Fields
+  objectType?: string;
+  geometryType?: string;
+  symbolId?: string;
+  coordinateSystem?: string;
+  displayRule?: string;
+  coordinates?: Array<{ latitude: number; longitude: number; pointOrder?: number }>;
+  wktGeometry?: string;
+  latitude?: number;
+  longitude?: number;
+  files?: any[];
+}
+
+export interface CoastalStationCospasSarsatOptionResponse {
+  id: string;
+  code: string;
+  name: string;
+  orgUnitId?: string;
+  conditionStatus?: string;
 }
 
 export interface CoastalStationCospasSarsatHistoryResponse {

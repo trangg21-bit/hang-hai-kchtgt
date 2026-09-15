@@ -49,12 +49,16 @@ const filterLabelStyle: React.CSSProperties = {
 
 
 const CONDITION_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  OPERATIONAL: { color: statusOperational, label: 'Đang hoạt động' },
-  STOPPED: { color: statusCritical, label: 'Dừng hoạt động' },
+  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  DANG_HOAT_DONG: { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  STOPPED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
   MAINTENANCE: { color: statusAttention, label: 'Đang bảo trì' },
   UNDER_CONSTRUCTION: { color: actionPrimary, label: 'Đang xây dựng' },
   NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
   SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
 };
 
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
@@ -319,7 +323,7 @@ export function AisSystemList() {
       if (radarRes.status === 'fulfilled' && Array.isArray(radarRes.value)) {
         setRadarStations(radarRes.value.map((item: any) => ({
           id: item.id,
-          name: item.name,
+          name: item.name || item.stationName || item.code || item.id,
           orgUnitId: item.orgUnitId || item.managementUnitId || item.operatingUnitId,
         })));
       }
@@ -469,8 +473,11 @@ export function AisSystemList() {
     setPage(1);
   }, []);
 
-  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+  const sortOrderFor = useCallback(
+    (key: string): 'ascend' | 'descend' | null =>
+      (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null),
+    [sortField, sortDirection]
+  );
 
   // Bộ so sánh trung tính: thứ tự do server quyết định, hàm này chỉ để antd hiện
   // biểu tượng sắp xếp mà không tự sắp lại 20 dòng của trang hiện tại.
@@ -493,7 +500,15 @@ export function AisSystemList() {
 
   const handleFilterSearch = (values: Record<string, any>) => {
     setPage(1);
-    setAppliedFilterValues(values);
+    const trimmedValues = { ...values };
+    if (typeof trimmedValues.name === 'string') {
+      trimmedValues.name = trimmedValues.name.trim();
+    }
+    if (typeof trimmedValues.code === 'string') {
+      trimmedValues.code = trimmedValues.code.trim();
+    }
+    setFilterValues(trimmedValues);
+    setAppliedFilterValues(trimmedValues);
   };
 
   const handleFilterReset = () => {
@@ -735,7 +750,7 @@ export function AisSystemList() {
       },
     },
     {
-      key: 'province',
+      key: 'provinceId',
       label: 'Địa điểm (Tỉnh/Thành phố)',
       dataIndex: 'provinceId',
       width: 200,
@@ -870,7 +885,7 @@ export function AisSystemList() {
     const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1Name === currentUser?.fullName));
     const userUnitType = currentUser?.unitType || '';
     const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-    const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
+    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
 
     const actions: any[] = [
       {
@@ -942,7 +957,7 @@ export function AisSystemList() {
       });
     }
 
-    if ((hasPerm('aissystem:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel) && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
+    if ((hasPerm('aissystem:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin) && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',
@@ -1024,6 +1039,11 @@ export function AisSystemList() {
                   allowClear
                   value={filterValues.name || ''}
                   onChange={(event) => setFilterValues((prev) => ({ ...prev, name: event.target.value }))}
+                  onBlur={() => {
+                    if (filterValues.name) {
+                      setFilterValues((prev) => ({ ...prev, name: prev.name?.trim() }));
+                    }
+                  }}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={{ borderRadius: radiusPill, height: 40 }}
                 />
@@ -1067,6 +1087,11 @@ export function AisSystemList() {
                       allowClear
                       value={filterValues.code || ''}
                       onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
+                      onBlur={() => {
+                        if (filterValues.code) {
+                          setFilterValues((prev) => ({ ...prev, code: prev.code?.trim() }));
+                        }
+                      }}
                       onPressEnter={() => handleFilterSearch(filterValues)}
                       style={{ borderRadius: radiusPill, height: 40 }}
                     />
@@ -1128,6 +1153,7 @@ export function AisSystemList() {
             loading={loading}
             onSort={handleSort}
             scroll={{ x: 'max-content' }}
+            resetScrollKey={filterApprovalStatus}
           />
           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
         </FilterTableLayout>
@@ -1158,6 +1184,42 @@ export function AisSystemList() {
           onLoadMore={loadMoreHistory}
           loadingMore={loadingMoreHistory}
           variant="berth"
+          fieldLabelMap={{
+            code: 'Mã hệ thống AIS',
+            name: 'Tên hệ thống AIS',
+            vtsOperationCenterId: 'Thuộc trung tâm điều hành VTS',
+            vtsSystemId: 'Thuộc hệ thống VTS',
+            radarStationId: 'Trạm radar',
+            operatingOrgId: 'Đơn vị khai thác',
+            orgUnitId: 'Đơn vị quản lý',
+            provinceId: 'Địa điểm (Tỉnh/TP)',
+            detailedLocation: 'Địa điểm chi tiết',
+            unitOfMeasure: 'Đơn vị tính',
+            quantity: 'Số lượng',
+            model: 'Model',
+            specifications: 'Thông số kỹ thuật',
+            manufacturer: 'Hãng sản xuất',
+            commissioningYear: 'Năm đưa vào sử dụng',
+            conditionStatus: 'Tình trạng',
+            maintenanceInfo: 'Thông tin bảo trì',
+            note: 'Ghi chú',
+            spatialId: 'Mã định danh không gian',
+            geometryType: 'Loại đối tượng GIS',
+            coordinates: 'Tọa độ GIS',
+            symbolId: 'Biểu tượng bản đồ',
+            approvalStatus: 'Trạng thái phê duyệt',
+          }}
+          formatValue={(fieldName, value) => {
+            if (value == null || value === '') return '';
+            const fn = String(fieldName || '').toLowerCase();
+            if (fn.includes('condition') || fn.includes('tinhtrang') || fn === 'tinhtranghoatdong') {
+              return themeTokenChk.getVtsConditionStatusLabel(value);
+            }
+            if (fn === 'unitofmeasure' || fn.includes('unitofmeasure')) {
+              return UNIT_OF_MEASURE_MAP[Number(value)] || String(value);
+            }
+            return undefined;
+          }}
         />
 
         <ApprovalModal

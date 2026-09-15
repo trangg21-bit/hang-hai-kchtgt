@@ -47,6 +47,7 @@ import { fmtInputNumber } from '../../../utils/numFmt';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
+import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
@@ -150,6 +151,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   }[]>([]);
 
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachmentsLoaded, setAttachmentsLoaded] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const [mapModalOpen, setMapModalOpen] = useState(false);
@@ -159,8 +161,15 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
   const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
-  const canApproveL2 = (hasPerm('coastalstationlrit:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel);
+  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
+  const canApproveL2 = (hasPerm('coastalstationlrit:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
+    hasPerm,
+    resource: 'coastalstationlrit',
+    extraUpdatePerms: ['specialstation:update', 'data:update'],
+    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'data:approvec2', 'data:approve'],
+  });
 
   const isDetailMode = mode === 'detail';
   const isEditMode = mode === 'edit';
@@ -280,6 +289,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       form.resetFields();
       setCoordinateList([]);
       setAttachments([]);
+      setAttachmentsLoaded(true);
       setPendingFiles([]);
       setActiveTab('general');
       setRecord(null);
@@ -387,9 +397,11 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
     setCoordinateList(dmsList);
 
     if (data.id) {
+      setAttachmentsLoaded(false);
       lritStationService.getAttachments(data.id).then((res: any) => {
         const items = Array.isArray(res) ? res : (res?.data || []);
         setAttachments(items);
+        setAttachmentsLoaded(true);
       }).catch(() => {});
     }
   };
@@ -725,33 +737,39 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
           <>
             {isCreateMode ? (
               <>
-                <Button
-                  onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'draft'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu tạm
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'submit'}
-                  style={primaryButtonStyle}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                  loading={isSubmitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
+                {canCreate && (
+                  <>
+                    <Button
+                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'draft'}
+                      style={outlineButtonStyle}
+                    >
+                      Lưu tạm
+                    </Button>
+                    <Button
+                      type="primary"
+                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
+                      loading={isSubmitting && actionType === 'submit'}
+                      style={primaryButtonStyle}
+                    >
+                      Lưu và gửi phê duyệt
+                    </Button>
+                  </>
+                )}
+                {canApproveL2 && canCreate && (
+                  <Button
+                    type="primary"
+                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
+                    loading={isSubmitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                )}
               </>
             ) : (
               <>
-                {(!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
+                {canUpdate && (!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
                   <>
                     <Button
                       onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
@@ -780,7 +798,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                     Lưu và phê duyệt
                   </Button>
                 )}
-                {record?.approvalStatus && !['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase()) && !canApproveL2 && (
+                {canUpdate && !canApproveL2 && (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
@@ -803,6 +821,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
           selectedRecord={record}
           symbols={symbols}
           attachments={attachments}
+          attachmentsLoaded={attachmentsLoaded}
           onClose={onClose || onCancel}
         />
       ) : (

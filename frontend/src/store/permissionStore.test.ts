@@ -159,4 +159,18 @@ describe('permissionStore Unit Tests', () => {
     expect(store.hasPermission('coastalstationhaiphong:read')).toBe(true);
     expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(true);
   });
+
+  it('should not leak vts permissions to vtsoperationcenter or vhf', () => {
+    useAuthStore.setState({
+      user: { id: '4', username: 'vtsCreator', permissions: ['vts:create'] } as any,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('vts:create')).toBe(true);
+    expect(store.hasPermission('vts:read')).toBe(true);
+    expect(store.hasPermission('vtsoperationcenter:read')).toBe(false);
+    expect(store.hasPermission('vtsoperationcenter:create')).toBe(false);
+    expect(store.hasPermission('vhf:read')).toBe(false);
+    expect(store.hasPermission('vhf:create')).toBe(false);
+  });
 });

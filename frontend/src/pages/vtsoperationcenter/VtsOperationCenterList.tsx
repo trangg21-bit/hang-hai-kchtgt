@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Modal, Input, DatePicker, Select } from 'antd';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { Input, DatePicker, Select } from 'antd';
 import { vtsOperationCenterService, type VtsOperationCenterListParams } from '../../services/vtsOperationCenterService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import type { VtsOperationCenterListItem, VtsOperationCenterResponse } from '../../types/vtsOperationCenter';
@@ -11,10 +10,12 @@ import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import VtsOperationCenterForm from './VtsOperationCenterForm';
-import ApprovalModal from '../../components/shared/ApprovalModal';
 import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import toast from '../../components/ToastNotification';
+import { useKchtPermissions } from '../../hooks/useKchtPermissions';
+import { useKchtRowActions } from '../../hooks/useKchtRowActions';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
   actionPrimary, textSecondary,
   fontWeightBold,
@@ -169,6 +170,12 @@ export default function VtsOperationCenterList() {
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const kchtPerms = useKchtPermissions('vtsoperationcenter', {
+    extraCreatePerms: ['vts:create'],
+    extraUpdatePerms: ['vts:update'],
+    extraApproveL1Perms: ['vts:approvec1'],
+    extraApproveL2Perms: ['vts:approvec2'],
+  });
 
   const customVtsTokens = useMemo(() => ({
     ...themeTokenChk,
@@ -230,6 +237,7 @@ export default function VtsOperationCenterList() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const statusCountFilterKey = useRef<string | null>(null);
   const listRequestId = useRef(0);
+  const [isOptionsReady, setIsOptionsReady] = useState(false);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -266,6 +274,7 @@ export default function VtsOperationCenterList() {
   }, [isMapLinkedView, linkedAction, linkedRecordId]);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         const [orgs, ports, systems] = await Promise.all([
@@ -273,6 +282,7 @@ export default function VtsOperationCenterList() {
           vtsSystemCRUD.getScopedPortOptions(),
           vtsSystemCRUD.getOptions(),
         ]);
+        if (!mounted) return;
         const mappedOrgs = (orgs || []).map((o: { id: string | number; name?: string; unitName?: string; tenDonVi?: string; code?: string; maDonVi?: string; parentId?: string | number }) => ({
           id: String(o.id),
           name: o.name || o.unitName || o.tenDonVi || 'Đơn vị',
@@ -290,8 +300,15 @@ export default function VtsOperationCenterList() {
         }
       } catch (e) {
         console.error('Failed to fetch lookup options', e);
+      } finally {
+        if (mounted) {
+          setIsOptionsReady(true);
+        }
       }
     })();
+    return () => {
+      mounted = false;
+    };
   }, [currentUser]);
 
   const filteredPortOptions = useMemo(() => {
@@ -357,6 +374,7 @@ export default function VtsOperationCenterList() {
   ]);
 
   useEffect(() => {
+    if (!isOptionsReady) return;
     let mounted = true;
     queueMicrotask(() => {
       if (mounted) {
@@ -366,7 +384,7 @@ export default function VtsOperationCenterList() {
     return () => {
       mounted = false;
     };
-  }, [fetchData]);
+  }, [fetchData, isOptionsReady]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortField(field);
@@ -439,14 +457,15 @@ export default function VtsOperationCenterList() {
     setRejectModalOpen(true);
   };
 
-  const handleReject = async () => {
-    if (!rejectReason.trim() || rejectReason.trim().length < 10) {
+  const handleReject = async (reasonVal?: string) => {
+    const finalReason = (reasonVal || rejectReason).trim();
+    if (!finalReason || finalReason.length < 10) {
       toast.error('Lý do từ chối phải có ít nhất 10 ký tự');
       return;
     }
     if (!rejectTargetId) return;
     try {
-      const res = await vtsOperationCenterService.reject(rejectTargetId, rejectReason.trim());
+      const res = await vtsOperationCenterService.reject(rejectTargetId, finalReason);
       toast.success(res?.message || 'Từ chối phê duyệt hồ sơ thành công');
       setRejectModalOpen(false);
       refreshList();
@@ -835,111 +854,45 @@ export default function VtsOperationCenterList() {
     },
   ], [page, pageSize, sortOrderFor, isRejectedTab]);
 
-  const rowActions = useCallback((record: VtsOperationCenterListItem) => {
-    const uid = currentUser?.userId || currentUser?.id;
-    const isCreator = Boolean(uid && record.createdBy === uid);
-    const isApproverL1 = Boolean(uid && record.approverLevel1 === uid);
-    const userUnitType = currentUser?.unitType || '';
-    const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-    const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
-    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: icons.view,
-        onClick: () => {
-          setEditingId(record.id);
-          setSelectedRecord(record as unknown as VtsOperationCenterResponse);
-          setModalMode('detail');
-          setIsModalOpen(true);
-        },
+  const { rowActions } = useKchtRowActions<VtsOperationCenterListItem>({
+    resource: 'vtsoperationcenter',
+    approvalLevels: 2,
+    permissionOptions: {
+      extraCreatePerms: ['vts:create'],
+      extraUpdatePerms: ['vts:update'],
+      extraApproveL1Perms: ['vts:approvec1'],
+      extraApproveL2Perms: ['vts:approvec2'],
+    },
+    handlers: {
+      onDetail: (record) => {
+        setEditingId(record.id);
+        setSelectedRecord(record as unknown as VtsOperationCenterResponse);
+        setModalMode('detail');
+        setIsModalOpen(true);
       },
-    ];
-
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'vtsoperationcenter' })) {
-      actions.push({
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: icons.edit,
-        onClick: () => {
-          setEditingId(record.id);
-          setSelectedRecord(record as unknown as VtsOperationCenterResponse);
-          setModalMode('edit');
-          setIsModalOpen(true);
-        },
-      });
-    }
-
-    if (hasPerm('vtsoperationcenter:history')) {
-      actions.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: icons.history,
-        onClick: () => handleViewHistory(record),
-      });
-    }
-
-    if (hasPerm('vtsoperationcenter:update') && (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
-      actions.push({
-        key: 'submit',
-        label: 'Gửi duyệt',
-        icon: icons.submit,
-        onClick: async () => {
-          try {
-            const res = await vtsOperationCenterService.submit(record.id);
-            toast.success(res?.message || 'Gửi phê duyệt thành công');
-            refreshList();
-          } catch (e: unknown) {
-            toast.error(e instanceof Error ? e.message : 'Lỗi gửi duyệt');
-          }
-        },
-      });
-    }
-
-    if ((hasPerm('vtsoperationcenter:approvec1') || hasPerm('vts:approvec1') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
-      actions.push({
-        key: 'approve_c1',
-        label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-        icon: icons.approve,
-        onClick: () => openApproveModal(record.id, 'c1'),
-      });
-      actions.push({
-        key: 'reject_c1',
-        label: 'Từ chối cấp Cảng vụ/Chi cục',
-        icon: icons.reject,
-        danger: true,
-        onClick: () => openRejectModal(record.id),
-      });
-    }
-
-    if ((hasPerm('vtsoperationcenter:approvec2') || hasPerm('vts:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel) && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
-      actions.push({
-        key: 'approve_c2',
-        label: 'Phê duyệt cấp Cục',
-        icon: icons.approve,
-        onClick: () => openApproveModal(record.id, 'c2'),
-      });
-      actions.push({
-        key: 'reject_c2',
-        label: 'Từ chối cấp Cục',
-        icon: icons.reject,
-        danger: true,
-        onClick: () => openRejectModal(record.id),
-      });
-    }
-
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'vtsoperationcenter' })) {
-      actions.push({
-        key: 'delete',
-        label: 'Xóa',
-        icon: icons.delete,
-        danger: true,
-        onClick: () => openDeleteModal(record),
-      });
-    }
-
-    return actions;
-  }, [currentUser?.userId, currentUser?.id, hasPerm, refreshList, openDeleteModal]);
+      onEdit: (record) => {
+        setEditingId(record.id);
+        setSelectedRecord(record as unknown as VtsOperationCenterResponse);
+        setModalMode('edit');
+        setIsModalOpen(true);
+      },
+      onHistory: (record) => handleViewHistory(record),
+      onSubmit: async (record) => {
+        try {
+          const res = await vtsOperationCenterService.submit(record.id);
+          toast.success(res?.message || 'Gửi phê duyệt thành công');
+          refreshList();
+        } catch (e: unknown) {
+          toast.error(e instanceof Error ? e.message : 'Lỗi gửi duyệt');
+        }
+      },
+      onApproveL1: (record) => openApproveModal(record.id, 'c1'),
+      onRejectL1: (record) => openRejectModal(record.id),
+      onApproveL2: (record) => openApproveModal(record.id, 'c2'),
+      onRejectL2: (record) => openRejectModal(record.id),
+      onDelete: (record) => openDeleteModal(record),
+    },
+  });
 
   return (
     <ThemeTokenProvider tokens={customVtsTokens}>
@@ -951,7 +904,7 @@ export default function VtsOperationCenterList() {
             { label: 'Trung tâm điều hành VTS' },
           ]}
           actions={
-            (hasPerm('vtsoperationcenter:create') || hasPerm('vts:create'))
+            kchtPerms.canCreate
               ? [{
                 key: 'create',
                 label: 'Thêm mới',
@@ -1186,50 +1139,30 @@ export default function VtsOperationCenterList() {
           }}
         />
 
-        {/* Approval Modal */}
-        <ApprovalModal
-          visible={approveModalOpen}
-          level={approveLevel}
-          onConfirm={handleApprove}
-          onCancel={() => setApproveModalOpen(false)}
-        />
+        {/* ── Standardized Approval, Reject & Delete Modals ─────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          onApproveConfirm={handleApprove}
+          onApproveCancel={() => setApproveModalOpen(false)}
 
-        {/* Reject Modal */}
-        <Modal
-          title="Từ chối"
-          open={rejectModalOpen}
-          onOk={handleReject}
-          onCancel={() => setRejectModalOpen(false)}
-          okText="Từ chối"
-          cancelText="Hủy"
-          okButtonProps={{ danger: true }}
-        >
-          <p style={{ marginBottom: spaceFormField }}>Nhập lý do từ chối (tối thiểu 10 ký tự):</p>
-          <Input.TextArea
-            rows={3}
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Nhập lý do từ chối"
-            maxLength={1000}
-            showCount
-            style={textAreaStyle}
-          />
-        </Modal>
+          rejectOpen={rejectModalOpen}
+          rejectLevel={approveLevel}
+          onRejectConfirm={handleReject}
+          onRejectCancel={() => setRejectModalOpen(false)}
 
-        {/* ── Delete Confirmation Modal (Chuẩn Bến cảng) ────────────── */}
-        <DeleteConfirmModal
-          open={deleteModalOpen}
-          onCancel={() => {
+          deleteOpen={deleteModalOpen}
+          deleteLoading={deleteLoading}
+          deletingItemType="trung tâm điều hành VTS"
+          deletingItemName={deletingRecord?.name}
+          deletingItemCode={deletingRecord?.code}
+          onDeleteConfirm={handleConfirmDelete}
+          onDeleteCancel={() => {
             if (!deleteLoading) {
               setDeleteModalOpen(false);
               setDeletingRecord(null);
             }
           }}
-          onConfirm={handleConfirmDelete}
-          loading={deleteLoading}
-          itemType="trung tâm điều hành VTS"
-          itemName={deletingRecord?.name}
-          itemCode={deletingRecord?.code}
         />
       </div>
     </ThemeTokenProvider>

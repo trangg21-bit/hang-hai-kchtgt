@@ -1,0 +1,72 @@
+{
+  "triage_id": "TRI-1789446834418-4f0b",
+  "created_at": 1789446834418,
+  "request_summary": "Khắc phục hiện tượng double fetch API khi mount màn hình VTS",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/vtsoperationcenter/VtsOperationCenterList.tsx",
+      "frontend/src/pages/vtssystem/VtsSystemList.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/vtsoperationcenter/VtsOperationCenterList.tsx",
+      "frontend/src/pages/vtssystem/VtsSystemList.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C1: 2 edit-target files in one package, no one-way door; prior C0 loc_budget breach escalates to C1 (2 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/vts-system",
+  "blast_radius": 2,
+  "done_oracle": "Màn hình VtsSystemList và VtsOperationCenterList chỉ gọi API danh sách 1 lần khi khởi tạo",
+  "verification_commands": [
+    {
+      "command": "vitest run src/services/vtsSystemService.test.ts",
+      "cwd": "frontend",
+      "timeout_ms": 60000
+    }
+  ],
+  "declared_write_scope": [
+    "frontend/src/pages/vtsoperationcenter/VtsOperationCenterList.tsx",
+    "frontend/src/pages/vtssystem/VtsSystemList.tsx"
+  ],
+  "escalated_from": {
+    "triage_id": "AUTO-C0-1789446701865",
+    "breach_kind": "loc_budget",
+    "change_class": "C0",
+    "loc_changed": 99,
+    "files_touched": 2
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "955e326701e1d3b301327be6848b41c8230f83f0",
+    "dirty": true,
+    "captured_at": 1789446834592
+  },
+  "owner_candidates": [
+    {
+      "module_id": "M-1003",
+      "slug": "fix-antd-static-message-context-warning",
+      "overlap": 1,
+      "total": 2
+    },
+    {
+      "module_id": "M-1004",
+      "slug": "field-level-authorization",
+      "overlap": 1,
+      "total": 2
+    }
+  ],
+  "budget": {
+    "wall_clock_ms": 2220000,
+    "turns": 94,
+    "turns_used": 85
+  }
+}

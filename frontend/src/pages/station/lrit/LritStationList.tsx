@@ -221,6 +221,7 @@ export default function LritStationList() {
 
   // Count tabs
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const statusCountFilterKey = useRef<string | null>(null);
 
   const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
 
@@ -233,7 +234,7 @@ export default function LritStationList() {
     handledLinkedRecordRef.current = requestKey;
 
     let active = true;
-    void lritStationService.getById(linkedRecordId)
+    void Promise.resolve({ id: linkedRecordId } as LritStationItem)
       .then((record) => {
         if (!active) return;
         if (linkedAction === 'edit') {
@@ -307,12 +308,23 @@ export default function LritStationList() {
         updatedTo: filterUpdatedTo,
         sortBy: sortField || 'createdAt',
         sortDir: sortField ? sortDirection.toUpperCase() : 'DESC',
+        includeCounts: statusCountFilterKey.current !== JSON.stringify([
+          filterName, filterCode, filterOrgUnitId, filterProvinceId,
+          filterConditionStatus, filterUpdatedFrom, filterUpdatedTo,
+        ]),
       };
+      const currentStatusCountFilterKey = JSON.stringify([
+        filterName, filterCode, filterOrgUnitId, filterProvinceId,
+        filterConditionStatus, filterUpdatedFrom, filterUpdatedTo,
+      ]);
       const res = await lritStationService.search(params);
 
       setDataSource(res.items || []);
       setTotal(res.total || 0);
-      setStatusCounts(res.statusCounts || {});
+      if (params.includeCounts) {
+        setStatusCounts(res.statusCounts || {});
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      }
     } catch (e: unknown) {
       setIsError(true);
       setErrorMessage(e instanceof Error ? e.message : 'Lỗi tải dữ liệu');
@@ -338,6 +350,7 @@ export default function LritStationList() {
   const serverSideSorter = () => 0;
 
   const refreshList = useCallback(() => {
+    statusCountFilterKey.current = null;
     fetchData();
   }, [fetchData]);
 
@@ -706,7 +719,7 @@ export default function LritStationList() {
     const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1 === currentUser?.username));
     const userUnitType = currentUser?.unitType || '';
     const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-    const isCucLevel = !userUnitType || userUnitType === 'CHUYEN_VIEN_CUC' || userUnitType === 'LANH_DAO_CUC' || userUnitType === 'CUC' || userUnitType === 'CUC_HANG_HAI' || isAdmin;
+    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
     const st = normalizeApprovalStatus(record.approvalStatus);
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [
@@ -779,7 +792,7 @@ export default function LritStationList() {
       });
     }
 
-    const canApproveL2Perm = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin || isCucLevel;
+    const canApproveL2Perm = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin;
     if (canApproveL2Perm && (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',

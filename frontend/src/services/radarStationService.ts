@@ -36,7 +36,11 @@ export const radarStationCRUD = {
   async getOptions(orgUnitId?: string): Promise<RadarStationOptionResponse[]> {
     const sp = buildSearchParams({ orgUnitId });
     const res = await api.get(`${BASE_PATH}/options?${sp}`);
-    return toArray<RadarStationOptionResponse>(res.data);
+    const items = toArray<RadarStationOptionResponse>(res.data);
+    return items.map((item) => ({
+      ...item,
+      name: item.name || item.stationName || item.code,
+    }));
   },
 
   async getTabCounts(orgUnitId?: string, keyword?: string, conditionStatus?: string, stationName?: string): Promise<Record<string, number>> {

@@ -133,6 +133,7 @@ public class CoastalStationInmarsatController {
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDir,
+            @RequestParam(defaultValue = "true") boolean includeCounts,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         // Chặn trần số bản ghi mỗi trang: `size` đến từ client, không giới hạn thì
@@ -146,8 +147,10 @@ public class CoastalStationInmarsatController {
                 updatedBy, updatedFrom, updatedTo, sanitizedPageable);
 
         // Số đếm tab dùng đúng bộ lọc của danh sách (trừ trạng thái phê duyệt).
-        Map<String, Long> statusCounts = service.countByApprovalStatus(
-                orgUnitId, keyword, name, code, conditionStatus, provinceId, updatedFrom, updatedTo);
+        Map<String, Long> statusCounts = includeCounts
+                ? service.countByApprovalStatus(
+                        orgUnitId, keyword, name, code, operatingOrgId, conditionStatus, provinceId, updatedFrom, updatedTo)
+                : Map.of();
 
         Map<String, Object> data = new HashMap<>();
         data.put("content", results.getContent());

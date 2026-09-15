@@ -21,6 +21,15 @@ public interface GisSpatialObjectRepository extends JpaRepository<GisSpatialObje
 
     boolean existsByCode(String code);
 
+    @Query(value = "SELECT * FROM gis_spatial_objects WHERE id = :id LIMIT 1", nativeQuery = true)
+    Optional<GisSpatialObject> findByIdIncludingDeleted(@Param("id") UUID id);
+
+    @Query(value = "SELECT * FROM gis_spatial_objects WHERE code = :code LIMIT 1", nativeQuery = true)
+    Optional<GisSpatialObject> findByCodeIncludingDeleted(@Param("code") String code);
+
+    @Query(value = "SELECT * FROM gis_spatial_objects WHERE ref_id = :refId AND ref_type = :refType LIMIT 1", nativeQuery = true)
+    Optional<GisSpatialObject> findByRefIdAndRefTypeIncludingDeleted(@Param("refId") UUID refId, @Param("refType") Integer refType);
+
     @Query(value = "SELECT COUNT(*) FROM gis_spatial_objects WHERE code = :code", nativeQuery = true)
     long countByCodeIncludingDeleted(@Param("code") String code);
 

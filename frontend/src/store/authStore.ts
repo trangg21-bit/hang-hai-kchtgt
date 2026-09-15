@@ -67,18 +67,29 @@ export const useAuthStore = create<AuthState>((set, get) => {
   if (storedToken) {
     const claims = parseJwt(storedToken);
     if (claims && claims.sub && claims.user_id && typeof claims.exp === 'number' && claims.exp * 1000 >= Date.now()) {
+      let cachedOrg: any = null;
+      try {
+        const rawCache = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_user_cache') : null;
+        if (rawCache) cachedOrg = JSON.parse(rawCache);
+      } catch { /* ignore */ }
+
       initialUser = {
         username: claims.sub,
-        fullName: claims.sub || 'Unknown User',
+        fullName: cachedOrg?.fullName || claims.sub || 'Unknown User',
         permissions: claims.permissions,
         role: claims.role || 'ROLE_USER',
         status: 'authenticated',
         userId: claims.user_id,
         id: claims.user_id,
         email: claims.email,
+        orgUnitId: cachedOrg?.orgUnitId,
+        orgUnitName: cachedOrg?.orgUnitName,
+        orgUnitCode: cachedOrg?.orgUnitCode,
+        unitType: cachedOrg?.unitType,
       };
     } else if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user_cache');
     }
   }
 
@@ -124,7 +135,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     clearSession: () => {
       set({ user: null, isAuthenticated: false, token: null });
-      localStorage.removeItem('auth_token');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user_cache');
+      }
     },
 
     replaceAccessToken: (newToken: string, reqToken?: string | null) => {
@@ -272,15 +286,33 @@ export const useAuthStore = create<AuthState>((set, get) => {
         const perms: string[] = Array.isArray(body?.permissionCodes) ? body.permissionCodes : [];
         const state = get();
         if (!state.user) return;
+        const nextOrgUnitId = body?.orgUnitId ? String(body.orgUnitId) : state.user.orgUnitId;
+        const nextOrgUnitName = body?.orgUnitName || state.user.orgUnitName;
+        const nextOrgUnitCode = body?.orgUnitCode || state.user.orgUnitCode;
+        const nextFullName = body?.fullName || state.user.fullName;
+        const nextUnitType = body?.unitType || state.user.unitType;
+
+        if (typeof localStorage !== 'undefined') {
+          try {
+            localStorage.setItem('auth_user_cache', JSON.stringify({
+              orgUnitId: nextOrgUnitId,
+              orgUnitName: nextOrgUnitName,
+              orgUnitCode: nextOrgUnitCode,
+              fullName: nextFullName,
+              unitType: nextUnitType,
+            }));
+          } catch { /* ignore */ }
+        }
+
         set({
           user: {
             ...state.user,
             permissions: perms,
-            fullName: body?.fullName || state.user.fullName,
-            orgUnitId: body?.orgUnitId ? String(body.orgUnitId) : state.user.orgUnitId,
-            orgUnitName: body?.orgUnitName || state.user.orgUnitName,
-            orgUnitCode: body?.orgUnitCode || state.user.orgUnitCode,
-            unitType: body?.unitType || state.user.unitType,
+            fullName: nextFullName,
+            orgUnitId: nextOrgUnitId,
+            orgUnitName: nextOrgUnitName,
+            orgUnitCode: nextOrgUnitCode,
+            unitType: nextUnitType,
           },
         });
       } catch {

@@ -271,6 +271,9 @@ public class UserPermissionService {
         UserPermissionOverride override = overrideRepository
                 .findByUserIdAndPermissionCode(userId, code)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy quyền cấp trực tiếp"));
+        if (override.getDeletedAt() != null) {
+            throw new EntityNotFoundException("Không tìm thấy quyền cấp trực tiếp");
+        }
         override.softDelete(SecurityUtils.getCurrentUserId());
         overrideRepository.save(override);
         permissionCacheService.invalidateCache(userId);

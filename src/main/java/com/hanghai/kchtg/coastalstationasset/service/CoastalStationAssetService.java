@@ -27,8 +27,10 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import com.hanghai.kchtg.port.entity.Attachment;
@@ -141,6 +143,43 @@ public class CoastalStationAssetService {
         };
         return repository.findAll(specification, pageable).map(this::toResponse);
     }
+
+    public Map<String, Long> countByApprovalStatus(String assetCode, String assetName, UUID parentOrgUnitId,
+                                                    UUID orgUnitId, UUID usingOrgUnitId, UUID stationId,
+                                                    String assetCondition, String assetType,
+                                                    LocalDate updatedFrom, LocalDate updatedTo) {
+        LocalDateTimeBounds bounds = new LocalDateTimeBounds(
+                updatedFrom == null ? null : updatedFrom.atStartOfDay(),
+                updatedTo == null ? null : updatedTo.plusDays(1).atStartOfDay());
+
+        Map<String, Long> counts = new LinkedHashMap<>();
+        long activeTotal = 0;
+        for (Object[] row : repository.countByApprovalStatus(
+                normalizeFilter(assetCode), normalizeFilter(assetName), parentOrgUnitId, orgUnitId,
+                usingOrgUnitId, stationId, normalizeFilter(assetCondition), normalizeFilter(assetType),
+                bounds.from(), bounds.to())) {
+            ApprovalStatus status = (ApprovalStatus) row[0];
+            long count = ((Number) row[1]).longValue();
+            if (status == null) {
+                continue;
+            }
+            counts.merge(status.name(), count, Long::sum);
+            if (status != ApprovalStatus.ARCHIVED) {
+                activeTotal += count;
+            }
+        }
+        counts.put("ALL", activeTotal);
+        return counts;
+    }
+
+    private static String normalizeFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private record LocalDateTimeBounds(java.time.LocalDateTime from, java.time.LocalDateTime to) {}
 
     @Transactional
     public CoastalStationAssetResponse update(UUID id, CoastalStationAssetRequest request) {

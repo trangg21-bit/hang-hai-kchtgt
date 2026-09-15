@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TreeSelect } from 'antd';
 import type { TreeSelectProps } from 'antd';
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
@@ -235,6 +235,8 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const baseDropdownStyle = isForm ? formTreeSelectDropdownStyle : filterTreeSelectDropdownStyle;
   const baseControlStyle = isForm ? formTreeSelectStyle : filterTreeSelectStyle;
 
+  const effectiveAllLabel = allLabel !== undefined ? allLabel : (isForm ? undefined : 'Tất cả');
+
   // Tự động nạp danh mục đơn vị qua cache nếu không được truyền từ props
   const [internalOrgs, setInternalOrgs] = useState<readonly OrgUnitTreeOption[]>([]);
 
@@ -263,8 +265,8 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const treeData = useMemo(() => {
     const list = Array.isArray(effectiveOrganizations) ? effectiveOrganizations : [];
     const built = buildOrgUnitTreeData(list);
-    let base = allLabel
-      ? [{ key: '__all__', value: '__all__', title: allLabel }, ...built]
+    let base = effectiveAllLabel
+      ? [{ key: '__all__', value: '__all__', title: effectiveAllLabel, label: effectiveAllLabel }, ...built]
       : built;
 
     const byId = new Map<string, OrgUnitTreeOption>(list.map((o) => [String(o.id), o]));
@@ -318,14 +320,32 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
         };
       });
     return annotate(base);
-  }, [effectiveOrganizations, showPath, allLabel, restProps.value]);
+  }, [effectiveOrganizations, showPath, effectiveAllLabel, restProps.value, currentOrgName]);
+
+  const internalValue = useMemo(() => {
+    if (isForm) {
+      return restProps.value;
+    }
+    const raw = restProps.value;
+    if (raw === undefined || raw === null || raw === '' || raw === '__all__') {
+      return '__all__';
+    }
+    return String(raw);
+  }, [isForm, restProps.value]);
+
+  const handleChange = useCallback<NonNullable<TreeSelectProps['onChange']>>((val, labelList, extra) => {
+    const normalizedVal = (val === '__all__' || val === '') ? undefined : val;
+    restProps.onChange?.(normalizedVal, labelList, extra);
+  }, [restProps]);
 
   return (
     <TreeSelect
       {...restProps}
+      value={internalValue}
+      onChange={handleChange}
       virtual={false}
       placeholder={defaultPlaceholder}
-      allowClear={defaultAllowClear}
+      allowClear={isForm ? defaultAllowClear : (defaultAllowClear && internalValue !== '__all__')}
       treeData={treeData}
       showSearch={showSearch}
       treeDefaultExpandAll={defaultExpandAll}

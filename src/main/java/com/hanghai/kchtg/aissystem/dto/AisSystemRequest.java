@@ -41,7 +41,6 @@ public class AisSystemRequest extends FieldPresenceTrackedRequest {
 
     private UUID radarStationId;
 
-    @NotNull(message = "Đơn vị khai thác không được để trống")
     private UUID operatingOrgId;
 
     @NotNull(message = "Đơn vị quản lý không được để trống")

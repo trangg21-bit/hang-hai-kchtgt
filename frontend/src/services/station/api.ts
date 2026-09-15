@@ -10,6 +10,7 @@ import type {
   CoastalStationInmarsatHistoryResponse,
   CoastalStationCospasSarsatRequest,
   CoastalStationCospasSarsatResponse,
+  CoastalStationCospasSarsatOptionResponse,
   CoastalStationCospasSarsatHistoryResponse,
 } from './types';
 
@@ -189,18 +190,83 @@ export async function fetchInmarsatHistory(id: string): Promise<CoastalStationIn
 // 3. Đài Cospas-Sarsat
 // ==========================================
 export async function fetchCospasSarsatList(params: {
+  page?: number;
+  size?: number;
+  orgUnitId?: string;
   keyword?: string;
-}): Promise<CoastalStationCospasSarsatResponse[]> {
-  const url = params.keyword
-    ? `/v1/stations/cospas-sarsat/search?keyword=${encodeURIComponent(params.keyword)}`
-    : '/v1/stations/cospas-sarsat/list';
-  const res = await api.get(url);
-  const rawList = res.data || [];
-  return rawList.map((item: any) => ({
+  provinceId?: number;
+  conditionStatus?: string;
+  approvalStatus?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+  sort?: string;
+}): Promise<PageResponse<CoastalStationCospasSarsatResponse>> {
+  const sp = new URLSearchParams();
+  if (params.page !== undefined) sp.set('page', String(params.page));
+  if (params.size !== undefined) sp.set('size', String(params.size));
+  if (params.orgUnitId) sp.set('orgUnitId', params.orgUnitId);
+  if (params.keyword) sp.set('keyword', params.keyword);
+  if (params.provinceId !== undefined) sp.set('provinceId', String(params.provinceId));
+  if (params.conditionStatus) sp.set('conditionStatus', params.conditionStatus);
+  if (params.approvalStatus && params.approvalStatus !== 'ALL') sp.set('approvalStatus', params.approvalStatus);
+  if (params.updatedFrom) sp.set('updatedFrom', params.updatedFrom);
+  if (params.updatedTo) sp.set('updatedTo', params.updatedTo);
+  if (params.sort) sp.set('sort', params.sort);
+
+  const res = await api.get(`/v1/stations/cospas-sarsat?${sp}`);
+  const data = res.data || {};
+  if (Array.isArray(data)) {
+    return {
+      content: data.map((item: any) => ({
+        ...item,
+        stationCode: item.stationCode || item.code,
+        stationName: item.stationName || item.name,
+      })),
+      totalElements: data.length,
+      totalPages: 1,
+      size: data.length,
+      number: 0,
+    };
+  }
+  const content = (data.content || []).map((item: any) => ({
     ...item,
     stationCode: item.stationCode || item.code,
     stationName: item.stationName || item.name,
   }));
+  return {
+    content,
+    totalElements: data.totalElements ?? content.length,
+    totalPages: data.totalPages ?? 1,
+    size: data.size ?? content.length,
+    number: data.number ?? 0,
+  };
+}
+
+export async function fetchCospasSarsatCounts(params: {
+  orgUnitId?: string;
+  provinceId?: number;
+  conditionStatus?: string;
+  keyword?: string;
+  updatedFrom?: string;
+  updatedTo?: string;
+}): Promise<Record<string, number>> {
+  const sp = new URLSearchParams();
+  if (params.orgUnitId) sp.set('orgUnitId', params.orgUnitId);
+  if (params.provinceId !== undefined) sp.set('provinceId', String(params.provinceId));
+  if (params.conditionStatus) sp.set('conditionStatus', params.conditionStatus);
+  if (params.keyword) sp.set('keyword', params.keyword);
+  if (params.updatedFrom) sp.set('updatedFrom', params.updatedFrom);
+  if (params.updatedTo) sp.set('updatedTo', params.updatedTo);
+
+  const res = await api.get(`/v1/stations/cospas-sarsat/counts?${sp}`);
+  return res.data || {};
+}
+
+export async function fetchCospasSarsatOptions(orgUnitId?: string): Promise<CoastalStationCospasSarsatOptionResponse[]> {
+  const sp = new URLSearchParams();
+  if (orgUnitId) sp.set('orgUnitId', orgUnitId);
+  const res = await api.get(`/v1/stations/cospas-sarsat/options?${sp}`);
+  return res.data || [];
 }
 
 export async function fetchCospasSarsatById(id: string): Promise<CoastalStationCospasSarsatResponse> {
@@ -211,7 +277,7 @@ export async function fetchCospasSarsatById(id: string): Promise<CoastalStationC
 export async function createCospasSarsat(
   payload: CoastalStationCospasSarsatRequest,
 ): Promise<CoastalStationCospasSarsatResponse> {
-  const res = await api.post('/v1/stations/cospas-sarsat/create', payload);
+  const res = await api.post('/v1/stations/cospas-sarsat', payload);
   return res.data;
 }
 
@@ -247,7 +313,7 @@ export async function rejectCospasSarsat(
   id: string,
   rejectionReason: string,
 ): Promise<CoastalStationCospasSarsatResponse> {
-  const res = await api.post(`/v1/stations/cospas-sarsat/${id}/reject`, { approved: false, rejectionReason });
+  const res = await api.post(`/v1/stations/cospas-sarsat/${id}/reject`, { rejectionReason });
   return res.data;
 }
 

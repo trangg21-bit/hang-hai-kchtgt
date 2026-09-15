@@ -106,6 +106,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:name AS string))
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
+          AND (:operatingOrgId IS NULL OR t.operatingOrgId = :operatingOrgId)
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
@@ -119,6 +120,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
         @Param("keyword") String keyword,
         @Param("name") String name,
         @Param("code") String code,
+        @Param("operatingOrgId") UUID operatingOrgId,
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("provinceId") Integer provinceId,
         @Param("updatedFrom") LocalDateTime updatedFrom,

@@ -36,6 +36,9 @@ import {
   primaryButtonStyle,
   statusBadgeStyle,
   getConditionStatusColor,
+  getConditionStatusLabel,
+  getVtsConditionStatusLabel,
+  getVtsConditionStatusColor,
   historyGroupGridStyle,
   historyTimeStyle,
   historyMetaRowStyle,
@@ -580,7 +583,10 @@ export function renderCommonHistoryValueTag(field: string, val: string, isOld: b
     else if (rawUpper === 'ARCHIVED') displayVal = 'Đã lưu trữ';
   } else if (normKey.includes('conditionstatus') || normKey.includes('tinh trang')) {
     if (rawUpper === 'OPERATIONAL') displayVal = 'Đang hoạt động';
+    else if (rawUpper === 'DANG_KHAI_THAC') displayVal = 'Đang khai thác/vận hành';
     else if (rawUpper === 'STOPPED') displayVal = 'Dừng hoạt động';
+    else if (rawUpper === 'SUSPENDED' || rawUpper === 'DUNG_KHAI_THAC') displayVal = 'Dừng khai thác/vận hành';
+    else if (rawUpper === 'NOT_YET_OPERATIONAL' || rawUpper === 'CHUA_KHAI_THAC') displayVal = 'Chưa khai thác/vận hành';
     else if (rawUpper === 'MAINTENANCE') displayVal = 'Đang bảo trì';
     else if (rawUpper === 'UNDER_CONSTRUCTION') displayVal = 'Đang xây dựng';
   } else if (val.trim() === 'true' || val.trim() === 'TRUE') {

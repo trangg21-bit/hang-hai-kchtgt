@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -100,6 +101,25 @@ public class CoastalStationAssetController {
         Page<CoastalStationAssetResponse> result = service.findAll(
                 assetCode, assetName, parentOrgUnitId, orgUnitId, usingOrgUnitId, stationId,
                 assetCondition, approvalStatus, assetType, updatedFrom, updatedTo, pageable);
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    @GetMapping("/counts")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> countByApprovalStatus(
+            @RequestParam(required = false) String assetCode,
+            @RequestParam(required = false) String assetName,
+            @RequestParam(required = false) UUID parentOrgUnitId,
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) UUID usingOrgUnitId,
+            @RequestParam(required = false) UUID stationId,
+            @RequestParam(required = false) String assetCondition,
+            @RequestParam(required = false) String assetType,
+            @RequestParam(required = false) LocalDate updatedFrom,
+            @RequestParam(required = false) LocalDate updatedTo) {
+        Map<String, Long> result = service.countByApprovalStatus(
+                assetCode, assetName, parentOrgUnitId, orgUnitId, usingOrgUnitId, stationId,
+                assetCondition, assetType, updatedFrom, updatedTo);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

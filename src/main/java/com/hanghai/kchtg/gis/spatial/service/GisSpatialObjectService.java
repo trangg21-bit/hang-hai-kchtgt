@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Collection;
 import java.util.Collections;
@@ -114,17 +115,23 @@ public class GisSpatialObjectService {
             UUID refId,
             InfrastructureType refType) {
 
-        GisSpatialObject entity;
+        GisSpatialObject entity = null;
         if (id != null) {
-            entity = repository.findById(id).orElseGet(() ->
-                    code != null && !code.trim().isEmpty() ? repository.findByCode(code.trim()).orElse(new GisSpatialObject()) : new GisSpatialObject());
-        } else if (code != null && !code.trim().isEmpty()) {
-            entity = repository.findByCode(code.trim()).orElse(new GisSpatialObject());
-        } else {
-            entity = new GisSpatialObject();
+            entity = repository.findByIdIncludingDeleted(id).orElse(null);
         }
-        if (entity.getId() == null) {
+        if (entity == null && code != null && !code.trim().isEmpty()) {
+            entity = repository.findByCodeIncludingDeleted(code.trim()).orElse(null);
+        }
+        if (entity == null && refId != null && refType != null) {
+            entity = repository.findByRefIdAndRefTypeIncludingDeleted(refId, refType.ordinal()).orElse(null);
+        }
+        if (entity == null) {
+            entity = new GisSpatialObject();
             entity.setId(UUID.randomUUID());
+        } else if (entity.getDeletedAt() != null) {
+            // Khôi phục bản ghi đã xóa mềm để tái sử dụng, tránh lỗi trùng mã code duy nhất
+            entity.setDeletedAt(null);
+            entity.setDeletedBy(null);
         }
 
         entity.setName(name);
@@ -145,6 +152,13 @@ public class GisSpatialObjectService {
             entity.softDelete(SecurityUtils.getCurrentUserId());
             repository.save(entity);
         });
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<GisSpatialObject> findByRef(UUID refId, InfrastructureType refType) {
+        if (refId == null || refType == null) return Optional.empty();
+        List<GisSpatialObject> list = repository.findByRefIdInAndRefType(List.of(refId), refType);
+        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
     @Transactional(readOnly = true)

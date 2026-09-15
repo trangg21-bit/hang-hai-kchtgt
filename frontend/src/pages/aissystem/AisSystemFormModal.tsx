@@ -36,6 +36,7 @@ import toast from '../../components/ToastNotification';
 import { focusErrorTab } from '../../utils/formValidationHelper';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { colors } from '../../theme';
@@ -159,8 +160,10 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const isCucLevel = (currentUser as any)?.orgUnitLevel === 1 || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
-  const canSaveAndApprove = hasPerm('aissystem:approvec2') || isCucLevel;
+  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const canCreate = hasPerm('aissystem:create') || hasPerm('data:create') || isAdmin;
+  const canUpdate = canEditApprovalRecord(item?.approvalStatus, { hasPerm, resource: 'aissystem' });
+  const canSaveAndApprove = (hasPerm('aissystem:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
 
   const [activeTab, setActiveTab] = useState('basic');
   const [submitting, setSubmitting] = useState(false);
@@ -298,7 +301,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       // 2a. Load Radar Stations for dropdown
       radarStationService.getOptions().then((res) => {
         if (Array.isArray(res)) {
-          setRadarStations(res.map((r) => ({ id: r.id, name: r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
+          setRadarStations(res.map((r) => ({ id: r.id, name: r.name || r.stationName || r.code || r.id, orgUnitId: r.orgUnitId })));
         }
       }).catch(() => {});
 
@@ -1103,33 +1106,39 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
               >
                 Hủy
               </Button>
-              <Button
-                type="primary"
-                onClick={() => handleSubmit('UPDATE')}
-                loading={submitting && actionType === 'UPDATE'}
-                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Cập nhật
-              </Button>
+              {canUpdate && (
+                <Button
+                  type="primary"
+                  onClick={() => handleSubmit('UPDATE')}
+                  loading={submitting && actionType === 'UPDATE'}
+                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Cập nhật
+                </Button>
+              )}
             </>
           ) : (
             <>
-              <Button
-                onClick={() => handleSubmit('DRAFT')}
-                loading={submitting && actionType === 'DRAFT'}
-                style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu tạm
-              </Button>
-              <Button
-                type="primary"
-                onClick={() => handleSubmit('SUBMIT')}
-                loading={submitting && actionType === 'SUBMIT'}
-                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-              {canSaveAndApprove && (
+              {canCreate && (
+                <>
+                  <Button
+                    onClick={() => handleSubmit('DRAFT')}
+                    loading={submitting && actionType === 'DRAFT'}
+                    style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+                  >
+                    Lưu tạm
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={() => handleSubmit('SUBMIT')}
+                    loading={submitting && actionType === 'SUBMIT'}
+                    style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                  >
+                    Lưu và gửi phê duyệt
+                  </Button>
+                </>
+              )}
+              {canSaveAndApprove && canCreate && (
                 <Button
                   type="primary"
                   onClick={() => handleSubmit('APPROVE')}

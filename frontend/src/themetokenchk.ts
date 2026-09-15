@@ -487,12 +487,17 @@ export const getConditionStatusColor = (status?: unknown): string => {
   const s = String(status).trim();
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
-  // 1. Dừng hoạt động / Ngừng hoạt động / Tạm dừng / Hỏng
+  // 1. Dừng hoạt động / Ngừng hoạt động / Tạm dừng / Hỏng / Dừng khai thác
   if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
     || norm.includes('tam dung') || norm.includes('khong hoat dong')
+    || norm.includes('dung khai thac') || norm.includes('ngung khai thac')
     || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
-    || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
+    || norm === 'stopped' || norm === 'suspended' || norm === 'not_operational' || norm === '0') {
     return statusCritical;
+  }
+  // 1.5 Chưa khai thác/vận hành
+  if (norm.includes('chua khai thac') || norm.includes('chua van hanh') || norm === 'not_yet_operational' || norm === 'chua_khai_thac') {
+    return statusAttention;
   }
   // 2. Đang bảo trì / Đang bảo dưỡng / Sửa chữa / Cần bảo dưỡng
   if (norm.includes('bao tri') || norm.includes('bao duong') || norm.includes('sua chua')
@@ -503,8 +508,9 @@ export const getConditionStatusColor = (status?: unknown): string => {
   if (norm.includes('xay dung') || norm.includes('construction') || norm === 'under_construction' || norm === '3') {
     return actionPrimary;
   }
-  // 4. Đang hoạt động / Hoạt động
-  if (norm.includes('hoat dong') || norm === 'operational' || norm === 'active' || norm === 'good' || norm === '1') {
+  // 4. Đang hoạt động / Hoạt động / Đang khai thác / Vận hành
+  if (norm.includes('hoat dong') || norm.includes('khai thac') || norm.includes('van hanh')
+    || norm === 'operational' || norm === 'active' || norm === 'good' || norm === '1' || norm === 'dang_khai_thac') {
     return statusOperational;
   }
   return textSecondary;
@@ -516,6 +522,15 @@ export const getConditionStatusLabel = (status?: unknown): string => {
   const s = String(status).trim();
   const norm = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 
+  if (norm.includes('dung khai thac') || norm.includes('ngung khai thac') || norm === 'suspended' || norm === 'dung_khai_thac') {
+    return 'Dừng khai thác/vận hành';
+  }
+  if (norm.includes('chua khai thac') || norm.includes('chua hoat dong') || norm === 'not_yet_operational' || norm === 'chua_khai_thac') {
+    return 'Chưa khai thác/vận hành';
+  }
+  if (norm.includes('dang khai thac') || norm === 'dang_khai_thac') {
+    return 'Đang khai thác/vận hành';
+  }
   if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
     || norm.includes('tam dung') || norm.includes('khong hoat dong')
     || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')

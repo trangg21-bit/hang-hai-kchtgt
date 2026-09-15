@@ -104,16 +104,34 @@ interface InfraRow {
 }
 
 export const INFRA_DATA: InfraRow[] = [
-  { sequenceNo: 1, type: 'Bến cảng', total: 42, pending: 5, operating: 34, suspended: 3 },
-  { sequenceNo: 2, type: 'Bến phao', total: 18, pending: 2, operating: 15, suspended: 1 },
-  { sequenceNo: 3, type: 'Cầu cảng', total: 56, pending: 8, operating: 45, suspended: 3 },
-  { sequenceNo: 4, type: 'Khu neo đậu', total: 24, pending: 4, operating: 19, suspended: 1 },
-  { sequenceNo: 5, type: 'Khu chuyển tải', total: 12, pending: 2, operating: 9, suspended: 1 },
-  { sequenceNo: 6, type: 'Luồng hàng hải', total: 38, pending: 5, operating: 33, suspended: 0 },
-  { sequenceNo: 7, type: 'Đèn biển', total: 215, pending: 12, operating: 198, suspended: 5 },
-  { sequenceNo: 8, type: 'Phao tiêu', total: 183, pending: 9, operating: 170, suspended: 4 },
-  { sequenceNo: 9, type: 'Đê chắn sóng', total: 8, pending: 1, operating: 7, suspended: 0 },
-  { sequenceNo: 10, type: 'Kè bảo vệ bờ', total: 15, pending: 2, operating: 12, suspended: 1 },
+  { sequenceNo: 1, code: 'ports', type: 'Cảng biển', total: 34, pending: 2, operating: 31, suspended: 1 },
+  { sequenceNo: 2, code: 'berths', type: 'Bến cảng', total: 42, pending: 5, operating: 34, suspended: 3 },
+  { sequenceNo: 3, code: 'piers', type: 'Cầu cảng', total: 56, pending: 8, operating: 45, suspended: 3 },
+  { sequenceNo: 4, code: 'dry_ports', type: 'Cảng cạn', total: 14, pending: 2, operating: 11, suspended: 1 },
+  { sequenceNo: 5, code: 'anchorages', type: 'Khu neo đậu', total: 24, pending: 4, operating: 19, suspended: 1 },
+  { sequenceNo: 6, code: 'transfer_areas', type: 'Khu chuyển tải', total: 12, pending: 2, operating: 9, suspended: 1 },
+  { sequenceNo: 7, code: 'storm_shelter_areas', type: 'Khu tránh, trú bão', total: 16, pending: 3, operating: 12, suspended: 1 },
+  { sequenceNo: 8, code: 'buoy_berths', type: 'Bến phao', total: 18, pending: 2, operating: 15, suspended: 1 },
+  { sequenceNo: 9, code: 'ship_repair_facility', type: 'Cơ sở sửa chữa, đóng tàu', total: 22, pending: 3, operating: 18, suspended: 1 },
+  { sequenceNo: 10, code: 'navigation_channel', type: 'Luồng hàng hải', total: 38, pending: 5, operating: 33, suspended: 0 },
+  { sequenceNo: 11, code: 'beacon_light', type: 'Đèn biển và nhà trạm gắn với Đèn biển', total: 215, pending: 12, operating: 198, suspended: 5 },
+  { sequenceNo: 12, code: 'buoy', type: 'Phao, tiêu', total: 183, pending: 9, operating: 170, suspended: 4 },
+  { sequenceNo: 13, code: 'buoy_station', type: 'Nhà trạm quản lý vận hành phao tiêu', total: 28, pending: 3, operating: 24, suspended: 1 },
+  { sequenceNo: 14, code: 'dike_revetment', type: 'Đê chắn sóng, đê chắn cát, kè', total: 23, pending: 3, operating: 19, suspended: 1 },
+  { sequenceNo: 15, code: 'vhf', type: 'Hệ thống VHF', total: 36, pending: 4, operating: 31, suspended: 1 },
+  { sequenceNo: 16, code: 'vts_system', type: 'Hệ thống VTS', total: 8, pending: 1, operating: 7, suspended: 0 },
+  { sequenceNo: 17, code: 'vts_operation_center', type: 'Trung tâm điều hành VTS', total: 6, pending: 1, operating: 5, suspended: 0 },
+  { sequenceNo: 18, code: 'radar_station', type: 'Trạm Radar', total: 19, pending: 2, operating: 16, suspended: 1 },
+  { sequenceNo: 19, code: 'ais_system', type: 'Hệ thống trạm bờ AIS', total: 45, pending: 4, operating: 40, suspended: 1 },
+  { sequenceNo: 20, code: 'cctv', type: 'Hệ thống camera giám sát CCTV', total: 62, pending: 5, operating: 55, suspended: 2 },
+  { sequenceNo: 21, code: 'scada', type: 'Hệ thống điều khiển SCADA', total: 12, pending: 1, operating: 11, suspended: 0 },
+  { sequenceNo: 22, code: 'transmission', type: 'Hệ thống truyền dẫn', total: 26, pending: 2, operating: 23, suspended: 1 },
+  { sequenceNo: 23, code: 'vts_assist', type: 'Hệ thống phụ trợ VTS', total: 30, pending: 3, operating: 26, suspended: 1 },
+  { sequenceNo: 24, code: 'dai_ttdh', type: 'Đài Thông tin duyên hải', total: 32, pending: 3, operating: 28, suspended: 1 },
+  { sequenceNo: 25, code: 'coastal_station_inmarsat', type: 'Đài Thông tin vệ tinh Inmarsat', total: 4, pending: 0, operating: 4, suspended: 0 },
+  { sequenceNo: 26, code: 'coastal_station_lrit', type: 'Đài Nhận dạng và truy theo tầm xa (LRIT)', total: 2, pending: 0, operating: 2, suspended: 0 },
+  { sequenceNo: 27, code: 'coastal_station_cospas_sarsat', type: 'Đài Thông tin vệ tinh Cospas-Sarsat', total: 3, pending: 0, operating: 3, suspended: 0 },
+  { sequenceNo: 28, code: 'coastal_station_haiphong', type: 'Đài TTXL thông tin hàng hải Hà Nội / Hải Phòng', total: 2, pending: 0, operating: 2, suspended: 0 },
 ];
 
 const KCHT_LABEL_ROUTES: Record<string, string> = {
@@ -140,7 +158,7 @@ const KCHT_LABEL_ROUTES: Record<string, string> = {
   'Hệ thống truyền dẫn': '/transmission',
   'Hệ thống phụ trợ VTS': '/vts-assist',
   'Đài Thông tin duyên hải': '/dai-ttdh',
-  'Hệ thống VHF': '/dai-ttdh',
+  'Hệ thống VHF': '/vhf',
   'Đài Thông tin vệ tinh Inmarsat': '/station/inmarsat',
   'Đài Nhận dạng và truy theo tầm xa (LRIT)': '/station/lrit',
   'Đài Thông tin vệ tinh Cospas-Sarsat': '/station/cospas-sarsat',
@@ -173,7 +191,7 @@ const infraColumns: NonNullable<TableProps<InfraRow>['columns']> = [
     title: 'Loại kết cấu hạ tầng',
     dataIndex: 'type',
     key: 'type',
-    width: 170,
+    width: 210,
     render: (type: string) => (
       <span style={{ fontWeight: 600, color: colors.sidebarBg }}>{type}</span>
     ),
@@ -195,7 +213,7 @@ const infraColumns: NonNullable<TableProps<InfraRow>['columns']> = [
     width: 125,
     align: 'center',
     render: (v: number) => (
-      <span style={statusBadgeStyle(v > 0 ? statusAttention : statusDraft)}>{v}</span>
+      <span style={statusBadgeStyle(statusAttention)}>{v}</span>
     ),
   },
   {
@@ -205,7 +223,7 @@ const infraColumns: NonNullable<TableProps<InfraRow>['columns']> = [
     width: 125,
     align: 'center',
     render: (v: number) => (
-      <span style={statusBadgeStyle(v > 0 ? statusOperational : statusDraft)}>{v}</span>
+      <span style={statusBadgeStyle(statusOperational)}>{v}</span>
     ),
   },
   {
@@ -215,7 +233,7 @@ const infraColumns: NonNullable<TableProps<InfraRow>['columns']> = [
     width: 125,
     align: 'center',
     render: (v: number) => (
-      <span style={statusBadgeStyle(v > 0 ? statusCritical : statusDraft)}>{v}</span>
+      <span style={statusBadgeStyle(statusCritical)}>{v}</span>
     ),
   },
 ];
@@ -869,7 +887,7 @@ function HomeDashboard({ hideHeader = false }: { hideHeader?: boolean }) {
               rowKey="sequenceNo"
               pagination={false}
               size="small"
-              scroll={{ x: 640, y: 340 }}
+              scroll={{ x: 755, y: 340 }}
             />
           </div>
         </Col>

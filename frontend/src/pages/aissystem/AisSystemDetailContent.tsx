@@ -26,7 +26,6 @@ import {
   fontWeightMedium,
   fontSizeSm,
   fontSizeLg,
-  spaceFormField,
   textTertiary,
   statusOperational,
   statusAttention,
@@ -36,8 +35,8 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   DRAWER_TABLE_SCROLL_Y,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  getVtsConditionStatusColor,
+  getVtsConditionStatusLabel,
   surfaceCard,
 } from '../../themetokenchk';
 import { getProvinceNameById } from '../../types/common';
@@ -47,7 +46,6 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { parseWktToCoordinates } from '../../utils/gisGeometry';
 
 const fontSizeMd = 13.5;
-const spaceMd = 12;
 
 const isImageFile = (name?: string): boolean => {
   if (!name) return false;
@@ -145,8 +143,8 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return null;
-  const label = getConditionStatusLabel(status);
-  const color = getConditionStatusColor(status);
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
   return (
     <span
       style={{
@@ -366,36 +364,16 @@ export default function AisSystemDetailContent({
 
   // Tệp đính kèm
   const [attachmentList, setAttachmentList] = useState<any[]>(
-    detailFiles && detailFiles.length > 0
-      ? detailFiles
-      : (selectedRecord?.attachments || [])
+    detailFiles !== undefined ? detailFiles : (selectedRecord?.attachments || [])
   );
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-  const [filesLoaded, setFilesLoaded] = useState(Boolean(detailFiles && detailFiles.length > 0));
+  const [filesLoaded, setFilesLoaded] = useState(detailFiles !== undefined);
 
   // Xem chi tiết ảnh
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewImageFile, setPreviewImageFile] = useState<any>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
-
-  // Tải chi tiết đầy đủ khi mount, đính kèm được nạp nếu đã có sẵn trong response
-  useEffect(() => {
-    if (!selectedRecord?.id) return;
-    let mounted = true;
-    setFilesLoaded(Boolean(detailFiles && detailFiles.length > 0));
-    aisSystemService.getById(selectedRecord.id)
-      .then((data) => {
-        if (!mounted || !data) return;
-        setRecord(data);
-        if (Array.isArray(data.attachments) && data.attachments.length > 0 && (!detailFiles || detailFiles.length === 0)) {
-          setAttachmentList(data.attachments);
-          setFilesLoaded(true);
-        }
-      })
-      .catch(() => {});
-    return () => { mounted = false; };
-  }, [selectedRecord?.id, detailFiles]);
 
   // Lazy load tệp đính kèm khi chuyển sang tab files
   const handleTabChange = useCallback((key: string) => {
@@ -642,16 +620,22 @@ export default function AisSystemDetailContent({
 
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
+                      <div className="chk-detail-row chk-detail-row--full">
                         <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
                         <span className="chk-detail-value">{renderApprovalBadge(record.approvalStatus)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
                           {record.updatedByName || record.createdByName ? (
                             <span style={{ fontWeight: fontWeightBold }}>{record.updatedByName || record.createdByName}</span>
                           ) : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                        <span className="chk-detail-value">
+                          {fmtDateTime((record as any).updatedDate || (record as any).updatedAt || record.createdDate || (record as any).createdAt)}
                         </span>
                       </div>
 

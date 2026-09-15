@@ -23,7 +23,8 @@ import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import { usePermissionStore } from '../../store/permissionStore';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { useAuthStore } from '../../store/authStore';
+import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import {
   statusOperational,
@@ -43,6 +44,9 @@ const STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
 export default function WaterZoneList() {
   const navigate = useNavigate();
   const hasPerm = usePermissionStore((state: { hasPermission: (key: string) => boolean }) => state.hasPermission);
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const canCreate = hasPerm('waterzone:create') || hasPerm('data:create') || isAdmin;
 
   const [search, setSearch] = useState('');
   const [filterLoai, setFilterLoai] = useState<string | undefined>();
@@ -165,9 +169,9 @@ export default function WaterZoneList() {
   ], []);
 
   const headerActions = useMemo(() => [
-    { key: 'create', label: 'Tạo vùng nước', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => navigate('/WaterZone/create') },
+    ...(canCreate ? [{ key: 'create', label: 'Tạo vùng nước', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => navigate('/WaterZone/create') }] : []),
     { key: 'export', label: '', variant: 'subtle' as const, icon: <FileExcelOutlined style={{ color: statusOperational }} />, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => {} },
-  ], [navigate]);
+  ], [navigate, canCreate]);
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: WaterZone, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
@@ -204,24 +208,29 @@ export default function WaterZoneList() {
   const rowActions = useCallback((record: WaterZone) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
     actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => navigate(`/WaterZone/${record.id}`) });
-    // Quy tắc 12 (approval-2-level-spec.md mục 3.9) — trước đây màn này không kiểm tra quyền
+    // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'waterzone' })) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => navigate(`/WaterZone/${record.id}`) });
     }
-    if (record.approvalStatus === 'DRAFT') {
+    const canSubmit = (record.approvalStatus === 'DRAFT' || record.approvalStatus === 'REJECTED') && (hasPerm('waterzone:update') || hasPerm('data:update') || isAdmin);
+    if (canSubmit) {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
+    }
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'waterzone' })) {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     }
-    if (record.approvalStatus === 'PENDING_APPROVAL') {
+    const canApprove1 = (hasPerm('waterzone:approvec1') || hasPerm('waterzone:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin);
+    if (record.approvalStatus === 'PENDING_APPROVAL' && canApprove1) {
       actions.push({ key: 'approve1', label: 'Phê duyệt L1', icon: <CheckCircleOutlined />, onClick: () => handleApproveL1(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });
     }
-    if (record.approvalStatus === 'APPROVED_L1') {
+    const canApprove2 = (hasPerm('waterzone:approvec2') || hasPerm('waterzone:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+    if (record.approvalStatus === 'APPROVED_L1' && canApprove2) {
       actions.push({ key: 'approve2', label: 'Phê duyệt L2', icon: <CheckCircleOutlined />, onClick: () => handleApproveL2(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });
     }
     return actions;
-  }, [navigate, handleSubmitApproval, handleDelete, handleApproveL1, handleApproveL2, handleReject, hasPerm]);
+  }, [navigate, handleSubmitApproval, handleDelete, handleApproveL1, handleApproveL2, handleReject, hasPerm, isAdmin]);
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;

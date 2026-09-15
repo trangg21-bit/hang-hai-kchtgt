@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -129,11 +130,19 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         SELECT t FROM RadarStation t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
-          AND (t.conditionStatus = '1' OR t.conditionStatus = 'OPERATIONAL' OR t.conditionStatus IS NULL)
-        ORDER BY t.stationName ASC
+          AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
+          AND (t.conditionStatus = '1' OR t.conditionStatus = 'OPERATIONAL' OR t.conditionStatus = 'DANG_KHAI_THAC')
+        ORDER BY LOWER(t.stationName) ASC
     """)
-    List<RadarStation> findAllApprovedOptions(@Param("orgUnitId") UUID orgUnitId);
+    List<RadarStation> findAllApprovedOptions(
+        @Param("orgFiltered") boolean orgFiltered,
+        @Param("targetOrgUnitIds") Collection<UUID> targetOrgUnitIds
+    );
+
+    default List<RadarStation> findAllApprovedOptions(UUID orgUnitId) {
+        boolean orgFiltered = orgUnitId != null;
+        return findAllApprovedOptions(orgFiltered, orgFiltered ? List.of(orgUnitId) : List.of(UUID.randomUUID()));
+    }
 
     @Query("SELECT t FROM RadarStation t WHERE " +
            "t.deletedAt IS NULL AND " +

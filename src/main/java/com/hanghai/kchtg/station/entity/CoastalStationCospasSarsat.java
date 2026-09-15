@@ -1,129 +1,168 @@
 package com.hanghai.kchtg.station.entity;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.FieldNameConstants;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
  * Entity for Coastal Station Cospas-Sarsat equipment and operational data.
- * Extends BaseEntity for common station fields.
+ * Chuẩn hóa kế thừa BaseApprovableEntity theo mẫu VTS và quy trình duyệt 2 cấp M-1006.
  */
 @Entity
 @Table(name = "coastal_station_cospas_sarsat")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@SuperBuilder
 @FieldNameConstants
-@SQLRestriction("deleted_at IS NULL")
-@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "unit_id IN (:orgUnitIds)")
-public class CoastalStationCospasSarsat extends BaseEntity implements com.hanghai.kchtg.common.entity.ApprovableEntity {
+@EqualsAndHashCode(callSuper = true)
+@SQLRestriction("1=1")
+@org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
+public class CoastalStationCospasSarsat extends BaseApprovableEntity {
 
-    @Column(name = "province_id")
-    private Integer provinceId;
+    @Column(name = "code", length = 50, unique = true)
+    private String code;
 
-    @Column(length = 50)
-    protected String code;
+    @Column(name = "name", length = 255)
+    private String name;
 
-    @Column(length = 255)
-    protected String name;
+    @Column(name = "description", length = 1000)
+    private String description;
 
-    @Column(length = 1000)
-    protected String description;
-
-    @Column(name = "unit_id")
-    protected UUID unitId;
-
-    @Column(name = "spatial_id")
-    protected UUID spatialId;
+    @Column(name = "note", length = 2000)
+    private String note;
 
     @Column(name = "is_active")
-    protected Boolean isActive;
+    @Builder.Default
+    private Boolean isActive = true;
 
-    @Enumerated(jakarta.persistence.EnumType.ORDINAL)
-    @Column(name = "status", columnDefinition = "smallint default 0")
-    protected StationStatus status;
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "condition_status", columnDefinition = "SMALLINT")
+    @Builder.Default
+    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
 
-    @Enumerated(jakarta.persistence.EnumType.ORDINAL)
-    @Column(name = "approval_status", columnDefinition = "smallint default 0")
-    protected ApprovalStatus approvalStatus;
+    @Column(name = "operating_org_id")
+    private UUID operatingOrgId;
 
-    @Enumerated(jakarta.persistence.EnumType.ORDINAL)
-    protected ApprovalLevel approvalLevel;
+    @Column(name = "owning_org_id")
+    private UUID owningOrgId;
 
-    // --- Phê duyệt 2 cấp (docs/conventions/approval-2-level-spec.md mục 3) ---
-    @Column(name = "submitted_at")
-    protected java.time.LocalDateTime submittedAt;
+    @Column(name = "symbol_id")
+    private UUID symbolId;
 
-    @Column(name = "submitted_by")
-    protected UUID submittedBy;
+    @Column(name = "coordinate_reference_system", length = 50)
+    private String coordinateReferenceSystem;
 
-    @Column(name = "approver_level1")
-    protected UUID approverLevel1;
-
-    @Column(name = "approved_date_level1")
-    protected java.time.LocalDateTime approvedDateLevel1;
-
-    @Column(name = "approver_level2")
-    protected UUID approverLevel2;
-
-    @Column(name = "approved_date_level2")
-    protected java.time.LocalDateTime approvedDateLevel2;
-
-    @Column(name = "approved_by")
-    protected UUID approvedBy;
-
-    @Column(name = "approved_date")
-    protected java.time.LocalDateTime approvedDate;
-
-    @Column(length = 1000)
-    protected String rejectionReason;
-
+    // --- Thuộc tính kỹ thuật & vận hành đặc thù Đài Cospas-Sarsat ---
+    @Column(name = "frequency", length = 255)
     private String frequency;
+
+    @Column(name = "coverage_area", length = 1000)
     private String coverageArea;
+
+    @Column(name = "beacon_protocol", length = 255)
     private String beaconProtocol;
+
+    @Column(name = "emergency_channel", length = 255)
     private String emergencyChannel;
+
+    @Column(name = "antenna_type", length = 255)
     private String antennaType;
 
-    @Column(length = 1000)
+    @Column(name = "location_address", length = 1000)
     private String locationAddress;
 
+    @Column(name = "contact_person", length = 255)
     private String contactPerson;
+
+    @Column(name = "contact_phone", length = 255)
     private String contactPhone;
+
+    @Column(name = "signal_range")
     private Double signalRange;
+
+    @Column(name = "operating_mode", length = 255)
     private String operatingMode;
 
-    /** ApprovableEntity: đơn vị quản lý của họ nhà trạm lưu ở cột unit_id. */
-    @Override
-    public UUID getOrgUnitId() {
-        return this.unitId;
+    // --- ALIASES & TƯƠNG THÍCH NGƯỢC ---
+
+    /** Tương thích ngược: unitId ánh xạ trực tiếp vào orgUnitId của BaseApprovableEntity. */
+    public UUID getUnitId() {
+        return getOrgUnitId();
     }
 
-    @PrePersist
-    protected void onCreate() {
-        setDefaultStatus();
+    public void setUnitId(UUID unitId) {
+        setOrgUnitId(unitId);
     }
 
-    @PreUpdate
-    protected void onUpdate() {
+    /** Tương thích ngược: description ánh xạ với note. */
+    public String getDescription() {
+        return this.note != null ? this.note : this.description;
     }
 
-    private void setDefaultStatus() {
-        // Tạo mới luôn ở "Lưu tạm" — chỉ chuyển sang chờ duyệt khi người dùng gửi phê duyệt
-        if (this.status == null) {
-            this.status = StationStatus.DRAFT;
+    public void setDescription(String description) {
+        this.description = description;
+        if (this.note == null) {
+            this.note = description;
         }
-        if (this.approvalStatus == null) {
-            this.approvalStatus = ApprovalStatus.DRAFT;
-        }
+    }
+
+    /** Tương thích ngược: status enum cũ chuyển đổi từ conditionStatus / approvalStatus. */
+    public StationStatus getStatus() {
+        if (getApprovalStatus() == null) return StationStatus.DRAFT;
+        return switch (getApprovalStatus()) {
+            case DRAFT, PROPOSED -> StationStatus.DRAFT;
+            case PENDING_APPROVAL -> StationStatus.PENDING_APPROVAL;
+            case APPROVED_LEVEL1 -> StationStatus.APPROVED_L1;
+            case APPROVED, APPROVED_LEVEL2 -> StationStatus.APPROVED_L2;
+            case REJECTED, REJECTED_LEVEL1, REJECTED_LEVEL2 -> StationStatus.REJECTED;
+            case ARCHIVED -> StationStatus.DELETED;
+        };
+    }
+
+    public void setStatus(StationStatus status) {
+        // Giữ method setter cho tương thích ngược
+    }
+
+    /** Tương thích ngược: approvalLevel. */
+    public ApprovalLevel getApprovalLevel() {
+        if (getApprovalStatus() == null) return ApprovalLevel.LEVEL_0;
+        return switch (getApprovalStatus()) {
+            case APPROVED_LEVEL1 -> ApprovalLevel.LEVEL_1;
+            case APPROVED, APPROVED_LEVEL2 -> ApprovalLevel.LEVEL_2;
+            default -> ApprovalLevel.LEVEL_0;
+        };
+    }
+
+    public void setApprovalLevel(ApprovalLevel level) {
+        // Giữ method setter cho tương thích ngược
+    }
+
+    public UUID getApprovedBy() {
+        return getApproverLevel2() != null ? getApproverLevel2() : getApproverLevel1();
+    }
+
+    public void setApprovedBy(UUID approvedBy) {
+        setApproverLevel2(approvedBy);
+    }
+
+    public LocalDateTime getApprovedDate() {
+        return getApprovedDateLevel2() != null ? getApprovedDateLevel2() : getApprovedDateLevel1();
+    }
+
+    public void setApprovedDate(LocalDateTime approvedDate) {
+        setApprovedDateLevel2(approvedDate);
     }
 }

@@ -105,6 +105,7 @@ export interface RadarStationOptionResponse {
   id: string;
   code: string;
   stationName: string;
+  name?: string;
   orgUnitId?: string;
 }
 

@@ -15,5 +15,10 @@ public class RadarStationOptionResponse {
     private UUID id;
     private String code;
     private String stationName;
+    private String name;
     private UUID orgUnitId;
+
+    public String getName() {
+        return name != null ? name : stationName;
+    }
 }

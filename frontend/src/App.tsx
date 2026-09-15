@@ -204,7 +204,7 @@ export default function App() {
                 <Route path="/gis/layers" element={<PermissionGuard permission="map:manage"><MapLayerList /></PermissionGuard>} />
 
                 <Route path="/gis/search" element={<PermissionGuard permission="data:read"><GISSearch /></PermissionGuard>} />
-                <Route path="/gis/map" element={<GISChartView />} />
+                <Route path="/gis/map" element={<PermissionGuard permission="data:read"><GISChartView /></PermissionGuard>} />
                 <Route path="/gis/permits" element={<PermissionGuard permission="data:read"><S63PermitsPage /></PermissionGuard>} />
 
                 {/* Connections — Liên thông & tích hợp dữ liệu */}
@@ -248,7 +248,7 @@ export default function App() {
                 <Route path="/buoy-berth" element={<PermissionGuard permission="buoyberth:read"><BuoyBerthList /></PermissionGuard>} />
 
                 <Route path="/dai-ttdh" element={<PermissionGuard permission="daittdh:read"><DaiTtdhList /></PermissionGuard>} />
-                <Route path="/vhf" element={<PermissionGuard permission={['vhf:read', 'daittdh:read', 'specialstation:read', 'data:read']}><VhfListPage /></PermissionGuard>} />
+                <Route path="/vhf" element={<PermissionGuard permission="vhf:read"><VhfListPage /></PermissionGuard>} />
 
                 <Route path="/ship-repair-yard" element={<PermissionGuard permission="shiprepairyard:read"><ShipRepairYardList /></PermissionGuard>} />
 
@@ -299,7 +299,7 @@ export default function App() {
                 <Route path="/vts-system" element={<PermissionGuard permission={['vts:read', 'vtssystem:read']}><VtsSystemList /></PermissionGuard>} />
 
                 {/* Trung tâm điều hành VTS */}
-                <Route path="/vts-operation-center" element={<PermissionGuard permission={['vtsoperationcenter:read', 'vts:read']}><VtsOperationCenterList /></PermissionGuard>} />
+                <Route path="/vts-operation-center" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterList /></PermissionGuard>} />
 
                 {/* Hệ thống trạm bờ AIS */}
                 <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />
@@ -314,9 +314,9 @@ export default function App() {
                 <Route path="/asset/cang-can" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'dryport:read', 'data:read']}><DryPortAssetList /></PermissionGuard>} />
                 <Route path="/asset/dry-port" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'dryport:read', 'data:read']}><DryPortAssetList /></PermissionGuard>} />
                 <Route path="/asset/ttdh" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'daittdh:read', 'coastalstation:read', 'data:read']}><TtdhAssetList /></PermissionGuard>} />
-                <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatAssetList /></PermissionGuard>} />
-                <Route path="/asset/lrit" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritAssetList /></PermissionGuard>} />
-                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'coastalstationhaiphong:read', 'coastalstation:read', 'data:read']}><TtxlttAssetList /></PermissionGuard>} />
+                <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/lrit" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationhaiphong:read', 'coastalstation:read', 'data:read']}><TtxlttAssetList /></PermissionGuard>} />
                 <Route path="/asset/vts-system" element={<PermissionGuard permission="infraasset:manage"><VtsSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/radar-station" element={<PermissionGuard permission="infraasset:manage"><RadarStationAssetList /></PermissionGuard>} />
                 <Route path="/asset/ais-system" element={<PermissionGuard permission="infraasset:manage"><AisSystemAssetList /></PermissionGuard>} />
@@ -351,9 +351,9 @@ export default function App() {
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />
                 <Route path="/station/inmarsat" element={<PermissionGuard permission={['specialstation:read', 'coastalstationinmarsat:read', 'coastalstation:read', 'data:read']}><InmarsatStationList /></PermissionGuard>} />
-                <Route path="/station/cospas-sarsat" element={<PermissionGuard permission="coastalstationcospassarsat:read"><CospasSarsatStationList /></PermissionGuard>} />
-                <Route path="/station/lrit" element={<PermissionGuard permission="coastalstationlrit:read"><LritStationList /></PermissionGuard>} />
-                <Route path="/station/hanoi" element={<PermissionGuard permission="coastalstationhaiphong:read"><HanoiStationList /></PermissionGuard>} />
+                <Route path="/station/cospas-sarsat" element={<PermissionGuard permission={['specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatStationList /></PermissionGuard>} />
+                <Route path="/station/lrit" element={<PermissionGuard permission={['specialstation:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritStationList /></PermissionGuard>} />
+                <Route path="/station/hanoi" element={<PermissionGuard permission={['specialstation:read', 'coastalstationhaiphong:read', 'coastalstation:read', 'data:read']}><HanoiStationList /></PermissionGuard>} />
 
                 {/* Symbols — Biểu tượng bản đồ */}
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />

@@ -24,6 +24,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
@@ -158,7 +160,7 @@ public class CoastalStationLRITService {
     // --- TÌM KIẾM PHÂN TRANG & THỐNG KÊ TAB ---
 
     @Transactional(readOnly = true)
-    public Page<CoastalStationLRITResponse> searchPaged(
+    public Page<CoastalStationLRITListResponse> searchPaged(
             UUID orgUnitId,
             String keyword,
             String name,
@@ -181,11 +183,11 @@ public class CoastalStationLRITService {
                 operatingOrgId, provinceId,
                 conditionStatus, approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
 
-        return page.map(this::buildResponse);
+        return new PageImpl<>(buildListResponses(page.getContent()), pageable, page.getTotalElements());
     }
 
     @Transactional(readOnly = true)
-    public Page<CoastalStationLRITResponse> searchPaged(
+    public Page<CoastalStationLRITListResponse> searchPaged(
             UUID orgUnitId,
             String keyword,
             String name,
@@ -286,7 +288,7 @@ public class CoastalStationLRITService {
         Scope scope = resolveEffectiveScope(orgUnitId);
         List<CoastalStationLRIT> list = repository.findApprovedOptions(
                 !scope.unrestricted(), scope.orgUnitIds(), orgUnitId);
-        return list.stream().map(this::buildResponse).toList();
+        return buildResponses(list);
     }
 
     // --- CRUD & PHÊ DUYỆT 2 CẤP ---
@@ -871,31 +873,137 @@ public class CoastalStationLRITService {
 
     // --- RESPONSE BUILDER ---
 
+    private List<CoastalStationLRITListResponse> buildListResponses(List<CoastalStationLRIT> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> orgUnitIds = new HashSet<>();
+        Set<UUID> userIds = new HashSet<>();
+        for (CoastalStationLRIT entity : entities) {
+            if (entity.getOrgUnitId() != null) orgUnitIds.add(entity.getOrgUnitId());
+            if (entity.getOperatingOrgId() != null) orgUnitIds.add(entity.getOperatingOrgId());
+            if (entity.getCreatedBy() != null) userIds.add(entity.getCreatedBy());
+            if (entity.getUpdatedBy() != null) userIds.add(entity.getUpdatedBy());
+            if (entity.getApproverLevel1() != null) userIds.add(entity.getApproverLevel1());
+        }
+
+        Map<UUID, String> orgUnitNames = orgUnitIds.isEmpty() ? Map.of()
+                : orgUnitRepository.findAllById(orgUnitIds).stream()
+                        .collect(Collectors.toMap(OrgUnit::getId, OrgUnit::getName, (first, second) -> first));
+        Map<UUID, String> userNames = userIds.isEmpty() ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(User::getId, user -> {
+                            String fullName = user.getFullName();
+                            return fullName != null && !fullName.isBlank() ? fullName : user.getUsername();
+                        }, (first, second) -> first));
+
+        return entities.stream()
+                .map(entity -> {
+                    return CoastalStationLRITListResponse.builder()
+                            .id(entity.getId())
+                            .code(entity.getCode())
+                            .name(entity.getName())
+                            .orgUnitId(entity.getOrgUnitId())
+                            .orgUnitName(orgUnitNames.get(entity.getOrgUnitId()))
+                            .operatingOrgId(entity.getOperatingOrgId())
+                            .operatingOrgName(orgUnitNames.get(entity.getOperatingOrgId()))
+                            .provinceId(entity.getProvinceId())
+                            .provinceName(formatProvinceDisplay(entity.getProvinceId()))
+                            .conditionStatus(entity.getConditionStatus())
+                            .approvalStatus(entity.getApprovalStatus())
+                            .rejectionReason(entity.getRejectionReason())
+                            .approverLevel1(entity.getApproverLevel1())
+                            .createdBy(entity.getCreatedBy())
+                            .createdByName(userNames.get(entity.getCreatedBy()))
+                            .createdAt(entity.getCreatedAt())
+                            .updatedByName(userNames.get(entity.getUpdatedBy()))
+                            .updatedAt(entity.getUpdatedAt())
+                            .build();
+                })
+                .toList();
+    }
+
+    private List<CoastalStationLRITResponse> buildResponses(List<CoastalStationLRIT> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> orgUnitIds = new HashSet<>();
+        Set<UUID> userIds = new HashSet<>();
+        Set<UUID> spatialIds = new HashSet<>();
+        Set<UUID> symbolIds = new HashSet<>();
+        for (CoastalStationLRIT entity : entities) {
+            if (entity.getOrgUnitId() != null) orgUnitIds.add(entity.getOrgUnitId());
+            if (entity.getOperatingOrgId() != null) orgUnitIds.add(entity.getOperatingOrgId());
+            if (entity.getCreatedBy() != null) userIds.add(entity.getCreatedBy());
+            if (entity.getUpdatedBy() != null) userIds.add(entity.getUpdatedBy());
+            if (entity.getSubmittedBy() != null) userIds.add(entity.getSubmittedBy());
+            else if (entity.getCreatedBy() != null) userIds.add(entity.getCreatedBy());
+            if (entity.getApproverLevel1() != null) userIds.add(entity.getApproverLevel1());
+            if (entity.getApproverLevel2() != null) userIds.add(entity.getApproverLevel2());
+            if (entity.getSpatialId() != null) spatialIds.add(entity.getSpatialId());
+            if (entity.getSymbolId() != null) symbolIds.add(entity.getSymbolId());
+        }
+
+        Map<UUID, String> orgUnitNames = orgUnitIds.isEmpty() ? Map.of()
+                : orgUnitRepository.findAllById(orgUnitIds).stream()
+                .collect(Collectors.toMap(OrgUnit::getId, OrgUnit::getName, (first, second) -> first));
+        Map<UUID, String> userNames = userIds.isEmpty() ? Map.of()
+                : userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> {
+                    String fullName = user.getFullName();
+                    return fullName != null && !fullName.isBlank() ? fullName : user.getUsername();
+                }, (first, second) -> first));
+        Map<UUID, GisSpatialObject> spatialObjects = gisSpatialObjectService == null
+                ? Map.of() : gisSpatialObjectService.findAllByIdMap(spatialIds);
+        Map<UUID, String> symbolNames = symbolIds.isEmpty() ? Map.of()
+                : mapSymbolRepository.findAllById(symbolIds).stream()
+                .collect(Collectors.toMap(MapSymbol::getId, MapSymbol::getName, (first, second) -> first));
+
+        return entities.stream()
+                .map(entity -> buildResponse(entity, orgUnitNames, userNames, spatialObjects, symbolNames))
+                .toList();
+    }
+
     public CoastalStationLRITResponse buildResponse(CoastalStationLRIT entity) {
+        return buildResponse(entity, null, null, null, null);
+    }
+
+    private CoastalStationLRITResponse buildResponse(
+            CoastalStationLRIT entity,
+            Map<UUID, String> orgUnitNames,
+            Map<UUID, String> userNames,
+            Map<UUID, GisSpatialObject> spatialObjects,
+            Map<UUID, String> symbolNames) {
         if (entity == null) return null;
 
         String orgUnitName = null;
         UUID effectiveOrgId = entity.getOrgUnitId();
         if (effectiveOrgId != null) {
-            orgUnitName = orgUnitRepository.findById(effectiveOrgId).map(OrgUnit::getName).orElse(null);
+            orgUnitName = orgUnitNames != null ? orgUnitNames.get(effectiveOrgId)
+                    : orgUnitRepository.findById(effectiveOrgId).map(OrgUnit::getName).orElse(null);
         }
 
         String opOrgName = null;
         if (entity.getOperatingOrgId() != null) {
-            opOrgName = orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null);
+            opOrgName = orgUnitNames != null ? orgUnitNames.get(entity.getOperatingOrgId())
+                    : orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null);
         }
 
-        String createdByName = resolveUserName(entity.getCreatedBy());
-        String updatedByName = resolveUserName(entity.getUpdatedBy());
+        String createdByName = userNames != null ? userNames.get(entity.getCreatedBy()) : resolveUserName(entity.getCreatedBy());
+        String updatedByName = userNames != null ? userNames.get(entity.getUpdatedBy()) : resolveUserName(entity.getUpdatedBy());
         UUID effectiveSubmittedBy = entity.getSubmittedBy() != null ? entity.getSubmittedBy() : entity.getCreatedBy();
-        String submittedByName = resolveUserName(effectiveSubmittedBy);
-        String approver1Name = resolveUserName(entity.getApproverLevel1());
-        String approver2Name = resolveUserName(entity.getApproverLevel2());
+        String submittedByName = userNames != null ? userNames.get(effectiveSubmittedBy) : resolveUserName(effectiveSubmittedBy);
+        String approver1Name = userNames != null ? userNames.get(entity.getApproverLevel1()) : resolveUserName(entity.getApproverLevel1());
+        String approver2Name = userNames != null ? userNames.get(entity.getApproverLevel2()) : resolveUserName(entity.getApproverLevel2());
 
         String coords = null;
         String resolvedGeomType = "POINT";
         if (entity.getSpatialId() != null && gisSpatialObjectService != null) {
-            Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            Optional<GisSpatialObject> spatialOpt = spatialObjects != null
+                    ? Optional.ofNullable(spatialObjects.get(entity.getSpatialId()))
+                    : gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialOpt.isPresent()) {
                 GisSpatialObject so = spatialOpt.get();
                 coords = so.getCoordinates();
@@ -939,6 +1047,13 @@ public class CoastalStationLRITService {
             }
         }
 
+        String symbolName = null;
+        if (entity.getSymbolId() != null && gisSpatialObjectService != null) {
+            symbolName = symbolNames != null
+                    ? symbolNames.getOrDefault(entity.getSymbolId(), entity.getSymbolId().toString())
+                    : gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString());
+        }
+
         return CoastalStationLRITResponse.builder()
                 .id(entity.getId())
                 .orgUnitId(effectiveOrgId)
@@ -969,9 +1084,7 @@ public class CoastalStationLRITService {
                 .contactPhone(entity.getContactPhone())
                 .spatialId(entity.getSpatialId())
                 .symbolId(entity.getSymbolId())
-                .symbolName(entity.getSymbolId() != null && gisSpatialObjectService != null
-                        ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString())
-                        : null)
+                .symbolName(symbolName)
                 .geometryType(resolvedGeomType)
                 .objectType(resolvedGeomType)
                 .symbol(entity.getSymbol())

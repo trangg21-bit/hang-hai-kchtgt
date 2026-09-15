@@ -33,8 +33,8 @@ import {
   statusCritical,
   DRAWER_TABLE_SCROLL_Y,
   statusBadgeStyle,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  getVtsConditionStatusColor,
+  getVtsConditionStatusLabel,
 } from '../../themetokenchk';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
@@ -85,8 +85,8 @@ const parseWktToCoordinates = (wkt?: string): CoordinateItem[] => {
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (!status && status !== 0) return '—';
-  const label = getConditionStatusLabel(status);
-  const color = getConditionStatusColor(status);
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
 
   return (
     <span style={{ ...statusBadgeStyle(color), marginLeft: -6 }}>
