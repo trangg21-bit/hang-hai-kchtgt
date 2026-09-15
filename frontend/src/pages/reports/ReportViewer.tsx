@@ -936,11 +936,11 @@ export default function ReportViewer() {
           title={`Xem trước PDF: ${template.name}`}
           footer={null}
           width="96vw"
-          style={{ top: 10, maxWidth: '98vw' }}
+          style={{ maxWidth: '96vw', paddingBottom: 0 }}
           styles={{
             body: {
               padding: '4px 8px 8px',
-              height: 'calc(100vh - 85px)',
+              height: 'calc(100vh - 120px)',
             },
           }}
           centered
