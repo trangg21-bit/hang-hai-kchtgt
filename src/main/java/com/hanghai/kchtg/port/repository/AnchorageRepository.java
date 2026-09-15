@@ -44,6 +44,9 @@ public interface AnchorageRepository extends JpaRepository<Anchorage, UUID> {
     @Query("SELECT COUNT(a) FROM Anchorage a WHERE a.deletedAt IS NULL AND a.approvalStatus = :approvalStatus")
     long countByApprovalStatusAndDeletedAtIsNull(@Param("approvalStatus") ApprovalStatus approvalStatus);
 
+    @Query("SELECT COUNT(a) FROM Anchorage a WHERE a.deletedAt IS NOT NULL OR a.deletedBy IS NOT NULL")
+    long countDeleted();
+
     @Query("SELECT MAX(a.anchorageCode) FROM Anchorage a WHERE a.anchorageCode LIKE 'BC-%-ND-%'")
     String findMaxAnchorageCode();
 
@@ -53,13 +56,12 @@ public interface AnchorageRepository extends JpaRepository<Anchorage, UUID> {
     /**
      * Search anchorages with unaccent support on code and name.
      */
-    @Query("SELECT a FROM Anchorage a WHERE " +
-            "((:approvalStatus IS NULL AND a.deletedAt IS NULL AND a.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
-            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (a.deletedAt IS NOT NULL OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
-            "  OR (a.deletedAt IS NULL AND a.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
-            "      a.approvalStatus = :approvalStatus " +
-            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
-            "  )) " +
+    @Query("SELECT a FROM Anchorage a WHERE (" +
+            "  (:isDeleted = true AND (a.deletedAt IS NOT NULL OR a.deletedBy IS NOT NULL)) " +
+            "  OR (:isDeleted IS NULL AND :approvalStatus IS NULL) " +
+            "  OR (:isDeleted IS NULL AND :approvalStatus IS NOT NULL AND a.deletedAt IS NULL AND a.deletedBy IS NULL AND a.approvalStatus = :approvalStatus) " +
+            "  OR (:isDeleted = false AND :approvalStatus IS NULL AND a.deletedAt IS NULL AND a.deletedBy IS NULL) " +
+            "  OR (:isDeleted = false AND :approvalStatus IS NOT NULL AND a.deletedAt IS NULL AND a.deletedBy IS NULL AND a.approvalStatus = :approvalStatus)" +
             ") " +
             "AND (:includeAll = true OR a.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR " +
@@ -82,6 +84,7 @@ public interface AnchorageRepository extends JpaRepository<Anchorage, UUID> {
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR a.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR a.updatedAt <= :updatedTo)")
     Page<Anchorage> searchAnchorages(
+            @Param("isDeleted") Boolean isDeleted,
             @Param("includeAll") boolean includeAll,
             @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("search") String search,
@@ -97,6 +100,30 @@ public interface AnchorageRepository extends JpaRepository<Anchorage, UUID> {
             @Param("updatedFrom") java.time.LocalDateTime updatedFrom,
             @Param("updatedTo") java.time.LocalDateTime updatedTo,
             Pageable pageable);
+
+    /**
+     * Backward-compatible overload for searchAnchorages without isDeleted flag (defaults to null).
+     */
+    default Page<Anchorage> searchAnchorages(
+            boolean includeAll,
+            Collection<UUID> orgUnitIds,
+            String search,
+            String anchorageCode,
+            String anchorageName,
+            UUID portId,
+            UUID navigationChannelId,
+            UUID buoyStationId,
+            Integer provinceId,
+            ApprovalStatus approvalStatus,
+            OperationalStatus operationalStatus,
+            boolean operationalStatusNull,
+            java.time.LocalDateTime updatedFrom,
+            java.time.LocalDateTime updatedTo,
+            Pageable pageable) {
+        return searchAnchorages(null, includeAll, orgUnitIds, search, anchorageCode, anchorageName,
+                portId, navigationChannelId, buoyStationId, provinceId, approvalStatus,
+                operationalStatus, operationalStatusNull, updatedFrom, updatedTo, pageable);
+    }
 
     /**
      * @deprecated Use the new searchAnchorages method instead.

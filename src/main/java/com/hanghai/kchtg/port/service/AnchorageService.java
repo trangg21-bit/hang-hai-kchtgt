@@ -147,6 +147,9 @@ public class AnchorageService {
     public AnchorageResponse update(UpdateAnchorageRequest request) {
         Anchorage entity = anchorageRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu neo đậu với id: " + request.getId()));
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể chỉnh sửa khu neo đậu đã bị xóa");
+        }
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -311,12 +314,29 @@ public class AnchorageService {
                                            Integer provinceId,
                                            String operationalStatus, String approvalStatus,
                                            String updatedFrom, String updatedTo) {
+        return findAll(page, size, orgUnitId, search, anchorageCode, anchorageName, portId, navigationChannelId, buoyStationId, provinceId, operationalStatus, approvalStatus, updatedFrom, updatedTo, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnchorageResponse> findAll(int page, int size, UUID orgUnitId,
+                                           String search, String anchorageCode, String anchorageName,
+                                           UUID portId, UUID navigationChannelId, UUID buoyStationId,
+                                           Integer provinceId,
+                                           String operationalStatus, String approvalStatus,
+                                           String updatedFrom, String updatedTo,
+                                           Boolean isDeleted) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
                 Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
                         Sort.Order.desc(EntityFields.CREATED_AT),
                         Sort.Order.asc(EntityFields.ID)));
-        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
+        boolean deletedOnly = "DELETED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)
+                || "ARCHIVED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)
+                || Boolean.TRUE.equals(isDeleted);
+        ApprovalStatus approvalEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty() && !deletedOnly)
+                ? ApprovalStatus.fromString(approvalStatus)
+                : null;
+        Boolean isDeletedFilter = deletedOnly ? Boolean.TRUE : isDeleted;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
         java.time.LocalDateTime updatedToDt = parseUpdatedTo(updatedTo);
@@ -325,6 +345,7 @@ public class AnchorageService {
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
         String searchTrim = search != null ? search.trim() : null;
         Page<Anchorage> result = anchorageRepository.searchAnchorages(
+                isDeletedFilter,
                 includeAll, orgUnitIds,
                 searchTrim, anchorageCode, anchorageName, portId, navigationChannelId, buoyStationId,
                 provinceId, approvalEnum, statusEnum, false,
@@ -830,6 +851,12 @@ public class AnchorageService {
                 .departmentApprovedBy(e.getDepartmentApprovedBy())
                 .rejectionReason(e.getRejectionReason())
                 .activityStatus(e.getActivityStatus())
+                .createdBy(e.getCreatedBy())
+                .updatedBy(e.getUpdatedBy())
+                .createdAt(e.getCreatedAt())
+                .updatedAt(e.getUpdatedAt())
+                .deletedAt(e.getDeletedAt())
+                .deletedBy(e.getDeletedBy())
                 .build();
     }
 

@@ -613,16 +613,29 @@ export default function AnchorageDetailContent({
                 {approvalOpen && (
                   <div className="chk-detail-grid">
                     {(() => {
-                      const isPendingPortAuthority = r.approvalStatus === 'PENDING_APPROVAL' || r.approvalStatus === 'CHO_PHE_DUYET' || safeApprovalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục';
+                      const isDeleted = Boolean(
+                        (r.deletedAt && String(r.deletedAt).trim() !== '' && String(r.deletedAt) !== 'null') ||
+                        (r.deletedBy && String(r.deletedBy).trim() !== '' && String(r.deletedBy) !== 'null')
+                      );
+                      const isPendingPortAuthority =
+                        !isDeleted && (
+                          r.approvalStatus === 'PENDING_APPROVAL' ||
+                          r.approvalStatus === 'CHO_PHE_DUYET' ||
+                          safeApprovalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục'
+                        );
                       return (
                         <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                           <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                           <span className="chk-detail-value">
-                            {r.approvalStatus && safeApprovalStyleMap[r.approvalStatus] ? (
-                              <span style={statusBadgeStyle(safeApprovalStyleMap[r.approvalStatus].color)}>
-                                {safeApprovalStyleMap[r.approvalStatus].label}
-                              </span>
-                            ) : ''}
+                            {isDeleted ? (
+                              <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>
+                            ) : (
+                              r.approvalStatus && safeApprovalStyleMap[r.approvalStatus] ? (
+                                <span style={statusBadgeStyle(safeApprovalStyleMap[r.approvalStatus].color)}>
+                                  {safeApprovalStyleMap[r.approvalStatus].label}
+                                </span>
+                              ) : ''
+                            )}
                           </span>
                         </div>
                       );

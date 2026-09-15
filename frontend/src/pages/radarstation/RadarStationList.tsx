@@ -73,7 +73,7 @@ import {
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
 import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
-import { fmtNum, fmtInputNumber } from '../../utils/numFmt';
+import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import {
   statusOperational,
   statusAttention,
@@ -136,6 +136,7 @@ import {
   getValueFromEvent20,
   decimalNumberRule,
   safeNumber,
+  safeDecimal,
 } from '../../utils/numberRuleHelper';
 
 // Cỡ chữ chuẩn 13.5px cho toàn màn /radar-station (thay token fontSizeMd=13 của themetokenchk) —
@@ -1088,18 +1089,29 @@ export default function RadarStationList() {
     })();
   }, []);
 
-  // ── Fetch tab counts (mỗi tab = một search riêng) ────────────────
+  // ── Fetch tab counts (mỗi tab = một search riêng với ĐẦY ĐỦ bộ lọc) ────────────────
   const fetchCounts = useCallback(async (orgId?: string) => {
     try {
       const targetOrg = orgId !== undefined ? orgId : filterOrgUnitId;
+      const baseFilterParams = {
+        stationName: filterStationName.trim() || undefined,
+        code: filterCode.trim() || undefined,
+        orgUnitId: (targetOrg && targetOrg !== '__all__') ? targetOrg : undefined,
+        seaportId: filterSeaportId,
+        vtsSystemId: filterVtsSystemId,
+        vtsOperationCenterId: filterVtsOperationCenterId,
+        provinceId: filterProvinceId,
+        conditionStatus: filterConditionStatus,
+        updatedFrom: filterUpdatedFrom || undefined,
+        updatedTo: filterUpdatedTo || undefined,
+        page: 1,
+        size: 1,
+      };
       const results = await Promise.allSettled(
         STATUS_TAB_LIST.map((tab) =>
           radarStationCRUD.searchPaged({
+            ...baseFilterParams,
             approvalStatus: TAB_QUERY_MAP[tab.key],
-            orgUnitId: (targetOrg && targetOrg !== '__all__') ? targetOrg : undefined,
-            stationName: filterStationName.trim() || undefined,
-            page: 1,
-            size: 1,
           }),
         ),
       );
@@ -1108,9 +1120,24 @@ export default function RadarStationList() {
         const tabKey = STATUS_TAB_LIST[idx]?.key || '';
         counts[tabKey] = result.status === 'fulfilled' ? result.value.total : 0;
       });
+      const sumChildCounts = STATUS_TAB_LIST.filter((t) => t.key !== '').reduce((acc, t) => acc + (counts[t.key] || 0), 0);
+      if (sumChildCounts > 0 && (!counts[''] || counts[''] < sumChildCounts)) {
+        counts[''] = sumChildCounts;
+      }
       setTabCounts(counts);
     } catch { /* silent */ }
-  }, [filterOrgUnitId, filterStationName]);
+  }, [
+    filterOrgUnitId,
+    filterStationName,
+    filterCode,
+    filterSeaportId,
+    filterVtsSystemId,
+    filterVtsOperationCenterId,
+    filterProvinceId,
+    filterConditionStatus,
+    filterUpdatedFrom,
+    filterUpdatedTo,
+  ]);
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -1148,12 +1175,12 @@ export default function RadarStationList() {
   ]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(filterOrgUnitId); }, [filterOrgUnitId, fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
-    setFilterStationName(inputStationName);
-    setFilterCode(inputCode);
+    setFilterStationName(inputStationName.trim());
+    setFilterCode(inputCode.trim());
     setPage(1);
   }, [inputStationName, inputCode]);
   const handleFilterReset = useCallback(() => {
@@ -1241,12 +1268,12 @@ export default function RadarStationList() {
       unitOfMeasure: record.unitOfMeasure,
       quantity: record.quantity,
       conditionStatus: record.conditionStatus,
-      towerHeight: record.towerHeight,
+      towerHeight: normalizeSafeNumber(record.towerHeight),
       radarRange: record.radarRange,
       note: record.note,
       geometryType: record.geometryType || undefined,
-      mapIcon: record.mapIcon,
-      coordinateSystem: record.geometryType ? (record.coordinateSystem ?? 1) : undefined,
+      mapIcon: record.mapIcon ? String(record.mapIcon) : undefined,
+      coordinateSystem: record.geometryType ? ((record as any).coordinateSystem ?? 1) : undefined,
       displayRule: record.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
     });
     setUploadedFiles([]);
@@ -1532,8 +1559,9 @@ export default function RadarStationList() {
       const values = await createForm.validateFields();
 
       // Tọa độ GIS: kiểm tra tính đầy đủ và hợp lệ dạng DMS (chuẩn /berth).
-      const geom = values.geometryType || geometryTypeState || undefined;
-      if (hasLocation && !values.mapIcon) {
+      const currentMapIcon = values.mapIcon || createForm.getFieldValue('mapIcon');
+      const geom = values.geometryType || createForm.getFieldValue('geometryType') || geometryTypeState || undefined;
+      if (hasLocation && !currentMapIcon) {
         toast.error('Vui lòng chọn biểu tượng bản đồ');
         setActiveTabKey('location');
         setSubmitting(false);
@@ -1579,14 +1607,14 @@ export default function RadarStationList() {
         unitOfMeasure: values.unitOfMeasure || undefined,
         quantity: values.quantity,
         conditionStatus: values.conditionStatus || '1',
-        towerHeight: safeNumber(values.towerHeight),
+        towerHeight: safeDecimal(values.towerHeight),
         radarRange: values.radarRange,
         note: values.note?.trim() || undefined,
         longitude,
         latitude,
         geometryType: geom,
         coordinates: coordinates || undefined,
-        mapIcon: values.mapIcon || undefined,
+        mapIcon: currentMapIcon || undefined,
       };
       let savedId: string | null = null;
       if (editingRecord) {
@@ -1908,6 +1936,7 @@ export default function RadarStationList() {
         <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Tên trạm radar</div>
         <Input placeholder="Nhập tên trạm radar" allowClear value={inputStationName}
           onChange={(e) => setInputStationName(e.target.value)}
+          onBlur={() => setInputStationName((prev) => prev.trim())}
           onPressEnter={handleFilterApply} style={{ ...inputStyle, width: '100%' }} />
       </div>
 
@@ -1916,9 +1945,10 @@ export default function RadarStationList() {
         <>
           <div style={{ marginBottom: spaceFormField }}>
             <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Mã radar</div>
-            <Input placeholder="Nhập mã radar" allowClear value={inputCode}
-              onChange={(e) => setInputCode(e.target.value)}
-              onPressEnter={handleFilterApply} style={{ ...inputStyle, width: '100%' }} />
+        <Input placeholder="Nhập mã radar" allowClear value={inputCode}
+          onChange={(e) => setInputCode(e.target.value)}
+          onBlur={() => setInputCode((prev) => prev.trim())}
+          onPressEnter={handleFilterApply} style={{ ...inputStyle, width: '100%' }} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
             <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Hệ thống VTS</div>
@@ -1968,10 +1998,16 @@ export default function RadarStationList() {
   );
 
   // ── Status tabs config (FilterTableLayout renders StatusTabs itself) ──
-  const statusTabs = STATUS_TAB_LIST.map((tab) => ({
-    key: tab.key, label: tab.label, count: tabCounts[tab.key] ?? 0,
-    color: tab.color, active: activeTab === tab.key,
-  }));
+  const statusTabs = useMemo(() =>
+    STATUS_TAB_LIST.map((tab) => ({
+      key: tab.key,
+      label: tab.label,
+      count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? (tab.key === '' ? total : 0)),
+      color: tab.color,
+      active: activeTab === tab.key,
+    })),
+    [tabCounts, activeTab, total],
+  );
 
   const headerActions = useMemo(
     () =>
@@ -2042,7 +2078,7 @@ export default function RadarStationList() {
 
   const detailTechnicalRows: DetailRow[] = detailRecord
     ? [
-        { label: 'Chiều cao tháp radar (m)', value: detailRecord.towerHeight != null ? Number(detailRecord.towerHeight).toLocaleString('en-US') : null },
+        { label: 'Chiều cao tháp radar (m)', value: detailRecord.towerHeight != null ? fmtNum(detailRecord.towerHeight) : null },
         { label: 'Tầm hiệu lực radar', value: detailRecord.radarRange != null ? Number(detailRecord.radarRange).toLocaleString('en-US') : null },
         { label: 'Ghi chú', value: detailRecord.note || null, fullWidth: true },
       ]
@@ -3333,7 +3369,7 @@ export default function RadarStationList() {
       >
         <>
           <style>{requiredMarkStyle}</style>
-          <Form form={createForm} layout="vertical" initialValues={{ conditionStatus: '1' }}>
+          <Form form={createForm} layout="vertical" preserve={true} initialValues={{ conditionStatus: '1' }}>
             <Tabs
               activeKey={activeTabKey}
               onChange={setActiveTabKey}
@@ -3342,6 +3378,7 @@ export default function RadarStationList() {
                 {
                   key: 'general',
                   label: 'Thông tin chung',
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section 1: Thông tin cơ bản & Đơn vị quản lý ── */}
@@ -3373,7 +3410,7 @@ export default function RadarStationList() {
                               help={atMax.stationName ? 'Đã đạt tối đa 255 ký tự' : undefined}
                               rules={[{ required: true, message: 'Vui lòng nhập tên trạm radar' }, { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' }]}
                             >
-                              <Input placeholder="VD: Trạm radar Hòn Dấu" maxLength={255} showCount style={inputStyle} />
+                              <Input placeholder="Nhập tên trạm radar" maxLength={255} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -3382,12 +3419,15 @@ export default function RadarStationList() {
                             <Form.Item
                               name="orgUnitId"
                               {...labelProps('Đơn vị quản lý')}
+                              required
                               style={{ marginBottom: spaceFormField }}
                               rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                             >
                               <OrgUnitTreeSelect
+                                variant="form"
                                 organizations={orgOptions}
-                                placeholder="Chọn đơn vị..."
+                                placeholder="Chọn đơn vị quản lý..."
+                                treeDefaultExpandAll={false}
                                 disabled={!!editingRecord}
                                 allowClear
                                 showSearch
@@ -3501,12 +3541,10 @@ export default function RadarStationList() {
                             <Form.Item
                               name="location"
                               {...labelProps('Địa điểm chi tiết')}
-                              required
                               style={{ marginBottom: spaceFormField }}
                               validateStatus={atMax.location ? 'error' : undefined}
                               help={atMax.location ? 'Đã đạt tối đa 500 ký tự' : undefined}
                               rules={[
-                                { required: true, message: 'Vui lòng nhập địa điểm chi tiết' },
                                 { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
                               ]}
                             >
@@ -3600,7 +3638,8 @@ export default function RadarStationList() {
                 },
                 {
                   key: 'location',
-                  label: `Thông tin vị trí (${coordinateList.length})`,
+                  label: 'Thông tin vị trí',
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -3665,14 +3704,20 @@ export default function RadarStationList() {
                               rules={effectiveGeom ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Select
-                                placeholder="Chọn biểu tượng bản đồ"
-                                allowClear
-                                showSearch
-                                optionFilterProp="label"
-                                disabled={!effectiveGeom}
-                                style={selectStyle}
-                              >
+                                      <Select
+                                        placeholder="Chọn biểu tượng bản đồ"
+                                        allowClear
+                                        showSearch
+                                        optionFilterProp="label"
+                                        disabled={!effectiveGeom}
+                                        style={selectStyle}
+                                        onChange={(val) => {
+                                          createForm.setFieldValue('mapIcon', val || undefined);
+                                          if (val) {
+                                            createForm.setFields([{ name: 'mapIcon', errors: [] }]);
+                                          }
+                                        }}
+                                      >
                                 {symbols.map((sym) => (
                                   <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
                                     <Space size={6} style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -3981,39 +4026,25 @@ export default function RadarStationList() {
                 geometryType: geom,
                 mapIcon: val.symbolId || createForm.getFieldValue('mapIcon'),
               });
-              if (points.length > 0) {
-                if (geom === 'POINT') {
-                  const p = points[0];
-                  const latDms = ddToDms(p.latitude);
-                  const lngDms = ddToDms(p.longitude);
-                  setCoordinateList([{
-                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
-                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-                  }]);
-                } else {
-                  setCoordinateList((prev) => {
-                    const toDms = (p: { latitude: number; longitude: number }) => {
-                      const lat = ddToDms(p.latitude);
-                      const lng = ddToDms(p.longitude);
-                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                    };
-                    const newRows = points.map(toDms);
-                    const merged = [...prev];
-                    let newIdx = 0;
-                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-                      if (!isFilled(merged[i])) {
-                        merged[i] = newRows[newIdx++];
-                      }
-                    }
-                    while (newIdx < newRows.length) {
-                      merged.push(newRows[newIdx++]);
-                    }
-                    return merged;
-                  });
-                }
-                setGpsError(null);
+              if (points.length === 0) {
+                setCoordinateList([]);
+              } else if (geom === 'POINT') {
+                const p = points[0];
+                const latDms = ddToDms(p.latitude);
+                const lngDms = ddToDms(p.longitude);
+                setCoordinateList([{
+                  latD: latDms.d, latM: latDms.m, latS: latDms.s,
+                  lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+                }]);
+              } else {
+                const toDms = (p: { latitude: number; longitude: number }) => {
+                  const lat = ddToDms(p.latitude);
+                  const lng = ddToDms(p.longitude);
+                  return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+                };
+                setCoordinateList(points.map(toDms));
               }
+              setGpsError(null);
             }}
           />
         </div>

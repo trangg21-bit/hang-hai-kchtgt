@@ -798,7 +798,13 @@ public class VhfService {
   }
 
   public String generateDeviceCode() {
-    int maxNumber = vhfRepository.findMaxDeviceCodeNumber();
+    int maxNumber = 0;
+    try {
+      maxNumber = vhfRepository.findMaxDeviceCodeNumber();
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị VHF, fallback: {}", e.getMessage());
+      maxNumber = (int) vhfRepository.count();
+    }
     int nextNumber = maxNumber + 1;
     String candidate = String.format("VHF-%06d", nextNumber);
     while (vhfRepository.existsDeviceCodeAnyState(candidate)) {

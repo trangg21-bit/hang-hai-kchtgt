@@ -134,6 +134,8 @@ public class DikeRevetmentService {
                 .length(req.getLength())
                 .crestElevation(req.getCrestElevation())
                 .commissioningDate(req.getCommissioningDate())
+                .constructionDate(req.getConstructionDate())
+                .lastMaintenanceYear(req.getLastMaintenanceYear())
                 .height(req.getHeight())
                 .surfaceMaterial(req.getSurfaceMaterial())
                 .status(req.getStatus() != null ? req.getStatus() : "1")
@@ -349,6 +351,8 @@ public class DikeRevetmentService {
         applyIfChanged("height", dr.getHeight(), req.getHeight(), dr::setHeight, previousValues);
         applyIfChanged("crestElevation", dr.getCrestElevation(), req.getCrestElevation(), dr::setCrestElevation, previousValues);
         applyIfChanged("commissioningDate", dr.getCommissioningDate(), req.getCommissioningDate(), dr::setCommissioningDate, previousValues);
+        applyIfChanged("constructionDate", dr.getConstructionDate(), req.getConstructionDate(), dr::setConstructionDate, previousValues);
+        applyIfChanged("lastMaintenanceYear", dr.getLastMaintenanceYear(), req.getLastMaintenanceYear(), dr::setLastMaintenanceYear, previousValues);
         applyIfChanged("surfaceMaterial", dr.getSurfaceMaterial(), req.getSurfaceMaterial(), dr::setSurfaceMaterial, previousValues);
         applyIfChanged("status", dr.getStatus(), req.getStatus(), dr::setStatus, previousValues);
         applyIfChanged("note", dr.getNote(), req.getNote(), dr::setNote, previousValues);
@@ -718,7 +722,8 @@ public class DikeRevetmentService {
             if ("2".equals(rawValue)) return "VN-2000";
             return rawValue;
         }
-        if ("commissioningDate".equals(field) || "Thời điểm đưa vào khai thác".equals(field)) {
+        if ("commissioningDate".equals(field) || "Thời điểm đưa vào khai thác".equals(field)
+                || "constructionDate".equals(field) || "Thời điểm xây dựng".equals(field)) {
             try {
                 if (rawValue.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
                     String[] parts = rawValue.split("-");
@@ -764,6 +769,8 @@ public class DikeRevetmentService {
         if (DikeRevetment.Fields.height.equals(field)) return "Chiều cao (m)";
         if (DikeRevetment.Fields.crestElevation.equals(field)) return "Cao trình đỉnh (m)";
         if (DikeRevetment.Fields.commissioningDate.equals(field)) return "Thời điểm đưa vào khai thác";
+        if (DikeRevetment.Fields.constructionDate.equals(field)) return "Thời điểm xây dựng";
+        if (DikeRevetment.Fields.lastMaintenanceYear.equals(field)) return "Năm bảo trì gần nhất";
         if (DikeRevetment.Fields.surfaceMaterial.equals(field)) return "Vật liệu bề mặt";
         if (DikeRevetment.Fields.status.equals(field)) return "Tình trạng";
         if (DikeRevetment.Fields.note.equals(field)) return "Ghi chú";
@@ -787,6 +794,8 @@ public class DikeRevetmentService {
         if (DikeRevetment.Fields.height.equals(field)) return entity.getHeight();
         if (DikeRevetment.Fields.crestElevation.equals(field)) return entity.getCrestElevation();
         if (DikeRevetment.Fields.commissioningDate.equals(field)) return entity.getCommissioningDate();
+        if (DikeRevetment.Fields.constructionDate.equals(field)) return entity.getConstructionDate();
+        if (DikeRevetment.Fields.lastMaintenanceYear.equals(field)) return entity.getLastMaintenanceYear();
         if (DikeRevetment.Fields.surfaceMaterial.equals(field)) return entity.getSurfaceMaterial();
         if (DikeRevetment.Fields.status.equals(field)) return entity.getStatus();
         if (DikeRevetment.Fields.note.equals(field)) return entity.getNote();
@@ -1001,6 +1010,8 @@ public class DikeRevetmentService {
                 .length(dr.getLength())
                 .crestElevation(dr.getCrestElevation())
                 .commissioningDate(dr.getCommissioningDate())
+                .constructionDate(dr.getConstructionDate())
+                .lastMaintenanceYear(dr.getLastMaintenanceYear())
                 .height(dr.getHeight())
                 .surfaceMaterial(dr.getSurfaceMaterial())
                 .status(dr.getStatus())

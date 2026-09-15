@@ -28,6 +28,7 @@ public class F150ReportHandler extends BaseReportHandler {
         int reportYear = getReportYear(request);
 
         List<Pier> berths = pierRepository.findAll().stream()
+                .filter(b -> b.getDeletedAt() == null && b.getDeletedBy() == null)
                 .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
                 .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
                 .toList();
@@ -216,6 +217,7 @@ public class F150ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
         List<Pier> berths = pierRepository.findAll().stream()
+                .filter(b -> b.getDeletedAt() == null && b.getDeletedBy() == null)
                 .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
                 .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
                 .toList();

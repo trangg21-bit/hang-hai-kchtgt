@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemAttachmentResponse;
@@ -33,9 +34,14 @@ public class DikeRevetmentResponse {
     private UUID seaportId;
     private String seaportName;
     private UUID operatingUnitId;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal length;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal crestElevation;
     private LocalDate commissioningDate;
+    private LocalDate constructionDate;
+    private Integer lastMaintenanceYear;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal height;
     private String surfaceMaterial;
     private String status;

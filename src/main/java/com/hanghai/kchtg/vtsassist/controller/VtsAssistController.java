@@ -57,7 +57,7 @@ public class VtsAssistController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:create')")
+  @PreAuthorize("@auth.check(authentication, 'vtsassist:create') or @auth.check(authentication, 'vtsassist:read')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating VTS Assist device code");
     String code = vtsAssistService.generateVtsAssistCode();

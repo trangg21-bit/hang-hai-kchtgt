@@ -202,4 +202,42 @@ class VhfServiceTest {
                 () -> service.restore(ID));
         verify(vhfRepository, never()).restoreVhfById(any());
     }
+
+    @Test
+    void generateDeviceCode_withExistingMax_incrementsCorrectly() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenReturn(2);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000003")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000003", code);
+    }
+
+    @Test
+    void generateDeviceCode_withEmptyDatabase_generatesFirstCode() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenReturn(0);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000001", code);
+    }
+
+    @Test
+    void generateDeviceCode_whenQueryThrowsException_fallsBackGracefully() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenThrow(new RuntimeException("SQL syntax error"));
+        when(vhfRepository.count()).thenReturn(10L);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000011")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000011", code);
+    }
+
+    @Test
+    void generateDeviceCode_whenCodeExists_skipsToNextAvailable() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenReturn(5);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000006")).thenReturn(true);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000007")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000007", code);
+    }
 }

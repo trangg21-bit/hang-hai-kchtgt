@@ -4,7 +4,6 @@ import {
   Modal,
   Input,
   Select,
-  TreeSelect,
   Space,
   Typography,
   Form,
@@ -46,7 +45,7 @@ import type {
   UpdateDikeRevetmentRequest,
 } from '../../types/dikeRevetment';
 import { DIKE_REVETMENT_STATUS_LABELS } from '../../types/dikeRevetment';
-import { fmtNum } from '../../utils/numFmt';
+import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
 import { portCRUD } from '../../services/portService';
@@ -132,6 +131,7 @@ import {
   getValueFromEvent20,
   decimalNumberRule,
   safeNumber,
+  safeDecimal,
 } from '../../utils/numberRuleHelper';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 
@@ -427,22 +427,6 @@ function parseWktToVertices(wkt: string, geomType: string): { lng: number; lat: 
   return [];
 }
 
-const buildOrgTree = (nodes: Organization[]): any[] => {
-  const map = new Map<string, any>();
-  const roots: any[] = [];
-  nodes.forEach((org) => {
-    map.set(org.id, { title: org.name, value: org.id, parentId: org.parentId, children: [] });
-  });
-  nodes.forEach((org) => {
-    const node = map.get(org.id);
-    if (org.parentId && map.has(org.parentId)) {
-      map.get(org.parentId).children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-  return roots;
-};
 
 const tabBarStyle: React.CSSProperties = {
   marginBottom: 0,
@@ -787,7 +771,9 @@ export default function DikeRevetmentList() {
     if (val.geometryType) createForm.setFieldValue('geometryType', val.geometryType);
     if (val.symbolId) createForm.setFieldValue('symbolId', val.symbolId);
     const points = parseGisCoordinates(val);
-    if (points.length > 0) {
+    if (points.length === 0) {
+      setCoordinateList([]);
+    } else {
       const currentGeom = val.geometryType || createGeometryType;
       if (currentGeom === 'POINT') {
         const p = points[0];
@@ -798,26 +784,12 @@ export default function DikeRevetmentList() {
           lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
         }]);
       } else {
-        setCoordinateList((prev) => {
-          const toDms = (p: { latitude: number; longitude: number }) => {
-            const lat = ddToDms(p.latitude);
-            const lng = ddToDms(p.longitude);
-            return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-          };
-          const newRows = points.map(toDms);
-          const merged = [...prev];
-          let newIdx = 0;
-          const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-          for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-            if (!isFilled(merged[i])) {
-              merged[i] = newRows[newIdx++];
-            }
-          }
-          while (newIdx < newRows.length) {
-            merged.push(newRows[newIdx++]);
-          }
-          return merged;
-        });
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        setCoordinateList(points.map(toDms));
       }
       setGpsError(null);
     }
@@ -979,7 +951,6 @@ export default function DikeRevetmentList() {
   // Tab counts — đếm theo từng trạng thái, BẮT BUỘC áp ĐÚNG bộ lọc như danh sách
   // để tổng 6 tab con khớp tổng "Tất cả" (tránh lệch 71 vs 76 khi có filter nghiệp vụ)
   const fetchTabCounts = useCallback(async () => {
-    const statuses: string[] = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'ARCHIVED'];
     const filterScope = {
       orgUnitId: filterUnitId && filterUnitId !== '__all__' ? filterUnitId : undefined,
       code: filterCode.trim() || undefined,
@@ -993,16 +964,22 @@ export default function DikeRevetmentList() {
       updatedTo: filterUpdatedRange?.[1] ? filterUpdatedRange[1].format('YYYY-MM-DD') : undefined,
     };
     const results = await Promise.allSettled(
-      statuses.map((st) => dikeRevetmentCRUD.search({ page: 0, size: 1, approvalStatus: st, ...filterScope })),
+      STATUS_TAB_LIST.map((tab) =>
+        dikeRevetmentCRUD.search({ page: 0, size: 1, approvalStatus: TAB_QUERY_MAP[tab.key], ...filterScope })
+      ),
     );
     const counts: Record<string, number> = {};
-    statuses.forEach((st, idx) => {
+    STATUS_TAB_LIST.forEach((tab, idx) => {
       if (results[idx].status === 'fulfilled') {
-        counts[st as string] = (results[idx] as PromiseFulfilledResult<any>).value?.total || 0;
+        counts[tab.key] = (results[idx] as PromiseFulfilledResult<any>).value?.total || 0;
       } else {
-        counts[st as string] = 0;
+        counts[tab.key] = 0;
       }
     });
+    const sumChildCounts = STATUS_TAB_LIST.filter((t) => t.key !== '').reduce((acc, t) => acc + (counts[t.key] || 0), 0);
+    if (sumChildCounts > 0 && (!counts[''] || counts[''] < sumChildCounts)) {
+      counts[''] = sumChildCounts;
+    }
     setTabCounts(counts);
   }, [filterUnitId, filterCode, filterName, filterSeaportId, filterLocation, filterType, filterStatusVal, filterCommissioningYear, filterUpdatedRange]);
 
@@ -1013,7 +990,7 @@ export default function DikeRevetmentList() {
   const statusTabs = useMemo(() =>
     STATUS_TAB_LIST.map((tab) => ({
       ...tab,
-      count: tab.key ? (tabCounts[tab.key] ?? 0) : total,
+      count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? (tab.key === '' ? total : 0)),
       active: activeTab === tab.key,
     })),
     [tabCounts, activeTab, total],
@@ -1030,8 +1007,8 @@ export default function DikeRevetmentList() {
   };
 
   const handleFilterApply = () => {
-    setFilterName(inputName);
-    setFilterMa(inputCode);
+    setFilterName(inputName.trim());
+    setFilterMa(inputCode.trim());
     setPage(1);
   };
   const handleFilterReset = () => {
@@ -1064,7 +1041,7 @@ export default function DikeRevetmentList() {
     setIsDetailMode(false);
     createForm.resetFields();
     createForm.setFieldsValue({
-      status: '1',
+      status: '2',
     });
     setCoordinateList([]);
     setGpsError(null);
@@ -1087,8 +1064,11 @@ export default function DikeRevetmentList() {
         setCodeLoading(false);
       }
     })();
-    // Mặc định đơn vị quản lý theo tài khoản; cha/Cục không bị khóa (được chọn đơn vị con)
-    if (!isElevatedOrg) {
+    // Mặc định đơn vị quản lý theo tài khoản (chuẩn /beacon-stations)
+    const currentOrgUnitId = currentUser?.orgUnitId;
+    if (currentOrgUnitId) {
+      createForm.setFieldsValue({ orgUnitId: currentOrgUnitId });
+    } else {
       (async () => {
         try {
           const res = await api.get('/users/me');
@@ -1101,7 +1081,7 @@ export default function DikeRevetmentList() {
         }
       })();
     }
-  }, [createForm, isElevatedOrg]);
+  }, [createForm, currentUser]);
 
   const openEditDrawer = useCallback((record: DikeRevetmentResponse) => {
     if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dikerevetment' })) {
@@ -1121,11 +1101,11 @@ export default function DikeRevetmentList() {
       seaportId: record.seaportId,
       operatingUnitId: record.operatingUnitId,
       constructionDate: record.constructionDate ? dayjs(record.constructionDate) : null,
-      lastMaintenanceYear: record.lastMaintenanceYear ? dayjs(record.lastMaintenanceYear) : null,
-      length: record.length,
-      crestElevation: record.crestElevation,
+      lastMaintenanceYear: record.lastMaintenanceYear ? dayjs(String(record.lastMaintenanceYear)) : null,
+      length: normalizeSafeNumber(record.length),
+      crestElevation: normalizeSafeNumber(record.crestElevation),
       commissioningDate: record.commissioningDate ? dayjs(record.commissioningDate) : null,
-      height: record.height,
+      height: normalizeSafeNumber(record.height),
       status: record.status,
       note: record.note,
       orgUnitId: record.orgUnitId,
@@ -1219,8 +1199,22 @@ export default function DikeRevetmentList() {
 
   // ── Submit ───────────────────────────────────────────────────────
   const handleSubmit = async (action: 'draft' | 'submit' | 'approve') => {
+    let values: any;
     try {
-      const values = await createForm.validateFields();
+      values = await createForm.validateFields();
+    } catch (e: any) {
+      const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
+      const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+      toast.error(firstError);
+      if (errFields.some((f) => f.name[0] === 'geometryType' || f.name[0] === 'symbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule')) {
+        setActiveTabKey('gis');
+      } else {
+        setActiveTabKey('general');
+      }
+      return;
+    }
+
+    try {
       const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
       if (!coordResult.valid) {
         const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
@@ -1239,12 +1233,24 @@ export default function DikeRevetmentList() {
         dikeRevetmentName: values.dikeRevetmentName,
         seaportId: values.seaportId,
         operatingUnitId: values.operatingUnitId,
-        constructionDate: values.constructionDate ? values.constructionDate.format('YYYY-MM-DD') : undefined,
-        lastMaintenanceYear: values.lastMaintenanceYear ? values.lastMaintenanceYear.format('YYYY') : undefined,
-        length: safeNumber(values.length),
-        crestElevation: safeNumber(values.crestElevation),
-        commissioningDate: values.commissioningDate ? values.commissioningDate.format('YYYY-MM-DD') : undefined,
-        height: safeNumber(values.height),
+        constructionDate: values.constructionDate
+          ? (dayjs.isDayjs(values.constructionDate)
+              ? values.constructionDate.format('YYYY-MM-DD')
+              : String(values.constructionDate))
+          : undefined,
+        lastMaintenanceYear: values.lastMaintenanceYear
+          ? (dayjs.isDayjs(values.lastMaintenanceYear)
+              ? Number(values.lastMaintenanceYear.format('YYYY'))
+              : Number(values.lastMaintenanceYear))
+          : undefined,
+        length: safeDecimal(values.length),
+        crestElevation: safeDecimal(values.crestElevation),
+        commissioningDate: values.commissioningDate
+          ? (dayjs.isDayjs(values.commissioningDate)
+              ? values.commissioningDate.format('YYYY-MM-DD')
+              : String(values.commissioningDate))
+          : undefined,
+        height: safeDecimal(values.height),
         status: values.status,
         orgUnitId: values.orgUnitId,
         code: values.code,
@@ -1947,6 +1953,27 @@ export default function DikeRevetmentList() {
       render: (val: string) => formatYear(val),
     },
     {
+      key: 'approvalStatus',
+      label: 'Trạng thái phê duyệt',
+      dataIndex: 'approvalStatus',
+      width: 240,
+      render: (status: string, record: DikeRevetmentResponse) => {
+        if (isDikeRevetmentDeleted(record)) {
+          return (
+            <span
+              style={{
+                ...themeTokenChk.statusBadgeStyle(statusCritical),
+                fontSize: 13,
+              }}
+            >
+              Đã xóa
+            </span>
+          );
+        }
+        return <ApprovalStatusBadge status={status} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />;
+      },
+    },
+    {
       key: 'updatedBy',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
@@ -1996,27 +2023,6 @@ export default function DikeRevetmentList() {
         ),
       },
     ] : []),
-    {
-      key: 'approvalStatus',
-      label: 'Trạng thái phê duyệt',
-      dataIndex: 'approvalStatus',
-      width: 245,
-      render: (status: string, record: DikeRevetmentResponse) => {
-        if (isDikeRevetmentDeleted(record)) {
-          return (
-            <span
-              style={{
-                ...themeTokenChk.statusBadgeStyle(statusCritical),
-                fontSize: 13,
-              }}
-            >
-              Đã xóa
-            </span>
-          );
-        }
-        return <ApprovalStatusBadge status={status} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />;
-      },
-    },
   ], [page, pageSize, openDetailDrawer, isElevatedOrg, hasPerm]);
 
   const rowActions = useCallback((record: DikeRevetmentResponse) => {
@@ -2961,17 +2967,37 @@ export default function DikeRevetmentList() {
                           <Row gutter={formRowGutter}>
                             <Col span={12}>
                               <Form.Item
-                                name="dikeRevetmentName"
-                                {...labelProps('Tên đê kè')}
+                                name="orgUnitId"
+                                {...labelProps('Đơn vị quản lý')}
                                 required
                                 style={formFieldStyle}
-                                rules={[{ required: true, message: 'Vui lòng nhập tên đê kè' }]}
-                                validateStatus={atMax.dikeRevetmentName ? 'error' : undefined}
-                                help={atMax.dikeRevetmentName ? 'Đã đạt tối đa 255 ký tự' : undefined}
+                                rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                               >
-                                <Input placeholder="Nhập tên đê kè..." maxLength={255} showCount style={inputStyle} />
+                                <OrgUnitTreeSelect
+                                  variant="form"
+                                  organizations={organizations}
+                                  placeholder="Chọn đơn vị quản lý..."
+                                  treeDefaultExpandAll={false}
+                                  disabled={!!editingRecord && !isElevatedOrg}
+                                  style={selectStyle}
+                                  onChange={() => createForm.setFieldsValue({ seaportId: undefined })}
+                                />
                               </Form.Item>
                             </Col>
+                            <Col span={12}>
+                              <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={formFieldStyle}>
+                                <Select
+                                  placeholder="Chọn cảng biển..."
+                                  allowClear
+                                  showSearch
+                                  optionFilterProp="label"
+                                  options={filteredSeaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
+                                  style={selectStyle}
+                                />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                          <Row gutter={formRowGutter}>
                             <Col span={12}>
                               <Form.Item
                                 name="code"
@@ -2987,37 +3013,17 @@ export default function DikeRevetmentList() {
                                 />
                               </Form.Item>
                             </Col>
-                          </Row>
-                          <Row gutter={formRowGutter}>
                             <Col span={12}>
                               <Form.Item
-                                name="dikeRevetmentType"
-                                {...labelProps('Loại kết cấu công trình')}
+                                name="dikeRevetmentName"
+                                {...labelProps('Tên đê kè')}
                                 required
                                 style={formFieldStyle}
-                                rules={[{ required: true, message: 'Vui lòng chọn loại kết cấu công trình' }]}
+                                rules={[{ required: true, message: 'Vui lòng nhập tên đê kè' }]}
+                                validateStatus={atMax.dikeRevetmentName ? 'error' : undefined}
+                                help={atMax.dikeRevetmentName ? 'Đã đạt tối đa 255 ký tự' : undefined}
                               >
-                                <Select placeholder="Chọn loại kết cấu công trình" options={DIKE_REVETMENT_TYPE_OPTIONS} style={selectStyle} />
-                              </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                              <Form.Item
-                                name="orgUnitId"
-                                {...labelProps('Đơn vị quản lý')}
-                                required
-                                style={formFieldStyle}
-                                rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-                              >
-                                <TreeSelect
-                                  placeholder="Chọn đơn vị quản lý"
-                                  treeData={buildOrgTree(organizations)}
-                                  showSearch
-                                  treeNodeFilterProp="title"
-                                  treeDefaultExpandAll
-                                  disabled={!!editingRecord || !isElevatedOrg}
-                                  style={selectStyle}
-                                  onChange={() => createForm.setFieldsValue({ seaportId: undefined })}
-                                />
+                                <Input placeholder="Nhập tên đê kè..." maxLength={255} showCount style={inputStyle} />
                               </Form.Item>
                             </Col>
                           </Row>
@@ -3025,7 +3031,7 @@ export default function DikeRevetmentList() {
                             <Col span={12}>
                               <Form.Item name="operatingUnitId" {...labelProps('Đơn vị vận hành')} style={formFieldStyle}>
                                 <Select
-                                  placeholder="Chọn đơn vị vận hành"
+                                  placeholder="Chọn đơn vị vận hành..."
                                   allowClear
                                   showSearch
                                   optionFilterProp="label"
@@ -3035,15 +3041,14 @@ export default function DikeRevetmentList() {
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={formFieldStyle}>
-                                <Select
-                                  placeholder="Chọn cảng biển"
-                                  allowClear
-                                  showSearch
-                                  optionFilterProp="label"
-                                  options={filteredSeaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
-                                  style={selectStyle}
-                                />
+                              <Form.Item
+                                name="status"
+                                {...labelProps('Tình trạng')}
+                                required
+                                style={formFieldStyle}
+                                rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
+                              >
+                                <Select placeholder="Chọn tình trạng..." options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
                               </Form.Item>
                             </Col>
                           </Row>
@@ -3057,7 +3062,7 @@ export default function DikeRevetmentList() {
                                 rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/TP)' }]}
                               >
                                 <Select
-                                  placeholder="Chọn địa điểm (Tỉnh/TP)"
+                                  placeholder="Chọn địa điểm (Tỉnh/TP)..."
                                   allowClear
                                   showSearch
                                   optionFilterProp="label"
@@ -3068,19 +3073,6 @@ export default function DikeRevetmentList() {
                             </Col>
                             <Col span={12}>
                               <Form.Item
-                                name="status"
-                                {...labelProps('Tình trạng')}
-                                required
-                                style={formFieldStyle}
-                                rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
-                              >
-                                <Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
-                              </Form.Item>
-                            </Col>
-                          </Row>
-                          <Row gutter={formRowGutter}>
-                            <Col span={24}>
-                              <Form.Item
                                 name="locationDetail"
                                 {...labelProps('Địa điểm chi tiết')}
                                 style={formFieldStyle}
@@ -3088,6 +3080,19 @@ export default function DikeRevetmentList() {
                                 help={atMax.locationDetail ? 'Đã đạt tối đa 500 ký tự' : undefined}
                               >
                                 <Input placeholder="Nhập địa điểm chi tiết..." maxLength={500} showCount style={inputStyle} />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                          <Row gutter={formRowGutter}>
+                            <Col span={12}>
+                              <Form.Item
+                                name="dikeRevetmentType"
+                                {...labelProps('Loại kết cấu công trình')}
+                                required
+                                style={formFieldStyle}
+                                rules={[{ required: true, message: 'Vui lòng chọn loại kết cấu công trình' }]}
+                              >
+                                <Select placeholder="Chọn loại kết cấu công trình..." options={DIKE_REVETMENT_TYPE_OPTIONS} style={selectStyle} />
                               </Form.Item>
                             </Col>
                           </Row>

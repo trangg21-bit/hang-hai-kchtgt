@@ -90,7 +90,7 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
             @Param("search") String search,
             Pageable pageable);
 
-    @Query(value = "SELECT COALESCE(MAX(CAST(SUBSTRING(device_code FROM '[0-9]+$') AS INTEGER)), 0) FROM vhf",
+    @Query(value = "SELECT COALESCE(MAX(CAST(SUBSTRING(device_code FROM 5) AS INTEGER)), 0) FROM vhf WHERE device_code ~ '^VHF-[0-9]+$'",
            nativeQuery = true)
     int findMaxDeviceCodeNumber();
 

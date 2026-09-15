@@ -852,15 +852,27 @@ const VtsAssistListPage = () => {
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
       { key: "ARCHIVED", status: "ARCHIVED" },
     ];
+    const filterScope = {
+      orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+        ? filterValues.orgUnitId
+        : undefined),
+      deviceCode: filterDeviceCode.trim() || undefined,
+      deviceName: filterDeviceName.trim() || undefined,
+      operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
+      province: filterValues.province || undefined,
+      vtsSystemId: filterValues.vtsSystemId || undefined,
+      attachedInfraType: filterValues.attachedInfraType,
+      attachedInfraId: filterValues.attachedInfraId || undefined,
+      yearOfUse: filterValues.yearOfUse,
+      updatedFrom: filterValues.updatedFrom || undefined,
+      updatedTo: filterValues.updatedTo || undefined,
+    };
     const results = await Promise.allSettled(
       statuses.map((s) =>
         fetchVtsAssistList({
           page: 0,
           size: 1,
-          orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
-                          ? filterValues.orgUnitId
-                          : undefined),
-          deviceName: filterDeviceName.trim() || undefined,
+          ...filterScope,
           approvalStatus: s.status,
         })
       )
@@ -872,15 +884,27 @@ const VtsAssistListPage = () => {
     setTabCounts(counts);
     // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa
     setTotalAll(
-      counts.DRAFT +
-        counts.PENDING_APPROVAL +
-        counts.APPROVED_LEVEL1 +
-        counts.APPROVED +
-        counts.REJECTED_LEVEL1 +
-        counts.REJECTED_LEVEL2 +
-        (counts.ARCHIVED || counts.DELETED || 0)
+      (counts.DRAFT ?? 0) +
+        (counts.PENDING_APPROVAL ?? 0) +
+        (counts.APPROVED_LEVEL1 ?? 0) +
+        (counts.APPROVED ?? 0) +
+        (counts.REJECTED_LEVEL1 ?? 0) +
+        (counts.REJECTED_LEVEL2 ?? 0) +
+        (counts.DELETED ?? 0)
     );
-  }, [filterValues.orgUnitId, filterDeviceName]);
+  }, [
+    filterValues.orgUnitId,
+    filterDeviceCode,
+    filterDeviceName,
+    filterValues.operationalStatus,
+    filterValues.province,
+    filterValues.vtsSystemId,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom,
+    filterValues.updatedTo,
+  ]);
 
   // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -2482,6 +2506,18 @@ const VtsAssistListPage = () => {
     }
   }, [rejectTarget, rejectLevel, rejectReason, fetchData, fetchTabCounts]);
 
+  const handleCreateFinishFailed = useCallback((errorInfo: any) => {
+    const errFields = errorInfo?.errorFields ?? [];
+    const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+    toast.error(firstError);
+    const firstField = errFields[0]?.name?.[0];
+    if (['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(firstField)) {
+      setCreateActiveTabKey('gis');
+    } else {
+      setCreateActiveTabKey('general');
+    }
+  }, []);
+
   const handleCreate = useCallback(
     async (values: Record<string, unknown>) => {
       // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
@@ -2489,10 +2525,12 @@ const VtsAssistListPage = () => {
       const hasLocation = Boolean(values.geometryType || hasCoordinates);
       if (hasCoordinates && !values.geometryType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+        setCreateActiveTabKey('gis');
         return;
       }
       if (hasLocation && !values.mapSymbolId) {
         toast.error('Biểu tượng bản đồ là bắt buộc');
+        setCreateActiveTabKey('gis');
         return;
       }
       let wktCoordinates: string | undefined;
@@ -2559,6 +2597,18 @@ const VtsAssistListPage = () => {
     [createForm, fetchData, fetchTabCounts, gpsCoordList, uploadFileList]
   );
 
+  const handleUpdateFinishFailed = useCallback((errorInfo: any) => {
+    const errFields = errorInfo?.errorFields ?? [];
+    const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+    toast.error(firstError);
+    const firstField = errFields[0]?.name?.[0];
+    if (['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(firstField)) {
+      setUpdateActiveTabKey('gis');
+    } else {
+      setUpdateActiveTabKey('general');
+    }
+  }, []);
+
   const handleUpdate = useCallback(
     async (values: Record<string, unknown>) => {
       if (!updateTarget) return;
@@ -2568,10 +2618,12 @@ const VtsAssistListPage = () => {
       const hasLocation = Boolean(updateGeometryType || hasCoordinates);
       if (hasCoordinates && !updateGeometryType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+        setUpdateActiveTabKey('gis');
         return;
       }
       if (hasLocation && !values.mapSymbolId) {
         toast.error('Biểu tượng bản đồ là bắt buộc');
+        setUpdateActiveTabKey('gis');
         return;
       }
       let wktCoordinates: string | undefined;
@@ -3082,56 +3134,56 @@ const VtsAssistListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: totalAll || 0,
+            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },
           {
             key: "DRAFT",
             label: "Lưu tạm",
-            count: tabCounts["DRAFT"] ?? 0,
+            count: filterValues.approvalStatus === "DRAFT" ? total : (tabCounts["DRAFT"] ?? 0),
             color: statusDraft,
             active: filterValues.approvalStatus === "DRAFT",
           },
           {
             key: "PENDING_APPROVAL",
             label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-            count: tabCounts["PENDING_APPROVAL"] ?? 0,
+            count: filterValues.approvalStatus === "PENDING_APPROVAL" ? total : (tabCounts["PENDING_APPROVAL"] ?? 0),
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING_APPROVAL",
           },
           {
             key: "APPROVED_LEVEL1",
             label: "Chờ phê duyệt cấp cục",
-            count: tabCounts["APPROVED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
             label: "Đã phê duyệt",
-            count: tabCounts["APPROVED"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED" ? total : (tabCounts["APPROVED"] ?? 0),
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
           },
           {
             key: "REJECTED_LEVEL1",
             label: "Từ chối cấp Cảng vụ/Chi cục",
-            count: tabCounts["REJECTED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "REJECTED_LEVEL1" ? total : (tabCounts["REJECTED_LEVEL1"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL1",
           },
           {
             key: "REJECTED_LEVEL2",
             label: "Từ chối cấp cục",
-            count: tabCounts["REJECTED_LEVEL2"] ?? 0,
+            count: filterValues.approvalStatus === "REJECTED_LEVEL2" ? total : (tabCounts["REJECTED_LEVEL2"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
           {
             key: "ARCHIVED",
             label: "Đã xóa",
-            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
+            count: (filterValues.approvalStatus === "DELETED" || filterValues.approvalStatus === "ARCHIVED") ? total : (tabCounts["DELETED"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
@@ -3933,7 +3985,7 @@ const VtsAssistListPage = () => {
         }}
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" onFinish={handleCreate}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreate} onFinishFailed={handleCreateFinishFailed}>
           <Tabs
             activeKey={createActiveTabKey}
             onChange={setCreateActiveTabKey}
@@ -3952,6 +4004,48 @@ const VtsAssistListPage = () => {
                           <span>Thông tin cơ bản & Quản lý vận hành</span>
                         </div>
                       </div>
+                      <Row gutter={[24, 0]}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="orgUnitId"
+                            {...labelProps('Đơn vị quản lý')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn đơn vị quản lý" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <OrgUnitTreeSelect
+                              variant="form"
+                              organizations={orgUnitOptions}
+                              placeholder="Chọn đơn vị quản lý..."
+                              loading={loadingOrgs}
+                              showPath
+                              treeDefaultExpandAll={false}
+                              style={{ ...pillStyle }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              style={{ width: "100%", ...pillStyle }}
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                createForm.setFieldValue("attachedInfrastructureType", val);
+                                createForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
                       <Row gutter={[24, 0]}>
                         <Col xs={24} sm={12}>
                           <Form.Item
@@ -3984,47 +4078,6 @@ const VtsAssistListPage = () => {
                               maxLength={255}
                               showCount
                               style={{ ...pillStyle, fontFamily: fontSans }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={[24, 0]}>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="orgUnitId"
-                            {...labelProps('Đơn vị quản lý')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn đơn vị quản lý" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <OrgUnitTreeSelect
-                              organizations={orgUnitOptions}
-                              placeholder="Chọn đơn vị"
-                              loading={loadingOrgs}
-                              showPath
-                              treeDefaultExpandAll={false}
-                              style={{ ...pillStyle }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                createForm.setFieldValue("attachedInfrastructureType", val);
-                                createForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
                             />
                           </Form.Item>
                         </Col>
@@ -4438,7 +4491,7 @@ const VtsAssistListPage = () => {
         }}
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdate}>
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdate} onFinishFailed={handleUpdateFinishFailed}>
           <Tabs
             activeKey={updateActiveTabKey}
             onChange={setUpdateActiveTabKey}
@@ -4457,6 +4510,46 @@ const VtsAssistListPage = () => {
                           <span>Thông tin cơ bản & Quản lý vận hành</span>
                         </div>
                       </div>
+                      <Row gutter={[24, 0]}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="orgUnitId"
+                            {...labelProps('Đơn vị quản lý')}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <OrgUnitTreeSelect
+                              variant="form"
+                              organizations={orgUnitOptions}
+                              placeholder="Chọn đơn vị quản lý..."
+                              loading={loadingOrgs}
+                              showPath
+                              treeDefaultExpandAll={false}
+                              disabled
+                              style={{ ...pillStyle }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              style={{ width: "100%", ...pillStyle }}
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                updateForm.setFieldValue("attachedInfrastructureType", val);
+                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
                       <Row gutter={[24, 0]}>
                         <Col xs={24} sm={12}>
                           <Form.Item
@@ -4488,45 +4581,6 @@ const VtsAssistListPage = () => {
                               maxLength={255}
                               showCount
                               style={{ ...pillStyle, fontFamily: fontSans }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={[24, 0]}>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="orgUnitId"
-                            {...labelProps('Đơn vị quản lý')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <OrgUnitTreeSelect
-                              organizations={orgUnitOptions}
-                              placeholder="Chọn đơn vị"
-                              loading={loadingOrgs}
-                              showPath
-                              treeDefaultExpandAll={false}
-                              disabled
-                              style={{ ...pillStyle }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                updateForm.setFieldValue("attachedInfrastructureType", val);
-                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
                             />
                           </Form.Item>
                         </Col>

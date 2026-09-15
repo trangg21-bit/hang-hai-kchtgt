@@ -341,15 +341,27 @@ const TransmissionListPage = () => {
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
       { key: "ARCHIVED", status: "ARCHIVED" },
     ];
+    const filterScope = {
+      orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+        ? filterValues.orgUnitId
+        : undefined),
+      deviceCode: filterDeviceCode.trim() || undefined,
+      deviceName: filterDeviceName.trim() || undefined,
+      operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
+      province: filterValues.province || undefined,
+      vtsSystemId: filterValues.vtsSystemId || undefined,
+      attachedInfraType: filterValues.attachedInfraType,
+      attachedInfraId: filterValues.attachedInfraId || undefined,
+      yearOfUse: filterValues.yearOfUse,
+      updatedFrom: filterValues.updatedFrom || undefined,
+      updatedTo: filterValues.updatedTo || undefined,
+    };
     const results = await Promise.allSettled(
       statuses.map((s) =>
         fetchTransmissionList({
           page: 0,
           size: 1,
-          orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
-                          ? filterValues.orgUnitId
-                          : undefined),
-          deviceName: filterDeviceName.trim() || undefined,
+          ...filterScope,
           approvalStatus: s.status,
         })
       )
@@ -369,7 +381,19 @@ const TransmissionListPage = () => {
         (counts.REJECTED_LEVEL2 ?? 0) +
         (counts.ARCHIVED ?? counts.DELETED ?? 0)
     );
-  }, [filterValues.orgUnitId, filterDeviceName]);
+  }, [
+    filterValues.orgUnitId,
+    filterDeviceCode,
+    filterDeviceName,
+    filterValues.operationalStatus,
+    filterValues.province,
+    filterValues.vtsSystemId,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom,
+    filterValues.updatedTo,
+  ]);
 
   // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -2212,56 +2236,56 @@ const TransmissionListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: totalAll || 0,
+            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },
           {
             key: "DRAFT",
             label: "Lưu tạm",
-            count: tabCounts["DRAFT"] ?? 0,
+            count: filterValues.approvalStatus === "DRAFT" ? total : (tabCounts["DRAFT"] ?? 0),
             color: statusDraft,
             active: filterValues.approvalStatus === "DRAFT",
           },
           {
             key: "PENDING_APPROVAL",
             label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-            count: tabCounts["PENDING_APPROVAL"] ?? 0,
+            count: filterValues.approvalStatus === "PENDING_APPROVAL" ? total : (tabCounts["PENDING_APPROVAL"] ?? 0),
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING_APPROVAL",
           },
           {
             key: "APPROVED_LEVEL1",
             label: "Chờ phê duyệt cấp cục",
-            count: tabCounts["APPROVED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
             label: "Đã phê duyệt",
-            count: tabCounts["APPROVED"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED" ? total : (tabCounts["APPROVED"] ?? 0),
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
           },
           {
             key: "REJECTED_LEVEL1",
             label: "Từ chối cấp Cảng vụ/Chi cục",
-            count: tabCounts["REJECTED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "REJECTED_LEVEL1" ? total : (tabCounts["REJECTED_LEVEL1"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL1",
           },
           {
             key: "REJECTED_LEVEL2",
             label: "Từ chối cấp cục",
-            count: tabCounts["REJECTED_LEVEL2"] ?? 0,
+            count: filterValues.approvalStatus === "REJECTED_LEVEL2" ? total : (tabCounts["REJECTED_LEVEL2"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL2",
           },
           {
             key: "ARCHIVED",
             label: "Đã xóa",
-            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
+            count: filterValues.approvalStatus === "DELETED" ? total : (tabCounts["DELETED"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },

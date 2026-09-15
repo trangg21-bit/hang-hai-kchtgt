@@ -105,7 +105,7 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
-  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -116,7 +116,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  DELETED: 'DELETED',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
@@ -882,6 +882,14 @@ export default function BerthList() {
   // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback(
     (record: Berth) => {
+      const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+      if (isDeleted) {
+        const actions: any[] = [
+          { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
+        ];
+        if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+        return actions;
+      }
       const actions: any[] = [
         { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
@@ -1148,15 +1156,15 @@ export default function BerthList() {
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, ellipsis: false,
         cellTitle: (record: Berth) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || record.approvalStatus === 'ARCHIVED';
-          const eff = isArchived ? 'ARCHIVED' : record.approvalStatus;
-          const s = APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff?.toUpperCase()];
-          return s ? s.label : (eff || '');
+          if (record.deletedAt || record.deletedBy) return 'Đã xóa';
+          const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()];
+          return s ? s.label : (record.approvalStatus || '');
         },
         render: (v: string, record: Berth) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
-          const eff = isArchived ? 'ARCHIVED' : v;
-          const s = eff && (APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff?.toUpperCase()]);
+          if (record.deletedAt || record.deletedBy) {
+            return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+          }
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         } },
       {

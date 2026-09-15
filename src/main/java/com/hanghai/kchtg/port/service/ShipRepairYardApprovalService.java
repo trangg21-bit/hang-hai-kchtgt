@@ -43,6 +43,10 @@ public class ShipRepairYardApprovalService {
         ShipRepairYard entity = shipRepairYardRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cơ sở sửa chữa, đóng tàu với id: " + id));
 
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể phê duyệt cơ sở sửa chữa, đóng tàu đã bị xóa");
+        }
+
         if ("CANG_VU".equals(cap)) {
             if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
                     && entity.getApprovalStatus() != ApprovalStatus.PROPOSED) {
@@ -88,6 +92,10 @@ public class ShipRepairYardApprovalService {
     public void reject(UUID id, String userId, String cap, String reason) {
         ShipRepairYard entity = shipRepairYardRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cơ sở sửa chữa, đóng tàu với id: " + id));
+
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể từ chối cơ sở sửa chữa, đóng tàu đã bị xóa");
+        }
 
         boolean isC2 = "CUC".equalsIgnoreCase(cap)
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1

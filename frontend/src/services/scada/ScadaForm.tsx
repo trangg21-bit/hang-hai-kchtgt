@@ -436,15 +436,19 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   // Create mode: auto-generate deviceCode
   useEffect(() => {
     if (isEdit) return;
+    if (form.getFieldValue('deviceCode')) return;
     setDeviceCodeLoading(true);
     generateScadaCode()
       .then((code) => {
-        if (code) form.setFieldValue('deviceCode', code);
+        if (code) form.setFieldsValue({ deviceCode: code });
       })
       .catch(() => {})
       .finally(() => setDeviceCodeLoading(false));
 
-    if (!isSystemAdmin) {
+    const currentOrgUnitId = currentUser?.orgUnitId;
+    if (currentOrgUnitId) {
+      form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+    } else {
       api.get('/users/me')
         .then((r) => {
           const p = r.data?.data ?? r.data;
@@ -452,7 +456,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         })
         .catch(() => {});
     }
-  }, [isEdit, isSystemAdmin, form]);
+  }, [isEdit, currentUser, form]);
 
   // GIS Geometry Type changes: adjust coordinateList
   useEffect(() => {
@@ -785,29 +789,6 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
 
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
-                      <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
-                        <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item
-                        name="deviceName"
-                        {...labelProps('Tên thiết bị')}
-                        style={{ marginBottom: spaceFormField }}
-                        rules={[
-                          { required: true, message: 'Tên thiết bị không được để trống' },
-                          { max: 255, message: 'Tối đa 255 ký tự' },
-                        ]}
-                        validateStatus={atMax.deviceName ? 'error' : undefined}
-                        help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
-                      >
-                        <Input placeholder="Nhập tên thiết bị" maxLength={255} showCount style={inputStyle} />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-
-                  <Row gutter={[24, 0]}>
-                    <Col span={12}>
                       <Form.Item
                         name="orgUnitId"
                         {...labelProps('Đơn vị quản lý')}
@@ -815,10 +796,11 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                       >
                         <OrgUnitTreeSelect
+                          variant="form"
                           organizations={orgUnits}
                           placeholder="Chọn đơn vị quản lý..."
                           loading={loadingOrgs}
-                          disabled={isEdit || !isSystemAdmin}
+                          disabled={isEdit && !isSystemAdmin}
                           showPath
                           treeDefaultExpandAll={false}
                           onChange={handleOrgUnitChange}
@@ -838,6 +820,29 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                           }
                           allowClear
                         />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={[24, 0]}>
+                    <Col span={12}>
+                      <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
+                        <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="deviceName"
+                        {...labelProps('Tên thiết bị')}
+                        style={{ marginBottom: spaceFormField }}
+                        rules={[
+                          { required: true, message: 'Tên thiết bị không được để trống' },
+                          { max: 255, message: 'Tối đa 255 ký tự' },
+                        ]}
+                        validateStatus={atMax.deviceName ? 'error' : undefined}
+                        help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
+                      >
+                        <Input placeholder="Nhập tên thiết bị" maxLength={255} showCount style={inputStyle} />
                       </Form.Item>
                     </Col>
                   </Row>

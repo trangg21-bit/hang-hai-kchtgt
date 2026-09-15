@@ -216,4 +216,42 @@ class VtsAssistServiceTest {
                 () -> service.restore(ID));
         verify(vtsAssistRepository, never()).restoreVtsAssistById(any());
     }
+
+    @Test
+    void generateVtsAssistCode_withExistingMax_incrementsCorrectly() {
+        when(vtsAssistRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(163));
+        when(vtsAssistRepository.existsDeviceCodeAnyState("PTVTS-000164")).thenReturn(false);
+
+        String code = service.generateVtsAssistCode();
+        assertEquals("PTVTS-000164", code);
+    }
+
+    @Test
+    void generateVtsAssistCode_withEmptyDatabase_generatesFirstCode() {
+        when(vtsAssistRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.empty());
+        when(vtsAssistRepository.existsDeviceCodeAnyState("PTVTS-000001")).thenReturn(false);
+
+        String code = service.generateVtsAssistCode();
+        assertEquals("PTVTS-000001", code);
+    }
+
+    @Test
+    void generateVtsAssistCode_whenQueryThrowsException_fallsBackGracefully() {
+        when(vtsAssistRepository.findMaxDeviceCodeSequence()).thenThrow(new RuntimeException("SQL syntax error"));
+        when(vtsAssistRepository.count()).thenReturn(10L);
+        when(vtsAssistRepository.existsDeviceCodeAnyState("PTVTS-000011")).thenReturn(false);
+
+        String code = service.generateVtsAssistCode();
+        assertEquals("PTVTS-000011", code);
+    }
+
+    @Test
+    void generateVtsAssistCode_whenCodeExists_skipsToNextAvailable() {
+        when(vtsAssistRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(5));
+        when(vtsAssistRepository.existsDeviceCodeAnyState("PTVTS-000006")).thenReturn(true);
+        when(vtsAssistRepository.existsDeviceCodeAnyState("PTVTS-000007")).thenReturn(false);
+
+        String code = service.generateVtsAssistCode();
+        assertEquals("PTVTS-000007", code);
+    }
 }

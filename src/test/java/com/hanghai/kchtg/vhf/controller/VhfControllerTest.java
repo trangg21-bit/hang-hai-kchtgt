@@ -99,4 +99,13 @@ class VhfControllerTest {
         assertNotNull(result.getBody());
         verify(vhfApprovalService).getHistory(eq(TEST_ID), eq(0), eq(10), eq("keyword"), eq("2026-06-01"), eq("2026-06-30"));
     }
+
+    @Test
+    void testGenerateCode() {
+        when(vhfService.generateDeviceCode()).thenReturn("VHF-000003");
+        ResponseEntity<?> result = controller.generateCode();
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        verify(vhfService).generateDeviceCode();
+    }
 }

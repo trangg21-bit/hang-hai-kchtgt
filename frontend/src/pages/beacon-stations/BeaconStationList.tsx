@@ -22,6 +22,7 @@ import {
   AuditOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import { normalizeSafeNumber } from '../../utils/numFmt';
 
 import {
   beaconStationCRUD,
@@ -46,6 +47,7 @@ import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
@@ -60,6 +62,7 @@ import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganiz
 import { fmtNum } from '../../utils/numFmt';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import BeaconStationForm from './BeaconStationForm';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeLg,
@@ -223,7 +226,7 @@ const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  ARCHIVED: 'DELETED',
 };
 
 // Status badge config — semantic token colors (AGENTS.md: no hardcoded hex)
@@ -245,6 +248,7 @@ const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> 
   REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 // Tình trạng hoạt động — semantic tokens (integer enum khớp backend OperationalStatus)
@@ -269,6 +273,16 @@ function formatDate(dateStr: string | null | undefined): string | null {
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
+function formatDateOnly(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY') : dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
 // Định dạng ngày riêng cho bảng con tab 'Vận hành & bảo trì' — khớp /berth:
 // khi trống trả chuỗi rỗng '' thay vì null (formatDate toàn cục giữ nguyên cho nơi khác).
 function formatOperationTableDateTime(dateStr: string | null | undefined): string {
@@ -279,8 +293,15 @@ function formatOperationTableDateTime(dateStr: string | null | undefined): strin
 // Số hiển thị: hàng nghìn ngăn bằng dấu phẩy (,), phần thập phân dùng dấu chấm (.)
 const formatNumber = (v: number | string | null | undefined, maxFractionDigits = 6): string | null => {
   if (v === null || v === undefined || v === '') return null;
-  const n = typeof v === 'string' ? Number(v) : v;
-  if (!Number.isFinite(n)) return String(v);
+  const safeStr = normalizeSafeNumber(v);
+  if (!safeStr) return null;
+  if (safeStr === '99999999999999999999') return '99,999,999,999,999,999,999';
+  const n = Number(safeStr);
+  if (!Number.isFinite(n) || safeStr.replace(/\./g, '').length > 15) {
+    const parts = safeStr.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
   return n.toLocaleString('en-US', { maximumFractionDigits: maxFractionDigits });
 };
 
@@ -497,18 +518,33 @@ export default function BeaconStationList() {
     })();
   }, []);
 
-  // ── Fetch tab counts (each tab = a separate search) ──────────────
-  const fetchCounts = useCallback(async (unitId?: string) => {
+  // ── Fetch tab counts (each tab = a separate search với ĐẦY ĐỦ bộ lọc đồng bộ như fetchData) ──
+  const fetchCounts = useCallback(async (unitIdOverride?: string) => {
     try {
-      const targetUnit = unitId !== undefined ? unitId : filterUnitId;
+      const targetUnit = unitIdOverride !== undefined ? unitIdOverride : filterUnitId;
+      const baseFilterParams = {
+        name: filterName.trim() || undefined,
+        code: filterCode.trim() || undefined,
+        type: filterType,
+        primaryLightModel: filterLightModel.trim() || undefined,
+        unitId: (targetUnit && targetUnit !== '__all__') ? targetUnit : undefined,
+        seaportId: filterSeaportId,
+        operator: filterOperator.trim() || undefined,
+        provinceId: filterProvinceId,
+        operationalStatus: filterOperationalStatus,
+        commissionedFrom: filterCommissionedFrom,
+        commissionedTo: filterCommissionedTo,
+        updatedBy: (filterUpdatedBy || '').trim() || undefined,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+        page: 1,
+        pageSize: 1,
+      };
       const results = await Promise.allSettled(
         STATUS_TAB_LIST.map((tab) =>
           beaconStationCRUD.search({
+            ...baseFilterParams,
             status: TAB_QUERY_MAP[tab.key],
-            unitId: (targetUnit && targetUnit !== '__all__') ? targetUnit : undefined,
-            name: filterName.trim() || undefined,
-            page: 1,
-            pageSize: 1,
           }),
         ),
       );
@@ -519,7 +555,22 @@ export default function BeaconStationList() {
       });
       setTabCounts(counts);
     } catch { /* silent */ }
-  }, [filterUnitId, filterName]);
+  }, [
+    filterUnitId,
+    filterName,
+    filterCode,
+    filterType,
+    filterLightModel,
+    filterSeaportId,
+    filterOperator,
+    filterProvinceId,
+    filterOperationalStatus,
+    filterCommissionedFrom,
+    filterCommissionedTo,
+    filterUpdatedBy,
+    filterUpdatedFrom,
+    filterUpdatedTo,
+  ]);
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -557,12 +608,12 @@ export default function BeaconStationList() {
   }, [filterName, filterCode, filterLightModel, filterType, filterStatus, filterUnitId, filterSeaportId, filterOperator, filterProvinceId, filterOperationalStatus, filterCommissionedFrom, filterCommissionedTo, filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(filterUnitId); }, [filterUnitId, fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
-    setFilterName(inputName);
-    setFilterCode(inputCode);
+    setFilterName(inputName.trim());
+    setFilterCode(inputCode.trim());
     setPage(1);
   }, [inputName, inputCode]);
   const handleFilterReset = useCallback(() => {
@@ -889,6 +940,15 @@ export default function BeaconStationList() {
       },
     },
     {
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 240,
+      render: (status: string, record: BeaconStation) => {
+        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'ARCHIVED' || status === 'DELETED');
+        const displayStatus = isDeleted ? 'ARCHIVED' : status;
+        const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
+        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+      },
+    },
+    {
       key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName', width: 220,
       render: (_: any, record: BeaconStation) => {
         const name = record.updatedByName || userOptions.find((u) => u.value === record.updatedBy)?.label;
@@ -993,15 +1053,6 @@ export default function BeaconStationList() {
             </div>
           </div>
         );
-      },
-    },
-    {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 200,
-      render: (status: string, record: BeaconStation) => {
-        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'ARCHIVED' || status === 'DELETED');
-        const displayStatus = isDeleted ? 'ARCHIVED' : status;
-        const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
-        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
     },
   ], [page, pageSize, openDetailDrawer, seaports, userOptions, hasPerm]);
@@ -1128,10 +1179,16 @@ export default function BeaconStationList() {
   );
 
   // ── Status tabs config (FilterTableLayout renders StatusTabs itself) ──
-  const statusTabs = STATUS_TAB_LIST.map((tab) => ({
-    key: tab.key, label: tab.label, count: tabCounts[tab.key] ?? 0,
-    color: tab.color, active: activeTab === tab.key,
-  }));
+  const statusTabs = useMemo(() =>
+    STATUS_TAB_LIST.map((tab) => ({
+      key: tab.key,
+      label: tab.label,
+      count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? 0),
+      color: tab.color,
+      active: activeTab === tab.key,
+    })),
+    [tabCounts, activeTab, total],
+  );
 
   // ── Detail rows (57 trường theo checklist QL Đèn biển và nhà trạm) ──
   // Cấu trúc 6 tab: Thông tin chung (+ toggle 'Thông tin phê duyệt') | Thông tin kỹ thuật đèn biển
@@ -1202,8 +1259,8 @@ export default function BeaconStationList() {
         { label: 'Tầm hiệu lực ánh sáng', value: detailRecord.lightRange != null ? formatNumber(detailRecord.lightRange) : null },
         { label: 'Màu sắc tháp đèn', value: detailRecord.towerColor || null, span: true },
         { label: 'Nguồn năng lượng', value: detailRecord.powerSupply || null, span: true },
-        { label: 'Thời điểm đưa vào sử dụng', value: formatDate(detailRecord.commissionedDate) },
-        { label: 'Thời điểm sửa chữa gần nhất', value: formatDate(detailRecord.lastRepairDate) },
+        { label: 'Thời điểm đưa vào sử dụng', value: formatDateOnly(detailRecord.commissionedDate) },
+        { label: 'Thời điểm sửa chữa gần nhất', value: formatDateOnly(detailRecord.lastRepairDate) },
       ]
     : [];
 
@@ -1725,7 +1782,10 @@ export default function BeaconStationList() {
     if (field === 'type') {
       return BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === val)?.label || val;
     }
-    if (field === 'lastRepairDate' || field === 'commissionedDate' || field.endsWith('At')) {
+    if (field === 'lastRepairDate' || field === 'commissionedDate') {
+      return formatDateOnly(val) || val;
+    }
+    if (field.endsWith('At')) {
       return formatDate(val) || val;
     }
     return val;
@@ -2127,9 +2187,6 @@ export default function BeaconStationList() {
               border-bottom: 1px solid #f1f5f9 !important;
               line-height: 1.5 !important;
               gap: 10px !important;
-            }
-            .ant-drawer-body .chk-detail-row:last-child {
-              border-bottom: none !important;
             }
             .ant-drawer-body .chk-detail-row--full {
               grid-column: 1 / -1 !important;

@@ -104,7 +104,7 @@ Mỗi yêu cầu dưới đây mô tả một điều hệ thống phải làm �
 
 **AC-056-04 — Validation tên trạm:** `stationName` là bắt buộc, tối đa 255 ký tự. Nếu để trống, hệ thống hiển thị lỗi "Tên trạm không được để trống" tại trường và chặn submit. Validation được thực hiện ở cả client-side và server-side.
 
-**AC-056-05 — Validation vị trí:** `location` là bắt buộc, tối đa 500 ký tự. Nếu để trống, hệ thống hiển thị lỗi "Vị trí không được để trống" tại trường và chặn submit.
+**AC-056-05 — Validation vị trí / địa điểm chi tiết:** `location` (Địa điểm chi tiết) là tùy chọn (optional), tối đa 500 ký tự nếu nhập. Không bắt buộc nhập khi tạo mới.
 
 **AC-056-06 — Validation tọa độ (nếu nhập):** `longitude` phải nằm trong [-180, 180], `latitude` phải nằm trong [-90, 90]. Nếu ngoài khoảng, hệ thống hiển thị lỗi tại trường tương ứng.
 
@@ -130,9 +130,8 @@ Các quy tắc này là "luật chơi" mà mọi thành phần trong hệ thốn
 
 **BR-056-02 — Tên trạm là bắt buộc:** Mỗi trạm radar phải có tên (`stationName`), tối đa 255 ký tự.
 
-**BR-056-03 — Vị trí là bắt buộc:** Mỗi trạm radar phải có vị trí (`location`), tối đa 500 ký tự.
-
-**BR-056-04 — Trạm radar phải thuộc một đơn vị quản lý:** Trường `orgUnitId` xác định đơn vị quản lý trạm radar. Chuyên viên chỉ được tạo trạm trong phạm vi đơn vị của mình. Mặc định được điền theo đơn vị của người dùng đăng nhập.
+**BR-056-03 — Vị trí / Địa điểm chi tiết là tùy chọn:** Trường `location` (Địa điểm chi tiết) là tùy chọn (optional), tối đa 500 ký tự.
+**BR-056-04 — Đơn vị quản lý là bắt buộc:** Trường `orgUnitId` xác định đơn vị quản lý trạm radar là bắt buộc. Chuyên viên chỉ được tạo trạm trong phạm vi đơn vị của mình. Mặc định được điền theo đơn vị của người dùng đăng nhập.
 
 **BR-056-05 — Hệ thống VTS phải đã duyệt:** Khi chọn Hệ thống VTS (`vtsSystemId`), chỉ hiển thị các VTS đã được phê duyệt (`APPROVED`) và filter theo đơn vị quản lý. Không được chọn VTS đang "Lưu tạm", "Chờ duyệt" hoặc "Bị trả về".
 
@@ -251,8 +250,8 @@ Tài liệu gốc (`F-056` feature-brief cũ) định nghĩa 3 entity rời rạ
 |---|---|---|---|---|---|
 | 1 | `id` | `id` | UUID (PK) | Có | Tự động sinh (UUID v4) |
 | 2 | `stationName` | `station_name` | VARCHAR(255) | **Có** | Tên trạm radar (từ `tenTram` cũ) |
-| 3 | `location` | `location` | VARCHAR(500) | **Có** | Vị trí mô tả (từ `viTri` cũ) |
-| 4 | <span style="color:red;font-weight:bold">🔴 `orgUnitId`</span> | `org_unit_id` | UUID | Không | Đơn vị quản lý (từ `fkDonViQl`). Mặc định = đơn vị của user |
+| 3 | `location` | `location` | VARCHAR(500) | Không | Địa điểm chi tiết / vị trí mô tả (từ `viTri` cũ) |
+| 4 | <span style="color:red;font-weight:bold">🔴 `orgUnitId`</span> | `org_unit_id` | UUID | **Có** | Đơn vị quản lý (từ `fkDonViQl`). Mặc định = đơn vị của user |
 | 5 | <span style="color:red;font-weight:bold">🔴 `cangBienId`</span> | *chưa có* | UUID (FK → cảng biển) | Không | Thuộc cảng biển (từ `fkCangBien`). Chỉ hiện CB đã duyệt, filter theo `orgUnitId` |
 | 6 | `vtsSystemId` | `vts_system_id` | UUID (FK → `vts_system.id`) | Không | Thuộc hệ thống VTS (từ `fkHtVts`). Filter theo `orgUnitId`, chỉ VTS đã APPROVED |
 | 7 | <span style="color:red;font-weight:bold">🔴 `ttdhVtsId`</span> | *chưa có* | UUID (FK → Trung tâm điều hành VTS) | Không | Thuộc trung tâm điều hành VTS (từ `fkTtDhVts`). Filter theo `orgUnitId` + `vtsSystemId` |

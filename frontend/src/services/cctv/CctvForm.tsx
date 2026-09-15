@@ -371,20 +371,25 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   // Mode Thêm mới: sinh trước mã thiết bị & set đơn vị mặc định
   useEffect(() => {
     if (!isEdit) {
-      setDeviceCodeLoading(true);
-      generateCctvCode()
-        .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
-        .catch(() => {})
-        .finally(() => setDeviceCodeLoading(false));
+      if (!form.getFieldValue('deviceCode')) {
+        setDeviceCodeLoading(true);
+        generateCctvCode()
+          .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
+          .catch(() => {})
+          .finally(() => setDeviceCodeLoading(false));
+      }
 
-      if (!isSystemAdmin) {
+      const currentOrgUnitId = currentUser?.orgUnitId;
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else {
         api.get('/users/me').then(r => {
           const p = r.data?.data ?? r.data;
           if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
         }).catch(() => {});
       }
     }
-  }, [isEdit, isSystemAdmin, form]);
+  }, [isEdit, currentUser, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
@@ -669,28 +674,6 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
-                  <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="deviceName"
-                  {...labelProps('Tên thiết bị')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[
-                    { required: true, message: 'Tên thiết bị không được để trống' },
-                    { max: 255, message: 'Tối đa 255 ký tự' },
-                  ]}
-                  validateStatus={atMax.deviceName ? 'error' : undefined}
-                  help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
-                >
-                  <Input placeholder="Nhập tên thiết bị" maxLength={255} showCount style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
                 <Form.Item
                   name="orgUnitId"
                   {...labelProps('Đơn vị quản lý')}
@@ -698,10 +681,11 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                 >
                   <OrgUnitTreeSelect
+                    variant="form"
                     organizations={orgUnits}
                     placeholder="Chọn đơn vị quản lý..."
                     loading={loadingOrgs}
-                    disabled={isEdit || !isSystemAdmin}
+                    disabled={isEdit && !isSystemAdmin}
                     showPath
                     treeDefaultExpandAll={false}
                     onChange={handleOrgUnitChange}
@@ -719,6 +703,28 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                     allowClear
                     style={selectStyle}
                   />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
+                  <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="deviceName"
+                  {...labelProps('Tên thiết bị')}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[
+                    { required: true, message: 'Tên thiết bị không được để trống' },
+                    { max: 255, message: 'Tối đa 255 ký tự' },
+                  ]}
+                  validateStatus={atMax.deviceName ? 'error' : undefined}
+                  help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
+                >
+                  <Input placeholder="Nhập tên thiết bị" maxLength={255} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>

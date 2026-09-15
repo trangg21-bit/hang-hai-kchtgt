@@ -99,7 +99,7 @@ export async function deleteCctv(id: string): Promise<void> {
 
 export async function generateCctvCode(): Promise<string> {
   const res = await api.get(`${BASE}/generate-code`);
-  return res.data.data.deviceCode;
+  return res.data?.data?.deviceCode || res.data?.data?.code || (typeof res.data?.data === 'string' ? res.data?.data : '') || '';
 }
 
 // ── Options ─────────────────────────────────────────────────────────

@@ -180,7 +180,7 @@ public class VhfController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'vhf:read')")
+  @PreAuthorize("@auth.check(authentication, 'vhf:create') or @auth.check(authentication, 'vhf:read')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     String code = vhfService.generateDeviceCode();
     return ResponseEntity.ok(ApiResponse.success("Sinh mã thiết bị VHF thành công", Map.of("deviceCode", code)));

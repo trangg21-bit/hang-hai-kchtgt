@@ -148,6 +148,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
   const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [formActiveTabKey, setFormActiveTabKey] = useState('1');
 
   const handleBeforeUpload = useCallback((file: any): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
@@ -241,7 +242,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             unitOfMeasure: data.unitOfMeasure,
             quantity: data.quantity,
             conditionStatus: data.conditionStatus || '1',
-            towerHeight: data.towerHeight,
+            towerHeight: normalizeSafeNumber(data.towerHeight),
             radarRange: data.radarRange,
             note: data.note,
             gisLocation:
@@ -371,11 +372,19 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       } else {
         navigate('/radar-station');
       }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message) {
+    } catch (err: any) {
+      if (err?.errorFields && err.errorFields.length > 0) {
+        const firstField = err.errorFields[0]?.name?.[0];
+        const gisFields = ['location', 'note', 'gisLocation'];
+        if (gisFields.includes(firstField)) {
+          setFormActiveTabKey('2');
+        } else {
+          setFormActiveTabKey('1');
+        }
+        toast.error(err.errorFields[0]?.errors?.[0] || 'Vui lòng kiểm tra lại các trường thông tin bắt buộc');
+      } else if (err instanceof Error && err.message) {
         toast.error(err.message);
       }
-      // Lỗi validate của AntD Form: im lặng — form tự hiển thị lỗi từng trường
     } finally {
       setIsSubmitting(false);
     }
@@ -556,7 +565,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
           </Descriptions.Item>
           <Descriptions.Item label="Chiều cao tháp radar (m)">
-            {record.towerHeight != null ? Number(record.towerHeight).toLocaleString('vi-VN') : '—'}
+            {record.towerHeight != null ? fmtNum(record.towerHeight) : '—'}
           </Descriptions.Item>
           <Descriptions.Item label="Tầm hiệu lực radar">{record.radarRange || '—'}</Descriptions.Item>
           <Descriptions.Item label="Trạng thái">
@@ -710,7 +719,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' },
             ]}
           >
-            <Input placeholder="VD: Trạm radar Hải Phòng 1" maxLength={255} showCount style={inputStyle} />
+            <Input placeholder="Nhập tên trạm radar" maxLength={255} showCount style={inputStyle} />
           </Form.Item>
         </Col>
       </Row>
@@ -720,11 +729,15 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           <Form.Item
             label="Đơn vị quản lý"
             name="orgUnitId"
+            required
             rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
           >
             <OrgUnitTreeSelect
+              variant="form"
               organizations={orgOptions}
-              placeholder="Chọn đơn vị quản lý"
+              placeholder="Chọn đơn vị quản lý..."
+              treeDefaultExpandAll={false}
+              disabled={isEdit}
               allowClear
               showSearch
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -890,11 +903,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       style={{ marginTop: 16, maxHeight: '62vh', overflowY: 'auto', paddingRight: 12 }}
     >
       <Form.Item
-        label="Vị trí"
+        label="Địa điểm chi tiết"
         name="location"
         rules={[
-          { required: true, message: 'Vui lòng nhập vị trí' },
-          { max: 500, message: 'Vị trí tối đa 500 ký tự' },
+          { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
         ]}
       >
         <Input.TextArea rows={2} maxLength={500} showCount placeholder="Mô tả vị trí đặt trạm radar..." style={{ borderRadius: radiusPill }} />
@@ -944,7 +956,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
 
   const renderForm = () => (
     <Tabs
-      defaultActiveKey="1"
+      activeKey={formActiveTabKey}
+      onChange={setFormActiveTabKey}
       items={[
         {
           key: '1',

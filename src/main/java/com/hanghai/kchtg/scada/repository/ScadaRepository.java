@@ -41,7 +41,7 @@ public interface ScadaRepository extends JpaRepository<Scada, UUID> {
      * So sánh theo SỐ, không so sánh chuỗi (tránh 'SCA-000010' < 'SCA-000002' theo từ điển).
      */
     @Query(value = "SELECT MAX(CAST(SUBSTRING(device_code FROM 5) AS INTEGER)) " +
-            "FROM scada WHERE device_code LIKE 'SCA-%'", nativeQuery = true)
+            "FROM scada WHERE device_code ~ '^SCA-[0-9]+$'", nativeQuery = true)
     Optional<Integer> findMaxDeviceCodeSequence();
 
     /**

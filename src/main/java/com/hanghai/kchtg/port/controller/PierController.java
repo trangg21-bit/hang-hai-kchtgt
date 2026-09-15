@@ -79,6 +79,7 @@ public class PierController {
             @RequestParam(required = false) String province,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) Boolean isDeleted,
             @RequestParam(required = false) UUID navigationChannelId,
             @RequestParam(required = false) Integer constructionGrade,
             @RequestParam(required = false) Integer structureType,
@@ -86,13 +87,13 @@ public class PierController {
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo) {
         log.info(
-                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, pierCode={}, pierName={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}, navigationChannelId={}, constructionGrade={}, structureType={}, operationalFunction={}, updatedFrom={}, updatedTo={}",
-                page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province, status, approvalStatus,
+                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, pierCode={}, pierName={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}, isDeleted={}, navigationChannelId={}, constructionGrade={}, structureType={}, operationalFunction={}, updatedFrom={}, updatedTo={}",
+                page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province, status, approvalStatus, isDeleted,
                 navigationChannelId, constructionGrade, structureType, operationalFunction, updatedFrom, updatedTo);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
                 pierService.findAll(page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province, status,
                         approvalStatus, navigationChannelId, constructionGrade, structureType,
-                        operationalFunction, updatedFrom, updatedTo)));
+                        operationalFunction, updatedFrom, updatedTo, isDeleted)));
     }
 
     @GetMapping("/code/{pierCode}")

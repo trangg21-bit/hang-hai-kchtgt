@@ -98,13 +98,14 @@ public class PortController {
             @RequestParam(required = false) Integer portGroup,
             @RequestParam(required = false) Integer portClass,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) Boolean isDeleted) {
         log.info(
-                "Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, portCode, portName, province, operationalStatus, approvalStatus);
+                "Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}, isDeleted={}",
+                page, size, orgUnitId, search, portCode, portName, province, operationalStatus, approvalStatus, isDeleted);
         Page<PortResponse> result = portService.findAll(
                 page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, portGroup,
-                portClass, updatedFrom, updatedTo, search);
+                portClass, updatedFrom, updatedTo, search, isDeleted);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 

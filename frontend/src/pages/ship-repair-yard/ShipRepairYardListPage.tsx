@@ -65,13 +65,19 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 
 // ── Constants ────────────────────────────────────────────────────────
 
+export function isShipRepairYardDeleted(record?: Partial<ShipRepairYard> | null): boolean {
+  if (!record) return false;
+  return Boolean(record.deletedAt || record.deletedBy);
+}
+
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
   ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
@@ -82,8 +88,8 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
-  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -94,7 +100,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  DELETED: 'DELETED',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
@@ -421,7 +427,10 @@ export default function ShipRepairYardList() {
         counts[tabKey] = cnt;
         if (tabKey !== 'all') childSum += cnt;
       });
-      counts['all'] = childSum;
+      const sumChildCounts = TAB_STATUS_LIST.filter((t) => t.key !== 'all').reduce((acc, t) => acc + (counts[t.key] || 0), 0);
+      if (sumChildCounts > 0 && (!counts['all'] || counts['all'] < sumChildCounts)) {
+        counts['all'] = sumChildCounts;
+      }
       setTabCounts(counts);
     } catch { /* silent */ }
   }, []);
@@ -720,6 +729,17 @@ export default function ShipRepairYardList() {
   // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback(
     (record: ShipRepairYard) => {
+      // Bản ghi đã xóa: thao tác bị giới hạn chỉ còn "Xem chi tiết" và "Lịch sử"
+      if (isShipRepairYardDeleted(record)) {
+        const actions: any[] = [
+          { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
+        ];
+        if (hasPerm('shiprepairyard:history')) {
+          actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+        }
+        return actions;
+      }
+
       const actions: any[] = [
         { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
@@ -781,7 +801,10 @@ export default function ShipRepairYardList() {
       };
       return m[r.operationalStatus] || r.operationalStatus || '';
     }
-    if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
+    if (field === 'approvalStatus') {
+      if (isShipRepairYardDeleted(r)) return 'Đã xóa';
+      return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
+    }
     if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
       const t = r.updatedAt || r.createdAt;
       return t ? new Date(t).getTime() : 0;
@@ -948,10 +971,11 @@ export default function ShipRepairYardList() {
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true,
         render: (v: string, record: ShipRepairYard) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
-          const eff = isArchived ? 'ARCHIVED' : (v || '');
-          if (!eff) return '';
-          const s = APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff?.toUpperCase()] || { color: textTertiary, label: eff };
+          if (isShipRepairYardDeleted(record)) {
+            return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+          }
+          if (!v) return '';
+          const s = APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()] || { color: textTertiary, label: v };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         } },
     ];

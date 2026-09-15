@@ -141,8 +141,20 @@ public class VtsAssistService {
    */
   public String generateVtsAssistCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = vtsAssistRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("PTVTS-%06d", sequence);
+    int sequence = 0;
+    try {
+      sequence = vtsAssistRepository.findMaxDeviceCodeSequence().orElse(0);
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị phụ trợ VTS, fallback: {}", e.getMessage());
+      sequence = (int) vtsAssistRepository.count();
+    }
+    sequence++;
+    String code = String.format("PTVTS-%06d", sequence);
+    while (vtsAssistRepository.existsDeviceCodeAnyState(code)) {
+      sequence++;
+      code = String.format("PTVTS-%06d", sequence);
+    }
+    return code;
   }
 
   /**

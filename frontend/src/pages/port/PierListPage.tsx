@@ -73,8 +73,8 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
@@ -89,12 +89,17 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
-  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  DELETED: 'DELETED',
+};
+
+export const isDeletedPier = (record?: Pier | null): boolean => {
+  if (!record) return false;
+  return Boolean(record.deletedAt || record.deletedBy);
 };
 
 const STRUCTURE_TYPE_OPTIONS = [
@@ -568,8 +573,24 @@ export default function PierListPage() {
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
     try {
-      const rs = await Promise.allSettled(TAB_STATUS_LIST.map(t => t.key === 'all' ? pierCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 }) : pierCRUD.search({ approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 })));
-      const c: Record<string, number> = {}; rs.forEach((r, i) => { c[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0; }); setTabCounts(c);
+      const rs = await Promise.allSettled(TAB_STATUS_LIST.map(t => {
+        if (t.key === 'all') {
+          return pierCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+        }
+        if (t.key === 'DELETED') {
+          return pierCRUD.search({ approvalStatus: 'DELETED', orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+        }
+        return pierCRUD.search({ approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+      }));
+      const c: Record<string, number> = {};
+      rs.forEach((r, i) => {
+        c[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0;
+      });
+      const sumChildCounts = TAB_STATUS_LIST.filter((t) => t.key !== 'all').reduce((acc, t) => acc + (c[t.key] || 0), 0);
+      if (sumChildCounts > 0 && (!c['all'] || c['all'] < sumChildCounts)) {
+        c['all'] = sumChildCounts;
+      }
+      setTabCounts(c);
     } catch {}
   }, []);
 
@@ -849,6 +870,12 @@ export default function PierListPage() {
   // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback((record: Pier) => {
     const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
+    if (isDeletedPier(record)) {
+      return [
+        { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
+        { key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) },
+      ];
+    }
     const st = record.approvalStatus || '';
     const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier', extraApprovePerms: ['pier:approve'] });
     if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditPierId(record.id); setEditBaseStatus(record.approvalStatus); setCreateDrawerVisible(true); } });
@@ -863,7 +890,7 @@ export default function PierListPage() {
       actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
+    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier', extraDeletePerms: ['port:delete', 'pier:delete'] }) || (['DRAFT','NHAP'].includes(st) && (hasPerm('pier:delete') || hasPerm('port:delete') || hasPerm('data:delete')))) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
     return actions;
   }, [hasPerm, openDetailDrawer, openHistory, handleSubmitApproval, openRejectModal, openDeleteModal]);
 
@@ -923,7 +950,10 @@ export default function PierListPage() {
     if (field === 'constructionGrade') return CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === r.constructionGrade)?.label ?? '';
     if (field === 'operationalFunction') return formatOperationalFunction(r.operationalFunction, '');
     if (field === 'operationalStatus') return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    if (field === 'approvalStatus') {
+      if (isDeletedPier(r)) return 'Đã xóa';
+      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    }
     if (field === 'updatedAt') return r.updatedAt ?? '';
     if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ?? '';
     if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ?? '';
@@ -963,10 +993,11 @@ export default function PierListPage() {
     ];
     const tailColumns: any[] = [
       { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, ellipsis: false, sortable: true,
-        render: (v: string, record: any) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record?.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
-          const effectiveStatus = isArchived ? 'ARCHIVED' : v;
-          const s = effectiveStatus && (APPROVAL_STYLE_MAP[effectiveStatus] || APPROVAL_STYLE_MAP[effectiveStatus.toUpperCase()]);
+        render: (v: string, record: Pier) => {
+          if (isDeletedPier(record)) {
+            return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+          }
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         } },
       { label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 190, sortable: true,

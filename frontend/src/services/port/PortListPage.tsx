@@ -1041,6 +1041,11 @@ export default function PortListPage() {
     });
   };
 
+  // Helper nhận diện bản ghi đã xóa theo 2 trường deleted_at hoặc deleted_by
+  const isDeletedRecord = (record?: CangBienResponse | null) =>
+    Boolean(record && (record.deletedAt || record.deletedBy));
+  const [filterIsDeleted, setFilterIsDeleted] = useState<boolean | undefined>(undefined);
+
   // Debounce search 300ms (F-012 AC-012-02) — tên và mã tách riêng
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -1756,6 +1761,7 @@ export default function PortListPage() {
         province: filterTinh || undefined,
         operationalStatus: filterStatus,
         approvalStatus: filterApprovalStatus,
+        isDeleted: filterIsDeleted,
         portGroup: filterPortGroup,
         portClass: filterPortClass,
         updatedFrom: filterUpdatedFrom,
@@ -1770,7 +1776,7 @@ export default function PortListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, debouncedName, debouncedCode, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus]);
+  }, [page, pageSize, debouncedName, debouncedCode, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus, filterIsDeleted]);
 
   const fetchTabCounts = useCallback(async () => {
     const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'ARCHIVED'];
@@ -1778,10 +1784,13 @@ export default function PortListPage() {
     await Promise.all([
       ...statuses.map(async (status) => {
         try {
-          const res = await fetchCangBienList({ approvalStatus: status, page: 0, size: 1, orgUnitId: filterOrgUnitId });
+          const res = await fetchCangBienList({ approvalStatus: status, isDeleted: false, page: 0, size: 1, orgUnitId: filterOrgUnitId });
           counts[status] = res?.totalElements ?? 0;
         } catch { counts[status] = 0; }
       }),
+      fetchCangBienList({ isDeleted: true, page: 0, size: 1, orgUnitId: filterOrgUnitId })
+        .then(res => { counts['DELETED'] = res?.totalElements ?? 0; })
+        .catch(() => { counts['DELETED'] = 0; }),
       fetchCangBienList({ page: 0, size: 1, orgUnitId: filterOrgUnitId }).then(res => setTotalAll(res?.totalElements ?? 0)).catch(() => { }),
     ]);
     setTabCounts(counts);
@@ -1919,6 +1928,27 @@ export default function PortListPage() {
   // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback(
     (record: CangBienResponse) => {
+      // Bản ghi đã xóa: thao tác bị giới hạn CHỈ CÒN "Xem chi tiết" và "Lịch sử"
+      if (isDeletedRecord(record)) {
+        const deletedActions: any[] = [
+          {
+            key: 'view',
+            label: 'Xem chi tiết',
+            icon: icons.view,
+            onClick: () => openDetail(record),
+          },
+        ];
+        if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
+          deletedActions.push({
+            key: 'history',
+            label: 'Lịch sử',
+            icon: icons.history,
+            onClick: () => handleViewHistory(record),
+          });
+        }
+        return deletedActions;
+      }
+
       const actions: any[] = [
         {
           key: 'view',
@@ -2158,9 +2188,27 @@ export default function PortListPage() {
         dataIndex: 'approvalStatus',
         width: 170,
         sortable: true,
+        sortOrder: sortField === 'approvalStatus' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => {
-          const isArchived = filterApprovalStatus === 'ARCHIVED' || Boolean(record?.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
-          return <ApprovalStatusBadge status={isArchived ? 'ARCHIVED' : v} />;
+          if (isDeletedRecord(record)) {
+            return (
+              <span
+                style={{
+                  borderRadius: radiusPill,
+                  padding: '2px 10px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  background: `${statusCritical}15`,
+                  border: `1px solid ${statusCritical}40`,
+                  color: statusCritical,
+                  display: 'inline-block',
+                }}
+              >
+                Đã xóa
+              </span>
+            );
+          }
+          return <ApprovalStatusBadge status={v} />;
         },
       },
       {
@@ -2438,11 +2486,12 @@ export default function PortListPage() {
               { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: tabCounts['APPROVED_LEVEL1'] ?? 0, color: '#0284C7', active: activeStatusTab === 'APPROVED_LEVEL1' },
               { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
               { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: tabCounts['REJECTED_LEVEL1'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL1' },
-              { key: 'ARCHIVED', label: 'Đã xóa', count: tabCounts['ARCHIVED'] ?? 0, color: statusCritical, active: activeStatusTab === 'ARCHIVED' },
+              { key: 'DELETED', label: 'Đã xóa', count: tabCounts['DELETED'] ?? 0, color: statusCritical, active: activeStatusTab === 'DELETED' },
             ]}
             onStatusTabChange={(key) => {
               setActiveStatusTab(key === 'all' ? '' : key);
-              setFilterApprovalStatus(key === 'all' ? undefined : key);
+              setFilterApprovalStatus(key === 'all' || key === 'DELETED' ? undefined : key);
+              setFilterIsDeleted(key === 'DELETED' ? true : (key === 'all' ? undefined : false));
               if (key === 'all') { setFilterStatus(undefined); setFilterTinh(''); setFilterName(''); setFilterCode(''); }
               setPage(1);
             }}
