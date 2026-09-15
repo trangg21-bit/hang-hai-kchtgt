@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.radarstation.dto;
 
+import com.hanghai.kchtg.common.validator.Decimal20_4;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Size;
@@ -44,7 +45,7 @@ public class RadarStationUpdateRequest {
 
     private Integer quantity;
 
-    @Digits(integer = 16, fraction = 4, message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
+    @Decimal20_4(message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal towerHeight;
     @Digits(integer = 16, fraction = 4, message = "Tầm radar không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal radarRange;

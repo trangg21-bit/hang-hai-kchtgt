@@ -344,8 +344,8 @@ export interface Pier {
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string;
-  deletedBy?: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
   submittedForApprovalAt?: string;
   submittedForApprovalBy?: string;
   portAuthorityApprovedAt?: string;
@@ -619,8 +619,8 @@ export interface Anchorage {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
-  deletedAt?: string;
-  deletedBy?: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface AnchorPointPayload { name?: string; latitude?: number; longitude?: number; }
@@ -891,8 +891,8 @@ export interface StormShelterArea {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
-  deletedAt?: string;
-  deletedBy?: string;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
 }
 
 export interface CreateStormShelterRequest {

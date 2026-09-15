@@ -756,25 +756,6 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
-                  <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="deviceName"
-                  {...labelProps('Tên thiết bị')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-                  validateStatus={atMax.deviceName ? 'error' : undefined}
-                  help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
-                >
-                  <Input placeholder="Nhập tên thiết bị..." maxLength={255} showCount style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
                 <Form.Item
                   name="orgUnitId"
                   {...labelProps('Đơn vị quản lý')}
@@ -782,8 +763,14 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   style={{ marginBottom: spaceFormField }}
                 >
                   <OrgUnitTreeSelect
+                    variant="form"
+                    organizations={orgUnits}
                     placeholder="Chọn đơn vị quản lý..."
-                    disabled={isEdit || !isSystemAdmin}
+                    loading={loadingOrgs}
+                    treeDefaultExpandAll={false}
+                    disabled={isEdit && !isSystemAdmin}
+                    allowClear
+                    showSearch
                     style={selectStyle}
                   />
                 </Form.Item>
@@ -804,6 +791,25 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     optionFilterProp="label"
                     style={selectStyle}
                   />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
+                  <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="deviceName"
+                  {...labelProps('Tên thiết bị')}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
+                  validateStatus={atMax.deviceName ? 'error' : undefined}
+                  help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
+                >
+                  <Input placeholder="Nhập tên thiết bị..." maxLength={255} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>

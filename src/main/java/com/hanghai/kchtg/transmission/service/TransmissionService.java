@@ -94,8 +94,20 @@ public class TransmissionService {
    */
   public String generateTransmissionCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = transmissionRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("TRD-%06d", sequence);
+    int sequence = 0;
+    try {
+      sequence = transmissionRepository.findMaxDeviceCodeSequence().orElse(0);
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị truyền dẫn, fallback: {}", e.getMessage());
+      sequence = (int) transmissionRepository.count();
+    }
+    sequence++;
+    String code = String.format("TRD-%06d", sequence);
+    while (transmissionRepository.existsDeviceCodeAnyState(code)) {
+      sequence++;
+      code = String.format("TRD-%06d", sequence);
+    }
+    return code;
   }
 
   /**

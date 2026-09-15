@@ -102,17 +102,22 @@ class DikeRevetmentServiceTest {
                 .height(new BigDecimal("8.0"))
                 .surfaceMaterial("Thep")
                 .status("1")
+                .constructionDate(LocalDate.of(2018, 1, 15))
+                .lastMaintenanceYear(2022)
                 .build();
     }
 
     @Test
     void create_shouldSaveEntity() {
+        ArgumentCaptor<DikeRevetment> captor = ArgumentCaptor.forClass(DikeRevetment.class);
         when(repo.save(any())).thenReturn(testEntity);
         DikeRevetmentResponse r = service.create(createReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r).isNotNull();
         assertThat(r.getDikeRevetmentType()).isEqualTo(DikeRevetmentType.RIVER_DIKE);
         assertThat(r.getApprovalStatus()).isEqualTo(ApprovalStatus.DRAFT);
-        verify(repo, times(1)).save(any());
+        verify(repo, times(1)).save(captor.capture());
+        assertThat(captor.getValue().getConstructionDate()).isEqualTo(LocalDate.of(2018, 1, 15));
+        assertThat(captor.getValue().getLastMaintenanceYear()).isEqualTo(2022);
     }
 
     @Test
@@ -136,6 +141,8 @@ class DikeRevetmentServiceTest {
                 .dikeRevetmentType(DikeRevetmentType.BANK_PROTECTION_REVETMENT)
                 .location("Hai Phong")
                 .length(new BigDecimal("300.0"))
+                .constructionDate(LocalDate.of(2020, 5, 10))
+                .lastMaintenanceYear(2023)
                 .build();
 
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
@@ -143,6 +150,8 @@ class DikeRevetmentServiceTest {
 
         DikeRevetmentResponse r = service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r).isNotNull();
+        assertThat(testEntity.getConstructionDate()).isEqualTo(LocalDate.of(2020, 5, 10));
+        assertThat(testEntity.getLastMaintenanceYear()).isEqualTo(2023);
         verify(repo, times(1)).save(any());
     }
 

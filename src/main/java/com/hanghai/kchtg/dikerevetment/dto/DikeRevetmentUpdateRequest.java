@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
+import com.hanghai.kchtg.common.validator.Decimal20_4;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.Digits;
@@ -26,12 +27,14 @@ public class DikeRevetmentUpdateRequest {
     private String location;
     private String locationDetail;
     private String dikeRevetmentName;
-    @Digits(integer = 16, fraction = 4, message = "Chiều dài không quá 20 chữ số (tối đa 4 số lẻ)")
+    @Decimal20_4(message = "Chiều dài không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal length;
-    @Digits(integer = 16, fraction = 4, message = "Cao trình đỉnh không quá 20 chữ số (tối đa 4 số lẻ)")
+    @Decimal20_4(message = "Cao trình đỉnh không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal crestElevation;
     private LocalDate commissioningDate;
-    @Digits(integer = 16, fraction = 4, message = "Chiều cao không quá 20 chữ số (tối đa 4 số lẻ)")
+    private LocalDate constructionDate;
+    private Integer lastMaintenanceYear;
+    @Decimal20_4(message = "Chiều cao không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal height;
     private String surfaceMaterial;
     private String status;

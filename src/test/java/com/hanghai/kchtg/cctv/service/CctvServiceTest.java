@@ -336,4 +336,42 @@ class CctvServiceTest {
                 () -> service.restore(ID));
         verify(cctvRepository, never()).restoreCctvById(any());
     }
+
+    @Test
+    void generateCctvCode_withExistingMax_incrementsCorrectly() {
+        when(cctvRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(52));
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-000053")).thenReturn(false);
+
+        String code = service.generateCctvCode();
+        assertEquals("CCTV-000053", code);
+    }
+
+    @Test
+    void generateCctvCode_withEmptyDatabase_generatesFirstCode() {
+        when(cctvRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.empty());
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-000001")).thenReturn(false);
+
+        String code = service.generateCctvCode();
+        assertEquals("CCTV-000001", code);
+    }
+
+    @Test
+    void generateCctvCode_whenQueryThrowsException_fallsBackGracefully() {
+        when(cctvRepository.findMaxDeviceCodeSequence()).thenThrow(new RuntimeException("SQL syntax error"));
+        when(cctvRepository.count()).thenReturn(10L);
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-000011")).thenReturn(false);
+
+        String code = service.generateCctvCode();
+        assertEquals("CCTV-000011", code);
+    }
+
+    @Test
+    void generateCctvCode_whenCodeExists_skipsToNextAvailable() {
+        when(cctvRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(5));
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-000006")).thenReturn(true);
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-000007")).thenReturn(false);
+
+        String code = service.generateCctvCode();
+        assertEquals("CCTV-000007", code);
+    }
 }

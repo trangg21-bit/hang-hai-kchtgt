@@ -419,20 +419,25 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   // Mode Thêm mới: sinh trước mã thiết bị & set đơn vị mặc định
   useEffect(() => {
     if (!isEdit) {
-      setDeviceCodeLoading(true);
-      generateVhfCode()
-        .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
-        .catch(() => {})
-        .finally(() => setDeviceCodeLoading(false));
+      if (!form.getFieldValue('deviceCode')) {
+        setDeviceCodeLoading(true);
+        generateVhfCode()
+          .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
+          .catch(() => {})
+          .finally(() => setDeviceCodeLoading(false));
+      }
 
-      if (!isSystemAdmin) {
+      const currentOrgUnitId = currentUser?.orgUnitId;
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else {
         api.get('/users/me').then(r => {
           const p = r.data?.data ?? r.data;
           if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
         }).catch(() => {});
       }
     }
-  }, [isEdit, isSystemAdmin, form]);
+  }, [isEdit, currentUser, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
@@ -615,6 +620,8 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
         values = await form.validateFields();
       } catch (err: any) {
         if (err?.errorFields?.length) {
+          const firstError = err.errorFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+          toast.error(firstError);
           const firstField = err.errorFields[0].name[0];
           if (['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(firstField)) {
             setActiveTabKey('location');
@@ -703,6 +710,43 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
+                <Form.Item
+                  name="orgUnitId"
+                  {...labelProps('Đơn vị quản lý')}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
+                >
+                  <OrgUnitTreeSelect
+                    variant="form"
+                    organizations={orgUnits}
+                    placeholder="Chọn đơn vị quản lý..."
+                    loading={loadingOrgs}
+                    allowClear
+                    showPath
+                    treeDefaultExpandAll={false}
+                    disabled={isEdit && !isSystemAdmin}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}>
+                  <Select
+                    placeholder="Chọn cảng biển..."
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    options={seaportOptions.map((p) => ({
+                      label: p.portCode ? `${p.portCode} - ${p.portName}` : p.portName,
+                      value: p.id,
+                    }))}
+                    style={selectStyle}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
                 <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }}>
                   <Input
                     placeholder="Mã tự động sinh..."
@@ -725,42 +769,6 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
                 >
                   <Input placeholder="Nhập tên thiết bị" maxLength={255} showCount style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item
-                  name="orgUnitId"
-                  {...labelProps('Đơn vị quản lý')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
-                >
-                  <OrgUnitTreeSelect
-                    organizations={orgUnits}
-                    placeholder="Chọn đơn vị quản lý..."
-                    loading={loadingOrgs}
-                    allowClear
-                    showPath
-                    treeDefaultExpandAll={false}
-                    disabled={!isSystemAdmin && !isEdit}
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}>
-                  <Select
-                    placeholder="Chọn cảng biển..."
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={seaportOptions.map((p) => ({
-                      label: p.portCode ? `${p.portCode} - ${p.portName}` : p.portName,
-                      value: p.id,
-                    }))}
-                    style={selectStyle}
-                  />
                 </Form.Item>
               </Col>
             </Row>

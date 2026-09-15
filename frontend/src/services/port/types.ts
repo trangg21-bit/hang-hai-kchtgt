@@ -101,6 +101,8 @@ export interface CreateCangBienRequest {
   quantityKhuChuyenTai?: number | null;
   cacKhuNuocKhac?: string | null;
   remarks?: string | null;
+  deletedAt?: string | null;
+  deletedBy?: string | null;
   wharfAreas?: PortWharfAreaItem[];
 }
 

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
+import com.hanghai.kchtg.common.validator.Decimal20_4;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Size;
@@ -8,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -41,8 +43,8 @@ public class UpdateBeaconStationRequest {
     private Double lightRange;
 
     @DecimalMin("0.01")
-    @Digits(integer = 16, fraction = 4, message = "Diện tích không quá 20 chữ số (tối đa 4 số lẻ)")
-    private Double area;
+    @Decimal20_4(message = "Diện tích không quá 20 chữ số (tối đa 4 số lẻ)")
+    private BigDecimal area;
 
     @Size(max = 1000)
     private String location;
@@ -58,16 +60,16 @@ public class UpdateBeaconStationRequest {
 
     private String shape;
     private String structure;
-    @Digits(integer = 16, fraction = 4, message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
-    private Double towerHeight;
-    @Digits(integer = 16, fraction = 4, message = "Tâm sáng không quá 20 chữ số (tối đa 4 số lẻ)")
-    private Double lightHeight;
+    @Decimal20_4(message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
+    private BigDecimal towerHeight;
+    @Decimal20_4(message = "Tâm sáng không quá 20 chữ số (tối đa 4 số lẻ)")
+    private BigDecimal lightHeight;
     private String geographicRange;
     private String backupLightModel;
     private String powerSupply;
     private Integer staffCount;
-    @Digits(integer = 16, fraction = 4, message = "Diện tích trạm không quá 20 chữ số (tối đa 4 số lẻ)")
-    private Double stationArea;
+    @Decimal20_4(message = "Diện tích trạm không quá 20 chữ số (tối đa 4 số lẻ)")
+    private BigDecimal stationArea;
 
     private java.util.UUID seaportId;
 

@@ -41,7 +41,7 @@ public interface TransmissionRepository extends JpaRepository<Transmission, UUID
      * So sánh theo SỐ, không so sánh chuỗi (tránh 'TRD-000010' < 'TRD-000002' theo từ điển).
      */
     @Query(value = "SELECT MAX(CAST(SUBSTRING(device_code FROM 5) AS INTEGER)) " +
-            "FROM transmission WHERE device_code LIKE 'TRD-%'", nativeQuery = true)
+            "FROM transmission WHERE device_code ~ '^TRD-[0-9]+$'", nativeQuery = true)
     Optional<Integer> findMaxDeviceCodeSequence();
 
     /**

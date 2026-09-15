@@ -202,4 +202,42 @@ class TransmissionServiceTest {
                 () -> service.restore(ID));
         verify(transmissionRepository, never()).restoreTransmissionById(any());
     }
+
+    @Test
+    void generateTransmissionCode_withExistingMax_incrementsCorrectly() {
+        when(transmissionRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(58));
+        when(transmissionRepository.existsDeviceCodeAnyState("TRD-000059")).thenReturn(false);
+
+        String code = service.generateTransmissionCode();
+        assertEquals("TRD-000059", code);
+    }
+
+    @Test
+    void generateTransmissionCode_withEmptyDatabase_generatesFirstCode() {
+        when(transmissionRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.empty());
+        when(transmissionRepository.existsDeviceCodeAnyState("TRD-000001")).thenReturn(false);
+
+        String code = service.generateTransmissionCode();
+        assertEquals("TRD-000001", code);
+    }
+
+    @Test
+    void generateTransmissionCode_whenQueryThrowsException_fallsBackGracefully() {
+        when(transmissionRepository.findMaxDeviceCodeSequence()).thenThrow(new RuntimeException("SQL syntax error"));
+        when(transmissionRepository.count()).thenReturn(10L);
+        when(transmissionRepository.existsDeviceCodeAnyState("TRD-000011")).thenReturn(false);
+
+        String code = service.generateTransmissionCode();
+        assertEquals("TRD-000011", code);
+    }
+
+    @Test
+    void generateTransmissionCode_whenCodeExists_skipsToNextAvailable() {
+        when(transmissionRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(5));
+        when(transmissionRepository.existsDeviceCodeAnyState("TRD-000006")).thenReturn(true);
+        when(transmissionRepository.existsDeviceCodeAnyState("TRD-000007")).thenReturn(false);
+
+        String code = service.generateTransmissionCode();
+        assertEquals("TRD-000007", code);
+    }
 }

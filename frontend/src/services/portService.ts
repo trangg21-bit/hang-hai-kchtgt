@@ -813,6 +813,7 @@ export const anchorageCRUD = {
     approvalStatus?: string;
     updatedFrom?: string;
     updatedTo?: string;
+    isDeleted?: boolean;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Anchorage>> {
@@ -828,6 +829,7 @@ export const anchorageCRUD = {
       approvalStatus: params?.approvalStatus,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      isDeleted: params?.isDeleted,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });

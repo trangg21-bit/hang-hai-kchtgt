@@ -36,6 +36,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -131,7 +132,7 @@ class BeaconStationServiceTest {
                 .unitId(UUID.randomUUID())
                 .lightRange(15.0)
                 .towerColor("Trắng")
-                .area(12.0)
+                .area(BigDecimal.valueOf(12.0))
                 .isActive(true)
                 .status(status)
                 .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
@@ -171,7 +172,7 @@ class BeaconStationServiceTest {
                 .lightRange(15.0)
                 .towerColor("Đỏ")
                 .primaryLightModel("Chớp 5 giây")
-                .area(12.0)
+                .area(BigDecimal.valueOf(12.0))
                 .location("Mô tả")
                 .isActive(true)
                 .action("draft")
@@ -386,14 +387,14 @@ class BeaconStationServiceTest {
             UpdateBeaconStationRequest request = UpdateBeaconStationRequest.builder()
                     .name("Tên mới")
                     .towerColor("Xanh")
-                    .area(18.0)
+                    .area(BigDecimal.valueOf(18.0))
                     .build();
 
             BeaconStationResponse result = service.update(id, request);
 
             assertThat(result.getName()).isEqualTo("Tên mới");
             assertThat(result.getTowerColor()).isEqualTo("Xanh");
-            assertThat(result.getArea()).isEqualTo(18.0);
+            assertThat(result.getArea()).isEqualByComparingTo(BigDecimal.valueOf(18.0));
             // Code should remain immutable
             assertThat(result.getCode()).isEqualTo("DEN-001");
 
@@ -769,8 +770,8 @@ class BeaconStationServiceTest {
         void updateRecordsDetailedChanges() {
             UUID id = UUID.randomUUID();
             BeaconStation entity = makeEntity(id, "APPROVED");
-            entity.setTowerHeight(10.0);
-            entity.setLightHeight(15.0);
+            entity.setTowerHeight(BigDecimal.valueOf(10.0));
+            entity.setLightHeight(BigDecimal.valueOf(15.0));
             entity.setTowerColor("Trắng");
 
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
@@ -780,8 +781,8 @@ class BeaconStationServiceTest {
                     .name(entity.getName())
                     .type(entity.getType())
                     .unitId(entity.getUnitId())
-                    .towerHeight(12.0)
-                    .lightHeight(18.0)
+                    .towerHeight(BigDecimal.valueOf(12.0))
+                    .lightHeight(BigDecimal.valueOf(18.0))
                     .towerColor("Đỏ - Trắng")
                     .build();
 

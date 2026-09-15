@@ -85,6 +85,7 @@ import {
   fetchVhfAttachments,
   downloadVhfAttachment,
   fetchOperatingOrganizations,
+  generateVhfCode,
 } from "./api";
 import {
   OPERATIONAL_STATUS_OPTIONS,
@@ -988,13 +989,27 @@ const VhfListPage = () => {
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
       { key: "ARCHIVED", status: "ARCHIVED" },
     ];
+    const filterScope = {
+      orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined),
+      search: filterValues.deviceCode || filterValues.deviceName || undefined,
+      deviceCode: filterValues.deviceCode || undefined,
+      deviceName: filterValues.deviceName || undefined,
+      seaportId: filterValues.seaportId || undefined,
+      operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
+      province: filterValues.province || undefined,
+      attachedInfraType: filterValues.attachedInfraType,
+      attachedInfraId: filterValues.attachedInfraId || undefined,
+      yearOfUse: filterValues.yearOfUse,
+      updatedFrom: filterValues.updatedFrom || undefined,
+      updatedTo: filterValues.updatedTo || undefined,
+    };
     try {
       const results = await Promise.allSettled(
         statuses.map((s) =>
           fetchVhfList({
             page: 0,
             size: 1,
-            orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined),
+            ...filterScope,
             approvalStatus: s.status,
           })
         )
@@ -1008,13 +1023,27 @@ const VhfListPage = () => {
       const allRes = await fetchVhfList({
         page: 0,
         size: 1,
-        orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined),
+        ...filterScope,
       });
-      setTotalAll(allRes.totalElements || 0);
+      const allTotal = allRes.totalElements || 0;
+      const sumChild = Object.values(counts).reduce((a, b) => a + b, 0);
+      setTotalAll(allTotal || sumChild);
     } catch {
       // ignore
     }
-  }, [filterValues.orgUnitId]);
+  }, [
+    filterValues.orgUnitId,
+    filterValues.deviceCode,
+    filterValues.deviceName,
+    filterValues.seaportId,
+    filterValues.operationalStatus,
+    filterValues.province,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom,
+    filterValues.updatedTo,
+  ]);
 
   useEffect(() => {
     if (!orgUnitReady) return;
@@ -1082,6 +1111,11 @@ const VhfListPage = () => {
       orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
     });
     setCreateModalOpen(true);
+    generateVhfCode()
+      .then((code) => {
+        if (code) createForm.setFieldsValue({ deviceCode: code });
+      })
+      .catch(() => {});
   };
 
   const handleOpenEdit = (record: VhfResponse) => {
@@ -1521,6 +1555,30 @@ const VhfListPage = () => {
       ),
     },
     {
+      key: "operationalStatus",
+      label: "Tình trạng",
+      dataIndex: "operationalStatus",
+      width: 270,
+      type: "status" as const,
+      render: (val: number | string) => {
+        const num = typeof val === 'number' ? val : (val === 'OPERATIONAL' || val === '1' ? 1 : val === 'SUSPENDED' || val === '2' ? 2 : 0);
+        const badge = operationalStatusBadge(num);
+        return (
+          <span className="kcht-cell-badge" style={statusBadgeStyle(badge.color)}>
+            {badge.label}
+          </span>
+        );
+      },
+    },
+    {
+      key: "approvalStatus",
+      label: "Trạng thái",
+      dataIndex: "approvalStatus",
+      width: 240,
+      type: "status" as const,
+      render: (val: string, record: VhfResponse) => renderApprovalBadge(val, record),
+    },
+    {
       key: "updatedByName",
       label: "Cán bộ cập nhật",
       dataIndex: "updatedByName",
@@ -1549,30 +1607,6 @@ const VhfListPage = () => {
       dataIndex: "approverLevel2Name",
       width: 270,
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
-    },
-    {
-      key: "operationalStatus",
-      label: "Tình trạng",
-      dataIndex: "operationalStatus",
-      width: 270,
-      type: "status" as const,
-      render: (val: number | string) => {
-        const num = typeof val === 'number' ? val : (val === 'OPERATIONAL' || val === '1' ? 1 : val === 'SUSPENDED' || val === '2' ? 2 : 0);
-        const badge = operationalStatusBadge(num);
-        return (
-          <span className="kcht-cell-badge" style={statusBadgeStyle(badge.color)}>
-            {badge.label}
-          </span>
-        );
-      },
-    },
-    {
-      key: "approvalStatus",
-      label: "Trạng thái",
-      dataIndex: "approvalStatus",
-      width: 180,
-      type: "status" as const,
-      render: (val: string, record: VhfResponse) => renderApprovalBadge(val, record),
     },
   ], [page, pageSize, sortField, sortOrder, handleOpenView]);
 
@@ -2141,56 +2175,56 @@ const VhfListPage = () => {
             {
               key: "all",
               label: "Tất cả",
-              count: totalAll || 0,
+              count: (!filterValues.approvalStatus ? total : totalAll) || 0,
               color: actionPrimary,
               active: !filterValues.approvalStatus,
             },
             {
               key: "DRAFT",
               label: "Lưu tạm",
-              count: tabCounts["DRAFT"] ?? 0,
+              count: filterValues.approvalStatus === "DRAFT" ? total : (tabCounts["DRAFT"] ?? 0),
               color: statusDraft,
               active: filterValues.approvalStatus === "DRAFT",
             },
             {
               key: "PENDING_APPROVAL",
               label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-              count: tabCounts["PENDING_APPROVAL"] ?? 0,
+              count: filterValues.approvalStatus === "PENDING_APPROVAL" ? total : (tabCounts["PENDING_APPROVAL"] ?? 0),
               color: statusAttention,
               active: filterValues.approvalStatus === "PENDING_APPROVAL",
             },
             {
               key: "APPROVED_LEVEL1",
               label: "Chờ phê duyệt cấp cục",
-              count: tabCounts["APPROVED_LEVEL1"] ?? 0,
+              count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
               color: statusInfo,
               active: filterValues.approvalStatus === "APPROVED_LEVEL1",
             },
             {
               key: "APPROVED",
               label: "Đã phê duyệt",
-              count: tabCounts["APPROVED"] ?? 0,
+              count: filterValues.approvalStatus === "APPROVED" ? total : (tabCounts["APPROVED"] ?? 0),
               color: statusOperational,
               active: filterValues.approvalStatus === "APPROVED",
             },
             {
               key: "REJECTED_LEVEL1",
               label: "Từ chối cấp Cảng vụ/Chi cục",
-              count: tabCounts["REJECTED_LEVEL1"] ?? 0,
+              count: filterValues.approvalStatus === "REJECTED_LEVEL1" ? total : (tabCounts["REJECTED_LEVEL1"] ?? 0),
               color: statusCritical,
               active: filterValues.approvalStatus === "REJECTED_LEVEL1",
             },
             {
               key: "REJECTED_LEVEL2",
               label: "Từ chối cấp cục",
-              count: tabCounts["REJECTED_LEVEL2"] ?? 0,
+              count: filterValues.approvalStatus === "REJECTED_LEVEL2" ? total : (tabCounts["REJECTED_LEVEL2"] ?? 0),
               color: statusCritical,
               active: filterValues.approvalStatus === "REJECTED_LEVEL2",
             },
             {
               key: "ARCHIVED",
               label: "Đã xóa",
-              count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
+              count: filterValues.approvalStatus === "DELETED" ? total : (tabCounts["DELETED"] ?? 0),
               color: statusCritical,
               active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
             },

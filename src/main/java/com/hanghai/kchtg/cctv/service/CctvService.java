@@ -91,8 +91,20 @@ public class CctvService {
    */
   public String generateCctvCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = cctvRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("CCTV-%06d", sequence);
+    int sequence = 0;
+    try {
+      sequence = cctvRepository.findMaxDeviceCodeSequence().orElse(0);
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị CCTV, fallback: {}", e.getMessage());
+      sequence = (int) cctvRepository.count();
+    }
+    sequence++;
+    String code = String.format("CCTV-%06d", sequence);
+    while (cctvRepository.existsDeviceCodeAnyState(code)) {
+      sequence++;
+      code = String.format("CCTV-%06d", sequence);
+    }
+    return code;
   }
 
   /**

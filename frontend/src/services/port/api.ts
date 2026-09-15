@@ -30,6 +30,7 @@ export async function fetchCangBienList(params: {
   updatedTo?: string;
   sortBy?: string;
   sortOrder?: string;
+  isDeleted?: boolean;
 }): Promise<PageResponse<CangBienResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
@@ -45,6 +46,7 @@ export async function fetchCangBienList(params: {
   if (params.portClass !== undefined) sp.set('portClass', String(params.portClass));
   if (params.updatedFrom) sp.set('updatedFrom', params.updatedFrom);
   if (params.updatedTo) sp.set('updatedTo', params.updatedTo);
+  if (params.isDeleted !== undefined) sp.set('isDeleted', String(params.isDeleted));
   if (params.sortBy) sp.set('sort', `${params.sortBy},${params.sortOrder ?? 'desc'}`);
 
   const res = await api.get(`${BASE}?${sp}`);

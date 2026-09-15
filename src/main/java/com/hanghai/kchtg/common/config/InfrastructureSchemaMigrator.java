@@ -51,6 +51,8 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
         patchCoastalStationsTables();
         patchAisSystemTable();
         patchInfraAssetsTable();
+        patchRadarStationTable();
+        patchDikeRevetmentTable();
 
         log.info("InfrastructureSchemaMigrator finished successfully.");
     }
@@ -138,6 +140,23 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
                     "ELSE types END WHERE types IS NULL AND asset_type IS NOT NULL;");
         } catch (Exception e) {
             log.warn("Could not patch infra_assets table: {}", e.getMessage());
+        }
+    }
+
+    private void patchDikeRevetmentTable() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE dike_revetment ADD COLUMN IF NOT EXISTS construction_date DATE;");
+            jdbcTemplate.execute("ALTER TABLE dike_revetment ADD COLUMN IF NOT EXISTS last_maintenance_year INTEGER;");
+        } catch (Exception e) {
+            log.warn("Could not patch dike_revetment table: {}", e.getMessage());
+        }
+    }
+
+    private void patchRadarStationTable() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE radar_station ALTER COLUMN location DROP NOT NULL;");
+        } catch (Exception e) {
+            log.warn("Could not patch radar_station table: {}", e.getMessage());
         }
     }
 
@@ -307,19 +326,25 @@ public class InfrastructureSchemaMigrator implements CommandLineRunner {
                     "status INTEGER NOT NULL, " +
                     "approved_by UUID, " +
                     "approved_date TIMESTAMP, " +
-                    "changed_field VARCHAR(255), " +
+                    "reason TEXT, " +
+                    "changed_field VARCHAR(1000), " +
                     "previous_value TEXT, " +
                     "new_value TEXT, " +
                     "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                     ");");
-            jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS approval_level VARCHAR(32);");
             jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS reason TEXT;");
+            jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS approval_level VARCHAR(32);");
             jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS changed_field VARCHAR(1000);");
             jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS previous_value TEXT;");
             jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS new_value TEXT;");
             jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS approved_by UUID;");
             jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS approved_date TIMESTAMP;");
             jdbcTemplate.execute("ALTER TABLE public.infrastructure_history ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;");
+            jdbcTemplate.execute("DO $$ BEGIN " +
+                    "  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'infrastructure_history' AND column_name = 'changed_field' AND (character_maximum_length IS NULL OR character_maximum_length < 1000)) THEN " +
+                    "    ALTER TABLE public.infrastructure_history ALTER COLUMN changed_field TYPE VARCHAR(1000); " +
+                    "  END IF; " +
+                    "END $$;");
             coerceApprovedByToUuid("infrastructure_history");
             try {
                 jdbcTemplate.execute(

@@ -51,6 +51,7 @@ import {
   safeNumber,
   safeDecimal,
 } from './beaconStationRules';
+import { normalizeSafeNumber } from '../../utils/numFmt';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 
 const fontSizeMd = 13.5;
@@ -354,20 +355,20 @@ export default forwardRef(function BeaconStationForm(
           name: record.name,
           type: record.type,
           unitId: record.unitId,
-          lightRange: record.lightRange,
+          lightRange: normalizeSafeNumber(record.lightRange),
           towerColor: record.towerColor,
           location: record.location,
           shape: record.shape,
           structure: record.structure,
-          towerHeight: record.towerHeight,
-          lightHeight: record.lightHeight,
+          towerHeight: normalizeSafeNumber(record.towerHeight),
+          lightHeight: normalizeSafeNumber(record.lightHeight),
           geographicRange: record.geographicRange,
           backupLightModel: record.backupLightModel,
           powerSupply: record.powerSupply,
           staffCount: record.staffCount,
-          stationArea: record.stationArea,
+          stationArea: normalizeSafeNumber(record.stationArea),
           primaryLightModel: record.primaryLightModel,
-          area: record.area,
+          area: normalizeSafeNumber(record.area),
           lastRepairDate: record.lastRepairDate ? dayjs(record.lastRepairDate) : null,
           commissionedDate: record.commissionedDate ? dayjs(record.commissionedDate) : null,
           provinceId: record.provinceId != null ? Number(record.provinceId) : undefined,
@@ -1207,39 +1208,25 @@ export default forwardRef(function BeaconStationForm(
             onChange={(val: any) => {
               if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
               const points = parseGisCoordinates(val);
-              if (points.length > 0) {
-                if (watchedGeometryType === 'POINT') {
-                  const p = points[0];
-                  const latDms = ddToDms(p.latitude);
-                  const lngDms = ddToDms(p.longitude);
-                  setCoordinateList([{
-                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
-                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-                  }]);
-                } else {
-                  setCoordinateList((prev) => {
-                    const toDms = (p: { latitude: number; longitude: number }) => {
-                      const lat = ddToDms(p.latitude);
-                      const lng = ddToDms(p.longitude);
-                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                    };
-                    const newRows = points.map(toDms);
-                    const merged = [...prev];
-                    let newIdx = 0;
-                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-                      if (!isFilled(merged[i])) {
-                        merged[i] = newRows[newIdx++];
-                      }
-                    }
-                    while (newIdx < newRows.length) {
-                      merged.push(newRows[newIdx++]);
-                    }
-                    return merged;
-                  });
-                }
-                setGpsError(null);
+              if (points.length === 0) {
+                setCoordinateList([]);
+              } else if (watchedGeometryType === 'POINT') {
+                const p = points[0];
+                const latDms = ddToDms(p.latitude);
+                const lngDms = ddToDms(p.longitude);
+                setCoordinateList([{
+                  latD: latDms.d, latM: latDms.m, latS: latDms.s,
+                  lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+                }]);
+              } else {
+                const toDms = (p: { latitude: number; longitude: number }) => {
+                  const lat = ddToDms(p.latitude);
+                  const lng = ddToDms(p.longitude);
+                  return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+                };
+                setCoordinateList(points.map(toDms));
               }
+              setGpsError(null);
             }}
           />
         </div>

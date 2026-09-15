@@ -41,7 +41,7 @@ public interface VtsAssistRepository extends JpaRepository<VtsAssist, UUID> {
      * So sánh theo SỐ, không so sánh chuỗi (tránh 'PTVTS-000010' < 'PTVTS-000002' theo từ điển).
      */
     @Query(value = "SELECT MAX(CAST(SUBSTRING(device_code FROM 7) AS INTEGER)) " +
-            "FROM vts_assist WHERE device_code LIKE 'PTVTS-%'", nativeQuery = true)
+            "FROM vts_assist WHERE device_code ~ '^PTVTS-[0-9]+$'", nativeQuery = true)
     Optional<Integer> findMaxDeviceCodeSequence();
 
     /**

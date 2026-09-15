@@ -29,7 +29,7 @@ public class RadarStation extends BaseRadarStationEntity {
     @Column(name = "station_name", nullable = false, length = 255)
     private String stationName;
 
-    @Column(name = "location", nullable = false, length = 500)
+    @Column(name = "location", length = 500)
     private String location;
 
     @Column(name = "station_type", length = 100)
@@ -72,7 +72,7 @@ public class RadarStation extends BaseRadarStationEntity {
     @JoinColumn(name = "vts_system_id", insertable = false, updatable = false)
     private VtsSystem vtsSystem;
 
-    @Column(name = "tower_height", precision = 20, scale = 4)
+    @Column(name = "tower_height", precision = 24, scale = 4)
     private BigDecimal towerHeight;
 
     @Column(name = "radar_range", precision = 20)

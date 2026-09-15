@@ -1,11 +1,13 @@
 package com.hanghai.kchtg.beacon.dto.beacon_station;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,7 +27,8 @@ public class BeaconStationResponse {
     private String type;    private Double lightRange;
     private String towerColor;
     private String primaryLightModel;
-    private Double area;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private BigDecimal area;
     private String location;
     private UUID unitId;
     private String unitName;
@@ -59,13 +62,16 @@ public class BeaconStationResponse {
 
     private String shape;
     private String structure;
-    private Double towerHeight;
-    private Double lightHeight;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private BigDecimal towerHeight;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private BigDecimal lightHeight;
     private String geographicRange;
     private String backupLightModel;
     private String powerSupply;
     private Integer staffCount;
-    private Double stationArea;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private BigDecimal stationArea;
 
     private UUID seaportId;
     private String operator;

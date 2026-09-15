@@ -61,8 +61,8 @@ public class F185ReportHandler extends BaseReportHandler {
             r.put("Hình dáng", b.getShape() != null ? b.getShape() : "Hình nón");
             r.put("Kết cấu", b.getStructure() != null ? b.getStructure() : "Thép");
             r.put("Chủng loại đèn", b.getPrimaryLightModel() != null ? b.getPrimaryLightModel() : "Đèn LED năng lượng mặt trời");
-            r.put("Chiều cao thân phao (m)", b.getTowerHeight() != null ? BigDecimal.valueOf(b.getTowerHeight()) : BigDecimal.valueOf(5.2));
-            r.put("Chiều cao tâm sáng (m)", b.getLightHeight() != null ? BigDecimal.valueOf(b.getLightHeight()) : BigDecimal.valueOf(6.5));
+            r.put("Chiều cao thân phao (m)", b.getTowerHeight() != null ? b.getTowerHeight() : BigDecimal.valueOf(5.2));
+            r.put("Chiều cao tâm sáng (m)", b.getLightHeight() != null ? b.getLightHeight() : BigDecimal.valueOf(6.5));
             r.put("Màu sắc bên ngoài", b.getTowerColor() != null ? b.getTowerColor() : "Đỏ - Trắng");
             r.put("Nguồn cấp năng lượng", b.getPowerSupply() != null ? b.getPowerSupply() : "Pin mặt trời");
             r.put("Thời điểm đưa vào SD", b.getCommissionedDate() != null ? String.valueOf(b.getCommissionedDate().getYear()) : "2018");

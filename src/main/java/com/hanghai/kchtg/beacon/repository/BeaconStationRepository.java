@@ -34,7 +34,7 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
            "(:code IS NULL OR CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:code AS string), '%'))) AS string)) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
            "(:primaryLightModel IS NULL OR CAST(function('immutable_unaccent', LOWER(b.primaryLightModel)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AS string)) AND " +
-           "(:status IS NULL OR (:status = 'DELETED' AND (b.status = 'DELETED' OR b.deletedAt IS NOT NULL OR b.deletedBy IS NOT NULL)) OR (b.status = :status AND b.deletedAt IS NULL AND b.deletedBy IS NULL)) AND " +
+           "(((:status = 'DELETED' OR :status = 'ARCHIVED') AND (b.status = 'DELETED' OR b.status = 'ARCHIVED' OR b.deletedAt IS NOT NULL OR b.deletedBy IS NOT NULL)) OR ((:status IS NULL OR b.status = :status) AND b.deletedAt IS NULL AND b.deletedBy IS NULL AND b.status != 'DELETED' AND b.status != 'ARCHIVED')) AND " +
            "(:includeAll = true OR (b.unitId IN :orgUnitIds OR b.orgUnitId IN :orgUnitIds)) AND " +
            "(:seaportId IS NULL OR b.seaportId = :seaportId) AND " +
            "(CAST(:operator AS string) IS NULL OR LOWER(b.operator) LIKE LOWER(CONCAT('%', CAST(:operator AS string), '%'))) AND " +
@@ -73,7 +73,7 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
            "(:code IS NULL OR CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:code AS string), '%'))) AS string)) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
            "(:primaryLightModel IS NULL OR CAST(function('immutable_unaccent', LOWER(b.primaryLightModel)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:primaryLightModel AS string), '%'))) AS string)) AND " +
-           "(:status IS NULL OR (:status = 'DELETED' AND (b.status = 'DELETED' OR b.deletedAt IS NOT NULL OR b.deletedBy IS NOT NULL)) OR (b.status = :status AND b.deletedAt IS NULL AND b.deletedBy IS NULL)) AND " +
+           "(((:status = 'DELETED' OR :status = 'ARCHIVED') AND (b.status = 'DELETED' OR b.status = 'ARCHIVED' OR b.deletedAt IS NOT NULL OR b.deletedBy IS NOT NULL)) OR ((:status IS NULL OR b.status = :status) AND b.deletedAt IS NULL AND b.deletedBy IS NULL AND b.status != 'DELETED' AND b.status != 'ARCHIVED')) AND " +
            "(:includeAll = true OR (b.unitId IN :orgUnitIds OR b.orgUnitId IN :orgUnitIds)) AND " +
            "(:seaportId IS NULL OR b.seaportId = :seaportId) AND " +
            "(CAST(:operator AS string) IS NULL OR LOWER(b.operator) LIKE LOWER(CONCAT('%', CAST(:operator AS string), '%'))) AND " +

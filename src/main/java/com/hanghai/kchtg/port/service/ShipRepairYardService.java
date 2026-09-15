@@ -124,6 +124,10 @@ public class ShipRepairYardService {
         ShipRepairYard entity = shipRepairYardRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cơ sở sửa chữa, đóng tàu với id: " + request.getId()));
 
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalArgumentException("Không thể cập nhật cơ sở sửa chữa, đóng tàu đã bị xóa");
+        }
+
         // ── Lịch sử thay đổi (chuẩn Cảng biển PortService.update) ──────
         // Chụp preImage (trạng thái cũ) TRƯỚC khi mutate. Chỉ ghi lịch sử khi hồ sơ
         // ĐÃ duyệt (APPROVED / APPROVED_LEVEL2) trước lần sửa này.
@@ -287,6 +291,9 @@ public class ShipRepairYardService {
     public void softDelete(UUID id) {
         ShipRepairYard entity = shipRepairYardRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cơ sở sửa chữa, đóng tàu với id: " + id));
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalArgumentException("Cơ sở sửa chữa, đóng tàu đã bị xóa trước đó");
+        }
         if (entity.getApprovalStatus() != ApprovalStatus.DRAFT) {
             throw new IllegalArgumentException("Chỉ được xóa cơ sở sửa chữa, đóng tàu ở trạng thái Nháp");
         }
