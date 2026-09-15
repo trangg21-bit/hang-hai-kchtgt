@@ -117,4 +117,11 @@ public class ScadaSystemAssetController {
     public ResponseEntity<ApiResponse<List<ScadaOptionResponse>>> getScadaOptions() {
         return ResponseEntity.ok(ApiResponse.success(scadaService.getOptions()));
     }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        Object history = service.getHistory(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));
+    }
 }

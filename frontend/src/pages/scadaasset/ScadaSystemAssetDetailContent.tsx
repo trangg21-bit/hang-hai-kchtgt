@@ -5,6 +5,7 @@ import {
   AuditOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
+  ProfileOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ScadaSystemAsset } from '../../services/scadaasset/types';
@@ -17,6 +18,7 @@ import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import {
+  colors,
   actionPrimary,
   fontWeightBold,
   fontWeightMedium,

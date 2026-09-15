@@ -3,6 +3,7 @@ import {
   BankOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
+  ProfileOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -29,6 +30,7 @@ import type {
 } from '../../services/assetmovement/types';
 import type { VtsSystemAsset } from '../../services/vtsasset/types';
 import {
+  colors,
   actionPrimary,
   fontWeightBold,
   fontWeightMedium,
