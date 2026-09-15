@@ -99,7 +99,7 @@ describe('ReportViewer UI Standard', () => {
     expect(source).toContain('window.URL.revokeObjectURL');
     expect(source).toContain('<iframe');
     expect(source).toContain('#zoom=page-width&view=FitH');
-    expect(source).toContain('width="90vw"');
+    expect(source).toContain('width="96vw"');
     expect(source).toContain('centered');
     const pdfPreviewServiceSource = readFileSync(
       new URL('../../services/reportPdfPreviewService.ts', import.meta.url),
