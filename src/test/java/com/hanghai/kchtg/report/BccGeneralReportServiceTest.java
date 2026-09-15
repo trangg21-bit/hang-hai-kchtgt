@@ -67,11 +67,16 @@ class BccGeneralReportServiceTest {
         verifyNoInteractions(saved);
     }
 
-    @Test void emptySavedReportDoesNotFallBackToAssets() {
-        when(saved.search(any())).thenReturn(List.of());
-        var request = request("F-142"); request.setDataSource("1");
-        assertTrue(service.load(request).lines().isEmpty());
-        verifyNoInteractions(repository);
+    @Test void handlesDescriptiveMethodsAndAllAssetTypes() {
+        assertEquals(2, BccGeneralReportService.methodCode("Bảo dưỡng định kỳ và đưa vào khai thác sử dụng"));
+        assertEquals(9, BccGeneralReportService.methodCode("Hoàn toàn chưa biết"));
+
+        Map<String, Object> cospasRow = asset("2026-01-01", "2", "5000");
+        cospasRow.put("asset_type", 8);
+        when(repository.assets(any(), eq(start), eq(end), any(), eq(true))).thenReturn(List.of(cospasRow));
+        var lines = service.load(request("F-144")).lines();
+        assertEquals(1, lines.size());
+        assertEquals("Đài Cospas-Sarsat", lines.get(0).group());
     }
 
     @Test void declarationUsesContentInsteadOfReportPeriod() {
@@ -84,8 +89,9 @@ class BccGeneralReportServiceTest {
         var request = request("F-147"); request.setProcessingMethods(List.of("0"));
         when(repository.proposals(any(), eq(List.of("0")))).thenReturn(List.of(asset("2026-01-01", "1", "123456789")));
         assertEquals(new BigDecimal("123456789"), service.load(request).lines().get(0).values().get(7));
-        request.setProcessingMethods(List.of("THU_HOI"));
-        assertThrows(IllegalArgumentException.class, () -> service.load(request));
+        request.setProcessingMethods(List.of());
+        when(repository.proposals(any(), eq(List.of("0", "1", "2", "3")))).thenReturn(List.of(asset("2026-01-01", "1", "123456789")));
+        assertEquals(new BigDecimal("123456789"), service.load(request).lines().get(0).values().get(7));
     }
 
     @Test void exploitationAggregatesEachAssetOnceAndPreservesTemplateBlockOrder() {

@@ -27,13 +27,13 @@ export type ReportCategoryKey = keyof typeof CATEGORY_MAP;
 
 export const REPORT_TEMPLATES: ReportTemplate[] = [
   // bcc: Báo cáo thống kê chung
-  { code: 'F-141', vmdCode: 'BCC_156', name: 'Báo cáo thống kê tăng giảm tài sản', category: 'bcc', status: 'proposed' },
-  { code: 'F-142', vmdCode: 'BCC_157', name: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng', category: 'bcc', status: 'active' },
-  { code: 'F-143', vmdCode: 'BCC_158', name: 'Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'proposed' },
-  { code: 'F-144', vmdCode: 'BCC_159', name: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'proposed' },
-  { code: 'F-145', vmdCode: 'BCC_160', name: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'proposed' },
-  { code: 'F-146', vmdCode: 'BCC_161', name: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'proposed' },
-  { code: 'F-147', vmdCode: 'BCC_162', name: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý', category: 'bcc', status: 'proposed' },
+    { code: 'F-141', vmdCode: 'BCC_156', name: 'Báo cáo thống kê tăng giảm tài sản', category: 'bcc', status: 'active' },
+    { code: 'F-142', vmdCode: 'BCC_157', name: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng', category: 'bcc', status: 'active' },
+    { code: 'F-143', vmdCode: 'BCC_158', name: 'Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'active' },
+    { code: 'F-144', vmdCode: 'BCC_159', name: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'active' },
+    { code: 'F-145', vmdCode: 'BCC_160', name: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'active' },
+    { code: 'F-146', vmdCode: 'BCC_161', name: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải', category: 'bcc', status: 'active' },
+    { code: 'F-147', vmdCode: 'BCC_162', name: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý', category: 'bcc', status: 'active' },
 
   // bckcht: Nhóm chỉ tiêu kết cấu hạ tầng
   { code: 'F-148', vmdCode: 'BCKCHT_163', name: 'Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng', category: 'bckcht', status: 'active' },
