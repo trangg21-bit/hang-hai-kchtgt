@@ -94,7 +94,7 @@ export default function ReportViewer() {
     reportPeriod: 'MONTHLY',
     dateRange: [dayjs().subtract(1, 'month'), dayjs()],
     bcNoiDung: '1',
-    processingMethods: [],
+    processingMethods: reportCode === 'F-147' ? ['1', '3', '2', '0'] : [],
   });
 
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -299,12 +299,12 @@ export default function ReportViewer() {
       reportPeriod: 'MONTHLY',
       dateRange: [dayjs().subtract(1, 'month'), dayjs()],
       bcNoiDung: '1',
-      processingMethods: [],
+      processingMethods: reportCode === 'F-147' ? ['1', '3', '2', '0'] : [],
     });
     setReportData(null);
     setCurrentPage(1);
     setPageSize(20);
-  }, [organizations]);
+  }, [organizations, reportCode]);
 
   const editBccReport = useCallback(async (action: 'edit' | 'delete' | 'history' = 'edit') => {
     if (!draftFilters.orgUnitId || !draftFilters.reportYear) {
@@ -512,9 +512,15 @@ export default function ReportViewer() {
         key: 'processingMethods',
         label: 'Hình thức xử lý',
         type: 'select',
+        defaultValue: ['1', '3', '2', '0'],
         required: true,
         placeholder: 'Chọn hình thức xử lý',
-        selectProps: { mode: 'multiple' },
+        selectProps: {
+          mode: 'multiple',
+          showSearch: true,
+          filterOption: (input: string, option?: { label?: React.ReactNode }) =>
+            String(option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
+        },
         options: [
           { value: '1', label: 'Bàn giao' },
           { value: '3', label: 'Phá dỡ' },

@@ -568,9 +568,10 @@ describe('navigation.reportTree — 8 report categories & 49 report templates', 
     });
   });
 
-  it('disables all categories except active implemented groups (bckcht, bcdl, bcpttv, bcdn, bctt48, bccndb, bcthtn)', () => {
+  it('enables all 8 active implemented categories including bcc', () => {
     const categories = reportGroup?.tree ?? [];
     const enabledKeys = [
+      'reports-bcc',
       'reports-bckcht',
       'reports-bcdl',
       'reports-bcpttv',
@@ -590,23 +591,20 @@ describe('navigation.reportTree — 8 report categories & 49 report templates', 
     });
 
     const otherCategories = categories.filter((c) => !enabledKeys.includes(c.key));
-    expect(otherCategories.length).toBe(1);
-    otherCategories.forEach((cat) => {
-      expect(cat.disabled).toBe(true);
-      cat.children?.forEach((child) => {
-        expect(child.disabled).toBe(true);
-      });
-    });
+    expect(otherCategories.length).toBe(0);
   });
 
-  it('returns first accessible route as /reports/F-148 (first active KCHT report)', () => {
+  it('returns first accessible route as /reports/F-141 (first active BCC report)', () => {
     const firstRoute = firstAccessibleRoute(reportGroup!, () => true);
-    expect(firstRoute).toBe('/reports/F-148');
+    expect(firstRoute).toBe('/reports/F-141');
   });
 
-  it('skips disabled reports in locateRoute (F-141 disabled → undefined)', () => {
+  it('locates /reports/F-141 under reports-bcc in locateRoute', () => {
     const hit = locateRoute(reportGroup!.tree, '/reports/F-141');
-    expect(hit).toBeUndefined();
+    expect(hit).toEqual({
+      key: '/reports/F-141',
+      openKeys: ['reports-bcc'],
+    });
   });
 
   it('maps /reports and /reports/F-160 to report group via groupOfPath', () => {

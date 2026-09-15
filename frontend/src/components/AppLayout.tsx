@@ -191,7 +191,7 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
                   (() => {
                     const reportCode = selectedKey.replace('/reports/', '');
                     const report = REPORT_TEMPLATES.find((r) => r.code === reportCode);
-                    return report ? `reports-${report.category}` : 'reports-bckcht';
+                    return report ? `reports-${report.category}` : 'reports-bcc';
                   })(),
                 ]
               : ['/users', '/organizations', '/groups', '/logs', '/history', '/interconnect', '/connections', '/settings'].includes(selectedKey)
@@ -324,6 +324,7 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
       children: [
         ...Object.entries(CATEGORY_MAP).map(([catKey, catInfo]) => {
           const isEnabled =
+            catKey === 'bcc' ||
             catKey === 'bckcht' ||
             catKey === 'bcdl' ||
             catKey === 'bcpttv' ||

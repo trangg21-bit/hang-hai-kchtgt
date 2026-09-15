@@ -878,10 +878,10 @@ textarea.ant-input {
 /* High-specificity override for multi-select using dedicated class */
 .${scope} .chk-multi-select.ant-select-multiple .ant-select-selector,
 .chk-multi-select.ant-select-multiple .ant-select-selector,
-.${scope} .ant-select-multiple.ant-select-multiple .ant-select-selector,
-.ant-select-multiple.ant-select-multiple .ant-select-selector {
-  border-radius: 12px !important;
-  padding: 8px 34px 8px 12px !important;
+.${scope} .ant-select-multiple .ant-select-selector,
+.ant-select-multiple .ant-select-selector {
+  border-radius: 20px !important;
+  padding: 4px 34px 4px 12px !important;
   min-height: 40px !important;
   height: auto !important;
   display: flex !important;
@@ -889,6 +889,12 @@ textarea.ant-input {
   flex-wrap: wrap !important;
   gap: 4px !important;
   box-sizing: border-box !important;
+}
+
+.${scope} .ant-select-multiple,
+.ant-select-multiple {
+  min-height: 40px !important;
+  height: auto !important;
 }
 
 .${scope} .ant-select-multiple .ant-select-selection-overflow,
