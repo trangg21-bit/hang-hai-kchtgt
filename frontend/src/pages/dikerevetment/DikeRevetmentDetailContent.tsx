@@ -356,18 +356,18 @@ export default function DikeRevetmentDetailContent(props: DetailContentProps) {
                 {approvalOpen && (
                   <div className="chk-detail-grid" style={{ paddingTop: 6 }}>
                     {[
-                      { key: 'updatedAt', label: 'Ngày cập nhật', fullWidth: false, value: detailRecord.updatedAt ? formatDate(detailRecord.updatedAt) : null },
-                      { key: 'updatedBy', label: 'Cán bộ cập nhật', fullWidth: false, value: detailRecord.updatedByName || detailRecord.updatedBy || null },
-                      { key: 'submittedAt', label: 'Ngày gửi phê duyệt', fullWidth: false, value: detailRecord.submittedAt ? formatDate(detailRecord.submittedAt) : null },
-                      { key: 'submittedBy', label: 'Cán bộ gửi phê duyệt', fullWidth: false, value: detailRecord.submittedByName || null },
-                      { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', fullWidth: false, value: detailRecord.approvedDateLevel1 ? formatDate(detailRecord.approvedDateLevel1) : null },
-                      { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', fullWidth: true, value: detailRecord.approvalContentLevel1 || null },
-                      { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', fullWidth: false, value: detailRecord.approvedByNameLevel1 || detailRecord.approverLevel1 || null },
-                      { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', fullWidth: false, value: detailRecord.approvedDateLevel2 ? formatDate(detailRecord.approvedDateLevel2) : null },
-                      { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt cấp Cục', fullWidth: true, value: detailRecord.approvalContentLevel2 || null },
-                      { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', fullWidth: false, value: detailRecord.approvedByNameLevel2 || detailRecord.approverLevel2 || null },
-                      { key: 'rejectionReason', label: 'Lý do từ chối', fullWidth: true, value: detailRecord.rejectionReason || null },
-                      { key: 'approvalStatus', label: 'Trạng thái', fullWidth: true, value: <ApprovalStatusBadge status={detailRecord.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} /> },
+                      { key: 'approvalStatus', label: 'Trạng thái phê duyệt', fullWidth: true, value: <ApprovalStatusBadge status={detailRecord.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} /> },
+                      { key: 'updatedBy', label: 'Cán bộ cập nhật', fullWidth: false, value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || detailRecord.updatedBy || '—'}</span> },
+                      { key: 'updatedAt', label: 'Ngày cập nhật', fullWidth: false, value: detailRecord.updatedAt ? formatDate(detailRecord.updatedAt) : '—' },
+                      { key: 'submittedBy', label: 'Cán bộ gửi phê duyệt', fullWidth: false, value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || '—'}</span> },
+                      { key: 'submittedAt', label: 'Ngày gửi phê duyệt', fullWidth: false, value: detailRecord.submittedAt ? formatDate(detailRecord.submittedAt) : '—' },
+                      { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', fullWidth: false, value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel1 || detailRecord.approverLevel1 || '—'}</span> },
+                      { key: 'approvedDateLevel1', label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', fullWidth: false, value: detailRecord.approvedDateLevel1 ? formatDate(detailRecord.approvedDateLevel1) : '—' },
+                      { key: 'approvalContentLevel1', label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', fullWidth: true, value: detailRecord.approvalContentLevel1 || '—' },
+                      { key: 'approvedByLevel2', label: 'Cán bộ phê duyệt cấp Cục', fullWidth: false, value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel2 || detailRecord.approverLevel2 || '—'}</span> },
+                      { key: 'approvedDateLevel2', label: 'Ngày phê duyệt cấp Cục', fullWidth: false, value: detailRecord.approvedDateLevel2 ? formatDate(detailRecord.approvedDateLevel2) : '—' },
+                      { key: 'approvalContentLevel2', label: 'Nội dung phê duyệt cấp Cục', fullWidth: true, value: detailRecord.approvalContentLevel2 || '—' },
+                      ...(detailRecord.rejectionReason ? [{ key: 'rejectionReason', label: 'Lý do từ chối', fullWidth: true, value: detailRecord.rejectionReason }] : []),
                     ].map((row: { key: string; label: string; value: React.ReactNode; fullWidth?: boolean }) => (
                       <div key={row.key} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
                         <span className="chk-detail-label">{row.label}</span>

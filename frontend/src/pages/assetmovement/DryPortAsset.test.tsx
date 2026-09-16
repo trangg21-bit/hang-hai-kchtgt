@@ -190,7 +190,7 @@ describe('DryPortAsset UI Components (Tài sản cảng cạn)', () => {
     expect(html).toContain('Thông tin chi tiết');
     expect(html).toContain('Khai thác tài sản');
     expect(html).toContain('Lịch sử thay đổi nguyên giá');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
+    expect(html).toContain('Thông tin phê duyệt');
     expect(html).toContain('Kho bãi ICD Đình Vũ');
     expect(html).toContain('TS-DP-001');
   });

@@ -1,89 +1,99 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Input, Space } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
-  SearchOutlined,
+    CheckOutlined,
+    CloseOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
+    SearchOutlined,
+    SendOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
-  CommonStatusTabs,
-  TableColumnType,
-  type TableOption,
-  type FilterOption,
-  type ScreenHeaderAction,
+    CommonStatusTabs,
+    CommonTable,
+    FilterTableLayout,
+    ScreenHeader,
+    TableColumnType,
+    TableFilter,
+    type FilterOption,
+    type ScreenHeaderAction,
+    type TableOption,
 } from '../../components/list-view';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { formatHistoryNumber } from '../../utils/numFmt';
-import toast from '../../components/ToastNotification';
-import { organizationService, type Organization } from '../../services/organizationService';
-import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import type { NavigationChannelResponse } from '../../types/navigationChannel';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-  createKhaiThac,
-  createAssetDecrease,
-  createAssetIncrease,
-  createChannelAsset,
-  deleteChannelAsset,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchKhaiThacList,
-  fetchChannelAssets,
-  updateChannelAsset,
-  uploadInfraAssetAttachments,
-  fetchInfraAssetAttachments,
-  deleteInfraAssetAttachment,
-  fetchInfraAssetHistory,
-} from '../../services/assetmovement/api';
-import api from '../../services/api';
-import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  ChannelAsset,
-  ChannelAssetFilters,
-  ChannelAssetPayload,
-} from '../../services/assetmovement/types';
-import {
-  type InfrastructureAttachmentItem,
-  triggerBlobDownload,
+    triggerBlobDownload,
+    type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import {
+    approveInfraAssetC1,
+    approveInfraAssetC2,
+    createAssetDecrease,
+    createAssetIncrease,
+    createChannelAsset,
+    createKhaiThac,
+    deleteChannelAsset,
+    deleteInfraAssetAttachment,
+    fetchAssetDecreaseList,
+    fetchAssetIncreaseList,
+    fetchChannelAssets,
+    fetchInfraAssetAttachments,
+    fetchInfraAssetHistory,
+    fetchKhaiThacList,
+    rejectInfraAssetC1,
+    rejectInfraAssetC2,
+    submitInfraAssetApproval,
+    updateChannelAsset,
+    uploadInfraAssetAttachments,
+} from '../../services/assetmovement/api';
+import type {
+    AssetDecreaseResponse,
+    AssetExploitationResponse,
+    AssetIncreaseResponse,
+    ChannelAsset,
+    ChannelAssetFilters,
+    ChannelAssetPayload,
+} from '../../services/assetmovement/types';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  actionPrimary,
-  borderDefault,
-  colors,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  textTertiary,
+    actionPrimary,
+    borderDefault,
+    colors,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd,
+    fontWeightBold,
+    radiusPill,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    textTertiary,
 } from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import ChannelAssetForm, { type ChannelFormValues } from './ChannelAssetForm';
+import type { NavigationChannelResponse } from '../../types/navigationChannel';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
+import { countHistoryUpdates, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import ChannelAssetDetailContent from './ChannelAssetDetailContent';
+import ChannelAssetForm, { type ChannelFormValues } from './ChannelAssetForm';
 import ChannelAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
+    type OperationMode,
+    type OperationValues,
 } from './ChannelAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -175,6 +185,9 @@ export default function ChannelAssetList() {
   const currentUser = useAuthStore((s) => s.user);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
+  const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
+  const channelMap = useMemo(() => new Map(channels.map((item) => [item.id, item])), [channels]);
+
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<ChannelAsset | null>(null);
@@ -225,12 +238,32 @@ export default function ChannelAssetList() {
   }, [historyRecords, historySearch, historyFrom, historyTo]);
 
   const historyFieldCount = useMemo(
-    () => filteredHistoryRecords.length,
-    [filteredHistoryRecords]
+    () => countHistoryUpdates(filteredHistoryRecords, {
+      fieldLabels: CHANNEL_ASSET_FIELD_LABELS,
+      formatValue: (fn, raw) => {
+        if (isBlankOrDash(raw)) return '';
+        const normKey = (fn || '').toLowerCase();
+        if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
+          return orgName.get(raw!) || raw;
+        }
+        if (fn === 'navigationChannelId') {
+          const item = channels.find((x) => x.id === raw);
+          return item ? `${item.code} - ${item.name}` : raw;
+        }
+        if (
+          fn === 'originalValue' ||
+          fn === 'remainingValue' ||
+          fn === 'accumulatedDepreciation' ||
+          fn === 'monthlyDepreciation' ||
+          fn === 'value'
+        ) {
+          return formatHistoryNumber(raw);
+        }
+        return undefined;
+      },
+    }),
+    [filteredHistoryRecords, orgName, channels]
   );
-
-  const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
-  const channelMap = useMemo(() => new Map(channels.map((item) => [item.id, item])), [channels]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -273,6 +306,87 @@ export default function ChannelAssetList() {
       .catch(() => toast.error('Không thể tải danh mục đơn vị hoặc luồng hàng hải.'));
   }, []);
 
+  // ── Approval state & handlers ──────────────────────────────────────
+  const [approvingRecord, setApprovingRecord] = useState<ChannelAsset | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [rejectingRecord, setRejectingRecord] = useState<ChannelAsset | null>(null);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const handleOpenApproveModal = useCallback((record: ChannelAsset, level: 'c1' | 'c2') => {
+    setApprovingRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const handleApproveConfirm = useCallback(async (content: string) => {
+    if (!approvingRecord) return;
+    setApproveLoading(true);
+    try {
+      if (approveLevel === 'c1') {
+        await approveInfraAssetC1(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await approveInfraAssetC2(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Phê duyệt thất bại'));
+    } finally {
+      setApproveLoading(false);
+    }
+  }, [approvingRecord, approveLevel, loadData]);
+
+  const handleOpenRejectModal = useCallback((record: ChannelAsset, level: 'c1' | 'c2') => {
+    setRejectingRecord(record);
+    setRejectLevel(level);
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleRejectConfirm = useCallback(async (reason: string) => {
+    if (!rejectingRecord) return;
+    setRejectLoading(true);
+    try {
+      if (rejectLevel === 'c1') {
+        await rejectInfraAssetC1(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await rejectInfraAssetC2(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cục');
+      }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Từ chối phê duyệt thất bại'));
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectLevel, loadData]);
+
+  const handleSubmitApproval = useCallback(async (record: ChannelAsset) => {
+    try {
+      await submitInfraAssetApproval(record.id);
+      const isReSubmit =
+        record.approvalStatus === 'REJECTED_LEVEL1' ||
+        record.approvalStatus === 'REJECTED_LEVEL2' ||
+        (record as any).status === 'REJECTED_LEVEL1' ||
+        (record as any).status === 'REJECTED_LEVEL2' ||
+        record.approvalStatus === 'REJECTED';
+      toast.success(isReSubmit ? 'Đã gửi lại phê duyệt' : 'Đã gửi Cảng vụ phê duyệt');
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Gửi phê duyệt thất bại'));
+    }
+  }, [loadData]);
+
   const openCreate = useCallback(() => {
     setSelected(undefined);
     setDrawerMode('create');
@@ -282,6 +396,10 @@ export default function ChannelAssetList() {
   }, [form]);
 
   const openEdit = useCallback((record: ChannelAsset) => {
+    if (!isAssetRecordEditable(record.approvalStatus)) {
+      toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+      return;
+    }
     setSelected(record);
     setDrawerMode('edit');
 
@@ -689,25 +807,6 @@ export default function ChannelAssetList() {
         organizations,
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-      },
-      {
-        key: 'navigationChannelId',
-        label: 'Mã luồng hàng hải',
-        type: 'select',
-        placeholder: 'Chọn luồng hàng hải',
-        options: channelOpts,
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -721,9 +820,32 @@ export default function ChannelAssetList() {
         options: ASSET_CONDITIONS.map((val) => ({ value: val, label: val })),
       },
       {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        isAdvanced: true,
+      },
+      {
+        key: 'navigationChannelId',
+        label: 'Mã luồng hàng hải',
+        type: 'select',
+        placeholder: 'Chọn luồng hàng hải',
+        options: channelOpts,
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
+      },
+      {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ];
   }, [organizations, channels]);
@@ -901,54 +1023,131 @@ export default function ChannelAssetList() {
         allowSort: true,
       },
     ],
-    actions: [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: (record) => void openDetail(record),
-      },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        disabled: (record) => record.approvalStatus === 'APPROVED',
-        onClick: (record) => openEdit(record),
-      },
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: (record) => openOperation(record, 'exploit'),
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: (record) => openOperation(record, 'increase'),
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: (record) => openOperation(record, 'decrease'),
-      },
-      {
+    actions: (record: ChannelAsset) => {
+      const st = record.approvalStatus || (record as any).status || '';
+      const actionsList: any[] = [
+        {
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        },
+      ];
+
+      if (isAssetRecordEditable(st)) {
+        actionsList.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+
+      if (st === 'DRAFT') {
+        actionsList.push({
+          key: 'submit',
+          label: 'Gửi Cảng vụ phê duyệt',
+          icon: <SendOutlined />,
+          onClick: () => void handleSubmitApproval(record),
+        });
+      } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+        actionsList.push({
+          key: 'submit',
+          label: 'Gửi lại phê duyệt',
+          icon: <SendOutlined />,
+          onClick: () => void handleSubmitApproval(record),
+        });
+      }
+
+      if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
+        actionsList.push(
+          {
+            key: 'approveC1',
+            label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c1'),
+          },
+          {
+            key: 'rejectC1',
+            label: 'Từ chối cấp Cảng vụ/Chi cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c1'),
+          }
+        );
+      }
+
+      if (st === 'APPROVED_LEVEL1') {
+        actionsList.push(
+          {
+            key: 'approveC2',
+            label: 'Phê duyệt cấp Cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c2'),
+          },
+          {
+            key: 'rejectC2',
+            label: 'Từ chối cấp Cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c2'),
+          }
+        );
+      }
+
+      if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+        actionsList.push(
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => openOperation(record, 'exploit'),
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => openOperation(record, 'increase'),
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => openOperation(record, 'decrease'),
+          }
+        );
+      }
+
+      actionsList.push({
         key: 'history',
         label: 'Lịch sử',
         icon: <HistoryOutlined />,
-        onClick: (record) => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        disabled: (record) => record.approvalStatus === 'APPROVED',
-        onClick: (record) => setDeleteTarget(record),
-      },
-    ],
-  }), [channelMap, openDetail, openEdit, openHistory, openOperation, orgName]);
+        onClick: () => void openHistory(record),
+      });
+
+      if (st === 'DRAFT') {
+        actionsList.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+
+      return actionsList;
+    },
+  }), [
+    channelMap,
+    openDetail,
+    openEdit,
+    openHistory,
+    openOperation,
+    handleOpenApproveModal,
+    handleOpenRejectModal,
+    handleSubmitApproval,
+    orgName,
+  ]);
 
   const headerActions = useMemo<ScreenHeaderAction[]>(() => [
     {
@@ -973,7 +1172,6 @@ export default function ChannelAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
@@ -1192,6 +1390,26 @@ export default function ChannelAssetList() {
           content={`Bạn có chắc chắn muốn xóa tài sản "${deleteTarget?.assetName}" (${deleteTarget?.assetCode}) không? Thao tác này không thể hoàn tác.`}
           onConfirm={() => void confirmDelete()}
           onCancel={() => setDeleteTarget(undefined)}
+        />
+
+        {/* ── Approval Modals 2 cấp ──────────────────────────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          approveLoading={approveLoading}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveCancel={() => {
+            setApproveModalOpen(false);
+            setApprovingRecord(null);
+          }}
+          rejectOpen={rejectModalOpen}
+          rejectLevel={rejectLevel}
+          rejectLoading={rejectLoading}
+          onRejectConfirm={handleRejectConfirm}
+          onRejectCancel={() => {
+            setRejectModalOpen(false);
+            setRejectingRecord(null);
+          }}
         />
       </div>
     </ThemeTokenProvider>

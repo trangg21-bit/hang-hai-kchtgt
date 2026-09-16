@@ -219,14 +219,10 @@ export function canDeleteApprovalRecord(
   };
 
   const perms = [
-    ...(resource ? [`${resource}:delete`, `${resource}:manage`, `${resource}:write`, `${resource}:update`] : []),
+    ...(resource ? [`${resource}:delete`, `${resource}:manage`] : []),
     ...extraDeletePerms,
   ];
-  if (perms.some(checkPerm)) {
-    return true;
-  }
-  // Mặc định đối với bản ghi Lưu tạm (DRAFT), cho phép xóa nếu người dùng có quyền quản trị/truy cập module
-  return true;
+  return perms.some(checkPerm);
 }
 
 /**
@@ -237,3 +233,84 @@ export function canDeleteApprovalRecord(
 export function editFooterMode(status?: string | null): 'approve' | 'draft' {
   return isApprovedRecord(status) ? 'approve' : 'draft';
 }
+
+/**
+ * Quyết định xem một bản ghi tài sản KCHT có được phép chỉnh sửa hay không.
+ *
+ * Quy chuẩn:
+ * - KHÔNG ĐƯỢC CHỈNH SỬA: Record có trạng thái:
+ *   + Đã xóa (ARCHIVED, DELETED, 7, 6...)
+ *   + Chờ phê duyệt cấp cục (APPROVED_LEVEL1, APPROVED_L1, 3...)
+ *   + Chờ phê duyệt cấp Cảng vụ/Chi cục (PENDING_APPROVAL, PROPOSED, PENDING, 1, 2...)
+ * - ĐƯỢC PHÉP CHỈNH SỬA: Tất cả các trạng thái còn lại:
+ *   + Lưu tạm (DRAFT, 0)
+ *   + Đã phê duyệt (APPROVED, APPROVED_LEVEL2, 4, 5)
+ *   + Từ chối cấp Cảng vụ/Chi cục (REJECTED_LEVEL1, 8)
+ *   + Từ chối cấp Cục (REJECTED_LEVEL2, 9)
+ *   + Từ chối (REJECTED)
+ */
+export function isAssetRecordEditable(status: string | number | null | undefined): boolean {
+  if (status === null || status === undefined) return true;
+  const raw = String(status).trim();
+  if (!raw) return true;
+  const s = raw.toUpperCase();
+
+  // 1. Đã xóa -> CẤM SỬA
+  if (
+    s === 'ARCHIVED' ||
+    s === 'DELETED' ||
+    s === '7' ||
+    s === '6' ||
+    s === 'ĐÃ XÓA' ||
+    s === 'DA_XOA' ||
+    s === 'DA XOA' ||
+    s.includes('ĐÃ XÓA')
+  ) {
+    return false;
+  }
+
+  // 2. Chờ phê duyệt cấp Cục -> CẤM SỬA
+  if (
+    s === 'APPROVED_LEVEL1' ||
+    s === 'APPROVED_L1' ||
+    s === 'PENDING_APPROVAL_LEVEL2' ||
+    s === 'PROPOSED_LEVEL2' ||
+    s === 'CHO_PD_CAP_CUC' ||
+    s === 'CHO_PHE_DUYET_CAP_CUC' ||
+    s === 'SUBMITTED_DEPARTMENT' ||
+    s === 'CHO_DUYET_CAP_2' ||
+    s === '3' ||
+    s.includes('CHỜ PHÊ DUYỆT CẤP CỤC') ||
+    s.includes('CHO PHE DUYET CAP CUC') ||
+    s.includes('CHỜ CỤC DUYỆT') ||
+    s.includes('CHO CUC DUYET')
+  ) {
+    return false;
+  }
+
+  // 3. Chờ phê duyệt cấp Cảng vụ/Chi cục -> CẤM SỬA
+  if (
+    s === 'PENDING_APPROVAL' ||
+    s === 'PENDING_APPROVAL_LEVEL1' ||
+    s === 'PENDING' ||
+    s === 'PROPOSED' ||
+    s === 'CHO_PHE_DUYET' ||
+    s === 'CHO_PHE_DUYET_CAP_CANG_VU' ||
+    s === 'SUBMITTED_PORT_AUTHORITY' ||
+    s === 'CHO_DUYET_CAP_1' ||
+    s === '1' ||
+    s === '2' ||
+    s.includes('CHỜ PHÊ DUYỆT CẤP CẢNG VỤ') ||
+    s.includes('CHO PHE DUYET CAP CANG VU') ||
+    s.includes('CHỜ CẢNG VỤ') ||
+    s.includes('CHO CANG VU') ||
+    s.includes('CHỜ PHÊ DUYỆT CẤP CHI CỤC') ||
+    s.includes('CHO PHE DUYET CAP CHI CUC') ||
+    s.includes('CHỜ CHI CỤC')
+  ) {
+    return false;
+  }
+
+  return true;
+}
+

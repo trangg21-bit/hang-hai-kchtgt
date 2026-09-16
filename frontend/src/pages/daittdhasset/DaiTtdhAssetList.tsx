@@ -1,71 +1,71 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
-  CommonStatusTabs,
-  TableColumnType,
-  type TableOption,
-  type TableActionOption,
-  type FilterOption,
-  type ScreenHeaderAction,
+    CommonStatusTabs,
+    CommonTable,
+    FilterTableLayout,
+    ScreenHeader,
+    TableColumnType,
+    TableFilter,
+    type FilterOption,
+    type ScreenHeaderAction,
+    type TableActionOption,
+    type TableOption,
 } from '../../components/list-view';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import toast from '../../components/ToastNotification';
-import { organizationService, type Organization } from '../../services/organizationService';
 import {
-  fetchDaiTtdhAssets,
-  deleteDaiTtdhAsset,
-  createDaiTtdhAsset,
-  updateDaiTtdhAsset,
-  fetchDaiTtdhExploitations,
-  createDaiTtdhExploitation,
-  fetchDaiTtdhAdjustments,
-  createDaiTtdhAdjustment,
-  fetchDaiTtdhOptions,
-  fetchDaiTtdhAssetAttachments,
-  uploadDaiTtdhAssetAttachments,
-  downloadDaiTtdhAssetAttachment,
+    resolveMimeType,
+    triggerBlobDownload,
+    type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import {
+    createDaiTtdhAdjustment,
+    createDaiTtdhAsset,
+    createDaiTtdhExploitation,
+    deleteDaiTtdhAsset,
+    downloadDaiTtdhAssetAttachment,
+    fetchDaiTtdhAdjustments,
+    fetchDaiTtdhAssetAttachments,
+    fetchDaiTtdhAssets,
+    fetchDaiTtdhExploitations,
+    fetchDaiTtdhOptions,
+    updateDaiTtdhAsset,
+    uploadDaiTtdhAssetAttachments,
 } from '../../services/daiTtdhAsset/api';
 import type {
-  DaiTtdhAsset,
-  DaiTtdhAssetFilters,
-  DaiTtdhAssetPayload,
-  DaiTtdhAssetExploitation,
-  DaiTtdhAssetAdjustment,
-  PageResponse,
+    DaiTtdhAsset,
+    DaiTtdhAssetAdjustment,
+    DaiTtdhAssetExploitation,
+    DaiTtdhAssetFilters,
+    DaiTtdhAssetPayload,
+    PageResponse,
 } from '../../services/daiTtdhAsset/types';
-import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import api from '../../services/api';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import DaiTtdhAssetForm, { type FormValues } from './DaiTtdhAssetForm';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DaiTtdhAssetDetailContent from './DaiTtdhAssetDetailContent';
-import DaiTtdhAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
-} from './DaiTtdhAssetOperationForm';
+import DaiTtdhAssetForm, { type FormValues } from './DaiTtdhAssetForm';
 import DaiTtdhAssetHistory, { useDaiTtdhHistory } from './DaiTtdhAssetHistory';
+import DaiTtdhAssetOperationForm, {
+    type OperationMode,
+    type OperationValues,
+} from './DaiTtdhAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -195,6 +195,10 @@ export default function DaiTtdhAssetList() {
 
   const openEdit = useCallback(
     (record: DaiTtdhAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       fetchDaiTtdhAssetAttachments(record.id)
@@ -505,19 +509,10 @@ export default function DaiTtdhAssetList() {
         placeholder: 'Chọn đơn vị quản lý',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị sử dụng',
-      },
-      {
-        key: 'stationId',
-        label: 'Đài TTDH',
-        type: 'select',
-        options: daiTtdhs.map((d) => ({ value: d.id, label: `${d.code} - ${d.name}` })),
-        placeholder: 'Chọn đài TTDH',
-        showSearch: true,
+        key: 'assetName',
+        label: 'Tên hoặc mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm kiếm theo tên / mã tài sản',
       },
       {
         key: 'assetCondition',
@@ -527,16 +522,28 @@ export default function DaiTtdhAssetList() {
         placeholder: 'Chọn tình trạng',
       },
       {
-        key: 'assetName',
-        label: 'Tên hoặc mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm kiếm theo tên / mã tài sản',
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị sử dụng',
+        isAdvanced: true,
+      },
+      {
+        key: 'stationId',
+        label: 'Đài TTDH',
+        type: 'select',
+        options: daiTtdhs.map((d) => ({ value: d.id, label: `${d.code} - ${d.name}` })),
+        placeholder: 'Chọn đài TTDH',
+        showSearch: true,
+        isAdvanced: true,
       },
       {
         key: 'updatedRange',
         label: 'Khoảng ngày cập nhật',
         type: 'dateRange',
         format: 'DD/MM/YYYY',
+        isAdvanced: true,
       },
     ],
     [organizations, daiTtdhs]
@@ -710,12 +717,16 @@ export default function DaiTtdhAssetList() {
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
           },
-          {
-            key: 'edit',
-            label: 'Chỉnh sửa',
-            icon: <EditOutlined />,
-            onClick: () => openEdit(record),
-          },
+          ...(isAssetRecordEditable(record.approvalStatus)
+            ? [
+                {
+                  key: 'edit',
+                  label: 'Chỉnh sửa',
+                  icon: <EditOutlined />,
+                  onClick: () => openEdit(record),
+                },
+              ]
+            : []),
           {
             key: 'history',
             label: 'Lịch sử',
@@ -787,7 +798,6 @@ export default function DaiTtdhAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

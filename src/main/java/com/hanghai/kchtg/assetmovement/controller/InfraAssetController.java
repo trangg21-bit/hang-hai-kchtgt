@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -159,6 +160,55 @@ public class InfraAssetController {
             @PathVariable UUID id) {
         infraAssetService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được xóa", null));
+    }
+
+    // ── Approval endpoints ────────────────────────────────────────────────
+
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> submit(@PathVariable UUID id) {
+        InfraAssetResponse response = infraAssetService.submit(id);
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/approve-c1", "/{id}/approve-l1", "/{id}/approve/c1"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> approveC1(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String content = body != null ? body.getOrDefault("content", body.get("reason")) : null;
+        InfraAssetResponse response = infraAssetService.approveC1(id, content);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ/Chi cục thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/reject-c1", "/{id}/reject-l1", "/{id}/reject/c1"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> rejectC1(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", body.get("content")) : null;
+        InfraAssetResponse response = infraAssetService.rejectC1(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối cấp Cảng vụ/Chi cục thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/approve-c2", "/{id}/approve-l2", "/{id}/approve/c2"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> approveC2(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String content = body != null ? body.getOrDefault("content", body.get("reason")) : null;
+        InfraAssetResponse response = infraAssetService.approveC2(id, content);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/reject-c2", "/{id}/reject-l2", "/{id}/reject/c2"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> rejectC2(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", body.get("content")) : null;
+        InfraAssetResponse response = infraAssetService.rejectC2(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối cấp Cục thành công", response));
     }
 
     @GetMapping("/{id}/history")

@@ -64,15 +64,18 @@ const DEFAULT_PAGE_SIZE = 20;
 /** Map dự phòng trạng thái phê duyệt (hạ tầng) → tiếng Việt. */
 const DEFAULT_APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
-  PROPOSED: 'Chờ Cảng vụ duyệt',
-  PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-  PENDING: 'Chờ Cảng vụ duyệt',
-  APPROVED_LEVEL1: 'Chờ Cục duyệt',
-  APPROVED_LEVEL2: 'Đã duyệt',
-  APPROVED: 'Đã duyệt',
+  PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+  APPROVED_LEVEL2: 'Đã phê duyệt',
+  APPROVED: 'Đã phê duyệt',
+  DA_PHE_DUYET: 'Đã phê duyệt',
   REJECTED: 'Từ chối',
-  REJECTED_LEVEL1: 'Từ chối',
-  REJECTED_LEVEL2: 'Từ chối',
+  REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
+  ARCHIVED: 'Đã xóa',
+  DA_XOA: 'Đã xóa',
 };
 
 /** Map dự phòng tình trạng (condition) → tiếng Việt. */

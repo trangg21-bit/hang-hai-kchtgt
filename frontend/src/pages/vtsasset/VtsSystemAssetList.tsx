@@ -1,7 +1,3 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -13,45 +9,37 @@ import {
   RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from '../../components/ToastNotification';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import api from '../../services/api';
+import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
-import { organizationService, type Organization } from '../../services/organizationService';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
-  fetchVtsSystemAssets,
-  createVtsSystemAsset,
-  updateVtsSystemAsset,
-  deleteVtsSystemAsset,
-  fetchVtsSystemOptions,
-  type VtsSystemOption,
-} from '../../services/vtsasset/api';
-import type {
-  VtsSystemAsset,
-  VtsSystemAssetFilters,
-  VtsSystemAssetPayload,
-} from '../../services/vtsasset/types';
-import {
-  fetchKhaiThacList,
-  fetchAssetIncreaseList,
-  fetchAssetDecreaseList,
-  createKhaiThac,
-  createAssetIncrease,
   createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchKhaiThacList,
 } from '../../services/assetmovement/api';
 import type {
   AssetDecreaseResponse,
@@ -59,31 +47,36 @@ import type {
   AssetIncreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { organizationService, type Organization } from '../../services/organizationService';
 import {
-  saveAttachmentFile,
-  downloadAttachmentFile,
-  getAttachmentPreviewUrl,
-} from '../../utils/attachmentStorage';
+  createVtsSystemAsset,
+  deleteVtsSystemAsset,
+  fetchVtsSystemAssets,
+  fetchVtsSystemOptions,
+  updateVtsSystemAsset,
+  type VtsSystemOption,
+} from '../../services/vtsasset/api';
+import type {
+  VtsSystemAsset,
+  VtsSystemAssetFilters,
+  VtsSystemAssetPayload,
+} from '../../services/vtsasset/types';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
-  borderDefault,
-  drawerTitleStyle,
+  actionPrimary, borderDefault, colors, drawerTitleStyle,
   fontSizeLg,
-  fontSizeMd,
-  actionPrimary,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  textTertiary,
+  fontSizeMd, fontWeightBold, radiusPill, spaceMd, spaceSm, spaceXl,
+  textTertiary
 } from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import VtsSystemAssetForm, { type FormValues } from './VtsSystemAssetForm';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
+import {
+  downloadAttachmentFile,
+  getAttachmentPreviewUrl,
+  saveAttachmentFile,
+} from '../../utils/attachmentStorage';
 import VtsSystemAssetDetailContent from './VtsSystemAssetDetailContent';
+import VtsSystemAssetForm, { type FormValues } from './VtsSystemAssetForm';
 import VtsSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
@@ -458,6 +451,10 @@ export default function VtsSystemAssetList() {
 
   const openEdit = useCallback(
     (record: VtsSystemAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -816,36 +813,6 @@ export default function VtsSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'vtsSystemId',
-      label: 'Mã hệ thống VTS',
-      type: 'select',
-      placeholder: 'Chọn hệ thống VTS',
-      options: vtsSystems.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: VTS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -859,9 +826,44 @@ export default function VtsSystemAssetList() {
       options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
     },
     {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
+    },
+    {
+      key: 'vtsSystemId',
+      label: 'Mã hệ thống VTS',
+      type: 'select',
+      placeholder: 'Chọn hệ thống VTS',
+      options: vtsSystems.map((item) => ({
+        value: item.id,
+        label: `${item.code} - ${item.name}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: VTS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
+    },
+    {
       key: 'updatedRange',
       label: 'Ngày cập nhật',
       type: 'dateRange',
+      isAdvanced: true,
     },
   ], [organizations, vtsSystems]);
 
@@ -1018,12 +1020,16 @@ export default function VtsSystemAssetList() {
         icon: <EyeOutlined />,
         onClick: () => void openDetail(record),
       },
-      {
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
+      ...(isAssetRecordEditable(record.approvalStatus)
+        ? [
+            {
+              key: 'edit',
+              label: 'Chỉnh sửa',
+              icon: <EditOutlined />,
+              onClick: () => openEdit(record),
+            },
+          ]
+        : []),
       {
         key: 'exploit',
         label: 'Khai thác tài sản',

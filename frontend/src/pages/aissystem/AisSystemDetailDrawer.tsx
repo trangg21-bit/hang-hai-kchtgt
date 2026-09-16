@@ -251,144 +251,67 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
               <span className="detail-value">{record?.note || '—'}</span>
             </div>
           </div>
-        </div>
-      ),
-    },
-    {
-      key: 'gis',
-      label: 'Thông tin vị trí',
-      children: (
-        <div>
-          <div className="chk-detail-grid" style={{ marginBottom: 12 }}>
-            <div className="chk-detail-row">
-              <span className="chk-detail-label">Loại đối tượng</span>
-              <span className="chk-detail-value">
-                {record?.geometryType === 'POINT' ? 'Đối tượng điểm' : record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : (record?.geometryType || 'Đối tượng điểm')}
-              </span>
+
+          {/* Section: Thông tin phê duyệt */}
+          <div style={{ marginTop: 16, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '12px 18px 8px 18px', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Thông tin phê duyệt</span>
+              </div>
             </div>
-            <div className="chk-detail-row">
-              <span className="chk-detail-label">Biểu tượng bản đồ</span>
-              <span className="chk-detail-value">{record?.symbolId || 'Hệ thống AIS'}</span>
-            </div>
-            <div className="chk-detail-row">
-              <span className="chk-detail-label">Hệ quy chiếu</span>
-              <span className="chk-detail-value">WGS 84 / VN-2000</span>
-            </div>
-            <div className="chk-detail-row">
-              <span className="chk-detail-label">Quy tắc hiển thị</span>
-              <span className="chk-detail-value">Độ, phút, giây (DMS)</span>
+            <div className="chk-detail-grid" style={{ paddingTop: 6 }}>
+              <div className="chk-detail-row chk-detail-row--full">
+                <span className="chk-detail-label">Trạng thái phê duyệt</span>
+                <span className="chk-detail-value"><ApprovalStatusBadge status={record?.approvalStatus} /></span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Cán bộ cập nhật</span>
+                <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{record?.updatedByName || '—'}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Ngày cập nhật</span>
+                <span className="chk-detail-value">{record?.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
+                <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{submittedByName}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Ngày gửi phê duyệt</span>
+                <span className="chk-detail-value">{submittedDate}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{approverC1Name}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                <span className="chk-detail-value">{approvedDateC1}</span>
+              </div>
+              <div className="chk-detail-row chk-detail-row--full">
+                <span className="chk-detail-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                <span className="chk-detail-value">{approvalContentC1}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Cán bộ phê duyệt cấp Cục</span>
+                <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>{approverC2Name}</span>
+              </div>
+              <div className="chk-detail-row">
+                <span className="chk-detail-label">Ngày phê duyệt cấp Cục</span>
+                <span className="chk-detail-value">{approvedDateC2}</span>
+              </div>
+              <div className="chk-detail-row chk-detail-row--full">
+                <span className="chk-detail-label">Nội dung phê duyệt cấp Cục</span>
+                <span className="chk-detail-value">{approvalContentC2}</span>
+              </div>
+              {record?.rejectionReason && (
+                <div className="chk-detail-row chk-detail-row--full">
+                  <span className="chk-detail-label">Lý do từ chối</span>
+                  <span className="chk-detail-value" style={{ color: statusCritical, fontWeight: 500 }}>{record.rejectionReason}</span>
+                </div>
+              )}
             </div>
           </div>
-
-          <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13, lineHeight: '32px' }}>
-              Tọa độ GPS
-            </span>
-          </div>
-          <DetailTable
-            scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
-            dataSource={parsedCoords}
-            columns={[
-              {
-                title: 'STT',
-                dataIndex: 'index',
-                width: 60,
-                align: 'center',
-                render: (_: any, __: any, index: number) => index + 1,
-              },
-              {
-                title: 'Vĩ độ (Latitude - N)',
-                dataIndex: 'latitude',
-                render: (val: number) => (val != null ? `${formatDms(val)} N` : '—'),
-              },
-              {
-                title: 'Kinh độ (Longitude - E)',
-                dataIndex: 'longitude',
-                render: (val: number) => (val != null ? `${formatDms(val)} E` : '—'),
-              },
-            ]}
-          />
-        </div>
-      ),
-    },
-    {
-      key: 'attachments',
-      label: 'File đính kèm',
-      children: (
-        <InfrastructureAttachmentTab
-          attachments={attachments}
-          readonly={true}
-          isLoading={loading}
-          onDownload={(attId, fileName) => {
-            if (record?.id) {
-              return aisSystemService.downloadAttachment(record.id, attId, fileName);
-            }
-          }}
-        />
-      ),
-    },
-    {
-      key: 'audit',
-      label: 'Xử lý & theo dõi',
-      children: (
-        <div style={{ paddingTop: 16 }}>
-          <div className="detail-grid">
-            <div className="detail-row">
-              <span className="detail-label">Trạng thái</span>
-              <span className="detail-value"><ApprovalStatusBadge status={record?.approvalStatus} /></span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Ngày cập nhật</span>
-              <span className="detail-value">{record?.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span>
-            </div>
-
-            <div className="detail-row">
-              <span className="detail-label">Cán bộ cập nhật</span>
-              <span className="detail-value">{record?.updatedByName || '—'}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Ngày gửi phê duyệt</span>
-              <span className="detail-value">{submittedDate}</span>
-            </div>
-
-            <div className="detail-row">
-              <span className="detail-label">Cán bộ gửi phê duyệt</span>
-              <span className="detail-value">{submittedByName}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-              <span className="detail-value">{approvedDateC1}</span>
-            </div>
-
-            <div className="detail-row">
-              <span className="detail-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
-              <span className="detail-value">{approverC1Name}</span>
-            </div>
-            <div className="detail-row detail-row--full">
-              <span className="detail-label">Nội dung phê duyệt</span>
-              <span className="detail-value">{approvalContentC1}</span>
-            </div>
-
-            <div className="detail-row">
-              <span className="detail-label">Ngày phê duyệt cấp Cục</span>
-              <span className="detail-value">{approvedDateC2}</span>
-            </div>
-            <div className="detail-row">
-              <span className="detail-label">Cán bộ phê duyệt cấp Cục</span>
-              <span className="detail-value">{approverC2Name}</span>
-            </div>
-            <div className="detail-row detail-row--full">
-              <span className="detail-label">Nội dung phê duyệt</span>
-              <span className="detail-value">{approvalContentC2}</span>
-            </div>
-          </div>
-
-          {record?.rejectionReason && (
-            <div style={{ marginTop: 16, padding: '12px 16px', background: `${statusCritical}10`, border: `1px solid ${statusCritical}30`, borderRadius: radiusMd }}>
-              <div style={{ fontWeight: fontWeightBold, color: statusCritical, marginBottom: 4 }}>Lý do từ chối:</div>
-              <div>{record.rejectionReason}</div>
-            </div>
-          )}
         </div>
       ),
     },

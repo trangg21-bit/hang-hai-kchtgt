@@ -1,34 +1,34 @@
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
 } from '@ant-design/icons';
 import { Form } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CommonStatusTabs,
-  CommonTable,
-  FilterTableLayout,
-  ScreenHeader,
-  TableColumnType,
-  TableFilter,
-  type FilterOption,
-  type ScreenHeaderAction,
-  type TableActionOption,
-  type TableOption,
+    CommonStatusTabs,
+    CommonTable,
+    FilterTableLayout,
+    ScreenHeader,
+    TableColumnType,
+    TableFilter,
+    type FilterOption,
+    type ScreenHeaderAction,
+    type TableActionOption,
+    type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-  resolveMimeType,
-  triggerBlobDownload,
-  type InfrastructureAttachmentItem,
+    resolveMimeType,
+    triggerBlobDownload,
+    type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
@@ -37,35 +37,35 @@ import { organizationService, type Organization } from '../../services/organizat
 import { fetchVtsAssistOptions } from '../../services/vtsassist/api';
 import type { VtsAssistOptionResponse } from '../../services/vtsassist/types';
 import {
-  createVtsAssistAdjustment,
-  createVtsAssistAsset,
-  createVtsAssistExploitation,
-  deleteVtsAssistAsset,
-  deleteVtsAssistAssetAttachment,
-  downloadVtsAssistAssetAttachment,
-  fetchVtsAssistAdjustments,
-  fetchVtsAssistAssetAttachments,
-  fetchVtsAssistAssets,
-  fetchVtsAssistExploitations,
-  updateVtsAssistAsset,
-  uploadVtsAssistAssetAttachments,
+    createVtsAssistAdjustment,
+    createVtsAssistAsset,
+    createVtsAssistExploitation,
+    deleteVtsAssistAsset,
+    deleteVtsAssistAssetAttachment,
+    downloadVtsAssistAssetAttachment,
+    fetchVtsAssistAdjustments,
+    fetchVtsAssistAssetAttachments,
+    fetchVtsAssistAssets,
+    fetchVtsAssistExploitations,
+    updateVtsAssistAsset,
+    uploadVtsAssistAssetAttachments,
 } from '../../services/vtsAssistAsset/api';
 import type {
-  VtsAssistAsset,
-  VtsAssistAssetAdjustment,
-  VtsAssistAssetExploitation,
-  VtsAssistAssetFilters,
-  VtsAssistAssetPayload,
+    VtsAssistAsset,
+    VtsAssistAssetAdjustment,
+    VtsAssistAssetExploitation,
+    VtsAssistAssetFilters,
+    VtsAssistAssetPayload,
 } from '../../services/vtsAssistAsset/types';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import VtsAssistAssetDetailContent from './VtsAssistAssetDetailContent';
 import VtsAssistAssetForm, { type FormValues } from './VtsAssistAssetForm';
 import VtsAssistAssetHistory, { useVtsAssistHistory } from './VtsAssistAssetHistory';
 import VtsAssistAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
+    type OperationMode,
+    type OperationValues,
 } from './VtsAssistAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -197,6 +197,10 @@ export default function VtsAssistAssetList() {
 
   const openEdit = useCallback(
     (record: VtsAssistAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -502,36 +506,6 @@ export default function VtsAssistAssetList() {
         placeholder: 'Chọn đơn vị...',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị...',
-      },
-      {
-        key: 'transmissionId',
-        label: 'Mã thiết bị',
-        type: 'select',
-        placeholder: 'Chọn thiết bị phụ trợ VTS',
-        options: vtsAssists.map((item) => ({
-          value: item.id,
-          label: `${item.deviceCode} - ${item.deviceName}`,
-        })),
-      },
-      {
-        key: 'assetType',
-        label: 'Loại tài sản',
-        type: 'select',
-        placeholder: 'Chọn loại tài sản',
-        options: [{ value: 'Tài sản hệ thống phụ trợ VTS', label: 'Tài sản hệ thống phụ trợ VTS' }],
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -545,9 +519,44 @@ export default function VtsAssistAssetList() {
         options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
       },
       {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị...',
+        isAdvanced: true,
+      },
+      {
+        key: 'transmissionId',
+        label: 'Mã thiết bị',
+        type: 'select',
+        placeholder: 'Chọn thiết bị phụ trợ VTS',
+        options: vtsAssists.map((item) => ({
+          value: item.id,
+          label: `${item.deviceCode} - ${item.deviceName}`,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: [{ value: 'Tài sản hệ thống phụ trợ VTS', label: 'Tài sản hệ thống phụ trợ VTS' }],
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
+      },
+      {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ],
     [vtsAssists, organizations]
@@ -744,12 +753,16 @@ export default function VtsAssistAssetList() {
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
           },
-          {
-            key: 'edit',
-            label: 'Chỉnh sửa',
-            icon: <EditOutlined />,
-            onClick: () => openEdit(record),
-          },
+          ...(isAssetRecordEditable(record.approvalStatus)
+            ? [
+                {
+                  key: 'edit',
+                  label: 'Chỉnh sửa',
+                  icon: <EditOutlined />,
+                  onClick: () => openEdit(record),
+                },
+              ]
+            : []),
           {
             key: 'history',
             label: 'Lịch sử',
@@ -832,7 +845,6 @@ export default function VtsAssistAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

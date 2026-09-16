@@ -1,88 +1,92 @@
-import {
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
-    SearchOutlined,
-} from '@ant-design/icons';
-import { Button, DatePicker, Form, Input, Space } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    CommonStatusTabs,
-    CommonTable,
-    FilterTableLayout,
-    ScreenHeader,
-    TableColumnType,
-    TableFilter,
-    type FilterOption,
-    type ScreenHeaderAction,
-    type TableOption,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  SendOutlined,
+} from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import {
+  CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
+  TableColumnType,
+  TableFilter,
+  type FilterOption,
+  type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-    resolveMimeType,
-    triggerBlobDownload,
-    type InfrastructureAttachmentItem,
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
-    createAssetDecrease,
-    createAssetIncrease,
-    createDryPortAsset,
-    createKhaiThac,
-    deleteDryPortAsset,
-    deleteInfraAssetAttachment,
-    fetchAssetDecreaseList,
-    fetchAssetIncreaseList,
-    fetchDryPortAssets,
-    fetchInfraAssetAttachments,
-    fetchKhaiThacList,
-    updateDryPortAsset,
-    uploadInfraAssetAttachments,
+  createAssetDecrease,
+  createAssetIncrease,
+  createDryPortAsset,
+  createKhaiThac,
+  deleteDryPortAsset,
+  deleteInfraAssetAttachment,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchDryPortAssets,
+  fetchInfraAssetAttachments,
+  fetchKhaiThacList,
+  updateDryPortAsset,
+  uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 import type {
-    AssetDecreaseResponse,
-    AssetExploitationResponse,
-    AssetIncreaseResponse,
-    AssetValueAdjustmentDetails,
-    DryPortAsset,
-    DryPortAssetFilters,
-    DryPortAssetPayload,
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+  DryPortAsset,
+  DryPortAssetFilters,
+  DryPortAssetPayload,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { dryPortCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import { fmtInputNumber } from '../../utils/numFmt';
 import DryPortAssetDetailContent from './DryPortAssetDetailContent';
 import DryPortAssetForm, { type DryPortFormValues } from './DryPortAssetForm';
 import DryPortAssetOperationForm, {
-    type OperationMode,
-    type OperationValues,
+  type OperationMode,
+  type OperationValues,
 } from './DryPortAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -287,6 +291,87 @@ export default function DryPortAssetList() {
     void loadData();
   }, [loadData]);
 
+  // ── Approval state & handlers ──────────────────────────────────────
+  const [approvingRecord, setApprovingRecord] = useState<DryPortAsset | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [rejectingRecord, setRejectingRecord] = useState<DryPortAsset | null>(null);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const handleOpenApproveModal = useCallback((record: DryPortAsset, level: 'c1' | 'c2') => {
+    setApprovingRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const handleApproveConfirm = useCallback(async (content: string) => {
+    if (!approvingRecord) return;
+    setApproveLoading(true);
+    try {
+      if (approveLevel === 'c1') {
+        await approveInfraAssetC1(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await approveInfraAssetC2(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Phê duyệt thất bại'));
+    } finally {
+      setApproveLoading(false);
+    }
+  }, [approvingRecord, approveLevel, loadData]);
+
+  const handleOpenRejectModal = useCallback((record: DryPortAsset, level: 'c1' | 'c2') => {
+    setRejectingRecord(record);
+    setRejectLevel(level);
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleRejectConfirm = useCallback(async (reason: string) => {
+    if (!rejectingRecord) return;
+    setRejectLoading(true);
+    try {
+      if (rejectLevel === 'c1') {
+        await rejectInfraAssetC1(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await rejectInfraAssetC2(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cục');
+      }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Từ chối phê duyệt thất bại'));
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectLevel, loadData]);
+
+  const handleSubmitApproval = useCallback(async (record: DryPortAsset) => {
+    try {
+      await submitInfraAssetApproval(record.id);
+      const isReSubmit =
+        record.approvalStatus === 'REJECTED_LEVEL1' ||
+        record.approvalStatus === 'REJECTED_LEVEL2' ||
+        (record as any).status === 'REJECTED_LEVEL1' ||
+        (record as any).status === 'REJECTED_LEVEL2' ||
+        record.approvalStatus === 'REJECTED';
+      toast.success(isReSubmit ? 'Đã gửi lại phê duyệt' : 'Đã gửi Cảng vụ phê duyệt');
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Gửi phê duyệt thất bại'));
+    }
+  }, [loadData]);
+
   const handleOpenCreate = useCallback(() => {
     form.resetFields();
     setSelected(undefined);
@@ -298,6 +383,10 @@ export default function DryPortAssetList() {
   }, [form]);
 
   const handleOpenEdit = useCallback(async (record: DryPortAsset) => {
+    if (!isAssetRecordEditable(record.approvalStatus)) {
+      toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+      return;
+    }
     setSelected(record);
     setAttachments(
       record.attachmentName
@@ -837,37 +926,6 @@ export default function DryPortAssetList() {
         placeholder: 'Chọn đơn vị...',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị...',
-      },
-      {
-        key: 'dryPortId',
-        label: 'Mã cảng cạn',
-        type: 'select',
-        placeholder: 'Chọn cảng cạn',
-        options: dryPorts.map((dp) => ({
-          value: dp.id,
-          label: dp.code ? `${dp.code} - ${dp.name}` : dp.name,
-        })),
-      },
-      {
-        key: 'assetType',
-        label: 'Loại tài sản',
-        type: 'select',
-        disabled: true,
-        defaultValue: 'DRY_PORT',
-        options: [{ value: 'DRY_PORT', label: 'Tài sản cảng cạn' }],
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -881,9 +939,45 @@ export default function DryPortAssetList() {
         options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
       },
       {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị...',
+        isAdvanced: true,
+      },
+      {
+        key: 'dryPortId',
+        label: 'Mã cảng cạn',
+        type: 'select',
+        placeholder: 'Chọn cảng cạn',
+        options: dryPorts.map((dp) => ({
+          value: dp.id,
+          label: dp.code ? `${dp.code} - ${dp.name}` : dp.name,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        disabled: true,
+        defaultValue: 'DRY_PORT',
+        options: [{ value: 'DRY_PORT', label: 'Tài sản cảng cạn' }],
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
+      },
+      {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ],
     [organizations, dryPorts],
@@ -1028,80 +1122,121 @@ export default function DryPortAssetList() {
         },
       ],
       actions: (record: DryPortAsset) => {
-        const isDraft = record.approvalStatus === 'DRAFT' || !record.approvalStatus;
-        const isArchived = record.approvalStatus === 'ARCHIVED';
-
-        if (isArchived) {
-          return [
-            {
-              key: 'detail',
-              label: 'Xem chi tiết',
-              icon: <EyeOutlined />,
-              onClick: () => void handleOpenDetail(record),
-            },
-            {
-              key: 'history',
-              label: 'Lịch sử',
-              icon: <HistoryOutlined />,
-              onClick: () => void openHistory(record),
-            },
-          ];
-        }
-
-        const actionList = [
+        const st = record.approvalStatus || (record as any).status || '';
+        const actionsList: any[] = [
           {
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void handleOpenDetail(record),
           },
-          {
+        ];
+
+        if (isAssetRecordEditable(st)) {
+          actionsList.push({
             key: 'edit',
             label: 'Chỉnh sửa',
             icon: <EditOutlined />,
             onClick: () => handleOpenEdit(record),
-          },
-          {
-            key: 'history',
-            label: 'Lịch sử',
-            icon: <HistoryOutlined />,
-            onClick: () => void openHistory(record),
-          },
-          {
-            key: 'exploit',
-            label: 'Khai thác tài sản',
-            icon: <RocketOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('exploit');
-              operationForm.resetFields();
-            },
-          },
-          {
-            key: 'increase',
-            label: 'Tăng nguyên giá',
-            icon: <PlusCircleOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('increase');
-              operationForm.resetFields();
-            },
-          },
-          {
-            key: 'decrease',
-            label: 'Giảm nguyên giá',
-            icon: <MinusCircleOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('decrease');
-              operationForm.resetFields();
-            },
-          },
-        ];
+          });
+        }
 
-        // Nút xóa chỉ hiển thị với bản ghi có trạng thái lưu tạm (DRAFT)
-        if (isDraft) {
-          actionList.push({
+        if (st === 'DRAFT') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi Cảng vụ phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi lại phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        }
+
+        if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
+          actionsList.push(
+            {
+              key: 'approveC1',
+              label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+              icon: <CheckOutlined />,
+              onClick: () => handleOpenApproveModal(record, 'c1'),
+            },
+            {
+              key: 'rejectC1',
+              label: 'Từ chối cấp Cảng vụ/Chi cục',
+              icon: <CloseOutlined />,
+              danger: true,
+              onClick: () => handleOpenRejectModal(record, 'c1'),
+            }
+          );
+        }
+
+        if (st === 'APPROVED_LEVEL1') {
+          actionsList.push(
+            {
+              key: 'approveC2',
+              label: 'Phê duyệt cấp Cục',
+              icon: <CheckOutlined />,
+              onClick: () => handleOpenApproveModal(record, 'c2'),
+            },
+            {
+              key: 'rejectC2',
+              label: 'Từ chối cấp Cục',
+              icon: <CloseOutlined />,
+              danger: true,
+              onClick: () => handleOpenRejectModal(record, 'c2'),
+            }
+          );
+        }
+
+        if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+          actionsList.push(
+            {
+              key: 'exploit',
+              label: 'Khai thác tài sản',
+              icon: <RocketOutlined />,
+              onClick: () => {
+                setSelected(record);
+                setOperationMode('exploit');
+                operationForm.resetFields();
+              },
+            },
+            {
+              key: 'increase',
+              label: 'Tăng nguyên giá',
+              icon: <PlusCircleOutlined />,
+              onClick: () => {
+                setSelected(record);
+                setOperationMode('increase');
+                operationForm.resetFields();
+              },
+            },
+            {
+              key: 'decrease',
+              label: 'Giảm nguyên giá',
+              icon: <MinusCircleOutlined />,
+              onClick: () => {
+                setSelected(record);
+                setOperationMode('decrease');
+                operationForm.resetFields();
+              },
+            }
+          );
+        }
+
+        actionsList.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+
+        if (st === 'DRAFT') {
+          actionsList.push({
             key: 'delete',
             label: 'Xóa',
             icon: <DeleteOutlined />,
@@ -1110,10 +1245,20 @@ export default function DryPortAssetList() {
           });
         }
 
-        return actionList;
+        return actionsList;
       },
     }),
-    [handleOpenDetail, handleOpenEdit, openHistory, operationForm, orgName, dryPortMap],
+    [
+      handleOpenDetail,
+      handleOpenEdit,
+      openHistory,
+      operationForm,
+      handleOpenApproveModal,
+      handleOpenRejectModal,
+      handleSubmitApproval,
+      orgName,
+      dryPortMap,
+    ],
   );
 
   const headerActions: ScreenHeaderAction[] = useMemo(
@@ -1186,18 +1331,17 @@ export default function DryPortAssetList() {
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
             overflow-y: hidden !important;
-            justify-content: center !important;
             justify-content: safe center !important;
             align-items: center !important;
             scrollbar-width: thin !important;
             scrollbar-color: #cbd5e1 #f8fafc !important;
             scroll-behavior: smooth !important;
             -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
           }
           .dryport-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
+            height: 4px !important;
             display: block !important;
           }
           .dryport-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
@@ -1235,7 +1379,6 @@ export default function DryPortAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
@@ -1515,6 +1658,26 @@ export default function DryPortAssetList() {
           itemName={deleteTarget?.assetName}
           itemCode={deleteTarget?.assetCode}
           onConfirm={handleDelete}
+        />
+
+        {/* ── Approval Modals 2 cấp ──────────────────────────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          approveLoading={approveLoading}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveCancel={() => {
+            setApproveModalOpen(false);
+            setApprovingRecord(null);
+          }}
+          rejectOpen={rejectModalOpen}
+          rejectLevel={rejectLevel}
+          rejectLoading={rejectLoading}
+          onRejectConfirm={handleRejectConfirm}
+          onRejectCancel={() => {
+            setRejectModalOpen(false);
+            setRejectingRecord(null);
+          }}
         />
       </div>
     </ThemeTokenProvider>

@@ -1,53 +1,53 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
 import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
   DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
   HistoryOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from '../../components/ToastNotification';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
-  borderDefault,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  actionPrimary,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  textTertiary,
-} from '../../themetokenchk';
-import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import {
+  createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchKhaiThacList,
+} from '../../services/assetmovement/api';
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+} from '../../services/assetmovement/types';
 import {
   organizationService,
   type Organization,
@@ -66,29 +66,30 @@ import type {
   ScadaSystemAssetFilters,
   ScadaSystemAssetPayload,
 } from '../../services/scadaasset/types';
+import { useAuthStore } from '../../store/authStore';
+import * as themeTokenChk from '../../themetokenchk';
 import {
-  createAssetDecrease,
-  createAssetIncrease,
-  createKhaiThac,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchKhaiThacList,
-} from '../../services/assetmovement/api';
-import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetValueAdjustmentDetails,
-} from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import {
-  saveAttachmentFile,
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
+  saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import { useAuthStore } from '../../store/authStore';
-import ScadaSystemAssetForm, { type FormValues } from './ScadaSystemAssetForm';
 import ScadaSystemAssetDetailContent from './ScadaSystemAssetDetailContent';
+import ScadaSystemAssetForm, { type FormValues } from './ScadaSystemAssetForm';
 import ScadaSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
@@ -482,6 +483,10 @@ export default function ScadaSystemAssetList() {
 
   const openEdit = useCallback(
     async (record: ScadaSystemAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.resetFields();
@@ -961,36 +966,6 @@ export default function ScadaSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'scadaId',
-      label: 'Mã thiết bị SCADA',
-      type: 'select',
-      placeholder: 'Chọn thiết bị SCADA',
-      options: scadaDevices.map((item) => ({
-        value: item.id,
-        label: `${item.deviceCode} - ${item.deviceName}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: SCADA_ASSET_TYPES.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -1004,10 +979,45 @@ export default function ScadaSystemAssetList() {
       options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
     },
     {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
+    },
+    {
+      key: 'scadaId',
+      label: 'Mã thiết bị SCADA',
+      type: 'select',
+      placeholder: 'Chọn thiết bị SCADA',
+      options: scadaDevices.map((item) => ({
+        value: item.id,
+        label: `${item.deviceCode} - ${item.deviceName}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: SCADA_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
+    },
+    {
       key: 'updatedRange',
       label: 'Khoảng ngày cập nhật',
       type: 'dateRange',
       placeholder: ['Từ ngày', 'Đến ngày'],
+      isAdvanced: true,
     },
   ], [organizations, scadaDevices]);
 
@@ -1139,12 +1149,16 @@ export default function ScadaSystemAssetList() {
         icon: <EyeOutlined />,
         onClick: () => void openDetail(record),
       },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
+      ...(isAssetRecordEditable(record.approvalStatus)
+        ? [
+            {
+              key: 'edit',
+              label: 'Sửa',
+              icon: <EditOutlined />,
+              onClick: () => openEdit(record),
+            },
+          ]
+        : []),
       {
         key: 'exploit',
         label: 'Khai thác tài sản',
@@ -1262,7 +1276,6 @@ export default function ScadaSystemAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

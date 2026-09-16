@@ -1,90 +1,100 @@
 import {
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
-    SearchOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    CommonStatusTabs,
-    CommonTable,
-    FilterTableLayout,
-    ScreenHeader,
-    TableColumnType,
-    TableFilter,
-    type FilterOption,
-    type ScreenHeaderAction,
-    type TableOption,
+  CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
+  TableColumnType,
+  TableFilter,
+  type FilterOption,
+  type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-    type InfrastructureAttachmentItem,
+  type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
-    createAssetDecrease,
-    createAssetIncrease,
-    createKhaiThac,
-    createStormShelterAsset,
-    deleteInfraAssetAttachment,
-    deleteStormShelterAsset,
-    fetchAssetDecreaseList,
-    fetchAssetIncreaseList,
-    fetchInfraAssetAttachments,
-    fetchInfraAssetHistory,
-    fetchKhaiThacList,
-    fetchStormShelterAssetList,
-    updateStormShelterAsset,
-    uploadInfraAssetAttachments,
+  approveInfraAssetC1,
+  approveInfraAssetC2,
+  createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  createStormShelterAsset,
+  deleteInfraAssetAttachment,
+  deleteStormShelterAsset,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchInfraAssetAttachments,
+  fetchInfraAssetHistory,
+  fetchKhaiThacList,
+  fetchStormShelterAssetList,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
+  updateStormShelterAsset,
+  uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 import type {
-    AssetDecreaseResponse,
-    AssetExploitationResponse,
-    AssetIncreaseResponse,
-    AssetValueAdjustmentDetails,
-    StormShelterAsset,
-    StormShelterAssetFilters,
-    StormShelterAssetPayload,
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+  StormShelterAsset,
+  StormShelterAssetFilters,
+  StormShelterAssetPayload,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { stormShelterCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
 import type { StormShelterArea } from '../../types/port';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import StormShelterAssetDetailContent from './StormShelterAssetDetailContent';
 import StormShelterAssetForm, { type FormValues } from './StormShelterAssetForm';
 import StormShelterAssetOperationForm, {
-    type OperationMode,
-    type OperationValues,
+  type OperationMode,
+  type OperationValues,
 } from './StormShelterAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -94,6 +104,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
@@ -260,18 +271,18 @@ export default function StormShelterAssetList() {
       setTotal(response.totalElements);
 
       const baseFilters = { ...filters, approvalStatus: undefined, sortBy: undefined, sortDir: undefined, page: 0, size: 1 };
-      const counts: Record<string, number> = {};
-      await Promise.all(
-        STATUS_COUNT_KEYS.map(async (st) => {
-          try {
-            const res = await fetchStormShelterAssetList({ ...baseFilters, approvalStatus: st });
-            counts[st] = res.totalElements;
-          } catch {
-            counts[st] = 0;
-          }
-        }),
-      );
-      setStatusCounts(counts);
+      const [all, ...statusPages] = await Promise.all([
+        fetchStormShelterAssetList(baseFilters),
+        ...STATUS_COUNT_KEYS.map((approvalStatus) =>
+          fetchStormShelterAssetList({ ...baseFilters, approvalStatus })
+        ),
+      ]);
+      setStatusCounts({
+        all: all.totalElements,
+        ...Object.fromEntries(
+          STATUS_COUNT_KEYS.map((key, index) => [key, statusPages[index].totalElements])
+        ),
+      });
     } catch (cause: unknown) {
       setError(getErrorMessage(cause, 'Không thể tải danh sách tài sản khu tránh, trú bão.'));
     } finally {
@@ -292,6 +303,87 @@ export default function StormShelterAssetList() {
       })
       .catch(() => toast.error('Không thể tải danh mục đơn vị hoặc khu tránh, trú bão.'));
   }, []);
+
+  // ── Approval state & handlers ──────────────────────────────────────
+  const [approvingRecord, setApprovingRecord] = useState<StormShelterAsset | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [rejectingRecord, setRejectingRecord] = useState<StormShelterAsset | null>(null);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const handleOpenApproveModal = useCallback((record: StormShelterAsset, level: 'c1' | 'c2') => {
+    setApprovingRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const handleApproveConfirm = useCallback(async (content: string) => {
+    if (!approvingRecord) return;
+    setApproveLoading(true);
+    try {
+      if (approveLevel === 'c1') {
+        await approveInfraAssetC1(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await approveInfraAssetC2(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Phê duyệt thất bại'));
+    } finally {
+      setApproveLoading(false);
+    }
+  }, [approvingRecord, approveLevel, loadData]);
+
+  const handleOpenRejectModal = useCallback((record: StormShelterAsset, level: 'c1' | 'c2') => {
+    setRejectingRecord(record);
+    setRejectLevel(level);
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleRejectConfirm = useCallback(async (reason: string) => {
+    if (!rejectingRecord) return;
+    setRejectLoading(true);
+    try {
+      if (rejectLevel === 'c1') {
+        await rejectInfraAssetC1(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await rejectInfraAssetC2(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cục');
+      }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Từ chối phê duyệt thất bại'));
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectLevel, loadData]);
+
+  const handleSubmitApproval = useCallback(async (record: StormShelterAsset) => {
+    try {
+      await submitInfraAssetApproval(record.id);
+      const isReSubmit =
+        record.approvalStatus === 'REJECTED_LEVEL1' ||
+        record.approvalStatus === 'REJECTED_LEVEL2' ||
+        (record as any).status === 'REJECTED_LEVEL1' ||
+        (record as any).status === 'REJECTED_LEVEL2' ||
+        record.approvalStatus === 'REJECTED';
+      toast.success(isReSubmit ? 'Đã gửi lại phê duyệt' : 'Đã gửi Cảng vụ phê duyệt');
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Gửi phê duyệt thất bại'));
+    }
+  }, [loadData]);
 
   const openCreate = useCallback(() => {
     setSelected(undefined);
@@ -314,6 +406,10 @@ export default function StormShelterAssetList() {
   }, [currentUser, form]);
 
   const openEdit = useCallback(async (record: StormShelterAsset) => {
+    if (!isAssetRecordEditable(record.approvalStatus)) {
+      toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+      return;
+    }
     setSelected(record);
     setDrawerMode('edit');
     form.resetFields();
@@ -699,35 +795,6 @@ export default function StormShelterAssetList() {
       organizations,
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-    },
-    {
-      key: 'stormShelterId',
-      label: 'Mã khu tránh, trú bão',
-      type: 'select',
-      placeholder: 'Chọn khu tránh, trú bão',
-      options: stormShelters.map((item) => ({
-        value: item.id,
-        label: `${item.stormShelterCode} - ${item.stormShelterName}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: [{ value: 'STORM_SHELTER', label: 'Tài sản khu tránh, trú bão' }],
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -741,9 +808,43 @@ export default function StormShelterAssetList() {
       options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
     },
     {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      isAdvanced: true,
+    },
+    {
+      key: 'stormShelterId',
+      label: 'Mã khu tránh, trú bão',
+      type: 'select',
+      placeholder: 'Chọn khu tránh, trú bão',
+      options: stormShelters.map((item) => ({
+        value: item.id,
+        label: `${item.stormShelterCode} - ${item.stormShelterName}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: [{ value: 'STORM_SHELTER', label: 'Tài sản khu tránh, trú bão' }],
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
+    },
+    {
       key: 'updatedRange',
       label: 'Ngày cập nhật',
       type: 'dateRange',
+      isAdvanced: true,
     },
   ], [stormShelters, organizations]);
 
@@ -919,54 +1020,131 @@ export default function StormShelterAssetList() {
         allowSort: true,
       },
     ],
-    actions: (record: StormShelterAsset) => [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => void openDetail(record),
-      },
-      {
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: () => openOperation('exploit', record),
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => openOperation('increase', record),
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => openOperation('decrease', record),
-      },
-      {
+    actions: (record: StormShelterAsset) => {
+      const st = record.approvalStatus || (record as any).status || '';
+      const actionsList: any[] = [
+        {
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        },
+      ];
+
+      if (isAssetRecordEditable(st)) {
+        actionsList.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+
+      if (st === 'DRAFT') {
+        actionsList.push({
+          key: 'submit',
+          label: 'Gửi Cảng vụ phê duyệt',
+          icon: <SendOutlined />,
+          onClick: () => void handleSubmitApproval(record),
+        });
+      } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+        actionsList.push({
+          key: 'submit',
+          label: 'Gửi lại phê duyệt',
+          icon: <SendOutlined />,
+          onClick: () => void handleSubmitApproval(record),
+        });
+      }
+
+      if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
+        actionsList.push(
+          {
+            key: 'approveC1',
+            label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c1'),
+          },
+          {
+            key: 'rejectC1',
+            label: 'Từ chối cấp Cảng vụ/Chi cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c1'),
+          }
+        );
+      }
+
+      if (st === 'APPROVED_LEVEL1') {
+        actionsList.push(
+          {
+            key: 'approveC2',
+            label: 'Phê duyệt cấp Cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c2'),
+          },
+          {
+            key: 'rejectC2',
+            label: 'Từ chối cấp Cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c2'),
+          }
+        );
+      }
+
+      if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+        actionsList.push(
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => openOperation('exploit', record),
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => openOperation('increase', record),
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => openOperation('decrease', record),
+          }
+        );
+      }
+
+      actionsList.push({
         key: 'history',
         label: 'Lịch sử',
         icon: <HistoryOutlined />,
         onClick: () => void openHistory(record),
-      },
-      ...(record.approvalStatus === 'DRAFT' || (record as any).status === 'DRAFT'
-        ? [{
-            key: 'delete',
-            label: 'Xóa',
-            icon: <DeleteOutlined />,
-            danger: true,
-            onClick: () => setDeleteTarget(record),
-          }]
-        : []),
-    ],
-  }), [openDetail, openEdit, openHistory, openOperation, orgName, stormShelterMap]);
+      });
+
+      if (st === 'DRAFT') {
+        actionsList.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+
+      return actionsList;
+    },
+  }), [
+    openDetail,
+    openEdit,
+    openHistory,
+    openOperation,
+    handleOpenApproveModal,
+    handleOpenRejectModal,
+    handleSubmitApproval,
+    orgName,
+    stormShelterMap,
+  ]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
@@ -980,7 +1158,6 @@ export default function StormShelterAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
@@ -1086,6 +1263,26 @@ export default function StormShelterAssetList() {
           onConfirm={executeDelete}
           onCancel={() => setDeleteTarget(undefined)}
           loading={saving}
+        />
+
+        {/* ── Approval Modals 2 cấp ──────────────────────────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          approveLoading={approveLoading}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveCancel={() => {
+            setApproveModalOpen(false);
+            setApprovingRecord(null);
+          }}
+          rejectOpen={rejectModalOpen}
+          rejectLevel={rejectLevel}
+          rejectLoading={rejectLoading}
+          onRejectConfirm={handleRejectConfirm}
+          onRejectCancel={() => {
+            setRejectModalOpen(false);
+            setRejectingRecord(null);
+          }}
         />
 
         {/* ── History Drawer (chuẩn /berth) ────────────────────────── */}

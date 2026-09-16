@@ -45,7 +45,7 @@ import {
   fetchInmarsatExploitations,
   fetchInmarsatStationOptions,
   updateInmarsatAsset,
-  uploadInmarsatAssetAttachments,
+  uploadInmarsatAssetAttachments
 } from '../../services/inmarsatAsset/api';
 import type {
   InmarsatAsset,
@@ -57,7 +57,7 @@ import type {
 import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import InmarsatAssetDetailContent from './InmarsatAssetDetailContent';
 import InmarsatAssetForm, { type FormValues } from './InmarsatAssetForm';
 import InmarsatAssetHistory, { useInmarsatHistory } from './InmarsatAssetHistory';
@@ -198,6 +198,10 @@ export default function InmarsatAssetList() {
 
   const openEdit = useCallback(
     (record: InmarsatAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       fetchInmarsatAssetAttachments(record.id)
@@ -508,19 +512,10 @@ export default function InmarsatAssetList() {
         placeholder: 'Chọn đơn vị quản lý',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị sử dụng',
-      },
-      {
-        key: 'stationId',
-        label: 'Đài Inmarsat',
-        type: 'select',
-        options: inmarsatStations.map((d) => ({ value: d.id, label: `${d.code} - ${d.name}` })),
-        placeholder: 'Chọn đài Inmarsat',
-        showSearch: true,
+        key: 'assetName',
+        label: 'Tên hoặc mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm kiếm theo tên / mã tài sản',
       },
       {
         key: 'assetCondition',
@@ -530,16 +525,28 @@ export default function InmarsatAssetList() {
         placeholder: 'Chọn tình trạng',
       },
       {
-        key: 'assetName',
-        label: 'Tên hoặc mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm kiếm theo tên / mã tài sản',
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị sử dụng',
+        isAdvanced: true,
+      },
+      {
+        key: 'stationId',
+        label: 'Đài Inmarsat',
+        type: 'select',
+        options: inmarsatStations.map((d) => ({ value: d.id, label: `${d.code} - ${d.name}` })),
+        placeholder: 'Chọn đài Inmarsat',
+        showSearch: true,
+        isAdvanced: true,
       },
       {
         key: 'updatedRange',
         label: 'Khoảng ngày cập nhật',
         type: 'dateRange',
         format: 'DD/MM/YYYY',
+        isAdvanced: true,
       },
     ],
     [organizations, inmarsatStations]
@@ -713,12 +720,16 @@ export default function InmarsatAssetList() {
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
           },
-          {
-            key: 'edit',
-            label: 'Chỉnh sửa',
-            icon: <EditOutlined />,
-            onClick: () => openEdit(record),
-          },
+          ...(isAssetRecordEditable(record.approvalStatus)
+            ? [
+                {
+                  key: 'edit',
+                  label: 'Chỉnh sửa',
+                  icon: <EditOutlined />,
+                  onClick: () => openEdit(record),
+                },
+              ]
+            : []),
           {
             key: 'history',
             label: 'Lịch sử',
@@ -790,7 +801,6 @@ export default function InmarsatAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

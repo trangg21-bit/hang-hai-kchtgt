@@ -255,7 +255,6 @@ describe('Station Assets UI Components (LRIT, Cospas-Sarsat, TTXLTT, Inmarsat, T
     expect(html).toContain('Hồ sơ tài sản');
     expect(html).toContain('Khai thác tài sản');
     expect(html).toContain('Lịch sử thay đổi nguyên giá');
-    expect(html).toContain('Xử lý &amp; theo dõi');
     expect(html).toContain('Thông tin phê duyệt');
     expect(html).toContain('Hệ thống thiết bị đài LRIT Hải Phòng');
     expect(html).toContain('TS-LRIT-001');

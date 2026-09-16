@@ -22,8 +22,16 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,6 +44,18 @@ class InfraAssetServiceTest {
 
     @Mock
     private UserResolverService userResolverService;
+
+    @Mock
+    private AttachmentRepository attachmentRepository;
+
+    @Mock
+    private InfrastructureHistoryRepository historyRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private ChangeHistoryService changeHistoryService;
 
     @Test
     void createPortTerminalAssetKeepsBusinessFieldsAndCalculatesBookValues() {
@@ -185,5 +205,195 @@ class InfraAssetServiceTest {
         assertEquals(dikeRevetmentId, response.getDikeRevetmentId());
         assertTrue(response.getAssetCode().startsWith("TS-DK-"));
         assertEquals(new BigDecimal("900000"), response.getRemainingValue());
+    }
+
+    @Test
+    void update_whenStatusDraft_doesNotRecordHistoryLog() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setAssetCode("TS-BC-001");
+        existing.setAssetName("Bến cảng cũ");
+        existing.setApprovalStatus(ApprovalStatus.DRAFT);
+        existing.setAssetType(InfraAssetType.PORT_TERMINAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any(InfraAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Bến cảng mới");
+
+        service.update(id, request);
+
+        verify(historyRepository, never()).save(any(InfrastructureHistory.class));
+        verify(changeHistoryService, never()).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_whenStatusApproved_recordsHistoryLog() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setAssetCode("TS-BC-002");
+        existing.setAssetName("Bến cảng cũ");
+        existing.setApprovalStatus(ApprovalStatus.APPROVED);
+        existing.setAssetType(InfraAssetType.PORT_TERMINAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any(InfraAsset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Bến cảng mới đã duyệt");
+
+        service.update(id, request);
+
+        verify(historyRepository, atLeastOnce()).save(any(InfrastructureHistory.class));
+        verify(changeHistoryService, never()).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void getHistory_whenStatusDraft_returnsEmptyHistory() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+
+        var historyMap = service.getHistory(id);
+
+        assertNotNull(historyMap);
+        assertTrue(((java.util.List<?>) historyMap.get("changeHistory")).isEmpty());
+        verify(historyRepository, never()).findByRefIdOrderByApprovedDateDesc(any());
+    }
+
+    @Test
+    void update_whenStatusPendingApproval_throwsIllegalStateException() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Tên mới");
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> service.update(id, request));
+    }
+
+    @Test
+    void update_whenStatusApprovedLevel1_throwsIllegalStateException() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Tên mới");
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> service.update(id, request));
+    }
+
+    @Test
+    void update_whenStatusArchived_throwsIllegalStateException() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.ARCHIVED);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+
+        InfraAssetRequest request = new InfraAssetRequest();
+        request.setAssetName("Tên mới");
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> service.update(id, request));
+    }
+
+    @Test
+    void submit_transitionsToPendingApprovalAndSavesHistory() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.DRAFT);
+        existing.setAssetType(InfraAssetType.PORT_TERMINAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any(InfraAsset.class))).thenAnswer(i -> i.getArgument(0));
+
+        InfraAssetResponse resp = service.submit(id);
+
+        assertEquals(ApprovalStatus.PENDING_APPROVAL.name(), resp.getApprovalStatus());
+        verify(historyRepository, atLeastOnce()).save(any(InfrastructureHistory.class));
+    }
+
+    @Test
+    void approveC1_transitionsToApprovedLevel1AndSavesHistory() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        existing.setAssetType(InfraAssetType.PORT_TERMINAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any(InfraAsset.class))).thenAnswer(i -> i.getArgument(0));
+
+        InfraAssetResponse resp = service.approveC1(id, "Đồng ý cấp Chi cục");
+
+        assertEquals(ApprovalStatus.APPROVED_LEVEL1.name(), resp.getApprovalStatus());
+        verify(historyRepository, atLeastOnce()).save(any(InfrastructureHistory.class));
+    }
+
+    @Test
+    void rejectC1_transitionsToRejectedLevel1AndSavesHistory() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        existing.setAssetType(InfraAssetType.PORT_TERMINAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any(InfraAsset.class))).thenAnswer(i -> i.getArgument(0));
+
+        InfraAssetResponse resp = service.rejectC1(id, "Hồ sơ chưa đủ điều kiện cấp 1");
+
+        assertEquals(ApprovalStatus.REJECTED_LEVEL1.name(), resp.getApprovalStatus());
+        verify(historyRepository, atLeastOnce()).save(any(InfrastructureHistory.class));
+    }
+
+    @Test
+    void approveC2_transitionsToApprovedAndSavesHistory() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        existing.setAssetType(InfraAssetType.PORT_TERMINAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any(InfraAsset.class))).thenAnswer(i -> i.getArgument(0));
+
+        InfraAssetResponse resp = service.approveC2(id, "Đồng ý cấp Cục");
+
+        assertEquals(ApprovalStatus.APPROVED.name(), resp.getApprovalStatus());
+        verify(historyRepository, atLeastOnce()).save(any(InfrastructureHistory.class));
+    }
+
+    @Test
+    void rejectC2_transitionsToRejectedLevel2AndSavesHistory() {
+        UUID id = UUID.randomUUID();
+        InfraAsset existing = new InfraAsset();
+        existing.setId(id);
+        existing.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        existing.setAssetType(InfraAssetType.PORT_TERMINAL);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(repository.save(any(InfraAsset.class))).thenAnswer(i -> i.getArgument(0));
+
+        InfraAssetResponse resp = service.rejectC2(id, "Cục từ chối duyệt hồ sơ");
+
+        assertEquals(ApprovalStatus.REJECTED_LEVEL2.name(), resp.getApprovalStatus());
+        verify(historyRepository, atLeastOnce()).save(any(InfrastructureHistory.class));
     }
 }
