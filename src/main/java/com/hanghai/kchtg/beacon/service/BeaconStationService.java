@@ -31,6 +31,7 @@ import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.AccessDeniedException;
@@ -386,139 +387,139 @@ public class BeaconStationService {
                 : (existingWkt != null ? resolveGisGeometryType(entity.getGeometryType(), existingWkt) : GisGeometryType.POINT);
 
         Map<String, String> previousValues = new LinkedHashMap<>();
-        if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
+        if (request.getName() != null && !EntityUpdateUtils.areEqual(entity.getName(), request.getName())) {
             previousValues.put("name", entity.getName());
             entity.setName(request.getName());
         }
-        if (request.getType() != null && !Objects.equals(request.getType(), entity.getType())) {
+        if (request.getType() != null && !EntityUpdateUtils.areEqual(entity.getType(), request.getType())) {
             if ("APPROVED_L2".equals(entity.getStatus()) || "PUBLISHED".equals(entity.getStatus())) {
                 throw new IllegalArgumentException("Loại đèn biển không thể thay đổi khi đèn biển đã được phê duyệt.");
             }
             previousValues.put("type", entity.getType());
             entity.setType(request.getType());
         }
-        if (request.getTowerColor() != null && !Objects.equals(request.getTowerColor(), entity.getTowerColor())) {
+        if (request.getTowerColor() != null && !EntityUpdateUtils.areEqual(entity.getTowerColor(), request.getTowerColor())) {
             previousValues.put("towerColor", entity.getTowerColor());
             entity.setTowerColor(request.getTowerColor());
         }
-        if (request.getPrimaryLightModel() != null && !Objects.equals(request.getPrimaryLightModel(), entity.getPrimaryLightModel())) {
+        if (request.getPrimaryLightModel() != null && !EntityUpdateUtils.areEqual(entity.getPrimaryLightModel(), request.getPrimaryLightModel())) {
             previousValues.put("primaryLightModel", entity.getPrimaryLightModel());
             entity.setPrimaryLightModel(request.getPrimaryLightModel());
         }
-        if (request.getBackupLightModel() != null && !Objects.equals(request.getBackupLightModel(), entity.getBackupLightModel())) {
+        if (request.getBackupLightModel() != null && !EntityUpdateUtils.areEqual(entity.getBackupLightModel(), request.getBackupLightModel())) {
             previousValues.put("backupLightModel", entity.getBackupLightModel());
             entity.setBackupLightModel(request.getBackupLightModel());
         }
-        if (request.getLightRange() != null && !Objects.equals(request.getLightRange(), entity.getLightRange())) {
+        if (request.getLightRange() != null && !EntityUpdateUtils.areEqual(entity.getLightRange(), request.getLightRange())) {
             previousValues.put("lightRange", entity.getLightRange() != null ? String.valueOf(entity.getLightRange()) : null);
             entity.setLightRange(request.getLightRange());
         }
-        if (request.getArea() != null && !Objects.equals(request.getArea(), entity.getArea())) {
+        if (request.getArea() != null && !EntityUpdateUtils.areEqual(entity.getArea(), request.getArea())) {
             previousValues.put("area", entity.getArea() != null ? String.valueOf(entity.getArea()) : null);
             entity.setArea(request.getArea());
         }
-        if (request.getLocation() != null && !Objects.equals(request.getLocation(), entity.getLocation())) {
+        if (request.getLocation() != null && !EntityUpdateUtils.areEqual(entity.getLocation(), request.getLocation())) {
             previousValues.put("location", entity.getLocation());
             entity.setLocation(request.getLocation());
         }
-        if (request.getDetailedLocation() != null && !Objects.equals(request.getDetailedLocation(), entity.getDetailedLocation())) {
+        if (request.getDetailedLocation() != null && !EntityUpdateUtils.areEqual(entity.getDetailedLocation(), request.getDetailedLocation())) {
             previousValues.put("detailedLocation", entity.getDetailedLocation());
             entity.setDetailedLocation(request.getDetailedLocation());
         }
-        if (request.getUnitId() != null && !Objects.equals(request.getUnitId(), entity.getUnitId())) {
+        if (request.getUnitId() != null && !EntityUpdateUtils.areEqual(entity.getUnitId(), request.getUnitId())) {
             previousValues.put("unitId", entity.getUnitId() != null ? entity.getUnitId().toString() : null);
             entity.setUnitId(request.getUnitId());
             entity.setOrgUnitId(request.getUnitId());
         }
-        if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+        if (request.getProvinceId() != null && !EntityUpdateUtils.areEqual(entity.getProvinceId(), request.getProvinceId())) {
             previousValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null);
             entity.setProvinceId(request.getProvinceId());
         }
-        if (request.getSeaportId() != null && !Objects.equals(request.getSeaportId(), entity.getSeaportId())) {
+        if (request.getSeaportId() != null && !EntityUpdateUtils.areEqual(entity.getSeaportId(), request.getSeaportId())) {
             previousValues.put("seaportId", entity.getSeaportId() != null ? entity.getSeaportId().toString() : null);
             entity.setSeaportId(request.getSeaportId());
         }
-        if (request.getOperator() != null && !Objects.equals(request.getOperator(), entity.getOperator())) {
+        if (request.getOperator() != null && !EntityUpdateUtils.areEqual(entity.getOperator(), request.getOperator())) {
             previousValues.put("operator", entity.getOperator());
             entity.setOperator(request.getOperator());
         }
-        if (request.getLastRepairDate() != null && !Objects.equals(request.getLastRepairDate(), entity.getLastRepairDate())) {
+        if (request.getLastRepairDate() != null && !EntityUpdateUtils.areEqual(entity.getLastRepairDate(), request.getLastRepairDate())) {
             previousValues.put("lastRepairDate", entity.getLastRepairDate() != null ? entity.getLastRepairDate().toString() : null);
             entity.setLastRepairDate(request.getLastRepairDate());
         }
-        if (request.getCommissionedDate() != null && !Objects.equals(request.getCommissionedDate(), entity.getCommissionedDate())) {
+        if (request.getCommissionedDate() != null && !EntityUpdateUtils.areEqual(entity.getCommissionedDate(), request.getCommissionedDate())) {
             previousValues.put("commissionedDate", entity.getCommissionedDate() != null ? entity.getCommissionedDate().toString() : null);
             entity.setCommissionedDate(request.getCommissionedDate());
         }
-        if (request.getIsActive() != null && !Objects.equals(request.getIsActive(), entity.getIsActive())) {
+        if (request.getIsActive() != null && !EntityUpdateUtils.areEqual(entity.getIsActive(), request.getIsActive())) {
             previousValues.put("isActive", entity.getIsActive() != null ? String.valueOf(entity.getIsActive()) : null);
             entity.setIsActive(request.getIsActive());
         }
-        if (request.getShape() != null && !Objects.equals(request.getShape(), entity.getShape())) {
+        if (request.getShape() != null && !EntityUpdateUtils.areEqual(entity.getShape(), request.getShape())) {
             previousValues.put("shape", entity.getShape());
             entity.setShape(request.getShape());
         }
-        if (request.getStructure() != null && !Objects.equals(request.getStructure(), entity.getStructure())) {
+        if (request.getStructure() != null && !EntityUpdateUtils.areEqual(entity.getStructure(), request.getStructure())) {
             previousValues.put("structure", entity.getStructure());
             entity.setStructure(request.getStructure());
         }
-        if (request.getTowerHeight() != null && !Objects.equals(request.getTowerHeight(), entity.getTowerHeight())) {
+        if (request.getTowerHeight() != null && !EntityUpdateUtils.areEqual(entity.getTowerHeight(), request.getTowerHeight())) {
             previousValues.put("towerHeight", entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : null);
             entity.setTowerHeight(request.getTowerHeight());
         }
-        if (request.getLightHeight() != null && !Objects.equals(request.getLightHeight(), entity.getLightHeight())) {
+        if (request.getLightHeight() != null && !EntityUpdateUtils.areEqual(entity.getLightHeight(), request.getLightHeight())) {
             previousValues.put("lightHeight", entity.getLightHeight() != null ? String.valueOf(entity.getLightHeight()) : null);
             entity.setLightHeight(request.getLightHeight());
         }
-        if (request.getGeographicRange() != null && !Objects.equals(request.getGeographicRange(), entity.getGeographicRange())) {
+        if (request.getGeographicRange() != null && !EntityUpdateUtils.areEqual(entity.getGeographicRange(), request.getGeographicRange())) {
             previousValues.put("geographicRange", entity.getGeographicRange());
             entity.setGeographicRange(request.getGeographicRange());
         }
-        if (request.getPowerSupply() != null && !Objects.equals(request.getPowerSupply(), entity.getPowerSupply())) {
+        if (request.getPowerSupply() != null && !EntityUpdateUtils.areEqual(entity.getPowerSupply(), request.getPowerSupply())) {
             previousValues.put("powerSupply", entity.getPowerSupply());
             entity.setPowerSupply(request.getPowerSupply());
         }
-        if (request.getStaffCount() != null && !Objects.equals(request.getStaffCount(), entity.getStaffCount())) {
+        if (request.getStaffCount() != null && !EntityUpdateUtils.areEqual(entity.getStaffCount(), request.getStaffCount())) {
             previousValues.put("staffCount", entity.getStaffCount() != null ? String.valueOf(entity.getStaffCount()) : null);
             entity.setStaffCount(request.getStaffCount());
         }
-        if (request.getStationArea() != null && !Objects.equals(request.getStationArea(), entity.getStationArea())) {
+        if (request.getStationArea() != null && !EntityUpdateUtils.areEqual(entity.getStationArea(), request.getStationArea())) {
             previousValues.put("stationArea", entity.getStationArea() != null ? String.valueOf(entity.getStationArea()) : null);
             entity.setStationArea(request.getStationArea());
         }
-        if (request.getOperationalStatus() != null && !Objects.equals(request.getOperationalStatus(), entity.getOperationalStatus())) {
+        if (request.getOperationalStatus() != null && !EntityUpdateUtils.areEqual(entity.getOperationalStatus(), request.getOperationalStatus())) {
             previousValues.put("operationalStatus", entity.getOperationalStatus() != null ? String.valueOf(entity.getOperationalStatus()) : null);
             entity.setOperationalStatus(request.getOperationalStatus());
         }
-        if (request.getRegion() != null && !Objects.equals(request.getRegion(), entity.getRegion())) {
+        if (request.getRegion() != null && !EntityUpdateUtils.areEqual(entity.getRegion(), request.getRegion())) {
             previousValues.put("region", entity.getRegion());
             entity.setRegion(request.getRegion());
         }
-        if (request.getIdentifyingFeature() != null && !Objects.equals(request.getIdentifyingFeature(), entity.getIdentifyingFeature())) {
+        if (request.getIdentifyingFeature() != null && !EntityUpdateUtils.areEqual(entity.getIdentifyingFeature(), request.getIdentifyingFeature())) {
             previousValues.put("identifyingFeature", entity.getIdentifyingFeature());
             entity.setIdentifyingFeature(request.getIdentifyingFeature());
         }
-        if (request.getNote() != null && !Objects.equals(request.getNote(), entity.getNote())) {
+        if (request.getNote() != null && !EntityUpdateUtils.areEqual(entity.getNote(), request.getNote())) {
             previousValues.put("note", entity.getNote());
             entity.setNote(request.getNote());
         }
-        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), entity.getGeometryType())) {
+        if (request.getGeometryType() != null && !EntityUpdateUtils.areEqual(entity.getGeometryType(), request.getGeometryType())) {
             previousValues.put("geometryType", entity.getGeometryType());
             entity.setGeometryType(request.getGeometryType());
         }
-        if (request.getMapSymbolId() != null && !Objects.equals(request.getMapSymbolId(), entity.getMapSymbolId())) {
+        if (request.getMapSymbolId() != null && !EntityUpdateUtils.areEqual(entity.getMapSymbolId(), request.getMapSymbolId())) {
             previousValues.put("mapSymbolId", entity.getMapSymbolId() != null ? entity.getMapSymbolId().toString() : null);
             entity.setMapSymbolId(request.getMapSymbolId());
         }
-        if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
+        if (request.getCoordinateSystem() != null && !EntityUpdateUtils.areEqual(entity.getCoordinateSystem(), request.getCoordinateSystem())) {
             previousValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? String.valueOf(entity.getCoordinateSystem()) : null);
             entity.setCoordinateSystem(request.getCoordinateSystem());
         }
-        if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
+        if (request.getDisplayRule() != null && !EntityUpdateUtils.areEqual(entity.getDisplayRule(), request.getDisplayRule())) {
             previousValues.put("displayRule", entity.getDisplayRule());
             entity.setDisplayRule(request.getDisplayRule());
         }
-        if (!requestedWkt.isEmpty() && !Objects.equals(requestedWkt, existingWkt != null ? existingWkt.trim() : null)) {
+        if (!requestedWkt.isEmpty() && !EntityUpdateUtils.areEqual(requestedWkt, existingWkt != null ? existingWkt.trim() : null)) {
             previousValues.put("coordinates", existingWkt != null ? existingWkt : "Chưa có");
         }
 
@@ -584,6 +585,9 @@ public class BeaconStationService {
                 String oldVal = formatDisplayValue(field, entry.getValue());
                 Object rawNew = getEntityFieldValue(entity, field, request);
                 String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
+                if (EntityUpdateUtils.areEqual(oldVal, newVal)) {
+                    continue;
+                }
                 infraHistoryRepo.save(InfrastructureHistory.builder()
                         .refId(entity.getId())
                         .refType(InfrastructureType.LIGHTHOUSE)
@@ -971,7 +975,6 @@ public class BeaconStationService {
         java.util.Set<String> perms = SecurityUtils.getCurrentUserPermissions();
         if (perms == null
                 || !perms.contains("beaconstation:approvec2")
-                && !perms.contains("beaconstation:approve")
                 && !perms.contains("data:approvec2")) {
             throw new AccessDeniedException(
                     "Bạn không có quyền phê duyệt — thao tác \"Lưu và phê duyệt\" cần quyền duyệt cấp Cục");

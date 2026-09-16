@@ -384,6 +384,79 @@ class DikeRevetmentServiceTest {
         }
 
         @Test
+        @DisplayName("Update on approved entity with equivalent BigDecimal scales (5555.0000 vs 5555) should NOT record history")
+        void update_onApprovedEntity_whenBigDecimalScaleDiffers_shouldNotRecordHistory() {
+            DikeRevetment approvedEntity = DikeRevetment.builder()
+                    .id(TEST_ID)
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("5555.0000"))
+                    .crestElevation(new BigDecimal("10.0000"))
+                    .height(new BigDecimal("5.0000"))
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .approvalStatus(ApprovalStatus.APPROVED)
+                    .build();
+
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
+            when(repo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            DikeRevetmentUpdateRequest req = DikeRevetmentUpdateRequest.builder()
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("5555")) // Scale 0 vs Scale 4
+                    .crestElevation(new BigDecimal("10.0")) // Scale 1 vs Scale 4
+                    .height(new BigDecimal("5")) // Scale 0 vs Scale 4
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .build();
+
+            service.update(TEST_ID, req, USER_ID);
+
+            verify(approvalHistoryRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Update on approved entity with actual changes should record history only for changed fields")
+        void update_onApprovedEntity_whenFieldsActuallyChanged_shouldRecordHistoryForChangedFieldsOnly() {
+            DikeRevetment approvedEntity = DikeRevetment.builder()
+                    .id(TEST_ID)
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("5555.0000"))
+                    .crestElevation(new BigDecimal("10.0000"))
+                    .height(new BigDecimal("5.0000"))
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .approvalStatus(ApprovalStatus.APPROVED)
+                    .build();
+
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
+            when(repo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            DikeRevetmentUpdateRequest req = DikeRevetmentUpdateRequest.builder()
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("6000.0000")) // Actually changed
+                    .crestElevation(new BigDecimal("10.0")) // Scale differs, value identical
+                    .height(new BigDecimal("5.0000")) // Identical
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .build();
+
+            service.update(TEST_ID, req, USER_ID);
+
+            ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+            verify(approvalHistoryRepo, times(1)).save(historyCaptor.capture());
+
+            InfrastructureHistory recorded = historyCaptor.getValue();
+            assertThat(recorded.getChangedField()).isEqualTo("Chiều dài (m)");
+            assertThat(recorded.getPreviousValue()).isEqualTo("5555.0000");
+            assertThat(recorded.getNewValue()).isEqualTo("6000.0000");
+            assertThat(recorded.getStatus()).isEqualTo(InfrastructureHistoryStatus.UPDATED);
+        }
+
+        @Test
         @DisplayName("searchPaged passes correct date range when commissioningYear is provided")
         void searchPaged_withCommissioningYear_shouldPassDateRangeToRepository() {
             org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);

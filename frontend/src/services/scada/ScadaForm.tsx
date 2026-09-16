@@ -615,10 +615,10 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       specifications: data.specifications,
       maintenanceInformation: data.maintenanceInformation,
       note: data.note,
-      geometryType: data.geometryType || 'POINT',
+      geometryType: data.geometryType || undefined,
       mapSymbolId: data.mapSymbolId,
-      coordinateSystem: data.coordinateSystem || 1,
-      displayRule: 'Độ, phút, giây (DMS)',
+      coordinateSystem: data.geometryType ? (data.coordinateSystem || 1) : undefined,
+      displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
     });
   }, [form]);
 
@@ -717,7 +717,15 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       }
 
       const values = form.getFieldsValue(true);
-      const geomType = values.geometryType || 'POINT';
+      const geomType = values.geometryType || undefined;
+      const hasCoordinates = coordinateList.length > 0;
+
+      if (hasCoordinates && !geomType) {
+        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+        setActiveTab('location');
+        return;
+      }
+
       const coordResult = validateDmsCoordinates(coordinateList, geomType);
       if (!coordResult.valid) {
         const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
@@ -726,9 +734,10 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         setActiveTab('location');
         return;
       }
+      setGpsError(null);
 
       const validCoords = coordResult.validCoords;
-      const wkt = serializeCoordinatesToWkt(validCoords, geomType);
+      const wkt = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
 
       // DatePicker year trả về dayjs → payload gửi số năm
       const rawYear = values.yearOfUse;
@@ -760,9 +769,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
             longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
             mapSymbolId: values.mapSymbolId || null,
-            coordinateSystem: values.coordinateSystem,
-            displayRule: values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined,
-            geometryType: geomType,
+            coordinateSystem: geomType ? values.coordinateSystem : undefined,
+            displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
+            geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
             coordinates: wkt || undefined,
             ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
           };
@@ -810,9 +819,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
             longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
             mapSymbolId: values.mapSymbolId || null,
-            coordinateSystem: values.coordinateSystem,
-            displayRule: values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined,
-            geometryType: geomType,
+            coordinateSystem: geomType ? values.coordinateSystem : undefined,
+            displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
+            geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
             coordinates: wkt || undefined,
             action: saveAction === 'DRAFT' ? 'draft' : saveAction === 'SUBMIT' ? 'submit' : 'approve',
           };
@@ -879,6 +888,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           {
             key: 'info',
             label: 'Thông tin chung',
+            forceRender: true,
             children: (
               <div style={drawerFormScrollStyle}>
                 {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -959,7 +969,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         rules={[{ required: true, message: 'Loại hạ tầng là bắt buộc' }]}
                       >
                         <Select
-                          placeholder="Chọn loại hạ tầng..."
+                          placeholder="Chọn loại hạ tầng"
                           options={ATTACHED_INFRA_TYPE_OPTIONS}
                           style={selectStyle}
                           onChange={() => {
@@ -978,9 +988,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         <Select
                           placeholder={
                             watchedAttachedType === 2
-                              ? 'Chọn trạm Radar...'
+                              ? 'Chọn trạm Radar'
                               : watchedAttachedType === 1
-                                ? 'Chọn Trung Tâm Điều Hành VTS...'
+                                ? 'Chọn Trung Tâm Điều Hành VTS'
                                 : 'Chọn loại hạ tầng trước'
                           }
                           options={
@@ -1041,7 +1051,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
                       <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                        <Select placeholder="Chọn đơn vị tính..." options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
+                        <Select placeholder="Chọn đơn vị tính" options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -1054,13 +1064,12 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                           { required: true, message: 'Số lượng là bắt buộc' },
                           integer5Rule,
                         ]}
-                        initialValue={1}
                       >
                         <NumberInputWithCount
                           min={1}
                           step={1}
                           precision={0}
-                          placeholder="Nhập số lượng..."
+                          placeholder="Nhập số lượng"
                           style={numberInputStyle}
                           maxLength={5}
                           parser={parseNumber5}
@@ -1165,7 +1174,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                         help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                       >
-                        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1180,7 +1189,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         validateStatus={atMax.note ? 'error' : undefined}
                         help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                       >
-                        <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                        <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1191,6 +1200,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           {
             key: 'location',
             label: `Thông tin vị trí (${coordinateList.length})`,
+            forceRender: true,
             children: (
               <div style={drawerFormScrollStyle}>
                 {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1415,7 +1425,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           },
           {
             key: 'attachments',
-            label: `Tệp đính kèm (${uploadedFiles.length})`,
+            label: `File đính kèm (${uploadedFiles.length})`,
             children: (
               <div style={drawerFormScrollStyle}>
                 <InfrastructureAttachmentTab

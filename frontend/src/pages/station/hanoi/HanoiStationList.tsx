@@ -254,7 +254,7 @@ export default function HanoiStationList() {
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [filterKeyword, setFilterKeyword] = useState('');
   const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
   const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>(undefined);
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>(undefined);
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
@@ -329,7 +329,7 @@ export default function HanoiStationList() {
         page,
         size: pageSize,
         sortBy: sortField,
-        sortDir: sortDirection,
+        sortDir: sortField && sortDirection ? sortDirection : undefined,
         includeCounts: filterChanged,
       };
 
@@ -571,13 +571,18 @@ export default function HanoiStationList() {
   }, [orgUnits]);
 
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
+    (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
 
   const serverSideSorter = () => 0;
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortDirection(null);
+    } else {
+      setSortField(field);
+      setSortDirection(order);
+    }
     setPage(1);
   }, []);
 

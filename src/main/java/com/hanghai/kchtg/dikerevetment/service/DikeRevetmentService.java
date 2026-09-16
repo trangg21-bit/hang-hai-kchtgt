@@ -7,6 +7,7 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
@@ -393,8 +394,7 @@ public class DikeRevetmentService {
         }
 
         // Chuẩn /vts-operation-center: mỗi trường thay đổi = 1 dòng history (tên trường + giá trị cũ/mới)
-        if (wasApproved) {
-            if (!previousValues.isEmpty()) {
+        if (wasApproved && !previousValues.isEmpty()) {
             for (Map.Entry<String, String> entry : previousValues.entrySet()) {
                 String field = entry.getKey();
                 String fieldName = getFieldDisplayName(field);
@@ -417,16 +417,6 @@ public class DikeRevetmentService {
                         .changedField(fieldName)
                         .previousValue(formatDisplayValue(field, oldVal))
                         .newValue(formatDisplayValue(field, newVal))
-                        .build());
-            }
-            } else {
-                // Fallback: luôn ghi ít nhất 1 dòng khi sửa hồ sơ Đã duyệt (kể cả khi không bắt được diff)
-                approvalHistoryRepo.save(InfrastructureHistory.builder()
-                        .refId(saved.getId())
-                        .refType(InfrastructureType.DIKE_REVETMENT)
-                        .approvalLevel(ApprovalLevel.LEVEL_2)
-                        .status(InfrastructureHistoryStatus.UPDATED)
-                        .approvedBy(userId)
                         .build());
             }
         }
@@ -751,7 +741,7 @@ public class DikeRevetmentService {
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
             Map<String, String> previousValues) {
         if (newVal == null) return; // null = không gửi trường này khi update
-        if (Objects.equals(newVal, oldVal)) return; // giá trị không đổi
+        if (EntityUpdateUtils.areEqual(oldVal, newVal)) return; // giá trị không đổi
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);
     }
@@ -909,7 +899,9 @@ public class DikeRevetmentService {
         } catch (IOException ignored) {
         }
         attachmentRepository.delete(att);
-        if (approvalHistoryRepo != null) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (approvalHistoryRepo != null && wasApproved) {
             approvalHistoryRepo.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.DIKE_REVETMENT)

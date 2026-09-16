@@ -284,7 +284,7 @@ export default function BeaconStationList() {
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   // "Lưu và phê duyệt" (duyệt thẳng cấp Cục) chỉ hiện khi tài khoản có quyền duyệt C2
   const canApproveDirect =
-    hasPerm('beaconstation:approvec2') || hasPerm('beaconstation:approve')
+    hasPerm('beaconstation:approvec2')
     || hasPerm('data:approvec2') || hasPerm('*');
 
   // ── Filter state ─────────────────────────────────────────────────
@@ -379,15 +379,6 @@ export default function BeaconStationList() {
   const [historyPage, setHistoryPage] = useState(0);
   const [hasMoreHistory, setHasMoreHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
-
-  const historyFieldCount = useMemo(() => {
-    if (!Array.isArray(historyRecords)) return 0;
-    let count = 0;
-    for (const r of historyRecords) {
-      count += (r.changes && r.changes.length > 0) ? r.changes.length : 1;
-    }
-    return count;
-  }, [historyRecords]);
 
   const orgMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -1788,7 +1779,16 @@ export default function BeaconStationList() {
       const ov = oldValue === null || oldValue === undefined ? null : String(oldValue);
       const nv = newValue === null || newValue === undefined ? null : String(newValue);
       if (ov === null && nv === null) return;
-      if (ov !== null && nv !== null && ov.trim() === nv.trim()) return;
+      if (ov !== null && nv !== null) {
+        if (ov.trim() === nv.trim()) return;
+        if (
+          !isNaN(Number(ov.trim())) &&
+          !isNaN(Number(nv.trim())) &&
+          Math.abs(Number(ov.trim()) - Number(nv.trim())) < 1e-9
+        ) {
+          return;
+        }
+      }
       changes.push({ field, oldValue: ov, newValue: nv });
     };
     if (fieldNames.length > 0) {
@@ -1876,8 +1876,69 @@ export default function BeaconStationList() {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
   };
 
-  function renderHistoryTimeline(records: any[]) {
-    if (!records || records.length === 0) {
+  const isMeaningfulChange = useCallback((rawOld: any, rawNew: any): boolean => {
+    const ov = rawOld != null ? String(rawOld).trim() : '';
+    const nv = rawNew != null ? String(rawNew).trim() : '';
+    if (ov === '' && nv === '') return false;
+    if (ov !== '' && nv !== '' && ov === nv) return false;
+    // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25)
+    if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
+      return false;
+    }
+    return true;
+  }, []);
+
+  const validHistoryGroups = useMemo(() => {
+    if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...historyRecords].sort(
+      (a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime()
+    );
+    const rawGroups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const actor = historyActorName(r);
+      const prev = rawGroups[rawGroups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      else rawGroups.push({ tsSec: sec, ts, actor, items: [r] });
+    }
+
+    return rawGroups
+      .map((g) => {
+        const allChanges = g.items.flatMap((item) => (item.changes && item.changes.length > 0 ? item.changes : []));
+        const changes = allChanges
+          .filter((c: any) => c.field !== '' || (c.oldValue != null && c.oldValue !== '') || (c.newValue != null && c.newValue !== ''))
+          .filter((c: any) => isMeaningfulChange(c.oldValue, c.newValue));
+        if (changes.length === 0) return null;
+
+        const orderedChanges = [...changes].sort((a: any, b: any) => {
+          const ia = BEACON_HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = BEACON_HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        });
+        if (orderedChanges.length === 0) return null;
+
+        return {
+          ...g,
+          changes,
+          orderedChanges,
+        };
+      })
+      .filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      items: any[];
+      changes: any[];
+      orderedChanges: any[];
+    }>;
+  }, [historyRecords, isMeaningfulChange]);
+
+  const historyFieldCount = validHistoryGroups.length;
+
+  function renderHistoryTimeline() {
+    if (validHistoryGroups.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
@@ -1939,44 +2000,25 @@ export default function BeaconStationList() {
       }
       return <span title={String(txt)} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{txt}</span>;
     };
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActorName(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
-    }
     const fmtTime = (ts: string) => {
       const d = dayjs(ts);
       return `${d.format('HH:mm')} ${d.format('DD/MM/YYYY')}`;
     };
     return (
       <div>
-        {groups.map((g, gi) => {
+        {validHistoryGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
-          const allChanges = g.items.flatMap((item) => (item.changes && item.changes.length > 0 ? item.changes : []));
-          if (allChanges.length === 0) return null;
-
-          const actionMeta = resolveHistoryActionMeta(g, allChanges);
+          const actionMeta = resolveHistoryActionMeta(g, g.changes);
           // Đơn vị của user thực hiện cập nhật (chuẩn /vts-operation-center) — KHÔNG lấy unitId của tài sản
           const orgNameFromId = (rec0.unitId && orgMap.get(rec0.unitId)) || (rec0.orgUnitId && orgMap.get(rec0.orgUnitId));
           const unitName = rec0.orgUnitName || orgNameFromId || rec0.unitName || '—';
 
-          const isCreate = allChanges.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '' || c.oldValue === 'null');
+          const isCreate = g.changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '' || c.oldValue === 'null');
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-
-          const orderedChanges = [...allChanges].sort((a: any, b: any) => {
-            const ia = BEACON_HISTORY_FIELD_ORDER.indexOf(a.field);
-            const ib = BEACON_HISTORY_FIELD_ORDER.indexOf(b.field);
-            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-          });
+          const orderedChanges = g.orderedChanges;
 
           return (
-            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
@@ -2620,7 +2662,7 @@ export default function BeaconStationList() {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
           {historyLoading && historyRecords.length === 0 ? (
             <LoadingSkeleton rows={5} />
-          ) : historyRecords.length === 0 ? (
+          ) : validHistoryGroups.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
@@ -2629,7 +2671,7 @@ export default function BeaconStationList() {
             </div>
           ) : (
             <>
-              {renderHistoryTimeline(historyRecords)}
+              {renderHistoryTimeline()}
               {loadingMoreHistory && (
                 <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm…</div>
               )}

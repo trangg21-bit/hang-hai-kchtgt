@@ -99,7 +99,6 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   const userPermissions = currentUser?.permissions || [];
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS / port).
   const canApproveDirect = hasPermissionFromList(userPermissions, 'dikerevetment:approvec2')
-    || hasPermissionFromList(userPermissions, 'dikerevetment:approve')
     || hasPermissionFromList(userPermissions, '*');
 
   const isIframe = window.self !== window.top;
@@ -743,7 +742,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           picker="year"
           {...getDatePickerProps({
             picker: 'year',
-            placeholder: 'Chọn năm...',
+            placeholder: 'Chọn năm',
             format: 'YYYY',
           })}
         />
@@ -775,7 +774,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           picker="year"
           {...getDatePickerProps({
             picker: 'year',
-            placeholder: 'Chọn năm...',
+            placeholder: 'Chọn năm',
             format: 'YYYY',
           })}
         />

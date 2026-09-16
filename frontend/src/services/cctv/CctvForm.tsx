@@ -291,8 +291,6 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
 
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<DmsCoordinateItem[]>([]);
-  const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
@@ -465,8 +463,8 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
           note: data.note,
           geometryType: data.geometryType || undefined,
           mapSymbolId: data.mapSymbolId,
-          coordinateSystem: data.coordinateSystem ?? 1,
-          displayRule: 'Độ, phút, giây (DMS)',
+          coordinateSystem: data.geometryType ? (data.coordinateSystem ?? 1) : undefined,
+          displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
         });
       } catch {
         toast.error('Không thể tải thông tin hệ thống CCTV');
@@ -574,7 +572,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   };
 
   const handleSave = useCallback(async (saveAction: CctvSaveAction) => {
-    const values = form.getFieldsValue();
+    const values = form.getFieldsValue(true);
     try {
       await form.validateFields();
     } catch (e: unknown) {
@@ -596,20 +594,23 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       return;
     }
 
+    const geomType = values.geometryType || undefined;
+    const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
+
     // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
-    if (hasCoordinates && !values.geometryType) {
+    if (hasCoordinates && !geomType) {
       toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setActiveTabKey('location');
       return;
     }
-    if (hasLocation && !values.mapSymbolId) {
+    if (geomType && !values.mapSymbolId) {
       toast.error('Biểu tượng bản đồ là bắt buộc');
       setActiveTabKey('location');
       return;
     }
 
     // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-    const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+    const coordResult = validateDmsCoordinates(coordinateList, geomType);
     if (!coordResult.valid) {
       const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
       toast.error(errMsg);
@@ -617,8 +618,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       setActiveTabKey('location');
       return;
     }
+    setGpsError(null);
     const validCoords = coordResult.validCoords;
-    const wktCoordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
+    const wktCoordinates = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
 
     setSubmitting(true);
     onSubmittingChange?.(true);
@@ -643,11 +645,11 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
         specifications: values.specifications || undefined,
         maintenanceInformation: values.maintenanceInformation || undefined,
         note: values.note || undefined,
-        geometryType: values.geometryType || undefined,
+        geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
         coordinates: wktCoordinates || undefined,
         mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+        coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+        displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
       };
 
       let targetId: string;
@@ -694,7 +696,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish, hasCoordinates, hasLocation]);
+  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish]);
 
   const tabItems = [
     // Tab 1: Thông tin chung (đồng bộ cấu trúc 3 Section Cards như màn /berth)
@@ -722,7 +724,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   <OrgUnitTreeSelect
                     variant="form"
                     organizations={orgUnits}
-                    placeholder="Chọn đơn vị quản lý..."
+                    placeholder="Chọn đơn vị quản lý"
                     loading={loadingOrgs}
                     disabled={isEdit && !isSystemAdmin}
                     showPath
@@ -735,7 +737,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                 <Form.Item name="operatingUnitId" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
                   <Select
                     showSearch
-                    placeholder="Chọn đơn vị khai thác..."
+                    placeholder="Chọn đơn vị khai thác"
                     loading={loadingOperatingOrgs}
                     options={operatingOrgs.map(o => ({ label: o.name || o.code, value: o.id }))}
                     filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -776,7 +778,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   rules={[{ required: true, message: 'Loại hạ tầng là bắt buộc' }]}
                 >
                   <Select
-                    placeholder="Chọn loại hạ tầng..."
+                    placeholder="Chọn loại hạ tầng"
                     options={ATTACHED_INFRA_TYPE_OPTIONS}
                     style={selectStyle}
                     onChange={() => {
@@ -795,9 +797,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   <Select
                     placeholder={
                       watchedAttachedType === 2
-                        ? 'Chọn trạm Radar...'
+                        ? 'Chọn trạm Radar'
                         : watchedAttachedType === 1
-                          ? 'Chọn Trung Tâm Điều Hành VTS...'
+                          ? 'Chọn Trung Tâm Điều Hành VTS'
                           : 'Chọn loại hạ tầng trước'
                     }
                     options={
@@ -821,7 +823,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
               <Col span={12}>
                 <Form.Item name="provinceName" {...labelProps('Địa điểm (Tỉnh/TP)')} style={{ marginBottom: spaceFormField }}>
                   <Select
-                    placeholder="Chọn tỉnh/thành phố..."
+                    placeholder="Chọn tỉnh/thành phố"
                     options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
                     showSearch
                     filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -856,7 +858,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn đơn vị tính..." options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
+                  <Select placeholder="Chọn đơn vị tính" options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -869,13 +871,12 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                     { required: true, message: 'Số lượng là bắt buộc' },
                     integer5Rule,
                   ]}
-                  initialValue={1}
                 >
                   <NumberInputWithCount
                     min={1}
                     step={1}
                     precision={0}
-                    placeholder="Nhập số lượng..."
+                    placeholder="Nhập số lượng"
                     style={numberInputStyle}
                     maxLength={5}
                     parser={parseNumber5}
@@ -943,7 +944,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   validateStatus={atMax.specifications ? 'error' : undefined}
                   help={atMax.specifications ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -967,7 +968,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                   help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -981,7 +982,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   validateStatus={atMax.note ? 'error' : undefined}
                   help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1007,15 +1008,27 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} allowClear style={selectStyle} />
+                  <Select
+                    placeholder="Chọn loại đối tượng"
+                    options={GEOMETRY_TYPE_OPTIONS}
+                    allowClear
+                    style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+                        setCoordinateList([]);
+                        setGpsError(null);
+                      }
+                    }}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
                   name="mapSymbolId"
                   {...labelProps('Biểu tượng')}
-                  required={hasLocation}
-                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  required={!!watchedGeometryType}
+                  rules={watchedGeometryType ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select

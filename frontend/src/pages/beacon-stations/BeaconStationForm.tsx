@@ -888,7 +888,7 @@ export default forwardRef(function BeaconStationForm(
               </Col>
               <Col span={12}>
                 <Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập ghi chú..." maxLength={1000} showCount style={inputStyle} />
+                  <Input placeholder="Nhập ghi chú" maxLength={1000} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>

@@ -136,6 +136,14 @@ const HIDDEN_PERMISSIONS = new Set([
   'orgunit:scope_all',
   'vts:read:restricted',
   'vts:read:confidential',
+  'cctv:approve',
+  'vhf:approve',
+  'scada:approve',
+  'transmission:approve',
+  'vtsassist:approve',
+  'beaconstation:approve',
+  'dikerevetment:approve',
+  'radarstation:approve',
 ]);
 
 function isHiddenPermission(key: string): boolean {

@@ -305,8 +305,6 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   const [loadingAttached, setLoadingAttached] = useState(false);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
-  const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
@@ -628,9 +626,9 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
 
   const handleSave = useCallback(
     async (action: 'draft' | 'submit' | 'approve') => {
-      let values: any;
+      const values = form.getFieldsValue(true);
       try {
-        values = await form.validateFields();
+        await form.validateFields();
       } catch (e: any) {
         const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
         const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
@@ -651,20 +649,28 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         return;
       }
 
-      if (hasLocation && !values.mapSymbolId) {
-        toast.error('Vui lòng chọn biểu tượng bản đồ');
+      if (values.operationalStatus === undefined || values.operationalStatus === null) {
+        toast.error('Tình trạng hoạt động là bắt buộc');
+        setActiveTabKey('general');
+        return;
+      }
+
+      const geomType = values.geometryType || undefined;
+      const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
+
+      if (hasCoordinates && !geomType) {
+        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
         setActiveTabKey('location');
         return;
       }
-      if (hasCoordinates && !values.geometryType) {
-        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      if (geomType && !values.mapSymbolId) {
+        toast.error('Vui lòng chọn biểu tượng bản đồ');
         setActiveTabKey('location');
         return;
       }
 
       // Validate GPS Coordinates nếu có chọn geometryType
-      let coordinatesWkt: string | undefined;
-      const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+      const coordResult = validateDmsCoordinates(coordinateList, geomType);
       if (!coordResult.valid) {
         const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
         toast.error(errMsg);
@@ -672,7 +678,8 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         setActiveTabKey('location');
         return;
       }
-      coordinatesWkt = serializeCoordinatesToWkt(coordResult.validCoords, values.geometryType || 'POINT') || undefined;
+      setGpsError(null);
+      const coordinatesWkt = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType) : undefined;
 
       onSubmittingChange?.(true);
 
@@ -695,11 +702,11 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           specifications: values.specifications ? String(values.specifications).trim() : undefined,
           maintenanceInformation: values.maintenanceInformation ? String(values.maintenanceInformation).trim() : undefined,
           note: values.note ? String(values.note).trim() : undefined,
-          geometryType: values.geometryType || undefined,
+          geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
           mapSymbolId: values.mapSymbolId || undefined,
-          coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-          coordinates: coordinatesWkt,
-          displayRule: values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined,
+          coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+          coordinates: coordinatesWkt || undefined,
+          displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
         };
 
         let targetId = id;
@@ -732,18 +739,15 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             await submitTransmission(id);
           }
         } else {
-          // Thêm mới
-          const created = await createTransmission({
+          const createRes = await createTransmission({
             ...payload,
-            deviceName: String(payload.deviceName || ''),
-            quantity: Number(payload.quantity || 1),
-            action: action === 'draft' ? 'draft' : action === 'submit' ? 'submit' : 'approve',
-          });
-          targetId = created.id;
+            action,
+          } as CreateTransmissionRequest);
+          targetId = createRes?.id;
 
-          // Upload files đính kèm cho bản ghi mới tạo
+          // Upload file cho bản ghi mới tạo
           const newFiles = uploadedFiles.filter((f) => f.originFileObj);
-          if (targetId && newFiles.length > 0) {
+          if (newFiles.length > 0 && targetId) {
             for (const f of newFiles) {
               if (f.originFileObj) {
                 await uploadTransmissionAttachment(targetId, f.originFileObj as File).catch(() => {});
@@ -754,10 +758,10 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
 
         toast.success(
           action === 'draft'
-            ? 'Lưu tạm hệ thống truyền dẫn thành công'
-            : action === 'submit'
-              ? 'Lưu và gửi phê duyệt thành công'
-              : 'Lưu và phê duyệt thành công',
+            ? 'Lưu tạm thành công'
+            : action === 'approve'
+              ? 'Phê duyệt thành công'
+              : 'Lưu và gửi phê duyệt thành công',
         );
 
         onFinish();
@@ -768,7 +772,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         onSubmittingChange?.(false);
       }
     },
-    [form, coordinateList, id, isEdit, pendingDeletedIds, uploadedFiles, onFinish, onSubmittingChange, hasLocation, hasCoordinates],
+    [form, coordinateList, id, isEdit, pendingDeletedIds, uploadedFiles, onFinish, onSubmittingChange],
   );
 
   useImperativeHandle(
@@ -870,7 +874,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   <Select
                     placeholder={
                       watchedAttachedType === 1
-                        ? 'Chọn Trung Tâm Điều Hành VTS...'
+                        ? 'Chọn Trung Tâm Điều Hành VTS'
                         : watchedAttachedType === 2
                           ? 'Chọn Trạm Radar...'
                           : 'Chọn loại hạ tầng trước'
@@ -931,7 +935,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn đơn vị tính..." options={UOM_OPTIONS} allowClear showSearch optionFilterProp="label" style={selectStyle} />
+                  <Select placeholder="Chọn đơn vị tính" options={UOM_OPTIONS} allowClear showSearch optionFilterProp="label" style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -944,13 +948,12 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     { required: true, message: 'Vui lòng nhập số lượng' },
                     integer5Rule,
                   ]}
-                  initialValue={1}
                 >
                   <NumberInputWithCount
                     min={1}
                     step={1}
                     precision={0}
-                    placeholder="Nhập số lượng..."
+                    placeholder="Nhập số lượng"
                     style={numberInputStyle}
                     maxLength={5}
                     parser={parseNumber5}
@@ -1045,7 +1048,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                   help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1059,7 +1062,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   validateStatus={atMax.note ? 'error' : undefined}
                   help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1087,8 +1090,6 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                 <Form.Item
                   name="geometryType"
                   {...labelProps('Loại đối tượng')}
-                  required={hasCoordinates}
-                  rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select
@@ -1096,6 +1097,13 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     allowClear
                     options={GEOMETRY_TYPE_OPTIONS}
                     style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+                        setCoordinateList([]);
+                        setGpsError(null);
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>

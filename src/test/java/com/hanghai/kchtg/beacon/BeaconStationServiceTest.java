@@ -460,6 +460,36 @@ class BeaconStationServiceTest {
         }
 
         @Test
+        @DisplayName("update approved entity with identical BigDecimal values (different scale) — does not create history")
+        void updateApprovedEntity_withSameBigDecimalScaleDifference_doesNotCreateHistory() {
+            UUID id = UUID.randomUUID();
+            BeaconStation entity = makeEntity(id, "APPROVED_L2");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            entity.setArea(new BigDecimal("100.0000"));
+            entity.setTowerHeight(new BigDecimal("25.0000"));
+            entity.setLightHeight(new BigDecimal("30.0000"));
+            entity.setStationArea(new BigDecimal("500.0000"));
+            entity.setLightRange(15.0);
+            when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
+            when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateBeaconStationRequest request = UpdateBeaconStationRequest.builder()
+                    .name(entity.getName())
+                    .area(new BigDecimal("100"))
+                    .towerHeight(new BigDecimal("25.0"))
+                    .lightHeight(new BigDecimal("30"))
+                    .stationArea(new BigDecimal("500.00"))
+                    .lightRange(15.0)
+                    .build();
+
+            BeaconStationResponse result = service.update(id, request);
+
+            assertThat(result.getStatus()).isEqualTo("APPROVED");
+            verify(infraHistoryRepo, never()).save(any());
+        }
+
+        @Test
         @DisplayName("update keeps code immutable")
         void updateCannotChangeCode() {
             UUID id = UUID.randomUUID();

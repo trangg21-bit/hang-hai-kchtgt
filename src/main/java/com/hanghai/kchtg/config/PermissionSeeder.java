@@ -392,7 +392,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "cctv", "create", "Thêm hệ thống CCTV", "Tạo mới hồ sơ hệ thống CCTV");
                 seedPermission(definitions, "cctv", "update", "Cập nhật hệ thống CCTV", "Chỉnh sửa thông tin hệ thống CCTV");
                 seedPermission(definitions, "cctv", "delete", "Xóa hệ thống CCTV", "Xóa hệ thống CCTV khỏi hệ thống");
-                seedPermission(definitions, "cctv", "approve", "Phê duyệt hệ thống CCTV", "Phê duyệt dữ liệu hệ thống CCTV");
                 seedPermission(definitions, "cctv", "approvec1", "Phê duyệt C1 hệ thống CCTV",
                                 "Phê duyệt cấp 1 hệ thống CCTV");
                 seedPermission(definitions, "cctv", "approvec2", "Phê duyệt C2 hệ thống CCTV",
@@ -409,7 +408,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "vhf", "create", "Thêm hệ thống thông tin liên lạc VHF", "Tạo mới hồ sơ hệ thống VHF");
                 seedPermission(definitions, "vhf", "update", "Cập nhật hệ thống thông tin liên lạc VHF", "Chỉnh sửa thông tin hệ thống VHF");
                 seedPermission(definitions, "vhf", "delete", "Xóa hệ thống thông tin liên lạc VHF", "Xóa hệ thống VHF khỏi hệ thống");
-                seedPermission(definitions, "vhf", "approve", "Phê duyệt hệ thống thông tin liên lạc VHF", "Phê duyệt dữ liệu hệ thống VHF");
                 seedPermission(definitions, "vhf", "approvec1", "Phê duyệt C1 hệ thống thông tin liên lạc VHF",
                                 "Phê duyệt cấp 1 hệ thống VHF");
                 seedPermission(definitions, "vhf", "approvec2", "Phê duyệt C2 hệ thống thông tin liên lạc VHF",
@@ -426,7 +424,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "scada", "create", "Thêm hệ thống SCADA", "Tạo mới hồ sơ hệ thống SCADA");
                 seedPermission(definitions, "scada", "update", "Cập nhật hệ thống SCADA", "Chỉnh sửa thông tin hệ thống SCADA");
                 seedPermission(definitions, "scada", "delete", "Xóa hệ thống SCADA", "Xóa hệ thống SCADA khỏi hệ thống");
-                seedPermission(definitions, "scada", "approve", "Phê duyệt hệ thống SCADA", "Phê duyệt dữ liệu hệ thống SCADA");
                 seedPermission(definitions, "scada", "approvec1", "Phê duyệt C1 hệ thống SCADA",
                                 "Phê duyệt cấp 1 hệ thống SCADA");
                 seedPermission(definitions, "scada", "approvec2", "Phê duyệt C2 hệ thống SCADA",
@@ -443,7 +440,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "transmission", "create", "Thêm hệ thống truyền dẫn", "Tạo mới hồ sơ hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "update", "Cập nhật hệ thống truyền dẫn", "Chỉnh sửa thông tin hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "delete", "Xóa hệ thống truyền dẫn", "Xóa hệ thống truyền dẫn khỏi hệ thống");
-                seedPermission(definitions, "transmission", "approve", "Phê duyệt hệ thống truyền dẫn", "Phê duyệt dữ liệu hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "approvec1", "Phê duyệt C1 hệ thống truyền dẫn",
                                 "Phê duyệt cấp 1 hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "approvec2", "Phê duyệt C2 hệ thống truyền dẫn",
@@ -460,7 +456,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "vtsassist", "create", "Thêm hệ thống phụ trợ VTS", "Tạo mới hồ sơ hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "update", "Cập nhật hệ thống phụ trợ VTS", "Chỉnh sửa thông tin hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "delete", "Xóa hệ thống phụ trợ VTS", "Xóa hệ thống phụ trợ VTS khỏi hệ thống");
-                seedPermission(definitions, "vtsassist", "approve", "Phê duyệt hệ thống phụ trợ VTS", "Phê duyệt dữ liệu hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "approvec1", "Phê duyệt C1 hệ thống phụ trợ VTS",
                                 "Phê duyệt cấp 1 hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "approvec2", "Phê duyệt C2 hệ thống phụ trợ VTS",
@@ -1008,7 +1003,10 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 DELETE FROM user_permission_override
                                                 WHERE permission_code IN (
                                                     'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve',
+                                                    'cctv:approve', 'vhf:approve', 'scada:approve',
+                                                    'transmission:approve', 'vtsassist:approve',
+                                                    'beaconstation:approve', 'dikerevetment:approve', 'radarstation:approve'
                                                 );
                                             END IF;
 
@@ -1016,7 +1014,10 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 DELETE FROM user_group_permissions
                                                 WHERE permission IN (
                                                     'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve',
+                                                    'cctv:approve', 'vhf:approve', 'scada:approve',
+                                                    'transmission:approve', 'vtsassist:approve',
+                                                    'beaconstation:approve', 'dikerevetment:approve', 'radarstation:approve'
                                                 );
                                             END IF;
 
@@ -1027,7 +1028,10 @@ public class PermissionSeeder implements CommandLineRunner {
                                                     FROM permissions
                                                     WHERE code IN (
                                                         'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                        'group:manage', 'orgunit:manage', 'orgunit:approve'
+                                                        'group:manage', 'orgunit:manage', 'orgunit:approve',
+                                                        'cctv:approve', 'vhf:approve', 'scada:approve',
+                                                        'transmission:approve', 'vtsassist:approve',
+                                                        'beaconstation:approve', 'dikerevetment:approve', 'radarstation:approve'
                                                     )
                                                 );
                                             END IF;
@@ -1036,7 +1040,10 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 DELETE FROM permissions
                                                 WHERE code IN (
                                                     'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
+                                                    'group:manage', 'orgunit:manage', 'orgunit:approve',
+                                                    'cctv:approve', 'vhf:approve', 'scada:approve',
+                                                    'transmission:approve', 'vtsassist:approve',
+                                                    'beaconstation:approve', 'dikerevetment:approve', 'radarstation:approve'
                                                 );
                                             END IF;
                                         END $$;
