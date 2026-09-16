@@ -82,7 +82,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -104,7 +104,7 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
-  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -115,7 +115,12 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  DELETED: 'DELETED',
+};
+
+export const isDeletedStormShelter = (record?: StormShelterArea | null): boolean => {
+  if (!record) return false;
+  return Boolean(record.deletedAt || record.deletedBy);
 };
 
 function formatDate(d: string | null | undefined): string {
@@ -368,8 +373,8 @@ export default function StormShelterListPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [, setError] = useState<Error | null>(null);
-  const [sortField, setSortField] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
@@ -549,11 +554,15 @@ export default function StormShelterListPage() {
   const fetchCounts = useCallback(async (oid: string | undefined) => {
     try {
       const rs = await Promise.allSettled(
-        TAB_STATUS_LIST.map(t =>
-          t.key === 'all'
-            ? stormShelterCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 })
-            : stormShelterCRUD.search({ approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 })
-        )
+        TAB_STATUS_LIST.map(t => {
+          if (t.key === 'all') {
+            return stormShelterCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+          }
+          if (t.key === 'DELETED') {
+            return stormShelterCRUD.search({ approvalStatus: 'DELETED', orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+          }
+          return stormShelterCRUD.search({ approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+        })
       );
       const c: Record<string, number> = {};
       let childSum = 0;
@@ -1000,6 +1009,10 @@ export default function StormShelterListPage() {
 
   const rowActions = useCallback((record: StormShelterArea) => {
     const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
+    if (isDeletedStormShelter(record)) {
+      if (hasPerm('stormshelter:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      return actions;
+    }
     const st = record.approvalStatus || '';
     const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'stormshelter' });
     if (editable) {
@@ -1094,7 +1107,10 @@ export default function StormShelterListPage() {
     if (field === 'operationalStatus') {
       return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
-    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    if (field === 'approvalStatus') {
+      if (isDeletedStormShelter(r)) return 'Đã xóa';
+      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    }
     if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
       const t = r.updatedAt || r.createdAt;
       return t ? new Date(t).getTime() : 0;
@@ -1145,11 +1161,12 @@ export default function StormShelterListPage() {
         render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; },
       },
       {
-        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
+        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, ellipsis: false, sortable: true,
         render: (v: string, record: StormShelterArea) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
-          const eff = isArchived ? 'ARCHIVED' : v;
-          const s = eff && (APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff.toUpperCase()]);
+          if (isDeletedStormShelter(record)) {
+            return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+          }
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         },
       },
@@ -1169,7 +1186,7 @@ export default function StormShelterListPage() {
   }, [page, pageSize, organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
 
   const sortedDataSource = useMemo(() => {
-    if (!sortField) return dataSource;
+    if (!sortField || !sortOrder) return dataSource;
     if (sortField === 'stt') {
       return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
     }
@@ -1345,9 +1362,14 @@ export default function StormShelterListPage() {
             rowKey="id"
             rowActions={rowActions}
             loading={false}
-            onSort={(k: string, o: 'asc' | 'desc') => {
-              setSortField(k);
-              setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+            onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              if (!o) {
+                setSortField(null);
+                setSortOrder(null);
+              } else {
+                setSortField(k);
+                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+              }
               setPage(1);
             }}
             scroll={{ x: 'max-content' }}

@@ -46,8 +46,8 @@ Không có form nhập liệu — các trường **hiển thị** theo entity `P
 ## 3. Trạng thái và phê duyệt
 
 - Theo tài liệu nền mục 3.5 (7 trạng thái → enum `ApprovalStatus`; quy trình 2 cấp theo `QUY-TRINH-PHE-DUYET-2-CAP-KCHT.md`).
-- Hiển thị badge trạng thái hoạt động + trạng thái phê duyệt theo vòng đời; trạng thái "Đã xóa (lịch sử)" không hiển thị trên danh sách.
-- Có thể xem chi tiết ở mọi trạng thái; nút "Phê duyệt"/"Từ chối" chỉ hiển thị khi trạng thái chờ duyệt và người dùng có `pier:approve` (chuyển F-023); nút "Chỉnh sửa" khi có `pier:update` (chuyển F-021).
+- Bổ sung tab "Đã xóa" trên StatusTabs (badge màu đỏ `statusCritical`). Bản ghi đã xóa hiển thị trên danh sách (ở tab "Tất cả" và tab "Đã xóa") với badge "Đã xóa" màu đỏ (dựa trên `deleted_at` hoặc `deleted_by` khác null/trống, giữ nguyên giá trị `approvalStatus` gốc); thao tác trên dòng bị giới hạn chỉ còn "Xem chi tiết" và "Lịch sử".
+- Có thể xem chi tiết ở mọi trạng thái (bao gồm cả bản ghi "Đã xóa" hiển thị badge "Đã xóa" màu đỏ tại mục Trạng thái); nút "Phê duyệt"/"Từ chối" chỉ hiển thị khi trạng thái chờ duyệt và người dùng có `pier:approve` (chuyển F-023); nút "Chỉnh sửa" khi có `pier:update` (chuyển F-021).
 - Cầu cảng chưa duyệt: cảnh báo "chưa khả dụng trong các module khác"; nếu Bến cảng/Cảng biển cha không còn hoạt động → trạng thái hoạt động của cầu cảng chuyển tạm ngừng.
 
 ## 4. Quy tắc và phân quyền riêng

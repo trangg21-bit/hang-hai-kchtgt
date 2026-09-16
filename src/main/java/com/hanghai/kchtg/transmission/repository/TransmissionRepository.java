@@ -41,7 +41,7 @@ public interface TransmissionRepository extends JpaRepository<Transmission, UUID
      * So sánh theo SỐ, không so sánh chuỗi (tránh 'TRD-000010' < 'TRD-000002' theo từ điển).
      */
     @Query(value = "SELECT MAX(CAST(SUBSTRING(device_code FROM 5) AS INTEGER)) " +
-            "FROM transmission WHERE device_code LIKE 'TRD-%'", nativeQuery = true)
+            "FROM transmission WHERE device_code ~ '^TRD-[0-9]+$'", nativeQuery = true)
     Optional<Integer> findMaxDeviceCodeSequence();
 
     /**
@@ -75,7 +75,7 @@ public interface TransmissionRepository extends JpaRepository<Transmission, UUID
             "AND (CAST(:deviceCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(c.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string)) " +
             "AND (CAST(:deviceName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(c.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceName AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR c.operationalStatus = :operationalStatus) " +
-            "AND (:approvalStatus IS NULL OR c.approvalStatus = :approvalStatus) " +
+            "AND (:approvalStatus IS NULL OR c.approvalStatus = :approvalStatus OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 AND c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED) OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)) " +
             "AND (:yearOfUse IS NULL OR c.yearOfUse = :yearOfUse) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR c.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR c.updatedAt <= :updatedTo) " +

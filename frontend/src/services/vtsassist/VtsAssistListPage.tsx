@@ -4,7 +4,6 @@ import {
     DeleteOutlined,
     DownOutlined,
     EnvironmentOutlined,
-    ExclamationCircleOutlined,
     FileTextOutlined,
     HistoryOutlined,
     PlusOutlined,
@@ -13,7 +12,6 @@ import {
     SlidersOutlined,
 } from "@ant-design/icons";
 import {
-    Alert,
     Button,
     Col,
     DatePicker,
@@ -30,6 +28,7 @@ import {
 } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import toast from "../../components/ToastNotification";
@@ -223,6 +222,7 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp cục',
+  REJECTED: 'Từ chối cấp cục',
   DELETED: 'Đã xóa',
   ARCHIVED: 'Đã xóa',
 };
@@ -234,6 +234,7 @@ const APPROVAL_COLOR: Record<string, string> = {
   APPROVED: statusOperational,
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
+  REJECTED: statusCritical,
   DELETED: statusCritical,
   ARCHIVED: statusCritical,
 };
@@ -319,18 +320,6 @@ const tableMetaStyle: React.CSSProperties = {
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 type GpsCoordRow = {
   latD: number | null;
@@ -431,6 +420,7 @@ function VtsAssistGisTab({
   minPoints: _minPoints,
   onOpenMap,
   gpsError,
+  onGeometryTypeChange,
 }: {
   geometryType?: string | null;
   rows: GpsCoordRow[];
@@ -441,6 +431,7 @@ function VtsAssistGisTab({
   minPoints?: number;
   onOpenMap: () => void;
   gpsError?: string | null;
+  onGeometryTypeChange?: (val: any) => void;
 }) {
   const geom = normalizeGeometryType(geometryType);
   const isPoint = geom === 'POINT';
@@ -464,6 +455,7 @@ function VtsAssistGisTab({
               <Select
                 placeholder="Chọn loại đối tượng"
                 allowClear
+                onChange={onGeometryTypeChange}
                 options={[
                   { value: 'POINT', label: 'Đối tượng điểm' },
                   { value: 'LINE', label: 'Đối tượng đường' },
@@ -695,10 +687,35 @@ export const historyFieldLabels: Record<string, string> = {
   rejectionReason: 'Lý do từ chối',
   'Lý do từ chối': 'Lý do từ chối',
   'Trạng thái': 'Hành động',
+  coordinates: 'Tọa độ GIS',
+  geometryType: 'Loại đối tượng GIS',
+  'Tọa độ GIS': 'Tọa độ GIS',
+  'Loại đối tượng GIS': 'Loại đối tượng GIS',
 };
 
 export function historyFieldName(fn: string): string {
   return historyFieldLabels[fn] || fn;
+}
+
+export function isMeaningfulChange(field: string, rawOld: any, rawNew: any): boolean {
+  void field;
+  const ov = rawOld != null ? String(rawOld).trim() : '';
+  const nv = rawNew != null ? String(rawNew).trim() : '';
+  if (ov === '' && nv === '') return false;
+  if (ov !== '' && nv !== '' && ov === nv) return false;
+  // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25 hoặc 5,555 vs 5555)
+  const cleanOv = ov.replace(/,/g, '');
+  const cleanNv = nv.replace(/,/g, '');
+  if (cleanOv !== '' && cleanNv !== '' && !isNaN(Number(cleanOv)) && !isNaN(Number(cleanNv)) && Math.abs(Number(cleanOv) - Number(cleanNv)) < 1e-9) {
+    return false;
+  }
+  // Bỏ qua nếu sau khi format hiển thị giống nhau
+  const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? fmtNum(cleanOv) : ov;
+  const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? fmtNum(cleanNv) : nv;
+  if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
+    return false;
+  }
+  return true;
 }
 
 export function historyFieldValue(
@@ -852,15 +869,27 @@ const VtsAssistListPage = () => {
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
       { key: "ARCHIVED", status: "ARCHIVED" },
     ];
+    const filterScope = {
+      orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+        ? filterValues.orgUnitId
+        : undefined),
+      deviceCode: filterDeviceCode.trim() || undefined,
+      deviceName: filterDeviceName.trim() || undefined,
+      operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
+      province: filterValues.province || undefined,
+      vtsSystemId: filterValues.vtsSystemId || undefined,
+      attachedInfraType: filterValues.attachedInfraType,
+      attachedInfraId: filterValues.attachedInfraId || undefined,
+      yearOfUse: filterValues.yearOfUse,
+      updatedFrom: filterValues.updatedFrom || undefined,
+      updatedTo: filterValues.updatedTo || undefined,
+    };
     const results = await Promise.allSettled(
       statuses.map((s) =>
         fetchVtsAssistList({
           page: 0,
           size: 1,
-          orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
-                          ? filterValues.orgUnitId
-                          : undefined),
-          deviceName: filterDeviceName.trim() || undefined,
+          ...filterScope,
           approvalStatus: s.status,
         })
       )
@@ -869,18 +898,32 @@ const VtsAssistListPage = () => {
     results.forEach((r, i) => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
+    // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
+    counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
     setTotalAll(
-      counts.DRAFT +
-        counts.PENDING_APPROVAL +
-        counts.APPROVED_LEVEL1 +
-        counts.APPROVED +
-        counts.REJECTED_LEVEL1 +
-        counts.REJECTED_LEVEL2 +
-        (counts.ARCHIVED || counts.DELETED || 0)
+      (counts.DRAFT || 0) +
+        (counts.PENDING_APPROVAL || 0) +
+        (counts.APPROVED_LEVEL1 || 0) +
+        (counts.APPROVED || 0) +
+        (counts.REJECTED_LEVEL1 || 0) +
+        (counts.REJECTED_LEVEL2 || 0) +
+        (counts.ARCHIVED || 0)
     );
-  }, [filterValues.orgUnitId, filterDeviceName]);
+  }, [
+    filterValues.orgUnitId,
+    filterDeviceCode,
+    filterDeviceName,
+    filterValues.operationalStatus,
+    filterValues.province,
+    filterValues.vtsSystemId,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom,
+    filterValues.updatedTo,
+  ]);
 
   // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -1028,7 +1071,6 @@ const VtsAssistListPage = () => {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<VtsAssistResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Create modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -1116,7 +1158,7 @@ const VtsAssistListPage = () => {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
       if (String(createGeometryType).toUpperCase() === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -1146,7 +1188,7 @@ const VtsAssistListPage = () => {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
       if (String(updateGeometryType).toUpperCase() === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -1252,19 +1294,24 @@ const VtsAssistListPage = () => {
   });
 
   // ── GIS map modal ──
-  const gisCoordSnapshotRef = useRef<{ coords: GpsCoordRow[]; symbolId?: string }>({ coords: [], symbolId: undefined });
+  const gisCoordSnapshotRef = useRef<{ coords: GpsCoordRow[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
+  const latestGisMapValueRef = useRef<any>(null);
 
   const openGisMap = (mode: 'create' | 'edit' | 'detail') => {
     if (mode === 'create') {
       gisCoordSnapshotRef.current = {
         coords: gpsCoordList.map((c) => ({ ...c })),
         symbolId: createForm.getFieldValue('mapSymbolId'),
+        geometryType: createForm.getFieldValue('geometryType'),
       };
+      latestGisMapValueRef.current = null;
     } else if (mode === 'edit') {
       gisCoordSnapshotRef.current = {
         coords: updateGpsCoordList.map((c) => ({ ...c })),
         symbolId: updateForm.getFieldValue('mapSymbolId'),
+        geometryType: updateForm.getFieldValue('geometryType'),
       };
+      latestGisMapValueRef.current = null;
     }
     setGisMapModal(mode);
   };
@@ -1273,69 +1320,76 @@ const VtsAssistListPage = () => {
     if (gisMapModal === 'create') {
       setGpsCoordList(gisCoordSnapshotRef.current.coords);
       createForm.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+      if (gisCoordSnapshotRef.current.geometryType) {
+        createForm.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+      }
     } else if (gisMapModal === 'edit') {
       setUpdateGpsCoordList(gisCoordSnapshotRef.current.coords);
       updateForm.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+      if (gisCoordSnapshotRef.current.geometryType) {
+        updateForm.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+      }
     }
+    latestGisMapValueRef.current = null;
     setGisMapModal(null);
   };
 
   const applyGisMapResult = (val?: { geometryType?: string; coordinates?: string; symbolId?: string }) => {
-    if (!gisMapModal || gisMapModal === 'detail') return;
-    const points = parseGisCoordinates(val);
-    if (points.length === 0) return;
-    const currentGeom = normalizeGeometryType(val?.geometryType || (gisMapModal === 'create' ? createGeometryType : updateGeometryType));
+    if (!gisMapModal || gisMapModal === 'detail' || !val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || (gisMapModal === 'create' ? createGeometryType : updateGeometryType) || 'POINT') as string).toUpperCase();
+    const currentGeom = normalizeGeometryType(geom);
     const targetForm = gisMapModal === 'create' ? createForm : updateForm;
-    const currentList = gisMapModal === 'create' ? gpsCoordList : updateGpsCoordList;
     const setList = gisMapModal === 'create' ? setGpsCoordList : setUpdateGpsCoordList;
     const clearError = gisMapModal === 'create' ? () => setCreateGpsError(null) : () => setUpdateGpsError(null);
 
-    if (val?.symbolId) {
+    if (val.symbolId) {
       targetForm.setFieldValue('mapSymbolId', val.symbolId);
     }
 
-    if (gisMapModal === 'create') {
-      targetForm.setFieldsValue({
-        geometryType: currentGeom,
-        coordinateSystem: 1,
-        displayRule: 'Độ, phút, giây (DMS)',
-      });
-    } else {
-      targetForm.setFieldsValue({ geometryType: currentGeom, displayRule: 'Độ, phút, giây (DMS)' });
-      if (targetForm.getFieldValue('coordinateSystem') == null) {
-        targetForm.setFieldsValue({ coordinateSystem: 1 });
+    if (val.geometryType) {
+      if (gisMapModal === 'create') {
+        targetForm.setFieldsValue({
+          geometryType: currentGeom,
+          coordinateSystem: 1,
+          displayRule: 'Độ, phút, giây (DMS)',
+        });
+      } else {
+        targetForm.setFieldsValue({ geometryType: currentGeom, displayRule: 'Độ, phút, giây (DMS)' });
+        if (targetForm.getFieldValue('coordinateSystem') == null) {
+          targetForm.setFieldsValue({ coordinateSystem: 1 });
+        }
       }
     }
 
-    if (currentGeom === 'POINT') {
-      const p = points[0];
-      const latDms = ddToDms(p.latitude);
-      const lngDms = ddToDms(p.longitude);
-      setList([{
-        latD: latDms.d, latM: latDms.m, latS: latDms.s,
-        lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-      }]);
-    } else {
-      const toDms = (p: { latitude: number; longitude: number }) => {
-        const lat = ddToDms(p.latitude);
-        const lng = ddToDms(p.longitude);
-        return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-      };
-      const newRows = points.map(toDms);
-      const merged = [...currentList];
-      let newIdx = 0;
-      const isFilled = (r: GpsCoordRow) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-      for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-        if (!isFilled(merged[i])) {
-          merged[i] = newRows[newIdx++];
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newRows = points.map(toDms);
+        if (currentGeom === 'POINT') {
+          setList([newRows[0]]);
+        } else {
+          setList(newRows);
         }
+        clearError();
       }
-      while (newIdx < newRows.length) {
-        merged.push(newRows[newIdx++]);
-      }
-      setList(merged);
+    } else if (val.coordinates === '') {
+      setList([]);
     }
-    clearError();
+  };
+
+  const confirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyGisMapResult(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisMapModal(null);
+    toast.success('Đã xác nhận tọa độ từ bản đồ');
   };
 
   const gisMapContext = useMemo(() => {
@@ -1347,10 +1401,12 @@ const VtsAssistListPage = () => {
     const rows = isDetail
       ? parseWktToCoordinates(selectedRecord?.coordinates ?? undefined)
       : (gisMapModal === 'create' ? gpsCoordList : updateGpsCoordList)
+        .filter((c) => c.latD != null && c.lngD != null)
         .map((c) => ({
-          latitude: dmsToDd(c.latD, c.latM, c.latS) ?? 0,
-          longitude: dmsToDd(c.lngD, c.lngM, c.lngS) ?? 0,
-        }));
+          latitude: dmsToDd(c.latD, c.latM, c.latS),
+          longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+        }))
+        .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[];
     const symbolId = isDetail
       ? (selectedRecord?.mapSymbolId ?? undefined)
       : (gisMapModal === 'create' ? createForm : updateForm).getFieldValue('mapSymbolId') as string | undefined;
@@ -1428,10 +1484,15 @@ const VtsAssistListPage = () => {
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend">("descend");
-  const handleSort = useCallback((field: string, order: "asc" | "desc") => {
-    setSortField(field);
-    setSortOrder(order === "asc" ? "ascend" : "descend");
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
+  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order === "asc" ? "ascend" : "descend");
+    }
     setPage(0);
   }, []);
 
@@ -1544,6 +1605,7 @@ const VtsAssistListPage = () => {
         label: "Đơn vị tính",
         dataIndex: "unitOfMeasure",
         width: 130,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={tableMetaStyle}>{formatUnitOfMeasure(val)}</span>
         ),
@@ -1552,9 +1614,9 @@ const VtsAssistListPage = () => {
         key: "quantity",
         label: "Số lượng",
         dataIndex: "quantity",
-        width: 140,
+        width: 120,
         type: "number" as const,
-        align: "center" as const,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -1565,13 +1627,47 @@ const VtsAssistListPage = () => {
         key: "yearOfUse",
         label: "Năm đưa vào sử dụng",
         dataIndex: "yearOfUse",
-        width: 220,
+        width: 210,
         type: "mono" as const,
-        align: "center" as const,
+        align: 'center' as const,
         ellipsis: false,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
         ),
+      },
+      {
+        key: "operationalStatus",
+        label: "Tình trạng",
+        dataIndex: "operationalStatus",
+        width: 270,
+        type: "status" as const,
+        render: (val: number | string) => {
+          const map: Record<string, { color: string; label: string }> = {
+            "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
+            "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
+            "SUSPENDED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
+          };
+          const s = map[String(val || "").toUpperCase()] || {
+            color: textTertiary,
+            label: String(val || "—"),
+          };
+          return (
+            <span style={statusBadgeStyle(s.color)}>
+              {s.label}
+            </span>
+          );
+        },
+      },
+      {
+        key: "approvalStatus",
+        label: "Trạng thái",
+        dataIndex: "approvalStatus",
+        width: 300,
+        type: "status" as const,
+        render: (val: string, record: VtsAssistResponse) => {
+          const isDeleted = Boolean(record.deletedAt || record.deletedBy || val === "DELETED" || val === "ARCHIVED");
+          return renderApprovalBadge(isDeleted ? "DELETED" : val);
+        },
       },
       {
         key: "updatedByName",
@@ -1602,40 +1698,6 @@ const VtsAssistListPage = () => {
         dataIndex: "approverLevel2Name",
         width: 270,
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
-      },
-      {
-        key: "operationalStatus",
-        label: "Tình trạng",
-        dataIndex: "operationalStatus",
-        width: 270,
-        type: "status" as const,
-        render: (val: number | string) => {
-          const map: Record<string, { color: string; label: string }> = {
-            "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
-            "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
-            "SUSPENDED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
-          };
-          const s = map[String(val || "").toUpperCase()] || {
-            color: textTertiary,
-            label: String(val || "—"),
-          };
-          return (
-            <span style={statusBadgeStyle(s.color)}>
-              {s.label}
-            </span>
-          );
-        },
-      },
-      {
-        key: "approvalStatus",
-        label: "Trạng thái",
-        dataIndex: "approvalStatus",
-        width: 180,
-        type: "status" as const,
-        render: (val: string, record: VtsAssistResponse) => {
-          const isDeleted = Boolean(record.deletedAt || record.deletedBy || val === "DELETED" || val === "ARCHIVED");
-          return renderApprovalBadge(isDeleted ? "DELETED" : val);
-        },
       },
     ];
     },
@@ -1881,7 +1943,87 @@ const VtsAssistListPage = () => {
       if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, items: [r] });
     }
-    if (groups.length === 0)
+
+    const formatHistoryValue = (fn: string, raw: string | null) => {
+      if (raw === null || raw === '(null)' || raw === '') return null;
+      // GIS: nhãn loại đối tượng + tọa độ DMS nhiều dòng (chuẩn /cctv).
+      const gisKey = String(fn || '').toLowerCase();
+      if (gisKey.includes('loai doi tuong') || gisKey.includes('loại đối tượng') || gisKey.includes('geometrytype')) {
+        return gisGeometryTypeLabel(raw);
+      }
+      if (gisKey.includes('toa do') || gisKey.includes('tọa độ') || gisKey.includes('coordinates')) {
+        const coords = gisCoordinatesToLines(raw);
+        if (coords != null) return coords;
+      }
+      const t = raw.trim();
+      if (t.startsWith('[') && t.endsWith(']')) {
+        if (t === '[]') return 'Không có';
+        const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
+        return `${parts.length} công trình hạ tầng`;
+      }
+      if (/^-?\d+(\.\d+)?$/.test(t)) {
+        return fmtNum(t);
+      }
+      return historyFieldValue(fn, raw, orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap);
+    };
+
+    const processedGroups = groups.map((g) => {
+      // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
+      const changes = deduplicateAttachmentHistoryChanges(
+        g.items.flatMap((item: any) => {
+          const fn = historyField(item);
+          return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
+        })
+      );
+      const isCreate = changes.length > 0 && changes.every(
+        (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
+      );
+      const orderedChanges = [...changes]
+        .sort((a: any, b: any) => {
+          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        })
+        .filter(
+          (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
+        )
+        .filter((c: any) => isCreate || isMeaningfulChange(c.field, c.oldValue, c.newValue))
+        .filter((c: any) => {
+          if (isCreate) return true;
+          const ov = formatHistoryValue(c.field, c.oldValue);
+          const nv = formatHistoryValue(c.field, c.newValue);
+          if (ov != null && nv != null && ov.trim() !== '' && ov.trim() === nv.trim()) {
+            return false;
+          }
+          return true;
+        });
+
+      const isAttachmentAction = g.items.some((item: any) => {
+        const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
+        return rawStatus === 'ATTACHMENT_UPLOADED' || rawStatus === 'ATTACHMENT_DELETED';
+      });
+
+      if (orderedChanges.length === 0 && !isAttachmentAction) {
+        return null;
+      }
+
+      return {
+        ...g,
+        changes,
+        orderedChanges,
+        isCreate,
+      };
+    }).filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      items: any[];
+      changes: any[];
+      orderedChanges: any[];
+      isCreate: boolean;
+    }>;
+
+    if (processedGroups.length === 0)
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
@@ -1896,7 +2038,7 @@ const VtsAssistListPage = () => {
 
     return (
       <div>
-        {groups.map((g, gi) => {
+        {processedGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
@@ -1906,57 +2048,16 @@ const VtsAssistListPage = () => {
             rec0.unitName ||
             historyTarget?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
-          // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
-          const changes = deduplicateAttachmentHistoryChanges(
-            g.items.flatMap((item: any) => {
-              const fn = historyField(item);
-              return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
-            })
-          );
+          const changes = g.changes;
+          const orderedChanges = g.orderedChanges;
+          const isCreate = g.isCreate;
           const barColor = actionPrimary;
-          const isCreate = changes.every(
-            (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
-          );
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-          const orderedChanges = [...changes]
-            .sort((a: any, b: any) => {
-              const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-              const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-              return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-            })
-            .filter(
-              (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
-            );
-
-          const formatHistoryValue = (fn: string, raw: string | null) => {
-            if (raw === null || raw === '(null)' || raw === '') return null;
-            // GIS: nhãn loại đối tượng + tọa độ DMS nhiều dòng (chuẩn /cctv).
-            const gisKey = String(fn || '').toLowerCase();
-            if (gisKey.includes('loai doi tuong') || gisKey.includes('loại đối tượng') || gisKey.includes('geometrytype')) {
-              return gisGeometryTypeLabel(raw);
-            }
-            if (gisKey.includes('toa do') || gisKey.includes('tọa độ') || gisKey.includes('coordinates')) {
-              const coords = gisCoordinatesToLines(raw);
-              if (coords != null) return coords;
-            }
-            const t = raw.trim();
-            if (t.startsWith('[') && t.endsWith(']')) {
-              if (t === '[]') return 'Không có';
-              const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-              return `${parts.length} công trình hạ tầng`;
-            }
-            if (/^-?\d+(\.\d+)?$/.test(t)) {
-              return fmtNum(t);
-            }
-            return historyFieldValue(fn, raw, orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap);
-          };
-
-          if (orderedChanges.length === 0) return null;
 
           return (
             <div
               key={gi}
-              style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}
+              style={{ ...historyGroupGridStyle, marginBottom: gi < processedGroups.length - 1 ? spaceSm : 0 }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
@@ -2073,6 +2174,7 @@ const VtsAssistListPage = () => {
     }).catch(() => { /* ignore */ });
     const safeRecord = {
       ...record,
+      quantity: record.quantity != null ? Number(String(record.quantity).replace(/,/g, '')) : undefined,
       operationalStatus: record.operationalStatus != null
         ? (() => {
             switch (record.operationalStatus) {
@@ -2090,17 +2192,19 @@ const VtsAssistListPage = () => {
     // Nạp sẵn tọa độ từ WKT (record.coordinates) khi mở Sửa — tránh 0 dòng → mất hình học khi lưu
     const wktPoints = parseWktToCoordinates(record.coordinates ?? undefined);
     const rawEditGeom = String((record as any)?.geometryType || '').toUpperCase();
-    let editGeom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
+    let editGeom: 'POINT' | 'LINE' | 'POLYGON' | undefined = undefined;
     if (rawEditGeom === 'LINE') editGeom = 'LINE';
     else if (rawEditGeom === 'POLYGON') editGeom = 'POLYGON';
     else if (rawEditGeom === 'POINT' && wktPoints.length > 1) editGeom = wktPoints.length === 2 ? 'LINE' : 'POLYGON';
+    else if (rawEditGeom === 'POINT') editGeom = 'POINT';
     else if (wktPoints.length === 2) editGeom = 'LINE';
     else if (wktPoints.length >= 3) editGeom = 'POLYGON';
+    else if (wktPoints.length === 1) editGeom = 'POINT';
     updateForm.setFieldsValue({
       ...safeRecord,
-      geometryType: editGeom,
-      coordinateSystem: (safeRecord as any)?.coordinateSystem ?? 1,
-      displayRule: (safeRecord as any)?.displayRule ?? 'Độ, phút, giây (DMS)',
+      geometryType: editGeom || undefined,
+      coordinateSystem: editGeom ? ((safeRecord as any)?.coordinateSystem ?? 1) : undefined,
+      displayRule: editGeom ? ((safeRecord as any)?.displayRule ?? 'Độ, phút, giây (DMS)') : undefined,
     });
     const dmsPoints: GpsCoordRow[] = wktPoints.map((p) => {
       const latDms = ddToDms(p.latitude);
@@ -2110,7 +2214,8 @@ const VtsAssistListPage = () => {
     setUpdateGpsCoordList(dmsPoints.length > 0 ? dmsPoints : (
       editGeom === 'POINT' ? [{ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }] :
       editGeom === 'LINE' ? [{ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }] :
-      [{ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]
+      editGeom === 'POLYGON' ? [{ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }] :
+      []
     ));
     setUpdateGpsError(null);
     setUpdateActiveTabKey('general');
@@ -2223,7 +2328,8 @@ const VtsAssistListPage = () => {
         hasPerm?.("vtsassist:update") &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
-          record.approvalStatus === "REJECTED_LEVEL2")
+          record.approvalStatus === "REJECTED_LEVEL2" ||
+          record.approvalStatus === "REJECTED")
       ) {
         actions.push({
           key: "submit",
@@ -2304,7 +2410,6 @@ const VtsAssistListPage = () => {
           icon: icons.delete,
           danger: true,
           onClick: () => {
-            setDeleteConfirmText("");
             setDeleteTarget(record);
           },
         });
@@ -2339,7 +2444,7 @@ const VtsAssistListPage = () => {
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
         sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder === "ascend" ? "asc" : "desc",
+        sortOrder: sortOrder ? (sortOrder === "ascend" ? "asc" : "desc") : undefined,
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -2453,27 +2558,20 @@ const VtsAssistListPage = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
-    if (
-      deleteConfirmText !== "XÓA" &&
-      deleteConfirmText !== deleteTarget.deviceName
-    ) {
-      toast.error('Vui lòng nhập đúng tên thiết bị hoặc "XÓA" để xác nhận');
-      return;
-    }
     setDeleteLoading(true);
     try {
       await deleteVtsAssist(deleteTarget.id);
       toast.success("Xóa hệ thống phụ trợ VTS thành công");
       setDeleteTarget(null);
-      setDeleteConfirmText("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[vtsassist] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || "Lỗi khi xóa hệ thống phụ trợ VTS");
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
+  }, [deleteTarget, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     async (content?: string) => {
@@ -2503,19 +2601,7 @@ const VtsAssistListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
-    if (!reason) {
-      toast.error("Vui lòng nhập lý do từ chối");
-      return;
-    }
-    if (reason.length < 10) {
-      toast.error("Lý do từ chối tối thiểu 10 ký tự");
-      return;
-    }
-    if (reason.length > 500) {
-      toast.error("Lý do từ chối tối đa 500 ký tự");
-      return;
-    }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       const payload: ApprovalRequest = { decision: "REJECTED", reason };
@@ -2534,46 +2620,58 @@ const VtsAssistListPage = () => {
     }
   }, [rejectTarget, rejectLevel, rejectReason, fetchData, fetchTabCounts]);
 
+  const handleCreateFinishFailed = useCallback((errorInfo: any) => {
+    const errFields = errorInfo?.errorFields ?? [];
+    const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+    toast.error(firstError);
+    const firstField = errFields[0]?.name?.[0];
+    if (['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(firstField)) {
+      setCreateActiveTabKey('gis');
+    } else {
+      setCreateActiveTabKey('general');
+    }
+  }, []);
+
   const handleCreate = useCallback(
     async (values: Record<string, unknown>) => {
+      const geomType = values.geometryType || undefined;
       // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
-      const hasCoordinates = gpsCoordList.some((c) => c.latD != null || c.lngD != null || c.latM != null || c.lngM != null);
-      const hasLocation = Boolean(values.geometryType || hasCoordinates);
-      if (hasCoordinates && !values.geometryType) {
+      const hasCoordinates = gpsCoordList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
+      if (hasCoordinates && !geomType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+        setCreateActiveTabKey('gis');
         return;
       }
-      if (hasLocation && !values.mapSymbolId) {
+      if (geomType && !values.mapSymbolId) {
         toast.error('Biểu tượng bản đồ là bắt buộc');
+        setCreateActiveTabKey('gis');
         return;
       }
-      let wktCoordinates: string | undefined;
-      if (values.geometryType) {
-        const coordResult = validateDmsCoordinates(gpsCoordList, values.geometryType as any);
-        if (!coordResult.valid) {
-          const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
-          toast.error(errMsg);
-          setCreateGpsError(errMsg);
-          setCreateActiveTabKey('gis');
-          return;
-        }
-        wktCoordinates = serializeCoordinatesToWkt(coordResult.validCoords, values.geometryType as any) || undefined;
+      const coordResult = validateDmsCoordinates(gpsCoordList, geomType as any);
+      if (!coordResult.valid) {
+        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+        toast.error(errMsg);
+        setCreateGpsError(errMsg);
+        setCreateActiveTabKey('gis');
+        return;
       }
+      setCreateGpsError(null);
+      const wktCoordinates = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType as any) || undefined : undefined;
 
       setCreateLoading(true);
       try {
-        // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
-        const createGeomType = normalizeGeometryType(values.geometryType);
-        const coordinates = wktCoordinates;
+        const createGeomType = (geomType as 'POINT' | 'LINE' | 'POLYGON') || null;
 
         const payload = {
           ...values,
           deviceCode: values.deviceCode || (await generateVtsAssistCode()),
           operationalStatus: values.operationalStatus ?? 1,
           geometryType: createGeomType,
-          coordinates: coordinates ?? undefined,
+          coordinates: geomType ? (wktCoordinates ?? undefined) : undefined,
+          mapSymbolId: values.mapSymbolId || undefined,
+          coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+          displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
         } as CreateVtsAssistRequest;
         // Chuẩn VTS: tạo theo hành động footer — draft/submit/approve
         // (backend resolveCreateApprovalStatus: DRAFT / PENDING_APPROVAL / APPROVED)
@@ -2611,39 +2709,49 @@ const VtsAssistListPage = () => {
     [createForm, fetchData, fetchTabCounts, gpsCoordList, uploadFileList]
   );
 
+  const handleUpdateFinishFailed = useCallback((errorInfo: any) => {
+    const errFields = errorInfo?.errorFields ?? [];
+    const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+    toast.error(firstError);
+    const firstField = errFields[0]?.name?.[0];
+    if (['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(firstField)) {
+      setUpdateActiveTabKey('gis');
+    } else {
+      setUpdateActiveTabKey('general');
+    }
+  }, []);
+
   const handleUpdate = useCallback(
     async (values: Record<string, unknown>) => {
       if (!updateTarget) return;
 
+      const geomType = updateGeometryType || values.geometryType || undefined;
       // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
-      const hasCoordinates = updateGpsCoordList.some((c) => c.latD != null || c.lngD != null || c.latM != null || c.lngM != null);
-      const hasLocation = Boolean(updateGeometryType || hasCoordinates);
-      if (hasCoordinates && !updateGeometryType) {
+      const hasCoordinates = updateGpsCoordList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
+      if (hasCoordinates && !geomType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+        setUpdateActiveTabKey('gis');
         return;
       }
-      if (hasLocation && !values.mapSymbolId) {
+      if (geomType && !values.mapSymbolId) {
         toast.error('Biểu tượng bản đồ là bắt buộc');
+        setUpdateActiveTabKey('gis');
         return;
       }
-      let wktCoordinates: string | undefined;
-      if (updateGeometryType) {
-        const coordResult = validateDmsCoordinates(updateGpsCoordList, updateGeometryType as any);
-        if (!coordResult.valid) {
-          const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
-          toast.error(errMsg);
-          setUpdateGpsError(errMsg);
-          setUpdateActiveTabKey('gis');
-          return;
-        }
-        wktCoordinates = serializeCoordinatesToWkt(coordResult.validCoords, updateGeometryType as any) || undefined;
+      const coordResult = validateDmsCoordinates(updateGpsCoordList, geomType as any);
+      if (!coordResult.valid) {
+        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+        toast.error(errMsg);
+        setUpdateGpsError(errMsg);
+        setUpdateActiveTabKey('gis');
+        return;
       }
+      setUpdateGpsError(null);
+      const wktCoordinates = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType as any) || undefined : undefined;
 
       setUpdateLoading(true);
       try {
-        // Build WKT từ GPS state (lưu vào gis_spatial_objects qua spatial_id — chuẩn GIS dự án)
-        const updateGeomType = normalizeGeometryType(updateGeometryType);
-        const coordinates = wktCoordinates;
+        const updateGeomType = (geomType as 'POINT' | 'LINE' | 'POLYGON') || null;
 
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã phê duyệt — T12 backend)
@@ -2651,10 +2759,13 @@ const VtsAssistListPage = () => {
         await updateVtsAssist({
           id: updateTarget.id,
           ...values,
+          quantity: values.quantity != null ? Number(String(values.quantity).replace(/,/g, '')) : undefined,
           geometryType: updateGeomType,
-          coordinates: coordinates ?? undefined,
+          coordinates: geomType ? (wktCoordinates ?? '') : '',
+          mapSymbolId: values.mapSymbolId ? String(values.mapSymbolId) : undefined,
+          coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+          displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
           ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
         });
         if (uploadFileList.length > 0) {
@@ -2909,11 +3020,12 @@ const VtsAssistListPage = () => {
           height: 10px !important;
           display: block !important;
         }
-        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13) */
+        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13.5) */
         .vtsassist-page-wrapper.vtsassist-page-wrapper .ant-table-row .kcht-cell-title.kcht-cell-title { font-size: 14px !important; }
         .vtsassist-page-wrapper.vtsassist-page-wrapper .kcht-cell-code { font-size: 12px !important; }
         .vtsassist-page-wrapper.vtsassist-page-wrapper .kcht-cell-badge { font-size: 13px !important; }
-        .vtsassist-page-wrapper.vtsassist-page-wrapper button[aria-pressed] span { font-size: 13px !important; }
+        .vtsassist-page-wrapper.vtsassist-page-wrapper button[aria-pressed],
+        .vtsassist-page-wrapper.vtsassist-page-wrapper button[aria-pressed] span { font-size: 13.5px !important; }
         /* Tiêu đề card (Section header) trong Drawer Xem chi tiết — 14px như /cctv */
         .vtsassist-drawer-scope.vtsassist-drawer-scope .vtsassist-section-card-title { font-size: 14px !important; }
         /* Mũi tên đóng/mở (chevron) trong Drawer Xem chi tiết — cố định 12px như /berth và /cctv */
@@ -2949,6 +3061,10 @@ const VtsAssistListPage = () => {
                     toast.warning("Bạn không có quyền thêm mới hệ thống phụ trợ VTS");
                     return;
                   }
+                  createForm.resetFields();
+                  setGpsCoordList([]);
+                  setCreateGpsError(null);
+                  setCreateActiveTabKey('general');
                   setUploadFileList([]);
                   setCreateModalOpen(true);
                   // Mặc định Tình trạng = 'Chưa khai thác/vận hành' (0) khi mở drawer Tạo mới — người dùng có thể đổi sau đó
@@ -3005,7 +3121,7 @@ const VtsAssistListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị..." allowClear
+              <Input placeholder="Tìm theo tên thiết bị" allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
@@ -3015,7 +3131,7 @@ const VtsAssistListPage = () => {
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị..." allowClear
+                  <Input placeholder="Tìm theo mã thiết bị" allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
@@ -3134,56 +3250,60 @@ const VtsAssistListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: totalAll || 0,
+            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },
           {
             key: "DRAFT",
             label: "Lưu tạm",
-            count: tabCounts["DRAFT"] ?? 0,
+            count: filterValues.approvalStatus === "DRAFT" ? total : (tabCounts["DRAFT"] ?? 0),
             color: statusDraft,
             active: filterValues.approvalStatus === "DRAFT",
           },
           {
             key: "PENDING_APPROVAL",
             label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-            count: tabCounts["PENDING_APPROVAL"] ?? 0,
+            count: filterValues.approvalStatus === "PENDING_APPROVAL" ? total : (tabCounts["PENDING_APPROVAL"] ?? 0),
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING_APPROVAL",
           },
           {
             key: "APPROVED_LEVEL1",
             label: "Chờ phê duyệt cấp cục",
-            count: tabCounts["APPROVED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
             label: "Đã phê duyệt",
-            count: tabCounts["APPROVED"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED" ? total : (tabCounts["APPROVED"] ?? 0),
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
           },
           {
             key: "REJECTED_LEVEL1",
             label: "Từ chối cấp Cảng vụ/Chi cục",
-            count: tabCounts["REJECTED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "REJECTED_LEVEL1" ? total : (tabCounts["REJECTED_LEVEL1"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL1",
           },
           {
             key: "REJECTED_LEVEL2",
             label: "Từ chối cấp cục",
-            count: tabCounts["REJECTED_LEVEL2"] ?? 0,
+            count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
+              ? total
+              : (tabCounts["REJECTED_LEVEL2"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+            active: filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED",
           },
           {
             key: "ARCHIVED",
             label: "Đã xóa",
-            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
+            count: (filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED")
+              ? total
+              : (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
@@ -3196,7 +3316,6 @@ const VtsAssistListPage = () => {
             approvalStatus,
           }));
           setPage(0);
-          fetchData();
         }}
       >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -3819,7 +3938,7 @@ const VtsAssistListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho thiết bị phụ trợ VTS:
+            Vui lòng nhập lý do từ chối cho thiết bị phụ trợ VTS (không bắt buộc):
           </p>
           {rejectTarget && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
@@ -3829,105 +3948,29 @@ const VtsAssistListPage = () => {
             </p>
           )}
           <Input.TextArea
-            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            placeholder="Nhập lý do từ chối (nếu có)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
-            maxLength={500}
-            showCount
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
       </Modal>
 
       {/* Delete Modal */}
-      <Modal
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Xác nhận xóa
-          </span>
-        }
-        open={!!deleteTarget}
+      <DeleteConfirmModal
+        open={Boolean(deleteTarget)}
         onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteConfirmText("");
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setDeleteTarget(null);
-              setDeleteConfirmText("");
-            }}
-            style={outlineButtonStyle}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="delete"
-            type="primary"
-            danger
-            loading={deleteLoading}
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-            }}
-          >
-            Xác nhận xóa
-          </Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: "8px 0" }}>
-          <Alert
-            message="Hành động này không thể hoàn tác"
-            type="warning"
-            showIcon
-            icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
-          />
-          <p
-            style={{
-              fontSize: fontSizeMd,
-              color: textPrimary,
-              marginBottom: spaceFormField,
-            }}
-          >
-            Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ{" "}
-            <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deleteTarget && (
-            <p
-              style={{
-                fontSize: fontSizeMd,
-                color: textSecondary,
-                marginBottom: spaceFormField,
-              }}
-            >
-              Thiết bị:{" "}
-              <strong style={{ color: textPrimary }}>
-                {deleteTarget.deviceName}
-              </strong>
-            </p>
-          )}
-          <Input
-            placeholder="Nhập tên thiết bị hoặc XÓA"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            onPressEnter={handleDeleteConfirm}
-            style={pillStyle}
-            autoFocus
-          />
-        </div>
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+        itemType="hệ thống phụ trợ VTS"
+        itemName={deleteTarget?.deviceName}
+        itemCode={deleteTarget?.deviceCode}
+      />
 
       {/* ── Create Drawer ─────────────────────────────── */}
       <AppDrawer
@@ -3985,7 +4028,7 @@ const VtsAssistListPage = () => {
         }}
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" onFinish={handleCreate}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreate} onFinishFailed={handleCreateFinishFailed}>
           <Tabs
             activeKey={createActiveTabKey}
             onChange={setCreateActiveTabKey}
@@ -4004,6 +4047,48 @@ const VtsAssistListPage = () => {
                           <span>Thông tin cơ bản & Quản lý vận hành</span>
                         </div>
                       </div>
+                      <Row gutter={[24, 0]}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="orgUnitId"
+                            {...labelProps('Đơn vị quản lý')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn đơn vị quản lý" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <OrgUnitTreeSelect
+                              variant="form"
+                              organizations={orgUnitOptions}
+                              placeholder="Chọn đơn vị quản lý..."
+                              loading={loadingOrgs}
+                              showPath
+                              treeDefaultExpandAll={false}
+                              style={{ ...pillStyle }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              style={{ width: "100%", ...pillStyle }}
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                createForm.setFieldValue("attachedInfrastructureType", val);
+                                createForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
                       <Row gutter={[24, 0]}>
                         <Col xs={24} sm={12}>
                           <Form.Item
@@ -4036,47 +4121,6 @@ const VtsAssistListPage = () => {
                               maxLength={255}
                               showCount
                               style={{ ...pillStyle, fontFamily: fontSans }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={[24, 0]}>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="orgUnitId"
-                            {...labelProps('Đơn vị quản lý')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn đơn vị quản lý" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <OrgUnitTreeSelect
-                              organizations={orgUnitOptions}
-                              placeholder="Chọn đơn vị"
-                              loading={loadingOrgs}
-                              showPath
-                              treeDefaultExpandAll={false}
-                              style={{ ...pillStyle }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                createForm.setFieldValue("attachedInfrastructureType", val);
-                                createForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
                             />
                           </Form.Item>
                         </Col>
@@ -4239,14 +4283,13 @@ const VtsAssistListPage = () => {
                               { required: true, message: "Vui lòng nhập số lượng" },
                               integer5Rule,
                             ]}
-                            initialValue={1}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <NumberInputWithCount
                               min={1}
                               step={1}
                               precision={0}
-                              placeholder="Nhập số lượng..."
+                              placeholder="Nhập số lượng"
                               style={{ width: "100%", ...pillStyle }}
                               maxLength={5}
                               parser={parseNumber5}
@@ -4358,7 +4401,7 @@ const VtsAssistListPage = () => {
                           >
                             <Input.TextArea
                               rows={3}
-                              placeholder="Nhập thông tin bảo trì..."
+                              placeholder="Nhập thông tin bảo trì"
                               maxLength={2000}
                               showCount
                               style={themeTokenChk.textAreaStyle}
@@ -4378,7 +4421,7 @@ const VtsAssistListPage = () => {
                           >
                             <Input.TextArea
                               rows={3}
-                              placeholder="Nhập ghi chú..."
+                              placeholder="Nhập ghi chú"
                               maxLength={2000}
                               showCount
                               style={themeTokenChk.textAreaStyle}
@@ -4411,6 +4454,14 @@ const VtsAssistListPage = () => {
                       minPoints={createMinPoints}
                       onOpenMap={() => openGisMap('create')}
                       gpsError={createGpsError}
+                      onGeometryTypeChange={(val) => {
+                        if (!val) {
+                          createForm.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+                          createForm.setFields([{ name: 'mapSymbolId', errors: [] }]);
+                          setGpsCoordList([]);
+                          setCreateGpsError(null);
+                        }
+                      }}
                     />
                   </div>
                 ),
@@ -4458,7 +4509,7 @@ const VtsAssistListPage = () => {
                 Lưu tạm
               </Button>
             )}
-            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
+            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2' || updateTarget?.approvalStatus === 'REJECTED') && (
               <Button
                 type="primary"
                 onClick={() => { updateActionTypeRef.current = 'submit'; setUpdateActionType('submit'); updateForm.submit(); }}
@@ -4490,7 +4541,7 @@ const VtsAssistListPage = () => {
         }}
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdate}>
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdate} onFinishFailed={handleUpdateFinishFailed}>
           <Tabs
             activeKey={updateActiveTabKey}
             onChange={setUpdateActiveTabKey}
@@ -4509,6 +4560,46 @@ const VtsAssistListPage = () => {
                           <span>Thông tin cơ bản & Quản lý vận hành</span>
                         </div>
                       </div>
+                      <Row gutter={[24, 0]}>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="orgUnitId"
+                            {...labelProps('Đơn vị quản lý')}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <OrgUnitTreeSelect
+                              variant="form"
+                              organizations={orgUnitOptions}
+                              placeholder="Chọn đơn vị quản lý..."
+                              loading={loadingOrgs}
+                              showPath
+                              treeDefaultExpandAll={false}
+                              disabled
+                              style={{ ...pillStyle }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              style={{ width: "100%", ...pillStyle }}
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                updateForm.setFieldValue("attachedInfrastructureType", val);
+                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
                       <Row gutter={[24, 0]}>
                         <Col xs={24} sm={12}>
                           <Form.Item
@@ -4540,45 +4631,6 @@ const VtsAssistListPage = () => {
                               maxLength={255}
                               showCount
                               style={{ ...pillStyle, fontFamily: fontSans }}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={[24, 0]}>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="orgUnitId"
-                            {...labelProps('Đơn vị quản lý')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <OrgUnitTreeSelect
-                              organizations={orgUnitOptions}
-                              placeholder="Chọn đơn vị"
-                              loading={loadingOrgs}
-                              showPath
-                              treeDefaultExpandAll={false}
-                              disabled
-                              style={{ ...pillStyle }}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                updateForm.setFieldValue("attachedInfrastructureType", val);
-                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
                             />
                           </Form.Item>
                         </Col>
@@ -4737,14 +4789,13 @@ const VtsAssistListPage = () => {
                               { required: true, message: "Vui lòng nhập số lượng" },
                               integer5Rule,
                             ]}
-                            initialValue={1}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <NumberInputWithCount
                               min={1}
                               step={1}
                               precision={0}
-                              placeholder="Nhập số lượng..."
+                              placeholder="Nhập số lượng"
                               style={{ width: "100%", ...pillStyle }}
                               maxLength={5}
                               parser={parseNumber5}
@@ -4856,7 +4907,7 @@ const VtsAssistListPage = () => {
                           >
                             <Input.TextArea
                               rows={3}
-                              placeholder="Nhập thông tin bảo trì..."
+                              placeholder="Nhập thông tin bảo trì"
                               maxLength={2000}
                               showCount
                               style={themeTokenChk.textAreaStyle}
@@ -4876,7 +4927,7 @@ const VtsAssistListPage = () => {
                           >
                             <Input.TextArea
                               rows={3}
-                              placeholder="Nhập ghi chú..."
+                              placeholder="Nhập ghi chú"
                               maxLength={2000}
                               showCount
                               style={themeTokenChk.textAreaStyle}
@@ -4909,6 +4960,14 @@ const VtsAssistListPage = () => {
                       minPoints={updateMinPoints}
                       onOpenMap={() => openGisMap('edit')}
                       gpsError={updateGpsError}
+                      onGeometryTypeChange={(val) => {
+                        if (!val) {
+                          updateForm.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+                          updateForm.setFields([{ name: 'mapSymbolId', errors: [] }]);
+                          setUpdateGpsCoordList([]);
+                          setUpdateGpsError(null);
+                        }
+                      }}
                     />
                   </div>
                 ),
@@ -5056,10 +5115,7 @@ const VtsAssistListPage = () => {
               <Button
                 key="ok"
                 type="primary"
-                onClick={() => {
-                  setGisMapModal(null);
-                  toast.success('Đã xác nhận tọa độ từ bản đồ');
-                }}
+                onClick={confirmGisMap}
                 style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
               >
                 Xác nhận tọa độ

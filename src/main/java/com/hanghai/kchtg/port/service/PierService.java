@@ -203,11 +203,27 @@ public class PierService {
             String status, String approvalStatus, UUID navigationChannelId,
             Integer constructionGrade, Integer structureType, String operationalFunction,
             String updatedFrom, String updatedTo) {
+        return findAll(page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province,
+                status, approvalStatus, navigationChannelId, constructionGrade, structureType,
+                operationalFunction, updatedFrom, updatedTo, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
+            String search, String pierCode, String pierName, UUID berthId, UUID portId, PierType pierType, String province,
+            String status, String approvalStatus, UUID navigationChannelId,
+            Integer constructionGrade, Integer structureType, String operationalFunction,
+            String updatedFrom, String updatedTo, Boolean isDeleted) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
                 Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
-        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
+        boolean deletedOnly = "DELETED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)
+                || "ARCHIVED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)
+                || Boolean.TRUE.equals(isDeleted);
+        ApprovalStatus approvalEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty() && !deletedOnly)
+                ? ApprovalStatus.fromString(approvalStatus)
+                : null;
         LocalDateTime updatedFromDt = null;
         if (updatedFrom != null && !updatedFrom.trim().isEmpty()) {
             try {
@@ -224,9 +240,9 @@ public class PierService {
         }
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
-        Page<Pier> pageResult = pierRepository.searchPiers(includeAll, orgUnitIds, search, pierCode, pierName, berthId, portId, pierType,
+        Page<Pier> pageResult = pierRepository.searchPiers(deletedOnly, approvalEnum, includeAll, orgUnitIds, search, pierCode, pierName, berthId, portId, pierType,
                 province,
-                statusEnum, approvalEnum, navigationChannelId, constructionGrade, structureType,
+                statusEnum, navigationChannelId, constructionGrade, structureType,
                 operationalFunction, updatedFromDt, updatedToDt, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()

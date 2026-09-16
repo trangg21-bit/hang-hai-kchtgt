@@ -462,9 +462,8 @@ export default function DaiTtdhListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
-  const [sortField, setSortField] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -1551,7 +1550,7 @@ export default function DaiTtdhListPage() {
           <DataTable
             columns={columns}
             dataSource={[...dataSource].sort((a: any, b: any) => {
-              if (!sortField) return 0;
+              if (!sortField || !sortOrder) return 0;
               if (sortField === 'stt') {
                 const arr = [...dataSource];
                 return sortOrder === 'descend' ? (arr.reverse(), 0) : 0;
@@ -1564,9 +1563,14 @@ export default function DaiTtdhListPage() {
             rowKey="id"
             rowActions={rowActions}
             loading={false}
-            onSort={(k: string, o: 'asc' | 'desc') => {
-              setSortField(k);
-              setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+            onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              if (!o) {
+                setSortField(null);
+                setSortOrder(null);
+              } else {
+                setSortField(k);
+                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+              }
               setPage(1);
             }}
             scroll={{ x: 'max-content' }}

@@ -25,7 +25,7 @@ consumed_by_modules: []
 
 ## 1. Mô tả ngắn
 
-Cho phép Admin và Lãnh đạo (`pier:delete`) xóa mềm một Cầu cảng: đánh dấu `deletedAt`/`deletedBy`, bản ghi vẫn tồn tại trong CSDL phục vụ kiểm toán nhưng không hiển thị ở bất kỳ đâu (danh sách, chi tiết, dropdown). Trước khi xóa, hệ thống kiểm tra ràng buộc dữ liệu liên quan (tài sản, vận hành, bảo trì, sự cố) — có dữ liệu liên quan thì chặn xóa và hiển thị danh sách cần xử lý; không tự động xóa cascade. Người dùng phải nhập chính xác tên cầu cảng để xác nhận. Theo quy trình chung, chỉ xóa được hồ sơ ở trạng thái Lưu tạm.
+Cho phép Admin và Lãnh đạo (`pier:delete`) xóa mềm một Cầu cảng: đánh dấu `deletedAt`/`deletedBy`, bản ghi vẫn tồn tại trong CSDL phục vụ kiểm toán. Logic hiển thị mới: bản ghi đã xóa được hiển thị lại tại danh sách (ở tab "Tất cả" và tab "Đã xóa"), thao tác bị giới hạn chỉ còn "Xem chi tiết" và "Lịch sử" (ẩn toàn bộ các thao tác chỉnh sửa, xóa, gửi duyệt, phê duyệt, từ chối). Trên giao diện, trạng thái của bản ghi hiển thị là "Đã xóa" (badge màu đỏ) được quyết định bằng 2 trường `deleted_at` hoặc `deleted_by` (một trong hai hoặc cả hai khác null/trống); trạng thái phê duyệt gốc (`approvalStatus`) của bản ghi vẫn giữ nguyên. Trước khi xóa, hệ thống kiểm tra ràng buộc dữ liệu liên quan (tài sản, vận hành, bảo trì, sự cố) — có dữ liệu liên quan thì chặn xóa và hiển thị danh sách cần xử lý; không tự động xóa cascade. Người dùng phải xác nhận trước khi xóa. Theo quy trình chung, chỉ xóa được hồ sơ ở trạng thái Lưu tạm.
 
 ## 2. Trường dữ liệu
 

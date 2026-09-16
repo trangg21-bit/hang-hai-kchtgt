@@ -40,6 +40,7 @@ import {
   validateDmsCoordinates,
   serializeCoordinatesToWkt,
   ddToDms,
+  dmsToDd,
 } from '../../utils/gisGeometry';
 import {
   createTransmission,
@@ -139,18 +140,6 @@ const UOM_OPTIONS = [
   { label: 'Trụ', value: 26 },
   { label: 'VNĐ', value: 27 },
 ];
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 const dmsUnitStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -316,12 +305,11 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   const [loadingAttached, setLoadingAttached] = useState(false);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
-  const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const gisCoordSnapshotRef = useRef<{ coords: Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>; symbolId?: string }>({ coords: [], symbolId: undefined });
+  const gisCoordSnapshotRef = useRef<{ coords: Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
+  const latestGisMapValueRef = useRef<any>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [pendingDeletedIds, setPendingDeletedIds] = useState<string[]>([]);
 
@@ -424,7 +412,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
       if (watchedGeometryType === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -586,11 +574,61 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
     setGpsError(null);
   };
 
+  // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
+  const applyMapSelection = (val: any) => {
+    if (!val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+    if (val.geometryType && val.geometryType !== watchedGeometryType) {
+      form.setFieldValue('geometryType', val.geometryType);
+    }
+    if (val.symbolId) {
+      form.setFieldValue('mapSymbolId', val.symbolId);
+    }
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newPoints = points.map(toDms);
+        if (geom === 'POINT') {
+          setCoordinateList([newPoints[0]]);
+        } else {
+          setCoordinateList(newPoints);
+        }
+        setGpsError(null);
+      }
+    } else if (val.coordinates === '') {
+      setCoordinateList([]);
+    }
+  };
+
+  const handleCancelGisMap = () => {
+    setCoordinateList(gisCoordSnapshotRef.current.coords);
+    form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+    if (gisCoordSnapshotRef.current.geometryType) {
+      form.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
+  const handleConfirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyMapSelection(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
   const handleSave = useCallback(
     async (action: 'draft' | 'submit' | 'approve') => {
-      let values: any;
+      const values = form.getFieldsValue(true);
       try {
-        values = await form.validateFields();
+        await form.validateFields();
       } catch (e: any) {
         const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
         const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
@@ -611,20 +649,28 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         return;
       }
 
-      if (hasLocation && !values.mapSymbolId) {
-        toast.error('Vui lòng chọn biểu tượng bản đồ');
+      if (values.operationalStatus === undefined || values.operationalStatus === null) {
+        toast.error('Tình trạng hoạt động là bắt buộc');
+        setActiveTabKey('general');
+        return;
+      }
+
+      const geomType = values.geometryType || undefined;
+      const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
+
+      if (hasCoordinates && !geomType) {
+        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
         setActiveTabKey('location');
         return;
       }
-      if (hasCoordinates && !values.geometryType) {
-        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      if (geomType && !values.mapSymbolId) {
+        toast.error('Vui lòng chọn biểu tượng bản đồ');
         setActiveTabKey('location');
         return;
       }
 
       // Validate GPS Coordinates nếu có chọn geometryType
-      let coordinatesWkt: string | undefined;
-      const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+      const coordResult = validateDmsCoordinates(coordinateList, geomType);
       if (!coordResult.valid) {
         const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
         toast.error(errMsg);
@@ -632,7 +678,8 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         setActiveTabKey('location');
         return;
       }
-      coordinatesWkt = serializeCoordinatesToWkt(coordResult.validCoords, values.geometryType || 'POINT') || undefined;
+      setGpsError(null);
+      const coordinatesWkt = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType) : undefined;
 
       onSubmittingChange?.(true);
 
@@ -655,11 +702,11 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           specifications: values.specifications ? String(values.specifications).trim() : undefined,
           maintenanceInformation: values.maintenanceInformation ? String(values.maintenanceInformation).trim() : undefined,
           note: values.note ? String(values.note).trim() : undefined,
-          geometryType: values.geometryType || undefined,
+          geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
           mapSymbolId: values.mapSymbolId || undefined,
-          coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-          coordinates: coordinatesWkt,
-          displayRule: values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined,
+          coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+          coordinates: coordinatesWkt || undefined,
+          displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
         };
 
         let targetId = id;
@@ -692,18 +739,15 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             await submitTransmission(id);
           }
         } else {
-          // Thêm mới
-          const created = await createTransmission({
+          const createRes = await createTransmission({
             ...payload,
-            deviceName: String(payload.deviceName || ''),
-            quantity: Number(payload.quantity || 1),
-            action: action === 'draft' ? 'draft' : action === 'submit' ? 'submit' : 'approve',
-          });
-          targetId = created.id;
+            action,
+          } as CreateTransmissionRequest);
+          targetId = createRes?.id;
 
-          // Upload files đính kèm cho bản ghi mới tạo
+          // Upload file cho bản ghi mới tạo
           const newFiles = uploadedFiles.filter((f) => f.originFileObj);
-          if (targetId && newFiles.length > 0) {
+          if (newFiles.length > 0 && targetId) {
             for (const f of newFiles) {
               if (f.originFileObj) {
                 await uploadTransmissionAttachment(targetId, f.originFileObj as File).catch(() => {});
@@ -714,10 +758,10 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
 
         toast.success(
           action === 'draft'
-            ? 'Lưu tạm hệ thống truyền dẫn thành công'
-            : action === 'submit'
-              ? 'Lưu và gửi phê duyệt thành công'
-              : 'Lưu và phê duyệt thành công',
+            ? 'Lưu tạm thành công'
+            : action === 'approve'
+              ? 'Phê duyệt thành công'
+              : 'Lưu và gửi phê duyệt thành công',
         );
 
         onFinish();
@@ -728,7 +772,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         onSubmittingChange?.(false);
       }
     },
-    [form, coordinateList, id, isEdit, pendingDeletedIds, uploadedFiles, onFinish, onSubmittingChange, hasLocation, hasCoordinates],
+    [form, coordinateList, id, isEdit, pendingDeletedIds, uploadedFiles, onFinish, onSubmittingChange],
   );
 
   useImperativeHandle(
@@ -756,25 +800,6 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
-                  <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="deviceName"
-                  {...labelProps('Tên thiết bị')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
-                  validateStatus={atMax.deviceName ? 'error' : undefined}
-                  help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
-                >
-                  <Input placeholder="Nhập tên thiết bị..." maxLength={255} showCount style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
                 <Form.Item
                   name="orgUnitId"
                   {...labelProps('Đơn vị quản lý')}
@@ -782,8 +807,14 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   style={{ marginBottom: spaceFormField }}
                 >
                   <OrgUnitTreeSelect
+                    variant="form"
+                    organizations={orgUnits}
                     placeholder="Chọn đơn vị quản lý..."
-                    disabled={isEdit || !isSystemAdmin}
+                    loading={loadingOrgs}
+                    treeDefaultExpandAll={false}
+                    disabled={isEdit && !isSystemAdmin}
+                    allowClear
+                    showSearch
                     style={selectStyle}
                   />
                 </Form.Item>
@@ -809,6 +840,25 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
+                <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
+                  <Input disabled placeholder={deviceCodeLoading ? 'Đang sinh mã...' : 'Mã tự động'} style={readonlyInputStyle} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="deviceName"
+                  {...labelProps('Tên thiết bị')}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Vui lòng nhập tên thiết bị' }, { max: 255, message: 'Tối đa 255 ký tự' }]}
+                  validateStatus={atMax.deviceName ? 'error' : undefined}
+                  help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
+                >
+                  <Input placeholder="Nhập tên thiết bị..." maxLength={255} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
                 <Form.Item name="attachedInfrastructureType" {...labelProps('Loại hạ tầng trực thuộc')} style={{ marginBottom: spaceFormField }}>
                   <Select
                     placeholder="Chọn loại hạ tầng trực thuộc..."
@@ -824,7 +874,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   <Select
                     placeholder={
                       watchedAttachedType === 1
-                        ? 'Chọn Trung Tâm Điều Hành VTS...'
+                        ? 'Chọn Trung Tâm Điều Hành VTS'
                         : watchedAttachedType === 2
                           ? 'Chọn Trạm Radar...'
                           : 'Chọn loại hạ tầng trước'
@@ -885,7 +935,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn đơn vị tính..." options={UOM_OPTIONS} allowClear showSearch optionFilterProp="label" style={selectStyle} />
+                  <Select placeholder="Chọn đơn vị tính" options={UOM_OPTIONS} allowClear showSearch optionFilterProp="label" style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -898,13 +948,12 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     { required: true, message: 'Vui lòng nhập số lượng' },
                     integer5Rule,
                   ]}
-                  initialValue={1}
                 >
                   <NumberInputWithCount
                     min={1}
                     step={1}
                     precision={0}
-                    placeholder="Nhập số lượng..."
+                    placeholder="Nhập số lượng"
                     style={numberInputStyle}
                     maxLength={5}
                     parser={parseNumber5}
@@ -999,7 +1048,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                   help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1013,7 +1062,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   validateStatus={atMax.note ? 'error' : undefined}
                   help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1041,8 +1090,6 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                 <Form.Item
                   name="geometryType"
                   {...labelProps('Loại đối tượng')}
-                  required={hasCoordinates}
-                  rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select
@@ -1050,6 +1097,13 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     allowClear
                     options={GEOMETRY_TYPE_OPTIONS}
                     style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+                        setCoordinateList([]);
+                        setGpsError(null);
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -1133,7 +1187,9 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     gisCoordSnapshotRef.current = {
                       coords: coordinateList.map((c) => ({ ...c })),
                       symbolId: form.getFieldValue('mapSymbolId'),
+                      geometryType: form.getFieldValue('geometryType'),
                     };
+                    latestGisMapValueRef.current = null;
                     setGisModalOpen(true);
                   }}
                   disabled={!watchedGeometryType}
@@ -1344,22 +1400,14 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => {
-          setCoordinateList(gisCoordSnapshotRef.current.coords);
-          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-          setGisModalOpen(false);
-        }}
+        onCancel={handleCancelGisMap}
         destroyOnClose
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => {
-              setCoordinateList(gisCoordSnapshotRef.current.coords);
-              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-              setGisModalOpen(false);
-            }}
+            onClick={handleCancelGisMap}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
@@ -1367,7 +1415,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           <Button
             key="confirm"
             type="primary"
-            onClick={() => setGisModalOpen(false)}
+            onClick={handleConfirmGisMap}
             style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
@@ -1377,64 +1425,23 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 12 }}>
           <GisLocationSelector
             inline={true}
+            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            height={520}
             value={{
-              geometryType: watchedGeometryType || 'POINT',
-              coordinates: (() => {
-                const valid = coordinateList
-                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => c.latD != null && c.lngD != null)
                   .map((c) => ({
-                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                  }));
-                return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
-              })(),
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
               symbolId: form.getFieldValue('mapSymbolId') || undefined,
             }}
-            defaultGeometryType={watchedGeometryType || 'POINT'}
-            height={520}
-            onChange={(val: any) => {
-              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
-              const points = parseGisCoordinates(val);
-              if (points.length > 0) {
-                if (watchedGeometryType === 'POINT') {
-                  const p = points[0];
-                  const latDms = ddToDms(p.latitude);
-                  const lngDms = ddToDms(p.longitude);
-                  setCoordinateList([
-                    {
-                      latD: latDms.d,
-                      latM: latDms.m,
-                      latS: latDms.s,
-                      lngD: lngDms.d,
-                      lngM: lngDms.m,
-                      lngS: lngDms.s,
-                    },
-                  ]);
-                } else {
-                  setCoordinateList((prev) => {
-                    const toDms = (p: { latitude: number; longitude: number }) => {
-                      const lat = ddToDms(p.latitude);
-                      const lng = ddToDms(p.longitude);
-                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                    };
-                    const newRows = points.map(toDms);
-                    const merged = [...prev];
-                    let newIdx = 0;
-                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-                      if (!isFilled(merged[i])) {
-                        merged[i] = newRows[newIdx++];
-                      }
-                    }
-                    while (newIdx < newRows.length) {
-                      merged.push(newRows[newIdx++]);
-                    }
-                    return merged;
-                  });
-                }
-                setGpsError(null);
-              }
-            }}
+            onChange={applyMapSelection}
           />
         </div>
       </Modal>

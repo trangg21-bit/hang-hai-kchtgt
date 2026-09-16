@@ -36,9 +36,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -166,6 +168,41 @@ class VhfServiceTest {
     }
 
     @Test
+    void updateApprovedRecord_withoutChanges_doesNotCreateEmptyFallbackHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVhfRequest req = new UpdateVhfRequest();
+        req.setId(ID);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        VhfResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void updateApprovedRecord_withSameStringWhitespaceDifference_doesNotCreateFieldHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVhfRequest req = new UpdateVhfRequest();
+        req.setId(ID);
+        req.setDeviceName("  Hệ thống VHF Hòn Dấu  ");
+        req.setQuantity(1);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        VhfResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        verify(historyRepository, never()).save(argThat(h -> h != null && "Tên thiết bị".equals(h.getChangedField())));
+        verify(historyRepository, never()).save(argThat(h -> h != null && h.getChangedField() == null));
+    }
+
+    @Test
     void softDeleteRecordsHistory() {
         when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
         when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -201,5 +238,43 @@ class VhfServiceTest {
         assertThrows(org.springframework.security.access.AccessDeniedException.class,
                 () -> service.restore(ID));
         verify(vhfRepository, never()).restoreVhfById(any());
+    }
+
+    @Test
+    void generateDeviceCode_withExistingMax_incrementsCorrectly() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenReturn(2);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000003")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000003", code);
+    }
+
+    @Test
+    void generateDeviceCode_withEmptyDatabase_generatesFirstCode() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenReturn(0);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000001", code);
+    }
+
+    @Test
+    void generateDeviceCode_whenQueryThrowsException_fallsBackGracefully() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenThrow(new RuntimeException("SQL syntax error"));
+        when(vhfRepository.count()).thenReturn(10L);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000011")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000011", code);
+    }
+
+    @Test
+    void generateDeviceCode_whenCodeExists_skipsToNextAvailable() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenReturn(5);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000006")).thenReturn(true);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000007")).thenReturn(false);
+
+        String code = service.generateDeviceCode();
+        assertEquals("VHF-000007", code);
     }
 }

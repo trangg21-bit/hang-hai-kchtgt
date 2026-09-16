@@ -36,7 +36,7 @@ import type { Symbol as MapSymbol } from '../symbolService';
 import { useAuthStore } from '../../store/authStore';
 import {
   GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt,
-  ddToDms,
+  ddToDms, dmsToDd,
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
 import {
@@ -122,42 +122,6 @@ const UNIT_OF_MEASURE_OPTIONS = [
   { label: 'Ki-lô-mét', value: 15 },
 ];
 
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
-
-const parseWktSafe = (wkt: string | null | undefined): Array<{ latitude: number; longitude: number }> => {
-  if (!wkt) return [];
-  try {
-    const raw = wkt.trim();
-    if (raw.startsWith('MULTIPOINT')) {
-      const match = raw.match(/MULTIPOINT\s*\((.*)\)/s);
-      if (match?.[1]) {
-        return match[1]
-          .split(',')
-          .map(s => s.replace(/[()]/g, '').trim())
-          .filter(Boolean)
-          .map(pair => {
-            const [lng, lat] = pair.split(/\s+/).map(Number);
-            return { latitude: lat, longitude: lng };
-          })
-          .filter(c => !isNaN(c.latitude) && !isNaN(c.longitude));
-      }
-    }
-    const pointsMatch = wkt.match(/(\([^)]+\))/g);
-    if (pointsMatch && pointsMatch.length > 0) return pointsMatch.map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 const dmsUnitStyle: React.CSSProperties = {
   display: 'inline-flex',
@@ -316,7 +280,8 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string }>({ coords: [] });
+  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [] });
+  const latestGisMapValueRef = useRef<any>(null);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   // Nạp danh mục đơn vị quản lý (chuẩn /radar-station: organizationService.getTree)
@@ -419,32 +384,43 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   // Mode Thêm mới: sinh trước mã thiết bị & set đơn vị mặc định
   useEffect(() => {
     if (!isEdit) {
-      setDeviceCodeLoading(true);
-      generateVhfCode()
-        .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
-        .catch(() => {})
-        .finally(() => setDeviceCodeLoading(false));
+      if (!form.getFieldValue('deviceCode')) {
+        setDeviceCodeLoading(true);
+        generateVhfCode()
+          .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
+          .catch(() => {})
+          .finally(() => setDeviceCodeLoading(false));
+      }
 
-      if (!isSystemAdmin) {
+      const currentOrgUnitId = currentUser?.orgUnitId;
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else {
         api.get('/users/me').then(r => {
           const p = r.data?.data ?? r.data;
           if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
         }).catch(() => {});
       }
     }
-  }, [isEdit, isSystemAdmin, form]);
+  }, [isEdit, currentUser, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
-    if (!watchedGeometryType) return;
+    if (!watchedGeometryType) {
+      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
+      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
+      setCoordinateList([]);
+      setGpsError(null);
+      return;
+    }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+      if (watchedGeometryType === 'POINT') {
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -492,12 +468,12 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           note: data.note,
           geometryType: data.geometryType || undefined,
           mapSymbolId: data.mapSymbolId || undefined,
-          coordinateSystem: data.coordinateSystem || (data.geometryType ? 1 : undefined),
+          coordinateSystem: data.geometryType ? (data.coordinateSystem || 1) : undefined,
           displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
         });
 
         if (data.coordinates) {
-          const parsed = parseWktSafe(data.coordinates);
+          const parsed = parseWktToCoordinates(data.coordinates);
           if (parsed.length > 0) {
             setCoordinateList(parsed.map(p => {
               const latDms = ddToDms(p.latitude);
@@ -573,10 +549,55 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
     setGpsError(null);
   };
 
-  const hasCoordinates = coordinateList.some(
-    (c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null,
-  );
-  const hasLocation = Boolean(watchedGeometryType || form.getFieldValue('mapSymbolId') || hasCoordinates);
+  // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
+  const applyMapSelection = (val: any) => {
+    if (!val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+    if (val.geometryType && val.geometryType !== watchedGeometryType) {
+      form.setFieldValue('geometryType', val.geometryType);
+    }
+    if (val.symbolId) {
+      form.setFieldValue('mapSymbolId', val.symbolId);
+    }
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newPoints = points.map(toDms);
+        if (geom === 'POINT') {
+          setCoordinateList([newPoints[0]]);
+        } else {
+          setCoordinateList(newPoints);
+        }
+        setGpsError(null);
+      }
+    } else if (val.coordinates === '') {
+      setCoordinateList([]);
+    }
+  };
+
+  const handleCancelGisMap = () => {
+    setCoordinateList(gisCoordSnapshotRef.current.coords);
+    form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+    if (gisCoordSnapshotRef.current.geometryType) {
+      form.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
+  const handleConfirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyMapSelection(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
 
   useImperativeHandle(ref, () => ({
     submit: async (saveAction: VhfSaveAction) => {
@@ -585,59 +606,73 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   }));
 
   const handleSave = useCallback(async (saveAction: VhfSaveAction) => {
+    const values = form.getFieldsValue(true);
     try {
-      if (hasCoordinates && !form.getFieldValue('geometryType')) {
-        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      await form.validateFields();
+    } catch (e: unknown) {
+      const err = e as { errorFields?: Array<{ name: Array<string | number>; errors?: string[] }> };
+      const errFields = err?.errorFields ?? [];
+      const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+      toast.error(firstError);
+      if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) {
         setActiveTabKey('location');
-        return;
+      } else {
+        setActiveTabKey('general');
       }
-      if (hasLocation && !form.getFieldValue('mapSymbolId')) {
-        toast.error('Biểu tượng bản đồ là bắt buộc');
-        setActiveTabKey('location');
-        return;
-      }
+      return;
+    }
 
-      // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-      const coordResult = validateDmsCoordinates(coordinateList, form.getFieldValue('geometryType'));
-      if (!coordResult.valid) {
-        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
-        toast.error(errMsg);
-        setGpsError(errMsg);
-        setActiveTabKey('location');
-        return;
-      }
-      const validCoords = coordResult.validCoords;
-      const wktCoordinates = serializeCoordinatesToWkt(validCoords, form.getFieldValue('geometryType') || 'POINT');
+    if (values.operationalStatus === undefined || values.operationalStatus === null) {
+      toast.error('Tình trạng hoạt động là bắt buộc');
+      setActiveTabKey('general');
+      return;
+    }
 
-      setGpsError(null);
-      let values: Record<string, unknown>;
-      try {
-        values = await form.validateFields();
-      } catch (err: any) {
-        if (err?.errorFields?.length) {
-          const firstField = err.errorFields[0].name[0];
-          if (['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(firstField)) {
-            setActiveTabKey('location');
-          } else {
-            setActiveTabKey('general');
-          }
-        }
-        return;
-      }
+    const geomType = values.geometryType || undefined;
+    const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
 
-      setSubmitting(true);
-      onSubmittingChange?.(true);
+    // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
+    if (hasCoordinates && !geomType) {
+      toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      setActiveTabKey('location');
+      return;
+    }
+    if (geomType && !values.mapSymbolId) {
+      toast.error('Biểu tượng bản đồ là bắt buộc');
+      setActiveTabKey('location');
+      return;
+    }
 
+    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
+    const coordResult = validateDmsCoordinates(coordinateList, geomType);
+    if (!coordResult.valid) {
+      const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+      toast.error(errMsg);
+      setGpsError(errMsg);
+      setActiveTabKey('location');
+      return;
+    }
+    setGpsError(null);
+    const validCoords = coordResult.validCoords;
+    const wktCoordinates = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
+
+    setSubmitting(true);
+    onSubmittingChange?.(true);
+
+    try {
       const currentAction = saveAction === 'DRAFT' ? 'draft' : saveAction === 'SUBMIT' ? 'submit' : 'approve';
+      const rawYear = values.yearOfUse;
+      const submittedYear = rawYear != null ? (dayjs.isDayjs(rawYear) ? rawYear.year() : Number(rawYear)) : undefined;
+
       const payload: Record<string, unknown> = {
         ...values,
-        yearOfUse: values.yearOfUse ? (values.yearOfUse as dayjs.Dayjs).year() : undefined,
+        yearOfUse: submittedYear,
         quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
-        coordinates: wktCoordinates ? wktCoordinates : (isEdit ? '' : undefined),
-        geometryType: values.geometryType || undefined,
+        coordinates: wktCoordinates || undefined,
+        geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
         mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+        coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+        displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
       };
 
       let targetId: string;
@@ -684,7 +719,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish, hasCoordinates, hasLocation]);
+  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish]);
 
   const tabItems = [
     // Tab 1: Thông tin chung (3 Section Cards chuẩn /cctv, /berth)
@@ -701,6 +736,43 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                 <span>Thông tin cơ bản & Quản lý vận hành</span>
               </div>
             </div>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="orgUnitId"
+                  {...labelProps('Đơn vị quản lý')}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
+                >
+                  <OrgUnitTreeSelect
+                    variant="form"
+                    organizations={orgUnits}
+                    placeholder="Chọn đơn vị quản lý..."
+                    loading={loadingOrgs}
+                    allowClear
+                    showPath
+                    treeDefaultExpandAll={false}
+                    disabled={isEdit && !isSystemAdmin}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}>
+                  <Select
+                    placeholder="Chọn cảng biển..."
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    options={seaportOptions.map((p) => ({
+                      label: p.portCode ? `${p.portCode} - ${p.portName}` : p.portName,
+                      value: p.id,
+                    }))}
+                    style={selectStyle}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }}>
@@ -725,42 +797,6 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   help={atMax.deviceName ? 'Đã đạt tối đa 255 ký tự' : undefined}
                 >
                   <Input placeholder="Nhập tên thiết bị" maxLength={255} showCount style={inputStyle} />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item
-                  name="orgUnitId"
-                  {...labelProps('Đơn vị quản lý')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
-                >
-                  <OrgUnitTreeSelect
-                    organizations={orgUnits}
-                    placeholder="Chọn đơn vị quản lý..."
-                    loading={loadingOrgs}
-                    allowClear
-                    showPath
-                    treeDefaultExpandAll={false}
-                    disabled={!isSystemAdmin && !isEdit}
-                    style={{ borderRadius: radiusPill, height: 40 }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}>
-                  <Select
-                    placeholder="Chọn cảng biển..."
-                    allowClear
-                    showSearch
-                    optionFilterProp="label"
-                    options={seaportOptions.map((p) => ({
-                      label: p.portCode ? `${p.portCode} - ${p.portName}` : p.portName,
-                      value: p.id,
-                    }))}
-                    style={selectStyle}
-                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -794,7 +830,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
               <Col span={12}>
                 <Form.Item name="attachedInfrastructureType" {...labelProps('Thuộc loại hạ tầng')} style={{ marginBottom: spaceFormField }}>
                   <Select
-                    placeholder="Chọn loại hạ tầng..."
+                    placeholder="Chọn loại hạ tầng"
                     options={ATTACHED_INFRA_TYPE_OPTIONS}
                     allowClear
                     onChange={() => form.setFieldsValue({ attachedInfrastructureId: undefined })}
@@ -811,9 +847,9 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   <Select
                     placeholder={
                       watchedAttachedType === 2
-                        ? 'Chọn trạm Radar...'
+                        ? 'Chọn trạm Radar'
                         : watchedAttachedType === 1
-                          ? 'Chọn Trung Tâm Điều Hành VTS...'
+                          ? 'Chọn Trung Tâm Điều Hành VTS'
                           : 'Chọn loại hạ tầng trước'
                     }
                     options={
@@ -892,7 +928,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                 <Form.Item name="yearOfUse" {...labelProps('Năm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
                   <DatePicker
                     picker="year"
-                    placeholder="Chọn năm..."
+                    placeholder="Chọn năm"
                     style={{ ...inputStyle, width: '100%' }}
                     disabledDate={(d) => d && d.year() > new Date().getFullYear()}
                   />
@@ -970,7 +1006,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                   help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -984,7 +1020,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   validateStatus={atMax.note ? 'error' : undefined}
                   help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1010,15 +1046,27 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} allowClear style={selectStyle} />
+                  <Select
+                    placeholder="Chọn loại đối tượng"
+                    options={GEOMETRY_TYPE_OPTIONS}
+                    allowClear
+                    style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+                        setCoordinateList([]);
+                        setGpsError(null);
+                      }
+                    }}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
                   name="mapSymbolId"
                   {...labelProps('Biểu tượng')}
-                  required={hasLocation}
-                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  required={!!watchedGeometryType}
+                  rules={watchedGeometryType ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select
@@ -1074,7 +1122,9 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                     gisCoordSnapshotRef.current = {
                       coords: coordinateList.map((c) => ({ ...c })),
                       symbolId: form.getFieldValue('mapSymbolId'),
+                      geometryType: form.getFieldValue('geometryType'),
                     };
+                    latestGisMapValueRef.current = null;
                     setGisModalOpen(true);
                   }}
                   disabled={!watchedGeometryType}
@@ -1286,22 +1336,14 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => {
-          setCoordinateList(gisCoordSnapshotRef.current.coords);
-          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-          setGisModalOpen(false);
-        }}
+        onCancel={handleCancelGisMap}
         destroyOnClose
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => {
-              setCoordinateList(gisCoordSnapshotRef.current.coords);
-              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-              setGisModalOpen(false);
-            }}
+            onClick={handleCancelGisMap}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
@@ -1309,7 +1351,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           <Button
             key="confirm"
             type="primary"
-            onClick={() => setGisModalOpen(false)}
+            onClick={handleConfirmGisMap}
             style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
@@ -1323,54 +1365,19 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             height={520}
             value={{
               geometryType: (watchedGeometryType as any) || 'POINT',
-              coordinates: (() => {
-                const valid = coordinateList
-                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => c.latD != null && c.lngD != null)
                   .map((c) => ({
-                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                  }));
-                return serializeCoordinatesToWkt(valid, (watchedGeometryType as any) || 'POINT');
-              })(),
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
               symbolId: form.getFieldValue('mapSymbolId') || undefined,
             }}
-            onChange={(val: any) => {
-              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
-              const points = parseGisCoordinates(val);
-              if (points.length > 0) {
-                if (watchedGeometryType === 'POINT') {
-                  const p = points[0];
-                  const latDms = ddToDms(p.latitude);
-                  const lngDms = ddToDms(p.longitude);
-                  setCoordinateList([{
-                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
-                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-                  }]);
-                } else {
-                  setCoordinateList((prev) => {
-                    const toDms = (p: { latitude: number; longitude: number }) => {
-                      const lat = ddToDms(p.latitude);
-                      const lng = ddToDms(p.longitude);
-                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                    };
-                    const newRows = points.map(toDms);
-                    const merged = [...prev];
-                    let newIdx = 0;
-                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-                      if (!isFilled(merged[i])) {
-                        merged[i] = newRows[newIdx++];
-                      }
-                    }
-                    while (newIdx < newRows.length) {
-                      merged.push(newRows[newIdx++]);
-                    }
-                    return merged;
-                  });
-                }
-                setGpsError(null);
-              }
-            }}
+            onChange={applyMapSelection}
           />
         </div>
       </Modal>

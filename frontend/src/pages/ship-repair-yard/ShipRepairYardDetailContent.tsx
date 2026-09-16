@@ -340,21 +340,28 @@ export default function ShipRepairYardDetailContent({
                   {approvalOpen && (
                     <div className="chk-detail-grid">
                       {(() => {
+                        const isDeleted = Boolean(r.deletedAt || r.deletedBy);
                         const isPendingPortAuthority =
-                          r.approvalStatus === 'PENDING_APPROVAL' ||
-                          r.approvalStatus === 'CHO_PHE_DUYET' ||
-                          r.approvalStatus === 'PROPOSED' ||
-                          approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
-                          approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục');
+                          !isDeleted && (
+                            r.approvalStatus === 'PENDING_APPROVAL' ||
+                            r.approvalStatus === 'CHO_PHE_DUYET' ||
+                            r.approvalStatus === 'PROPOSED' ||
+                            approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
+                            approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục')
+                          );
                         return (
                           <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
-                              {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
+                              {isDeleted ? (
+                                <span style={statusBadgeStyle(statusCritical)}>
+                                  Đã xóa
+                                </span>
+                              ) : (r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
                                 <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
                                   {approvalStyleMap[r.approvalStatus].label}
                                 </span>
-                              ) : ''}
+                              ) : '')}
                             </span>
                           </div>
                         );

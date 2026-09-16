@@ -96,4 +96,42 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
       expect(safeNumber('invalid')).toBeUndefined();
     });
   });
+
+  describe('DikeRevetment display number formatting (fmtInputNumber, normalizeSafeNumber, fmtNum)', () => {
+    it('fmtInputNumber hiển thị đúng "1100" thay vì "1100.00"', async () => {
+      const { fmtInputNumber } = await import('../utils/numFmt');
+      expect(fmtInputNumber('1100.00')).toBe('1100');
+      expect(fmtInputNumber('1100')).toBe('1100');
+      expect(fmtInputNumber(1100)).toBe('1100');
+      expect(fmtInputNumber('1100.0')).toBe('1100');
+      expect(fmtInputNumber('1100.50')).toBe('1100.5');
+      expect(fmtInputNumber('1100.25')).toBe('1100.25');
+      expect(fmtInputNumber('1100.1234')).toBe('1100.1234');
+    });
+
+    it('fmtInputNumber giữ nguyên chuỗi khi người dùng đang nhập (userTyping)', async () => {
+      const { fmtInputNumber } = await import('../utils/numFmt');
+      expect(fmtInputNumber('1100.', { userTyping: true })).toBe('1100.');
+      expect(fmtInputNumber('1100.0', { userTyping: true })).toBe('1100.0');
+      expect(fmtInputNumber('1100.00', { userTyping: true })).toBe('1100.00');
+    });
+
+    it('normalizeSafeNumber loại bỏ .00 / .0000 thừa khi nạp bản ghi từ backend', async () => {
+      const { normalizeSafeNumber } = await import('../utils/numFmt');
+      expect(normalizeSafeNumber('1100.00')).toBe('1100');
+      expect(normalizeSafeNumber('1100.0000')).toBe('1100');
+      expect(normalizeSafeNumber('1100')).toBe('1100');
+      expect(normalizeSafeNumber(1100)).toBe('1100');
+      expect(normalizeSafeNumber('1100.50')).toBe('1100.5');
+    });
+
+    it('fmtNum loại bỏ đuôi .00 thừa trong chế độ xem chi tiết', async () => {
+      const { fmtNum } = await import('../utils/numFmt');
+      expect(fmtNum('1100.00')).toBe('1,100');
+      expect(fmtNum('1100')).toBe('1,100');
+      expect(fmtNum(1100)).toBe('1,100');
+      expect(fmtNum('1100.50')).toBe('1,100.5');
+      expect(fmtNum('1100.25')).toBe('1,100.25');
+    });
+  });
 });

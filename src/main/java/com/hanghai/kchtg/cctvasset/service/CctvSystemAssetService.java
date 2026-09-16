@@ -7,9 +7,14 @@ import com.hanghai.kchtg.cctvasset.dto.CctvSystemAssetResponse;
 import com.hanghai.kchtg.cctvasset.entity.CctvSystemAsset;
 import com.hanghai.kchtg.cctvasset.repository.CctvSystemAssetRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +30,15 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +49,9 @@ public class CctvSystemAssetService {
     private final UserResolverService userResolverService;
     private final CctvRepository cctvRepository;
     private final OrgUnitRepository orgUnitRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
+    private final ChangeHistoryService changeHistoryService;
 
     @Transactional
     public CctvSystemAssetResponse create(CctvSystemAssetRequest request) {
@@ -114,9 +129,23 @@ public class CctvSystemAssetService {
     @Transactional
     public CctvSystemAssetResponse update(UUID id, CctvSystemAssetRequest request) {
         CctvSystemAsset entity = requireAsset(id);
+
+        CctvSystemAsset snapshot = new CctvSystemAsset();
+        BeanUtils.copyProperties(entity, snapshot);
+
         copyEditableFields(request, entity);
         calculateValues(entity);
-        return toResponse(repository.save(entity));
+        CctvSystemAsset saved = repository.save(entity);
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy()
+                    : (entity.getCreatedBy() != null ? entity.getCreatedBy() : null);
+        }
+        String actorId = currentUserId != null ? currentUserId.toString() : "system";
+        changeHistoryService.recordChanges("CCTV", saved.getId().toString(), actorId, snapshot, saved);
+
+        return toResponse(saved);
     }
 
     @Transactional
@@ -132,45 +161,9 @@ public class CctvSystemAssetService {
     }
 
     private void copyEditableFields(CctvSystemAssetRequest request, CctvSystemAsset entity) {
-        if (request.getAssetName() != null) entity.setAssetName(request.getAssetName());
-        if (request.getParentOrgUnitId() != null) entity.setParentOrgUnitId(request.getParentOrgUnitId());
-        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
-        if (request.getUsingOrgUnitId() != null) entity.setUsingOrgUnitId(request.getUsingOrgUnitId());
-        if (request.getCctvId() != null) entity.setCctvId(request.getCctvId());
-        if (request.getAssetType() != null) entity.setAssetType(request.getAssetType());
-        if (request.getBarcode() != null) entity.setBarcode(request.getBarcode());
-        if (request.getAssetCondition() != null) entity.setAssetCondition(request.getAssetCondition());
-        if (request.getUsageStatus() != null) entity.setUsageStatus(request.getUsageStatus());
-        if (request.getAssetGroup() != null) entity.setAssetGroup(request.getAssetGroup());
-        if (request.getAssetSubgroup() != null) entity.setAssetSubgroup(request.getAssetSubgroup());
-        if (request.getAddress() != null) entity.setAddress(request.getAddress());
-        if (request.getOrigin() != null) entity.setOrigin(request.getOrigin());
-        if (request.getQuantity() != null) entity.setQuantity(request.getQuantity());
-        if (request.getQuantityUnit() != null) entity.setQuantityUnit(request.getQuantityUnit());
-        if (request.getModel() != null) entity.setModel(request.getModel());
-        if (request.getSerialNumber() != null) entity.setSerialNumber(request.getSerialNumber());
-        if (request.getCountryOfOrigin() != null) entity.setCountryOfOrigin(request.getCountryOfOrigin());
-        if (request.getManufacturer() != null) entity.setManufacturer(request.getManufacturer());
-        if (request.getConstructionYear() != null) entity.setConstructionYear(request.getConstructionYear());
-        if (request.getUseDate() != null) entity.setUseDate(request.getUseDate());
-        if (request.getLandArea() != null) entity.setLandArea(request.getLandArea());
-        if (request.getFloorArea() != null) entity.setFloorArea(request.getFloorArea());
-        if (request.getAssetLocation() != null) entity.setAssetLocation(request.getAssetLocation());
-        if (request.getAttachmentName() != null) entity.setAttachmentName(request.getAttachmentName());
-        if (request.getDeclarationDate() != null) entity.setDeclarationDate(request.getDeclarationDate());
-        if (request.getOriginalValue() != null) entity.setOriginalValue(request.getOriginalValue());
-        if (request.getDepreciationRate() != null) entity.setDepreciationRate(request.getDepreciationRate());
-        if (request.getRemainingValue() != null) entity.setRemainingValue(request.getRemainingValue());
-        if (request.getValueUnit() != null) entity.setValueUnit(request.getValueUnit());
-        if (request.getAssignmentDecisionNumber() != null) entity.setAssignmentDecisionNumber(request.getAssignmentDecisionNumber());
-        if (request.getDepreciationStartDate() != null) entity.setDepreciationStartDate(request.getDepreciationStartDate());
-        if (request.getDepreciationMonths() != null) entity.setDepreciationMonths(request.getDepreciationMonths());
-        if (request.getDepreciationEndDate() != null) entity.setDepreciationEndDate(request.getDepreciationEndDate());
-        if (request.getAccumulatedDepreciation() != null) entity.setAccumulatedDepreciation(request.getAccumulatedDepreciation());
-        if (request.getMonthlyDepreciation() != null) entity.setMonthlyDepreciation(request.getMonthlyDepreciation());
-        if (request.getDisposalMethod() != null) entity.setDisposalMethod(request.getDisposalMethod());
+        BeanUtils.copyProperties(request, entity, "assetCode", "status", "approvalStatus",
+                "remainingValue", "createdAt", "createdBy", "updatedAt", "updatedBy", "lockVersion");
         if (request.getStatus() != null) entity.setStatus(request.getStatus());
-
         if (request.getApprovalStatus() != null) {
             handleApprovalTransition(entity, request.getApprovalStatus(), request);
         }
@@ -270,5 +263,67 @@ public class CctvSystemAssetService {
         }
 
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getHistory(UUID id) {
+        CctvSystemAsset entity = requireAsset(id);
+        String entityId = id.toString();
+        String entityType = "CctvSystemAsset";
+
+        List<InfrastructureHistory> list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                User::getName
+                        ));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("changedField", h.getChangedField());
+                    m.put("oldValue", h.getPreviousValue() == null ? "" : h.getPreviousValue());
+                    m.put("previousValue", h.getPreviousValue() == null ? "" : h.getPreviousValue());
+                    m.put("newValue", h.getNewValue() == null ? "" : h.getNewValue());
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    m.put("orgUnitId", entity.getOrgUnitId());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("status", h.getStatus().name());
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("orgUnitId", entity.getOrgUnitId());
+                    return m;
+                })
+                .toList();
+
+        return Map.of(
+                "entityId", entityId,
+                "entityType", entityType,
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
+                "changeHistory", changeHistory,
+                "approvalLog", approvalLog,
+                "histories", list
+        );
     }
 }

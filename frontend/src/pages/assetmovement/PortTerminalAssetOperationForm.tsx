@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { PortTerminalAsset } from '../../services/assetmovement/types';
 import { fmtInputNumber } from '../../utils/numFmt';
@@ -12,6 +12,10 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  createAssetAdjustmentOperationSection,
+  handleAssetAdjustmentValuesChange,
+} from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -223,118 +227,10 @@ export function PortTerminalAssetOperationForm({
           },
         ],
       },
-      {
-        key: 'value_section',
-        title: 'Giá trị & Khấu hao điều chỉnh',
-        icon: <SlidersOutlined />,
-        fields: [
-          {
-            name: 'originalValueBefore' as keyof OperationValues,
-            label: 'Nguyên giá trước điều chỉnh',
-            type: FormFieldType.Readonly,
-            valueFormatter: () =>
-              selected.originalValue != null ? `${fmtInputNumber(selected.originalValue)} VNĐ` : '',
-          },
-          {
-            name: 'originalValue',
-            label: 'Nguyên giá sau điều chỉnh (VNĐ)',
-            type: FormFieldType.Number,
-            required: true,
-            min: 0,
-            formatter: fmtInputNumber,
-            placeholder: '0',
-            rules: [{ required: true, message: 'Nguyên giá sau điều chỉnh là bắt buộc' }],
-          },
-          {
-            name: 'remainingValueBefore' as keyof OperationValues,
-            label: 'Giá trị còn lại trước',
-            type: FormFieldType.Readonly,
-            valueFormatter: () =>
-              selected.remainingValue != null ? `${fmtInputNumber(selected.remainingValue)} VNĐ` : '',
-          },
-          {
-            name: 'remainingValueAfter' as keyof OperationValues,
-            label: 'Giá trị còn lại sau',
-            type: FormFieldType.Readonly,
-            computedValue: (_f, vals) => {
-              const orig = Number(vals.originalValue);
-              if (isNaN(orig) || vals.originalValue == null) return undefined;
-              const acc = Number(vals.accumulatedDepreciation) || 0;
-              return Math.max(0, orig - acc);
-            },
-            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : ''),
-          },
-          {
-            name: 'declarationDate',
-            label: 'Ngày kê khai tài sản',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày kê khai',
-          },
-          {
-            name: 'depreciationRate',
-            label: 'Tỷ lệ hao mòn/Khấu hao (%)',
-            type: FormFieldType.Number,
-            min: 0,
-            max: 100,
-            placeholder: '0',
-          },
-          {
-            name: 'assignmentDecisionNumber',
-            label: 'Số quyết định giao (bao gồm cả tăng vốn)',
-            type: FormFieldType.Text,
-            placeholder: 'Nhập số quyết định',
-          },
-          {
-            name: 'depreciationStartDate',
-            label: 'Ngày tính khấu hao',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày tính',
-          },
-          {
-            name: 'depreciationMonths',
-            label: 'Số tháng tính khấu hao',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: '0',
-          },
-          {
-            name: 'depreciationEndDate',
-            label: 'Ngày hết khấu hao',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày hết',
-          },
-          {
-            name: 'accumulatedDepreciation',
-            label: 'Khấu hao lũy kế',
-            type: FormFieldType.Number,
-            min: 0,
-            formatter: fmtInputNumber,
-            placeholder: '0',
-          },
-          {
-            name: 'monthlyDepreciation',
-            label: 'Khấu hao tháng',
-            type: FormFieldType.Readonly,
-            computedValue: (_f, vals) => {
-              const orig = Number(vals.originalValue);
-              const months = Number(vals.depreciationMonths);
-              if (!isNaN(orig) && orig > 0 && !isNaN(months) && months > 0) {
-                return Math.round((orig / months) * 100) / 100;
-              }
-              return undefined;
-            },
-            valueFormatter: (val) => (val != null ? `${fmtInputNumber(Number(val))} VNĐ` : ''),
-          },
-          {
-            name: 'notes',
-            label: 'Ghi chú điều chỉnh',
-            type: FormFieldType.TextArea,
-            rows: 3,
-            placeholder: 'Nhập ghi chú điều chỉnh',
-            colSpan: 24,
-          },
-        ],
-      },
+      createAssetAdjustmentOperationSection<OperationValues>({
+        selectedRecord: selected,
+        operationMode,
+      }),
     ];
   }, [operationMode, selected, organizations]);
 
@@ -381,6 +277,9 @@ export function PortTerminalAssetOperationForm({
       tabs={tabs}
       footerActions={footerActions}
       footerAlign="center"
+      onValuesChange={(changed, all) => {
+        handleAssetAdjustmentValuesChange(form, changed, all);
+      }}
     />
   );
 }

@@ -1083,7 +1083,7 @@ export default function DryPortListPage() {
           <DataTable
             columns={columns}
             dataSource={[...dataSource].sort((a: any, b: any) => {
-              if (!sortField) return 0;
+              if (!sortField || !sortOrder) return 0;
               const aVal = getSortValue(a, sortField);
               const bVal = getSortValue(b, sortField);
               const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
@@ -1092,9 +1092,14 @@ export default function DryPortListPage() {
             loading={isLoading}
             rowKey="id"
             rowActions={rowActions}
-            onSort={(key: string, order: 'asc' | 'desc') => {
-              setSortField(key);
-              setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+            onSort={(key: string, order: 'asc' | 'desc' | null) => {
+              if (!order) {
+                setSortField(undefined);
+                setSortOrder(undefined);
+              } else {
+                setSortField(key);
+                setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+              }
               setPage(1);
             }}
             scroll={{ x: 'max-content' }}

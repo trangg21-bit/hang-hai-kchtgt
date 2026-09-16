@@ -31,6 +31,7 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -60,6 +61,10 @@ import type {
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import {
+  calculateAssetAdjustmentValues,
+  validateAdjustmentOriginalValue,
+} from '../../utils/assetValueCalculation';
 import TransmissionAssetDetailContent from './TransmissionAssetDetailContent';
 import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
 import TransmissionAssetHistory, { useTransmissionHistory } from './TransmissionAssetHistory';
@@ -182,7 +187,6 @@ export default function TransmissionAssetList() {
     setDrawerMode('create');
     form.resetFields();
     form.setFieldsValue({
-      assetType: 'Tài sản HT truyền dẫn',
       assetCondition: 'Tốt',
       usageStatus: 'Đang sử dụng',
       quantity: 1,
@@ -456,13 +460,43 @@ export default function TransmissionAssetList() {
       setSaving(true);
 
       if (operationMode === 'exploit') {
+        setSaving(true);
         await createTransmissionExploitation(selected.id, {
           ...values,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
         });
       } else {
+        const origVal = (values.originalValueAfter ?? values.originalValue) as number | undefined;
+        const valCheck = validateAdjustmentOriginalValue(
+          operationMode,
+          origVal,
+          selected.originalValue
+        );
+        if (!valCheck.isValid) {
+          toast.error(valCheck.message || 'Nguyên giá sau điều chỉnh không hợp lệ.');
+          return;
+        }
+
+        setSaving(true);
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
+
         await createTransmissionAdjustment(selected.id, {
           ...values,
+          originalValue: origVal,
+          originalValueAfter: origVal,
+          originalValueBefore: selected.originalValue,
+          remainingValueBefore: selected.remainingValue,
+          remainingValueAfter: calc.remainingValueAfter,
+          accumulatedDepreciation:
+            calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
           adjustmentType: operationMode === 'increase' ? 'INCREASE' : 'DECREASE',
           decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
           adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
@@ -515,7 +549,7 @@ export default function TransmissionAssetList() {
         label: 'Loại tài sản',
         type: 'select',
         placeholder: 'Chọn loại tài sản',
-        options: [{ value: 'Tài sản HT truyền dẫn', label: 'Tài sản HT truyền dẫn' }],
+        options: MARITIME_ASSET_TYPE_OPTIONS,
       },
       {
         key: 'assetCode',
@@ -759,6 +793,17 @@ export default function TransmissionAssetList() {
               setSelected(record);
               setOperationMode('increase');
               operationForm.resetFields();
+              operationForm.setFieldsValue({
+                originalValueBefore: record.originalValue,
+                remainingValueBefore: record.remainingValue,
+                declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+                depreciationRate: record.depreciationRate,
+                assignmentDecisionNumber: record.assignmentDecisionNumber,
+                depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+                depreciationMonths: record.depreciationMonths,
+                depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+                accumulatedDepreciation: record.accumulatedDepreciation,
+              });
             },
           },
           {
@@ -769,6 +814,17 @@ export default function TransmissionAssetList() {
               setSelected(record);
               setOperationMode('decrease');
               operationForm.resetFields();
+              operationForm.setFieldsValue({
+                originalValueBefore: record.originalValue,
+                remainingValueBefore: record.remainingValue,
+                declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+                depreciationRate: record.depreciationRate,
+                assignmentDecisionNumber: record.assignmentDecisionNumber,
+                depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+                depreciationMonths: record.depreciationMonths,
+                depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+                accumulatedDepreciation: record.accumulatedDepreciation,
+              });
             },
           },
         ];

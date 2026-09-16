@@ -979,12 +979,12 @@ public class PermissionSeeder implements CommandLineRunner {
                                         BEGIN
                                             IF to_regclass('public.user_permission_override') IS NOT NULL THEN
                                                 DELETE FROM user_permission_override
-                                                WHERE permission_code = ANY(deprecated_codes);
+WHERE permission_code = ANY(deprecated_codes);
                                             END IF;
 
                                             IF to_regclass('public.user_group_permissions') IS NOT NULL THEN
                                                 DELETE FROM user_group_permissions
-                                                WHERE permission = ANY(deprecated_codes);
+WHERE permission = ANY(deprecated_codes);
                                             END IF;
 
                                             IF to_regclass('public.role_permissions') IS NOT NULL AND to_regclass('public.permissions') IS NOT NULL THEN
@@ -992,13 +992,13 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 WHERE permission_id IN (
                                                     SELECT id
                                                     FROM permissions
-                                                    WHERE code = ANY(deprecated_codes)
+WHERE code = ANY(deprecated_codes)
                                                 );
                                             END IF;
 
                                             IF to_regclass('public.permissions') IS NOT NULL THEN
                                                 DELETE FROM permissions
-                                                WHERE code = ANY(deprecated_codes);
+WHERE code = ANY(deprecated_codes);
                                             END IF;
                                         END $$;
                                         """);

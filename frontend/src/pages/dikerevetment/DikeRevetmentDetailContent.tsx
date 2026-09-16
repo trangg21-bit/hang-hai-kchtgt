@@ -20,6 +20,7 @@ import {
   statusBadgeStyle,
 } from '../../themetokenchk';
 import { ddToDms } from '../../utils/gisGeometry';
+import { fmtNum } from '../../utils/numFmt';
 
 // Style cho thẻ phân nhóm (Section Card — mirror màn /berth: BerthDetailContent.tsx)
 const sectionBoxStyle: React.CSSProperties = {
@@ -159,9 +160,9 @@ export default function DikeRevetmentDetailContent(props: DetailContentProps) {
   ] : [];
 
   const detailTechRows: DetailRow[] = detailRecord ? [
-    { label: 'Chiều dài (m)', value: detailRecord.length != null ? String(detailRecord.length) : null },
-    { label: 'Chiều cao (m)', value: detailRecord.height != null ? String(detailRecord.height) : null },
-    { label: 'Cao trình đỉnh (m)', value: detailRecord.crestElevation != null ? String(detailRecord.crestElevation) : null },
+    { label: 'Chiều dài (m)', value: detailRecord.length != null ? fmtNum(detailRecord.length) : null },
+    { label: 'Chiều cao (m)', value: detailRecord.height != null ? fmtNum(detailRecord.height) : null },
+    { label: 'Cao trình đỉnh (m)', value: detailRecord.crestElevation != null ? fmtNum(detailRecord.crestElevation) : null },
   ] : [];
 
   const detailTimeRows: DetailRow[] = detailRecord ? [

@@ -27,6 +27,8 @@ import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -94,8 +96,20 @@ public class TransmissionService {
    */
   public String generateTransmissionCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = transmissionRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("TRD-%06d", sequence);
+    int sequence = 0;
+    try {
+      sequence = transmissionRepository.findMaxDeviceCodeSequence().orElse(0);
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị truyền dẫn, fallback: {}", e.getMessage());
+      sequence = (int) transmissionRepository.count();
+    }
+    sequence++;
+    String code = String.format("TRD-%06d", sequence);
+    while (transmissionRepository.existsDeviceCodeAnyState(code)) {
+      sequence++;
+      code = String.format("TRD-%06d", sequence);
+    }
+    return code;
   }
 
   /**
@@ -358,10 +372,10 @@ public class TransmissionService {
       }
     }
 
-    if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
+if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
       previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
     }
-    if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
+    if (request.getGeometryType() != null && !EntityUpdateUtils.areEqual(request.getGeometryType().name(), oldGeometryType)) {
       previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
     }
 
@@ -388,10 +402,19 @@ public class TransmissionService {
     if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
       // T12 — "Lưu và phê duyệt": request có approvalStatus=APPROVED thì giữ trạng thái
       // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
-      // người duyệt/ngày duyệt/lịch sử; ngoài ra phải duyệt lại.
+      // người duyệt/ngày duyệt; ngoài ra phải duyệt lại.
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.recordSaveAndApprove(entity, InfrastructureType.TRANSMISSION,
-            "Cập nhật hồ sơ đã duyệt", currentUserId);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        if (entity.getApproverLevel1() == null) {
+          entity.setApproverLevel1(currentUserId);
+          entity.setApprovedDateLevel1(LocalDateTime.now());
+          entity.setApprovalContentLevel1("Cấp Cục phê duyệt trực tiếp");
+        }
+        entity.setApproverLevel2(currentUserId);
+        entity.setApprovedDateLevel2(LocalDateTime.now());
+        if (entity.getApprovalContentLevel2() == null || entity.getApprovalContentLevel2().isBlank()) {
+          entity.setApprovalContentLevel2("Lưu và phê duyệt");
+        }
         approvedEdit = true;
       } else {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
@@ -401,38 +424,29 @@ public class TransmissionService {
     Transmission saved = transmissionRepository.save(entity);
 
     // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
-    // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") — bản nháp/lưu tạm,
-    // hồ sơ đang chờ duyệt hoặc bị trả về KHÔNG ghi lịch sử.
-    if (approvedEdit) {
+    // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") VÀ CÓ THAY ĐỔI THỰC SỰ —
+    // bản nháp/lưu tạm, hồ sơ đang chờ duyệt hoặc không có trường nào thay đổi KHÔNG ghi lịch sử.
+    if (approvedEdit && !previousValues.isEmpty()) {
       changeHistoryService.recordChanges("TRANSMISSION", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
       LocalDateTime now = LocalDateTime.now();
-      if (!previousValues.isEmpty()) {
-        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-          String field = entry.getKey();
-          String fieldName = getFieldDisplayName(field);
-          String oldVal = entry.getValue();
-          Object rawNew;
-          if ("coordinates".equals(field)) {
-            rawNew = request.getCoordinates();
-          } else if ("geometryType".equals(field)) {
-            rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
-          } else {
-            rawNew = getEntityFieldValue(saved, field);
-          }
-          String newVal = rawNew != null ? String.valueOf(rawNew) : null;
-          historyRepository.save(InfrastructureHistory.builder()
-              .refId(saved.getId())
-              .refType(InfrastructureType.TRANSMISSION)
-              .approvalLevel(ApprovalLevel.LEVEL_2)
-              .status(InfrastructureHistoryStatus.UPDATED)
-              .approvedBy(currentUserId)
-              .approvedDate(now)
-              .changedField(fieldName)
-              .previousValue(formatDisplayValue(field, oldVal))
-              .newValue(formatDisplayValue(field, newVal))
-              .build());
+      for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+        String field = entry.getKey();
+        String fieldName = getFieldDisplayName(field);
+        String oldVal = entry.getValue();
+        Object rawNew;
+        if ("coordinates".equals(field)) {
+          rawNew = request.getCoordinates();
+        } else if ("geometryType".equals(field)) {
+          rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+        } else {
+          rawNew = getEntityFieldValue(saved, field);
         }
-      } else {
+        String newVal = rawNew != null ? String.valueOf(rawNew) : null;
+        String oldDisp = formatDisplayValue(field, oldVal);
+        String newDisp = formatDisplayValue(field, newVal);
+        if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
+          continue;
+        }
         historyRepository.save(InfrastructureHistory.builder()
             .refId(saved.getId())
             .refType(InfrastructureType.TRANSMISSION)
@@ -440,6 +454,9 @@ public class TransmissionService {
             .status(InfrastructureHistoryStatus.UPDATED)
             .approvedBy(currentUserId)
             .approvedDate(now)
+            .changedField(fieldName)
+            .previousValue(oldDisp)
+            .newValue(newDisp)
             .build());
       }
     }
@@ -779,6 +796,11 @@ public class TransmissionService {
 
   @Transactional
   public void deleteAttachment(UUID entityId, UUID attachmentId, UUID userId) {
+    Transmission parent = transmissionRepository.findById(entityId)
+        .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống truyền dẫn: " + entityId));
+    boolean wasApproved = parent.getApprovalStatus() == ApprovalStatus.APPROVED
+        || parent.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
     Attachment attachment = attachmentRepository.findById(attachmentId)
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
     if (!attachment.getEntityId().equals(entityId)) {
@@ -790,18 +812,20 @@ public class TransmissionService {
       // ignore file deletion failure; the DB record is still removed
     }
     attachmentRepository.delete(attachment);
-    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_DELETED) — mirror /vts-operation-center.
-    historyRepository.save(InfrastructureHistory.builder()
-        .refId(entityId)
-        .refType(InfrastructureType.TRANSMISSION)
-        .approvalLevel(ApprovalLevel.LEVEL_0)
-        .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
-        .approvedBy(userId)
-        .approvedDate(LocalDateTime.now())
-        .changedField("Tài liệu đính kèm")
-        .previousValue(attachment.getFileName())
-        .newValue("—")
-        .build());
+    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_DELETED) khi hồ sơ đã duyệt — mirror /vts-operation-center.
+    if (wasApproved) {
+      historyRepository.save(InfrastructureHistory.builder()
+          .refId(entityId)
+          .refType(InfrastructureType.TRANSMISSION)
+          .approvalLevel(ApprovalLevel.LEVEL_0)
+          .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+          .approvedBy(userId)
+          .approvedDate(LocalDateTime.now())
+          .changedField("Tài liệu đính kèm")
+          .previousValue(attachment.getFileName())
+          .newValue("—")
+          .build());
+    }
   }
 
   private AttachmentDto toAttachmentDto(Attachment entity) {
@@ -819,7 +843,7 @@ public class TransmissionService {
   }
 
   private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter, Map<String, String> previousValues) {
-    if (newValue != null && !Objects.equals(oldValue, newValue)) {
+    if (newValue != null && !EntityUpdateUtils.areEqual(oldValue, newValue)) {
       previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
       setter.accept(newValue);
     }

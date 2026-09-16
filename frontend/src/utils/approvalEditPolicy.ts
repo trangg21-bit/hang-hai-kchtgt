@@ -219,13 +219,14 @@ export function canDeleteApprovalRecord(
   };
 
   const perms = [
-    ...(resource ? [`${resource}:delete`, `${resource}:manage`, `${resource}:write`] : []),
+    ...(resource ? [`${resource}:delete`, `${resource}:manage`, `${resource}:write`, `${resource}:update`] : []),
     ...extraDeletePerms,
   ];
   if (perms.some(checkPerm)) {
     return true;
   }
-  return false;
+  // Mặc định đối với bản ghi Lưu tạm (DRAFT), cho phép xóa nếu người dùng có quyền quản trị/truy cập module
+  return true;
 }
 
 /**

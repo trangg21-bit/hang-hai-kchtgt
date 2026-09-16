@@ -295,17 +295,20 @@ public class StormShelterAreaService {
 
     @Transactional(readOnly = true)
     public Page<StormShelterAreaResponse> findAll(int page, int size, UUID orgUnitId,
-                                              String search, String stormShelterCode, String stormShelterName,
-                                              UUID portId, UUID navigationChannelId, UUID buoyStationId,
-                                              String classification, Integer provinceId,
-                                              String operationalStatus, String approvalStatus,
-                                              String updatedFrom, String updatedTo) {
+                                                  String search, String stormShelterCode, String stormShelterName,
+                                                  UUID portId, UUID navigationChannelId, UUID buoyStationId,
+                                                  String classification, Integer provinceId,
+                                                  String operationalStatus, String approvalStatus,
+                                                  String updatedFrom, String updatedTo, Boolean isDeleted) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
                 Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
                         Sort.Order.desc(EntityFields.CREATED_AT),
                         Sort.Order.asc(EntityFields.ID)));
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
+        if (Boolean.TRUE.equals(isDeleted)) {
+            approvalEnum = ApprovalStatus.ARCHIVED;
+        }
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
         java.time.LocalDateTime updatedToDt = parseUpdatedTo(updatedTo);

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.radarstation.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.AllArgsConstructor;
@@ -21,10 +23,13 @@ public class RadarStationResponse {
     private String code;
     private String stationName;
     private String location;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal longitude;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal latitude;
     private String stationType;
     private String coverage;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal emissionArea;
     private String source;
     private String conditionStatus;
@@ -74,7 +79,9 @@ public class RadarStationResponse {
     private GisGeometryType geometryType;
     private String coordinates;
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal towerHeight;
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal radarRange;
 
     private String mapIcon;

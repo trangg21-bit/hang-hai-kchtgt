@@ -105,7 +105,7 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
-  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -116,7 +116,7 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  DELETED: 'DELETED',
 };
 
 // ── Helper: format date ──────────────────────────────────────────────
@@ -345,9 +345,8 @@ export default function BerthList() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
-  const [sortField, setSortField] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -928,6 +927,14 @@ export default function BerthList() {
   // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
   const rowActions = useCallback(
     (record: Berth) => {
+      const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+      if (isDeleted) {
+        const actions: any[] = [
+          { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
+        ];
+        if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+        return actions;
+      }
       const actions: any[] = [
         { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
@@ -1194,15 +1201,15 @@ export default function BerthList() {
     const tailColumns: any[] = [
       { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, ellipsis: false,
         cellTitle: (record: Berth) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || record.approvalStatus === 'ARCHIVED';
-          const eff = isArchived ? 'ARCHIVED' : record.approvalStatus;
-          const s = APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff?.toUpperCase()];
-          return s ? s.label : (eff || '');
+          if (record.deletedAt || record.deletedBy) return 'Đã xóa';
+          const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()];
+          return s ? s.label : (record.approvalStatus || '');
         },
         render: (v: string, record: Berth) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
-          const eff = isArchived ? 'ARCHIVED' : v;
-          const s = eff && (APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff?.toUpperCase()]);
+          if (record.deletedAt || record.deletedBy) {
+            return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+          }
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v?.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         } },
       {
@@ -1425,9 +1432,18 @@ export default function BerthList() {
         onRetry={() => void fetchData()}
       >
         <DataTable columns={columns}
-          dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
+          dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField || !sortOrder) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
           rowKey="id" rowActions={rowActions} loading={false}
-          onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+          onSort={(key: string, order: 'asc' | 'desc' | null) => {
+            if (!order) {
+              setSortField(null);
+              setSortOrder(null);
+            } else {
+              setSortField(key);
+              setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+            }
+            setPage(1);
+          }}
           scroll={{ x: 'max-content' }}
         />
         <Pagination total={total} current={page} pageSize={pageSize}

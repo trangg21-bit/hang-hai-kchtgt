@@ -77,7 +77,7 @@ class BeaconStationControllerTest {
                 .lightRange(15.0)
                 .towerColor("Trắng")
                 .primaryLightModel("Chớp 3 giây")
-                .area(12.0)
+                .area(java.math.BigDecimal.valueOf(12.0))
                 .location("Mô tả")
                 .isActive(true)
                 .status(status)

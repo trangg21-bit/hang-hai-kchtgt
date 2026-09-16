@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { TransmissionAsset } from '../../services/transmissionAsset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  createAssetAdjustmentOperationSection,
+  handleAssetAdjustmentValuesChange,
+} from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -38,6 +41,7 @@ export interface OperationValues extends Record<string, unknown> {
   adjustmentDate?: Dayjs;
   adjustmentReason?: string;
   originalValueBefore?: number;
+  originalValue?: number;
   originalValueAfter?: number;
   remainingValueBefore?: number;
   remainingValueAfter?: number;
@@ -61,7 +65,6 @@ const ADJUSTMENT_REASONS = [
   'Thanh lý thiết bị hư hỏng',
   'Khác',
 ];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
 
 export interface TransmissionAssetOperationFormProps {
   open: boolean;
@@ -220,110 +223,12 @@ export default function TransmissionAssetOperationForm({
             required: true,
             rules: [{ required: true, message: 'Lý do là bắt buộc' }],
           },
-          {
-            name: 'notes',
-            label: 'Ghi chú điều chỉnh',
-            type: FormFieldType.TextArea,
-            placeholder: 'Nhập ghi chú điều chỉnh',
-            colSpan: 24,
-          },
         ],
       },
-      {
-        key: 'adjustment_values',
-        title: 'Giá trị điều chỉnh & Khấu hao',
-        icon: <SlidersOutlined />,
-        fields: [
-          {
-            name: 'originalValueBefore',
-            label: 'Nguyên giá trước khi điều chỉnh (VNĐ)',
-            type: FormFieldType.Readonly,
-            valueFormatter: (val) => fmtInputNumber(Number(val) || 0) + ' VNĐ',
-          },
-          {
-            name: 'originalValueAfter',
-            label: `Nguyên giá sau khi ${isIncrease ? 'tăng' : 'giảm'} (VNĐ)`,
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập nguyên giá mới',
-            required: true,
-            rules: [{ required: true, message: 'Nguyên giá sau điều chỉnh là bắt buộc' }],
-          },
-          {
-            name: 'remainingValueBefore',
-            label: 'Giá trị còn lại trước điều chỉnh (VNĐ)',
-            type: FormFieldType.Readonly,
-            valueFormatter: (val) => fmtInputNumber(Number(val) || 0) + ' VNĐ',
-          },
-          {
-            name: 'remainingValueAfter',
-            label: `Giá trị còn lại sau khi ${isIncrease ? 'tăng' : 'giảm'} (VNĐ)`,
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập giá trị còn lại mới',
-          },
-          {
-            name: 'declarationDate',
-            label: 'Ngày kê khai tài sản',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày kê khai',
-          },
-          {
-            name: 'depreciationRate',
-            label: 'Tỷ lệ hao mòn/Khấu hao (%)',
-            type: FormFieldType.Number,
-            min: 0,
-            max: 100,
-            placeholder: 'Nhập tỷ lệ',
-          },
-          {
-            name: 'assignmentDecisionNumber',
-            label: 'Số quyết định giao (bao gồm cả tăng vốn)',
-            type: FormFieldType.Text,
-            placeholder: 'Nhập số quyết định giao',
-          },
-          {
-            name: 'depreciationStartDate',
-            label: 'Ngày tính khấu hao',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày tính KH',
-          },
-          {
-            name: 'depreciationMonths',
-            label: 'Số tháng tính khấu hao',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập số tháng',
-          },
-          {
-            name: 'depreciationEndDate',
-            label: 'Ngày hết khấu hao',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày hết KH',
-          },
-          {
-            name: 'accumulatedDepreciation',
-            label: 'Khấu hao lũy kế (VNĐ)',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập khấu hao lũy kế',
-          },
-          {
-            name: 'monthlyDepreciation',
-            label: 'Khấu hao tháng (VNĐ)',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập khấu hao tháng',
-          },
-          {
-            name: 'disposalMethod',
-            label: 'Hình thức xử lý tài sản',
-            type: FormFieldType.Select,
-            placeholder: 'Chọn hình thức xử lý',
-            options: DISPOSAL_METHODS.map((d) => ({ value: d, label: d })),
-          },
-        ],
-      },
+      createAssetAdjustmentOperationSection<OperationValues>({
+        selectedRecord: selected,
+        operationMode,
+      }),
     ];
   }, [operationMode, selected, organizations]);
 
@@ -360,6 +265,9 @@ export default function TransmissionAssetOperationForm({
       form={form}
       sections={sections}
       footerActions={footerActions}
+      onValuesChange={(changed, all) => {
+        handleAssetAdjustmentValuesChange(form, changed, all);
+      }}
       rootClassName="transmission-operation-drawer"
       className="transmission-operation-drawer"
     />

@@ -6542,6 +6542,26 @@ public class ReportService {
         return convertExcelToPdf(sheet, false);
     }
 
+    private static volatile com.itextpdf.io.font.FontProgram CACHED_FONT_PROGRAM;
+
+    private static com.itextpdf.io.font.FontProgram getCachedFontProgram() {
+        if (CACHED_FONT_PROGRAM == null) {
+            synchronized (ReportService.class) {
+                if (CACHED_FONT_PROGRAM == null) {
+                    try (InputStream fontIs = ReportService.class.getClassLoader().getResourceAsStream("fonts/times.ttf")) {
+                        if (fontIs != null) {
+                            byte[] fontBytes = fontIs.readAllBytes();
+                            CACHED_FONT_PROGRAM = com.itextpdf.io.font.FontProgramFactory.createFont(fontBytes);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to load embedded Times font: {}", e.getMessage());
+                    }
+                }
+            }
+        }
+        return CACHED_FONT_PROGRAM;
+    }
+
     private byte[] convertExcelToPdf(Sheet sheet, boolean preservePageSetup) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
@@ -6654,19 +6674,10 @@ public class ReportService {
 
             doc.setMargins(topMargin, rightMargin, bottomMargin, leftMargin);
 
-            byte[] fontBytes = null;
-
-            try (InputStream fontIs = getClass().getClassLoader().getResourceAsStream("fonts/times.ttf")) {
-                if (fontIs != null)
-                    fontBytes = fontIs.readAllBytes();
-            }
-
-            com.itextpdf.kernel.font.PdfFont pdfFont;
-
-            if (fontBytes != null) {
-                pdfFont = com.itextpdf.kernel.font.PdfFontFactory.createFont(
-                        fontBytes, com.itextpdf.io.font.PdfEncodings.IDENTITY_H);
-
+            com.itextpdf.io.font.FontProgram fontProgram = getCachedFontProgram();
+            if (fontProgram != null) {
+                com.itextpdf.kernel.font.PdfFont pdfFont = com.itextpdf.kernel.font.PdfFontFactory.createFont(
+                        fontProgram, com.itextpdf.io.font.PdfEncodings.IDENTITY_H);
                 doc.setFont(pdfFont);
             }
 

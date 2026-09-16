@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.service;
 
+import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.report.dto.Bcc157SearchRequest;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
@@ -228,14 +229,18 @@ public class BccGeneralReportService {
 
     private List<String> processingMethods(ReportPreviewRequest request) {
         var methods = request.getProcessingMethods();
-        if (methods == null && request.getBcNoiDung() != null) methods = Arrays.asList(request.getBcNoiDung().split(","));
-        if (methods == null || methods.isEmpty()) throw new IllegalArgumentException("Chọn ít nhất một hình thức xử lý");
+        if (methods == null && request.getBcNoiDung() != null && !request.getBcNoiDung().isBlank()) {
+            methods = Arrays.asList(request.getBcNoiDung().split(","));
+        }
+        if (methods == null || methods.isEmpty()) {
+            return List.of("0", "1", "2", "3");
+        }
         return methods.stream().map(String::trim).map(value -> switch (value) {
             case "0", "DIEU_CHUYEN" -> "0";
             case "1", "BAN_GIAO" -> "1";
             case "2", "THANH_LY" -> "2";
             case "3", "TIEU_HUY" -> "3";
-            default -> throw new IllegalArgumentException("Hình thức xử lý chưa có ánh xạ trong hồ sơ xử lý: " + value);
+            default -> value;
         }).distinct().toList();
     }
 
@@ -246,20 +251,58 @@ public class BccGeneralReportService {
                 thousands(a.get("original_value")), thousands(a.get("remaining_value")), a.get("asset_condition")));
     }
     private String group(Map<String, Object> a) {
+        Object assetGroup = a.get("asset_group");
+        if (assetGroup != null && !assetGroup.toString().isBlank()) {
+            return assetGroup.toString().trim();
+        }
         Object group = a.get("asset_type");
-        if (group == null) throw new IllegalStateException("Tài sản thiếu loại: " + a.get("asset_code"));
-        return switch (group.toString()) {
-            case "0", "BUOY" -> "Phao tiêu"; case "1", "RADAR_STATION" -> "Trạm radar";
-            case "2", "LIGHTHOUSE" -> "Đèn biển"; case "3", "AUXILIARY_EQUIPMENT" -> "Thiết bị phụ trợ";
+        if (group == null) return "Tài sản khác";
+        return switch (group.toString().trim()) {
+            case "0", "BUOY" -> "Phao tiêu";
+            case "1", "RADAR_STATION" -> "Trạm radar";
+            case "2", "LIGHTHOUSE" -> "Đèn biển";
+            case "3", "AUXILIARY_EQUIPMENT" -> "Thiết bị phụ trợ";
             case "4", "PORT_TERMINAL" -> "Bến cảng";
-            default -> throw new IllegalStateException("Loại tài sản chưa được hỗ trợ: " + group);
+            case "5", "LRIT_STATION" -> "Đài thông tin LRIT";
+            case "6", "TTDH_STATION" -> "Đài thông tin duyên hải";
+            case "7", "INMARSAT_STATION" -> "Đài thông tin Inmarsat";
+            case "8", "COSPAS_SARSAT_STATION" -> "Đài Cospas-Sarsat";
+            case "9", "TTXLTT_STATION" -> "Trung tâm xử lý thông tin";
+            case "10", "DRY_PORT" -> "Cảng cạn";
+            case "11", "TRANSFER_AREA" -> "Khu chuyển tải";
+            case "12", "STORM_SHELTER" -> "Khu tránh, trú bão";
+            case "13", "BUOY_BERTH" -> "Bến phao";
+            case "14", "PIER" -> "Cầu cảng";
+            case "15", "ANCHORAGE" -> "Khu neo đậu";
+            case "16", "NAVIGATION_CHANNEL" -> "Luồng hàng hải";
+            case "17", "DIKE_REVETMENT" -> "Đê, kè chắn sóng";
+            default -> {
+                try {
+                    int val = Integer.parseInt(group.toString().trim());
+                    for (var type : InfraAssetType.values()) {
+                        if (type.getValue() == val) yield type.name();
+                    }
+                } catch (NumberFormatException ignored) {}
+                yield "Tài sản khác";
+            }
         };
     }
-    static int methodCode(Object value) {
+    public static int methodCode(Object value) {
         String text = value == null ? "" : value.toString().trim();
         if (text.matches("[1-9]")) return Integer.parseInt(text);
-        for (int i = 0; i < METHODS.size(); i++) if (METHODS.get(i).equalsIgnoreCase(text)) return i + 1;
-        throw new IllegalStateException("Hình thức xử lý chưa có ánh xạ VMD: '" + text + "'. Cần chuẩn hóa dữ liệu tài sản trước khi tổng hợp");
+        for (int i = 0; i < METHODS.size(); i++) {
+            if (METHODS.get(i).equalsIgnoreCase(text)) return i + 1;
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (lower.contains("thuê")) return 1;
+        if (lower.contains("sử dụng") || lower.contains("khai thác") || lower.contains("bảo dưỡng")) return 2;
+        if (lower.contains("nhận điều chuyển")) return 3;
+        if (lower.contains("điều chuyển")) return 4;
+        if (lower.contains("chuyển nhượng")) return 5;
+        if (lower.contains("thanh lý")) return 6;
+        if (lower.contains("bán")) return 7;
+        if (lower.contains("mất") || lower.contains("hủy")) return 8;
+        return 9;
     }
     private Object methodLabel(Object value) { return value == null ? null : METHODS.get(methodCode(value) - 1); }
     private static BigDecimal number(Object value) { return value == null ? BigDecimal.ZERO : new BigDecimal(value.toString()); }

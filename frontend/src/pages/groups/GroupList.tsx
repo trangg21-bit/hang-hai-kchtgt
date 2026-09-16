@@ -92,17 +92,22 @@ export default function GroupList() {
   const [countActive, setCountActive] = useState(0);
   const [countInactive, setCountInactive] = useState(0);
 
-  const [sortField, setSortField] = useState<string>('updatedAt');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
 
   const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+    (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
 
   const serverSideSorter = () => 0;
 
-  const handleSortChange = (key: string, direction: 'asc' | 'desc') => {
-    setSortField(key);
-    setSortDirection(direction);
+  const handleSortChange = (key: string, direction: 'asc' | 'desc' | null) => {
+    if (!direction) {
+      setSortField(null);
+      setSortDirection(null);
+    } else {
+      setSortField(key);
+      setSortDirection(direction);
+    }
     setPage(1);
   };
 
@@ -147,8 +152,8 @@ export default function GroupList() {
         code: code || undefined,
         status: filterStatus,
         organizationId: filterOrganizationId,
-        sortBy: sortField,
-        sortDir: sortField ? sortDirection.toUpperCase() : undefined,
+        sortBy: sortField || undefined,
+        sortDir: sortField && sortDirection ? sortDirection.toUpperCase() : undefined,
       });
       setDataSource(res.data); setTotal(res.total);
       setCountActive(res.activeCount);

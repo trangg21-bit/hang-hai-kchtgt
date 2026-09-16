@@ -10,6 +10,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -102,8 +103,8 @@ public class BeaconStation {
     private String primaryLightModel;
 
     @DecimalMin("0.01")
-    @Column(name = "area")
-    private Double area;
+    @Column(name = "area", precision = 24, scale = 4)
+    private BigDecimal area;
 
     @Size(max = 1000)
     @Column(name = "location", length = 500)
@@ -180,11 +181,11 @@ public class BeaconStation {
     @Column(name = "structure", length = 2000)
     private String structure;
 
-    @Column(name = "tower_height")
-    private Double towerHeight;
+    @Column(name = "tower_height", precision = 24, scale = 4)
+    private BigDecimal towerHeight;
 
-    @Column(name = "light_height")
-    private Double lightHeight;
+    @Column(name = "light_height", precision = 24, scale = 4)
+    private BigDecimal lightHeight;
 
     @Column(name = "geographic_range", length = 20)
     private String geographicRange;
@@ -198,8 +199,8 @@ public class BeaconStation {
     @Column(name = "staff_count")
     private Integer staffCount;
 
-    @Column(name = "station_area")
-    private Double stationArea;
+    @Column(name = "station_area", precision = 24, scale = 4)
+    private BigDecimal stationArea;
 
     @Column(name = "seaport_id")
     private java.util.UUID seaportId;

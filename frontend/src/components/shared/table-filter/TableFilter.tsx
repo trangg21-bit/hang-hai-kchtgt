@@ -24,6 +24,7 @@ import { useThemeToken } from '../../../context/ThemeTokenContext';
 import {
   colors,
   radiusPill,
+  selectStyle,
   spaceSm,
   spaceFormField,
   fontSizeMd,
@@ -348,7 +349,12 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
           />
         );
 
-      case 'select':
+      case 'select': {
+        const mode = typeof filter.selectProps?.mode === 'string' ? filter.selectProps.mode : undefined;
+        const isMultiple = mode === 'multiple' || mode === 'tags';
+        const customStyle = (filter.selectProps?.style && typeof filter.selectProps.style === 'object')
+          ? (filter.selectProps.style as React.CSSProperties)
+          : undefined;
         return (
           <Select
             value={value as string | number | undefined}
@@ -360,15 +366,19 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
             showSearch={showSearch}
             optionFilterProp="label"
             disabled={disabled}
-            options={filter.options as any}
+            options={filter.options}
             style={{
+              ...selectStyle,
               width: '100%',
-              borderRadius: radiusPill,
-              height: controlHeight,
+              height: isMultiple ? 'auto' : controlHeight,
+              minHeight: controlHeight,
+              borderRadius: isMultiple ? 20 : radiusPill,
+              ...customStyle,
             }}
             {...(filter.selectProps as React.ComponentProps<typeof Select>)}
           />
         );
+      }
 
       case 'treeSelect':
         return (
@@ -752,6 +762,22 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
           .table-filter-fields .ant-picker-input > input,
           .table-filter-fields .ant-btn {
             font-size: 13.5px !important;
+          }
+          .table-filter-fields .ant-select-multiple,
+          .table-filter-panel .ant-select-multiple {
+            height: auto !important;
+            min-height: 40px !important;
+          }
+          .table-filter-fields .ant-select-multiple .ant-select-selector,
+          .table-filter-panel .ant-select-multiple .ant-select-selector {
+            height: auto !important;
+            min-height: 40px !important;
+            border-radius: 20px !important;
+            padding: 4px 12px !important;
+            display: flex !important;
+            align-items: center !important;
+            flex-wrap: wrap !important;
+            box-sizing: border-box !important;
           }
         `}</style>
         {filterList.map((filter, index) => renderFilterItem(filter, index))}

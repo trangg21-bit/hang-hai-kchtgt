@@ -174,7 +174,7 @@ export default function LritStationList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
@@ -317,7 +317,7 @@ export default function LritStationList() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         sortBy: sortField || 'createdAt',
-        sortDir: sortField ? sortDirection.toUpperCase() : 'DESC',
+        sortDir: sortField && sortDirection ? sortDirection.toUpperCase() : 'DESC',
         includeCounts: statusCountFilterKey.current !== JSON.stringify([
           filterName, filterCode, filterOrgUnitId, filterProvinceId,
           filterConditionStatus, filterUpdatedFrom, filterUpdatedTo,
@@ -349,14 +349,19 @@ export default function LritStationList() {
     fetchData();
   }, [fetchData, isOptionsReady]);
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortDirection(null);
+    } else {
+      setSortField(field);
+      setSortDirection(order);
+    }
     setPage(1);
   }, []);
 
   const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+    (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
 
   const serverSideSorter = () => 0;
 

@@ -7,7 +7,6 @@ import {
   Input,
   Select,
   Tabs,
-  TreeSelect,
   Card,
   Spin,
   Empty,
@@ -16,6 +15,7 @@ import {
   Modal,
   DatePicker,
 } from 'antd';
+import { OrgUnitTreeSelect } from '../../components/org-unit';
 import toast from '../../components/ToastNotification';
 import { dikeRevetmentCRUD, dikeRevetmentApproval } from '../../services/dikeRevetmentService';
 import { organizationService } from '../../services/organizationService';
@@ -42,6 +42,7 @@ import { formLabelProps as labelProps } from '../../components/shared/formLabel'
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import {
   parseNumber20,
   getValueFromEvent20,
@@ -68,29 +69,7 @@ const STATUS_MAP: Record<string, string> = {
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 const OPERATING_ORG_OPTIONS = DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }));
-const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || null;
-
-const buildOrgTree = (nodes: any[]): any[] => {
-  const map = new Map<string, any>();
-  const roots: any[] = [];
-  nodes.forEach((org) => {
-    map.set(org.id, {
-      title: org.code ? `${org.code} - ${org.name}` : org.name,
-      value: org.id,
-      parentId: org.parentId,
-      children: [],
-    });
-  });
-  nodes.forEach((org) => {
-    const node = map.get(org.id);
-    if (org.parentId && map.has(org.parentId)) {
-      map.get(org.parentId).children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-  return roots;
-};
+const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || '';
 
 export interface DikeRevetmentFormProps {
   open?: boolean;
@@ -168,6 +147,15 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
     }
   }, [open]);
 
+  useEffect(() => {
+    if (isCreateMode) {
+      const currentOrgUnitId = currentUser?.orgUnitId;
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      }
+    }
+  }, [isCreateMode, currentUser, form]);
+
   // Fetch detail data
   useEffect(() => {
     if (id) {
@@ -186,11 +174,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
             seaportId: data.seaportId,
             operatingUnitId: data.operatingUnitId,
             constructionDate: data.constructionDate ? dayjs(data.constructionDate) : null,
-            lastMaintenanceYear: data.lastMaintenanceYear ? dayjs(data.lastMaintenanceYear) : null,
-            length: data.length,
-            crestElevation: data.crestElevation,
+            lastMaintenanceYear: data.lastMaintenanceYear ? dayjs(String(data.lastMaintenanceYear)) : null,
+            length: normalizeSafeNumber(data.length),
+            crestElevation: normalizeSafeNumber(data.crestElevation),
             commissioningDate: data.commissioningDate ? dayjs(data.commissioningDate) : null,
-            height: data.height,
+            height: normalizeSafeNumber(data.height),
             status: data.status,
             note: data.note,
             orgUnitId: data.orgUnitId,
@@ -241,8 +229,16 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         dikeRevetmentName: values.dikeRevetmentName,
         seaportId: values.seaportId,
         operatingUnitId: values.operatingUnitId,
-        constructionDate: values.constructionDate ? values.constructionDate.format('YYYY-MM-DD') : undefined,
-        lastMaintenanceYear: values.lastMaintenanceYear ? values.lastMaintenanceYear.format('YYYY') : undefined,
+        constructionDate: values.constructionDate
+          ? (dayjs.isDayjs(values.constructionDate)
+              ? values.constructionDate.format('YYYY-MM-DD')
+              : String(values.constructionDate))
+          : undefined,
+        lastMaintenanceYear: values.lastMaintenanceYear
+          ? (dayjs.isDayjs(values.lastMaintenanceYear)
+              ? Number(values.lastMaintenanceYear.format('YYYY'))
+              : Number(values.lastMaintenanceYear))
+          : undefined,
         length: safeDecimal(values.length),
         crestElevation: safeDecimal(values.crestElevation),
         commissioningDate: values.commissioningDate || undefined,
@@ -442,11 +438,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều dài (m):</div>
-                <div style={detailValueStyle}>{record.length !== undefined && record.length !== null ? Number(record.length).toFixed(2) : null}</div>
+<div style={detailValueStyle}>{record.length !== undefined ? fmtNum(record.length) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Cao trình đỉnh (m):</div>
-                <div style={detailValueStyle}>{record.crestElevation !== undefined && record.crestElevation !== null ? Number(record.crestElevation).toFixed(2) : null}</div>
+                <div style={detailValueStyle}>{record.crestElevation !== undefined ? fmtNum(record.crestElevation) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Thời điểm đưa vào khai thác:</div>
@@ -462,7 +458,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều cao (m):</div>
-                <div style={detailValueStyle}>{record.height !== undefined && record.height !== null ? Number(record.height).toFixed(2) : null}</div>
+<div style={detailValueStyle}>{record.height !== undefined ? fmtNum(record.height) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Tình trạng:</div>
@@ -714,6 +710,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
+          formatter={fmtInputNumber}
         />
       </Form.Item>
 
@@ -730,6 +727,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
+          formatter={fmtInputNumber}
         />
       </Form.Item>
 
@@ -744,7 +742,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           picker="year"
           {...getDatePickerProps({
             picker: 'year',
-            placeholder: 'Chọn năm...',
+            placeholder: 'Chọn năm',
             format: 'YYYY',
           })}
         />
@@ -776,7 +774,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           picker="year"
           {...getDatePickerProps({
             picker: 'year',
-            placeholder: 'Chọn năm...',
+            placeholder: 'Chọn năm',
             format: 'YYYY',
           })}
         />
@@ -805,6 +803,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
+          formatter={fmtInputNumber}
         />
       </Form.Item>
 
@@ -825,13 +824,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         name="orgUnitId"
         style={formFieldStyle}
       >
-        <TreeSelect
+        <OrgUnitTreeSelect
+          variant="form"
+          organizations={organizations}
           placeholder="Chọn đơn vị quản lý..."
-          allowClear
-          showSearch
-          treeNodeFilterProp="title"
-          treeDefaultExpandAll
-          treeData={buildOrgTree(organizations)}
+          treeDefaultExpandAll={false}
           style={selectStyle}
         />
       </Form.Item>

@@ -94,7 +94,7 @@ export interface DikeRevetmentResponse {
   operatingUnitName?: string;
   locationDetail?: string;
   constructionDate?: string;
-  lastMaintenanceYear?: string;
+  lastMaintenanceYear?: number | string;
   maintenancePlanCode?: string;
   maintenancePlanName?: string;
   maintenanceStartDate?: string;
@@ -143,7 +143,7 @@ export interface CreateDikeRevetmentRequest {
   operatingUnitId?: string;
   locationDetail?: string;
   constructionDate?: string;
-  lastMaintenanceYear?: string;
+  lastMaintenanceYear?: number | string;
   length?: number | string;
   crestElevation?: number | string;
   commissioningDate?: string;

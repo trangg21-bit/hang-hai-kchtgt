@@ -57,7 +57,7 @@ public class CctvController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'cctv:create')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:create') or @auth.check(authentication, 'cctv:read')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating CCTV device code");
     String code = cctvService.generateCctvCode();

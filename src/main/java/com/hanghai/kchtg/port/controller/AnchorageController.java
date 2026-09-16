@@ -80,14 +80,15 @@ public class AnchorageController {
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) Boolean isDeleted) {
         log.info(
-                "Listing Anchorages: page={}, size={}, orgUnitId={}, search={}, anchorageCode={}, anchorageName={}, portId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, anchorageCode, anchorageName, portId, operationalStatus, approvalStatus);
+                "Listing Anchorages: page={}, size={}, orgUnitId={}, search={}, anchorageCode={}, anchorageName={}, portId={}, status={}, approvalStatus={}, isDeleted={}",
+                page, size, orgUnitId, search, anchorageCode, anchorageName, portId, operationalStatus, approvalStatus, isDeleted);
         Page<AnchorageResponse> result = anchorageService.findAll(
                 page, size, orgUnitId,
                 search, anchorageCode, anchorageName, portId, navigationChannelId, buoyStationId, provinceId,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách khu neo đậu thành công", result));
     }
 

@@ -95,4 +95,13 @@ class ScadaControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
     }
+
+    @Test
+    void testGenerateCode() {
+        when(scadaService.generateScadaCode()).thenReturn("SCA-000047");
+        ResponseEntity<?> result = controller.generateCode();
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        verify(scadaService).generateScadaCode();
+    }
 }

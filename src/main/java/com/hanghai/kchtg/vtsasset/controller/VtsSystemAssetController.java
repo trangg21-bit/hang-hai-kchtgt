@@ -14,6 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.UUID;
 
 import java.time.LocalDate;
 import java.util.Set;
@@ -106,5 +107,12 @@ public class VtsSystemAssetController {
             @PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản hệ thống VTS đã được xóa", null));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
+        Object history = service.getHistory(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));
     }
 }

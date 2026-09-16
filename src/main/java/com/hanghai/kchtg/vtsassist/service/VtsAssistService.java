@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vtsassist.service;
 
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+
 import com.hanghai.kchtg.vtsassist.dto.VtsAssistResponse;
 import com.hanghai.kchtg.vtsassist.dto.VtsAssistOptionResponse;
 import com.hanghai.kchtg.vtsassist.dto.CreateVtsAssistRequest;
@@ -37,6 +39,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -141,8 +145,20 @@ public class VtsAssistService {
    */
   public String generateVtsAssistCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = vtsAssistRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("PTVTS-%06d", sequence);
+    int sequence = 0;
+    try {
+      sequence = vtsAssistRepository.findMaxDeviceCodeSequence().orElse(0);
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị phụ trợ VTS, fallback: {}", e.getMessage());
+      sequence = (int) vtsAssistRepository.count();
+    }
+    sequence++;
+    String code = String.format("PTVTS-%06d", sequence);
+    while (vtsAssistRepository.existsDeviceCodeAnyState(code)) {
+      sequence++;
+      code = String.format("PTVTS-%06d", sequence);
+    }
+    return code;
   }
 
   /**
@@ -406,10 +422,11 @@ public class VtsAssistService {
       }
     }
 
-    if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
+if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
       previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
     }
-    if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
+    String newGeomStr = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+    if (newGeomStr != null && !Objects.equals(newGeomStr, oldGeometryType)) {
       previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
     }
 
@@ -468,6 +485,11 @@ public class VtsAssistService {
             rawNew = getEntityFieldValue(saved, field);
           }
           String newVal = rawNew != null ? String.valueOf(rawNew) : null;
+          String oldDisp = formatDisplayValue(field, oldVal);
+          String newDisp = formatDisplayValue(field, newVal);
+          if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
+            continue;
+          }
           historyRepository.save(InfrastructureHistory.builder()
               .refId(saved.getId())
               .refType(InfrastructureType.VTS_ASSIST)
@@ -476,19 +498,10 @@ public class VtsAssistService {
               .approvedBy(currentUserId)
               .approvedDate(now)
               .changedField(fieldName)
-              .previousValue(formatDisplayValue(field, oldVal))
-              .newValue(formatDisplayValue(field, newVal))
+              .previousValue(oldDisp)
+              .newValue(newDisp)
               .build());
         }
-      } else {
-        historyRepository.save(InfrastructureHistory.builder()
-            .refId(saved.getId())
-            .refType(InfrastructureType.VTS_ASSIST)
-            .approvalLevel(ApprovalLevel.LEVEL_2)
-            .status(InfrastructureHistoryStatus.UPDATED)
-            .approvedBy(currentUserId)
-            .approvedDate(now)
-            .build());
       }
     }
 
@@ -508,10 +521,10 @@ public class VtsAssistService {
   }
 
   private <T> void applyIfChanged(String fieldName, T currentVal, T newVal, java.util.function.Consumer<T> setter, Map<String, String> previousValues) {
-    if (newVal != null && !Objects.equals(currentVal, newVal)) {
-      previousValues.put(fieldName, currentVal != null ? String.valueOf(currentVal) : "Chưa có");
-      setter.accept(newVal);
-    }
+    if (newVal == null) return;
+    if (EntityUpdateUtils.areEqual(currentVal, newVal)) return;
+    previousValues.put(fieldName, currentVal != null ? String.valueOf(currentVal) : "Chưa có");
+    setter.accept(newVal);
   }
 
   private Object getEntityFieldValue(VtsAssist entity, String field) {
@@ -573,6 +586,18 @@ public class VtsAssistService {
   public String formatDisplayValue(String field, String rawValue) {
     if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
       return "Chưa có";
+    }
+    if ("quantity".equals(field) || "Số lượng".equals(field)
+        || "yearOfUse".equals(field) || "Năm đưa vào sử dụng".equals(field)) {
+      try {
+        String c = rawValue.replace(",", "").trim();
+        if (c.matches("^-?\\d+(\\.\\d+)?$")) {
+          BigDecimal bd = new BigDecimal(c).stripTrailingZeros();
+          return bd.scale() < 0 ? bd.setScale(0).toPlainString() : bd.toPlainString();
+        }
+      } catch (Exception ignored) {
+      }
+      return rawValue;
     }
     if ("mapSymbolId".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field) || "symbolId".equals(field)) {
       try {
@@ -695,7 +720,7 @@ public class VtsAssistService {
       if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
         return "Chưa có";
       }
-      return rawValue.trim();
+      return rawValue.trim().replaceAll("\\s+", " ").replace(" (", "(");
     }
     return rawValue;
   }

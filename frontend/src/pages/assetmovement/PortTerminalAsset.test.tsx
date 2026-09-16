@@ -1,25 +1,23 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Form } from 'antd';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Form } from 'antd';
-import { useAuthStore } from '../../store/authStore';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as api from '../../services/assetmovement/api';
 import type {
-  PortTerminalAsset,
-  PortTerminalAssetPayload,
-  PortTerminalAssetFilters,
-  AssetValueAdjustmentDetails,
+  AssetDecreaseRequest,
   AssetExploitationResponse,
   AssetIncreaseResponse,
-  AssetDecreaseResponse,
-  AssetDecreaseRequest,
+  AssetValueAdjustmentDetails,
+  PortTerminalAsset,
+  PortTerminalAssetFilters,
+  PortTerminalAssetPayload
 } from '../../services/assetmovement/types';
-import PortTerminalAssetList from './PortTerminalAssetList';
-import PortTerminalAssetForm, { type FormValues } from './PortTerminalAssetForm';
-import PortTerminalAssetDetailContent from './PortTerminalAssetDetailContent';
-import { PortTerminalAssetOperationForm, type OperationValues } from './PortTerminalAssetOperationForm';
-import type { Berth } from '../../types/port';
 import type { Organization } from '../../services/organizationService';
+import { useAuthStore } from '../../store/authStore';
+import PortTerminalAssetDetailContent from './PortTerminalAssetDetailContent';
+import PortTerminalAssetForm, { type FormValues } from './PortTerminalAssetForm';
+import PortTerminalAssetList from './PortTerminalAssetList';
+import { PortTerminalAssetOperationForm, type OperationValues } from './PortTerminalAssetOperationForm';
 
 vi.mock('antd', async (importOriginal) => {
   const actual = await importOriginal<typeof import('antd')>();

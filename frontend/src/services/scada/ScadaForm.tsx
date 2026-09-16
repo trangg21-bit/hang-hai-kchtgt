@@ -36,7 +36,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { Symbol as MapSymbolType } from '../symbolService';
 import {
   GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt,
-  ddToDms,
+  ddToDms, dmsToDd,
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
 import {
@@ -146,18 +146,6 @@ const UNIT_OF_MEASURE_OPTIONS = [
   { label: 'VNĐ', value: 27 },
 ];
 
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 
 const dmsUnitStyle: React.CSSProperties = {
@@ -264,6 +252,7 @@ export interface ScadaFormRef {
 export interface ScadaFormProps {
   id?: string | null;
   isEdit?: boolean;
+  initialData?: ScadaResponse | null;
   form: FormInstance;
   onSuccess?: () => void;
   onFinish?: () => void;
@@ -272,12 +261,14 @@ export interface ScadaFormProps {
 
 const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   id,
-  isEdit = false,
+  isEdit: isEditProp,
+  initialData,
   form,
   onSuccess,
   onFinish,
   onSubmittingChange,
 }, ref) => {
+  const isEdit = isEditProp !== undefined ? isEditProp : Boolean(id);
   const [activeTab, setActiveTab] = useState('info');
   const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
@@ -310,7 +301,8 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   const [coordinateList, setCoordinateList] = useState<DmsCoordinateItem[]>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalVisible, setGisModalVisible] = useState(false);
-  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string }>({ coords: [], symbolId: undefined });
+  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
+  const latestGisMapValueRef = useRef<any>(null);
 
   // Attachments state
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
@@ -353,6 +345,56 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
 
   const handleOrgUnitChange = () => {
     // Giữ hoặc cập nhật dữ liệu liên quan khi đổi đơn vị
+  };
+
+  // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
+  const applyMapSelection = (val: any) => {
+    if (!val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+    if (val.geometryType && val.geometryType !== watchedGeometryType) {
+      form.setFieldValue('geometryType', val.geometryType);
+    }
+    if (val.symbolId) {
+      form.setFieldValue('mapSymbolId', val.symbolId);
+    }
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newPoints = points.map(toDms);
+        if (geom === 'POINT') {
+          setCoordinateList([newPoints[0]]);
+        } else {
+          setCoordinateList(newPoints);
+        }
+        setGpsError(null);
+      }
+    } else if (val.coordinates === '') {
+      setCoordinateList([]);
+    }
+  };
+
+  const handleCancelGisMap = () => {
+    setCoordinateList(gisCoordSnapshotRef.current.coords);
+    form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+    if (gisCoordSnapshotRef.current.geometryType) {
+      form.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalVisible(false);
+  };
+
+  const handleConfirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyMapSelection(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalVisible(false);
   };
 
   // Load org units
@@ -436,15 +478,19 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   // Create mode: auto-generate deviceCode
   useEffect(() => {
     if (isEdit) return;
+    if (form.getFieldValue('deviceCode')) return;
     setDeviceCodeLoading(true);
     generateScadaCode()
       .then((code) => {
-        if (code) form.setFieldValue('deviceCode', code);
+        if (code) form.setFieldsValue({ deviceCode: code });
       })
       .catch(() => {})
       .finally(() => setDeviceCodeLoading(false));
 
-    if (!isSystemAdmin) {
+    const currentOrgUnitId = currentUser?.orgUnitId;
+    if (currentOrgUnitId) {
+      form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+    } else {
       api.get('/users/me')
         .then((r) => {
           const p = r.data?.data ?? r.data;
@@ -452,7 +498,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         })
         .catch(() => {});
     }
-  }, [isEdit, isSystemAdmin, form]);
+  }, [isEdit, currentUser, form]);
 
   // GIS Geometry Type changes: adjust coordinateList
   useEffect(() => {
@@ -463,14 +509,19 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       setGpsError(null);
       return;
     }
-    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    if (!form.getFieldValue('coordinateSystem')) {
+      form.setFieldsValue({ coordinateSystem: 1 });
+    }
+    if (!form.getFieldValue('displayRule')) {
+      form.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
+    }
     const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
       if (watchedGeometryType === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -480,32 +531,115 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
     });
   }, [watchedGeometryType, form]);
 
+  // Populate form fields and state from ScadaResponse
+  const populateFormData = useCallback((data: ScadaResponse) => {
+    if (data.operatingUnitId && data.operatingUnitName) {
+      setOperatingOrgs((prev) => {
+        if (prev.some((item) => item.id === data.operatingUnitId)) return prev;
+        return [...prev, { id: data.operatingUnitId!, name: data.operatingUnitName!, code: '' }];
+      });
+    }
+    if (data.attachedInfrastructureType === 1 && data.attachedInfrastructureId && data.attachedInfrastructureName) {
+      setVtsOperationCenters((prev) => {
+        if (prev.some((item) => item.id === data.attachedInfrastructureId)) return prev;
+        return [...prev, { id: data.attachedInfrastructureId!, name: data.attachedInfrastructureName! }];
+      });
+    }
+    if (data.attachedInfrastructureType === 2 && data.attachedInfrastructureId && data.attachedInfrastructureName) {
+      setRadarStations((prev) => {
+        if (prev.some((item) => item.id === data.attachedInfrastructureId)) return prev;
+        return [...prev, { id: data.attachedInfrastructureId!, stationName: data.attachedInfrastructureName! }];
+      });
+    }
+
+    const pts = parseWktToCoordinates(data.coordinates || undefined);
+    let initialCoords: DmsCoordinateItem[] = pts.length > 0 ? pts.map(c => {
+      const latDms = ddToDms(c.latitude);
+      const lngDms = ddToDms(c.longitude);
+      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+    }) : [];
+    const geom = data.geometryType;
+    if (geom === 'POINT' && initialCoords.length > 1) {
+      initialCoords = [initialCoords[0]];
+    } else if (geom && initialCoords.length > 0 && initialCoords.length < (GEOMETRY_POINT_COUNT[geom] ?? 1)) {
+      const count = GEOMETRY_POINT_COUNT[geom] ?? 1;
+      initialCoords = [...initialCoords, ...Array.from({ length: count - initialCoords.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }))];
+    } else if (geom && initialCoords.length === 0) {
+      const count = GEOMETRY_POINT_COUNT[geom] ?? 1;
+      initialCoords = Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+    }
+    setCoordinateList(initialCoords);
+
+    let opStatus = 1;
+    if (data.operationalStatus != null) {
+      switch (String(data.operationalStatus).toUpperCase()) {
+        case '0':
+        case 'NOT_YET_OPERATIONAL':
+        case 'CHUA_KHAI_THAC':
+          opStatus = 0;
+          break;
+        case '1':
+        case 'OPERATIONAL':
+        case 'HIEN_HANH':
+        case 'ACTIVE':
+          opStatus = 1;
+          break;
+        case '2':
+        case 'SUSPENDED':
+        case 'TAM_NGUNG':
+        case 'INACTIVE':
+          opStatus = 2;
+          break;
+        default: {
+          const num = Number(data.operationalStatus);
+          opStatus = num >= 0 && num <= 2 ? num : 1;
+        }
+      }
+    }
+
+    form.setFieldsValue({
+      deviceCode: data.deviceCode,
+      deviceName: data.deviceName,
+      orgUnitId: data.orgUnitId,
+      operatingUnitId: data.operatingUnitId,
+      attachedInfrastructureType: data.attachedInfrastructureType,
+      attachedInfrastructureId: data.attachedInfrastructureId,
+      provinceName: data.provinceName,
+      detailedLocation: data.detailedLocation,
+      unitOfMeasure: data.unitOfMeasure,
+      quantity: data.quantity,
+      yearOfUse: data.yearOfUse != null ? Number(data.yearOfUse) : undefined,
+      operationalStatus: opStatus,
+      model: data.model,
+      manufacturer: data.manufacturer,
+      specifications: data.specifications,
+      maintenanceInformation: data.maintenanceInformation,
+      note: data.note,
+      geometryType: data.geometryType || undefined,
+      mapSymbolId: data.mapSymbolId,
+      coordinateSystem: data.geometryType ? (data.coordinateSystem || 1) : undefined,
+      displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
+    });
+  }, [form]);
+
   // Edit mode: load data for existing record
   useEffect(() => {
     if (!isEdit || !id) return;
+
+    if (initialData && initialData.id === id) {
+      populateFormData(initialData);
+    }
+
+    let active = true;
     (async () => {
       try {
         const data: ScadaResponse = await fetchScadaById(id);
-        const pts = parseWktToCoordinates(data.coordinates || undefined);
-        let initialCoords: DmsCoordinateItem[] = pts.length > 0 ? pts.map(c => {
-          const latDms = ddToDms(c.latitude);
-          const lngDms = ddToDms(c.longitude);
-          return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-        }) : [];
-        const geom = data.geometryType;
-        if (geom === 'POINT' && initialCoords.length > 1) {
-          initialCoords = [initialCoords[0]];
-        } else if (geom && initialCoords.length > 0 && initialCoords.length < (GEOMETRY_POINT_COUNT[geom] ?? 1)) {
-          const count = GEOMETRY_POINT_COUNT[geom] ?? 1;
-          initialCoords = [...initialCoords, ...Array.from({ length: count - initialCoords.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }))];
-        } else if (geom && initialCoords.length === 0) {
-          const count = GEOMETRY_POINT_COUNT[geom] ?? 1;
-          initialCoords = Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-        }
-        setCoordinateList(initialCoords);
+        if (!active) return;
+        populateFormData(data);
 
         try {
           const attList = await fetchScadaAttachments(id);
+          if (!active) return;
           const files: UploadFile[] = (attList || []).map((a: RawAttachmentItem) => ({
             uid: a.id,
             name: a.fileName,
@@ -516,49 +650,22 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           setExistingFiles(attList || []);
           setUploadedFiles(files);
         } catch {
-          setExistingFiles([]);
-          setUploadedFiles([]);
+          if (active) {
+            setExistingFiles([]);
+            setUploadedFiles([]);
+          }
         }
-
-        form.setFieldsValue({
-          deviceCode: data.deviceCode,
-          deviceName: data.deviceName,
-          orgUnitId: data.orgUnitId,
-          operatingUnitId: data.operatingUnitId,
-          attachedInfrastructureType: data.attachedInfrastructureType,
-          attachedInfrastructureId: data.attachedInfrastructureId,
-          provinceName: data.provinceName,
-          detailedLocation: data.detailedLocation,
-          unitOfMeasure: data.unitOfMeasure,
-          quantity: data.quantity,
-          yearOfUse: data.yearOfUse ? dayjs().year(data.yearOfUse) : undefined,
-          operationalStatus: data.operationalStatus != null ? (() => {
-            switch (data.operationalStatus) {
-              case 'NOT_YET_OPERATIONAL': return 0;
-              case 'OPERATIONAL': return 1;
-              case 'SUSPENDED': return 2;
-              default: {
-                const num = Number(data.operationalStatus);
-                return num >= 0 && num <= 2 ? num : 1;
-              }
-            }
-          })() : 1,
-          model: data.model,
-          manufacturer: data.manufacturer,
-          specifications: data.specifications,
-          maintenanceInformation: data.maintenanceInformation,
-          note: data.note,
-          geometryType: data.geometryType || 'POINT',
-          mapSymbolId: data.mapSymbolId,
-          coordinateSystem: data.coordinateSystem || 1,
-          displayRule: 'Độ, phút, giây (DMS)',
-        });
       } catch (err) {
+        if (!active) return;
         console.error('Lỗi khi nạp dữ liệu SCADA:', err);
         toast.error('Không thể tải thông tin hệ thống SCADA');
       }
     })();
-  }, [isEdit, id, form]);
+
+    return () => {
+      active = false;
+    };
+  }, [isEdit, id, initialData, populateFormData]);
 
   const handleBeforeUpload = (file: File): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
@@ -610,7 +717,15 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       }
 
       const values = form.getFieldsValue(true);
-      const geomType = values.geometryType || 'POINT';
+      const geomType = values.geometryType || undefined;
+      const hasCoordinates = coordinateList.length > 0;
+
+      if (hasCoordinates && !geomType) {
+        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+        setActiveTab('location');
+        return;
+      }
+
       const coordResult = validateDmsCoordinates(coordinateList, geomType);
       if (!coordResult.valid) {
         const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
@@ -619,9 +734,10 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         setActiveTab('location');
         return;
       }
+      setGpsError(null);
 
       const validCoords = coordResult.validCoords;
-      const wkt = serializeCoordinatesToWkt(validCoords, geomType);
+      const wkt = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
 
       // DatePicker year trả về dayjs → payload gửi số năm
       const rawYear = values.yearOfUse;
@@ -653,9 +769,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
             longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
             mapSymbolId: values.mapSymbolId || null,
-            coordinateSystem: values.coordinateSystem,
-            displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-            geometryType: geomType,
+            coordinateSystem: geomType ? values.coordinateSystem : undefined,
+            displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
+            geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
             coordinates: wkt || undefined,
             ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
           };
@@ -703,9 +819,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
             longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
             mapSymbolId: values.mapSymbolId || null,
-            coordinateSystem: values.coordinateSystem,
-            displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
-            geometryType: geomType,
+            coordinateSystem: geomType ? values.coordinateSystem : undefined,
+            displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
+            geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
             coordinates: wkt || undefined,
             action: saveAction === 'DRAFT' ? 'draft' : saveAction === 'SUBMIT' ? 'submit' : 'approve',
           };
@@ -772,6 +888,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           {
             key: 'info',
             label: 'Thông tin chung',
+            forceRender: true,
             children: (
               <div style={drawerFormScrollStyle}>
                 {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -782,6 +899,43 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                       <span>Thông tin cơ bản & Quản lý vận hành</span>
                     </div>
                   </div>
+
+                  <Row gutter={[24, 0]}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="orgUnitId"
+                        {...labelProps('Đơn vị quản lý')}
+                        style={{ marginBottom: spaceFormField }}
+                        rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
+                      >
+                        <OrgUnitTreeSelect
+                          variant="form"
+                          organizations={orgUnits}
+                          placeholder="Chọn đơn vị quản lý..."
+                          loading={loadingOrgs}
+                          disabled={isEdit && !isSystemAdmin}
+                          showPath
+                          treeDefaultExpandAll={false}
+                          onChange={handleOrgUnitChange}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="operatingUnitId" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
+                        <Select
+                          showSearch
+                          placeholder="Chọn đơn vị khai thác..."
+                          loading={loadingOperatingOrgs}
+                          style={selectStyle}
+                          options={operatingOrgs.map(o => ({ label: o.name || o.code, value: o.id }))}
+                          filterOption={(input, option) =>
+                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                          }
+                          allowClear
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
@@ -809,49 +963,13 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
                       <Form.Item
-                        name="orgUnitId"
-                        {...labelProps('Đơn vị quản lý')}
-                        style={{ marginBottom: spaceFormField }}
-                        rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
-                      >
-                        <OrgUnitTreeSelect
-                          organizations={orgUnits}
-                          placeholder="Chọn đơn vị quản lý..."
-                          loading={loadingOrgs}
-                          disabled={isEdit || !isSystemAdmin}
-                          showPath
-                          treeDefaultExpandAll={false}
-                          onChange={handleOrgUnitChange}
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item name="operatingUnitId" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
-                        <Select
-                          showSearch
-                          placeholder="Chọn đơn vị khai thác..."
-                          loading={loadingOperatingOrgs}
-                          style={selectStyle}
-                          options={operatingOrgs.map(o => ({ label: o.name || o.code, value: o.id }))}
-                          filterOption={(input, option) =>
-                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                          }
-                          allowClear
-                        />
-                      </Form.Item>
-                    </Col>
-                  </Row>
-
-                  <Row gutter={[24, 0]}>
-                    <Col span={12}>
-                      <Form.Item
                         name="attachedInfrastructureType"
                         {...labelProps('Thuộc loại hạ tầng')}
                         style={{ marginBottom: spaceFormField }}
                         rules={[{ required: true, message: 'Loại hạ tầng là bắt buộc' }]}
                       >
                         <Select
-                          placeholder="Chọn loại hạ tầng..."
+                          placeholder="Chọn loại hạ tầng"
                           options={ATTACHED_INFRA_TYPE_OPTIONS}
                           style={selectStyle}
                           onChange={() => {
@@ -870,9 +988,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         <Select
                           placeholder={
                             watchedAttachedType === 2
-                              ? 'Chọn trạm Radar...'
+                              ? 'Chọn trạm Radar'
                               : watchedAttachedType === 1
-                                ? 'Chọn Trung Tâm Điều Hành VTS...'
+                                ? 'Chọn Trung Tâm Điều Hành VTS'
                                 : 'Chọn loại hạ tầng trước'
                           }
                           options={
@@ -933,7 +1051,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
                       <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                        <Select placeholder="Chọn đơn vị tính..." options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
+                        <Select placeholder="Chọn đơn vị tính" options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -946,13 +1064,12 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                           { required: true, message: 'Số lượng là bắt buộc' },
                           integer5Rule,
                         ]}
-                        initialValue={1}
                       >
                         <NumberInputWithCount
                           min={1}
                           step={1}
                           precision={0}
-                          placeholder="Nhập số lượng..."
+                          placeholder="Nhập số lượng"
                           style={numberInputStyle}
                           maxLength={5}
                           parser={parseNumber5}
@@ -967,7 +1084,16 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         name="yearOfUse"
                         {...labelProps('Năm đưa vào sử dụng')}
                         style={{ marginBottom: spaceFormField }}
-                        getValueProps={(v: number | null | undefined) => ({ value: v != null && !Number.isNaN(Number(v)) ? dayjs().year(Number(v)) : null })}
+                        getValueProps={(v: any) => ({
+                          value:
+                            v != null
+                              ? dayjs.isDayjs(v)
+                                ? v
+                                : !Number.isNaN(Number(v))
+                                ? dayjs().year(Number(v))
+                                : null
+                              : null,
+                        })}
                         getValueFromEvent={(d: { year?: () => number } | null) => (d && typeof d.year === 'function' ? d.year() : null)}
                       >
                         <DatePicker picker="year" format="YYYY" placeholder="Chọn năm đưa vào sử dụng" style={selectStyle} />
@@ -1048,7 +1174,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                         help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                       >
-                        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1063,7 +1189,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         validateStatus={atMax.note ? 'error' : undefined}
                         help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                       >
-                        <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                        <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -1074,6 +1200,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           {
             key: 'location',
             label: `Thông tin vị trí (${coordinateList.length})`,
+            forceRender: true,
             children: (
               <div style={drawerFormScrollStyle}>
                 {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1168,7 +1295,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                           gisCoordSnapshotRef.current = {
                             coords: coordinateList.map((c) => ({ ...c })),
                             symbolId: form.getFieldValue('mapSymbolId'),
+                            geometryType: form.getFieldValue('geometryType'),
                           };
+                          latestGisMapValueRef.current = null;
                           setGisModalVisible(true);
                         }}
                         disabled={!watchedGeometryType}
@@ -1296,7 +1425,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           },
           {
             key: 'attachments',
-            label: `Tệp đính kèm (${uploadedFiles.length})`,
+            label: `File đính kèm (${uploadedFiles.length})`,
             children: (
               <div style={drawerFormScrollStyle}>
                 <InfrastructureAttachmentTab
@@ -1374,22 +1503,14 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           </div>
         }
         open={gisModalVisible}
-        onCancel={() => {
-          setCoordinateList(gisCoordSnapshotRef.current.coords);
-          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-          setGisModalVisible(false);
-        }}
+        onCancel={handleCancelGisMap}
         destroyOnClose
         width="94vw"
         style={{ maxWidth: 1400, top: 20 }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => {
-              setCoordinateList(gisCoordSnapshotRef.current.coords);
-              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-              setGisModalVisible(false);
-            }}
+            onClick={handleCancelGisMap}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
@@ -1397,7 +1518,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           <Button
             key="confirm"
             type="primary"
-            onClick={() => setGisModalVisible(false)}
+            onClick={handleConfirmGisMap}
             style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
@@ -1411,54 +1532,19 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             height={520}
             value={{
               geometryType: (watchedGeometryType as any) || 'POINT',
-              coordinates: (() => {
-                const valid = coordinateList
-                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => c.latD != null && c.lngD != null)
                   .map((c) => ({
-                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                  }));
-                return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
-              })(),
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
               symbolId: form.getFieldValue('mapSymbolId') || undefined,
             }}
-            onChange={(val: any) => {
-              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
-              const points = parseGisCoordinates(val);
-              if (points.length > 0) {
-                if (watchedGeometryType === 'POINT') {
-                  const p = points[0];
-                  const latDms = ddToDms(p.latitude);
-                  const lngDms = ddToDms(p.longitude);
-                  setCoordinateList([{
-                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
-                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-                  }]);
-                } else {
-                  setCoordinateList((prev) => {
-                    const toDms = (p: { latitude: number; longitude: number }) => {
-                      const lat = ddToDms(p.latitude);
-                      const lng = ddToDms(p.longitude);
-                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                    };
-                    const newRows = points.map(toDms);
-                    const merged = [...prev];
-                    let newIdx = 0;
-                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-                      if (!isFilled(merged[i])) {
-                        merged[i] = newRows[newIdx++];
-                      }
-                    }
-                    while (newIdx < newRows.length) {
-                      merged.push(newRows[newIdx++]);
-                    }
-                    return merged;
-                  });
-                }
-                setGpsError(null);
-              }
-            }}
+            onChange={applyMapSelection}
           />
         </div>
       </Modal>

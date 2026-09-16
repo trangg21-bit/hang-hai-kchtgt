@@ -1,19 +1,40 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
+import { DatePicker, Form, Input, Button, Space } from 'antd';
 import {
   PlusOutlined,
   EyeOutlined,
   EditOutlined,
   DeleteOutlined,
+  HistoryOutlined,
   RocketOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
+import api from '../../services/api';
+import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import * as themeTokenChk from '../../themetokenchk';
+import {
+  fontWeightBold,
+  colors,
+  borderDefault,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  actionPrimary,
+  radiusPill,
+  spaceSm,
+  spaceMd,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
 import {
   ScreenHeader,
   FilterTableLayout,
@@ -98,6 +119,92 @@ const STATUS_COUNT_KEYS = [
   'REJECTED_LEVEL2',
 ];
 
+const CCTV_ASSET_FIELD_LABELS: Record<string, string> = {
+  assetCode: 'Mã tài sản',
+  assetName: 'Tên tài sản',
+  cctvId: 'Thiết bị CCTV',
+  cctvDeviceId: 'Thiết bị CCTV',
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  orgUnitId: 'Đơn vị quản lý',
+  usingOrgUnitId: 'Đơn vị sử dụng',
+  barcode: 'Mã barcode',
+  assetCondition: 'Tình trạng tài sản',
+  usageStatus: 'Hiện trạng sử dụng',
+  assetGroup: 'Nhóm tài sản',
+  assetSubgroup: 'Phân nhóm tài sản',
+  assetType: 'Loại tài sản',
+  address: 'Địa chỉ',
+  origin: 'Nguồn gốc',
+  quantity: 'Số lượng',
+  quantityUnit: 'Đơn vị tính',
+  model: 'Model',
+  serialNumber: 'Số serial',
+  countryOfOrigin: 'Xuất xứ',
+  manufacturer: 'Hãng sản xuất',
+  constructionYear: 'Năm xây dựng',
+  useDate: 'Ngày sử dụng tài sản',
+  landArea: 'Diện tích đất, sàn sử dụng (m²)',
+  floorArea: 'Diện tích sàn xây dựng (m²)',
+  assetLocation: 'Vị trí tài sản',
+  declarationDate: 'Ngày kê khai tài sản',
+  depreciationRate: 'Tỷ lệ hao mòn/khấu hao (%)',
+  assignmentDecisionNumber: 'Số quyết định giao',
+  depreciationStartDate: 'Ngày tính khấu hao',
+  depreciationMonths: 'Số tháng tính khấu hao',
+  depreciationEndDate: 'Ngày hết khấu hao',
+  monthlyDepreciation: 'Khấu hao tháng (VNĐ)',
+  originalValue: 'Nguyên giá (VNĐ)',
+  accumulatedDepreciation: 'Hao mòn/khấu hao lũy kế (VNĐ)',
+  remainingValue: 'Giá trị còn lại (VNĐ)',
+  disposalMethod: 'Hình thức xử lý',
+  approvalStatus: 'Trạng thái phê duyệt',
+  approvalReasonLevel1: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+  approvalReasonLevel2: 'Nội dung phê duyệt cấp Cục',
+  rejectionReason: 'Lý do từ chối',
+  attachments: 'Tài liệu đính kèm',
+};
+
+const CCTV_HISTORY_FIELD_ORDER = [
+  'assetCode',
+  'assetName',
+  'cctvId',
+  'cctvDeviceId',
+  'parentOrgUnitId',
+  'orgUnitId',
+  'usingOrgUnitId',
+  'assetType',
+  'barcode',
+  'assetCondition',
+  'usageStatus',
+  'assetGroup',
+  'assetSubgroup',
+  'address',
+  'origin',
+  'quantity',
+  'quantityUnit',
+  'model',
+  'serialNumber',
+  'countryOfOrigin',
+  'manufacturer',
+  'constructionYear',
+  'useDate',
+  'landArea',
+  'floorArea',
+  'assetLocation',
+  'declarationDate',
+  'originalValue',
+  'depreciationRate',
+  'remainingValue',
+  'accumulatedDepreciation',
+  'monthlyDepreciation',
+  'depreciationStartDate',
+  'depreciationMonths',
+  'depreciationEndDate',
+  'assignmentDecisionNumber',
+  'disposalMethod',
+  'attachments',
+];
+
 const BREADCRUMB_ITEMS: BreadcrumbItem[] = [
   { label: 'Trang chủ', path: '/' },
   { label: 'Quản lý tài sản KCHT hàng hải' },
@@ -137,6 +244,13 @@ export default function CctvSystemAssetList() {
   const [form] = Form.useForm<FormValues>();
   const [operationForm] = Form.useForm<OperationValues>();
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<CctvSystemAsset | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
 
   const orgName = useMemo(
     () => new Map(organizations.map((item) => [item.id, item.name])),
@@ -146,6 +260,155 @@ export default function CctvSystemAssetList() {
     () => new Map(cctvDevices.map((item) => [item.id, { code: item.code, name: item.name }])),
     [cctvDevices]
   );
+
+  const formatHistoryValue = useCallback(
+    (field: string, val: any) => {
+      if (val == null || val === '') return '';
+      if (
+        ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
+          field,
+        )
+      ) {
+        const n = Number(val);
+        if (!isNaN(n)) return `${fmtInputNumber(n)} VNĐ`;
+      }
+      if (field === 'depreciationRate') {
+        const n = Number(val);
+        if (!isNaN(n)) return `${n}%`;
+      }
+      if (field === 'landArea' || field === 'floorArea') {
+        const n = Number(val);
+        if (!isNaN(n)) return `${fmtInputNumber(n)} m²`;
+      }
+      if (field === 'orgUnitId' || field === 'usingOrgUnitId' || field === 'parentOrgUnitId') {
+        return orgName.get(String(val)) || String(val);
+      }
+      if (field === 'cctvId' || field === 'cctvDeviceId') {
+        const dev = cctvDeviceMap.get(String(val));
+        return dev ? (dev.code ? `${dev.code} - ${dev.name}` : dev.name) : String(val);
+      }
+      if (field === 'constructionYear') {
+        const str = String(val).trim();
+        const match = str.match(/\b(19\d{2}|20\d{2})\b/);
+        return match ? match[0] : str;
+      }
+      if (
+        field === 'useDate' ||
+        field === 'declarationDate' ||
+        field === 'depreciationStartDate' ||
+        field === 'depreciationEndDate'
+      ) {
+        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+          return dayjs(val).format('DD/MM/YYYY');
+        }
+      }
+      return undefined;
+    },
+    [orgName, cctvDeviceMap],
+  );
+
+  const openHistory = useCallback(async (record: CctvSystemAsset) => {
+    setHistoryTarget(record);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    setHistorySearch('');
+    setHistoryFrom('');
+    setHistoryTo('');
+    try {
+      const res = await api.get(`/v1/asset/cctv-assets/${record.id}/history`);
+      const d = res.data?.data || res.data;
+      const list = Array.isArray(d?.changeHistory) ? d.changeHistory : (Array.isArray(d) ? d : []);
+      setHistoryRecords(list);
+    } catch {
+      toast.error('Không thể tải lịch sử thay đổi');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const filteredHistoryRecords = useMemo(() => {
+    const q = historySearch.toLowerCase().trim();
+    return (historyRecords || []).filter((r: any) => {
+      if (q) {
+        const fn = (r.fieldName || r.changedField || '').toLowerCase();
+        const ov = (r.oldValue || r.previousValue || '').toLowerCase();
+        const nv = (r.newValue || r.value || '').toLowerCase();
+        const lb = (CCTV_ASSET_FIELD_LABELS[r.fieldName || r.changedField] || r.fieldName || '').toLowerCase();
+        const od = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.oldValue || r.previousValue) ??
+            (r.oldValue || r.previousValue || ''),
+        ).toLowerCase();
+        const nd = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.newValue || r.value) ??
+            (r.newValue || r.value || ''),
+        ).toLowerCase();
+        if (
+          !fn.includes(q) &&
+          !ov.includes(q) &&
+          !nv.includes(q) &&
+          !lb.includes(q) &&
+          !od.includes(q) &&
+          !nd.includes(q)
+        ) {
+          return false;
+        }
+      }
+      if (historyFrom || historyTo) {
+        const cd = r.changedAt || r.createdAt || r.approvedDate || '';
+        if (historyFrom && cd.substring(0, 10) < historyFrom) return false;
+        if (historyTo && cd.substring(0, 10) > historyTo) return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historySearch, historyFrom, historyTo, formatHistoryValue]);
+
+  const historyFieldCount = filteredHistoryRecords.length;
+
+  const renderCctvHistoryTimeline = (filtered: any[]) => {
+    const q = historySearch.toLowerCase().trim();
+    return renderStandardHistoryCards({
+      records: filtered,
+      fieldLabels: CCTV_ASSET_FIELD_LABELS,
+      groupOrder: CCTV_HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') {
+          if (raw && !isBlankOrDash(raw)) {
+            const files = String(raw)
+              .split(/\s*,\s*/)
+              .map((f) => f.trim())
+              .filter((f) => !isBlankOrDash(f));
+            if (files.length > 0) {
+              return (
+                <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                  {files.map((file, idx) => (
+                    <span key={idx} style={{ wordBreak: 'break-all' }}>
+                      {file}
+                    </span>
+                  ))}
+                </span>
+              );
+            }
+          }
+        }
+        const formatted = formatHistoryValue(fn, raw);
+        if (formatted === undefined) return undefined;
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const oName = orgId ? orgName.get(orgId) : undefined;
+        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+      },
+      resolveActorName: (rawActor, rec) => {
+        return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
+      },
+      emptyMessage:
+        q || historyFrom || historyTo
+          ? 'Không tìm thấy kết quả phù hợp'
+          : 'Chưa có thay đổi nào được ghi nhận',
+    });
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -413,6 +676,27 @@ export default function CctvSystemAssetList() {
     [selected?.assetCode, selected?.assetName]
   );
 
+  const toYearNumber = (val: unknown): number | undefined => {
+    if (val == null || val === '') return undefined;
+    if (typeof val === 'number') return isNaN(val) ? undefined : val;
+    if (dayjs.isDayjs(val)) return val.isValid() ? val.year() : undefined;
+    const match = String(val).match(/\b(19\d{2}|20\d{2})\b/);
+    if (match) return parseInt(match[0], 10);
+    const parsed = dayjs(String(val));
+    return parsed.isValid() ? parsed.year() : undefined;
+  };
+
+  const toDateString = (val: unknown): string | undefined => {
+    if (val == null || val === '') return undefined;
+    if (dayjs.isDayjs(val)) return val.isValid() ? val.format('YYYY-MM-DD') : undefined;
+    if (typeof val === 'string') {
+      const s = val.trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+    }
+    const parsed = dayjs(val as any);
+    return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
+  };
+
   const saveAsset = async (status: string) => {
     try {
       const values = await form.validateFields();
@@ -422,25 +706,45 @@ export default function CctvSystemAssetList() {
       const payload: CctvSystemAssetPayload = {
         ...values,
         approvalStatus: status,
-        constructionYear: values.constructionYear
-          ? values.constructionYear.year()
-          : undefined,
-        useDate: values.useDate ? values.useDate.format('YYYY-MM-DD') : undefined,
-        declarationDate: values.declarationDate
-          ? values.declarationDate.format('YYYY-MM-DD')
-          : undefined,
-        depreciationStartDate: values.depreciationStartDate
-          ? values.depreciationStartDate.format('YYYY-MM-DD')
-          : undefined,
-        depreciationEndDate: values.depreciationEndDate
-          ? values.depreciationEndDate.format('YYYY-MM-DD')
-          : undefined,
+        constructionYear: toYearNumber(values.constructionYear),
+        useDate: toDateString(values.useDate),
+        declarationDate: toDateString(values.declarationDate),
+        depreciationStartDate: toDateString(values.depreciationStartDate),
+        depreciationEndDate: toDateString(values.depreciationEndDate),
         attachmentName:
           attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
       };
 
+      const cleanPayload: Record<string, any> = { ...payload };
+      const excludeKeys = [
+        'id',
+        'parentOrgUnitName',
+        'orgUnitName',
+        'usingOrgUnitName',
+        'cctvSystemCode',
+        'cctvSystemName',
+        'createdByName',
+        'updatedByName',
+        'submittedByName',
+        'departmentApprovedByName',
+        'departmentApprovedAt',
+        'portAuthorityApprovedByName',
+        'portAuthorityApprovedAt',
+        'submittedAt',
+        'rejectionReason',
+        'createdAt',
+        'updatedAt',
+        'lockVersion',
+      ];
+      excludeKeys.forEach((key) => delete cleanPayload[key]);
+      Object.keys(cleanPayload).forEach((key) => {
+        if (cleanPayload[key] === '' || cleanPayload[key] === null) {
+          delete cleanPayload[key];
+        }
+      });
+
       if (drawerMode === 'create') {
-        await createCctvSystemAsset(payload);
+        await createCctvSystemAsset(cleanPayload as any);
         toast.success(
           status === 'DRAFT'
             ? 'Đã lưu tạm tài sản HT CCTV'
@@ -449,7 +753,7 @@ export default function CctvSystemAssetList() {
             : 'Đã tạo và phê duyệt tài sản HT CCTV'
         );
       } else if (selected) {
-        await updateCctvSystemAsset(selected.id, payload);
+        await updateCctvSystemAsset(selected.id, cleanPayload as any);
         toast.success('Đã cập nhật tài sản HT CCTV thành công');
       }
 
@@ -457,7 +761,11 @@ export default function CctvSystemAssetList() {
       form.resetFields();
       void loadData();
     } catch (cause: unknown) {
-      if (!isValidationError(cause)) {
+      if (isValidationError(cause)) {
+        const error = cause as { errorFields?: Array<{ name: string | string[]; errors: string[] }> };
+        const firstError = error.errorFields?.[0]?.errors?.[0];
+        toast.warning(firstError || 'Vui lòng điền đầy đủ các thông tin bắt buộc.');
+      } else {
         toast.error(getErrorMessage(cause, 'Không thể lưu thông tin tài sản HT CCTV.'));
       }
     } finally {
@@ -813,6 +1121,12 @@ export default function CctvSystemAssetList() {
         },
       },
       {
+        key: 'history',
+        label: 'Lịch sử thay đổi',
+        icon: <HistoryOutlined />,
+        onClick: () => void openHistory(record),
+      },
+      {
         key: 'delete',
         label: 'Xóa',
         icon: <DeleteOutlined />,
@@ -820,7 +1134,7 @@ export default function CctvSystemAssetList() {
         onClick: () => setDeleteTarget(record),
       },
     ],
-  }), [openDetail, openEdit, operationForm, orgName, cctvDeviceMap]);
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
@@ -1001,6 +1315,103 @@ export default function CctvSystemAssetList() {
               .finally(() => setSaving(false));
           }}
         />
+
+        {/* ── History Drawer ────────────────────────────────────────── */}
+        <AppDrawer
+          width="min(880px, 96vw)"
+          rootClassName="cctv-asset-drawer-scope"
+          className="cctv-asset-drawer-scope"
+          mask
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Space size={spaceSm} style={{ alignItems: 'center' }}>
+                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+                <span style={drawerTitleStyle}>
+                  {historyTarget
+                    ? `Lịch sử thay đổi — ${historyTarget.assetName || historyTarget.assetCode || 'Tài sản HT CCTV'}`
+                    : 'Lịch sử thay đổi'}
+                </span>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    padding: '2px 10px',
+                    borderRadius: 999,
+                    fontSize: fontSizeLg - 1,
+                    fontWeight: fontWeightBold,
+                    background: `${colors.sidebarBg}15`,
+                    color: colors.sidebarBg,
+                    lineHeight: '20px',
+                  }}
+                >
+                  Tổng cộng {historyFieldCount}
+                </span>
+              </Space>
+            </div>
+          }
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          }}
+        >
+          <style>{`.history-dt-popup .ant-picker-now-btn { color: ${actionPrimary} !important; }`}</style>
+          <div style={{ flexShrink: 0 }}>
+            {!historyLoading && (
+              <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+                <Input
+                  placeholder="Tìm kiếm nội dung thay đổi..."
+                  allowClear
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+                />
+                <DatePicker
+                  placeholder="Từ ngày"
+                  classNames={{ popup: { root: 'history-dt-popup' } }}
+                  value={historyFrom ? dayjs(historyFrom) : null}
+                  onChange={(d) => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <DatePicker
+                  placeholder="Đến ngày"
+                  classNames={{ popup: { root: 'history-dt-popup' } }}
+                  value={historyTo ? dayjs(historyTo) : null}
+                  onChange={(d) => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  style={{
+                    borderRadius: radiusPill,
+                    height: 40,
+                    fontSize: fontSizeMd,
+                    background: actionPrimary,
+                    borderColor: actionPrimary,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {historyLoading ? (
+              <LoadingSkeleton rows={5} />
+            ) : historyRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+              </div>
+            ) : (
+              renderCctvHistoryTimeline(filteredHistoryRecords)
+            )}
+          </div>
+        </AppDrawer>
       </div>
     </ThemeTokenProvider>
   );

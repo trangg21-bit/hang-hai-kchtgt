@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.port.entity;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.ApprovableEntity;
+import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
 import jakarta.persistence.*;
@@ -23,6 +23,10 @@ import lombok.experimental.FieldNameConstants;
  * Entity representing a pier (Cầu cảng) — child of Berth.
  * Corresponds to table: piers (renamed from cau_cang).
  * FK: berth_id → berths.id (NOT NULL)
+ * <p>
+ * Sử dụng @SQLRestriction("1=1") để ghi đè điều kiện mặc định deleted_at IS NULL của BaseEntity,
+ * cho phép truy vấn và hiển thị các bản ghi đã xóa mềm theo chuẩn hệ thống.
+ * </p>
  */
 @Entity
 @Table(name = "piers",

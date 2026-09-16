@@ -244,7 +244,7 @@ export default function InmarsatStationList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
@@ -397,7 +397,7 @@ export default function InmarsatStationList() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         includeCounts: shouldIncludeCounts,
-        sort: sortField ? `${sortField},${sortDirection}` : undefined,
+        sort: sortField && sortDirection ? `${sortField},${sortDirection}` : undefined,
       };
 
       const res = await inmarsatStationService.search(params);
@@ -435,14 +435,19 @@ export default function InmarsatStationList() {
     };
   }, [fetchData, isOptionsReady]);
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortDirection(null);
+    } else {
+      setSortField(field);
+      setSortDirection(order);
+    }
     setPage(1);
   }, []);
 
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
+    (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
 
   const serverSideSorter = () => 0;
 

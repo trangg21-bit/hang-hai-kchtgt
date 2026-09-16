@@ -111,6 +111,7 @@ const icons = {
 const reportTree: NavNode[] = [
   ...Object.entries(CATEGORY_MAP).map(([catKey, catInfo]) => {
     const isEnabled =
+      catKey === 'bcc' ||
       catKey === 'bckcht' ||
       catKey === 'bcdl' ||
       catKey === 'bcpttv' ||

@@ -104,13 +104,13 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
-  { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL', APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED', REJECTED_LEVEL1: 'REJECTED_LEVEL1', REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  DELETED: undefined,
 };
 
 function formatDate(d: string | null | undefined): string {
@@ -323,6 +323,16 @@ function histVal(
   return v;
 }
 
+// Helper nhận diện bản ghi đã xóa theo 2 trường deleted_at hoặc deleted_by
+export const isDeletedAnchorage = (record?: Partial<Anchorage> | null): boolean => {
+  if (!record) return false;
+  return Boolean(
+    (record.deletedAt && String(record.deletedAt).trim() !== '' && String(record.deletedAt) !== 'null') ||
+    (record.deletedBy && String(record.deletedBy).trim() !== '' && String(record.deletedBy) !== 'null')
+  );
+};
+const isDeletedRecord = isDeletedAnchorage;
+
 export default function AnchorageListPage() {
   const [searchParams] = useSearchParams();
   const linkedAction = searchParams.get('action');
@@ -353,9 +363,8 @@ export default function AnchorageListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
-  const [sortField, setSortField] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
@@ -646,14 +655,20 @@ export default function AnchorageListPage() {
   const fetchCounts = useCallback(async (oid: string | undefined) => {
     try {
       const rs = await Promise.allSettled(
-        TAB_STATUS_LIST.map(t =>
-          t.key === 'all'
-            ? anchorageCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 })
-            : anchorageCRUD.search({ approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 })
-        )
+        TAB_STATUS_LIST.map(t => {
+          if (t.key === 'DELETED') {
+            return anchorageCRUD.search({ isDeleted: true, orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+          }
+          if (t.key === 'all') {
+            return anchorageCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+          }
+          return anchorageCRUD.search({ isDeleted: false, approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+        })
       );
       const c: Record<string, number> = {};
       rs.forEach((r, i) => { c[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0; });
+      const sumChildCounts = TAB_STATUS_LIST.filter((t) => t.key !== 'all').reduce((acc, t) => acc + (c[t.key] || 0), 0);
+      c['all'] = sumChildCounts;
       setTabCounts(c);
     } catch {}
   }, []);
@@ -670,7 +685,8 @@ export default function AnchorageListPage() {
         buoyStationId: filterBuoyStationId,
         provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
         operationalStatus: filterOperationalStatus,
-        approvalStatus: TAB_QUERY_MAP[activeTab],
+        approvalStatus: activeTab === 'DELETED' ? undefined : TAB_QUERY_MAP[activeTab],
+        isDeleted: activeTab === 'DELETED' ? true : (activeTab === 'all' ? undefined : false),
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         page, pageSize,
@@ -984,6 +1000,15 @@ export default function AnchorageListPage() {
   );
 
   const rowActions = useCallback((record: Anchorage) => {
+    // Bản ghi đã xóa: thao tác bị giới hạn CHỈ CÒN "Xem chi tiết" và "Lịch sử"
+    if (isDeletedAnchorage(record)) {
+      const deletedActions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
+      if (hasPerm('anchorage:history')) {
+        deletedActions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      }
+      return deletedActions;
+    }
+
     const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
     const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'anchorage' });
@@ -1077,7 +1102,10 @@ export default function AnchorageListPage() {
     if (field === 'operationalStatus') {
       return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
     }
-    if (field === 'approvalStatus') return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    if (field === 'approvalStatus') {
+      if (isDeletedAnchorage(r)) return 'Đã xóa';
+      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    }
     if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
       const t = r.updatedAt || r.createdAt;
       return t ? new Date(t).getTime() : 0;
@@ -1130,9 +1158,14 @@ export default function AnchorageListPage() {
       {
         label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
         render: (v: string, record: Anchorage) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
-          const eff = isArchived ? 'ARCHIVED' : v;
-          const s = eff && (APPROVAL_STYLE_MAP[eff] || APPROVAL_STYLE_MAP[eff.toUpperCase()]);
+          if (isDeletedAnchorage(record)) {
+            return (
+              <span style={statusBadgeStyle(statusCritical)}>
+                Đã xóa
+              </span>
+            );
+          }
+          const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
           return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
         },
       },
@@ -1174,7 +1207,7 @@ export default function AnchorageListPage() {
   }, [hasPerm, createForm]);
 
   const sortedDataSource = useMemo(() => {
-    if (!sortField) return dataSource;
+    if (!sortField || !sortOrder) return dataSource;
     if (sortField === 'stt') {
       return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
     }
@@ -1329,7 +1362,16 @@ export default function AnchorageListPage() {
             rowKey="id"
             rowActions={rowActions}
             loading={false}
-            onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+            onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              if (!o) {
+                setSortField(null);
+                setSortOrder(null);
+              } else {
+                setSortField(k);
+                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+              }
+              setPage(1);
+            }}
             scroll={{ x: 'max-content' }}
           />
           <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />

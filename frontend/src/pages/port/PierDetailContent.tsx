@@ -521,6 +521,19 @@ export default function PierDetailContent({
                 {approvalOpen && (
                   <div className="chk-detail-grid">
                     {(() => {
+                      const isDeleted = Boolean(r.deletedAt || r.deletedBy);
+                      if (isDeleted) {
+                        return (
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                            <span className="chk-detail-value">
+                              <span style={statusBadgeStyle(colors.statusCritical || '#E34948')}>
+                                Đã xóa
+                              </span>
+                            </span>
+                          </div>
+                        );
+                      }
                       const isPendingPortAuthority = r.approvalStatus === 'PENDING_APPROVAL' || r.approvalStatus === 'CHO_PHE_DUYET' || approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục';
                       return (
                         <div className={`chk-detail-row chk-detail-row--full ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>

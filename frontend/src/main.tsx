@@ -2,9 +2,13 @@ import { StrictMode, Component, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { globalCssVars } from './theme';
+import { registerPdfPreviewServiceWorker } from './components/shared/infrastructureAttachmentUtils';
 import './index.css';
 
 console.log('[main] JS loaded, starting React...');
+
+// Đăng ký Service Worker phục vụ xem trước PDF với đúng tên tệp
+void registerPdfPreviewServiceWorker();
 
 // Inject globalCssVars vào <head> — single source of truth từ theme.ts
 const styleTag = document.createElement('style');

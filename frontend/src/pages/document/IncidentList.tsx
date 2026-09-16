@@ -882,7 +882,7 @@ export default function IncidentList() {
               </Col>
               <Col span={12}>
                 <Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập ghi chú..." style={inputStyle} />
+                  <Input placeholder="Nhập ghi chú" style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>

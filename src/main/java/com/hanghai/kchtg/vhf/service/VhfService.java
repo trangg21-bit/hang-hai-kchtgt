@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vhf.service;
 
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+
 import com.hanghai.kchtg.vhf.dto.VhfResponse;
 import com.hanghai.kchtg.vhf.dto.VhfOptionResponse;
 import com.hanghai.kchtg.vhf.dto.CreateVhfRequest;
@@ -49,6 +51,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -300,7 +303,7 @@ public class VhfService {
       }
     }
 
-    if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
+if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
       previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
     }
     if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
@@ -325,8 +328,10 @@ public class VhfService {
     boolean approvedEdit = false;
     if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.recordSaveAndApprove(entity, InfrastructureType.VHF,
-            "Cập nhật hồ sơ đã duyệt", currentUserId);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApprovalContentLevel2("Lưu và phê duyệt");
+        entity.setApprovedDateLevel2(LocalDateTime.now());
+        entity.setApproverLevel2(currentUserId);
         approvedEdit = true;
       } else {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
@@ -335,36 +340,26 @@ public class VhfService {
 
     Vhf saved = vhfRepository.save(entity);
 
-    if (approvedEdit) {
-      changeHistoryService.recordChanges("VHF", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
+    if (approvedEdit && !previousValues.isEmpty()) {
       LocalDateTime now = LocalDateTime.now();
-      if (!previousValues.isEmpty()) {
-        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-          String field = entry.getKey();
-          String fieldName = getFieldDisplayName(field);
-          String oldVal = entry.getValue();
-          Object rawNew;
-          if ("coordinates".equals(field)) {
-            rawNew = request.getCoordinates();
-          } else if ("geometryType".equals(field)) {
-            rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
-          } else {
-            rawNew = getEntityFieldValue(saved, field);
-          }
-          String newVal = rawNew != null ? String.valueOf(rawNew) : null;
-          historyRepository.save(InfrastructureHistory.builder()
-              .refId(saved.getId())
-              .refType(InfrastructureType.VHF)
-              .approvalLevel(ApprovalLevel.LEVEL_2)
-              .status(InfrastructureHistoryStatus.UPDATED)
-              .approvedBy(currentUserId)
-              .approvedDate(now)
-              .changedField(fieldName)
-              .previousValue(formatDisplayValue(field, oldVal))
-              .newValue(formatDisplayValue(field, newVal))
-              .build());
+      for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+        String field = entry.getKey();
+        String fieldName = getFieldDisplayName(field);
+        String oldVal = entry.getValue();
+        Object rawNew;
+        if ("coordinates".equals(field)) {
+          rawNew = request.getCoordinates();
+        } else if ("geometryType".equals(field)) {
+          rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+        } else {
+          rawNew = getEntityFieldValue(saved, field);
         }
-      } else {
+        String newVal = rawNew != null ? String.valueOf(rawNew) : null;
+        String oldDisp = formatDisplayValue(field, oldVal);
+        String newDisp = formatDisplayValue(field, newVal);
+        if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
+          continue;
+        }
         historyRepository.save(InfrastructureHistory.builder()
             .refId(saved.getId())
             .refType(InfrastructureType.VHF)
@@ -372,6 +367,9 @@ public class VhfService {
             .status(InfrastructureHistoryStatus.UPDATED)
             .approvedBy(currentUserId)
             .approvedDate(now)
+            .changedField(fieldName)
+            .previousValue(oldDisp)
+            .newValue(newDisp)
             .build());
       }
     }
@@ -396,10 +394,11 @@ public class VhfService {
   }
 
   private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter, Map<String, String> previousValues) {
-    if (newValue != null && !Objects.equals(oldValue, newValue)) {
-      previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
-      setter.accept(newValue);
+    if (newValue == null || EntityUpdateUtils.areEqual(oldValue, newValue)) {
+      return;
     }
+    previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
+    setter.accept(newValue);
   }
 
   private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -798,7 +797,13 @@ public class VhfService {
   }
 
   public String generateDeviceCode() {
-    int maxNumber = vhfRepository.findMaxDeviceCodeNumber();
+    int maxNumber = 0;
+    try {
+      maxNumber = vhfRepository.findMaxDeviceCodeNumber();
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị VHF, fallback: {}", e.getMessage());
+      maxNumber = (int) vhfRepository.count();
+    }
     int nextNumber = maxNumber + 1;
     String candidate = String.format("VHF-%06d", nextNumber);
     while (vhfRepository.existsDeviceCodeAnyState(candidate)) {

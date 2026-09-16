@@ -209,7 +209,7 @@ export default function CospasSarsatStationList() {
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
 
   const [dataSource, setDataSource] = useState<CoastalStationCospasSarsatResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -300,7 +300,7 @@ export default function CospasSarsatStationList() {
         provinceId: filterProvinceId,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
-        sort: sortField ? `${sortField},${sortDirection}` : undefined,
+        sort: sortField && sortDirection ? `${sortField},${sortDirection}` : undefined,
       };
       const res = await cospasSarsatStationService.search(params);
       if (requestId !== listRequestId.current) return;
@@ -333,9 +333,14 @@ export default function CospasSarsatStationList() {
     };
   }, [fetchData]);
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortDirection(null);
+    } else {
+      setSortField(field);
+      setSortDirection(order);
+    }
     setPage(1);
   }, []);
 
@@ -486,7 +491,7 @@ export default function CospasSarsatStationList() {
   const serverSideSorter = () => 0;
 
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | undefined => {
-    if (sortField === key) return sortDirection === 'asc' ? 'ascend' : 'descend';
+    if (sortField === key && sortDirection) return sortDirection === 'asc' ? 'ascend' : 'descend';
     return undefined;
   }, [sortField, sortDirection]);
 

@@ -94,7 +94,7 @@ export default function ReportViewer() {
     reportPeriod: 'MONTHLY',
     dateRange: [dayjs().subtract(1, 'month'), dayjs()],
     bcNoiDung: '1',
-    processingMethods: [],
+    processingMethods: reportCode === 'F-147' ? ['1', '3', '2', '0'] : [],
   });
 
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -299,12 +299,12 @@ export default function ReportViewer() {
       reportPeriod: 'MONTHLY',
       dateRange: [dayjs().subtract(1, 'month'), dayjs()],
       bcNoiDung: '1',
-      processingMethods: [],
+      processingMethods: reportCode === 'F-147' ? ['1', '3', '2', '0'] : [],
     });
     setReportData(null);
     setCurrentPage(1);
     setPageSize(20);
-  }, [organizations]);
+  }, [organizations, reportCode]);
 
   const editBccReport = useCallback(async (action: 'edit' | 'delete' | 'history' = 'edit') => {
     if (!draftFilters.orgUnitId || !draftFilters.reportYear) {
@@ -512,9 +512,15 @@ export default function ReportViewer() {
         key: 'processingMethods',
         label: 'Hình thức xử lý',
         type: 'select',
+        defaultValue: ['1', '3', '2', '0'],
         required: true,
         placeholder: 'Chọn hình thức xử lý',
-        selectProps: { mode: 'multiple' },
+        selectProps: {
+          mode: 'multiple',
+          showSearch: true,
+          filterOption: (input: string, option?: { label?: React.ReactNode }) =>
+            String(option?.label ?? '').toLowerCase().includes(input.toLowerCase()),
+        },
         options: [
           { value: '1', label: 'Bàn giao' },
           { value: '3', label: 'Phá dỡ' },
@@ -929,7 +935,14 @@ export default function ReportViewer() {
           open={pdfPreviewOpen}
           title={`Xem trước PDF: ${template.name}`}
           footer={null}
-          width="90vw"
+          width="96vw"
+          style={{ maxWidth: '96vw', paddingBottom: 0 }}
+          styles={{
+            body: {
+              padding: '4px 8px 8px',
+              height: 'calc(100vh - 120px)',
+            },
+          }}
           centered
           destroyOnHidden
           onCancel={() => {
@@ -940,7 +953,7 @@ export default function ReportViewer() {
             setPdfPreviewError(undefined);
           }}
         >
-          <div style={{ height: 'calc(100vh - 180px)', minHeight: 480 }}>
+          <div style={{ height: '100%', minHeight: 480 }}>
             {pdfPreviewLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                 <Spin tip="Đang tạo bản xem trước PDF..." />
