@@ -250,6 +250,10 @@ public class BeaconStationController {
         } catch (Exception ignored) {
             contentType = null;
         }
+        if ((contentType == null || MediaType.APPLICATION_OCTET_STREAM_VALUE.equals(contentType))
+                && attachment.getContentType() != null && !attachment.getContentType().isBlank()) {
+            contentType = attachment.getContentType();
+        }
         MediaType mediaType = contentType == null
                 ? MediaType.APPLICATION_OCTET_STREAM
                 : MediaType.parseMediaType(contentType);

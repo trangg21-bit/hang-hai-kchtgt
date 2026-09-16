@@ -1199,10 +1199,7 @@ const VhfListPage = () => {
 
   const handleConfirmReject = useCallback(async () => {
     if (!rejectingRecord) return;
-    const reason = rejectReason.trim();
-    if (!reason) { toast.error('Vui lòng nhập lý do từ chối'); return; }
-    if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
-    if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       if (rejectingRecord.approvalStatus === 'APPROVED_LEVEL1') {
@@ -3113,7 +3110,7 @@ const VhfListPage = () => {
         >
           <div style={{ padding: '8px 0' }}>
             <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-              Vui lòng nhập lý do từ chối cho thiết bị:
+              Vui lòng nhập lý do từ chối cho thiết bị (không bắt buộc):
             </p>
             {rejectingRecord && (
               <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
@@ -3123,12 +3120,10 @@ const VhfListPage = () => {
               </p>
             )}
             <Input.TextArea
-              placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+              placeholder="Nhập lý do từ chối (nếu có)..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               rows={3}
-              maxLength={500}
-              showCount
               style={{ borderRadius: 8, fontSize: fontSizeMd }}
             />
           </div>

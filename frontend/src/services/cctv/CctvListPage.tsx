@@ -10,7 +10,6 @@ const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 import { usePermissionStore } from "../../store/permissionStore";
 import {
-  Alert,
   Button,
   DatePicker,
   Space,
@@ -27,7 +26,6 @@ import {
   PlusOutlined,
   SearchOutlined,
   HistoryOutlined,
-  ExclamationCircleOutlined,
   EnvironmentOutlined,
   BankOutlined,
   SlidersOutlined,
@@ -55,6 +53,7 @@ import {
 import type { CctvResponse, ApprovalRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
+import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import AppDrawer from "../../components/shared/AppDrawer";
 import CctvForm, { type CctvFormRef } from "./CctvForm";
@@ -136,7 +135,6 @@ import {
   surfaceCard,
   surfacePage,
   radiusPill,
-  fontSans,
   spaceMd,
   spaceFormField,
   spaceSm,
@@ -181,14 +179,6 @@ const APPROVAL_COLOR: Record<string, string> = {
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
   DELETED: statusCritical,
-};
-
-/* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
-
-const pillStyle: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  fontFamily: fontSans,
 };
 
 // ── Card/section trong Drawer Xem chi tiết — đồng bộ chuẩn /berth (BerthDetailContent) ──
@@ -500,7 +490,6 @@ const CctvListPage = () => {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<CctvResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Create modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -631,8 +620,8 @@ const CctvListPage = () => {
         label: "STT",
         width: 60,
         type: "mono" as const,
-        align: "center" as const,
         fixed: "left" as const,
+        align: "center" as const,
         render: (_: unknown, __: CctvResponse, index: number) => (
           <span style={{ ...tableMetaStyle, fontWeight: fontWeightMedium }}>
             {page * pageSize + index + 1}
@@ -725,7 +714,6 @@ const CctvListPage = () => {
         dataIndex: "quantity",
         width: 140,
         type: "number" as const,
-        align: "center" as const,
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -738,7 +726,6 @@ const CctvListPage = () => {
         dataIndex: "yearOfUse",
         width: 220,
         type: "mono" as const,
-        align: "center" as const,
         ellipsis: false,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
@@ -1490,7 +1477,6 @@ const CctvListPage = () => {
           icon: icons.delete,
           danger: true,
           onClick: () => {
-            setDeleteConfirmText("");
             setDeleteTarget(record);
           },
         });
@@ -1636,27 +1622,20 @@ const CctvListPage = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
-    if (
-      deleteConfirmText !== "XÓA" &&
-      deleteConfirmText !== deleteTarget.deviceName
-    ) {
-      toast.error('Vui lòng nhập đúng tên thiết bị hoặc "XÓA" để xác nhận');
-      return;
-    }
     setDeleteLoading(true);
     try {
       await deleteCctv(deleteTarget.id);
       toast.success("Xóa hệ thống CCTV thành công");
       setDeleteTarget(null);
-      setDeleteConfirmText("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[cctv] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || (error instanceof Error ? error.message : "Xóa thất bại"));
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
+  }, [deleteTarget, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     async (content?: string) => {
@@ -1686,19 +1665,7 @@ const CctvListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
-    if (!reason) {
-      toast.error("Vui lòng nhập lý do từ chối");
-      return;
-    }
-    if (reason.length < 10) {
-      toast.error("Lý do từ chối tối thiểu 10 ký tự");
-      return;
-    }
-    if (reason.length > 500) {
-      toast.error("Lý do từ chối tối đa 500 ký tự");
-      return;
-    }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       const payload: ApprovalRequest = { decision: "REJECTED", reason };
@@ -2994,7 +2961,7 @@ const CctvListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho hệ thống CCTV:
+            Vui lòng nhập lý do từ chối cho hệ thống CCTV (không bắt buộc):
           </p>
           {rejectTarget && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
@@ -3004,106 +2971,29 @@ const CctvListPage = () => {
             </p>
           )}
           <Input.TextArea
-            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            placeholder="Nhập lý do từ chối (nếu có)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
-            maxLength={500}
-            showCount
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
       </Modal>
 
-      {/* Delete Modal */}
-      <Modal
-        rootClassName="cctv-modal-scope"
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Xác nhận xóa
-          </span>
-        }
-        open={!!deleteTarget}
+      {/* ── Delete Confirmation Modal (chuẩn /berth) ─────────────── */}
+      <DeleteConfirmModal
+        open={Boolean(deleteTarget)}
         onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteConfirmText("");
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setDeleteTarget(null);
-              setDeleteConfirmText("");
-            }}
-            style={outlineButtonStyle}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="delete"
-            type="primary"
-            danger
-            loading={deleteLoading}
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-            }}
-          >
-            Xác nhận xóa
-          </Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: "8px 0" }}>
-          <Alert
-            message="Hành động này không thể hoàn tác"
-            type="warning"
-            showIcon
-            icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
-          />
-          <p
-            style={{
-              fontSize: fontSizeMd,
-              color: textPrimary,
-              marginBottom: spaceFormField,
-            }}
-          >
-            Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ{" "}
-            <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deleteTarget && (
-            <p
-              style={{
-                fontSize: fontSizeMd,
-                color: textSecondary,
-                marginBottom: spaceFormField,
-              }}
-            >
-              Thiết bị:{" "}
-              <strong style={{ color: textPrimary }}>
-                {deleteTarget.deviceName}
-              </strong>
-            </p>
-          )}
-          <Input
-            placeholder="Nhập tên thiết bị hoặc XÓA"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            onPressEnter={handleDeleteConfirm}
-            style={pillStyle}
-            autoFocus
-          />
-        </div>
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+        itemType="hệ thống CCTV"
+        itemName={deleteTarget?.deviceName}
+        itemCode={deleteTarget?.deviceCode}
+      />
 
       {/* Modal Chọn vị trí trên bản đồ — dùng chung Tạo mới / Cập nhật / Xem chi tiết (chuẩn /vts-operation-center) */}
       <Modal

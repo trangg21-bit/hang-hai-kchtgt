@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
-import { Upload, Button, Modal, Spin } from 'antd';
+import { useState, useRef, useEffect } from 'react';
+import { Upload, Button, Modal, Spin, Alert } from 'antd';
 import {
   InboxOutlined,
   FileOutlined,
   FileImageOutlined,
+  FilePdfOutlined,
   DownloadOutlined,
   DeleteOutlined,
   EyeOutlined,
@@ -17,6 +18,9 @@ import {
   triggerBlobDownload,
   resolveMimeType,
   formatAttachmentFileSize,
+  withPdfTitle,
+  createNamedPdfUrl,
+  cleanupNamedPdfUrl,
 } from './infrastructureAttachmentUtils';
 import {
   actionPrimary,
@@ -33,7 +37,7 @@ import {
 } from '../../themetokenchk';
 
 // eslint-disable-next-line react-refresh/only-export-components
-export { triggerBlobDownload, resolveMimeType, formatAttachmentFileSize };
+export { triggerBlobDownload, resolveMimeType, formatAttachmentFileSize, withPdfTitle, createNamedPdfUrl, cleanupNamedPdfUrl };
 
 export interface InfrastructureAttachmentItem {
   id: string;
@@ -75,13 +79,15 @@ export interface InfrastructureAttachmentTabProps {
   /** Callback xem trước tùy biến */
   onPreview?: (attachment: InfrastructureAttachmentItem) => void;
   /**
-   * Callback nạp dữ liệu hình ảnh để xem chi tiết (chỉ dùng khi chế độ readonly và tệp không có
+   * Callback nạp dữ liệu hình ảnh hoặc tệp (PDF) để xem chi tiết (chỉ dùng khi chế độ readonly hoặc edit và tệp không có
    * `url`/`filePath` là đường dẫn HTTP truy cập được). Giống hệt cách màn /berth tải ảnh:
    * download blob qua endpoint `/{id}/attachments/{attachmentId}/download` rồi objectURL.
    * Trả về `Blob` (sẽ được objectURL hóa) hoặc chuỗi URL trực tiếp. Nếu không truyền, hành vi
    * mặc định giữ nguyên như cũ.
    */
   loadReadonlyPreviewImage?: (attachmentId: string) => Promise<Blob | string>;
+  /** Alias callback nạp dữ liệu tệp xem trước */
+  loadPreviewAttachment?: (attachmentId: string) => Promise<Blob | string>;
   /** Trạng thái đang tải danh sách tệp (lazy load) */
   isLoading?: boolean;
   /** Tùy chọn chiều cao cuộn bảng scrollY (mặc định tự động theo readonly) */
@@ -117,6 +123,16 @@ const isImageFile = (fileName?: string, fileType?: string): boolean => {
   if (!fileName) return false;
   const ext = fileName.split('.').pop()?.toLowerCase();
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tif', 'tiff'].includes(ext || '');
+};
+
+/**
+ * Kiểm tra xem tệp có phải là định dạng PDF hay không
+ */
+const isPdfFile = (fileName?: string, fileType?: string): boolean => {
+  if (fileType === 'application/pdf' || fileType?.toLowerCase().includes('pdf')) return true;
+  if (!fileName) return false;
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  return ext === 'pdf';
 };
 
 /**
@@ -164,16 +180,26 @@ export default function InfrastructureAttachmentTab({
   emptyText,
   readonlyBerthLayout = false,
   loadReadonlyPreviewImage,
+  loadPreviewAttachment,
 }: InfrastructureAttachmentTabProps) {
   const effectiveAttachments = attachments || items || [];
   const currentUser = useAuthStore((s) => s.user);
   const activeBlobUrlRef = useRef<string | null>(null);
+  const activePdfBlobUrlRef = useRef<string | null>(null);
   const uploadedFilesRef = useRef<Map<string, File>>(new Map());
+  const loadPreviewFn = loadPreviewAttachment || loadReadonlyPreviewImage;
+
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewRecord, setPreviewRecord] = useState<InfrastructureAttachmentItem | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const [pdfPreviewVisible, setPdfPreviewVisible] = useState(false);
+  const [pdfPreviewRecord, setPdfPreviewRecord] = useState<InfrastructureAttachmentItem | null>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | undefined>(undefined);
+  const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
+  const [pdfPreviewError, setPdfPreviewError] = useState<string | null>(null);
 
   const handleClosePreview = () => {
     if (activeBlobUrlRef.current) {
@@ -185,6 +211,29 @@ export default function InfrastructureAttachmentTab({
     setPreviewError(null);
     setPreviewLoading(false);
   };
+
+  const handleClosePdfPreview = () => {
+    if (activePdfBlobUrlRef.current) {
+      void cleanupNamedPdfUrl(activePdfBlobUrlRef.current);
+      activePdfBlobUrlRef.current = null;
+    }
+    setPdfPreviewVisible(false);
+    setPdfPreviewUrl(undefined);
+    setPdfPreviewError(null);
+    setPdfPreviewLoading(false);
+    setPdfPreviewRecord(null);
+  };
+
+  useEffect(() => () => {
+    if (activeBlobUrlRef.current) {
+      URL.revokeObjectURL(activeBlobUrlRef.current);
+      activeBlobUrlRef.current = null;
+    }
+    if (activePdfBlobUrlRef.current) {
+      void cleanupNamedPdfUrl(activePdfBlobUrlRef.current);
+      activePdfBlobUrlRef.current = null;
+    }
+  }, []);
 
   const handleBeforeUpload = (file: File) => {
     if (!validateAttachmentFile(file, { maxSizeMB })) {
@@ -215,23 +264,117 @@ export default function InfrastructureAttachmentTab({
     await handleDownloadRecord(record);
   };
 
+  const handlePreviewPdf = async (record: InfrastructureAttachmentItem) => {
+    if (activePdfBlobUrlRef.current) {
+      void cleanupNamedPdfUrl(activePdfBlobUrlRef.current);
+      activePdfBlobUrlRef.current = null;
+    }
+    setPdfPreviewRecord(record);
+    setPdfPreviewVisible(true);
+    setPdfPreviewError(null);
+    setPdfPreviewLoading(true);
+    setPdfPreviewUrl(undefined);
+
+    try {
+      let resolvedBlob: Blob | null = null;
+      let directUrl: string | null = null;
+
+      if (loadPreviewFn && record.id) {
+        try {
+          const data = await loadPreviewFn(record.id);
+          if (data instanceof Blob) {
+            resolvedBlob =
+              data.type === 'application/pdf'
+                ? data
+                : new Blob([data], { type: 'application/pdf' });
+          } else if (typeof data === 'string') {
+            directUrl = data;
+          }
+        } catch {
+          // Fall back to local file / URL preview
+        }
+      }
+
+      if (!resolvedBlob && !directUrl) {
+        const rawFile = resolveLocalFile(record);
+        if (rawFile) {
+          resolvedBlob =
+            rawFile.type === 'application/pdf'
+              ? rawFile
+              : new Blob([rawFile], { type: 'application/pdf' });
+        }
+      }
+
+      if (!resolvedBlob && !directUrl) {
+        if (record.url && (record.url.startsWith('data:') || record.url.startsWith('blob:'))) {
+          directUrl = record.url;
+        } else {
+          const targetPath = record.filePath || record.url;
+          if (targetPath) {
+            if (/^https?:\/\//i.test(targetPath) && !targetPath.includes('/api/')) {
+              directUrl = targetPath;
+            } else {
+              let cleanPath = targetPath;
+              if (cleanPath.startsWith('/api/')) {
+                cleanPath = cleanPath.replace(/^\/api/, '');
+              } else if (!cleanPath.startsWith('/')) {
+                cleanPath = `/${cleanPath}`;
+              }
+              const res = await api.get(cleanPath, { responseType: 'blob' });
+              resolvedBlob = new Blob([res.data], { type: 'application/pdf' });
+            }
+          }
+        }
+      }
+
+      if (resolvedBlob) {
+        const titledBlob = record.fileName
+          ? await withPdfTitle(resolvedBlob, record.fileName)
+          : resolvedBlob;
+        const pdfUrl = await createNamedPdfUrl(titledBlob, record.fileName || 'tai-lieu.pdf', record.id);
+        activePdfBlobUrlRef.current = pdfUrl;
+        setPdfPreviewUrl(pdfUrl);
+        setPdfPreviewLoading(false);
+        return;
+      }
+
+      if (directUrl) {
+        setPdfPreviewUrl(directUrl);
+        setPdfPreviewLoading(false);
+        return;
+      }
+
+      setPdfPreviewError('Không tìm thấy đường dẫn tệp tin PDF.');
+      setPdfPreviewLoading(false);
+    } catch (err) {
+      console.error('Lỗi khi tải bản xem trước PDF:', err);
+      setPdfPreviewError('Không thể tải bản xem trước PDF từ máy chủ.');
+      setPdfPreviewLoading(false);
+    }
+  };
+
   const handlePreview = async (record: InfrastructureAttachmentItem) => {
     if (onPreview) {
       onPreview(record);
+      return;
+    }
+    const isPdf = isPdfFile(record.fileName, record.fileType);
+    if (isPdf) {
+      await handlePreviewPdf(record);
       return;
     }
     if (activeBlobUrlRef.current) {
       URL.revokeObjectURL(activeBlobUrlRef.current);
       activeBlobUrlRef.current = null;
     }
-    if (loadReadonlyPreviewImage && record.id) {
+    if (loadPreviewFn && record.id) {
       setPreviewRecord(record);
       setPreviewVisible(true);
       setPreviewError(null);
       setPreviewLoading(true);
       setPreviewImageUrl('');
       try {
-        const data = await loadReadonlyPreviewImage(record.id);
+        const data = await loadPreviewFn(record.id);
         const imageSource = data instanceof Blob ? URL.createObjectURL(data) : data;
         if (data instanceof Blob) {
           activeBlobUrlRef.current = imageSource;
@@ -369,6 +512,24 @@ export default function InfrastructureAttachmentTab({
       key: 'fileName',
       render: (name: string, record: InfrastructureAttachmentItem) => {
         const isImg = isImageFile(name, record.fileType);
+        const isPdf = isPdfFile(name, record.fileType);
+        const isPreviewable = isImg || isPdf;
+
+        const fileIcon = isImg ? (
+          <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
+        ) : isPdf ? (
+          <FilePdfOutlined style={{ color: '#E34948', flexShrink: 0 }} />
+        ) : (
+          <FileOutlined style={{ color: isBerthReadonlyLayout ? textTertiary : actionPrimary, flexShrink: 0 }} />
+        );
+
+        const tooltipTitle = isImg
+          ? `${name} (Nhấp để xem chi tiết ảnh)`
+          : isPdf
+          ? `${name} (Nhấp để xem trước PDF)`
+          : readonly
+          ? `${name} (Nhấp để tải xuống)`
+          : name;
 
         if (readonly) {
           return (
@@ -386,19 +547,15 @@ export default function InfrastructureAttachmentTab({
                 ...(isBerthReadonlyLayout ? { fontWeight: fontWeightMedium } : {}),
               }}
               onClick={() => {
-                if (isImg) {
+                if (isPreviewable) {
                   handlePreview(record);
                 } else {
                   handleDownloadRecord({ ...record, fileName: name });
                 }
               }}
-              title={isImg ? `${name} (Nhấp để xem chi tiết ảnh)` : `${name} (Nhấp để tải xuống)`}
+              title={tooltipTitle}
             >
-              {isImg ? (
-                <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
-              ) : (
-                <FileOutlined style={{ color: isBerthReadonlyLayout ? textTertiary : actionPrimary, flexShrink: 0 }} />
-              )}
+              {fileIcon}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {name}
               </span>
@@ -419,18 +576,14 @@ export default function InfrastructureAttachmentTab({
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              cursor: isImg ? 'pointer' : 'default',
+              cursor: isPreviewable ? 'pointer' : 'default',
             }}
             onClick={() => {
-              if (isImg) handlePreview(record);
+              if (isPreviewable) handlePreview(record);
             }}
-            title={isImg ? `${name} (Nhấp để xem chi tiết ảnh)` : name}
+            title={tooltipTitle}
           >
-            {isImg ? (
-              <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
-            ) : (
-              <FileOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
-            )}
+            {fileIcon}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
             </span>
@@ -505,11 +658,14 @@ export default function InfrastructureAttachmentTab({
       align: 'center' as const,
       render: (_: unknown, record: InfrastructureAttachmentItem) => {
         const isImg = isImageFile(record.fileName, record.fileType);
+        const isPdf = isPdfFile(record.fileName, record.fileType);
+        const isPreviewable = isImg || isPdf;
+        const previewTooltip = isImg ? 'Xem chi tiết ảnh' : 'Xem trước PDF';
 
         if (readonly) {
           return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-              {isImg ? (
+              {isPreviewable ? (
                 <Button
                   type="text"
                   size="small"
@@ -523,7 +679,7 @@ export default function InfrastructureAttachmentTab({
                     justifyContent: 'center',
                   }}
                   onClick={() => handlePreview(record)}
-                  title="Xem chi tiết ảnh"
+                  title={previewTooltip}
                 />
               ) : (
                 <span style={{ width: actionControlSize, height: actionControlSize, display: 'inline-block' }} />
@@ -549,7 +705,7 @@ export default function InfrastructureAttachmentTab({
 
         return (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-            {isImg ? (
+            {isPreviewable ? (
               <Button
                 type="text"
                 icon={<EyeOutlined style={{ fontSize: 16, color: actionPrimary }} />}
@@ -562,7 +718,7 @@ export default function InfrastructureAttachmentTab({
                   justifyContent: 'center',
                 }}
                 onClick={() => handlePreview(record)}
-                title="Xem chi tiết ảnh"
+                title={previewTooltip}
               />
             ) : (
               <span style={{ width: 32, height: 32, display: 'inline-block' }} />
@@ -711,6 +867,45 @@ export default function InfrastructureAttachmentTab({
           ) : (
             <div style={{ color: textTertiary }}>Không có sẵn bản xem trước</div>
           )}
+        </div>
+      </Modal>
+
+      {/* Modal xem trước PDF (tham khảo chuẩn màn /reports/F-161) */}
+      <Modal
+        open={pdfPreviewVisible}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FilePdfOutlined style={{ color: '#E34948', fontSize: 18 }} />
+            <span style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd + 1 }}>
+              {pdfPreviewRecord?.fileName || 'Xem trước PDF'}
+            </span>
+            {pdfPreviewRecord?.fileSize ? (
+              <span style={{ fontSize: fontSizeSm, color: textTertiary, fontWeight: 'normal' }}>
+                ({formatAttachmentFileSize(pdfPreviewRecord.fileSize)})
+              </span>
+            ) : null}
+          </div>
+        }
+        footer={null}
+        width="90vw"
+        centered
+        destroyOnHidden
+        onCancel={handleClosePdfPreview}
+      >
+        <div style={{ height: 'calc(100vh - 180px)', minHeight: 480 }}>
+          {pdfPreviewLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <Spin tip="Đang tải bản xem trước PDF..." />
+            </div>
+          ) : pdfPreviewError ? (
+            <Alert type="error" showIcon message={pdfPreviewError} />
+          ) : pdfPreviewUrl ? (
+            <iframe
+              src={`${pdfPreviewUrl}#zoom=page-width&view=FitH`}
+              title={`Bản xem trước PDF ${pdfPreviewRecord?.fileName || ''}`}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+            />
+          ) : null}
         </div>
       </Modal>
     </div>

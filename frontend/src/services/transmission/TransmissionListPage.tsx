@@ -3,7 +3,6 @@ import { fmtNum } from "../../utils/numFmt";
 import { parseWktToCoordinates, ddToDms } from "../../utils/gisGeometry";
 import { usePermissionStore } from "../../store/permissionStore";
 import {
-  Alert,
   Button,
   DatePicker,
   Space,
@@ -19,7 +18,6 @@ import {
   PlusOutlined,
   SearchOutlined,
   HistoryOutlined,
-  ExclamationCircleOutlined,
   EnvironmentOutlined,
   BankOutlined,
   SlidersOutlined,
@@ -51,6 +49,7 @@ import {
 import type { TransmissionResponse, ApprovalRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
+import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
 import { cellTitleStyle, cellSubtitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
@@ -127,7 +126,6 @@ import {
   surfaceCard,
   radiusPill,
   fontSizeCellTitle,
-  fontSans,
   spaceMd,
   spaceFormField,
   spaceSm,
@@ -195,13 +193,6 @@ const APPROVAL_COLOR: Record<string, string> = {
   REJECTED_LEVEL2: statusCritical,
   DELETED: statusCritical,
   ARCHIVED: statusCritical,
-};
-
-/* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
-const pillStyle: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  fontFamily: fontSans,
 };
 
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
@@ -512,7 +503,6 @@ const TransmissionListPage = () => {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<TransmissionResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Create drawer
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -846,7 +836,6 @@ const TransmissionListPage = () => {
         dataIndex: "quantity",
         width: 140,
         type: "number" as const,
-        align: "center" as const,
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -859,7 +848,6 @@ const TransmissionListPage = () => {
         dataIndex: "yearOfUse",
         width: 220,
         type: "mono" as const,
-        align: "center" as const,
         ellipsis: false,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
@@ -1534,7 +1522,6 @@ const TransmissionListPage = () => {
           icon: icons.delete,
           danger: true,
           onClick: () => {
-            setDeleteConfirmText("");
             setDeleteTarget(record);
           },
         });
@@ -1683,27 +1670,20 @@ const TransmissionListPage = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
-    if (
-      deleteConfirmText !== "XÓA" &&
-      deleteConfirmText !== deleteTarget.deviceName
-    ) {
-      toast.error('Vui lòng nhập đúng tên thiết bị hoặc "XÓA" để xác nhận');
-      return;
-    }
     setDeleteLoading(true);
     try {
       await deleteTransmission(deleteTarget.id);
       toast.success("Xóa hệ thống truyền dẫn thành công");
       setDeleteTarget(null);
-      setDeleteConfirmText("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[transmission] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || "Lỗi khi xóa hệ thống truyền dẫn");
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
+  }, [deleteTarget, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     async (content?: string) => {
@@ -1733,19 +1713,7 @@ const TransmissionListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
-    if (!reason) {
-      toast.error("Vui lòng nhập lý do từ chối");
-      return;
-    }
-    if (reason.length < 10) {
-      toast.error("Lý do từ chối tối thiểu 10 ký tự");
-      return;
-    }
-    if (reason.length > 500) {
-      toast.error("Lý do từ chối tối đa 500 ký tự");
-      return;
-    }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       const payload: ApprovalRequest = { decision: "REJECTED", reason };
@@ -3069,7 +3037,7 @@ const TransmissionListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho hệ thống truyền dẫn:
+            Vui lòng nhập lý do từ chối cho hệ thống truyền dẫn (không bắt buộc):
           </p>
           {rejectTarget && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
@@ -3079,105 +3047,29 @@ const TransmissionListPage = () => {
             </p>
           )}
           <Input.TextArea
-            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            placeholder="Nhập lý do từ chối (nếu có)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
-            maxLength={500}
-            showCount
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
       </Modal>
 
       {/* Delete Modal */}
-      <Modal
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Xác nhận xóa
-          </span>
-        }
-        open={!!deleteTarget}
+      <DeleteConfirmModal
+        open={Boolean(deleteTarget)}
         onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteConfirmText("");
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setDeleteTarget(null);
-              setDeleteConfirmText("");
-            }}
-            style={outlineButtonStyle}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="delete"
-            type="primary"
-            danger
-            loading={deleteLoading}
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-            }}
-          >
-            Xác nhận xóa
-          </Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: "8px 0" }}>
-          <Alert
-            message="Hành động này không thể hoàn tác"
-            type="warning"
-            showIcon
-            icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
-          />
-          <p
-            style={{
-              fontSize: fontSizeMd,
-              color: textPrimary,
-              marginBottom: spaceFormField,
-            }}
-          >
-            Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ{" "}
-            <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deleteTarget && (
-            <p
-              style={{
-                fontSize: fontSizeMd,
-                color: textSecondary,
-                marginBottom: spaceFormField,
-              }}
-            >
-              Thiết bị:{" "}
-              <strong style={{ color: textPrimary }}>
-                {deleteTarget.deviceName}
-              </strong>
-            </p>
-          )}
-          <Input
-            placeholder="Nhập tên thiết bị hoặc XÓA"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            onPressEnter={handleDeleteConfirm}
-            style={pillStyle}
-            autoFocus
-          />
-        </div>
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+        itemType="hệ thống truyền dẫn"
+        itemName={deleteTarget?.deviceName}
+        itemCode={deleteTarget?.deviceCode}
+      />
 
             {/* ── Create Drawer (đồng bộ chuẩn /berth) ───────────────────── */}
       <AppDrawer

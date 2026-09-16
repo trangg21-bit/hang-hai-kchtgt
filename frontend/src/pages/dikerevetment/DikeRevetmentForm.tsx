@@ -42,6 +42,7 @@ import { formLabelProps as labelProps } from '../../components/shared/formLabel'
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import {
   parseNumber20,
   getValueFromEvent20,
@@ -175,10 +176,10 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
             operatingUnitId: data.operatingUnitId,
             constructionDate: data.constructionDate ? dayjs(data.constructionDate) : null,
             lastMaintenanceYear: data.lastMaintenanceYear ? dayjs(String(data.lastMaintenanceYear)) : null,
-            length: data.length,
-            crestElevation: data.crestElevation,
+            length: normalizeSafeNumber(data.length),
+            crestElevation: normalizeSafeNumber(data.crestElevation),
             commissioningDate: data.commissioningDate ? dayjs(data.commissioningDate) : null,
-            height: data.height,
+            height: normalizeSafeNumber(data.height),
             status: data.status,
             note: data.note,
             orgUnitId: data.orgUnitId,
@@ -438,11 +439,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều dài (m):</div>
-                <div style={detailValueStyle}>{record.length !== undefined ? record.length.toFixed(2) : null}</div>
+                <div style={detailValueStyle}>{record.length !== undefined ? fmtNum(record.length) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Cao trình đỉnh (m):</div>
-                <div style={detailValueStyle}>{record.crestElevation !== undefined ? record.crestElevation.toFixed(2) : null}</div>
+                <div style={detailValueStyle}>{record.crestElevation !== undefined ? fmtNum(record.crestElevation) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Thời điểm đưa vào khai thác:</div>
@@ -458,7 +459,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều cao (m):</div>
-                <div style={detailValueStyle}>{record.height !== undefined ? record.height.toFixed(2) : null}</div>
+                <div style={detailValueStyle}>{record.height !== undefined ? fmtNum(record.height) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Tình trạng:</div>
@@ -710,6 +711,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
+          formatter={fmtInputNumber}
         />
       </Form.Item>
 
@@ -726,6 +728,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
+          formatter={fmtInputNumber}
         />
       </Form.Item>
 
@@ -801,6 +804,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           step={0.01}
           maxLength={20}
           parser={parseNumber20}
+          formatter={fmtInputNumber}
         />
       </Form.Item>
 
