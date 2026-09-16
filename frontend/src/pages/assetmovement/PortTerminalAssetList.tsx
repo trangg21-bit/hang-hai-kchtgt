@@ -97,10 +97,6 @@ import {
   type InfrastructureAssetScreenConfig,
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
-import {
-  validateAdjustmentOriginalValue,
-  calculateAssetAdjustmentValues,
-} from "../../utils/assetValueCalculation";
 
 const STATUS_COUNT_KEYS = [
   "DRAFT",
@@ -109,6 +105,7 @@ const STATUS_COUNT_KEYS = [
   "APPROVED",
   "REJECTED_LEVEL1",
   "REJECTED_LEVEL2",
+  "ARCHIVED",
 ];
 
 type DrawerMode = "create" | "edit" | "detail";
@@ -688,28 +685,37 @@ function PortTerminalAssetList({
     try {
       const values = await operationForm.validateFields();
       const origVal = values.originalValue;
-      if (operationMode === "increase" || operationMode === "decrease") {
-        const valCheck = validateAdjustmentOriginalValue(
-          operationMode,
-          origVal,
-          selected.originalValue
+      if (operationMode !== "exploit" && origVal == null) {
+        toast.error("Vui lòng nhập nguyên giá sau điều chỉnh.");
+        return;
+      }
+      if (
+        operationMode === "increase" &&
+        origVal! <= (selected.originalValue || 0)
+      ) {
+        toast.error(
+          "Nguyên giá sau điều chỉnh phải lớn hơn nguyên giá hiện tại.",
         );
-        if (!valCheck.isValid) {
-          toast.error(
-            valCheck.message || "Nguyên giá sau điều chỉnh không hợp lệ."
-          );
-          return;
-        }
+        return;
+      }
+      if (
+        operationMode === "decrease" &&
+        origVal! >= (selected.originalValue || 0)
+      ) {
+        toast.error(
+          "Nguyên giá sau điều chỉnh phải nhỏ hơn nguyên giá hiện tại.",
+        );
+        return;
       }
       setSaving(true);
-      const calc = calculateAssetAdjustmentValues({
-        originalValueAfter: origVal,
-        depreciationRate: values.depreciationRate,
-        depreciationStartDate: values.depreciationStartDate,
-        depreciationEndDate: values.depreciationEndDate,
-        accumulatedDepreciationManual: values.accumulatedDepreciation,
-        depreciationMonths: values.depreciationMonths,
-      });
+      const accDep = Number(values.accumulatedDepreciation) || 0;
+      const remAfter =
+        origVal != null ? Math.max(0, origVal - accDep) : undefined;
+      const depMonths = Number(values.depreciationMonths) || 0;
+      const monthDep =
+        origVal != null && depMonths > 0
+          ? Math.round((origVal / depMonths) * 100) / 100
+          : undefined;
 
       const adjustmentDetails: AssetValueAdjustmentDetails = {
         ...values,
@@ -724,10 +730,8 @@ function PortTerminalAssetList({
         originalValueBefore: selected.originalValue,
         originalValueAfter: origVal,
         remainingValueBefore: selected.remainingValue,
-        remainingValueAfter: calc.remainingValueAfter,
-        accumulatedDepreciation:
-          calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
-        monthlyDepreciation: calc.monthlyDepreciation,
+        remainingValueAfter: remAfter,
+        monthlyDepreciation: monthDep,
       };
 
       if (operationMode === "exploit") {
@@ -873,6 +877,7 @@ function PortTerminalAssetList({
         subField: 'assetCode',
         width: 230,
         fixed: 'left',
+        allowSort: true,
         onClick: (record) => void openDetail(record),
       },
       {
@@ -881,6 +886,7 @@ function PortTerminalAssetList({
         type: TableColumnType.Text,
         width: 250,
         bold: true,
+        allowSort: true,
         render: (v) => <span style={{ fontWeight: fontWeightBold }}>{orgName.get(v as string) || ''}</span>,
       },
       {
@@ -888,6 +894,7 @@ function PortTerminalAssetList({
         dataIndex: 'usingOrgUnitId',
         type: TableColumnType.Text,
         width: 250,
+        allowSort: true,
         render: (v) => orgName.get(v as string) || '',
       },
       {
@@ -895,6 +902,7 @@ function PortTerminalAssetList({
         dataIndex: screenConfig.relationField,
         type: TableColumnType.Text,
         width: screenConfig.relationColumnWidth,
+        allowSort: true,
         render: (v, record) => {
           const relId = (v || record[screenConfig.relationField]) as string | undefined;
           const item = relId ? relatedInfrastructureMap.get(relId) : undefined;
@@ -910,6 +918,7 @@ function PortTerminalAssetList({
         dataIndex: 'assetType',
         type: TableColumnType.Text,
         width: 220,
+        allowSort: true,
         render: () => screenConfig.title,
       },
       {
@@ -917,30 +926,35 @@ function PortTerminalAssetList({
         dataIndex: 'assetCondition',
         type: TableColumnType.Status,
         width: 190,
+        allowSort: true,
       },
       {
         title: 'HIỆN TRẠNG SỬ DỤNG',
         dataIndex: 'usageStatus',
         type: TableColumnType.Status,
         width: 190,
+        allowSort: true,
       },
       {
         title: 'NHÓM TÀI SẢN',
         dataIndex: 'assetGroup',
         type: TableColumnType.Text,
         width: 210,
+        allowSort: true,
       },
       {
         title: 'NGÀY SỬ DỤNG TÀI SẢN',
         dataIndex: 'useDate',
         type: TableColumnType.Date,
         width: 190,
+        allowSort: true,
       },
       {
         title: 'TRẠNG THÁI',
         dataIndex: 'approvalStatus',
         type: TableColumnType.Status,
         width: 260,
+        allowSort: true,
       },
       {
         title: 'CÁN BỘ CẬP NHẬT',
@@ -948,6 +962,8 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'updatedAt',
         width: 210,
+        allowSort: true,
+        sortField: 'updatedBy',
       },
       {
         title: 'CÁN BỘ GỬI PHÊ DUYỆT',
@@ -955,6 +971,8 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'submittedAt',
         width: 240,
+        allowSort: true,
+        sortField: 'submittedBy',
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
@@ -962,12 +980,15 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'portAuthorityApprovedAt',
         width: 340,
+        allowSort: true,
+        sortField: 'portAuthorityApprovedBy',
       },
       {
         title: 'NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
         dataIndex: 'portAuthorityApprovalContent',
         type: TableColumnType.Text,
         width: 280,
+        allowSort: true,
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
@@ -975,60 +996,23 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'departmentApprovedAt',
         width: 260,
+        allowSort: true,
+        sortField: 'departmentApprovedBy',
       },
       {
         title: 'NỘI DUNG PHÊ DUYỆT CẤP CỤC',
         dataIndex: 'departmentApprovalContent',
         type: TableColumnType.Text,
         width: 260,
+        allowSort: true,
       },
     ],
     actions: (record: PortTerminalAsset) => [
       { key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(record) },
       { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEdit(record) },
       { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('increase');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            originalValueBefore: record.originalValue,
-            remainingValueBefore: record.remainingValue,
-            declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
-            depreciationRate: record.depreciationRate,
-            assignmentDecisionNumber: record.assignmentDecisionNumber,
-            depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
-            depreciationMonths: record.depreciationMonths,
-            depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
-            accumulatedDepreciation: record.accumulatedDepreciation,
-          });
-        },
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('decrease');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            originalValueBefore: record.originalValue,
-            remainingValueBefore: record.remainingValue,
-            declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
-            depreciationRate: record.depreciationRate,
-            assignmentDecisionNumber: record.assignmentDecisionNumber,
-            depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
-            depreciationMonths: record.depreciationMonths,
-            depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
-            accumulatedDepreciation: record.accumulatedDepreciation,
-          });
-        },
-      },
+      { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
+      { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
       { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistory(record) },
       ...(record.approvalStatus === 'DRAFT'
         ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]
