@@ -21,7 +21,6 @@ import com.hanghai.kchtg.port.entity.DryPort;
 import com.hanghai.kchtg.port.repository.DryPortRepository;
 import com.hanghai.kchtg.port.service.shared.AuditLogService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -68,7 +67,6 @@ public class DryPortService {
     private final DryPortRepository dryPortRepository;
     private final ChangeHistoryService changeHistoryService;
     private final AuditLogService auditLogService;
-    private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final InfrastructureHistoryRepository historyRepository;
     private final GisSpatialObjectService gisSpatialObjectService;

@@ -135,7 +135,7 @@ public class BuoyController {
         }
 
         @PostMapping("/{id}/reject")
-        @PreAuthorize("@auth.check(authentication, 'buoy:approve') or @auth.check(authentication, 'data:write')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoy:approvec1', 'buoy:approvec2', 'data:approvec1', 'data:approvec2', 'data:write')")
         public ResponseEntity<ApiResponse<BuoyResponse>> reject(
                         @PathVariable UUID id,
                         @RequestParam String rejectReason,

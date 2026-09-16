@@ -1,139 +1,96 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button,
-  Modal,
-  Input,
-  Select,
-  TreeSelect,
-  Space,
-  Typography,
-  Form,
-  DatePicker,
-  Row,
-  Col,
-  Tabs,
-  InputNumber,
-} from 'antd';
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  EnvironmentOutlined,
-  HistoryOutlined,
-  SearchOutlined,
-  BankOutlined,
-  SlidersOutlined,
-  FileTextOutlined,
-  AuditOutlined,
-  DownOutlined,
-  RightOutlined,
+    AuditOutlined,
+    BankOutlined,
+    DeleteOutlined,
+    DownOutlined,
+    EnvironmentOutlined,
+    FileTextOutlined,
+    HistoryOutlined,
+    PlusOutlined,
+    RightOutlined,
+    SearchOutlined,
+    SlidersOutlined,
 } from '@ant-design/icons';
+import {
+    Button,
+    Col,
+    DatePicker,
+    Form,
+    Input,
+    InputNumber,
+    Modal,
+    Row,
+    Select,
+    Space,
+    Tabs,
+    TreeSelect,
+    Typography,
+} from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import {
-  dikeRevetmentCRUD,
-  dikeRevetmentApproval,
-} from '../../services/dikeRevetmentService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
-import {
-  parseWktToCoordinates,
-  validateDmsCoordinates,
-  serializeCoordinatesToWkt,
-} from '../../utils/gisGeometry';
-import type {
-  DikeRevetmentResponse,
-  DikeRevetmentType,
-  CreateDikeRevetmentRequest,
-  UpdateDikeRevetmentRequest,
-} from '../../types/dikeRevetment';
-import { DIKE_REVETMENT_STATUS_LABELS } from '../../types/dikeRevetment';
-import { fmtNum } from '../../utils/numFmt';
-import { organizationService } from '../../services/organizationService';
-import type { Organization } from '../../services/organizationService';
-import { portCRUD } from '../../services/portService';
-import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
-import { ScreenHeader, DataTable, FilterTableLayout } from '../../components/list-view';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import EmptyState from '../../components/EmptyState';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import EmptyState from '../../components/EmptyState';
-import toast, { message } from '../../components/ToastNotification';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol as MapSymbol } from '../../services/symbolService';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
-import ApprovalModal from '../../components/shared/ApprovalModal';
-import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { colors } from '../../themetokenchk';
-import * as themeTokenChk from '../../themetokenchk';
-import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
-import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
-import { AppDrawer } from '../../components/shared/AppDrawer';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import toast, { message } from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  fontSizeSm,
-  fontSizeMd,
-  fontSizeLg,
-  fontWeightBold,
-  fontWeightMedium,
-  surfaceCard,
-  borderDefault,
-  radiusPill,
-  radiusMd,
-  spaceXs,
-  spaceSm,
-  spaceMd,
-  spaceFormField,
-  spaceXl,
-  inputStyle,
-  selectStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  formFieldStyle,
-  formRowGutter,
-  drawerTitleStyle,
-  drawerFooterStyle,
-  DRAWER_WIDTH,
-  requiredMarkStyle,
-  getRangePickerProps,
-  getSidebarDatePickerProps,
-  getDatePickerProps,
-  confirmModalBodyStyle,
-  cellTitleStyle,
-  cellSubtitleStyle,
-  statusBadgeStyle,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
+    dikeRevetmentApproval,
+    dikeRevetmentCRUD,
+} from '../../services/dikeRevetmentService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { portCRUD } from '../../services/portService';
+import type { Symbol as MapSymbol } from '../../services/symbolService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import * as themeTokenChk from '../../themetokenchk';
+import {
+    DRAWER_WIDTH, actionPrimary, borderDefault, cellSubtitleStyle, cellTitleStyle, colors, confirmModalBodyStyle, drawerFooterStyle, drawerTitleStyle, fontSizeLg, fontSizeMd, fontSizeSm, fontWeightBold,
+    fontWeightMedium, formFieldStyle,
+    formRowGutter, getDatePickerProps, getRangePickerProps,
+    getSidebarDatePickerProps, historyAccentBarStyle, historyArrowStyle, historyChangeRowStyle,
+    historyCreateRowStyle,
+    historyFieldLabelStyle, historyGroupGridStyle, historyInfoCardStyle, historyInfoTitleStyle, historyMetaRowStyle, historyNewValueStyle, historyOldValueStyle, historyTimeStyle, inputStyle, outlineButtonStyle, primaryButtonStyle, radiusMd, radiusPill, requiredMarkStyle, selectStyle, spaceFormField, spaceMd, spaceSm, spaceXl, spaceXs, statusAttention, statusBadgeStyle, statusCritical,
+    statusDraft, statusOperational, surfaceCard, textPrimary,
+    textSecondary,
+    textTertiary
 } from '../../themetokenchk';
-
+import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import type {
+    CreateDikeRevetmentRequest,
+    DikeRevetmentResponse,
+    DikeRevetmentType,
+    UpdateDikeRevetmentRequest,
+} from '../../types/dikeRevetment';
+import { DIKE_REVETMENT_STATUS_LABELS } from '../../types/dikeRevetment';
+import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import {
-  parseNumber20,
-  getValueFromEvent20,
-  decimalNumberRule,
-  safeNumber,
-} from '../../utils/numberRuleHelper';
+    parseWktToCoordinates,
+    serializeCoordinatesToWkt,
+    validateDmsCoordinates,
+} from '../../utils/gisGeometry';
+import { fmtNum } from '../../utils/numFmt';
+
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import {
+    decimalNumberRule,
+    getValueFromEvent20,
+    parseNumber20,
+    safeNumber,
+} from '../../utils/numberRuleHelper';
 
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
@@ -567,8 +524,8 @@ export default function DikeRevetmentList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s: any) => s.user);
   // Phê duyệt 2 cấp (M-1006): C1 = Cảng vụ/Chi cục, C2 = Cục — quyền theo cấp duyệt.
-  const canApproveC1 = hasPerm('dikerevetment:approvec1') || hasPerm('dikerevetment:approve');
-  const canApproveC2 = hasPerm('dikerevetment:approvec2') || hasPerm('dikerevetment:approve') || hasPerm('*');
+  const canApproveC1 = hasPerm('dikerevetment:approvec1');
+  const canApproveC2 = hasPerm('dikerevetment:approvec2') || hasPerm('*');
   const canSubmitForApproval = hasPerm('dikerevetment:update');
   // Đơn vị cha/Cục (scope_all, admin) được chọn đơn vị con khi thêm mới; tài khoản thường bị khóa theo đơn vị của mình
   const isElevatedOrg = hasPerm('orgunit:scope_all') || hasPerm('*')
@@ -849,15 +806,6 @@ export default function DikeRevetmentList() {
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [historyPage, setHistoryPage] = useState(0);
-
-  const historyFieldCount = useMemo(() => {
-    if (!Array.isArray(historyRecords)) return 0;
-    let count = 0;
-    for (const r of historyRecords) {
-      count += (r.changes && r.changes.length > 0) ? r.changes.length : 1;
-    }
-    return count;
-  }, [historyRecords]);
 
   // ── Đơn vị vận hành: danh mục chung (chuẩn cctv/radar — /common/options/operating-organizations) ──
   const [operatingUnits, setOperatingUnits] = useState<Array<{ id: string; code: string; name: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
@@ -1494,6 +1442,55 @@ export default function DikeRevetmentList() {
   const historyOldValue = (item: any): string | null => item.previousValue ?? item.oldValue ?? null;
   const historyNewValue = (item: any): string | null => item.newValue ?? null;
   const historyActor = (item: any): string => { const raw = item?.approvedBy || item?.changedBy || ''; return raw || '—'; };
+
+  const countDikeRevetmentHistoryCards = (records: any[]): number => {
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+
+    const isUpdateAction = (status: string, reason?: string) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
+
+    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const prev = groups[groups.length - 1];
+      const actor = historyActor(r);
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      if (isSameGroup) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
+    }
+
+    let count = 0;
+    for (const g of groups) {
+      const changes = g.items
+        .map((item) => ({ field: historyField(item) || '', oldValue: historyOldValue(item), newValue: historyNewValue(item) }))
+        .filter((c: any) => c.field !== '' || (c.oldValue != null && c.oldValue !== '') || (c.newValue != null && c.newValue !== ''))
+        .filter((c: any) => {
+          const ov = c.oldValue != null ? String(c.oldValue).trim() : '';
+          const nv = c.newValue != null ? String(c.newValue).trim() : '';
+          if (ov === '' && nv === '') return false;
+          if (ov !== '' && nv !== '' && ov === nv) return false;
+          return true;
+        })
+        .filter((c: any) => c.field !== 'attachments' && c.field !== 'spatialId');
+      if (changes.length > 0) count++;
+    }
+    return count;
+  };
+
+  const historyUpdateCount = useMemo(() => {
+    return countDikeRevetmentHistoryCards(historyRecords);
+  }, [historyRecords]);
   // Render giá trị thay đổi đẹp như /vts-system: tọa độ → DMS, enum/trạng thái/biểu tượng → tên tiếng Việt
   const renderHistoryValue = (field: string, raw: string | null): React.ReactNode => {
     if (raw === null || raw === undefined || raw === '' || raw === '—' || raw === '(null)' || raw === '(trống)' || raw === 'null' || raw === 'Chưa có' || raw === 'Chua co') {
@@ -3647,7 +3644,7 @@ export default function DikeRevetmentList() {
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.dikeRevetmentName || historyTarget.code}` : 'Lịch sử thay đổi'}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

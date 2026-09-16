@@ -105,7 +105,12 @@ export function useKchtPermissions(
 
   const hasApprovePerm = useMemo(() => {
     if (isAdmin) return true;
-    if (hasPerm(`${resource}:approve`) || hasPerm('data:approve')) return true;
+    if (
+      hasPerm(`${resource}:approvec1`) ||
+      hasPerm(`${resource}:approvec2`) ||
+      hasPerm('data:approvec1') ||
+      hasPerm('data:approvec2')
+    ) return true;
     return extraApprovePerms.some((p) => hasPerm(p));
   }, [isAdmin, hasPerm, resource, extraApprovePerms]);
 
@@ -113,26 +118,24 @@ export function useKchtPermissions(
     if (isAdmin) return true;
     if (
       hasPerm(`${resource}:approvec1`) ||
-      hasPerm(`${resource}:approve`) ||
       hasPerm('data:approvec1') ||
-      hasPerm('data:approve')
+      extraApproveL1Perms.some((p) => hasPerm(p))
     ) {
       return true;
     }
-    return extraApproveL1Perms.some((p) => hasPerm(p));
+    return false;
   }, [isAdmin, hasPerm, resource, extraApproveL1Perms]);
 
   const hasApproveL2Perm = useMemo(() => {
     if (isAdmin) return true;
     if (
       hasPerm(`${resource}:approvec2`) ||
-      hasPerm(`${resource}:approve`) ||
       hasPerm('data:approvec2') ||
-      hasPerm('data:approve')
+      extraApproveL2Perms.some((p) => hasPerm(p))
     ) {
       return true;
     }
-    return extraApproveL2Perms.some((p) => hasPerm(p));
+    return false;
   }, [isAdmin, hasPerm, resource, extraApproveL2Perms]);
 
   // Can Save & Approve in Form

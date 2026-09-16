@@ -110,7 +110,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "data", "create", "Tạo dữ liệu", "Tạo dữ liệu dùng chung");
                 seedPermission(definitions, "data", "update", "Cập nhật dữ liệu", "Sửa dữ liệu dùng chung");
                 seedPermission(definitions, "data", "delete", "Xóa dữ liệu", "Xóa dữ liệu dùng chung");
-                seedPermission(definitions, "data", "approve", "Phê duyệt dữ liệu", "Phê duyệt dữ liệu dùng chung");
                 seedPermission(definitions, "data", "approvec1", "Phê duyệt C1 dữ liệu",
                                 "Phê duyệt cấp 1 dữ liệu dùng chung");
                 seedPermission(definitions, "data", "approvec2", "Phê duyệt C2 dữ liệu",
@@ -122,8 +121,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "report", "update", "Cập nhật báo cáo", "Chỉnh sửa báo cáo thống kê");
                 seedPermission(definitions, "report", "delete", "Xóa báo cáo", "Xóa báo cáo thống kê");
                 seedPermission(definitions, "check", "read", "Kiểm tra dữ liệu", "Kiểm tra tính toàn vẹn dữ liệu");
-                seedPermission(definitions, "approve", "action", "Thao tác phê duyệt",
-                                "Thực hiện thao tác phê duyệt nghiệp vụ");
 
                 // 7. Văn bản pháp quy & Hồ sơ pháp lý (Legal Documents)
                 seedPermission(definitions, "document", "manage", "Quản lý văn bản",
@@ -187,7 +184,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "port", "create", "Thêm cảng biển", "Tạo mới hồ sơ cảng biển");
                 seedPermission(definitions, "port", "update", "Cập nhật cảng biển", "Chỉnh sửa thông tin cảng biển");
                 seedPermission(definitions, "port", "delete", "Xóa cảng biển", "Xóa cảng biển khỏi hệ thống");
-                seedPermission(definitions, "port", "approve", "Phê duyệt cảng biển", "Phê duyệt dữ liệu cảng biển");
                 seedPermission(definitions, "port", "approvec1", "Phê duyệt C1 cảng biển",
                                 "Phê duyệt cấp 1 (Chi cục/Cảng vụ) cảng biển");
                 seedPermission(definitions, "port", "approvec2", "Phê duyệt C2 cảng biển",
@@ -204,7 +200,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "berth", "create", "Thêm bến cảng", "Tạo mới hồ sơ bến cảng");
                 seedPermission(definitions, "berth", "update", "Cập nhật bến cảng", "Chỉnh sửa thông tin bến cảng");
                 seedPermission(definitions, "berth", "delete", "Xóa bến cảng", "Xóa bến cảng");
-                seedPermission(definitions, "berth", "approve", "Phê duyệt bến cảng", "Phê duyệt dữ liệu bến cảng");
                 seedPermission(definitions, "berth", "approvec1", "Phê duyệt C1 bến cảng", "Phê duyệt cấp 1 bến cảng");
                 seedPermission(definitions, "berth", "approvec2", "Phê duyệt C2 bến cảng", "Phê duyệt cấp 2 bến cảng");
                 seedPermission(definitions, "berth", "history", "Lịch sử phê duyệt bến cảng",
@@ -222,8 +217,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "anchorage", "update", "Cập nhật khu neo đậu",
                                 "Chỉnh sửa thông tin khu neo đậu");
                 seedPermission(definitions, "anchorage", "delete", "Xóa khu neo đậu", "Xóa khu neo đậu");
-                seedPermission(definitions, "anchorage", "approve", "Phê duyệt khu neo đậu",
-                                "Phê duyệt dữ liệu khu neo đậu");
                 seedPermission(definitions, "anchorage", "approvec1", "Phê duyệt C1 khu neo đậu",
                                 "Phê duyệt cấp 1 khu neo đậu");
                 seedPermission(definitions, "anchorage", "approvec2", "Phê duyệt C2 khu neo đậu",
@@ -243,8 +236,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "transferarea", "update", "Cập nhật khu chuyển tải",
                                 "Chỉnh sửa thông tin khu chuyển tải");
                 seedPermission(definitions, "transferarea", "delete", "Xóa khu chuyển tải", "Xóa khu chuyển tải");
-                seedPermission(definitions, "transferarea", "approve", "Phê duyệt khu chuyển tải",
-                                "Phê duyệt dữ liệu khu chuyển tải");
                 seedPermission(definitions, "transferarea", "approvec1", "Phê duyệt C1 khu chuyển tải",
                                 "Phê duyệt cấp 1 khu chuyển tải");
                 seedPermission(definitions, "transferarea", "approvec2", "Phê duyệt C2 khu chuyển tải",
@@ -264,8 +255,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "stormshelter", "update", "Cập nhật khu tránh trú bão",
                                 "Chỉnh sửa thông tin khu tránh trú bão");
                 seedPermission(definitions, "stormshelter", "delete", "Xóa khu tránh trú bão", "Xóa khu tránh trú bão");
-                seedPermission(definitions, "stormshelter", "approve", "Phê duyệt khu tránh trú bão",
-                                "Phê duyệt dữ liệu khu tránh trú bão");
                 seedPermission(definitions, "stormshelter", "approvec1", "Phê duyệt C1 khu tránh trú bão",
                                 "Phê duyệt cấp 1 khu tránh trú bão");
                 seedPermission(definitions, "stormshelter", "approvec2", "Phê duyệt C2 khu tránh trú bão",
@@ -285,8 +274,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "buoyberth", "update", "Cập nhật bến phao",
                                 "Chỉnh sửa thông tin bến phao");
                 seedPermission(definitions, "buoyberth", "delete", "Xóa bến phao", "Xóa bến phao");
-                seedPermission(definitions, "buoyberth", "approve", "Phê duyệt bến phao",
-                                "Phê duyệt dữ liệu bến phao");
                 seedPermission(definitions, "buoyberth", "approvec1", "Phê duyệt C1 bến phao",
                                 "Phê duyệt cấp 1 bến phao");
                 seedPermission(definitions, "buoyberth", "approvec2", "Phê duyệt C2 bến phao",
@@ -306,8 +293,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "daittdh", "update", "Cập nhật đài TTDH",
                                 "Chỉnh sửa thông tin đài TTDH");
                 seedPermission(definitions, "daittdh", "delete", "Xóa đài TTDH", "Xóa đài TTDH");
-                seedPermission(definitions, "daittdh", "approve", "Phê duyệt đài TTDH",
-                                "Phê duyệt dữ liệu đài TTDH");
                 seedPermission(definitions, "daittdh", "approvec1", "Phê duyệt C1 đài TTDH",
                                 "Phê duyệt cấp 1 đài TTDH");
                 seedPermission(definitions, "daittdh", "approvec2", "Phê duyệt C2 đài TTDH",
@@ -327,8 +312,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "shiprepairyard", "update", "Cập nhật cơ sở sửa chữa, đóng tàu",
                                 "Chỉnh sửa thông tin cơ sở sửa chữa, đóng tàu");
                 seedPermission(definitions, "shiprepairyard", "delete", "Xóa cơ sở sửa chữa, đóng tàu", "Xóa cơ sở sửa chữa, đóng tàu");
-                seedPermission(definitions, "shiprepairyard", "approve", "Phê duyệt cơ sở sửa chữa, đóng tàu",
-                                "Phê duyệt dữ liệu cơ sở sửa chữa, đóng tàu");
                 seedPermission(definitions, "shiprepairyard", "approvec1", "Phê duyệt C1 cơ sở sửa chữa, đóng tàu",
                                 "Phê duyệt cấp 1 cơ sở sửa chữa, đóng tàu");
                 seedPermission(definitions, "shiprepairyard", "approvec2", "Phê duyệt C2 cơ sở sửa chữa, đóng tàu",
@@ -345,7 +328,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "pier", "create", "Thêm cầu cảng", "Tạo mới hồ sơ cầu cảng");
                 seedPermission(definitions, "pier", "update", "Cập nhật cầu cảng", "Chỉnh sửa thông tin cầu cảng");
                 seedPermission(definitions, "pier", "delete", "Xóa cầu cảng", "Xóa cầu cảng");
-                seedPermission(definitions, "pier", "approve", "Phê duyệt cầu cảng", "Phê duyệt dữ liệu cầu cảng");
                 seedPermission(definitions, "pier", "approvec1", "Phê duyệt C1 cầu cảng", "Phê duyệt cấp 1 cầu cảng");
                 seedPermission(definitions, "pier", "approvec2", "Phê duyệt C2 cầu cảng", "Phê duyệt cấp 2 cầu cảng");
                 seedPermission(definitions, "pier", "history", "Lịch sử phê duyệt cầu cảng",
@@ -360,7 +342,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "dryport", "create", "Thêm cảng cạn", "Tạo mới hồ sơ cảng cạn");
                 seedPermission(definitions, "dryport", "update", "Cập nhật cảng cạn", "Chỉnh sửa thông tin cảng cạn");
                 seedPermission(definitions, "dryport", "delete", "Xóa cảng cạn", "Xóa cảng cạn");
-                seedPermission(definitions, "dryport", "approve", "Phê duyệt cảng cạn", "Phê duyệt dữ liệu cảng cạn");
                 seedPermission(definitions, "dryport", "approvec1", "Phê duyệt C1 cảng cạn",
                                 "Phê duyệt cấp 1 cảng cạn");
                 seedPermission(definitions, "dryport", "approvec2", "Phê duyệt C2 cảng cạn",
@@ -374,8 +355,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "waterzone", "update", "Cập nhật vùng nước",
                                 "Chỉnh sửa thông tin vùng nước");
                 seedPermission(definitions, "waterzone", "delete", "Xóa vùng nước", "Xóa vùng nước");
-                seedPermission(definitions, "waterzone", "approve", "Phê duyệt vùng nước",
-                                "Phê duyệt dữ liệu vùng nước");
                 seedPermission(definitions, "waterzone", "approvec1", "Phê duyệt C1 vùng nước",
                                 "Phê duyệt cấp 1 vùng nước");
                 seedPermission(definitions, "waterzone", "approvec2", "Phê duyệt C2 vùng nước",
@@ -392,7 +371,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "cctv", "create", "Thêm hệ thống CCTV", "Tạo mới hồ sơ hệ thống CCTV");
                 seedPermission(definitions, "cctv", "update", "Cập nhật hệ thống CCTV", "Chỉnh sửa thông tin hệ thống CCTV");
                 seedPermission(definitions, "cctv", "delete", "Xóa hệ thống CCTV", "Xóa hệ thống CCTV khỏi hệ thống");
-                seedPermission(definitions, "cctv", "approve", "Phê duyệt hệ thống CCTV", "Phê duyệt dữ liệu hệ thống CCTV");
                 seedPermission(definitions, "cctv", "approvec1", "Phê duyệt C1 hệ thống CCTV",
                                 "Phê duyệt cấp 1 hệ thống CCTV");
                 seedPermission(definitions, "cctv", "approvec2", "Phê duyệt C2 hệ thống CCTV",
@@ -409,7 +387,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "vhf", "create", "Thêm hệ thống thông tin liên lạc VHF", "Tạo mới hồ sơ hệ thống VHF");
                 seedPermission(definitions, "vhf", "update", "Cập nhật hệ thống thông tin liên lạc VHF", "Chỉnh sửa thông tin hệ thống VHF");
                 seedPermission(definitions, "vhf", "delete", "Xóa hệ thống thông tin liên lạc VHF", "Xóa hệ thống VHF khỏi hệ thống");
-                seedPermission(definitions, "vhf", "approve", "Phê duyệt hệ thống thông tin liên lạc VHF", "Phê duyệt dữ liệu hệ thống VHF");
                 seedPermission(definitions, "vhf", "approvec1", "Phê duyệt C1 hệ thống thông tin liên lạc VHF",
                                 "Phê duyệt cấp 1 hệ thống VHF");
                 seedPermission(definitions, "vhf", "approvec2", "Phê duyệt C2 hệ thống thông tin liên lạc VHF",
@@ -426,7 +403,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "scada", "create", "Thêm hệ thống SCADA", "Tạo mới hồ sơ hệ thống SCADA");
                 seedPermission(definitions, "scada", "update", "Cập nhật hệ thống SCADA", "Chỉnh sửa thông tin hệ thống SCADA");
                 seedPermission(definitions, "scada", "delete", "Xóa hệ thống SCADA", "Xóa hệ thống SCADA khỏi hệ thống");
-                seedPermission(definitions, "scada", "approve", "Phê duyệt hệ thống SCADA", "Phê duyệt dữ liệu hệ thống SCADA");
                 seedPermission(definitions, "scada", "approvec1", "Phê duyệt C1 hệ thống SCADA",
                                 "Phê duyệt cấp 1 hệ thống SCADA");
                 seedPermission(definitions, "scada", "approvec2", "Phê duyệt C2 hệ thống SCADA",
@@ -443,7 +419,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "transmission", "create", "Thêm hệ thống truyền dẫn", "Tạo mới hồ sơ hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "update", "Cập nhật hệ thống truyền dẫn", "Chỉnh sửa thông tin hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "delete", "Xóa hệ thống truyền dẫn", "Xóa hệ thống truyền dẫn khỏi hệ thống");
-                seedPermission(definitions, "transmission", "approve", "Phê duyệt hệ thống truyền dẫn", "Phê duyệt dữ liệu hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "approvec1", "Phê duyệt C1 hệ thống truyền dẫn",
                                 "Phê duyệt cấp 1 hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "approvec2", "Phê duyệt C2 hệ thống truyền dẫn",
@@ -460,7 +435,6 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "vtsassist", "create", "Thêm hệ thống phụ trợ VTS", "Tạo mới hồ sơ hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "update", "Cập nhật hệ thống phụ trợ VTS", "Chỉnh sửa thông tin hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "delete", "Xóa hệ thống phụ trợ VTS", "Xóa hệ thống phụ trợ VTS khỏi hệ thống");
-                seedPermission(definitions, "vtsassist", "approve", "Phê duyệt hệ thống phụ trợ VTS", "Phê duyệt dữ liệu hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "approvec1", "Phê duyệt C1 hệ thống phụ trợ VTS",
                                 "Phê duyệt cấp 1 hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "approvec2", "Phê duyệt C2 hệ thống phụ trợ VTS",
@@ -661,14 +635,10 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "station", "create", "Thêm nhà trạm", "Tạo mới nhà trạm hàng hải");
                 seedPermission(definitions, "station", "update", "Cập nhật nhà trạm", "Chỉnh sửa thông tin nhà trạm");
                 seedPermission(definitions, "station", "delete", "Xóa nhà trạm", "Xóa nhà trạm hàng hải");
-                // Nhóm quyền phê duyệt dùng cho toàn bộ endpoint /api/v1/stations/** —
-                // PermissionMiddleware quy resource của các đường dẫn này về "station".
-                seedPermission(definitions, "station", "approve", "Phê duyệt nhà trạm", "Phê duyệt hồ sơ nhà trạm");
                 seedPermission(definitions, "station", "approvec1", "Phê duyệt C1 nhà trạm",
                                 "Phê duyệt cấp 1 (Cảng vụ/Chi cục) hồ sơ nhà trạm");
                 seedPermission(definitions, "station", "approvec2", "Phê duyệt C2 nhà trạm",
                                 "Phê duyệt cấp 2 (Cục Hàng hải) hồ sơ nhà trạm");
-                seedPermission(definitions, "station", "reject", "Từ chối nhà trạm", "Từ chối phê duyệt hồ sơ nhà trạm");
 
                 seedPermission(definitions, "beaconstation", "read", "Xem đèn biển và nhà trạm", "Tra cứu thông tin đèn biển và nhà trạm");
                 seedPermission(definitions, "beaconstation", "read:restricted", "Xem bản ghi hạn chế đèn biển và nhà trạm",
@@ -745,13 +715,10 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstation", "update", "Cập nhật trạm bờ",
                                 "Chỉnh sửa trạm thông tin bờ");
                 seedPermission(definitions, "coastalstation", "delete", "Xóa trạm bờ", "Xóa trạm thông tin bờ");
-                seedPermission(definitions, "coastalstation", "approve", "Phê duyệt trạm bờ", "Phê duyệt trạm thông tin bờ");
                 seedPermission(definitions, "coastalstation", "approvec1", "Phê duyệt C1 trạm bờ",
                                 "Phê duyệt cấp 1 (Cảng vụ/Chi cục) trạm thông tin bờ");
                 seedPermission(definitions, "coastalstation", "approvec2", "Phê duyệt C2 trạm bờ",
                                 "Phê duyệt cấp 2 (Cục Hàng hải) trạm thông tin bờ");
-                seedPermission(definitions, "coastalstation", "reject", "Từ chối trạm bờ",
-                                "Từ chối phê duyệt trạm thông tin bờ");
 
                 seedPermission(definitions, "specialstation", "read", "Xem trạm chuyên dùng",
                                 "Tra cứu trạm chuyên dùng");
@@ -764,20 +731,16 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "specialstation", "update", "Cập nhật trạm chuyên dùng",
                                 "Chỉnh sửa trạm chuyên dùng");
                 seedPermission(definitions, "specialstation", "delete", "Xóa trạm chuyên dùng", "Xóa trạm chuyên dùng");
-                seedPermission(definitions, "specialstation", "approve", "Phê duyệt trạm chuyên dùng", "Phê duyệt trạm chuyên dùng");
                 seedPermission(definitions, "specialstation", "approvec1", "Phê duyệt C1 trạm chuyên dùng", "Phê duyệt cấp 1 trạm chuyên dùng");
                 seedPermission(definitions, "specialstation", "approvec2", "Phê duyệt C2 trạm chuyên dùng", "Phê duyệt cấp 2 trạm chuyên dùng");
-                seedPermission(definitions, "specialstation", "reject", "Từ chối trạm chuyên dùng", "Từ chối phê duyệt trạm chuyên dùng");
 
                 // 10.3 Đài thông tin vệ tinh Inmarsat (Coastal Station Inmarsat - M-004)
                 seedPermission(definitions, "coastalstationinmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "approve", "Phê duyệt đài Inmarsat", "Phê duyệt đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "reject", "Từ chối đài Inmarsat", "Từ chối phê duyệt đài Inmarsat");
                 seedPermission(definitions, "coastalstationinmarsat", "history", "Lịch sử phê duyệt đài Inmarsat", "Xem lịch sử thay đổi và phê duyệt đài Inmarsat");
 
                 // 10.4 Đài Cospas-Sarsat (Coastal Station Cospas-Sarsat - M-004)
@@ -789,14 +752,10 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Chỉnh sửa đài Cospas-Sarsat");
                 seedPermission(definitions, "coastalstationcospassarsat", "delete", "Xóa đài Cospas-Sarsat",
                                 "Xóa đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "approve", "Phê duyệt đài Cospas-Sarsat",
-                                "Phê duyệt đài Cospas-Sarsat");
                 seedPermission(definitions, "coastalstationcospassarsat", "approvec1", "Phê duyệt C1 đài Cospas-Sarsat",
                                 "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Cospas-Sarsat");
                 seedPermission(definitions, "coastalstationcospassarsat", "approvec2", "Phê duyệt C2 đài Cospas-Sarsat",
                                 "Phê duyệt cấp 2 (Cục Hàng hải) đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "reject", "Từ chối đài Cospas-Sarsat",
-                                "Từ chối phê duyệt đài Cospas-Sarsat");
                 seedPermission(definitions, "coastalstationcospassarsat", "history", "Lịch sử phê duyệt đài Cospas-Sarsat",
                                 "Xem lịch sử thay đổi và phê duyệt đài Cospas-Sarsat");
 
@@ -805,10 +764,8 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationlrit", "create", "Thêm đài LRIT", "Tạo mới đài LRIT");
                 seedPermission(definitions, "coastalstationlrit", "update", "Cập nhật đài LRIT", "Chỉnh sửa đài LRIT");
                 seedPermission(definitions, "coastalstationlrit", "delete", "Xóa đài LRIT", "Xóa đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "approve", "Phê duyệt đài LRIT", "Phê duyệt đài LRIT");
                 seedPermission(definitions, "coastalstationlrit", "approvec1", "Phê duyệt C1 đài LRIT", "Phê duyệt cấp 1 đài LRIT");
                 seedPermission(definitions, "coastalstationlrit", "approvec2", "Phê duyệt C2 đài LRIT", "Phê duyệt cấp 2 đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "reject", "Từ chối đài LRIT", "Từ chối phê duyệt đài LRIT");
                 seedPermission(definitions, "coastalstationlrit", "history", "Lịch sử phê duyệt đài LRIT", "Xem lịch sử thay đổi và phê duyệt đài LRIT");
 
                 // 10.6 Đài TTXLTT Hà Nội / Hải Phòng (Coastal Station Haiphong/Hanoi - M-004: F-116..F-121)
@@ -816,10 +773,8 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationhaiphong", "create", "Thêm đài TTXLTT Hà Nội", "Tạo mới đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "update", "Cập nhật đài TTXLTT Hà Nội", "Chỉnh sửa đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "delete", "Xóa đài TTXLTT Hà Nội", "Xóa đài TTXLTT");
-                seedPermission(definitions, "coastalstationhaiphong", "approve", "Phê duyệt đài TTXLTT Hà Nội", "Phê duyệt đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "approvec1", "Phê duyệt C1 đài TTXLTT Hà Nội", "Phê duyệt cấp 1 đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "approvec2", "Phê duyệt C2 đài TTXLTT Hà Nội", "Phê duyệt cấp 2 đài TTXLTT");
-                seedPermission(definitions, "coastalstationhaiphong", "reject", "Từ chối đài TTXLTT Hà Nội", "Từ chối phê duyệt đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "history", "Lịch sử phê duyệt đài TTXLTT Hà Nội", "Xem lịch sử thay đổi và phê duyệt đài TTXLTT");
 
                 // 11. Quản lý tài sản kết cấu hạ tầng, Điều chuyển, Kiểm kê & Bảo trì (Asset
@@ -1003,21 +958,33 @@ public class PermissionSeeder implements CommandLineRunner {
                         try {
                                 jdbcTemplate.execute("""
                                         DO $$
+                                        DECLARE
+                                            deprecated_codes text[] := ARRAY[
+                                                'user:edit', 'group:edit', 'user:delete', 'group:delete',
+                                                'group:manage', 'orgunit:manage', 'orgunit:approve',
+                                                'cctv:approve', 'vhf:approve', 'scada:approve', 'transmission:approve', 'vtsassist:approve',
+                                                'coastalstationcospassarsat:approve', 'coastalstationcospassarsat:reject',
+                                                'coastalstationlrit:approve', 'coastalstationlrit:reject',
+                                                'coastalstationinmarsat:approve', 'coastalstationinmarsat:reject',
+                                                'coastalstationhaiphong:approve', 'coastalstationhaiphong:reject',
+                                                'daittdh:approve',
+                                                'coastalstation:approve', 'coastalstation:reject',
+                                                'specialstation:approve', 'specialstation:reject',
+                                                'station:approve', 'station:reject',
+                                                'port:approve', 'berth:approve', 'buoyberth:approve', 'pier:approve',
+                                                'dryport:approve', 'anchorage:approve', 'anchoragearea:approve',
+                                                'transferarea:approve', 'stormshelter:approve', 'shiprepairyard:approve',
+                                                'waterzone:approve', 'data:approve', 'approve:action'
+                                            ];
                                         BEGIN
                                             IF to_regclass('public.user_permission_override') IS NOT NULL THEN
                                                 DELETE FROM user_permission_override
-                                                WHERE permission_code IN (
-                                                    'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
-                                                );
+                                                WHERE permission_code = ANY(deprecated_codes);
                                             END IF;
 
                                             IF to_regclass('public.user_group_permissions') IS NOT NULL THEN
                                                 DELETE FROM user_group_permissions
-                                                WHERE permission IN (
-                                                    'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
-                                                );
+                                                WHERE permission = ANY(deprecated_codes);
                                             END IF;
 
                                             IF to_regclass('public.role_permissions') IS NOT NULL AND to_regclass('public.permissions') IS NOT NULL THEN
@@ -1025,19 +992,13 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 WHERE permission_id IN (
                                                     SELECT id
                                                     FROM permissions
-                                                    WHERE code IN (
-                                                        'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                        'group:manage', 'orgunit:manage', 'orgunit:approve'
-                                                    )
+                                                    WHERE code = ANY(deprecated_codes)
                                                 );
                                             END IF;
 
                                             IF to_regclass('public.permissions') IS NOT NULL THEN
                                                 DELETE FROM permissions
-                                                WHERE code IN (
-                                                    'user:edit', 'group:edit', 'user:delete', 'group:delete',
-                                                    'group:manage', 'orgunit:manage', 'orgunit:approve'
-                                                );
+                                                WHERE code = ANY(deprecated_codes);
                                             END IF;
                                         END $$;
                                         """);

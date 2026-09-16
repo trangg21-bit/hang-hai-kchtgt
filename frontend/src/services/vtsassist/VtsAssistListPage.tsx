@@ -1,152 +1,152 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { fmtNum } from "../../utils/numFmt";
 import {
-  parseWktToCoordinates,
-  serializeCoordinatesToWkt,
-  validateDmsCoordinates,
-  ddToDms,
-  dmsToDd,
-  GEOMETRY_POINT_COUNT,
-} from "../../utils/gisGeometry";
-import { usePermissionStore } from "../../store/permissionStore";
-import {
-  Alert,
-  Button,
-  DatePicker,
-  Space,
-  Row,
-  Col,
-  Input,
-  Select,
-  Modal,
-  Form,
-  InputNumber,
-  Typography,
-  Drawer,
-} from "antd";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
-import { organizationService } from "../organizationService";
-import GisLocationSelector from "../../components/gis/GisLocationSelector";
-import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
-import NumberInputWithCount from "../../components/shared/NumberInputWithCount";
-import { parseNumber5, getValueFromEvent5, integer5Rule } from "../../utils/numberRuleHelper";
-import { DetailTable } from "../../components/shared/DetailTable";
-import { AppDrawer } from "../../components/shared/AppDrawer";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
-import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
-import {
-  PlusOutlined,
-  SearchOutlined,
-  DeleteOutlined,
-  HistoryOutlined,
-  ExclamationCircleOutlined,
-  EnvironmentOutlined,
-  BankOutlined,
-  SlidersOutlined,
-  FileTextOutlined,
-  AuditOutlined,
-  DownOutlined,
-  RightOutlined,
+    AuditOutlined,
+    BankOutlined,
+    DeleteOutlined,
+    DownOutlined,
+    EnvironmentOutlined,
+    ExclamationCircleOutlined,
+    FileTextOutlined,
+    HistoryOutlined,
+    PlusOutlined,
+    RightOutlined,
+    SearchOutlined,
+    SlidersOutlined,
 } from "@ant-design/icons";
-import { fmtInputNumber } from "../../utils/numFmt";
-import { Tabs } from "antd";
+import {
+    Alert,
+    Button,
+    Col,
+    DatePicker,
+    Drawer,
+    Form,
+    Input,
+    InputNumber,
+    Modal,
+    Row,
+    Select,
+    Space,
+    Tabs,
+    Typography,
+} from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
-import {
-  fetchVtsAssistList,
-  fetchVtsAssistById,
-  deleteVtsAssist,
-  submitVtsAssist,
-  approveVtsAssistC1,
-  approveVtsAssistC2,
-  createVtsAssist,
-  updateVtsAssist,
-  generateVtsAssistCode,
-  fetchVtsAssistHistory,
-  fetchVtsAssistAttachments,
-  uploadVtsAssistAttachment,
-  deleteVtsAssistAttachment,
-  downloadVtsAssistAttachment,
-} from "./api";
-import {
-  OPERATIONAL_STATUS_OPTIONS,
-} from "./schema";
-import type { VtsAssistResponse, ApprovalRequest, CreateVtsAssistRequest } from "./types";
-import toast from "../../components/ToastNotification";
-import ApprovalModal from "../../components/shared/ApprovalModal";
-import { useAuthStore } from "../../store/authStore";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
-import { VIETNAM_PROVINCES } from "../../types/common";
-import api from "../api";
-import { userService } from "../userService";
-import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
-import type { Symbol as MapSymbolType } from "../symbolService";
+import toast from "../../components/ToastNotification";
+import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import {
-  ScreenHeader,
-  DataTable,
-  Pagination,
-  FilterTableLayout,
-  SidebarFilterField,
+    DataTable,
+    FilterTableLayout,
+    Pagination,
+    ScreenHeader,
+    SidebarFilterField,
 } from "../../components/list-view";
-import {
-  // Design + status tokens (themetokenchk — thay cho ../../tokens cũ)
-  colors,
-  actionPrimary,
-  statusInfo,
-  statusCritical,
-  statusAttention,
-  statusDraft,
-  statusOperational,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  borderDefault,
-  surfaceCard,
-  radiusPill,
-  radiusMd,
-  fontSans,
-  fontSizeSm,
-  fontSizeMd,
-  fontSizeLg,
-  fontSizeCellTitle,
-  fontWeightMedium,
-  fontWeightBold,
-  spaceXs,
-  spaceSm,
-  spaceMd,
-  spaceFormField,
-  spaceXl,
-  statusBadgeStyle,
-  icons,
-  labelProps,
-  drawerProps,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  selectStyle,
-  readonlyInputStyle,
-  getSidebarDatePickerProps,
-  DRAWER_TABLE_SCROLL_Y,
-  DRAWER_WIDTH,
-  requiredMarkStyle,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
-} from "../../themetokenchk";
-import { cellTitleStyle, cellSubtitleStyle } from "../../themetokenchk";
-import * as themeTokenChk from "../../themetokenchk";
+import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { AppDrawer } from "../../components/shared/AppDrawer";
+import ApprovalModal from "../../components/shared/ApprovalModal";
+import { DetailTable } from "../../components/shared/DetailTable";
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
+import NumberInputWithCount from "../../components/shared/NumberInputWithCount";
 import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
+import { useAuthStore } from "../../store/authStore";
+import { usePermissionStore } from "../../store/permissionStore";
+import * as themeTokenChk from "../../themetokenchk";
+import {
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    // Design + status tokens (themetokenchk — thay cho ../../tokens cũ)
+    colors,
+    DRAWER_TABLE_SCROLL_Y,
+    DRAWER_WIDTH,
+    drawerCloseBtnStyle,
+    drawerProps,
+    drawerTitleStyle,
+    fontSans,
+    fontSizeCellTitle,
+    fontSizeLg,
+    fontSizeMd,
+    fontSizeSm,
+    fontWeightBold,
+    fontWeightMedium,
+    getSidebarDatePickerProps,
+    historyAccentBarStyle,
+    historyArrowStyle,
+    historyChangeRowStyle,
+    historyCreateRowStyle,
+    historyFieldLabelStyle,
+    historyGroupGridStyle,
+    historyInfoCardStyle,
+    historyInfoTitleStyle,
+    historyMetaRowStyle,
+    historyNewValueStyle,
+    historyOldValueStyle,
+    historyTimeStyle,
+    icons,
+    labelProps,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusMd,
+    radiusPill,
+    readonlyInputStyle,
+    requiredMarkStyle,
+    selectStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    spaceXs,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusInfo,
+    statusOperational,
+    surfaceCard,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+} from "../../themetokenchk";
+import { VIETNAM_PROVINCES } from "../../types/common";
+import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import {
+    ddToDms,
+    dmsToDd,
+    GEOMETRY_POINT_COUNT,
+    parseWktToCoordinates,
+    serializeCoordinatesToWkt,
+    validateDmsCoordinates,
+} from "../../utils/gisGeometry";
+import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
+import { fmtInputNumber, fmtNum } from "../../utils/numFmt";
+import { getValueFromEvent5, integer5Rule, parseNumber5 } from "../../utils/numberRuleHelper";
+import api from "../api";
+import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
+import { organizationService } from "../organizationService";
+import type { Symbol as MapSymbolType } from "../symbolService";
+import { userService } from "../userService";
+import {
+    approveVtsAssistC1,
+    approveVtsAssistC2,
+    createVtsAssist,
+    deleteVtsAssist,
+    deleteVtsAssistAttachment,
+    downloadVtsAssistAttachment,
+    fetchVtsAssistAttachments,
+    fetchVtsAssistById,
+    fetchVtsAssistHistory,
+    fetchVtsAssistList,
+    generateVtsAssistCode,
+    submitVtsAssist,
+    updateVtsAssist,
+    uploadVtsAssistAttachment,
+} from "./api";
+import {
+    OPERATIONAL_STATUS_OPTIONS,
+} from "./schema";
+import type { ApprovalRequest, CreateVtsAssistRequest, VtsAssistResponse } from "./types";
 
 // ── Accordion card style helpers cho tab 'Vận hành & bảo trì' (chuẩn /berth /cctv) ──
 const detailOpCardStyle: React.CSSProperties = {
@@ -1375,8 +1375,6 @@ const VtsAssistListPage = () => {
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
-
-  const historyFieldCount = useMemo(() => (Array.isArray(historyRecords) ? historyRecords : []).length, [historyRecords]);
   const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
   const [detailApprovalOpen, setDetailApprovalOpen] = useState(true);
   const [opRunOpen, setOpRunOpen] = useState(true);
@@ -1797,6 +1795,60 @@ const VtsAssistListPage = () => {
     'objectType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
     'geometryType', 'coordinates',
   ];
+
+  const countVtsAssistHistoryCards = (records: any[]): number => {
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...records].sort(
+      (a: any, b: any) =>
+        new Date(historyTimestamp(b) || 0).getTime() -
+        new Date(historyTimestamp(a) || 0).getTime()
+    );
+    const q = historySearch.toLowerCase().trim();
+    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    for (const r of sorted) {
+      if (q) {
+        const fn = (historyField(r) || '').toLowerCase();
+        const ov = (historyOldValue(r) || '').toLowerCase();
+        const nv = (historyNewValue(r) || '').toLowerCase();
+        const lb = historyFieldName(historyField(r) || '').toLowerCase();
+        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap).toLowerCase();
+        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
+      }
+      if (historyFrom || historyTo) {
+        const cd = (historyTimestamp(r) || '');
+        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
+        if (historyTo && cd.substring(0, 10) > historyTo) continue;
+      }
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const actor = historyActor(r);
+      const prev = groups[groups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor, items: [r] });
+    }
+
+    let count = 0;
+    for (const g of groups) {
+      const changes = deduplicateAttachmentHistoryChanges(
+        g.items.flatMap((item: any) => {
+          const fn = historyField(item);
+          return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
+        })
+      );
+      const orderedChanges = [...changes]
+        .filter(
+          (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
+        );
+      if (orderedChanges.length > 0) count++;
+    }
+    return count;
+  };
+
+  const historyUpdateCount = useMemo(() => {
+    return countVtsAssistHistoryCards(historyRecords);
+  }, [historyRecords, historySearch, historyFrom, historyTo, orgMap, symbolMap, vtsCenterMap, radarStationMap, operatingUnitMap]);
 
   const renderVtsAssistHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
@@ -4889,7 +4941,7 @@ const VtsAssistListPage = () => {
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.deviceName}` : (historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi')}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

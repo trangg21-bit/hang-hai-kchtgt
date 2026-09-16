@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.seeder;
 
-import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
-import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.enums.AuthType;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
@@ -57,8 +55,6 @@ public class DataSeeder implements CommandLineRunner {
     private final GroupMemberRepository groupMemberRepo;
     private final OrgUnitRepository orgUnitRepo;
     private final PasswordEncoder passwordEncoder;
-    private final BeaconStationRepository beaconStationRepo;
-    private final BuoyRepository buoyRepo;
     private final MapSymbolRepository mapSymbolRepo;
 
     @Override

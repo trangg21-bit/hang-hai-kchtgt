@@ -141,7 +141,7 @@ public class BerthController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'berth:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'berth:approvec1', 'berth:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             @Valid @RequestBody ApproveRequest request,
@@ -152,7 +152,7 @@ public class BerthController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'berth:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'berth:approvec1', 'berth:approvec2')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
             @Valid @RequestBody RejectRequest request,

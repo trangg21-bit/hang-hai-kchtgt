@@ -218,7 +218,7 @@ public class CoastalStationHaiphongController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thông tin Đài TTXLTT")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:update', 'specialstation:update', 'data:update', 'coastalstationhaiphong:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<?> updateStation(
             @PathVariable UUID id,
             @RequestParam(required = false) String action,
@@ -265,7 +265,7 @@ public class CoastalStationHaiphongController {
 
     @PostMapping("/{id}/approve-c1")
     @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec1', 'coastalstationhaiphong:approve', 'specialstation:approve', 'data:approvec1', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec1', 'specialstation:approvec1', 'data:approvec1')")
     public ResponseEntity<CoastalStationHaiphongResponse> approveLevel1(@PathVariable UUID id) {
         CoastalStationHaiphong entity = service.approveLevel1(id);
         return ResponseEntity.ok(service.buildResponse(entity));
@@ -273,7 +273,7 @@ public class CoastalStationHaiphongController {
 
     @PostMapping("/{id}/approve-c2")
     @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec2', 'coastalstationhaiphong:approve', 'specialstation:approve', 'data:approvec2', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<CoastalStationHaiphongResponse> approveLevel2(@PathVariable UUID id) {
         CoastalStationHaiphong entity = service.approveLevel2(id);
         return ResponseEntity.ok(service.buildResponse(entity));
@@ -281,7 +281,7 @@ public class CoastalStationHaiphongController {
 
     @PostMapping("/{id}/reject")
     @Operation(summary = "Từ chối phê duyệt hồ sơ")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec1', 'coastalstationhaiphong:approvec2', 'coastalstationhaiphong:approve', 'specialstation:approve', 'data:approvec1', 'data:approvec2', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec1', 'coastalstationhaiphong:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<?> reject(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
@@ -332,7 +332,7 @@ public class CoastalStationHaiphongController {
 
     @PostMapping("/{id}/approve")
     @Operation(summary = "Approve a Haiphong maritime station (Legacy)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec1', 'coastalstationhaiphong:approvec2', 'coastalstationhaiphong:approve', 'specialstation:approve', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:approvec1', 'coastalstationhaiphong:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<CoastalStationHaiphong> approveStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationHaiphongApprovalRequest request) {
@@ -357,7 +357,7 @@ public class CoastalStationHaiphongController {
 
     @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải lên tài liệu đính kèm cho Đài TTXLTT")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:update', 'specialstation:update', 'data:update', 'coastalstationhaiphong:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationHaiphongAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files) {
@@ -377,7 +377,7 @@ public class CoastalStationHaiphongController {
 
     @DeleteMapping("/{id}/attachments/{attId}")
     @Operation(summary = "Xóa tài liệu đính kèm của Đài TTXLTT")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:update', 'specialstation:update', 'data:update', 'coastalstationhaiphong:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {

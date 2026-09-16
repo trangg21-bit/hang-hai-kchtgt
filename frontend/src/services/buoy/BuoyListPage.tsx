@@ -67,7 +67,7 @@ import { FilterOrgUnitTreeSelect, useOrgUnitFilter } from '../../components/org-
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, countStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
@@ -1142,6 +1142,40 @@ export default function BuoyListPage() {
     });
   };
 
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: (fn) => historyFieldLabel(fn),
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'Biểu tượng bản đồ' || fn === 'icon' || fn === 'Biểu tượng') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const resolved = translateBuoyVal(fn, raw ?? '');
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const uId = historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId;
+        const orgName = uId ? orgMap.get(uId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
+      },
+      resolveActorName: (actor) => actorName(actor),
+    });
+  }, [filteredHistory, translateBuoyVal, orgMap, symbolMap, symbolImageMap, historyRecord, actorName]);
+
   // ── Delete confirmation ─────────────────────────────────────────
 
   const openDeleteModal = useCallback((record: Buoy) => {
@@ -1525,7 +1559,7 @@ export default function BuoyListPage() {
       });
     }
 
-    const canApprove = hasPerm('buoy:approve') || hasPerm('buoy:approvec1') || hasPerm('buoy:approvec2') || hasPerm('data:approve');
+    const canApprove = hasPerm('buoy:approvec1') || hasPerm('buoy:approvec2') || hasPerm('data:approvec1') || hasPerm('data:approvec2');
     if (canApprove && record.status === 'PENDING_APPROVAL') {
       actions.push({
         key: 'approveL1',
@@ -1980,7 +2014,7 @@ export default function BuoyListPage() {
                 Lịch sử thay đổi — {historyRecord ? (historyRecord.name || historyRecord.code || '') : ''}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>
@@ -2044,7 +2078,7 @@ export default function BuoyListPage() {
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
             </div>
-          ) : (historySearch || historyFrom || historyTo) && filteredHistory.length === 0 ? (
+          ) : (historySearch || historyFrom || historyTo) && historyUpdateCount === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

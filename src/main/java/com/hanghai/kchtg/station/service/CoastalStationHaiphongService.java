@@ -425,7 +425,7 @@ public class CoastalStationHaiphongService {
             }
             String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
             String newCoord = request.getCoordinates();
-            if (newCoord != null && !Objects.equals(newCoord, oldCoord)) {
+            if (newCoord != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
                 oldValues.put("coordinates", oldCoord != null ? oldCoord : null);
             }
         }
@@ -883,18 +883,24 @@ public class CoastalStationHaiphongService {
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
 
-            if (historyService != null) {
-                historyService.recordHistory(
-                        InfrastructureType.HANOI_STATION,
-                        id,
-                        com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
-                        "Tài liệu đính kèm",
-                        "—",
-                        originalFilename,
-                        "Tải lên tài liệu đính kèm: " + originalFilename,
-                        userId,
-                        batchNow
-                );
+            boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                    || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+            if (historyService != null && wasApproved) {
+                boolean isNewlyCreated = entity.getCreatedAt() != null
+                        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
+                if (!isNewlyCreated) {
+                    historyService.recordHistory(
+                            InfrastructureType.HANOI_STATION,
+                            id,
+                            com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                            "Tài liệu đính kèm",
+                            "—",
+                            originalFilename,
+                            "Tải lên tài liệu đính kèm: " + originalFilename,
+                            userId,
+                            batchNow
+                    );
+                }
             }
         }
         return savedAttachments.stream().map(this::toAttachmentResponse).toList();

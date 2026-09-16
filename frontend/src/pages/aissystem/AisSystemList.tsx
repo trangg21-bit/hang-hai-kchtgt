@@ -215,6 +215,7 @@ export function AisSystemList() {
   // Khóa bộ lọc đã dùng cho lần đếm gần nhất — dùng để bỏ truy vấn đếm khi chỉ
   // lật trang hoặc đổi cột sắp xếp.
   const statusCountFilterKey = useRef<string | null>(null);
+  const [isOptionsReady, setIsOptionsReady] = useState(false);
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>(undefined);
   const [filterValues, setFilterValues] = useState<{
     name?: string;
@@ -332,8 +333,10 @@ export function AisSystemList() {
       }
     } catch {
       // Ignored
+    } finally {
+      setIsOptionsReady(true);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     loadReferenceData();
@@ -464,8 +467,9 @@ export function AisSystemList() {
   }, [page, pageSize, appliedFilterValues, filterApprovalStatus, sortField, sortDirection]);
 
   useEffect(() => {
+    if (!isOptionsReady) return;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, isOptionsReady]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortField(field);
@@ -941,7 +945,7 @@ export function AisSystemList() {
       });
     }
 
-    if ((hasPerm('aissystem:approvec1') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if ((hasPerm('aissystem:approvec1') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -957,7 +961,7 @@ export function AisSystemList() {
       });
     }
 
-    if ((hasPerm('aissystem:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin) && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
+    if ((hasPerm('aissystem:approvec2') || isAdmin) && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',

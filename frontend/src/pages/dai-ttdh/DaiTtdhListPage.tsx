@@ -1,66 +1,78 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Button, Modal, Input, Select, DatePicker,
-  Space, Form, Drawer,
-} from 'antd';
-import {
-  HistoryOutlined,
-  SearchOutlined,
+    HistoryOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import {
-  daiTtdhCRUD,
-  daiTtdhApproval,
-} from '../../services/portService';
-import type { DaiTtdh } from '../../types/port';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
-import { symbolService } from '../../services/symbolService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
-import { organizationService, type Organization } from '../../services/organizationService';
-import { usePermissionStore } from '../../store/permissionStore';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
+    Button,
+    DatePicker,
+    Drawer,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+} from 'antd';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import DaiTtdhForm, { DAI_TTDH_STATION_LEVEL_OPTIONS, DAI_TTDH_SERVICES_OPTIONS } from './DaiTtdhForm';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import DaiTtdhDetailContent from './DaiTtdhDetailContent';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import { organizationService, type Organization } from '../../services/organizationService';
+import {
+    daiTtdhApproval,
+    daiTtdhCRUD,
+} from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  borderDefault,
-  fontSizeLg,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, DRAWER_WIDTH,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle,
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_WIDTH,
+    drawerCloseBtnStyle, drawerFooterStyle,
+    drawerProps, drawerTitleStyle,
+    fontSizeLg,
+    fontWeightBold,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    textPrimary,
+    textSecondary,
+    textTertiary,
 } from '../../themetokenchk';
-import { colors } from '../../themetokenchk';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import type { DaiTtdh } from '../../types/port';
+import { canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
+import DaiTtdhDetailContent from './DaiTtdhDetailContent';
+import DaiTtdhForm, { DAI_TTDH_SERVICES_OPTIONS, DAI_TTDH_STATION_LEVEL_OPTIONS } from './DaiTtdhForm';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ─────
 const fontSizeMd = 13.5;
@@ -166,6 +178,17 @@ const histLabels: Record<string, string> = {
   'Trạng thái': 'Trạng thái',
   status: 'Trạng thái',
 };
+
+const HISTORY_FIELD_ORDER = [
+  'orgUnitId', 'operatingUnitId', 'daiTtdhCode', 'daiTtdhName', 'stationLevel',
+  'provinceId', 'detailedLocation', 'operationalStatus', 'coverageArea', 'servicesProvided',
+  'remarks', 'coordinateSystem', 'displayRule', 'mapSymbolId', 'approvalStatus',
+  'submittedForApprovalAt', 'submittedForApprovalBy',
+  'portAuthorityApprovedAt', 'portAuthorityApprovedBy', 'portAuthorityApprovalContent',
+  'departmentApprovedAt', 'departmentApprovedBy', 'departmentApprovalContent',
+  'rejectionReason', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt',
+  'Tọa độ GIS', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
+];
 
 function histField(fn: string): string {
   if (histLabels[fn]) return histLabels[fn];
@@ -903,17 +926,6 @@ export default function DaiTtdhListPage() {
     }
   }, [userMap.size]);
 
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'operatingUnitId', 'daiTtdhCode', 'daiTtdhName', 'stationLevel',
-    'provinceId', 'detailedLocation', 'operationalStatus', 'coverageArea', 'servicesProvided',
-    'remarks', 'coordinateSystem', 'displayRule', 'mapSymbolId', 'approvalStatus',
-    'submittedForApprovalAt', 'submittedForApprovalBy',
-    'portAuthorityApprovedAt', 'portAuthorityApprovedBy', 'portAuthorityApprovalContent',
-    'departmentApprovedAt', 'departmentApprovedBy', 'departmentApprovalContent',
-    'rejectionReason', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt',
-    'Tọa độ GIS', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
-  ];
-
   const renderDaiTtdhHistoryTimeline = (records: any[]) => {
     return renderStandardHistoryCards({
       records,
@@ -951,6 +963,43 @@ export default function DaiTtdhListPage() {
       emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: (fn) => histField(fn),
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'icon' || fn === 'symbolId') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const resolved = histVal(fn, raw, orgMap, symbolMap, userMap, operatingUnitMap);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+      resolveActorName: (actor) => {
+        if (!actor) return '';
+        return userMap.get(actor) || userMap.get(actor.toLowerCase()) || actor;
+      },
+    });
+  }, [filteredHistory, orgMap, symbolMap, userMap, operatingUnitMap, historyTarget, symbolImageMap]);
 
   // ── Filter sidebar content ──────────────────────────────────────
   const filterContent = (
@@ -1078,7 +1127,7 @@ export default function DaiTtdhListPage() {
       { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
     ];
     const st = record.approvalStatus || '';
-    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'daittdh', extraApprovePerms: ['daittdh:approve'] });
+    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'daittdh' });
     if (editable) {
       actions.push({
         key: 'edit',
@@ -1100,7 +1149,7 @@ export default function DaiTtdhListPage() {
     if (hasPerm('daittdh:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     }
-    if ((hasPerm('daittdh:approvec1') || hasPerm('daittdh:approve')) && ['PENDING_APPROVAL', 'PENDING', 'CHO_PHE_DUYET', 'PROPOSED'].includes(st)) {
+    if (hasPerm('daittdh:approvec1') && ['PENDING_APPROVAL', 'PENDING', 'CHO_PHE_DUYET', 'PROPOSED'].includes(st)) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -1115,7 +1164,7 @@ export default function DaiTtdhListPage() {
         onClick: () => openRejectModal(record),
       });
     }
-    if ((hasPerm('daittdh:approvec2') || hasPerm('daittdh:approve')) && ['APPROVED_LEVEL1', 'APPROVED_LEVEL2'].includes(st)) {
+    if (hasPerm('daittdh:approvec2') && ['APPROVED_LEVEL1', 'APPROVED_LEVEL2'].includes(st)) {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',
@@ -1810,7 +1859,7 @@ export default function DaiTtdhListPage() {
                   Lịch sử thay đổi — {historyTarget?.daiTtdhName || historyTarget?.daiTtdhCode || ''}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>
@@ -1871,7 +1920,7 @@ export default function DaiTtdhListPage() {
                 <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
               </div>
-            ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            ) : hasActiveHistoryFilter && historyUpdateCount === 0 ? (
               <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
                 <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

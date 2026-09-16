@@ -251,7 +251,7 @@ public class RadarStationService {
         if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
             newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
-        if (newCoord != null && !Objects.equals(newCoord, oldCoord)) {
+        if (newCoord != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
             previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
         }
         if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeom)) {

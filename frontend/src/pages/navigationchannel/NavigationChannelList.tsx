@@ -959,7 +959,10 @@ export default function NavigationChannelList() {
         actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       }
       // Phê duyệt / Từ chối theo cấp hiện tại
-      if (hasPerm('navigationchannel:approve') && ['PENDING_APPROVAL', 'APPROVED_LEVEL1'].includes(st)) {
+      const canApproveCurrent =
+        (st === 'PENDING_APPROVAL' && hasPerm('navigationchannel:approvec1')) ||
+        (st === 'APPROVED_LEVEL1' && hasPerm('navigationchannel:approvec2'));
+      if (canApproveCurrent) {
         actions.push({
           key: 'approve',
           label: st === 'APPROVED_LEVEL1' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt',

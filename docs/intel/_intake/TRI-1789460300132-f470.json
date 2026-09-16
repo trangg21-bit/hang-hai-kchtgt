@@ -1,0 +1,75 @@
+{
+  "triage_id": "TRI-1789460300132-f470",
+  "created_at": 1789460300132,
+  "request_summary": "Đồng bộ giao diện Drawer Thêm mới và Tab File đính kèm Cospas-Sarsat theo chuẩn VTS",
+  "change_class": "C2",
+  "handling": "solo_lane",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationDetailContent.tsx",
+      "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationDetailContent.tsx",
+      "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C2: 2 edit-target files in one package, no one-way door; prior C1 loc_budget breach escalates to C2 (2 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/station/cospas-sarsat",
+  "blast_radius": 2,
+  "done_oracle": "Giao diện Drawer Thêm mới và Tab File đính kèm Cospas-Sarsat đồng bộ 100% theme, tab, nhãn, nút bấm với VTS",
+  "verification_commands": [
+    {
+      "command": "vitest run src/pages/station/CospasSarsatStation.test.tsx",
+      "cwd": "frontend",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationDetailContent.tsx",
+    "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationForm.tsx"
+  ],
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationForm.tsx",
+      "line": 701,
+      "quote": "const renderFooter = () => {",
+      "source_hash": "62c06c3456d137e8512c8ee81025c77c63482ac0c172a9ba002860accaf579be",
+      "quote_hash": "bc7a717b6dfa344e93318095c1896181d5f4f9c074974fb924059a3240231e5b"
+    },
+    {
+      "file": "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationDetailContent.tsx",
+      "line": 575,
+      "quote": "const renderAttachmentsTab = () => {",
+      "source_hash": "804d2d0e9508a76bba5ba1cb69eae01e0213d1c6be2e73af3f6b5c8df0a45f37",
+      "quote_hash": "bb4943372ee2d9490e1a20a615808163ecc2fbd781564e238d5a2410bb1d1478"
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1789458629218-707c",
+    "breach_kind": "loc_budget",
+    "change_class": "C1",
+    "loc_changed": 347,
+    "files_touched": 2
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "949ed7ff0f47997720adc9e9c8c9e6d2898203c5",
+    "dirty": true,
+    "captured_at": 1789460300364
+  },
+  "budget": {
+    "wall_clock_ms": 5820000,
+    "turns": 334,
+    "turns_used": 336
+  }
+}

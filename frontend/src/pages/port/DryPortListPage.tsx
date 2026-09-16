@@ -1,83 +1,90 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Button, Modal, Input, Space, DatePicker, Select,
-  Form,
-} from 'antd';
-import {
-  HistoryOutlined, SearchOutlined, PlusOutlined,
+    HistoryOutlined,
+    PlusOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
-import api from '../../services/api';
 import {
-  type DryPort,
-  fetchDryPortList,
-  fetchDryPortById,
-  deleteDryPort,
-  approveDryPort,
-  rejectDryPort,
-  fetchDryPortHistory,
-  fetchDryPortAttachmentList,
-  PORT_STATUS_OPTIONS,
-  REGION_OPTIONS,
-  trangThaiPheDuyetBadge,
-  trangThaiHoatDongBadge,
-  ddToDms,
+    Button,
+    DatePicker,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+} from 'antd';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
+import Pagination from '../../components/list-view/Pagination';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { FilterOrgUnitTreeSelect } from '../../components/org-unit';
+import AppDrawer from '../../components/shared/AppDrawer';
+import ApprovalModal from '../../components/shared/ApprovalModal';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { usePermissionStore } from '../../store/permissionStore';
+import * as themeTokenChk from '../../themetokenchk';
+import {
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_WIDTH,
+    drawerFooterStyle,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd,
+    fontSizeSm,
+    fontWeightBold,
+    formatUserDisplayName,
+    getRangePickerProps,
+    icons,
+    isUuidString,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    statusAttention,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+} from '../../themetokenchk';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import {
+    approveDryPort,
+    ddToDms,
+    deleteDryPort,
+    type DryPort,
+    fetchDryPortAttachmentList,
+    fetchDryPortById,
+    fetchDryPortHistory,
+    fetchDryPortList,
+    PORT_STATUS_OPTIONS,
+    REGION_OPTIONS,
+    rejectDryPort,
+    trangThaiHoatDongBadge,
+    trangThaiPheDuyetBadge,
 } from './dry-port';
 import DryPortDetailContent from './DryPortDetailContent';
 import DryPortForm, { type DryPortFormHandle } from './DryPortForm';
-import { FilterOrgUnitTreeSelect } from '../../components/org-unit';
-import { userService } from '../../services/userService';
-import { organizationService } from '../../services/organizationService';
-import type { Organization } from '../../services/organizationService';
-import { symbolService } from '../../services/symbolService';
-import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader, FilterTableLayout, DataTable } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import toast from '../../components/ToastNotification';
-import AppDrawer from '../../components/shared/AppDrawer';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import {
-  statusOperational,
-  statusDraft,
-  statusAttention,
-  statusCritical,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  fontSizeMd,
-  fontSizeLg,
-  fontSizeSm,
-  fontWeightBold,
-  radiusPill,
-  borderDefault,
-  spaceSm,
-  spaceMd,
-  spaceFormField,
-  spaceXl,
-  drawerTitleStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  requiredMarkStyle,
-  cellTitleStyle,
-  cellSubtitleStyle,
-  icons,
-  colors,
-  getRangePickerProps,
-  formatUserDisplayName,
-  isUuidString,
-  DRAWER_WIDTH,
-} from '../../themetokenchk';
-import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
-import ApprovalModal from '../../components/shared/ApprovalModal';
 
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
@@ -140,6 +147,15 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
   displayRule: 'Quy tắc hiển thị',
   approvalStatus: 'Trạng thái phê duyệt',
 };
+
+const HISTORY_FIELD_ORDER = [
+  'orgUnitId', 'dryPortCode', 'dryPortName', 'provinceId', 'operatingOrgId', 'operatingUnit',
+  'region', 'detailedLocation', 'transportCorridor', 'area', 'warehouseArea',
+  'yardArea', 'teuCapacity', 'connectionMode', 'portStatus', 'operationalStatus',
+  'announcementTime', 'announcementDecisionNumber', 'announcementDecisionDate',
+  'announcementOrg', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'remarks', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+  'approvalStatus',
+];
 
 function historyFieldName(field: string): string {
   return HISTORY_FIELD_LABELS[field] || field;
@@ -286,15 +302,6 @@ export default function DryPortListPage() {
   }, [historyRecords, historyFilters, orgMap, symbolMap]);
   const hasActiveHistoryFilter = Boolean(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
 
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'dryPortCode', 'dryPortName', 'provinceId', 'operatingOrgId', 'operatingUnit',
-    'region', 'detailedLocation', 'transportCorridor', 'area', 'warehouseArea',
-    'yardArea', 'teuCapacity', 'connectionMode', 'portStatus', 'operationalStatus',
-    'announcementTime', 'announcementDecisionNumber', 'announcementDecisionDate',
-    'announcementOrg', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'remarks', 'mapSymbolId', 'coordinateSystem', 'displayRule',
-    'approvalStatus',
-  ];
-
   const renderDryPortHistoryTimeline = (records: any[]) => {
     return renderStandardHistoryCards({
       records,
@@ -322,6 +329,33 @@ export default function DryPortListPage() {
       emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: HISTORY_FIELD_LABELS,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'mapSymbolId' && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const formatted = historyFieldValue(fn, raw, orgMap, symbolMap);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+    });
+  }, [filteredHistory, orgMap, symbolMap, symbolImageMap, historyTarget]);
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [updateDrawerOpen, setUpdateDrawerOpen] = useState(false);
@@ -789,7 +823,7 @@ export default function DryPortListPage() {
     const isDraft = status === 'DRAFT' || status === 'NHAP';
     const isPending = status === 'PENDING' || status === 'PENDING_APPROVAL';
     actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailModal(record) });
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport', extraUpdatePerms: ['dryport:update'], extraApprovePerms: ['dryport:approve'] })) {
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport', extraUpdatePerms: ['dryport:update'] })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -803,8 +837,8 @@ export default function DryPortListPage() {
       });
     }
     if (hasPerm('dryport:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
-    if (isDraft && hasPerm('dryport:approve')) actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
-    if (isPending && hasPerm('dryport:approve')) {
+    if (isDraft && (hasPerm('dryport:approvec1') || hasPerm('dryport:approvec2'))) actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
+    if (isPending && (hasPerm('dryport:approvec1') || hasPerm('dryport:approvec2'))) {
       actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, onClick: () => openRejectModal(record), danger: true });
     }
@@ -1221,7 +1255,7 @@ export default function DryPortListPage() {
                   {historyTarget ? `Lịch sử thay đổi — ${historyTarget.dryPortName}` : 'Lịch sử thay đổi'}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>
@@ -1282,7 +1316,7 @@ export default function DryPortListPage() {
                 <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
               </div>
-            ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            ) : hasActiveHistoryFilter && historyUpdateCount === 0 ? (
               <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
                 <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

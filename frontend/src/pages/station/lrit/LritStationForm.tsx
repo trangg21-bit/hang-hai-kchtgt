@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Form,
   Input,
@@ -31,7 +31,7 @@ import type {
   UpdateLritStationRequest,
 } from '../../../types/lritStation';
 import { LRIT_SERVICE_OPTIONS } from '../../../types/lritStation';
-import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
+import { ApprovalStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
@@ -62,6 +62,7 @@ import {
   ddToDms,
   dmsToDd,
 } from '../../../utils/gisGeometry';
+import { resolveStationGeometryType } from '../../../utils/stationGeometryType';
 import LritStationDetailContent from './LritStationDetailContent';
 
 export interface LritStationFormProps {
@@ -162,13 +163,13 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
   const userUnitType = currentUser?.unitType || '';
   const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
-  const canApproveL2 = (hasPerm('coastalstationlrit:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canApproveL2 = (hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
   const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationlrit',
     extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'data:approvec2', 'data:approve'],
+    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const isDetailMode = mode === 'detail';
@@ -220,6 +221,54 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   }, [open, externalOrgUnits]);
 
   const effectiveOrgUnits = (externalOrgUnits && externalOrgUnits.length > 0) ? externalOrgUnits : internalOrgUnits;
+
+  const operatingUnitOptions = useMemo(() => {
+    const list: { value: string; label: string }[] = [];
+    const seen = new Set<string>();
+
+    if (Array.isArray(effectiveOrgUnits)) {
+      effectiveOrgUnits.forEach((o: any) => {
+        if (o.id && !seen.has(String(o.id))) {
+          seen.add(String(o.id));
+          list.push({
+            value: String(o.id),
+            label: o.code ? `${o.code} - ${o.name || o.unitName}` : (o.name || o.unitName),
+          });
+        }
+      });
+    }
+
+    if (Array.isArray(DEFAULT_OPERATING_ORGANIZATIONS)) {
+      DEFAULT_OPERATING_ORGANIZATIONS.forEach((o) => {
+        if (o.id && !seen.has(String(o.id))) {
+          seen.add(String(o.id));
+          list.push({
+            value: String(o.id),
+            label: o.code ? `${o.code} - ${o.name}` : o.name,
+          });
+        }
+      });
+    }
+
+    const curOpId = record?.operatingOrgId || (initialData as any)?.operatingOrgId;
+    const curOpName = (record as any)?.operatingOrgName || (initialData as any)?.operatingOrgName;
+    if (curOpId && !seen.has(String(curOpId))) {
+      seen.add(String(curOpId));
+      let resolvedLabel = (curOpName && !/^[0-9a-fA-F-]{36}$/.test(curOpName)) ? curOpName : undefined;
+      if (!resolvedLabel && Array.isArray(effectiveOrgUnits)) {
+        const found = effectiveOrgUnits.find((o: any) => String(o.id) === String(curOpId));
+        if (found) {
+          resolvedLabel = found.code ? `${found.code} - ${found.name || found.unitName}` : (found.name || found.unitName);
+        }
+      }
+      list.push({
+        value: String(curOpId),
+        label: resolvedLabel || 'Đơn vị khai thác',
+      });
+    }
+
+    return list;
+  }, [effectiveOrgUnits, record?.operatingOrgId, (record as any)?.operatingOrgName, initialData]);
 
   useEffect(() => {
     if (!open) return;
@@ -346,15 +395,17 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       serviceList = data.servicesProvided.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
     }
 
+    const wktCoordinates = typeof data.coordinates === 'string' ? data.coordinates : (data as any).wktGeometry;
+    const geometryType = resolveStationGeometryType(data.geometryType || (data as any).objectType, wktCoordinates);
     const orgId = data.orgUnitId || (initialData as any)?.orgUnitId;
     form.setFieldsValue({
       code: data.code,
       name: data.name,
       orgUnitId: orgId ? String(orgId) : undefined,
       operatingOrgId: data.operatingOrgId,
-      provinceId: data.provinceId,
+      provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
       locationAddress: data.locationAddress,
-      conditionStatus: data.conditionStatus || 'OPERATIONAL',
+      conditionStatus: normalizeConditionStatus(data.conditionStatus) || 'OPERATIONAL',
       services: serviceList,
       coverageArea: data.coverageArea,
       terminalId: data.terminalId,
@@ -368,15 +419,15 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       contactPerson: data.contactPerson,
       contactPhone: data.contactPhone,
       description: data.description,
-      geometryType: data.geometryType || (data as any).objectType || undefined,
+      geometryType,
       symbolId: data.symbolId || data.symbol || undefined,
-      coordinateSystem: (data.geometryType || data.coordinates || data.latitude != null) ? (typeof data.coordinateSystem === 'number' ? data.coordinateSystem : 1) : undefined,
-      displayRule: (data.geometryType || data.coordinates || data.latitude != null) ? (data.displayRule || 'Độ, phút, giây (DMS)') : undefined,
+      coordinateSystem: (geometryType || wktCoordinates || data.latitude != null) ? (typeof data.coordinateSystem === 'number' ? data.coordinateSystem : 1) : undefined,
+      displayRule: (geometryType || wktCoordinates || data.latitude != null) ? (data.displayRule || 'Độ, phút, giây (DMS)') : undefined,
     });
 
     let pts: { latitude: number; longitude: number }[] = [];
-    if (data.coordinates) {
-      pts = parseWktToCoordinates(data.coordinates);
+    if (wktCoordinates) {
+      pts = parseWktToCoordinates(wktCoordinates);
     }
     if (pts.length === 0 && data.latitude != null && data.longitude != null) {
       pts = [{ latitude: Number(data.latitude), longitude: Number(data.longitude) }];
@@ -400,7 +451,15 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       setAttachmentsLoaded(false);
       lritStationService.getAttachments(data.id).then((res: any) => {
         const items = Array.isArray(res) ? res : (res?.data || []);
-        setAttachments(items);
+        const flatItems = (Array.isArray(items) ? items : []).flat(Infinity).map((item: any) => ({
+          ...item,
+          fileName: item.fileName || item.name || item.originalFileName || item.filename,
+          fileSize: item.fileSize ?? item.size ?? item.fileSizeBytes,
+          fileType: item.fileType || item.documentType,
+          uploadedByName: item.uploadedByName || item.uploaderName || item.createdByName,
+          uploadedDate: item.uploadedDate || item.uploadedAt || item.createdAt,
+        }));
+        setAttachments(flatItems);
         setAttachmentsLoaded(true);
       }).catch(() => {});
     }
@@ -515,12 +574,15 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
     if (isCreateMode) {
       setPendingFiles((prev) => [...prev, file]);
       const tempItem = {
-        id: `temp_${Date.now()}_${Math.random()}`,
+        id: `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
         uploadedAt: new Date().toISOString(),
+        uploadedDate: new Date().toISOString(),
         uploadedByName: currentUser?.fullName || currentUser?.username || 'Tôi',
+        file,
+        originFileObj: file,
       };
       setAttachments((prev) => [...prev, tempItem]);
       return;
@@ -529,7 +591,18 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
     if (record?.id) {
       try {
         const uploaded = await lritStationService.uploadAttachment(record.id, file);
-        setAttachments((prev) => [...prev, uploaded]);
+        const rawItems = Array.isArray(uploaded) ? uploaded : (uploaded ? [uploaded] : []);
+        const normalized = rawItems.map((item: any) => ({
+          ...item,
+          fileName: item.fileName || item.name || file.name,
+          fileSize: item.fileSize ?? item.size ?? file.size,
+          fileType: item.fileType || item.documentType || file.type,
+          uploadedByName: item.uploadedByName || currentUser?.fullName || currentUser?.username || 'Tôi',
+          uploadedDate: item.uploadedDate || item.uploadedAt || new Date().toISOString(),
+          file,
+          originFileObj: file,
+        }));
+        setAttachments((prev) => [...prev.filter((a) => !Array.isArray(a)), ...normalized]);
         toast.success(`Tải lên tệp "${file.name}" thành công`);
       } catch {
         toast.error(`Không thể tải lên tệp "${file.name}"`);
@@ -537,8 +610,11 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
     }
   };
 
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (attachmentId.startsWith('temp_')) {
+  const handleDeleteAttachment = async (attOrId: any) => {
+    const attachmentId = typeof attOrId === 'string' ? attOrId : attOrId?.id;
+    if (!attachmentId) return;
+
+    if (String(attachmentId).startsWith('temp_') || String(attachmentId).startsWith('temp-')) {
       const idx = attachments.findIndex((a) => a.id === attachmentId);
       if (idx !== -1) {
         setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
@@ -565,10 +641,14 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
     }
   };
 
-  const handleDownloadAttachment = async (att: any) => {
-    if (!record?.id || att.id.startsWith('temp_')) return;
+  const handleDownloadAttachment = async (attOrId: any, maybeFileName?: string) => {
+    const attId = typeof attOrId === 'string' ? attOrId : attOrId?.id;
+    const fileName = typeof attOrId === 'string' ? (maybeFileName || '') : (attOrId?.fileName || attOrId?.name || maybeFileName || '');
+    if (!attId) return;
+    if (String(attId).startsWith('temp_') || String(attId).startsWith('temp-')) return;
+    if (!record?.id) return;
     try {
-      await lritStationService.downloadAttachment(record.id, att.id, att.fileName || att.name);
+      await lritStationService.downloadAttachment(record.id, attId, fileName);
     } catch {
       toast.error('Không thể tải file');
     }
@@ -623,7 +703,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         name: values.name?.trim(),
         orgUnitId: values.orgUnitId ?? null,
         operatingOrgId: values.operatingOrgId ?? null,
-        provinceId: values.provinceId ?? null,
+        provinceId: values.provinceId != null && values.provinceId !== '' ? Number(values.provinceId) : null,
         locationAddress: values.locationAddress?.trim() ?? null,
         conditionStatus: values.conditionStatus ?? null,
         services: values.services ?? null,
@@ -907,7 +987,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                             >
                               <Select
                                 placeholder="Chọn đơn vị khai thác"
-                                options={DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ label: o.name, value: o.id }))}
+                                options={operatingUnitOptions}
                                 allowClear
                                 showSearch
                                 filterOption={(input, option) =>

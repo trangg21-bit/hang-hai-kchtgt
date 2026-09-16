@@ -162,8 +162,13 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.provinceId AS provinceId,
                t.operationStartDate AS operationStartDate
         FROM VtsSystem t
+        LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
+        LEFT JOIN OrgUnit own ON own.id = t.owningOrgId
         LEFT JOIN OperatingOrganization op ON op.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
+        LEFT JOIN Port p ON p.id = t.portId
+        LEFT JOIN User u ON u.id = t.updatedBy
+        LEFT JOIN User uCreate ON uCreate.id = t.createdBy
         WHERE (
             (:approvalStatus IS NULL
                 AND t.deletedAt IS NULL

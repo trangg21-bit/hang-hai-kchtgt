@@ -1,64 +1,76 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Button, Modal, Input, Select, DatePicker,
-  Drawer, Space, Form,
-} from 'antd';
-import {
-  HistoryOutlined,
-  SearchOutlined,
+    HistoryOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
+import {
+    Button,
+    DatePicker,
+    Drawer,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+} from 'antd';
 import dayjs from 'dayjs';
-import { transferAreaCRUD, transferAreaApproval, portCRUD } from '../../services/portService';
-import type { TransferArea } from '../../types/port';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import { organizationService } from '../../services/organizationService';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
-import { symbolService } from '../../services/symbolService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
-import type { Organization } from '../../services/organizationService';
-import { usePermissionStore } from '../../store/permissionStore';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import { ScreenHeader, DataTable } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import TransferAreaForm from './TransferAreaForm';
-import TransferAreaDetailContent from './TransferAreaDetailContent';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { portCRUD, transferAreaApproval, transferAreaCRUD } from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  borderDefault,
-  fontSizeLg,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
-  DRAWER_WIDTH,
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_WIDTH,
+    drawerCloseBtnStyle, drawerFooterStyle,
+    drawerProps, drawerTitleStyle,
+    fontSizeLg,
+    fontWeightBold,
+    getRangePickerProps,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    textPrimary,
+    textSecondary,
+    textTertiary,
 } from '../../themetokenchk';
-import { colors } from '../../themetokenchk';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import type { TransferArea } from '../../types/port';
+import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import TransferAreaDetailContent from './TransferAreaDetailContent';
+import TransferAreaForm from './TransferAreaForm';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ──
 const fontSizeMd = 13.5;
@@ -238,6 +250,27 @@ const histLabels: Record<string, string> = {
   'Tỉnh/Thành phố': 'Địa điểm (Tỉnh/Thành Phố)',
   'Biểu tượng bản đồ': 'Biểu tượng',
 };
+
+const HISTORY_FIELD_ORDER = [
+  'orgUnitId', 'portId', 'transferAreaCode', 'transferAreaName', 'provinceId', 'province',
+  'detailedLocation', 'operationalStatus', 'approvalStatus', 'shapeDescription', 'area',
+  'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT',
+  'activeTransferCount', 'publishedTransferCount', 'underInvestmentTransferCount',
+  'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
+  'activityStartDate', 'activityEndDate', 'coordinateSystem', 'displayRule', 'mapSymbolId',
+  'mooringWaterAreas', 'operationalFunctions', 'spatialId',
+  'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tài liệu đính kèm',
+  // Vietnamese label aliases:
+  'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu chuyển tải', 'Tên khu chuyển tải',
+  'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố', 'Địa điểm chi tiết', 'Tình trạng', 'Trạng thái',
+  'Hình dạng', 'Diện tích (ha)', 'Độ sâu khu nước theo thiết kế (m)', 'Độ sâu thiết kế',
+  'Độ sâu khu nước hiện tại (m)', 'Độ sâu hiện tại', 'Cao độ đáy bến thiết kế', 'Cao trình đáy thiết kế',
+  'Cỡ tàu lớn nhất (DWT)', 'Cỡ tàu khai thác (DWT)', 'Số lượng khu đang khai thác', 'Số khu đang khai thác',
+  'Số lượng khu đã công bố', 'Số khu đã công bố', 'Số lượng khu đang thỏa thuận đầu tư', 'Số khu thỏa thuận đầu tư',
+  'Ghi chú', 'Thời điểm công bố mở', 'Quyết định công bố', 'Thỏa thuận đầu tư xây dựng', 'Thỏa thuận đầu tư',
+  'Thời gian hoạt động từ', 'Thời gian hoạt động đến', 'Hệ quy chiếu', 'Quy tắc hiển thị',
+  'Biểu tượng', 'Biểu tượng bản đồ', 'Công năng', 'Công năng khu chuyển tải',
+];
 
 function histField(fn: string): string { return histLabels[fn] || fn; }
 
@@ -438,24 +471,6 @@ export default function TransferAreaListPage() {
     }
   }, []);
 
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'portId', 'transferAreaCode', 'transferAreaName', 'operationalFunctions',
-    'operationalStatus', 'provinceId', 'province', 'detailedLocation', 'shapeDescription', 'area',
-    'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign', 'maxVesselDWT',
-    'activeTransferCount', 'publishedTransferCount', 'underInvestmentTransferCount',
-    'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
-    'activityStartDate', 'activityEndDate', 'coordinateSystem', 'displayRule', 'mapSymbolId',
-    'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
-    // Vietnamese label aliases:
-    'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu chuyển tải', 'Tên khu chuyển tải',
-    'Công năng khai thác', 'Tình trạng', 'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố',
-    'Địa điểm chi tiết', 'Hình dạng', 'Diện tích (ha)', 'Độ sâu thiết kế', 'Độ sâu hiện tại',
-    'Cao trình đáy thiết kế', 'Trọng tải tàu lớn nhất (DWT)', 'Số vị trí đang khai thác',
-    'Số vị trí công bố', 'Số vị trí thỏa thuận đầu tư', 'Ghi chú', 'Ngày công bố',
-    'Quyết định công bố', 'Thỏa thuận đầu tư', 'Thời gian hoạt động từ', 'Thời gian hoạt động đến',
-    'Hệ quy chiếu', 'Quy tắc hiển thị', 'Biểu tượng', 'Biểu tượng bản đồ',
-  ];
-
   const renderTransferAreaHistoryTimeline = (records: any[]) => {
     return renderStandardHistoryCards({
       records,
@@ -492,6 +507,42 @@ export default function TransferAreaListPage() {
       emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: histLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        if (fn === 'operationalFunctions' && raw) {
+          return formatOperationalFunctions(raw);
+        }
+        const resolved = histVal(fn, raw, orgMap, symbolMap, portMap);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+    });
+  }, [filteredHistory, orgMap, symbolMap, portMap, historyTarget, symbolImageMap]);
 
   useEffect(() => {
     (async () => {
@@ -872,7 +923,7 @@ export default function TransferAreaListPage() {
         { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
       ];
       const st = record.approvalStatus || '';
-      const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'transferarea', extraApprovePerms: ['transferarea:approve'] });
+      const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'transferarea' });
       if (editable) {
         actions.push({
           key: 'edit',
@@ -1732,7 +1783,7 @@ export default function TransferAreaListPage() {
                   Lịch sử thay đổi — {historyTarget?.transferAreaName || historyTarget?.transferAreaCode || ''}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>
@@ -1793,7 +1844,7 @@ export default function TransferAreaListPage() {
                 <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
               </div>
-            ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            ) : hasActiveHistoryFilter && historyUpdateCount === 0 ? (
               <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
                 <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

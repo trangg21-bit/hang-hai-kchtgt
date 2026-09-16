@@ -249,7 +249,7 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thành công", data));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'aissystem:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'aissystem:update', 'aissystem:approvec2')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<AisSystemResponse>> update(
             @PathVariable UUID id,
@@ -306,7 +306,7 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", null));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'aissystem:approvec1', 'aissystem:approvec2')")
+    @PreAuthorize("@auth.check(authentication, 'aissystem:approvec1') or @auth.check(authentication, 'aissystem:approvec2')")
     @PostMapping("/{id}/reject")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
@@ -318,7 +318,7 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt thành công", null));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'aissystem:read', 'aissystem:history')")
+    @PreAuthorize("@auth.check(authentication, 'aissystem:history') or @auth.check(authentication, 'aissystem:read')")
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
@@ -335,9 +335,7 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", history));
     }
 
-    // OR-logic: `check(Authentication, String...)` là alias của `checkAny`. Dùng
-    // `checkAny` cho đúng nghĩa để người đọc không hiểu nhầm là bắt buộc cả hai.
-    @PreAuthorize("@auth.checkAny(authentication, 'aissystem:create', 'aissystem:update')")
+    @PreAuthorize("@auth.check(authentication, 'aissystem:create') or @auth.check(authentication, 'aissystem:update') or @auth.check(authentication, 'aissystem:approvec2')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
@@ -355,7 +353,7 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'aissystem:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'aissystem:update', 'aissystem:approvec2')")
     @DeleteMapping("/{id}/attachments/{attId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,

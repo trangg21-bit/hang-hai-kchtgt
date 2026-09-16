@@ -19,7 +19,6 @@ import com.hanghai.kchtg.port.entity.WaterZoneType;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -45,7 +44,6 @@ public class WaterZoneService {
     private final PortRepository portRepository;
     private final ChangeHistoryService changeHistoryService;
     private final GisSpatialObjectService gisSpatialObjectService;
-    private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final PortCacheService portCacheService;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;

@@ -85,7 +85,7 @@ export interface ApprovalEditPolicyOptions {
    * ví dụ `['data:update', 'admin:manage']`.
    */
   extraUpdatePerms?: string[];
-  /** Các quyền được chấp nhận thay cho `<resource>:approvec2`, ví dụ `['<resource>:approve']`. */
+  /** Các quyền được chấp nhận thay cho `<resource>:approvec2`, ví dụ quyền C2 của domain dùng chung. */
   extraApprovePerms?: string[];
   /** Tuỳ chọn legacy để tương thích */
   userUnitType?: string;
@@ -140,7 +140,7 @@ export function canEditApprovalRecord(
   // Đã duyệt: chỉ người có thẩm quyền phê duyệt, sửa qua "Lưu và phê duyệt" (T12).
   if (st === 'APPROVED') {
     const perms = [
-      ...(resource ? [`${resource}:approvec2`, `${resource}:approve`] : []),
+      ...(resource ? [`${resource}:approvec2`] : []),
       ...extraApprovePerms,
     ];
     return perms.some(checkPerm);
@@ -221,11 +221,6 @@ export function canDeleteApprovalRecord(
   const perms = [
     ...(resource ? [`${resource}:delete`, `${resource}:manage`, `${resource}:write`] : []),
     ...extraDeletePerms,
-    'infraasset:manage',
-    'infraasset:delete',
-    'data:delete',
-    'data:manage',
-    'admin:manage',
   ];
   if (perms.some(checkPerm)) {
     return true;
@@ -241,4 +236,3 @@ export function canDeleteApprovalRecord(
 export function editFooterMode(status?: string | null): 'approve' | 'draft' {
   return isApprovedRecord(status) ? 'approve' : 'draft';
 }
-

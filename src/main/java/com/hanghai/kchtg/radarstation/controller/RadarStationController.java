@@ -165,7 +165,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:update', 'radarstation:approvec2')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<RadarStationResponse>> update(@PathVariable UUID id,
             @Valid @RequestBody RadarStationUpdateRequest request,
@@ -191,7 +191,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update')")
+    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update') or @auth.check(authentication, 'radarstation:approvec2')")
     @PostMapping(value = { "/{id}/submit", "/{id}/submit-approval" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> submitForApproval(@PathVariable UUID id,
             Authentication authentication) {
@@ -319,7 +319,7 @@ public class RadarStationController {
 
     // ── Attachment endpoints (InfrastructureAttachment, ref_type RADAR_STATION) ──
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update')")
+    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update') or @auth.check(authentication, 'radarstation:approvec2')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<RadarStationAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
@@ -350,7 +350,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:delete')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:update', 'radarstation:delete', 'radarstation:approvec2')")
     @DeleteMapping("/{id}/attachments/{attachmentId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,

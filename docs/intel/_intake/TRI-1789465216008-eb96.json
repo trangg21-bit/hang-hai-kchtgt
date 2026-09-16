@@ -1,0 +1,90 @@
+{
+  "triage_id": "TRI-1789465216008-eb96",
+  "created_at": 1789465216008,
+  "request_summary": "Chuẩn hóa mã tự sinh Cospas-Sarsat theo DB sequence và khắc phục lỗi phê duyệt kép",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationForm.tsx",
+      "frontend/src/services/cospasSarsatStationService.ts",
+      "src/main/java/com/hanghai/kchtg/station/controller/CoastalStationCospasSarsatController.java",
+      "src/main/java/com/hanghai/kchtg/station/repository/CoastalStationCospasSarsatRepository.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationCospasSarsatService.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationForm.tsx",
+      "frontend/src/services/cospasSarsatStationService.ts",
+      "src/main/java/com/hanghai/kchtg/station/controller/CoastalStationCospasSarsatController.java",
+      "src/main/java/com/hanghai/kchtg/station/repository/CoastalStationCospasSarsatRepository.java",
+      "src/main/java/com/hanghai/kchtg/station/service/CoastalStationCospasSarsatService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "mixed"
+  },
+  "rationale": "C1: 5 edit-target files in one package, no one-way door — pre-declared write scope required (5 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/station/cospas-sarsat",
+  "blast_radius": 5,
+  "done_oracle": "Mã đài Cospas-Sarsat tự sinh tuần tự SARSAT-xxxxxx từ Backend chuẩn VTS và không còn lỗi phê duyệt kép khi lưu và phê duyệt",
+  "verification_commands": [
+    {
+      "command": "mvn test-compile",
+      "cwd": ".",
+      "timeout_ms": 60000
+    },
+    {
+      "command": "vitest run src/pages/station/CospasSarsatStation.test.tsx",
+      "cwd": "frontend",
+      "timeout_ms": 60000
+    }
+  ],
+  "change_type": "implementation",
+  "declared_write_scope": [
+    "frontend/src/pages/station/cospas-sarsat/CospasSarsatStationForm.tsx",
+    "frontend/src/services/cospasSarsatStationService.ts",
+    "src/main/java/com/hanghai/kchtg/station/controller/CoastalStationCospasSarsatController.java",
+    "src/main/java/com/hanghai/kchtg/station/repository/CoastalStationCospasSarsatRepository.java",
+    "src/main/java/com/hanghai/kchtg/station/service/CoastalStationCospasSarsatService.java"
+  ],
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/controller/CoastalStationCospasSarsatController.java",
+      "line": 41,
+      "quote": "public ResponseEntity<CoastalStationCospasSarsat> createStation(",
+      "source_hash": "687a0a1e3d836f10418de141af3abcf8070763b96e54ceb48eb67adda972c296",
+      "quote_hash": "5dd792419603e865901a25bbe8cfb2718a540a8ff1e07a8032a511d41e885a67"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/station/service/CoastalStationCospasSarsatService.java",
+      "line": 212,
+      "quote": "if (request.getApprovalStatus() != null) {",
+      "source_hash": "c8f24b29dfe1c49f878ac5360dde2b0369be7a8e00f806478080804911d0af0a",
+      "quote_hash": "6b240407ae1324c349a3b78a415bf9cc1a6d4feca9e53cc043c8fde7807109ca"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "949ed7ff0f47997720adc9e9c8c9e6d2898203c5",
+    "dirty": true,
+    "captured_at": 1789465216174
+  },
+  "owner_candidates": [
+    {
+      "module_id": "M-1006",
+      "slug": "thong-nhat-phe-duyet-2-cap-kchtgt",
+      "overlap": 1,
+      "total": 5
+    }
+  ],
+  "budget": {
+    "wall_clock_ms": 2400000,
+    "turns": 100,
+    "turns_used": 389
+  }
+}

@@ -205,7 +205,7 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (validSegments.isEmpty()) {
             return "unknown";
         }
-        if ("asset".equals(validSegments.get(0)) && validSegments.size() > 1) {
+        if (("asset".equals(validSegments.get(0)) || "stations".equals(validSegments.get(0))) && validSegments.size() > 1) {
             return normalizeResource(validSegments.get(1));
         }
         return normalizeResource(validSegments.get(0));
@@ -316,6 +316,13 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("buoy-station", "buoystation"),
             entry("buoy-stations", "buoystation"),
             entry("stations", "station"),
+            entry("cospas-sarsat", "coastalstationcospassarsat"),
+            entry("cospas", "coastalstationcospassarsat"),
+            entry("lrit", "coastalstationlrit"),
+            entry("inmarsat", "coastalstationinmarsat"),
+            entry("haiphong", "coastalstationhaiphong"),
+            entry("hanoi", "coastalstationhaiphong"),
+            entry("coastal", "coastalstation"),
             entry("users", "user"),
             entry("permissions", "admin"),
             entry("approvals", "approve"),

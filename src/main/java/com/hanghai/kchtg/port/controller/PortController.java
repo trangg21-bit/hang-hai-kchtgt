@@ -160,7 +160,7 @@ public class PortController {
 
     /** Phê duyệt thẳng (mô hình 2 trạng thái: Nháp → Đã phê duyệt). */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.checkAny(authentication, 'port:approve', 'port:approvec1', 'port:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'port:approvec1', 'port:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approve(@PathVariable UUID id) {
         UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Approving Port directly: id={}, userId={}", id, userId);

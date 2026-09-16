@@ -120,6 +120,7 @@ public class KchtGis155Service {
   private final VtsAssistRepository vtsAssistRepository;
   private final TransmissionRepository transmissionRepository;
   private final VtsOperationCenterRepository vtsOperationCenterRepository;
+  @SuppressWarnings("unused")
   private final jakarta.persistence.EntityManager entityManager;
 
   /**
@@ -156,6 +157,7 @@ public class KchtGis155Service {
     return null;
   }
 
+  @SuppressWarnings("unused")
   private String getExecutableSql(String sql, Object orgUnitId, Object search, Object hd, Object pd) {
     String s1 = formatValueForSql(orgUnitId);
     String s2 = formatValueForSql(search);
@@ -168,6 +170,7 @@ public class KchtGis155Service {
         .replace(":ApprovalStatus", s4);
   }
 
+  @SuppressWarnings("unused")
   private String formatValueForSql(Object val) {
     if (val == null) {
       return "NULL";

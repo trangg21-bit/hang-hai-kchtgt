@@ -164,7 +164,7 @@ const isBlankOrDash = (v: unknown): boolean => {
   );
 };
 
-function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap: Map<string, string>, symbolImageMap: Map<string, string>) {
+function getPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap: Map<string, string>, symbolImageMap: Map<string, string>): React.ReactElement[] {
   const norm = (v: string | null | undefined): string | null => {
     if (isBlankOrDash(v)) return null;
     return String(v).trim();
@@ -515,8 +515,17 @@ function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbol
         </div>
       </div>
     );
-  }).filter(Boolean);
+  }).filter(Boolean) as React.ReactElement[];
 
+  return cards;
+}
+
+function countPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap: Map<string, string>, symbolImageMap: Map<string, string>): number {
+  return getPortHistCards(records, orgMap, symbolMap, symbolImageMap).length;
+}
+
+function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap: Map<string, string>, symbolImageMap: Map<string, string>): React.ReactNode {
+  const cards = getPortHistCards(records, orgMap, symbolMap, symbolImageMap);
   if (cards.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
@@ -817,7 +826,7 @@ function WaterZoneDetailMini({ record, symbols, files, userMap }: { record: any;
 export default function PortListPage() {
   // ── Permission ──────────────────────────────────────────────────
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const canSubmitForApproval = hasPerm?.('port:update') || hasPerm?.('port:approve') || hasPerm?.('port:manage');
+  const canSubmitForApproval = hasPerm?.('port:update') || hasPerm?.('port:manage');
 
   // ── State ───────────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');
@@ -958,8 +967,6 @@ export default function PortListPage() {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
-  const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  const [historyPage, setHistoryPage] = useState(0);
   const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
 
   // Delete confirmation
@@ -1122,6 +1129,10 @@ export default function PortListPage() {
 
   }, [historyRecords, historyFilters, orgMap, symbolMap]);
   const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
+
+  const historyUpdateCount = useMemo(() => {
+    return countPortHistCards(filteredHistory, orgMap, symbolMap, symbolImageMap);
+  }, [filteredHistory, orgMap, symbolMap, symbolImageMap]);
 
   const handleFilterApply = useCallback(() => {
     setFilterName((filterValues.portName || '').trim());
@@ -1889,9 +1900,7 @@ export default function PortListPage() {
     setHistoryRecords([]);
     setLoadingHistory(false);
     setLoadingMoreHistory(false);
-    setHasMoreHistory(true);
     setHistoryFilters({ keyword: '' });
-    setHistoryPage(0);
   }, []);
 
   const getPortGroupLabel = (val: number | null): string => {
@@ -2036,11 +2045,11 @@ export default function PortListPage() {
       }
       // Phê duyệt / Từ chối — theo trạng thái, hiển thị trước Xóa
       // Nháp (DRAFT/NHAP): phê duyệt thẳng thành Đã phê duyệt
-      if ((status === 'DRAFT' || status === 'NHAP') && hasPerm?.('port:approve')) {
+      if ((status === 'DRAFT' || status === 'NHAP') && (hasPerm?.('port:approvec1') || hasPerm?.('port:approvec2'))) {
         actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => handleApprove(record) });
       }
       // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
-      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && hasPerm?.('port:approve')) {
+      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && (hasPerm?.('port:approvec1') || hasPerm?.('port:approvec2'))) {
         actions.push({
           key: 'approve',
           label: 'Phê duyệt',
@@ -2198,9 +2207,7 @@ export default function PortListPage() {
     (async () => {
       setLoadingHistory(true);
       setLoadingMoreHistory(false);
-      setHasMoreHistory(true);
       setHistoryRecords([]);
-      setHistoryPage(0);
       try {
         // Nạp TOÀN BỘ lịch sử (không lọc/phân trang server) một lần khi mở drawer.
         // Việc lọc từ khóa/khoảng ngày được làm real-time tại chỗ trên dữ liệu đã nạp
@@ -2217,8 +2224,6 @@ export default function PortListPage() {
         }
         if (cancelled) return;
         setHistoryRecords(all);
-        setHistoryPage(page);
-        setHasMoreHistory(false);
       } catch {
         if (!cancelled) toast.error('Không thể tải lịch sử');
       } finally {
@@ -2769,7 +2774,7 @@ export default function PortListPage() {
                 Lịch sử thay đổi — {selectedRecord?.portName || selectedRecord?.portCode || ''}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

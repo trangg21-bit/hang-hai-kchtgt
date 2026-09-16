@@ -264,8 +264,8 @@ export default function CoastalStationList() {
     const isDraftOrReturned = st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2';
     const isPendingC1 = st === 'PENDING_APPROVAL';
     const isPendingC2 = st === 'APPROVED_LEVEL1';
-    const canApproveC1 = hasPerm('coastalstation:approvec1') || hasPerm('coastalstation:approve');
-    const canApproveC2 = hasPerm('coastalstation:approvec2') || hasPerm('coastalstation:approve');
+    const canApproveC1 = hasPerm('coastalstation:approvec1');
+    const canApproveC2 = hasPerm('coastalstation:approvec2');
 
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
     if (canEditApprovalRecord(st, { hasPerm, resource: 'coastalstation' })) {

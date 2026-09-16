@@ -222,6 +222,7 @@ export default function LritStationList() {
   // Count tabs
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const statusCountFilterKey = useRef<string | null>(null);
+  const [isOptionsReady, setIsOptionsReady] = useState(false);
 
   const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
 
@@ -262,12 +263,14 @@ export default function LritStationList() {
 
   // Load lookup options
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         const [orgs, syms] = await Promise.all([
           organizationService.getAll().then((res: any) => Array.isArray(res) ? res : (res?.data || [])),
           symbolService.getOptions().catch(() => []),
         ]);
+        if (!mounted) return;
         const mappedOrgs = (orgs || []).map((o: any) => ({
           id: String(o.id),
           name: o.name || o.unitName || o.tenDonVi || 'Đơn vị',
@@ -284,9 +287,16 @@ export default function LritStationList() {
         }
       } catch (err) {
         console.error('Failed to fetch lookup options', err);
+      } finally {
+        if (mounted) {
+          setIsOptionsReady(true);
+        }
       }
     })();
-  }, []);
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser]);
 
 
   // Fetch list data
@@ -335,8 +345,9 @@ export default function LritStationList() {
   }, [filterName, filterCode, filterOrgUnitId, filterProvinceId, filterConditionStatus, filterApprovalStatus, filterUpdatedFrom, filterUpdatedTo, page, pageSize, sortField, sortDirection]);
 
   useEffect(() => {
+    if (!isOptionsReady) return;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, isOptionsReady]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortField(field);
@@ -736,7 +747,7 @@ export default function LritStationList() {
       },
     ];
 
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'data:approvec2', 'data:approve'] })) {
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'] })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -776,7 +787,7 @@ export default function LritStationList() {
       });
     }
 
-    if ((hasPerm('coastalstationlrit:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if ((hasPerm('coastalstationlrit:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -792,7 +803,7 @@ export default function LritStationList() {
       });
     }
 
-    const canApproveL2Perm = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('coastalstationlrit:approve') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin;
+    const canApproveL2Perm = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin;
     if (canApproveL2Perm && (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',

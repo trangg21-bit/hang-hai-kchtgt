@@ -28,6 +28,7 @@ public class CoastalStationVTSController {
     private final CoastalStationVTSService service;
 
     @PostMapping
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:create', 'station:create', 'data:create')")
     @Operation(summary = "Create a new coastal station")
     public ResponseEntity<CoastalStationVTS> createStation(@Valid @RequestBody CoastalStationVTSRequest request) {
         CoastalStationVTS created = service.createStation(request);
@@ -35,6 +36,7 @@ public class CoastalStationVTSController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:update', 'station:update', 'data:update', 'coastalstation:approvec2', 'station:approvec2', 'data:approvec2')")
     @Operation(summary = "Update an existing coastal station")
     public ResponseEntity<CoastalStationVTS> updateStation(
             @PathVariable UUID id,
@@ -44,6 +46,7 @@ public class CoastalStationVTSController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:delete', 'station:delete', 'data:delete')")
     @Operation(summary = "Soft-delete a coastal station")
     public ResponseEntity<Void> deleteStation(@PathVariable UUID id) {
         service.deleteStation(id);
@@ -51,6 +54,7 @@ public class CoastalStationVTSController {
     }
 
     @GetMapping
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:read', 'station:read', 'data:read')")
     @Operation(summary = "Get all active coastal stations")
     public ResponseEntity<List<CoastalStationVTS>> getAllStations() {
         List<CoastalStationVTS> stations = service.getAllStations();
@@ -58,6 +62,7 @@ public class CoastalStationVTSController {
     }
 
     @GetMapping("/options")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:read', 'station:read', 'data:read')")
     @Operation(summary = "Get coastal stations for dropdown options")
     public ResponseEntity<List<CoastalStationVTSResponse>> getOptions() {
         List<CoastalStationVTS> stations = service.getAllStations();
@@ -65,6 +70,7 @@ public class CoastalStationVTSController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:read', 'station:read', 'data:read')")
     @Operation(summary = "Get a coastal station by ID")
     public ResponseEntity<CoastalStationVTSResponse> getStationById(@PathVariable UUID id) {
         CoastalStationVTS entity = service.getStationById(id);
@@ -73,6 +79,7 @@ public class CoastalStationVTSController {
     }
 
     @GetMapping("/search")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:read', 'station:read', 'data:read')")
     @Operation(summary = "Search coastal stations by keyword")
     public ResponseEntity<List<CoastalStationVTS>> searchStations(
             @RequestParam String keyword) {
@@ -89,14 +96,14 @@ public class CoastalStationVTSController {
 
     @PostMapping("/{id}/approve-l1")
     @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:approvec1', 'coastalstation:approve', 'station:approvec1', 'station:approve', 'data:approvec1', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:approvec1', 'station:approvec1', 'data:approvec1')")
     public ResponseEntity<CoastalStationVTS> approveLevel1(@PathVariable UUID id) {
         return ResponseEntity.ok(service.approveLevel1(id));
     }
 
     @PostMapping("/{id}/approve-l2")
     @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:approvec2', 'coastalstation:approve', 'station:approvec2', 'station:approve', 'data:approvec2', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:approvec2', 'station:approvec2', 'data:approvec2')")
     public ResponseEntity<CoastalStationVTS> approveLevel2(@PathVariable UUID id) {
         return ResponseEntity.ok(service.approveLevel2(id));
     }
@@ -105,7 +112,7 @@ public class CoastalStationVTSController {
     @Deprecated
     @PostMapping("/{id}/approve")
     @Operation(summary = "Approve a coastal station (legacy — tự chọn vòng theo trạng thái hiện tại)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:approvec1', 'coastalstation:approvec2', 'coastalstation:approve', 'station:approve', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:approvec1', 'coastalstation:approvec2', 'station:approvec1', 'station:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<CoastalStationVTS> approveStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationVTSApprovalRequest request) {
@@ -115,7 +122,7 @@ public class CoastalStationVTSController {
 
     @PostMapping("/{id}/reject")
     @Operation(summary = "Từ chối phê duyệt kèm lý do (tối thiểu 10 ký tự)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:reject', 'coastalstation:approvec1', 'coastalstation:approvec2', 'coastalstation:approve', 'station:reject', 'station:approve', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:approvec1', 'coastalstation:approvec2', 'station:approvec1', 'station:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<CoastalStationVTS> rejectStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationVTSApprovalRequest request) {
@@ -124,6 +131,7 @@ public class CoastalStationVTSController {
     }
 
     @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:history', 'coastalstation:read', 'station:history', 'station:read', 'data:read')")
     @Operation(summary = "Get change history for a coastal station")
     public ResponseEntity<List<CoastalStationVTSHistoryResponse>> getHistory(@PathVariable UUID id) {
         List<CoastalStationVTSHistoryResponse> history = service.getHistory(id);
@@ -131,6 +139,7 @@ public class CoastalStationVTSController {
     }
 
     @GetMapping("/by-code/{code}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstation:read', 'station:read', 'data:read')")
     @Operation(summary = "Find a coastal station by its code")
     public ResponseEntity<CoastalStationVTS> findByCode(@PathVariable String code) {
         Optional<CoastalStationVTS> station = service.findByCode(code);

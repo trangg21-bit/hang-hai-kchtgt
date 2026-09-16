@@ -25,7 +25,6 @@ import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
@@ -64,7 +63,6 @@ public class BerthService {
     private final PortRepository portRepository;
     private final PierRepository pierRepository;
     private final ChangeHistoryService changeHistoryService;
-    private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final PortCacheService portCacheService;
     private final OrgUnitCacheService orgUnitCacheService;

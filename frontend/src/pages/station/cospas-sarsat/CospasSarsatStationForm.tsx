@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Form,
   Input,
@@ -8,11 +8,9 @@ import {
   Space,
   Row,
   Col,
-  Spin,
 } from 'antd';
 import {
   EnvironmentOutlined,
-  PlusOutlined,
   FileTextOutlined,
   BankOutlined,
   EditOutlined,
@@ -26,51 +24,45 @@ import type {
   CoastalStationCospasSarsatResponse,
   CoastalStationCospasSarsatRequest,
 } from '../../../services/station/types';
-import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
+import { CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
+  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_WIDTH,
   requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
-  fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
+  fontWeightBold,
   textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary,
-  readonlyInputStyle, inputStyle, selectStyle, spaceSm,
-  spaceXs,
+  readonlyInputStyle, inputStyle,
   textAreaStyle,
 } from '../../../themetokenchk';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
-import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
-import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
 import ServiceMultiSelect from '../../../components/shared/ServiceMultiSelect';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import {
-  validateDmsCoordinates,
   serializeCoordinatesToWkt,
   parseWktToCoordinates,
-  ddToDms,
-  dmsToDd,
 } from '../../../utils/gisGeometry';
 import CospasSarsatStationDetailContent, {
   COSPAS_SERVICE_OPTIONS,
-  getOperatingOrgName,
 } from './CospasSarsatStationDetailContent';
 
 export interface CospasSarsatStationFormProps {
   open?: boolean;
   editId?: string | null;
   initialData?: CoastalStationCospasSarsatResponse | null;
-  mode?: 'create' | 'edit' | 'detail';
+  mode?: 'create' | 'edit' | 'detail' | 'view';
   orgUnits?: any[];
   symbols?: any[];
   onCancel?: () => void;
   onSuccess?: () => void;
   onClose?: () => void;
+  onEdit?: (record: CoastalStationCospasSarsatResponse) => void;
 }
 
 const sectionBoxStyle: React.CSSProperties = {
@@ -117,6 +109,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
     onCancel,
     onSuccess,
     onClose,
+    onEdit,
   } = props;
 
   const [form] = Form.useForm();
@@ -128,7 +121,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const [orgUnits, setOrgUnits] = useState<any[]>(propOrgUnits || []);
   const [symbols, setSymbols] = useState<any[]>(propSymbols || []);
 
-  const [gisType, setGisType] = useState<'POINT' | 'LINESTRING' | 'POLYGON'>('POINT');
+  const [gisType] = useState<'POINT' | 'LINESTRING' | 'POLYGON'>('POINT');
   const [gisPoints, setGisPoints] = useState<Array<{ id: string; lat: number; lng: number }>>([]);
   const [currentGisCoord, setCurrentGisCoord] = useState<{ lat: number; lng: number } | undefined>();
 
@@ -140,7 +133,6 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const isCreate = mode === 'create';
 
   const user = useAuthStore((s: AuthState) => s.user);
-  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   // Tự sinh mã đài SARSAT-{timestamp} khi tạo mới
   const generateStationCode = () => `SARSAT-${Date.now().toString().slice(-4)}`;
@@ -637,17 +629,37 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                         <span style={{ fontWeight: fontWeightBold, color: sidebarBg }}>16. Bảng tọa độ (LongLatTable):</span>
                         <div style={{ marginTop: 8 }}>
                           <GisLocationSelector
-                            value={currentGisCoord}
-                            onChange={(coord) => {
-                              setCurrentGisCoord(coord);
-                              if (coord) {
-                                setGisPoints([{ id: '1', lat: coord.lat, lng: coord.lng }]);
+                            value={
+                              currentGisCoord
+                                ? {
+                                    geometryType: 'POINT',
+                                    coordinates: serializeCoordinatesToWkt(
+                                      [{ latitude: currentGisCoord.lat, longitude: currentGisCoord.lng }],
+                                      'POINT'
+                                    ),
+                                    symbolId: form.getFieldValue('symbolId'),
+                                  }
+                                : undefined
+                            }
+                            onChange={(val) => {
+                              if (val && val.coordinates) {
+                                const coords = parseWktToCoordinates(val.coordinates);
+                                if (coords.length > 0) {
+                                  const first = coords[0];
+                                  setCurrentGisCoord({ lat: first.latitude, lng: first.longitude });
+                                  setGisPoints(coords.map((c, i) => ({ id: String(i + 1), lat: c.latitude, lng: c.longitude })));
+                                } else {
+                                  setCurrentGisCoord(undefined);
+                                  setGisPoints([]);
+                                }
                               } else {
+                                setCurrentGisCoord(undefined);
                                 setGisPoints([]);
                               }
                             }}
                             height={340}
-                            popupTitle="Chọn vị trí đài Cospas-Sarsat trên bản đồ"
+                            disabled={isView}
+                            inline={true}
                           />
                         </div>
                       </div>
@@ -668,10 +680,24 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                         </div>
                       </div>
                       <InfrastructureAttachmentTab
-                        entityType="COSPAS_SARSAT_STATION"
-                        entityId={editId || undefined}
-                        files={files}
-                        onFilesChange={setFiles}
+                        attachments={files}
+                        readonly={isView}
+                        onUpload={(file) => {
+                          setFiles((prev) => [...prev, { id: `temp_${Date.now()}`, fileName: file.name, fileSize: file.size, file }]);
+                        }}
+                        onDelete={(attId) => {
+                          setFiles((prev) => prev.filter((f) => f.id !== attId));
+                        }}
+                        onDownload={(attId, fileName) => {
+                          const f = files.find((item) => item.id === attId);
+                          if (f?.file) {
+                            const url = URL.createObjectURL(f.file);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = fileName;
+                            a.click();
+                          }
+                        }}
                       />
                     </div>
                   </div>

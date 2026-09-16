@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.FieldNameConstants;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -52,6 +53,8 @@ public class CoastalStationCospasSarsatResponse {
     private String contactPhone;
     private Double signalRange;
     private String operatingMode;
+    private String servicesProvided;
+    private String services;
 
     private String description;
     private String note;
@@ -60,6 +63,14 @@ public class CoastalStationCospasSarsatResponse {
     private UUID symbolId;
     private String symbolName;
     private String coordinateReferenceSystem;
+    private String coordinateSystem;
+    private String displayRule;
+    private String geometryType;
+    private String objectType;
+    private String coordinates;
+    private String wktGeometry;
+    private Double latitude;
+    private Double longitude;
 
     private StationStatus status;
     private ApprovalStatus approvalStatus;
@@ -97,6 +108,8 @@ public class CoastalStationCospasSarsatResponse {
     private LocalDateTime deletedAt;
     private UUID deletedBy;
 
+    private List<CoastalStationCospasSarsatAttachmentResponse> attachments;
+
     // Helper getters for compatibility
     public String getStationCode() {
         return stationCode != null ? stationCode : code;
@@ -128,5 +141,13 @@ public class CoastalStationCospasSarsatResponse {
 
     public String getNote() {
         return note != null ? note : description;
+    }
+
+    public String getServices() {
+        return services != null ? services : servicesProvided;
+    }
+
+    public String getServicesProvided() {
+        return servicesProvided != null ? servicesProvided : services;
     }
 }

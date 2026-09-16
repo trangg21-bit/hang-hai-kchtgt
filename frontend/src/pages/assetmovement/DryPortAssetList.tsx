@@ -1,88 +1,88 @@
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
-  SearchOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CommonStatusTabs,
-  CommonTable,
-  FilterTableLayout,
-  ScreenHeader,
-  TableColumnType,
-  TableFilter,
-  type FilterOption,
-  type ScreenHeaderAction,
-  type TableOption,
+    CommonStatusTabs,
+    CommonTable,
+    FilterTableLayout,
+    ScreenHeader,
+    TableColumnType,
+    TableFilter,
+    type FilterOption,
+    type ScreenHeaderAction,
+    type TableOption,
 } from '../../components/list-view';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
+    resolveMimeType,
+    triggerBlobDownload,
+    type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 import {
-  createAssetDecrease,
-  createAssetIncrease,
-  createDryPortAsset,
-  createKhaiThac,
-  deleteDryPortAsset,
-  deleteInfraAssetAttachment,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchDryPortAssets,
-  fetchInfraAssetAttachments,
-  fetchKhaiThacList,
-  updateDryPortAsset,
-  uploadInfraAssetAttachments,
+    createAssetDecrease,
+    createAssetIncrease,
+    createDryPortAsset,
+    createKhaiThac,
+    deleteDryPortAsset,
+    deleteInfraAssetAttachment,
+    fetchAssetDecreaseList,
+    fetchAssetIncreaseList,
+    fetchDryPortAssets,
+    fetchInfraAssetAttachments,
+    fetchKhaiThacList,
+    updateDryPortAsset,
+    uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetValueAdjustmentDetails,
-  DryPortAsset,
-  DryPortAssetFilters,
-  DryPortAssetPayload,
+    AssetDecreaseResponse,
+    AssetExploitationResponse,
+    AssetIncreaseResponse,
+    AssetValueAdjustmentDetails,
+    DryPortAsset,
+    DryPortAssetFilters,
+    DryPortAssetPayload,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { dryPortCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
-  borderDefault,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  actionPrimary,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  textTertiary,
+    actionPrimary,
+    borderDefault,
+    colors,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd,
+    fontWeightBold,
+    radiusPill,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    textTertiary,
 } from '../../themetokenchk';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 import DryPortAssetDetailContent from './DryPortAssetDetailContent';
 import DryPortAssetForm, { type DryPortFormValues } from './DryPortAssetForm';
 import DryPortAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
+    type OperationMode,
+    type OperationValues,
 } from './DryPortAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -237,11 +237,6 @@ export default function DryPortAssetList() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
-
-  const historyFieldCount = useMemo(
-    () => (Array.isArray(historyRecords) ? historyRecords : []).length,
-    [historyRecords],
-  );
 
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
   const dryPortMap = useMemo(() => new Map(dryPorts.map((item) => [item.id, item])), [dryPorts]);
@@ -532,6 +527,68 @@ export default function DryPortAssetList() {
           : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const countDryPortHistoryCards = (records: any[]): number => {
+    const q = historySearch.toLowerCase().trim();
+    const filtered = (records || []).filter((r: any) => {
+      if (q) {
+        const fn = (r.fieldName || r.changedField || '').toLowerCase();
+        const ov = (r.oldValue || r.previousValue || '').toLowerCase();
+        const nv = (r.newValue || r.value || '').toLowerCase();
+        const lb = (ASSET_FIELD_LABELS[r.fieldName || r.changedField] || r.fieldName || '').toLowerCase();
+        const od = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.oldValue || r.previousValue) ??
+            (r.oldValue || r.previousValue || ''),
+        ).toLowerCase();
+        const nd = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.newValue || r.value) ??
+            (r.newValue || r.value || ''),
+        ).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) {
+          return false;
+        }
+      }
+      if (historyFrom || historyTo) {
+        const cd = r.changedAt || r.createdAt || r.approvedDate || '';
+        if (historyFrom && cd.substring(0, 10) < historyFrom) return false;
+        if (historyTo && cd.substring(0, 10) > historyTo) return false;
+      }
+      return true;
+    });
+
+    return countStandardHistoryCards({
+      records: filtered,
+      fieldLabels: ASSET_FIELD_LABELS,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') {
+          if (raw && !isBlankOrDash(raw)) {
+            const files = String(raw)
+              .split(/\s*,\s*/)
+              .map((f) => f.trim())
+              .filter((f) => !isBlankOrDash(f));
+            if (files.length > 0) {
+              return 'attachments';
+            }
+          }
+        }
+        const formatted = formatHistoryValue(fn, raw);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const oName = orgId ? orgName.get(orgId) : undefined;
+        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+      },
+      resolveActorName: (rawActor, rec) => {
+        return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
+      },
+    });
+  };
+
+  const historyUpdateCount = useMemo(() => {
+    return countDryPortHistoryCards(historyRecords);
+  }, [historyRecords, historySearch, historyFrom, historyTo, orgName, historyTarget]);
 
   const handleSave = async (status: string) => {
     setSaveAction(status);
@@ -1379,7 +1436,7 @@ export default function DryPortAssetList() {
                     lineHeight: '20px',
                   }}
                 >
-                  Tổng cộng {historyFieldCount}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>

@@ -1,73 +1,73 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { fmtNum } from "../../utils/numFmt";
 import {
-  parseWktToCoordinates,
-  serializeCoordinatesToWkt,
-  ddToDms,
+    AuditOutlined,
+    BankOutlined,
+    DownOutlined,
+    EnvironmentOutlined,
+    ExclamationCircleOutlined,
+    HistoryOutlined,
+    RightOutlined,
+    SearchOutlined,
+    SlidersOutlined,
+} from "@ant-design/icons";
+import {
+    Alert,
+    Button,
+    DatePicker,
+    Drawer,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+    Tabs,
+    Typography,
+} from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import EmptyState from "../../components/EmptyState";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
+import toast from "../../components/ToastNotification";
+import {
+    DataTable,
+    FilterTableLayout,
+    Pagination,
+    ScreenHeader,
+    SidebarFilterField,
+} from "../../components/list-view";
+import { OrgUnitTreeSelect } from "../../components/org-unit";
+import ApprovalModal from "../../components/shared/ApprovalModal";
+import { useAuthStore } from "../../store/authStore";
+import { usePermissionStore } from "../../store/permissionStore";
+import { VIETNAM_PROVINCES } from "../../types/common";
+import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import {
+    ddToDms,
+    parseWktToCoordinates,
+    serializeCoordinatesToWkt,
 } from "../../utils/gisGeometry";
+import { fmtNum } from "../../utils/numFmt";
+import api from "../api";
+import { organizationService } from "../organizationService";
+import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
+import { userService } from "../userService";
+import ScadaForm, { type ScadaFormRef, type ScadaSaveAction } from "./ScadaForm";
+import {
+    approveScadaC1,
+    approveScadaC2,
+    deleteScada,
+    downloadScadaAttachment,
+    fetchScadaAttachments,
+    fetchScadaById,
+    fetchScadaHistory,
+    fetchScadaList,
+    submitScada,
+} from "./api";
+import { OPERATIONAL_STATUS_OPTIONS } from "./schema";
+import type { ApprovalRequest, ScadaResponse } from "./types";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
-import { usePermissionStore } from "../../store/permissionStore";
-import {
-  Alert,
-  Button,
-  DatePicker,
-  Space,
-  Input,
-  Select,
-  Modal,
-  Form,
-  Typography,
-  Drawer,
-} from "antd";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
-import { organizationService } from "../organizationService";
-import {
-  SearchOutlined,
-  HistoryOutlined,
-  ExclamationCircleOutlined,
-  EnvironmentOutlined,
-  BankOutlined,
-  SlidersOutlined,
-  AuditOutlined,
-  DownOutlined,
-  RightOutlined,
-} from "@ant-design/icons";
-import { Tabs } from "antd";
-import { useSearchParams } from "react-router-dom";
-import {
-  fetchScadaById,
-  fetchScadaList,
-  deleteScada,
-  submitScada,
-  approveScadaC1,
-  approveScadaC2,
-  fetchScadaHistory,
-  fetchScadaAttachments,
-  downloadScadaAttachment,
-} from "./api";
-import { OPERATIONAL_STATUS_OPTIONS } from "./schema";
-import type { ScadaResponse, ApprovalRequest } from "./types";
-import ScadaForm, { type ScadaFormRef, type ScadaSaveAction } from "./ScadaForm";
-import toast from "../../components/ToastNotification";
-import ApprovalModal from "../../components/shared/ApprovalModal";
-import { useAuthStore } from "../../store/authStore";
-import EmptyState from "../../components/EmptyState";
-import LoadingSkeleton from "../../components/LoadingSkeleton";
-import { VIETNAM_PROVINCES } from "../../types/common";
-import api from "../api";
-import { userService } from "../userService";
-import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
-import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
-import {
-  ScreenHeader,
-  DataTable,
-  Pagination,
-  FilterTableLayout,
-  SidebarFilterField,
-} from "../../components/list-view";
 
 /** Map unitOfMeasure code (Integer) → label cho hiển thị */
 const UOM_LABELS: Record<number, string> = {
@@ -104,64 +104,66 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
   return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
 }
 
-import {
-  colors,
-  fontSizeMd,
-  fontSizeLg,
-  fontSizeSm,
-  fontWeightBold,
-  fontWeightMedium,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  statusCritical,
-  statusAttention,
-  statusDraft,
-  statusOperational,
-  actionPrimary,
-  borderDefault,
-  surfaceCard,
-  radiusPill,
-  fontSans,
-  fontSizeCellTitle,
-  spaceMd,
-  spaceFormField,
-  spaceSm,
-  spaceXs,
-  spaceXl,
-  DRAWER_TABLE_SCROLL_Y,
-  drawerProps,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  requiredMarkStyle,
-  statusBadgeStyle,
-  getSidebarDatePickerProps,
-  icons,
-  statusInfo,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
-} from "../../themetokenchk";
 import dayjs from "dayjs";
-import { cellTitleStyle, cellSubtitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
-import * as themeTokenChk from "../../themetokenchk";
-import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
-import { DetailTable } from "../../components/shared/DetailTable";
-import { AppDrawer } from "../../components/shared/AppDrawer";
-import InfrastructureAttachmentTab from "../../components/shared/InfrastructureAttachmentTab";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
+import { AppDrawer } from "../../components/shared/AppDrawer";
+import { DetailTable } from "../../components/shared/DetailTable";
+import InfrastructureAttachmentTab from "../../components/shared/InfrastructureAttachmentTab";
+import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
+import * as themeTokenChk from "../../themetokenchk";
+import {
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_TABLE_SCROLL_Y,
+    DRAWER_WIDTH,
+    drawerCloseBtnStyle,
+    drawerFooterStyle,
+    drawerProps,
+    drawerTitleStyle,
+    fontSans,
+    fontSizeCellTitle,
+    fontSizeLg,
+    fontSizeMd,
+    fontSizeSm,
+    fontWeightBold,
+    fontWeightMedium,
+    getSidebarDatePickerProps,
+    historyAccentBarStyle,
+    historyArrowStyle,
+    historyChangeRowStyle,
+    historyCreateRowStyle,
+    historyFieldLabelStyle,
+    historyGroupGridStyle,
+    historyInfoCardStyle,
+    historyInfoTitleStyle,
+    historyMetaRowStyle,
+    historyNewValueStyle,
+    historyOldValueStyle,
+    historyTimeStyle,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    spaceXs,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusInfo,
+    statusOperational,
+    surfaceCard,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+} from "../../themetokenchk";
 import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 
@@ -530,8 +532,6 @@ const ScadaListPage = () => {
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
   const [historyEntityName, setHistoryEntityName] = useState('');
-
-  const historyFieldCount = useMemo(() => (Array.isArray(historyRecords) ? historyRecords : []).length, [historyRecords]);
   const [detailsSpecsOpen, setDetailsSpecsOpen] = useState(true);
   const [detailApprovalOpen, setDetailApprovalOpen] = useState(true);
   const [opRunOpen, setOpRunOpen] = useState(true);
@@ -1050,6 +1050,60 @@ const ScadaListPage = () => {
     'displayRule', 'Quy tắc hiển thị',
     'Tài liệu đính kèm',
   ];
+
+  const countScadaHistoryCards = (records: any[]): number => {
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...records].sort(
+      (a: any, b: any) =>
+        new Date(historyTimestamp(b) || 0).getTime() -
+        new Date(historyTimestamp(a) || 0).getTime()
+    );
+    const q = historySearch.toLowerCase().trim();
+    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    for (const r of sorted) {
+      if (q) {
+        const fn = (historyField(r) || '').toLowerCase();
+        const ov = (historyOldValue(r) || '').toLowerCase();
+        const nv = (historyNewValue(r) || '').toLowerCase();
+        const lb = historyFieldName(historyField(r) || '').toLowerCase();
+        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap).toLowerCase();
+        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
+      }
+      if (historyFrom || historyTo) {
+        const cd = (historyTimestamp(r) || '');
+        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
+        if (historyTo && cd.substring(0, 10) > historyTo) continue;
+      }
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const actor = historyActor(r);
+      const prev = groups[groups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      else groups.push({ tsSec: sec, ts, actor, items: [r] });
+    }
+
+    let count = 0;
+    for (const g of groups) {
+      const changes = deduplicateAttachmentHistoryChanges(
+        g.items.flatMap((item: any) => {
+          const fn = historyField(item);
+          return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
+        })
+      );
+      const orderedChanges = [...changes]
+        .filter(
+          (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
+        );
+      if (orderedChanges.length > 0) count++;
+    }
+    return count;
+  };
+
+  const historyUpdateCount = useMemo(() => {
+    return countScadaHistoryCards(historyRecords);
+  }, [historyRecords, historySearch, historyFrom, historyTo, orgMap, symbolMap]);
 
   const renderScadaHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
@@ -3188,7 +3242,7 @@ const ScadaListPage = () => {
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.deviceName}` : (historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi')}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

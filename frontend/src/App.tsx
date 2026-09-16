@@ -310,13 +310,13 @@ export default function App() {
                 <Route path="/asset/vts-assist" element={<PermissionGuard permission="infraasset:manage"><VtsAssistAssetList /></PermissionGuard>} />
                 <Route path="/asset/vhf" element={<PermissionGuard permission="infraasset:manage"><VhfAssetList /></PermissionGuard>} />
                 <Route path="/asset/dai-ttdh" element={<PermissionGuard permission="infraasset:manage"><DaiTtdhAssetList /></PermissionGuard>} />
-                <Route path="/asset/inmarsat" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationinmarsat:read', 'coastalstation:read', 'data:read']}><InmarsatAssetList /></PermissionGuard>} />
-                <Route path="/asset/cang-can" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'dryport:read', 'data:read']}><DryPortAssetList /></PermissionGuard>} />
-                <Route path="/asset/dry-port" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'dryport:read', 'data:read']}><DryPortAssetList /></PermissionGuard>} />
-                <Route path="/asset/ttdh" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'daittdh:read', 'coastalstation:read', 'data:read']}><TtdhAssetList /></PermissionGuard>} />
-                <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatAssetList /></PermissionGuard>} />
-                <Route path="/asset/lrit" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritAssetList /></PermissionGuard>} />
-                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['infraasset:manage', 'infraasset:read', 'specialstation:read', 'coastalstationhaiphong:read', 'coastalstation:read', 'data:read']}><TtxlttAssetList /></PermissionGuard>} />
+                <Route path="/asset/inmarsat" element={<PermissionGuard permission="infraasset:manage"><InmarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/cang-can" element={<PermissionGuard permission="infraasset:manage"><DryPortAssetList /></PermissionGuard>} />
+                <Route path="/asset/dry-port" element={<PermissionGuard permission="infraasset:manage"><DryPortAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttdh" element={<PermissionGuard permission="infraasset:manage"><TtdhAssetList /></PermissionGuard>} />
+                <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission="infraasset:manage"><CospasSarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/lrit" element={<PermissionGuard permission="infraasset:manage"><LritAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttxltt" element={<PermissionGuard permission="infraasset:manage"><TtxlttAssetList /></PermissionGuard>} />
                 <Route path="/asset/vts-system" element={<PermissionGuard permission="infraasset:manage"><VtsSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/radar-station" element={<PermissionGuard permission="infraasset:manage"><RadarStationAssetList /></PermissionGuard>} />
                 <Route path="/asset/ais-system" element={<PermissionGuard permission="infraasset:manage"><AisSystemAssetList /></PermissionGuard>} />

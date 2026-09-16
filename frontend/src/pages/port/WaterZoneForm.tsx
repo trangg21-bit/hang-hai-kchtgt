@@ -29,8 +29,8 @@ export default function WaterZoneForm() {
   const canUpdate = canEditApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
   const canSubmit = (entityData?.status === 'DRAFT' || (entityData?.status as any) === 'REJECTED') && (hasPerm('waterzone:update') || hasPerm('data:update') || isAdmin);
   const canDelete = canDeleteApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
-  const canApprove1 = (hasPerm('waterzone:approvec1') || hasPerm('waterzone:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin);
-  const canApprove2 = (hasPerm('waterzone:approvec2') || hasPerm('waterzone:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canApprove1 = (hasPerm('waterzone:approvec1') || hasPerm('data:approvec1') || isAdmin);
+  const canApprove2 = (hasPerm('waterzone:approvec2') || hasPerm('data:approvec2') || isAdmin);
 
   useEffect(() => {
     (async () => {

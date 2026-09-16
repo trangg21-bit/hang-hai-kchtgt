@@ -964,15 +964,44 @@ export default function RadarStationList() {
   const [symbolOptions, setSymbolOptions] = useState<{ value: string; label: string }[]>([]);
   const [symbols, setSymbols] = useState<{ id: string; name: string; code?: string; image: string }[]>([]);
 
-  const historyFieldCount = useMemo(() => {
-    if (!Array.isArray(historyRecords)) return 0;
+  const countRadarHistoryCards = useCallback((records: HistoryEntry[]): number => {
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...records].sort((a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+
+    const isUpdateAction = (status: string | undefined, reason?: string | undefined) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
+
+    const groups: Array<{ tsSec: number; ts: string; actor: string; status?: string; approvalLevel?: string; items: HistoryEntry[] }> = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const prev = groups[groups.length - 1];
+      const actor = historyActor(r);
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      if (isSameGroup) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
+    }
+
     let count = 0;
-    for (const r of historyRecords) {
-      const rows = historyChangeRows(r).filter((c) => c.field);
-      count += rows.length > 0 ? rows.length : 1;
+    for (const g of groups) {
+      const changes = deduplicateAttachmentHistoryChanges(g.items.flatMap((item) => historyChangeRows(item)));
+      if (changes.length > 0) count++;
     }
     return count;
-  }, [historyRecords]);
+  }, []);
+
+  const historyUpdateCount = useMemo(() => {
+    return countRadarHistoryCards(historyRecords);
+  }, [historyRecords, countRadarHistoryCards]);
 
   // Trạng thái cho phép gửi duyệt lại / gửi tiếp sau lưu (áp cho nút phụ trong drawer Cập nhật)
   const editingCanResubmit = !!editingRecord && !isDetailMode
@@ -4154,7 +4183,7 @@ export default function RadarStationList() {
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.stationName || historyTarget.code || ''}` : 'Lịch sử thay đổi'}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

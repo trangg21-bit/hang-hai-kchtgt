@@ -10,8 +10,39 @@ import {
   parseHistoryEntryChanges,
   mergeChangesByField,
 } from '../components/shared/CommonHistoryDrawer';
+import { getServicesProvidedHistoryDelta } from '../utils/serviceHistoryDelta';
 
 describe('historyAttachmentDedup helpers', () => {
+  it('shows only the added service instead of both unchanged services', () => {
+    expect(getServicesProvidedHistoryDelta(
+      'servicesProvided',
+      'LRIT, COSPAS-SARSAT',
+      'LRIT, COSPAS-SARSAT, DSC',
+    )).toEqual([
+      { field: 'Dịch vụ cung cấp', oldValue: '', newValue: 'DSC' },
+    ]);
+  });
+
+  it('shows only removed and added services when the service set is replaced', () => {
+    expect(getServicesProvidedHistoryDelta(
+      'Dịch vụ cung cấp',
+      'LRIT, COSPAS-SARSAT',
+      'LRIT, DSC',
+    )).toEqual([
+      { field: 'Dịch vụ cung cấp', oldValue: 'COSPAS-SARSAT', newValue: 'DSC' },
+    ]);
+  });
+
+  it('keeps each service on its own display line', () => {
+    expect(getServicesProvidedHistoryDelta(
+      'servicesProvided',
+      'LRIT, COSPAS-SARSAT, DSC',
+      '',
+    )).toEqual([
+      { field: 'Dịch vụ cung cấp', oldValue: 'LRIT\nCOSPAS-SARSAT\nDSC', newValue: '' },
+    ]);
+  });
+
   it('correctly identifies attachment fields', () => {
     expect(isAttachmentField('Tài liệu đính kèm')).toBe(true);
     expect(isAttachmentField('attachments')).toBe(true);

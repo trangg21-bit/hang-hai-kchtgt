@@ -1,77 +1,77 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { fmtNum } from "../../utils/numFmt";
-import { parseWktToCoordinates, ddToDms } from "../../utils/gisGeometry";
-import { usePermissionStore } from "../../store/permissionStore";
 import {
-  Alert,
-  Button,
-  DatePicker,
-  Space,
-  Input,
-  Select,
-  Modal,
-  Form,
-  Typography,
-} from "antd";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
-import { organizationService } from "../organizationService";
-import {
-  PlusOutlined,
-  SearchOutlined,
-  HistoryOutlined,
-  ExclamationCircleOutlined,
-  EnvironmentOutlined,
-  BankOutlined,
-  SlidersOutlined,
-  AuditOutlined,
-  DownOutlined,
-  RightOutlined,
+    AuditOutlined,
+    BankOutlined,
+    DownOutlined,
+    EnvironmentOutlined,
+    ExclamationCircleOutlined,
+    HistoryOutlined,
+    PlusOutlined,
+    RightOutlined,
+    SearchOutlined,
+    SlidersOutlined,
 } from "@ant-design/icons";
-import { Tabs } from "antd";
-import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
-import GisLocationSelector from "../../components/gis/GisLocationSelector";
-import { DetailTable } from "../../components/shared/DetailTable";
+import {
+    Alert,
+    Button,
+    DatePicker,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+    Tabs,
+    Typography,
+} from "antd";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  fetchTransmissionList,
-  fetchTransmissionById,
-  deleteTransmission,
-  submitTransmission,
-  approveTransmissionC1,
-  approveTransmissionC2,
-  fetchTransmissionHistory,
-  fetchTransmissionAttachments,
-  downloadTransmissionAttachment,
-  generateTransmissionCode,
-} from "./api";
-import TransmissionForm, { type TransmissionFormRef } from "./TransmissionForm";
-import {
-  OPERATIONAL_STATUS_OPTIONS,
-} from "./schema";
-import type { TransmissionResponse, ApprovalRequest } from "./types";
-import toast from "../../components/ToastNotification";
-import ApprovalModal from "../../components/shared/ApprovalModal";
-import { AppDrawer } from "../../components/shared/AppDrawer";
-import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
-import { cellTitleStyle, cellSubtitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
-import * as themeTokenChk from "../../themetokenchk";
-import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
-import { useAuthStore } from "../../store/authStore";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
-import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
-import { VIETNAM_PROVINCES } from "../../types/common";
-import api from "../api";
-import { userService } from "../userService";
-import type { Symbol as MapSymbolType } from "../symbolService";
+import toast from "../../components/ToastNotification";
+import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import {
-  ScreenHeader,
-  DataTable,
-  Pagination,
-  FilterTableLayout,
-  SidebarFilterField,
+    DataTable,
+    FilterTableLayout,
+    Pagination,
+    ScreenHeader,
+    SidebarFilterField,
 } from "../../components/list-view";
+import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { AppDrawer } from "../../components/shared/AppDrawer";
+import ApprovalModal from "../../components/shared/ApprovalModal";
+import { DetailTable } from "../../components/shared/DetailTable";
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
+import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
+import { useAuthStore } from "../../store/authStore";
+import { usePermissionStore } from "../../store/permissionStore";
+import * as themeTokenChk from "../../themetokenchk";
+import { cellSubtitleStyle, cellTitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
+import { VIETNAM_PROVINCES } from "../../types/common";
+import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
+import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
+import { fmtNum } from "../../utils/numFmt";
+import api from "../api";
+import { organizationService } from "../organizationService";
+import type { Symbol as MapSymbolType } from "../symbolService";
+import { userService } from "../userService";
+import TransmissionForm, { type TransmissionFormRef } from "./TransmissionForm";
+import {
+    approveTransmissionC1,
+    approveTransmissionC2,
+    deleteTransmission,
+    downloadTransmissionAttachment,
+    fetchTransmissionAttachments,
+    fetchTransmissionById,
+    fetchTransmissionHistory,
+    fetchTransmissionList,
+    generateTransmissionCode,
+    submitTransmission,
+} from "./api";
+import {
+    OPERATIONAL_STATUS_OPTIONS,
+} from "./schema";
+import type { ApprovalRequest, TransmissionResponse } from "./types";
 
 /** Map unitOfMeasure code (Integer) → label cho hiển thị */
 const UOM_LABELS: Record<number, string> = {
@@ -108,57 +108,57 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
   return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
 }
 
-import {
-  colors,
-  fontSizeMd,
-  fontSizeLg,
-  fontSizeSm,
-  fontWeightBold,
-  fontWeightMedium,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  statusCritical,
-  statusAttention,
-  statusDraft,
-  statusOperational,
-  actionPrimary,
-  borderDefault,
-  surfaceCard,
-  radiusPill,
-  fontSizeCellTitle,
-  fontSans,
-  spaceMd,
-  spaceFormField,
-  spaceSm,
-  spaceXs,
-  spaceXl,
-  DRAWER_TABLE_SCROLL_Y,
-  drawerProps,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  requiredMarkStyle,
-  statusBadgeStyle,
-  getSidebarDatePickerProps,
-  icons,
-  statusInfo,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
-} from "../../themetokenchk";
 import dayjs from "dayjs";
+import {
+    actionPrimary,
+    borderDefault,
+    colors,
+    DRAWER_TABLE_SCROLL_Y,
+    drawerCloseBtnStyle,
+    drawerFooterStyle,
+    drawerProps,
+    drawerTitleStyle,
+    fontSans,
+    fontSizeCellTitle,
+    fontSizeLg,
+    fontSizeMd,
+    fontSizeSm,
+    fontWeightBold,
+    fontWeightMedium,
+    getSidebarDatePickerProps,
+    historyAccentBarStyle,
+    historyArrowStyle,
+    historyChangeRowStyle,
+    historyCreateRowStyle,
+    historyFieldLabelStyle,
+    historyGroupGridStyle,
+    historyInfoCardStyle,
+    historyInfoTitleStyle,
+    historyMetaRowStyle,
+    historyNewValueStyle,
+    historyOldValueStyle,
+    historyTimeStyle,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    spaceXs,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusInfo,
+    statusOperational,
+    surfaceCard,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+} from "../../themetokenchk";
 
 
 // ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
@@ -571,11 +571,6 @@ const TransmissionListPage = () => {
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
-
-  const historyFieldCount = useMemo(
-    () => (Array.isArray(historyRecords) ? historyRecords : []).length,
-    [historyRecords]
-  );
 
   const openHistory = useCallback((r: TransmissionResponse) => {
     if (!hasPerm?.("transmission:history") && !hasPerm?.("transmission:read") && !hasPerm?.("data:read")) {
@@ -1119,6 +1114,64 @@ const TransmissionListPage = () => {
 
     return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
   };
+
+  const countTransmissionHistoryCards = (records: any[]): number => {
+    if (!Array.isArray(records) || records.length === 0) return 0;
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...records].sort(
+      (a: any, b: any) =>
+        new Date(historyTimestamp(b) || 0).getTime() -
+        new Date(historyTimestamp(a) || 0).getTime()
+    );
+    const q = historySearch.toLowerCase().trim();
+    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+
+    for (const r of sorted) {
+      if (q) {
+        const fn = (historyField(r) || '').toLowerCase();
+        const ov = (historyOldValue(r) || '').toLowerCase();
+        const nv = (historyNewValue(r) || '').toLowerCase();
+        const lb = historyFieldName(historyField(r) || '').toLowerCase();
+        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap).toLowerCase();
+        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap, vtsCenterMap, radarStationMap).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
+      }
+      if (historyFrom || historyTo) {
+        const cd = historyTimestamp(r);
+        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
+        if (historyTo && cd.substring(0, 10) > historyTo) continue;
+      }
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const prev = groups[groups.length - 1];
+      const actor = historyActor(r);
+      if (prev && prev.tsSec === sec && prev.actor === actor) {
+        prev.items.push(r);
+      } else {
+        groups.push({ tsSec: sec, ts, actor, items: [r] });
+      }
+    }
+
+    let count = 0;
+    for (const g of groups) {
+      const changes = deduplicateAttachmentHistoryChanges(
+        g.items.flatMap((item: any) => {
+          const fn = historyField(item);
+          return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
+        })
+      );
+      const orderedChanges = [...changes]
+        .filter(
+          (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
+        );
+      if (orderedChanges.length > 0) count++;
+    }
+    return count;
+  };
+
+  const historyUpdateCount = useMemo(() => {
+    return countTransmissionHistoryCards(historyRecords);
+  }, [historyRecords, historySearch, historyFrom, historyTo, orgMap, symbolMap, vtsCenterMap, radarStationMap]);
 
   const renderTransmissionHistoryTimeline = (records: any[]) => {
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
@@ -3385,7 +3438,7 @@ const TransmissionListPage = () => {
                   lineHeight: '20px',
                 }}
               >
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

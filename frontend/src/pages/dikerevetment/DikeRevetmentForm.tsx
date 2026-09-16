@@ -120,7 +120,6 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   const userPermissions = currentUser?.permissions || [];
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS / port).
   const canApproveDirect = hasPermissionFromList(userPermissions, 'dikerevetment:approvec2')
-    || hasPermissionFromList(userPermissions, 'dikerevetment:approve')
     || hasPermissionFromList(userPermissions, '*');
 
   const isIframe = window.self !== window.top;
@@ -443,11 +442,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều dài (m):</div>
-                <div style={detailValueStyle}>{record.length !== undefined ? record.length.toFixed(2) : null}</div>
+                <div style={detailValueStyle}>{record.length !== undefined && record.length !== null ? Number(record.length).toFixed(2) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Cao trình đỉnh (m):</div>
-                <div style={detailValueStyle}>{record.crestElevation !== undefined ? record.crestElevation.toFixed(2) : null}</div>
+                <div style={detailValueStyle}>{record.crestElevation !== undefined && record.crestElevation !== null ? Number(record.crestElevation).toFixed(2) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Thời điểm đưa vào khai thác:</div>
@@ -463,7 +462,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều cao (m):</div>
-                <div style={detailValueStyle}>{record.height !== undefined ? record.height.toFixed(2) : null}</div>
+                <div style={detailValueStyle}>{record.height !== undefined && record.height !== null ? Number(record.height).toFixed(2) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Tình trạng:</div>

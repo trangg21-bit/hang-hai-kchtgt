@@ -219,12 +219,12 @@ export default function WaterZoneList() {
     if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'waterzone' })) {
       actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     }
-    const canApprove1 = (hasPerm('waterzone:approvec1') || hasPerm('waterzone:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin);
+    const canApprove1 = (hasPerm('waterzone:approvec1') || hasPerm('data:approvec1') || isAdmin);
     if (record.approvalStatus === 'PENDING_APPROVAL' && canApprove1) {
       actions.push({ key: 'approve1', label: 'Phê duyệt L1', icon: <CheckCircleOutlined />, onClick: () => handleApproveL1(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });
     }
-    const canApprove2 = (hasPerm('waterzone:approvec2') || hasPerm('waterzone:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+    const canApprove2 = (hasPerm('waterzone:approvec2') || hasPerm('data:approvec2') || isAdmin);
     if (record.approvalStatus === 'APPROVED_L1' && canApprove2) {
       actions.push({ key: 'approve2', label: 'Phê duyệt L2', icon: <CheckCircleOutlined />, onClick: () => handleApproveL2(record) });
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });

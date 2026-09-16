@@ -1145,7 +1145,7 @@ public class VtsSystemService {
 
         String newCoordinates = (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty())
                 ? request.getCoordinates().trim() : null;
-        if (request.getCoordinates() != null && !Objects.equals(newCoordinates, oldCoordinates)) {
+        if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoordinates, oldCoordinates)) {
             previousValues.put(VtsSystemUpdateRequest.Fields.coordinates, oldCoordinates != null ? oldCoordinates : "Chưa có");
             customNewValues.put(VtsSystemUpdateRequest.Fields.coordinates, newCoordinates != null ? newCoordinates : "Chưa có");
         }

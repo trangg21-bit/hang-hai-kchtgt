@@ -102,7 +102,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
 import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, countStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -694,6 +694,39 @@ export default function BuoyStationListPage() {
     });
   };
 
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: STATION_FIELD_LABEL_OVERRIDES,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'icon' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const resolved = translateStationVal(fn, raw);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const uId = historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId;
+        const orgName = uId ? orgMap.get(uId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
+      },
+    });
+  }, [filteredHistory, translateStationVal, orgMap, symbolMap, symbolImageMap, historyRecord]);
+
   // ── Delete / Approve / Reject handlers ────────────────────────────
   const openDelete = useCallback((r: BuoyStationResponse) => {
     setDeletingRecord(r);
@@ -1261,7 +1294,7 @@ export default function BuoyStationListPage() {
                 Lịch sử thay đổi — {historyRecord?.name || historyRecord?.code || ''}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>
@@ -1322,7 +1355,7 @@ export default function BuoyStationListPage() {
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
             </div>
-          ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+          ) : hasActiveHistoryFilter && historyUpdateCount === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

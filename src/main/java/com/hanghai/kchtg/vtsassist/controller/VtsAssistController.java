@@ -117,7 +117,7 @@ public class VtsAssistController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:update')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:update', 'vtsassist:approvec2')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> update(
     @Valid @RequestBody UpdateVtsAssistRequest request) {
     log.info("Updating VTS Assist: id={}", request.getId());
@@ -200,7 +200,7 @@ public class VtsAssistController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:update') or @auth.check(authentication, 'vtsassist:create')")
+  @PreAuthorize("@auth.check(authentication, 'vtsassist:update') or @auth.check(authentication, 'vtsassist:create') or @auth.check(authentication, 'vtsassist:approvec2')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -220,7 +220,7 @@ public class VtsAssistController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:update') or @auth.check(authentication, 'vtsassist:create') or @auth.check(authentication, 'vtsassist:delete')")
+  @PreAuthorize("@auth.check(authentication, 'vtsassist:update') or @auth.check(authentication, 'vtsassist:create') or @auth.check(authentication, 'vtsassist:delete') or @auth.check(authentication, 'vtsassist:approvec2')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

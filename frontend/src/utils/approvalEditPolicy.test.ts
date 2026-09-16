@@ -43,10 +43,11 @@ describe('approvalEditPolicy', () => {
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm, resource: 'vts' })).toBe(true);
     });
 
-    it('returns true for DRAFT when user has resource:manage or data:delete', () => {
+    it('returns true for DRAFT when user has resource:manage', () => {
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'vts:manage', resource: 'vts' })).toBe(true);
-      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts' })).toBe(true);
-      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'admin:manage', resource: 'vts' })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts' })).toBe(false);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts', extraDeletePerms: ['data:delete'] })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'infraasset:manage', resource: 'vts' })).toBe(false);
     });
   });
 
@@ -71,11 +72,12 @@ describe('approvalEditPolicy', () => {
       expect(canEditApprovalRecord('REJECTED_LEVEL2', { hasPerm: updatePerm, resource: 'vts' })).toBe(true);
     });
 
-    it('for APPROVED records: requires approvec2 or approve permission', () => {
+    it('for APPROVED records: requires approvec2 permission', () => {
       const updateOnly = (p: string) => p === 'vts:update';
       const approveC2 = (p: string) => p === 'vts:approvec2';
 
       expect(canEditApprovalRecord('APPROVED', { hasPerm: updateOnly, resource: 'vts' })).toBe(false);
+      expect(canEditApprovalRecord('APPROVED', { hasPerm: (p) => p === 'vts:approve', resource: 'vts' })).toBe(false);
       expect(canEditApprovalRecord('APPROVED', { hasPerm: approveC2, resource: 'vts' })).toBe(true);
     });
   });

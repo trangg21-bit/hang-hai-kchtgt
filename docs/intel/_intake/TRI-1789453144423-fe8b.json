@@ -1,0 +1,45 @@
+{
+  "triage_id": "TRI-1789453144423-fe8b",
+  "created_at": 1789453144423,
+  "request_summary": "Khắc phục hiện tượng double fetch API khi mount màn hình AIS",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/aissystem/AisSystemList.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/aissystem/AisSystemList.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/ais-system",
+  "blast_radius": 1,
+  "done_oracle": "Màn hình AisSystemList chỉ gọi API danh sách 1 lần khi khởi tạo thay vì 2 lần liên tiếp",
+  "verification_commands": [
+    {
+      "command": "vitest run src/services/aisSystemService.test.ts",
+      "cwd": "frontend",
+      "timeout_ms": 60000
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "949ed7ff0f47997720adc9e9c8c9e6d2898203c5",
+    "dirty": false,
+    "captured_at": 1789453144595
+  },
+  "budget": {
+    "wall_clock_ms": 1260000,
+    "turns": 52,
+    "turns_used": 113
+  }
+}

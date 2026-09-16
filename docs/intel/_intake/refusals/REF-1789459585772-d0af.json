@@ -1,0 +1,10 @@
+{
+  "at": 1789459585771,
+  "kind": "tripwire_breach",
+  "change_class": "C1",
+  "breach_kind": "loc_budget",
+  "triage_id": "TRI-1789458629218-707c",
+  "loc_changed": 347,
+  "files_touched": 2,
+  "detail": "Intake tripwire — LOC budget: this guarded C1 lane has changed 347 lines, over its 280-line budget. Escalation is now MANDATORY — no silent continuation. FIX: add all changed files to candidate_files, re-run intake_triage (it will return class C2), then FOLLOW the routing directive the new record returns (pipeline dispatch or build-owned). The breach is recorded with transition reason \"intake_esca…"
+}

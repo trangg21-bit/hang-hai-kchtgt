@@ -119,7 +119,7 @@ public class WaterZoneController {
      * vòng đang mở thay vì duyệt một phát — không còn đường vòng bỏ qua quy trình.
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.checkAny(authentication, 'waterzone:approvec1', 'waterzone:approvec2', 'waterzone:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'waterzone:approvec1', 'waterzone:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -130,7 +130,7 @@ public class WaterZoneController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'waterzone:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'waterzone:approvec1', 'waterzone:approvec2')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
             @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,

@@ -23,7 +23,7 @@ import {
   actionPrimary, textSecondary,
   fontWeightBold,
   spaceSm, spaceMd,
-  statusOperational, statusCritical, statusAttention,
+  statusOperational, statusCritical, statusAttention, statusDraft,
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   textAreaStyle, colors, radiusPill,
   getRangePickerProps,
@@ -55,6 +55,8 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.STOPPED]: statusCritical,
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+  [ConditionStatus.NOT_YET_OPERATIONAL]: statusDraft,
+  [ConditionStatus.SUSPENDED]: statusCritical,
 };
 
 const HanoiStationGlobalStyles = React.memo(() => (
@@ -821,15 +823,15 @@ export default function HanoiStationList() {
     const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
     const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
 
-    const isApproverL1Perm = hasPerm('coastalstationhaiphong:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin;
-    const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('coastalstationhaiphong:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin;
+    const isApproverL1Perm = hasPerm('coastalstationhaiphong:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin;
+    const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin;
 
     const canEdit = canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource: 'coastalstationhaiphong',
       extraUpdatePerms: ['specialstation:update', 'data:update'],
-      extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'data:approvec2', 'data:approve'],
-    }) || (record.approvalStatus === ApprovalStatus.APPROVED && (isApproverL2Perm || isAdmin));
+      extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
+    }) || (record.approvalStatus === ApprovalStatus.APPROVED && isAdmin);
 
     const canDelete = canDeleteApprovalRecord(record.approvalStatus, {
       hasPerm,

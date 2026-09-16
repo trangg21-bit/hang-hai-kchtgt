@@ -144,7 +144,7 @@ public class PierController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'pier:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'pier:approvec1', 'pier:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             @Valid @RequestBody ApproveRequest request,
@@ -156,7 +156,7 @@ public class PierController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'pier:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'pier:approvec1', 'pier:approvec2')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
             @Valid @RequestBody RejectRequest request,

@@ -1,68 +1,76 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  Button, Modal, Input, Select, DatePicker,
-  Drawer, Space, Typography, Form,
-} from 'antd';
-import {
-  HistoryOutlined,
-  SearchOutlined,
-  FileOutlined,
+    HistoryOutlined,
+    SearchOutlined
 } from '@ant-design/icons';
+import {
+    Button,
+    DatePicker,
+    Drawer,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space
+} from 'antd';
 import dayjs from 'dayjs';
-import { stormShelterCRUD, stormShelterApproval, portCRUD, buoyBerthCRUD } from '../../services/portService';
-import type { StormShelterArea } from '../../types/port';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import { organizationService } from '../../services/organizationService';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
-import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import { symbolService } from '../../services/symbolService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
-import type { Organization } from '../../services/organizationService';
-import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import { ScreenHeader, DataTable } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import StormShelterForm, { STORM_SHELTER_CLASSIFICATION_OPTIONS } from './StormShelterForm';
-import StormShelterDetailContent from './StormShelterDetailContent';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { buoyBerthCRUD, portCRUD, stormShelterApproval, stormShelterCRUD } from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  borderDefault,
-  fontSizeLg,
-  fontSizeSm,
-  fontWeightMedium,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXs,
-  spaceXl,
-  spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
-  DRAWER_WIDTH,
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_WIDTH,
+    drawerCloseBtnStyle, drawerFooterStyle,
+    drawerProps, drawerTitleStyle,
+    fontSizeLg,
+    fontWeightBold,
+    getRangePickerProps,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    textPrimary,
+    textSecondary,
+    textTertiary
 } from '../../themetokenchk';
-import { colors } from '../../themetokenchk';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import type { StormShelterArea } from '../../types/port';
+import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import StormShelterDetailContent from './StormShelterDetailContent';
+import StormShelterForm, { STORM_SHELTER_CLASSIFICATION_OPTIONS } from './StormShelterForm';
 
 // Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK toàn bộ cell/table/input/button
 const fontSizeMd = 13.5;
@@ -232,6 +240,29 @@ const histLabels: Record<string, string> = {
   'Địa điểm (Tỉnh/Thành phố)': 'Địa điểm (Tỉnh/Thành Phố)',
   'Biểu tượng bản đồ': 'Biểu tượng',
 };
+
+const HISTORY_FIELD_ORDER = [
+  'orgUnitId', 'portId', 'stormShelterCode', 'stormShelterName', 'navigationChannelId',
+  'buoyStationId', 'classification', 'provinceId', 'province', 'detailedLocation', 'operationalStatus', 'approvalStatus',
+  'shapeDescription', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign',
+  'maxVesselDWT', 'activeStormShelterCount', 'publishedStormShelterCount', 'underInvestmentStormShelterCount',
+  'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
+  'coordinateSystem', 'displayRule', 'mapSymbolId', 'spatialId',
+  'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Danh sách khu nước neo buộc tàu', 'Tài liệu đính kèm',
+  // Vietnamese label aliases:
+  'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu tránh, trú bão', 'Tên khu tránh, trú bão',
+  'Thuộc luồng hàng hải', 'Luồng hàng hải', 'Thuộc bến phao', 'Bến phao', 'Phân loại',
+  'Địa điểm (Tỉnh/Thành Phố)', 'Địa điểm (Tỉnh/Thành phố)', 'Tỉnh/Thành phố', 'Địa điểm chi tiết',
+  'Tình trạng', 'Trạng thái', 'Hình dạng', 'Diện tích (ha)',
+  'Độ sâu khu nước theo thiết kế (m)', 'Độ sâu theo thiết kế (m)',
+  'Độ sâu khu nước hiện tại (m)', 'Độ sâu hiện tại (m)',
+  'Cao độ đáy bến thiết kế', 'Cỡ tàu lớn nhất (DWT)', 'Cỡ tàu khai thác (DWT)',
+  'Số lượng khu đang khai thác', 'Số khu đang khai thác',
+  'Số lượng khu đã công bố', 'Số khu đã công bố',
+  'Số lượng khu đang thỏa thuận đầu tư', 'Số khu thỏa thuận đầu tư',
+  'Ghi chú', 'Thời điểm công bố mở', 'Quyết định công bố', 'Thỏa thuận đầu tư xây dựng',
+  'Hệ quy chiếu', 'Quy tắc hiển thị', 'Biểu tượng', 'Biểu tượng bản đồ',
+];
 
 function histField(fn: string): string { return histLabels[fn] || fn; }
 
@@ -759,29 +790,6 @@ export default function StormShelterListPage() {
 
   const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
 
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'portId', 'stormShelterCode', 'stormShelterName', 'navigationChannelId',
-    'buoyStationId', 'classification', 'provinceId', 'province', 'detailedLocation', 'operationalStatus', 'approvalStatus',
-    'shapeDescription', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign',
-    'maxVesselDWT', 'activeStormShelterCount', 'publishedStormShelterCount', 'underInvestmentStormShelterCount',
-    'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
-    'coordinateSystem', 'displayRule', 'mapSymbolId', 'spatialId',
-    'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Danh sách khu nước neo buộc tàu', 'Tài liệu đính kèm',
-    // Vietnamese label aliases:
-    'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu tránh, trú bão', 'Tên khu tránh, trú bão',
-    'Thuộc luồng hàng hải', 'Luồng hàng hải', 'Thuộc bến phao', 'Bến phao', 'Phân loại',
-    'Địa điểm (Tỉnh/Thành Phố)', 'Địa điểm (Tỉnh/Thành phố)', 'Tỉnh/Thành phố', 'Địa điểm chi tiết',
-    'Tình trạng', 'Trạng thái', 'Hình dạng', 'Diện tích (ha)',
-    'Độ sâu khu nước theo thiết kế (m)', 'Độ sâu theo thiết kế (m)',
-    'Độ sâu khu nước hiện tại (m)', 'Độ sâu hiện tại (m)',
-    'Cao độ đáy bến thiết kế', 'Cỡ tàu lớn nhất (DWT)', 'Cỡ tàu khai thác (DWT)',
-    'Số lượng khu đang khai thác', 'Số khu đang khai thác',
-    'Số lượng khu đã công bố', 'Số khu đã công bố',
-    'Số lượng khu đang thỏa thuận đầu tư', 'Số khu thỏa thuận đầu tư',
-    'Ghi chú', 'Thời điểm công bố mở', 'Quyết định công bố', 'Thỏa thuận đầu tư xây dựng',
-    'Hệ quy chiếu', 'Quy tắc hiển thị', 'Biểu tượng', 'Biểu tượng bản đồ',
-  ];
-
   const renderStormShelterHistoryTimeline = (records: any[]) => {
     return renderStandardHistoryCards({
       records,
@@ -815,6 +823,39 @@ export default function StormShelterListPage() {
       emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: histLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const resolved = histVal(fn, raw, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+    });
+  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap]);
 
   const filterContent = (
     <>
@@ -960,7 +1001,7 @@ export default function StormShelterListPage() {
   const rowActions = useCallback((record: StormShelterArea) => {
     const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
-    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'stormshelter', extraApprovePerms: ['stormshelter:approve'] });
+    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'stormshelter' });
     if (editable) {
       actions.push({
         key: 'edit', label: 'Chỉnh sửa', icon: icons.edit,
@@ -1511,7 +1552,7 @@ export default function StormShelterListPage() {
                   Lịch sử thay đổi — {historyTarget?.stormShelterName || historyTarget?.stormShelterCode || ''}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>
@@ -1572,7 +1613,7 @@ export default function StormShelterListPage() {
                 <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
               </div>
-            ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            ) : hasActiveHistoryFilter && historyUpdateCount === 0 ? (
               <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
                 <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

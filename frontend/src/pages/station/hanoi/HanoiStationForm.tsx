@@ -65,6 +65,7 @@ import {
   ddToDms,
   dmsToDd,
 } from '../../../utils/gisGeometry';
+import { resolveStationGeometryType } from '../../../utils/stationGeometryType';
 import HanoiStationDetailContent, { getOperatingOrgName, renderServicesBadges } from './HanoiStationDetailContent';
 import dayjs from 'dayjs';
 
@@ -155,7 +156,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
   const [attachments, setAttachments] = useState<any[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
-  const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<string[]>([]);
 
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -163,15 +163,13 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-  const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
-  const canApproveL2 = (hasPerm('coastalstationhaiphong:approvec2') || hasPerm('coastalstationhaiphong:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canApproveL2 = (hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
   const canCreate = hasPerm('coastalstationhaiphong:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationhaiphong',
     extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'data:approvec2', 'data:approve'],
+    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const isDetailMode = mode === 'detail';
@@ -285,7 +283,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       setCoordinateList([]);
       setAttachments([]);
       setPendingFiles([]);
-      setPendingDeletedAttachments([]);
       setActiveTab('general');
       setRecord(null);
 
@@ -343,13 +340,15 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       serviceList = data.servicesProvided.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
     }
 
+    const wktCoordinates = typeof data.coordinates === 'string' ? data.coordinates : (data as any).wktGeometry;
+    const geometryType = resolveStationGeometryType(data.geometryType || (data as any).objectType, wktCoordinates);
     const orgId = data.orgUnitId || (initialData as any)?.orgUnitId;
     form.setFieldsValue({
       code: data.code,
       name: data.name,
       orgUnitId: orgId ? String(orgId) : undefined,
       operatingOrgId: data.operatingOrgId,
-      provinceId: data.provinceId,
+      provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
       locationAddress: data.locationAddress,
       conditionStatus: data.conditionStatus || 'OPERATIONAL',
       services: serviceList,
@@ -365,18 +364,18 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       contactPerson: data.contactPerson,
       contactPhone: data.contactPhone,
       description: data.description,
-      geometryType: data.geometryType || (data as any).objectType || undefined,
+      geometryType,
       symbolId: data.symbolId || data.symbol || undefined,
-      coordinateSystem: data.geometryType
+      coordinateSystem: geometryType
         ? (String(data.coordinateSystem) === '2' || String(data.coordinateSystem).includes('VN-2000') ? 2 : 1)
         : undefined,
-      displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
+      displayRule: geometryType ? 'Độ, phút, giây (DMS)' : undefined,
     });
 
     // Parse coordinates
     let pts: { latitude: number; longitude: number }[] = [];
-    if (data.coordinates) {
-      pts = parseWktToCoordinates(data.coordinates);
+    if (wktCoordinates) {
+      pts = parseWktToCoordinates(wktCoordinates);
     }
     if (pts.length === 0 && data.latitude != null && data.longitude != null) {
       pts = [{ latitude: Number(data.latitude), longitude: Number(data.longitude) }];
@@ -400,7 +399,15 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
     if (data.id) {
       hanoiStationService.getAttachments(data.id).then((res: any) => {
         const items = Array.isArray(res) ? res : (res?.data || []);
-        setAttachments(items);
+        const flatItems = (Array.isArray(items) ? items : []).flat(Infinity).map((item: any) => ({
+          ...item,
+          fileName: item.fileName || item.name || item.originalFileName || item.filename,
+          fileSize: item.fileSize ?? item.size ?? item.fileSizeBytes,
+          fileType: item.fileType || item.documentType,
+          uploadedByName: item.uploadedByName || item.uploaderName || item.createdByName,
+          uploadedDate: item.uploadedDate || item.uploadedAt || item.createdAt,
+        }));
+        setAttachments(flatItems);
       }).catch(() => {});
     }
   };
@@ -514,12 +521,15 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
     if (isCreateMode) {
       setPendingFiles((prev) => [...prev, file]);
       const tempItem = {
-        id: `temp_${Date.now()}_${Math.random()}`,
+        id: `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
         uploadedAt: new Date().toISOString(),
+        uploadedDate: new Date().toISOString(),
         uploadedByName: currentUser?.fullName || currentUser?.username || 'Tôi',
+        file,
+        originFileObj: file,
       };
       setAttachments((prev) => [...prev, tempItem]);
       return;
@@ -528,7 +538,18 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
     if (record?.id) {
       try {
         const uploaded = await hanoiStationService.uploadAttachment(record.id, file);
-        setAttachments((prev) => [...prev, uploaded]);
+        const rawItems = Array.isArray(uploaded) ? uploaded : (uploaded ? [uploaded] : []);
+        const normalized = rawItems.map((item: any) => ({
+          ...item,
+          fileName: item.fileName || item.name || file.name,
+          fileSize: item.fileSize ?? item.size ?? file.size,
+          fileType: item.fileType || item.documentType || file.type,
+          uploadedByName: item.uploadedByName || currentUser?.fullName || currentUser?.username || 'Tôi',
+          uploadedDate: item.uploadedDate || item.uploadedAt || new Date().toISOString(),
+          file,
+          originFileObj: file,
+        }));
+        setAttachments((prev) => [...prev.filter((a) => !Array.isArray(a)), ...normalized]);
         toast.success(`Tải lên tệp "${file.name}" thành công`);
       } catch {
         toast.error(`Không thể tải lên tệp "${file.name}"`);
@@ -536,8 +557,11 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
     }
   };
 
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (attachmentId.startsWith('temp_')) {
+  const handleDeleteAttachment = async (attOrId: any) => {
+    const attachmentId = typeof attOrId === 'string' ? attOrId : attOrId?.id;
+    if (!attachmentId) return;
+
+    if (String(attachmentId).startsWith('temp_') || String(attachmentId).startsWith('temp-')) {
       const idx = attachments.findIndex((a) => a.id === attachmentId);
       if (idx !== -1) {
         setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
@@ -560,15 +584,18 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         toast.error('Không thể xóa tệp đính kèm');
       }
     } else {
-      setPendingDeletedAttachments((prev) => [...prev, attachmentId]);
       setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
     }
   };
 
-  const handleDownloadAttachment = async (att: any) => {
-    if (!record?.id || att.id.startsWith('temp_')) return;
+  const handleDownloadAttachment = async (attOrId: any, maybeFileName?: string) => {
+    const attId = typeof attOrId === 'string' ? attOrId : attOrId?.id;
+    const fileName = typeof attOrId === 'string' ? (maybeFileName || '') : (attOrId?.fileName || attOrId?.name || maybeFileName || '');
+    if (!attId) return;
+    if (String(attId).startsWith('temp_') || String(attId).startsWith('temp-')) return;
+    if (!record?.id) return;
     try {
-      await hanoiStationService.downloadAttachment(record.id, att.id, att.fileName || att.name);
+      await hanoiStationService.downloadAttachment(record.id, attId, fileName);
     } catch {
       toast.error('Không thể tải file');
     }
@@ -623,7 +650,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         name: values.name?.trim(),
         orgUnitId: values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
-        provinceId: values.provinceId,
+        provinceId: values.provinceId != null && values.provinceId !== '' ? Number(values.provinceId) : undefined,
         locationAddress: values.locationAddress?.trim(),
         conditionStatus: values.conditionStatus,
         services: values.services,
@@ -825,7 +852,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       className="hanoi-drawer-scope"
       width={DRAWER_WIDTH}
       open={open}
-      onClose={onClose || onCancel}
+      onClose={onClose || onCancel || (() => {})}
       styles={{
         header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
         body: { padding: '0 24px 12px 24px', overflow: isDetailMode ? 'hidden' : undefined },
