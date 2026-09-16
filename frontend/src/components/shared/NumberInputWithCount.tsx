@@ -2,6 +2,7 @@ import type { InputNumberProps } from 'antd';
 import { InputNumber } from 'antd';
 import { textSecondary, fontSizeMd } from '../../themetokenchk';
 import { normalizeDecimal20_4 } from '../../utils/numberRuleHelper';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type NumberInputWithCountProps = InputNumberProps<string | number> & { maxLength: number };
 
@@ -13,16 +14,19 @@ export type NumberInputWithCountProps = InputNumberProps<string | number> & { ma
  * - Giới hạn 20 chữ số khi không có dấu "."
  * - Giới hạn chữ số phần nguyên khi có dấu "." là 16 (vẫn cho điền tối đa 4 chữ số sau dấu chấm)
  */
-export function NumberInputWithCount({ maxLength, value, onKeyDown, onPaste, ...inputProps }: NumberInputWithCountProps) {
+export function NumberInputWithCount({ maxLength, value, onKeyDown, onPaste, formatter, ...inputProps }: NumberInputWithCountProps) {
   const valStr = String(value ?? '');
-  const digitsCount = valStr.replace(/\./g, '').length;
-  const hasDot = valStr.includes('.');
+  const cleanValStr = maxLength === 20 && valStr.includes('.') ? valStr.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1') : valStr;
+  const digitsCount = cleanValStr.replace(/\./g, '').length;
+  const hasDot = cleanValStr.includes('.');
   const maxDigits = maxLength === 20 ? 20 : maxLength;
   const htmlMaxLength = maxLength === 20 ? (hasDot ? 21 : 20) : maxLength;
+  const effectiveFormatter = formatter ?? (maxLength === 20 ? fmtInputNumber : undefined);
 
   return (
     <InputNumber
       stringMode
+      formatter={effectiveFormatter}
       {...inputProps}
       value={value}
       maxLength={htmlMaxLength}

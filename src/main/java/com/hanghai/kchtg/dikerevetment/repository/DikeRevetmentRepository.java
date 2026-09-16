@@ -52,11 +52,11 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "  CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.location)) AS string) LIKE CAST(:keyword AS string)) AND " +
-            "(:dikeRevetmentName IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
-            "(:code IS NULL OR CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE :code) AND " +
-            "(:location IS NULL OR d.location = :location) AND " +
-            "(:commissioningFrom IS NULL OR d.commissioningDate >= :commissioningFrom) AND " +
-            "(:commissioningTo IS NULL OR d.commissioningDate <= :commissioningTo)")
+            "(CAST(:dikeRevetmentName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
+            "(CAST(:code AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE :code) AND " +
+            "(CAST(:location AS string) IS NULL OR d.location = :location) AND " +
+            "(CAST(:commissioningFrom AS date) IS NULL OR d.commissioningDate >= :commissioningFrom) AND " +
+            "(CAST(:commissioningTo AS date) IS NULL OR d.commissioningDate <= :commissioningTo)")
     Page<DikeRevetment> searchPaged(
             @Param("isDeleted") Boolean isDeleted,
             @Param("scopeEnabled") boolean scopeEnabled,
@@ -78,7 +78,7 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
 
     @Query("SELECT d.approvalStatus, COUNT(d) FROM DikeRevetment d WHERE " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
-            "(:dikeRevetmentName IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
+            "(CAST(:dikeRevetmentName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
             "(CAST(:keyword AS string) IS NULL OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:keyword AS string) OR " +
             "  CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE CAST(:keyword AS string) OR " +

@@ -61,10 +61,12 @@ import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DetailTable from '../../components/shared/DetailTable';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
   ddToDms,
+  dmsToDd,
   parseWktToCoordinates,
   serializeCoordinatesToWkt,
   adjustCoordinateListForGeometry,
@@ -102,11 +104,9 @@ import {
   textAreaStyle,
   primaryButtonStyle,
   outlineButtonStyle,
-  dangerButtonStyle,
   drawerTitleStyle,
   requiredMarkStyle,
   filterLabelStyle,
-  confirmModalBodyStyle,
   statusInfo,
   statusBadgeStyle,
   getRangePickerProps,
@@ -137,7 +137,7 @@ import {
   decimalNumberRule,
   safeNumber,
   safeDecimal,
-} from '../../utils/numberRuleHelper';
+} from './radarStationRules';
 
 // Cỡ chữ chuẩn 13.5px cho toàn màn /radar-station (thay token fontSizeMd=13 của themetokenchk) —
 // mirror chuẩn BerthListPage để mọi text/label dùng fontSizeMd hiển thị 13.5px.
@@ -810,18 +810,6 @@ function renderCoordinatesDisplay(val: string | null) {
   );
 }
 
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -886,7 +874,8 @@ export default function RadarStationList() {
   const effectiveGeom = watchedGeometryType || geometryTypeState;
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [gisFormModalOpen, setGisFormModalOpen] = useState(false);
-  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string }>({ coords: [], symbolId: undefined });
+  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
+  const latestGisMapValueRef = useRef<any>(null);
   const [childrenTypeFilter, setChildrenTypeFilter] = useState<string>('');
   const [detailMapOpen, setDetailMapOpen] = useState(false);
   const [coordinateList, setCoordinateList] = useState<DmsCoordinateItem[]>([]);
@@ -933,10 +922,62 @@ export default function RadarStationList() {
     setGpsError(null);
   };
 
+  // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
+  const applyMapSelection = (val: any) => {
+    if (!val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || effectiveGeom || 'POINT') as string).toUpperCase();
+    if (val.geometryType && val.geometryType !== effectiveGeom) {
+      createForm.setFieldValue('geometryType', val.geometryType);
+      setGeometryTypeState(val.geometryType);
+    }
+    if (val.symbolId) {
+      createForm.setFieldValue('mapIcon', val.symbolId);
+    }
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newPoints = points.map(toDms);
+        if (geom === 'POINT') {
+          setCoordinateList([newPoints[0]]);
+        } else {
+          setCoordinateList(newPoints);
+        }
+        setGpsError(null);
+      }
+    } else if (val.coordinates === '') {
+      setCoordinateList([]);
+    }
+  };
+
+  const handleCancelGisMap = () => {
+    setCoordinateList(gisCoordSnapshotRef.current.coords);
+    createForm.setFieldValue('mapIcon', gisCoordSnapshotRef.current.symbolId);
+    if (gisCoordSnapshotRef.current.geometryType) {
+      createForm.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+      setGeometryTypeState(gisCoordSnapshotRef.current.geometryType);
+    }
+    latestGisMapValueRef.current = null;
+    setGisFormModalOpen(false);
+  };
+
+  const handleConfirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyMapSelection(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisFormModalOpen(false);
+  };
+
   // ── Delete state ─────────────────────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<RadarStationResponse | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Approval state (submit / approve / reject) ───────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -1300,6 +1341,15 @@ export default function RadarStationList() {
       }))))
       .catch(() => setUploadedFiles([]));
     setDrawerVisible(true);
+    radarStationCRUD.getById(record.id)
+      .then((detail) => {
+        if (detail && detail.id) {
+          createForm.setFieldsValue({
+            towerHeight: normalizeSafeNumber(detail.towerHeight),
+          });
+        }
+      })
+      .catch(() => { /* ignore */ });
   }, [createForm, userOptions, userMap]);
 
   const openDetailDrawer = useCallback(async (record: RadarStationResponse) => {
@@ -1430,33 +1480,28 @@ export default function RadarStationList() {
     setHistoryPage(0);
   }, []);
 
-  // ── Delete handlers ─────────────────────────────────────────────
+  // ── Delete handlers (chuẩn /berth) ──────────────────────────────
   const openDeleteConfirm = useCallback((record: RadarStationResponse) => {
     setDeletingRecord(record);
-    setDeleteConfirmText('');
     setDeleteModalOpen(true);
   }, []);
 
   const confirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.stationName || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên trạm radar hoặc gõ "XÓA" để xác nhận');
-      return;
-    }
+    setDeleteLoading(true);
     try {
       await radarStationCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa trạm radar');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setDeleteConfirmText('');
       void fetchData();
       void fetchCounts();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
     }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts]);
+  }, [deletingRecord, fetchData, fetchCounts]);
 
   // ── Submit approval (modal xác nhận) ────────────────────────────
   const openSubmitModal = useCallback((record: RadarStationResponse) => {
@@ -1520,19 +1565,7 @@ export default function RadarStationList() {
 
   const confirmReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
-    if (!reason) {
-      toast.error('Vui lòng nhập lý do từ chối');
-      return;
-    }
-    if (reason.length < 10) {
-      toast.error('Lý do từ chối tối thiểu 10 ký tự');
-      return;
-    }
-    if (reason.length > 500) {
-      toast.error('Lý do từ chối tối đa 500 ký tự');
-      return;
-    }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     try {
       if (rejectLevel === 'c2') {
         await radarStationApproval.rejectLevel2(rejectTarget.id, reason);
@@ -1835,6 +1868,18 @@ export default function RadarStationList() {
       },
     },
     {
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
+      render: (status: string, record: RadarStationResponse) => {
+        if (isRecordDeleted(record)) {
+          return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+        }
+        const s = RADAR_STATION_STATUS_STYLE_MAP[status];
+        return s
+          ? <span style={statusBadgeStyle(s.color)}>{s.label}</span>
+          : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{status || null}</span>;
+      },
+    },
+    {
       key: 'updatedBy', label: 'Cán bộ cập nhật', dataIndex: 'updatedBy', width: 240, ellipsis: true,
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.updatedByName || record.createdByName || null;
@@ -1884,18 +1929,6 @@ export default function RadarStationList() {
             <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{date ? formatDate(date) : ''}</span>
           </div>
         );
-      },
-    },
-    {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 350,
-      render: (status: string, record: RadarStationResponse) => {
-        if (isRecordDeleted(record)) {
-          return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
-        }
-        const s = RADAR_STATION_STATUS_STYLE_MAP[status];
-        return s
-          ? <span style={statusBadgeStyle(s.color)}>{s.label}</span>
-          : <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{status || null}</span>;
       },
     },
   ], [page, pageSize, openDetailDrawer]);
@@ -3334,12 +3367,12 @@ export default function RadarStationList() {
         footer={
           isDetailMode ? null : editingRecord ? (
             <>
-              <Button type="primary" onClick={() => handleSubmit('save')} loading={submitting && actionType === 'save'} style={primaryButtonStyle}>
-                Cập nhật
+              <Button type="primary" onClick={() => handleSubmit('save')} loading={submitting && actionType === 'save'} style={outlineButtonStyle}>
+                Lưu tạm
               </Button>
               {editingCanResubmit && (
                 <>
-                  <Button onClick={() => handleSubmit('submit')} loading={submitting && actionType === 'submit'} style={outlineButtonStyle}>
+                  <Button onClick={() => handleSubmit('submit')} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
                     Lưu và gửi phê duyệt
                   </Button>
                   {hasPerm('radarstation:approvec2') && (
@@ -3600,6 +3633,7 @@ export default function RadarStationList() {
                                 style={numberInputStyle}
                                 maxLength={20}
                                 parser={parseNumber20}
+                                formatter={fmtInputNumber}
                               />
                             </Form.Item>
                           </Col>
@@ -3765,7 +3799,9 @@ export default function RadarStationList() {
                                 gisCoordSnapshotRef.current = {
                                   coords: coordinateList.map((c) => ({ ...c })),
                                   symbolId: createForm.getFieldValue('mapIcon'),
+                                  geometryType: createForm.getFieldValue('geometryType') || geometryTypeState,
                                 };
+                                latestGisMapValueRef.current = null;
                                 setGisFormModalOpen(true);
                               }}
                               disabled={!effectiveGeom}
@@ -3967,22 +4003,14 @@ export default function RadarStationList() {
         open={gisFormModalOpen}
         rootClassName="radar-modal-scope"
         className="radar-modal-scope"
-        onCancel={() => {
-          setCoordinateList(gisCoordSnapshotRef.current.coords);
-          createForm.setFieldValue('mapIcon', gisCoordSnapshotRef.current.symbolId);
-          setGisFormModalOpen(false);
-        }}
+        onCancel={handleCancelGisMap}
         destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => {
-              setCoordinateList(gisCoordSnapshotRef.current.coords);
-              createForm.setFieldValue('mapIcon', gisCoordSnapshotRef.current.symbolId);
-              setGisFormModalOpen(false);
-            }}
+            onClick={handleCancelGisMap}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
@@ -3990,9 +4018,7 @@ export default function RadarStationList() {
           <Button
             key="ok"
             type="primary"
-            onClick={() => {
-              setGisFormModalOpen(false);
-            }}
+            onClick={handleConfirmGisMap}
             style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
@@ -4005,47 +4031,20 @@ export default function RadarStationList() {
             height={560}
             value={{
               geometryType: effectiveGeom || 'POINT',
-              coordinates: (() => {
-                const valid = coordinateList
-                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => c.latD != null && c.lngD != null)
                   .map((c) => ({
-                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                  }));
-                return serializeCoordinatesToWkt(valid, effectiveGeom || 'POINT');
-              })(),
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                effectiveGeom || 'POINT',
+              ),
               symbolId: createForm.getFieldValue('mapIcon') || undefined,
             }}
             defaultGeometryType={(effectiveGeom as any) || 'POINT'}
-            onChange={(val) => {
-              if (!val) return;
-              const points = parseGisCoordinates(val);
-              const geom = val.geometryType || effectiveGeom || 'POINT';
-              setGeometryTypeState(geom);
-              createForm.setFieldsValue({
-                geometryType: geom,
-                mapIcon: val.symbolId || createForm.getFieldValue('mapIcon'),
-              });
-              if (points.length === 0) {
-                setCoordinateList([]);
-              } else if (geom === 'POINT') {
-                const p = points[0];
-                const latDms = ddToDms(p.latitude);
-                const lngDms = ddToDms(p.longitude);
-                setCoordinateList([{
-                  latD: latDms.d, latM: latDms.m, latS: latDms.s,
-                  lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-                }]);
-              } else {
-                const toDms = (p: { latitude: number; longitude: number }) => {
-                  const lat = ddToDms(p.latitude);
-                  const lng = ddToDms(p.longitude);
-                  return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                };
-                setCoordinateList(points.map(toDms));
-              }
-              setGpsError(null);
-            }}
+            onChange={applyMapSelection}
           />
         </div>
       </Modal>
@@ -4080,40 +4079,27 @@ export default function RadarStationList() {
                 coordinates: serializeCoordinatesToWkt(detailCoordRows, detailRecord.geometryType || 'POINT'),
                 symbolId: detailRecord.mapIcon || undefined,
               }}
-              defaultGeometryType="POINT"
+              defaultGeometryType={(detailRecord.geometryType as any) || 'POINT'}
             />
           </div>
         )}
       </Modal>
 
-      {/* ── Delete Confirmation Modal ────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Xác nhận xóa trạm radar</span>}
+      {/* ── Delete Confirmation Modal (chuẩn /berth) ─────────────── */}
+      <DeleteConfirmModal
         open={deleteModalOpen}
-        rootClassName="radar-modal-scope"
-        className="radar-modal-scope"
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={outlineButtonStyle}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={confirmDelete} style={dangerButtonStyle}>Xác nhận xóa</Button>,
-        ]}
-        width={480}
-      >
-        <div style={confirmModalBodyStyle}>
-          <p style={{ marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên trạm radar</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ marginBottom: spaceFormField }}>
-              Trạm radar: <strong style={{ color: textPrimary }}>{deletingRecord.stationName || deletingRecord.code}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên trạm radar hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={confirmDelete}
-            style={inputStyle} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        itemType="trạm radar"
+        itemName={deletingRecord?.stationName}
+        itemCode={deletingRecord?.code}
+      />
 
       {/* ── Submit Modal (chuẩn /berth) ──────────────────────────── */}
       <Modal
@@ -4151,15 +4137,21 @@ export default function RadarStationList() {
         ]}
         width={480}>
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho trạm radar:</p>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho trạm radar (không bắt buộc):</p>
           {rejectTarget && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              <strong style={{ color: textPrimary }}>{rejectTarget.stationName || rejectTarget.code}</strong>
+              <strong style={{ color: textPrimary }}>
+                {rejectTarget.code ? `${rejectTarget.code} — ` : ''}{rejectTarget.stationName || rejectTarget.code}
+              </strong>
             </p>
           )}
-          <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500} showCount
-            style={{ borderRadius: 8, fontSize: fontSizeMd }} />
+          <Input.TextArea
+            placeholder="Nhập lý do từ chối (nếu có)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={3}
+            style={{ borderRadius: 8, fontSize: fontSizeMd }}
+          />
         </div>
       </Modal>
 

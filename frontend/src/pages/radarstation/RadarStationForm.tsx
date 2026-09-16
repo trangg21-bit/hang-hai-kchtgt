@@ -47,12 +47,14 @@ import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPil
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
 import {
   parseNumber20,
   getValueFromEvent20,
   decimalNumberRule,
   safeDecimal,
-} from '../../utils/numberRuleHelper';
+} from './radarStationRules';
 
 // Cỡ chữ chuẩn 13.5px cho màn trạm radar (tạo/mở chi tiết) — thay token fontSizeMd=13 của themetokenchk,
 // mirror chuẩn BerthListPage để mọi text/label dùng fontSizeMd hiển thị 13.5px.
@@ -246,9 +248,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             radarRange: data.radarRange,
             note: data.note,
             gisLocation:
-              data.longitude != null && data.latitude != null
-                ? { geometryType: 'POINT', coordinates: `POINT(${data.longitude} ${data.latitude})` }
-                : { geometryType: 'POINT', coordinates: '' },
+              data.coordinates
+                ? { geometryType: data.geometryType || 'POINT', coordinates: data.coordinates }
+                : (data.longitude != null && data.latitude != null
+                  ? { geometryType: 'POINT', coordinates: `POINT (${data.longitude} ${data.latitude})` }
+                  : { geometryType: data.geometryType || 'POINT', coordinates: '' }),
           });
           if (isDetailMode) {
             void loadHistory(id);
@@ -286,11 +290,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       let latitude: number | undefined;
       const gis = values.gisLocation;
       if (gis?.coordinates) {
-        // GisLocationSelector xuất WKT dạng "POINT (lng lat)" — có khoảng trắng sau POINT
-        const match = String(gis.coordinates).match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-        if (match) {
-          longitude = parseFloat(match[1]);
-          latitude = parseFloat(match[2]);
+        const points = parseWktToCoordinates(gis.coordinates);
+        if (points.length > 0) {
+          longitude = points[0].longitude;
+          latitude = points[0].latitude;
         }
       }
 
@@ -872,6 +875,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           <Form.Item
             label="Chiều cao tháp radar (m)"
             name="towerHeight"
+            style={{ marginBottom: spaceFormField }}
             getValueFromEvent={getValueFromEvent20}
             rules={[decimalNumberRule]}
           >
@@ -882,6 +886,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               style={numberInputStyle}
               maxLength={20}
               parser={parseNumber20}
+              formatter={fmtInputNumber}
             />
           </Form.Item>
         </Col>

@@ -10,7 +10,6 @@ import {
 } from "../../utils/gisGeometry";
 import { usePermissionStore } from "../../store/permissionStore";
 import {
-  Alert,
   Button,
   DatePicker,
   Space,
@@ -39,7 +38,6 @@ import {
   SearchOutlined,
   DeleteOutlined,
   HistoryOutlined,
-  ExclamationCircleOutlined,
   EnvironmentOutlined,
   BankOutlined,
   SlidersOutlined,
@@ -74,6 +72,7 @@ import {
 import type { VtsAssistResponse, ApprovalRequest, CreateVtsAssistRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
+import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import { useAuthStore } from "../../store/authStore";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
@@ -319,18 +318,6 @@ const tableMetaStyle: React.CSSProperties = {
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 type GpsCoordRow = {
   latD: number | null;
@@ -1052,7 +1039,6 @@ const VtsAssistListPage = () => {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<VtsAssistResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Create modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -1140,7 +1126,7 @@ const VtsAssistListPage = () => {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
       if (String(createGeometryType).toUpperCase() === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -1170,7 +1156,7 @@ const VtsAssistListPage = () => {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
       if (String(updateGeometryType).toUpperCase() === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -1276,19 +1262,24 @@ const VtsAssistListPage = () => {
   });
 
   // ── GIS map modal ──
-  const gisCoordSnapshotRef = useRef<{ coords: GpsCoordRow[]; symbolId?: string }>({ coords: [], symbolId: undefined });
+  const gisCoordSnapshotRef = useRef<{ coords: GpsCoordRow[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
+  const latestGisMapValueRef = useRef<any>(null);
 
   const openGisMap = (mode: 'create' | 'edit' | 'detail') => {
     if (mode === 'create') {
       gisCoordSnapshotRef.current = {
         coords: gpsCoordList.map((c) => ({ ...c })),
         symbolId: createForm.getFieldValue('mapSymbolId'),
+        geometryType: createForm.getFieldValue('geometryType'),
       };
+      latestGisMapValueRef.current = null;
     } else if (mode === 'edit') {
       gisCoordSnapshotRef.current = {
         coords: updateGpsCoordList.map((c) => ({ ...c })),
         symbolId: updateForm.getFieldValue('mapSymbolId'),
+        geometryType: updateForm.getFieldValue('geometryType'),
       };
+      latestGisMapValueRef.current = null;
     }
     setGisMapModal(mode);
   };
@@ -1297,69 +1288,76 @@ const VtsAssistListPage = () => {
     if (gisMapModal === 'create') {
       setGpsCoordList(gisCoordSnapshotRef.current.coords);
       createForm.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+      if (gisCoordSnapshotRef.current.geometryType) {
+        createForm.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+      }
     } else if (gisMapModal === 'edit') {
       setUpdateGpsCoordList(gisCoordSnapshotRef.current.coords);
       updateForm.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+      if (gisCoordSnapshotRef.current.geometryType) {
+        updateForm.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+      }
     }
+    latestGisMapValueRef.current = null;
     setGisMapModal(null);
   };
 
   const applyGisMapResult = (val?: { geometryType?: string; coordinates?: string; symbolId?: string }) => {
-    if (!gisMapModal || gisMapModal === 'detail') return;
-    const points = parseGisCoordinates(val);
-    if (points.length === 0) return;
-    const currentGeom = normalizeGeometryType(val?.geometryType || (gisMapModal === 'create' ? createGeometryType : updateGeometryType));
+    if (!gisMapModal || gisMapModal === 'detail' || !val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || (gisMapModal === 'create' ? createGeometryType : updateGeometryType) || 'POINT') as string).toUpperCase();
+    const currentGeom = normalizeGeometryType(geom);
     const targetForm = gisMapModal === 'create' ? createForm : updateForm;
-    const currentList = gisMapModal === 'create' ? gpsCoordList : updateGpsCoordList;
     const setList = gisMapModal === 'create' ? setGpsCoordList : setUpdateGpsCoordList;
     const clearError = gisMapModal === 'create' ? () => setCreateGpsError(null) : () => setUpdateGpsError(null);
 
-    if (val?.symbolId) {
+    if (val.symbolId) {
       targetForm.setFieldValue('mapSymbolId', val.symbolId);
     }
 
-    if (gisMapModal === 'create') {
-      targetForm.setFieldsValue({
-        geometryType: currentGeom,
-        coordinateSystem: 1,
-        displayRule: 'Độ, phút, giây (DMS)',
-      });
-    } else {
-      targetForm.setFieldsValue({ geometryType: currentGeom, displayRule: 'Độ, phút, giây (DMS)' });
-      if (targetForm.getFieldValue('coordinateSystem') == null) {
-        targetForm.setFieldsValue({ coordinateSystem: 1 });
+    if (val.geometryType) {
+      if (gisMapModal === 'create') {
+        targetForm.setFieldsValue({
+          geometryType: currentGeom,
+          coordinateSystem: 1,
+          displayRule: 'Độ, phút, giây (DMS)',
+        });
+      } else {
+        targetForm.setFieldsValue({ geometryType: currentGeom, displayRule: 'Độ, phút, giây (DMS)' });
+        if (targetForm.getFieldValue('coordinateSystem') == null) {
+          targetForm.setFieldsValue({ coordinateSystem: 1 });
+        }
       }
     }
 
-    if (currentGeom === 'POINT') {
-      const p = points[0];
-      const latDms = ddToDms(p.latitude);
-      const lngDms = ddToDms(p.longitude);
-      setList([{
-        latD: latDms.d, latM: latDms.m, latS: latDms.s,
-        lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-      }]);
-    } else {
-      const toDms = (p: { latitude: number; longitude: number }) => {
-        const lat = ddToDms(p.latitude);
-        const lng = ddToDms(p.longitude);
-        return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-      };
-      const newRows = points.map(toDms);
-      const merged = [...currentList];
-      let newIdx = 0;
-      const isFilled = (r: GpsCoordRow) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-      for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-        if (!isFilled(merged[i])) {
-          merged[i] = newRows[newIdx++];
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newRows = points.map(toDms);
+        if (currentGeom === 'POINT') {
+          setList([newRows[0]]);
+        } else {
+          setList(newRows);
         }
+        clearError();
       }
-      while (newIdx < newRows.length) {
-        merged.push(newRows[newIdx++]);
-      }
-      setList(merged);
+    } else if (val.coordinates === '') {
+      setList([]);
     }
-    clearError();
+  };
+
+  const confirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyGisMapResult(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisMapModal(null);
+    toast.success('Đã xác nhận tọa độ từ bản đồ');
   };
 
   const gisMapContext = useMemo(() => {
@@ -1371,10 +1369,12 @@ const VtsAssistListPage = () => {
     const rows = isDetail
       ? parseWktToCoordinates(selectedRecord?.coordinates ?? undefined)
       : (gisMapModal === 'create' ? gpsCoordList : updateGpsCoordList)
+        .filter((c) => c.latD != null && c.lngD != null)
         .map((c) => ({
-          latitude: dmsToDd(c.latD, c.latM, c.latS) ?? 0,
-          longitude: dmsToDd(c.lngD, c.lngM, c.lngS) ?? 0,
-        }));
+          latitude: dmsToDd(c.latD, c.latM, c.latS),
+          longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+        }))
+        .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[];
     const symbolId = isDetail
       ? (selectedRecord?.mapSymbolId ?? undefined)
       : (gisMapModal === 'create' ? createForm : updateForm).getFieldValue('mapSymbolId') as string | undefined;
@@ -1580,7 +1580,6 @@ const VtsAssistListPage = () => {
         dataIndex: "quantity",
         width: 140,
         type: "number" as const,
-        align: "center" as const,
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -1593,7 +1592,6 @@ const VtsAssistListPage = () => {
         dataIndex: "yearOfUse",
         width: 220,
         type: "mono" as const,
-        align: "center" as const,
         ellipsis: false,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
@@ -2276,7 +2274,6 @@ const VtsAssistListPage = () => {
           icon: icons.delete,
           danger: true,
           onClick: () => {
-            setDeleteConfirmText("");
             setDeleteTarget(record);
           },
         });
@@ -2425,27 +2422,20 @@ const VtsAssistListPage = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
-    if (
-      deleteConfirmText !== "XÓA" &&
-      deleteConfirmText !== deleteTarget.deviceName
-    ) {
-      toast.error('Vui lòng nhập đúng tên thiết bị hoặc "XÓA" để xác nhận');
-      return;
-    }
     setDeleteLoading(true);
     try {
       await deleteVtsAssist(deleteTarget.id);
       toast.success("Xóa hệ thống phụ trợ VTS thành công");
       setDeleteTarget(null);
-      setDeleteConfirmText("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[vtsassist] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || "Lỗi khi xóa hệ thống phụ trợ VTS");
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
+  }, [deleteTarget, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     async (content?: string) => {
@@ -2475,19 +2465,7 @@ const VtsAssistListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
-    if (!reason) {
-      toast.error("Vui lòng nhập lý do từ chối");
-      return;
-    }
-    if (reason.length < 10) {
-      toast.error("Lý do từ chối tối thiểu 10 ký tự");
-      return;
-    }
-    if (reason.length > 500) {
-      toast.error("Lý do từ chối tối đa 500 ký tự");
-      return;
-    }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       const payload: ApprovalRequest = { decision: "REJECTED", reason };
@@ -3819,7 +3797,7 @@ const VtsAssistListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho thiết bị phụ trợ VTS:
+            Vui lòng nhập lý do từ chối cho thiết bị phụ trợ VTS (không bắt buộc):
           </p>
           {rejectTarget && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
@@ -3829,105 +3807,29 @@ const VtsAssistListPage = () => {
             </p>
           )}
           <Input.TextArea
-            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            placeholder="Nhập lý do từ chối (nếu có)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
-            maxLength={500}
-            showCount
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
       </Modal>
 
       {/* Delete Modal */}
-      <Modal
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Xác nhận xóa
-          </span>
-        }
-        open={!!deleteTarget}
+      <DeleteConfirmModal
+        open={Boolean(deleteTarget)}
         onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteConfirmText("");
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setDeleteTarget(null);
-              setDeleteConfirmText("");
-            }}
-            style={outlineButtonStyle}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="delete"
-            type="primary"
-            danger
-            loading={deleteLoading}
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-            }}
-          >
-            Xác nhận xóa
-          </Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: "8px 0" }}>
-          <Alert
-            message="Hành động này không thể hoàn tác"
-            type="warning"
-            showIcon
-            icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
-          />
-          <p
-            style={{
-              fontSize: fontSizeMd,
-              color: textPrimary,
-              marginBottom: spaceFormField,
-            }}
-          >
-            Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ{" "}
-            <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deleteTarget && (
-            <p
-              style={{
-                fontSize: fontSizeMd,
-                color: textSecondary,
-                marginBottom: spaceFormField,
-              }}
-            >
-              Thiết bị:{" "}
-              <strong style={{ color: textPrimary }}>
-                {deleteTarget.deviceName}
-              </strong>
-            </p>
-          )}
-          <Input
-            placeholder="Nhập tên thiết bị hoặc XÓA"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            onPressEnter={handleDeleteConfirm}
-            style={pillStyle}
-            autoFocus
-          />
-        </div>
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+        itemType="hệ thống phụ trợ VTS"
+        itemName={deleteTarget?.deviceName}
+        itemCode={deleteTarget?.deviceCode}
+      />
 
       {/* ── Create Drawer ─────────────────────────────── */}
       <AppDrawer
@@ -5058,10 +4960,7 @@ const VtsAssistListPage = () => {
               <Button
                 key="ok"
                 type="primary"
-                onClick={() => {
-                  setGisMapModal(null);
-                  toast.success('Đã xác nhận tọa độ từ bản đồ');
-                }}
+                onClick={confirmGisMap}
                 style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
               >
                 Xác nhận tọa độ

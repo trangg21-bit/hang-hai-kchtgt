@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
   Button,
   Modal,
@@ -21,8 +22,8 @@ import {
   SlidersOutlined,
   AuditOutlined,
 } from '@ant-design/icons';
-import dayjs, { type Dayjs } from 'dayjs';
 import { normalizeSafeNumber } from '../../utils/numFmt';
+import { parseWktToCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 import {
   beaconStationCRUD,
@@ -58,11 +59,13 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
 import { FilterOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { fmtNum } from '../../utils/numFmt';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import BeaconStationForm from './BeaconStationForm';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import {
   actionPrimary, textPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeLg,
@@ -72,8 +75,7 @@ import {
   statusOperational, statusDraft, statusCritical, statusAttention,
   drawerTitleStyle, drawerFooterStyle, DRAWER_WIDTH, selectStyle,
   borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, colors, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle,
-  confirmModalBodyStyle,
+  inputStyle, colors, primaryButtonStyle, outlineButtonStyle,
   requiredMarkStyle,
   DRAWER_TABLE_SCROLL_Y,
   getRangePickerProps,
@@ -113,48 +115,6 @@ const ddToDms = (dd?: number | null) => {
   return { d, m, s };
 };
 
-const parseWktToCoordinates = (wkt?: string): { latitude: number; longitude: number }[] => {
-  if (!wkt) return [];
-  try {
-    const upper = wkt.trim().toUpperCase();
-    if (upper.startsWith('POINT')) {
-      const match = upper.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-      if (match) return [{ longitude: parseFloat(match[1]), latitude: parseFloat(match[2]) }];
-    } else if (upper.startsWith('LINESTRING') || upper.startsWith('LINE')) {
-      const match = upper.match(/LINESTRING\s*\(([^)]+)\)/i);
-      if (match) {
-        return match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    } else if (upper.startsWith('POLYGON')) {
-      const match = upper.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
-      if (match) {
-        return match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    }
-  } catch {
-    /* ignore invalid WKT */
-  }
-  return [];
-};
-
-const serializeCoordinatesToWkt = (coords: { latitude: number | null; longitude: number | null }[], geomType: string = 'POINT'): string => {
-  const valid = coords.filter((c) => c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude));
-  if (valid.length === 0) return '';
-  if (geomType === 'POINT') return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
-  if (geomType === 'LINE' || geomType === 'LINESTRING') return `LINESTRING (${valid.map((c) => `${c.longitude} ${c.latitude}`).join(', ')})`;
-  if (geomType === 'POLYGON') {
-    const pts = [...valid];
-    if (pts.length >= 3 && (pts[0].latitude !== pts[pts.length - 1].latitude || pts[0].longitude !== pts[pts.length - 1].longitude)) pts.push(pts[0]);
-    return `POLYGON ((${pts.map((c) => `${c.longitude} ${c.latitude}`).join(', ')}))`;
-  }
-  return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
-};
 
 // ── Render giá trị GIS trong Lịch sử (chuẩn /vts-operation-center): WKT → summary loại + điểm DMS ──
 const historyGisTypeLabel = (raw: string): string => {
@@ -393,7 +353,7 @@ export default function BeaconStationList() {
   // ── Delete state ─────────────────────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<BeaconStation | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Approval state ───────────────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -675,7 +635,14 @@ export default function BeaconStationList() {
     }
     try {
       const files = await beaconStationCRUD.listAttachments(record.id);
-      setDetailFiles(files || []);
+      setDetailFiles(
+        (files || []).map((f: any) => ({
+          ...f,
+          id: f.id || f.uid,
+          fileType: f.contentType || f.fileType,
+          uploadedDate: f.uploadedAt || f.uploadedDate,
+        }))
+      );
     } catch {
       setDetailFiles([]);
     }
@@ -701,12 +668,7 @@ export default function BeaconStationList() {
     }
     try {
       const blob = await beaconStationCRUD.downloadAttachment(entityId, attachmentId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name || 'attachment';
-      a.click();
-      URL.revokeObjectURL(url);
+      triggerBlobDownload(blob, name || 'attachment');
     } catch {
       toast.error('Không thể tải xuống tệp đính kèm');
     }
@@ -723,26 +685,28 @@ export default function BeaconStationList() {
     setHistoryRecords([]); setHistoryPage(0); setHasMoreHistory(false); setLoadingMoreHistory(false);
   }, [hasPerm]);
 
-  // ── Delete handlers ─────────────────────────────────────────────
+  // ── Delete handlers (chuẩn /berth) ──────────────────────────────
   const openDeleteConfirm = useCallback((record: BeaconStation) => {
-    setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
   }, []);
 
   const confirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.name || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên đèn biển hoặc gõ "XÓA" để xác nhận');
-      return;
-    }
+    setDeleteLoading(true);
     try {
       await beaconStationCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa đèn biển');
-      setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
-      void fetchData(); void fetchCounts();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts]);
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      void fetchData();
+      void fetchCounts();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, fetchData, fetchCounts]);
 
   // ── Submit approval ─────────────────────────────────────────────
   const openSubmitModal = useCallback((record: BeaconStation) => { setSubmittingRecord(record); setSubmitModalOpen(true); }, []);
@@ -790,10 +754,7 @@ export default function BeaconStationList() {
 
   const handleReject = useCallback(async () => {
     if (!rejectingRecord) return;
-    const reason = rejectReason.trim();
-    if (!reason) { toast.error('Vui lòng nhập lý do từ chối'); return; }
-    if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
-    if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       await approval.reject(rejectingRecord.id, reason, useAuthStore.getState().user?.userId || 'system');
@@ -940,7 +901,7 @@ export default function BeaconStationList() {
       },
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 240,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
       render: (status: string, record: BeaconStation) => {
         const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'ARCHIVED' || status === 'DELETED');
         const displayStatus = isDeleted ? 'ARCHIVED' : status;
@@ -1130,10 +1091,9 @@ export default function BeaconStationList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thời điểm đưa vào sử dụng</div>
             <DatePicker.RangePicker
-              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
               {...getRangePickerProps({
                 value: rangeValue(filterCommissionedFrom, filterCommissionedTo),
-                onChange: (range) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range: [Dayjs | null, Dayjs | null] | null) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
               })}
             />
           </div>
@@ -1155,10 +1115,9 @@ export default function BeaconStationList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
-              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
               {...getRangePickerProps({
                 value: rangeValue(filterUpdatedFrom, filterUpdatedTo),
-                onChange: (range) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range: [Dayjs | null, Dayjs | null] | null) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
               })}
             />
           </div>
@@ -1562,7 +1521,13 @@ export default function BeaconStationList() {
               const entityId = editingRecord?.id || detailRecord?.id;
               return entityId
                 ? beaconStationCRUD.downloadAttachment(entityId, attachmentId)
-                : Promise.reject(new Error('Chưa xác định được bản ghi đèn biển để tải ảnh'));
+                : Promise.reject(new Error('Chưa xác định được bản ghi đèn biển để tải tệp đính kèm'));
+            }}
+            loadPreviewAttachment={(attachmentId) => {
+              const entityId = editingRecord?.id || detailRecord?.id;
+              return entityId
+                ? beaconStationCRUD.downloadAttachment(entityId, attachmentId)
+                : Promise.reject(new Error('Chưa xác định được bản ghi đèn biển để tải tệp đính kèm'));
             }}
             scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
           />
@@ -2420,7 +2385,7 @@ export default function BeaconStationList() {
                   loading={submitting && actionType === 'draft'}
                   style={outlineButtonStyle}
                 >
-                  Cập nhật
+                  Lưu tạm
                 </Button>
                 <Button
                   type="primary"
@@ -2432,7 +2397,7 @@ export default function BeaconStationList() {
                   loading={submitting && actionType === 'submit'}
                   style={primaryButtonStyle}
                 >
-                  Cập nhật và gửi phê duyệt
+                  Lưu và gửi phê duyệt
                 </Button>
                 {canApproveDirect && (
                   <Button
@@ -2474,32 +2439,21 @@ export default function BeaconStationList() {
         )}
       </AppDrawer>
 
-      {/* ── Delete Confirmation Modal ────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Xác nhận xóa đèn biển</span>}
+      {/* ── Delete Confirmation Modal (chuẩn /berth) ─────────────── */}
+      <DeleteConfirmModal
         open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={outlineButtonStyle}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={confirmDelete} style={dangerButtonStyle}>Xác nhận xóa</Button>,
-        ]}
-        width={480}
-      >
-        <div style={confirmModalBodyStyle}>
-          <p style={{ marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên đèn biển</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ marginBottom: spaceFormField }}>
-              Đèn biển: <strong style={{ color: textPrimary }}>{deletingRecord.name}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên đèn biển hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={confirmDelete}
-            style={inputStyle} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        itemType="đèn biển"
+        itemName={deletingRecord?.name}
+        itemCode={deletingRecord?.code}
+      />
 
       {/* ── Submit Modal (chuẩn /berth) ──────────────────────────── */}
       <Modal
@@ -2530,7 +2484,7 @@ export default function BeaconStationList() {
 
       {/* ── Reject Reason Modal (chuẩn /berth) ────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{rejectLevel === 'c2' ? 'Từ chối cấp Cục' : 'Từ chối cấp Cảng vụ/Chi cục'}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen}
         onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
         footer={[
@@ -2541,15 +2495,21 @@ export default function BeaconStationList() {
         ]}
         width={480}>
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho đèn biển:</p>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho đèn biển (không bắt buộc):</p>
           {rejectingRecord && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              <strong style={{ color: textPrimary }}>{rejectingRecord.name}</strong>
+              <strong style={{ color: textPrimary }}>
+                {rejectingRecord.code ? `${rejectingRecord.code} — ` : ''}{rejectingRecord.name}
+              </strong>
             </p>
           )}
-          <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500} showCount
-            style={{ borderRadius: 8, fontSize: fontSizeMd }} />
+          <Input.TextArea
+            placeholder="Nhập lý do từ chối (nếu có)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={3}
+            style={{ borderRadius: 8, fontSize: fontSizeMd }}
+          />
         </div>
       </Modal>
 

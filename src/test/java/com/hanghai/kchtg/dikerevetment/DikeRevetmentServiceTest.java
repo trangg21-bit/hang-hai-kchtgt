@@ -382,5 +382,27 @@ class DikeRevetmentServiceTest {
             assertThat(service.formatDisplayValue("coordinateSystem", "2")).isEqualTo("VN-2000");
             assertThat(service.formatDisplayValue("commissioningDate", "2026-06-15")).isEqualTo("15/06/2026");
         }
+
+        @Test
+        @DisplayName("searchPaged passes correct date range when commissioningYear is provided")
+        void searchPaged_withCommissioningYear_shouldPassDateRangeToRepository() {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+            when(repo.searchPaged(any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testEntity)));
+
+            service.searchPaged(null, null, null, null, null, null, null, null, null, null, null, null, 2024, pageable);
+
+            ArgumentCaptor<LocalDate> fromCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            ArgumentCaptor<LocalDate> toCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            verify(repo).searchPaged(
+                    any(), anyBoolean(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any(), any(),
+                    any(), any(),
+                    fromCaptor.capture(), toCaptor.capture(),
+                    eq(pageable));
+
+            assertThat(fromCaptor.getValue()).isEqualTo(LocalDate.of(2024, 1, 1));
+            assertThat(toCaptor.getValue()).isEqualTo(LocalDate.of(2024, 12, 31));
+        }
     }
 }
