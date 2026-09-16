@@ -97,6 +97,10 @@ import {
   type InfrastructureAssetScreenConfig,
   type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
+import {
+  validateAdjustmentOriginalValue,
+  calculateAssetAdjustmentValues,
+} from "../../utils/assetValueCalculation";
 
 const STATUS_COUNT_KEYS = [
   "DRAFT",
@@ -684,37 +688,28 @@ function PortTerminalAssetList({
     try {
       const values = await operationForm.validateFields();
       const origVal = values.originalValue;
-      if (operationMode !== "exploit" && origVal == null) {
-        toast.error("Vui lòng nhập nguyên giá sau điều chỉnh.");
-        return;
-      }
-      if (
-        operationMode === "increase" &&
-        origVal! <= (selected.originalValue || 0)
-      ) {
-        toast.error(
-          "Nguyên giá sau điều chỉnh phải lớn hơn nguyên giá hiện tại.",
+      if (operationMode === "increase" || operationMode === "decrease") {
+        const valCheck = validateAdjustmentOriginalValue(
+          operationMode,
+          origVal,
+          selected.originalValue
         );
-        return;
-      }
-      if (
-        operationMode === "decrease" &&
-        origVal! >= (selected.originalValue || 0)
-      ) {
-        toast.error(
-          "Nguyên giá sau điều chỉnh phải nhỏ hơn nguyên giá hiện tại.",
-        );
-        return;
+        if (!valCheck.isValid) {
+          toast.error(
+            valCheck.message || "Nguyên giá sau điều chỉnh không hợp lệ."
+          );
+          return;
+        }
       }
       setSaving(true);
-      const accDep = Number(values.accumulatedDepreciation) || 0;
-      const remAfter =
-        origVal != null ? Math.max(0, origVal - accDep) : undefined;
-      const depMonths = Number(values.depreciationMonths) || 0;
-      const monthDep =
-        origVal != null && depMonths > 0
-          ? Math.round((origVal / depMonths) * 100) / 100
-          : undefined;
+      const calc = calculateAssetAdjustmentValues({
+        originalValueAfter: origVal,
+        depreciationRate: values.depreciationRate,
+        depreciationStartDate: values.depreciationStartDate,
+        depreciationEndDate: values.depreciationEndDate,
+        accumulatedDepreciationManual: values.accumulatedDepreciation,
+        depreciationMonths: values.depreciationMonths,
+      });
 
       const adjustmentDetails: AssetValueAdjustmentDetails = {
         ...values,
@@ -729,8 +724,10 @@ function PortTerminalAssetList({
         originalValueBefore: selected.originalValue,
         originalValueAfter: origVal,
         remainingValueBefore: selected.remainingValue,
-        remainingValueAfter: remAfter,
-        monthlyDepreciation: monthDep,
+        remainingValueAfter: calc.remainingValueAfter,
+        accumulatedDepreciation:
+          calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+        monthlyDepreciation: calc.monthlyDepreciation,
       };
 
       if (operationMode === "exploit") {
@@ -990,8 +987,48 @@ function PortTerminalAssetList({
       { key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(record) },
       { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEdit(record) },
       { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
-      { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
-      { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
+      {
+        key: 'increase',
+        label: 'Tăng nguyên giá',
+        icon: <PlusCircleOutlined />,
+        onClick: () => {
+          setSelected(record);
+          setOperationMode('increase');
+          operationForm.resetFields();
+          operationForm.setFieldsValue({
+            originalValueBefore: record.originalValue,
+            remainingValueBefore: record.remainingValue,
+            declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+            depreciationRate: record.depreciationRate,
+            assignmentDecisionNumber: record.assignmentDecisionNumber,
+            depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+            depreciationMonths: record.depreciationMonths,
+            depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+            accumulatedDepreciation: record.accumulatedDepreciation,
+          });
+        },
+      },
+      {
+        key: 'decrease',
+        label: 'Giảm nguyên giá',
+        icon: <MinusCircleOutlined />,
+        onClick: () => {
+          setSelected(record);
+          setOperationMode('decrease');
+          operationForm.resetFields();
+          operationForm.setFieldsValue({
+            originalValueBefore: record.originalValue,
+            remainingValueBefore: record.remainingValue,
+            declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+            depreciationRate: record.depreciationRate,
+            assignmentDecisionNumber: record.assignmentDecisionNumber,
+            depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+            depreciationMonths: record.depreciationMonths,
+            depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+            accumulatedDepreciation: record.accumulatedDepreciation,
+          });
+        },
+      },
       { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistory(record) },
       ...(record.approvalStatus === 'DRAFT'
         ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]

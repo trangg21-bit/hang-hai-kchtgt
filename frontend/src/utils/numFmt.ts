@@ -28,6 +28,45 @@ export function fmtNum(v: number | string | null | undefined, maxDec = 2): strin
 }
 
 /**
+ * Formatter cho AntD InputNumber: phân tách hàng nghìn bằng dấu chấm '.'
+ */
+export function formatDotNumber(v: string | number | null | undefined): string {
+  if (v === null || v === undefined || v === '') return '';
+  const s = String(v).replace(/\./g, '').trim();
+  if (s === '') return '';
+  const m = s.match(/^(-?\d+)(\.\d+)?$/);
+  if (m) {
+    const intPart = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return m[2] ? `${intPart}${m[2]}` : intPart;
+  }
+  const num = Number(s);
+  if (isNaN(num)) return s;
+  return `${num}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+/**
+ * Parser cho AntD InputNumber dùng dấu chấm '.'
+ */
+export function parseDotNumber(v: string | undefined | null): string {
+  if (!v) return '';
+  return v
+    .replace(/\./g, '')
+    .replace(/,/g, '')
+    .replace(/\s+/g, '')
+    .replace(/VNĐ|VND|vnd|vnđ/g, '')
+    .trim();
+}
+
+/**
+ * Format số tiền có dấu chấm '.' và hậu tố ' VNĐ'
+ */
+export function formatVndCurrency(v: number | string | null | undefined): string {
+  if (v === null || v === undefined || v === '') return '';
+  const formatted = formatDotNumber(v);
+  return formatted ? `${formatted} VNĐ` : '';
+}
+
+/**
  * Formatter cho AntD InputNumber: bỏ đuôi '.00'/'.0' thừa khi hiển thị
  * (chỉ áp dụng lúc không gõ — khi user đang gõ thì giữ nguyên chuỗi).
  */
@@ -37,8 +76,7 @@ export function fmtInputNumber(
 ): string {
   if (info?.userTyping) return v === null || v === undefined ? '' : String(v);
   if (v === null || v === undefined || v === '') return '';
-  const s = String(v);
-  return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
+  return formatDotNumber(v);
 }
 
 /**
