@@ -95,6 +95,7 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
