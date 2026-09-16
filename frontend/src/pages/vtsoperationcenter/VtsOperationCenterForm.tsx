@@ -27,7 +27,6 @@ import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import type {
   VtsOperationCenterResponse,
-  CreateVtsOperationCenterRequest,
   UpdateVtsOperationCenterRequest,
   VtsOperationCenterAttachment,
 } from '../../types/vtsOperationCenter';
@@ -35,11 +34,11 @@ import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, normalizeCon
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
-  requiredMarkStyle, spaceFormField, radiusPill, radiusMd, sidebarBg,
-  fontWeightBold, fontWeightMedium, fontSizeMd, fontSizeSm, fontSizeLg,
-  textSecondary, textTertiary, borderDefault,
-  statusCritical, statusOperational, actionPrimary,
-  readonlyInputStyle, surfaceCard, spaceSm, spaceXs,
+  requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
+  fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
+  textTertiary, borderDefault,
+  statusCritical, actionPrimary,
+  readonlyInputStyle, spaceSm, spaceXs,
   textAreaStyle,
 } from '../../themetokenchk';
 import { fmtInputNumber } from '../../utils/numFmt';
@@ -60,7 +59,6 @@ export const DEFAULT_GIS_SYMBOLS = [
   { id: '9', code: 'SYM-ANCHORAGE', name: 'Khu neo đậu / Đón trả hoa tiêu', image: '' },
 ];
 import { useAuthStore, type AuthState } from '../../store/authStore';
-import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import DetailTable from '../../components/shared/DetailTable';
@@ -263,7 +261,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
-  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const kchtPerms = useKchtPermissions('vtsoperationcenter', {
     extraCreatePerms: ['vts:create'],
     extraUpdatePerms: ['vts:update'],
@@ -274,13 +271,11 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const isCreateMode = currentMode === 'create';
   const isEditMode = currentMode === 'edit';
 
-  const [geometryTypeState, setGeometryTypeState] = useState<string | undefined>(undefined);
-
   const attachmentsEditable = isCreateMode ||
     record?.approvalStatus === ApprovalStatus.DRAFT ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
     record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
-    (record?.approvalStatus === ApprovalStatus.APPROVED && canSaveAndApprove);
+    (record?.approvalStatus === ApprovalStatus.APPROVED && kchtPerms.canSaveAndApprove);
 
   const handleUploadAttachment = async (file: File) => {
     if (!isCreateMode && !attachmentsEditable) {
@@ -461,7 +456,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         setRecord(initialData);
         const pts = parseWktToCoordinates(initialData.coordinates);
         const geom = initialData.geometryType || undefined;
-        setGeometryTypeState(geom);
         setCoordinateList(pts.map((c) => {
           const latDms = ddToDms(c.latitude);
           const lngDms = ddToDms(c.longitude);
@@ -490,7 +484,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         setAttachments(res.attachments || []);
         const pts = parseWktToCoordinates(res.coordinates);
         const geom = res.geometryType || undefined;
-        setGeometryTypeState(geom);
         setCoordinateList(pts.map((c) => {
           const latDms = ddToDms(c.latitude);
           const lngDms = ddToDms(c.longitude);
@@ -521,7 +514,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       setRecord(null);
       setAttachments([]);
       setCoordinateList([]);
-      setGeometryTypeState(undefined);
       setGpsError(null);
       form.resetFields();
       vtsOperationCenterService.generateCode().then((res) => {
@@ -580,7 +572,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   }, [record?.symbolId, (record as any)?.symbolName, (record as any)?.symbolCode, (record as any)?.symbolImage, initialData, symbols]);
 
   useEffect(() => {
-    setGeometryTypeState(watchedGeometryType);
     if (!watchedGeometryType) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
@@ -782,7 +773,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         <KchtFormFooter
           mode={currentMode}
           resource="vtsoperationcenter"
-          record={record}
+          record={record as any}
           loading={isSubmitting}
           activeAction={actionType}
           options={{

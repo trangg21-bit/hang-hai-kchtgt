@@ -28,6 +28,9 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
     @Query("SELECT c FROM CoastalStationCospasSarsat c WHERE c.code = :code AND c.deletedAt IS NULL")
     Optional<CoastalStationCospasSarsat> findByCode(@Param("code") String code);
 
+    @Query("SELECT COUNT(c) > 0 FROM CoastalStationCospasSarsat c WHERE c.code = :code AND c.deletedAt IS NULL")
+    boolean existsByCodeAndDeletedAtIsNull(@Param("code") String code);
+
     @Query("SELECT c FROM CoastalStationCospasSarsat c WHERE c.deletedAt IS NULL ORDER BY c.createdAt DESC")
     List<CoastalStationCospasSarsat> findAllActive();
 

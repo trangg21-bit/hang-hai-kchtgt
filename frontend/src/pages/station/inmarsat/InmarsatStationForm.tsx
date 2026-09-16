@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Form,
   Input,
@@ -27,10 +27,9 @@ import { organizationService } from '../../../services/organizationService';
 import { DEFAULT_GIS_SYMBOLS } from '../../vtsoperationcenter/VtsOperationCenterForm';
 import type {
   CoastalStationInmarsatResponse,
-  CoastalStationInmarsatRequest,
   CoastalStationInmarsatUpdateRequest,
 } from '../../../services/station/types';
-import { ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
+import { ApprovalStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
@@ -62,6 +61,7 @@ import {
   ddToDms,
   dmsToDd,
 } from '../../../utils/gisGeometry';
+import { resolveStationGeometryType } from '../../../utils/stationGeometryType';
 import InmarsatStationDetailContent, { getOperatingOrgName } from './InmarsatStationDetailContent';
 export { getOperatingOrgName };
 
@@ -276,14 +276,14 @@ export default function InmarsatStationForm({
   const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
   const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
-  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
+  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
   const canCreate = hasPerm('coastalstationinmarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationinmarsat',
     extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve', 'data:approvec2', 'data:approve'],
+    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const [internalOrgUnits, setInternalOrgUnits] = useState<any[]>([]);
@@ -309,6 +309,47 @@ export default function InmarsatStationForm({
   }, [open, orgUnits]);
 
   const effectiveOrgUnits = (orgUnits && orgUnits.length > 0) ? orgUnits : internalOrgUnits;
+
+  const operatingUnitOptions = useMemo(() => {
+    const list: { value: string; label: string }[] = [];
+    const seen = new Set<string>();
+
+    if (Array.isArray(effectiveOrgUnits)) {
+      effectiveOrgUnits.forEach((o: any) => {
+        if (o.id && !seen.has(String(o.id))) {
+          seen.add(String(o.id));
+          list.push({
+            value: String(o.id),
+            label: o.code ? `${o.code} - ${o.name || o.unitName}` : (o.name || o.unitName),
+          });
+        }
+      });
+    }
+
+    if (Array.isArray(DEFAULT_OPERATING_ORGANIZATIONS)) {
+      DEFAULT_OPERATING_ORGANIZATIONS.forEach((o) => {
+        if (o.id && !seen.has(String(o.id))) {
+          seen.add(String(o.id));
+          list.push({
+            value: String(o.id),
+            label: o.code ? `${o.code} - ${o.name}` : o.name,
+          });
+        }
+      });
+    }
+
+    const curOpId = record?.operatingOrgId || (initialData as any)?.operatingOrgId;
+    const curOpName = (record as any)?.operatingOrgName || (initialData as any)?.operatingOrgName;
+    if (curOpId && !seen.has(String(curOpId))) {
+      seen.add(String(curOpId));
+      list.push({
+        value: String(curOpId),
+        label: (curOpName && !/^[0-9a-fA-F-]{36}$/.test(curOpName)) ? curOpName : 'Đơn vị khai thác',
+      });
+    }
+
+    return list;
+  }, [effectiveOrgUnits, record?.operatingOrgId, (record as any)?.operatingOrgName, initialData]);
 
   useEffect(() => {
     if (!open) return;
@@ -438,24 +479,27 @@ export default function InmarsatStationForm({
           }
         }
 
+        const geometryType = resolveStationGeometryType(data.geometryType || data.objectType, data.coordinates)
+          || (dmsPoints.length > 2 ? 'POLYGON' : dmsPoints.length > 1 ? 'LINE' : (dmsPoints.length === 1 ? 'POINT' : undefined));
+        const orgId = data.orgUnitId || (initialData as any)?.orgUnitId;
         form.setFieldsValue({
           code: data.code || data.deviceCode,
           name: data.name || data.stationName,
           orgUnitId: orgId ? String(orgId) : undefined,
           operatingOrgId: data.operatingOrgId,
-          provinceId: data.provinceId,
-          conditionStatus: data.conditionStatus || data.status,
+          provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
+          conditionStatus: normalizeConditionStatus(data.conditionStatus || data.status) || 'OPERATIONAL',
           locationDetail: data.locationDetail || data.locationAddress,
           services: serviceList,
           coverageZone: data.coverageZone || data.coverageArea,
           frequency: data.frequency,
           notes: data.notes || data.description,
-          geometryType: data.geometryType || data.objectType || (dmsPoints.length > 2 ? 'POLYGON' : dmsPoints.length > 1 ? 'LINE' : (dmsPoints.length === 1 ? 'POINT' : undefined)),
+          geometryType,
           symbolId: data.symbolId || data.symbol || undefined,
-          coordinateSystem: (data.geometryType || dmsPoints.length > 0)
+          coordinateSystem: (geometryType || dmsPoints.length > 0)
             ? (String(data.coordinateSystem) === '2' || String(data.coordinateSystem).includes('VN-2000') ? 2 : 1)
             : undefined,
-          displayRule: (data.geometryType || dmsPoints.length > 0) ? (data.displayRule || 'Độ, phút, giây (DMS)') : undefined,
+          displayRule: (geometryType || dmsPoints.length > 0) ? (data.displayRule || 'Độ, phút, giây (DMS)') : undefined,
         });
 
         // Load attachments
@@ -625,7 +669,7 @@ export default function InmarsatStationForm({
       name: values.name,
       orgUnitId: values.orgUnitId,
       operatingOrgId: values.operatingOrgId,
-      provinceId: values.provinceId,
+      provinceId: values.provinceId != null && values.provinceId !== '' ? Number(values.provinceId) : undefined,
       conditionStatus: values.conditionStatus,
       locationDetail: values.locationDetail ?? null,
       services: typeof values.services === 'string' ? values.services : (values.services?.length ? JSON.stringify(values.services) : null),
@@ -682,20 +726,21 @@ export default function InmarsatStationForm({
           if (isDraftOrRejected) {
             await inmarsatStationService.submit(resultId).catch(() => {});
           }
-          if (canApproveL2) {
-            await inmarsatStationService.approveL1(resultId).catch(() => {});
-            await inmarsatStationService.approveL2(resultId);
-            toast.success(isCreateMode ? 'Thêm mới và phê duyệt thành công' : 'Lưu và phê duyệt thành công');
-          } else if (canApproveL1) {
-            await inmarsatStationService.approveL1(resultId);
-            toast.success('Lưu và phê duyệt thành công');
-          } else {
-            await inmarsatStationService.approveL1(resultId).catch(() => {});
-            await inmarsatStationService.approveL2(resultId).catch(async () => {
+          const isAlreadyApproved = currentStatus === ApprovalStatus.APPROVED || (currentStatus as string) === 'APPROVED_LEVEL2';
+          if (!isAlreadyApproved) {
+            if (canApproveL2) {
+              await inmarsatStationService.approveL1(resultId).catch(() => {});
+              await inmarsatStationService.approveL2(resultId);
+            } else if (canApproveL1) {
               await inmarsatStationService.approveL1(resultId);
-            });
-            toast.success('Lưu và phê duyệt thành công');
+            } else {
+              await inmarsatStationService.approveL1(resultId).catch(() => {});
+              await inmarsatStationService.approveL2(resultId).catch(async () => {
+                await inmarsatStationService.approveL1(resultId);
+              });
+            }
           }
+          toast.success(isCreateMode ? 'Thêm mới và phê duyệt thành công' : 'Lưu và phê duyệt thành công');
         } else {
           toast.success(isCreateMode ? 'Tạo mới (Lưu tạm) thành công' : 'Cập nhật thành công');
         }
@@ -944,10 +989,7 @@ export default function InmarsatStationForm({
                                 allowClear
                                 showSearch
                                 filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                                options={DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({
-                                  value: o.id,
-                                  label: o.name,
-                                }))}
+                                options={operatingUnitOptions}
                                 style={selectStyle}
                               />
                             </Form.Item>

@@ -117,7 +117,7 @@ public class ScadaController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.check(authentication, 'scada:update')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:update', 'scada:approvec2')")
   public ResponseEntity<ApiResponse<ScadaResponse>> update(
     @Valid @RequestBody UpdateScadaRequest request) {
     log.info("Updating SCADA: id={}", request.getId());
@@ -200,7 +200,7 @@ public class ScadaController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'scada:update') or @auth.check(authentication, 'scada:create')")
+  @PreAuthorize("@auth.check(authentication, 'scada:update') or @auth.check(authentication, 'scada:create') or @auth.check(authentication, 'scada:approvec2')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -220,7 +220,7 @@ public class ScadaController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'scada:update') or @auth.check(authentication, 'scada:create') or @auth.check(authentication, 'scada:delete')")
+  @PreAuthorize("@auth.check(authentication, 'scada:update') or @auth.check(authentication, 'scada:create') or @auth.check(authentication, 'scada:delete') or @auth.check(authentication, 'scada:approvec2')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

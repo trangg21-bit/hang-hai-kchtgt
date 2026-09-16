@@ -103,6 +103,10 @@ public class HistoryService {
             String newVal = newValueResolver != null ? newValueResolver.apply(fieldName) : null;
             if (newVal != null && (newVal.isBlank() || "—".equals(newVal))) newVal = null;
 
+            if (Objects.equals(oldVal, newVal)) {
+                continue; // Tuyệt đối không ghi nhận delta ảo khi giá trị không thay đổi
+            }
+
             recordHistory(
                     refType,
                     refId,
@@ -161,7 +165,10 @@ public class HistoryService {
             predicates.add(cb.equal(root.get("refId"), refId));
 
             if (excludedStatuses != null && !excludedStatuses.isEmpty()) {
-                predicates.add(root.get("status").in(excludedStatuses).not());
+                predicates.add(cb.or(
+                        root.get("changedField").isNotNull(),
+                        root.get("status").in(excludedStatuses).not()
+                ));
             }
 
             if (fromDate != null) {
@@ -223,7 +230,9 @@ public class HistoryService {
             CoastalStationVTSHistoryResponse entry = new CoastalStationVTSHistoryResponse();
             entry.setId(h.getId());
             entry.setStationCode(stationCode);
-            entry.setActionType(toActionType(h.getStatus()));
+            entry.setActionType(h.getChangedField() != null && !h.getChangedField().isBlank()
+                    ? StationHistoryActionType.UPDATE
+                    : toActionType(h.getStatus()));
             entry.setChangedField(h.getChangedField());
             entry.setPreviousValue(h.getPreviousValue());
             entry.setNewValue(h.getNewValue());

@@ -1,67 +1,77 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Button, Modal, Input, Select, DatePicker,
-  Space, Form,
-} from 'antd';
-import {
-  HistoryOutlined,
-  SearchOutlined,
+    HistoryOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
+import {
+    Button,
+    DatePicker,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+} from 'antd';
 import dayjs from 'dayjs';
-import { pierCRUD, pierApproval, berthCRUD, portCRUD, shipRepairYardCRUD } from '../../services/portService';
-import type { Pier } from '../../types/port';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import ShipRepairYardDetailContent from '../ship-repair-yard/ShipRepairYardDetailContent';
-import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
-import { useAuthStore } from '../../store/authStore';
-import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import { symbolService } from '../../services/symbolService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
-import type { Organization } from '../../services/organizationService';
-import { usePermissionStore } from '../../store/permissionStore';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import { OPERATIONAL_FUNCTION_OPTIONS, formatOperationalFunction } from '../../constants/operationalFunction';
-import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { ScreenHeader, DataTable } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import PierForm from './PierForm';
-import PierDetailContent from './PierDetailContent';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import toast from '../../components/ToastNotification';
+import { formatOperationalFunction, OPERATIONAL_FUNCTION_OPTIONS } from '../../constants/operationalFunction';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { berthCRUD, pierApproval, pierCRUD, portCRUD, shipRepairYardCRUD } from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  borderDefault,
-  fontSizeLg,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  spaceFormField,
-  drawerTitleStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle,
-  colors,
-  DRAWER_WIDTH,
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_WIDTH,
+    drawerFooterStyle,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontWeightBold,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    textPrimary,
+    textSecondary,
+    textTertiary,
 } from '../../themetokenchk';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import type { Pier } from '../../types/port';
+import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
+import ShipRepairYardDetailContent from '../ship-repair-yard/ShipRepairYardDetailContent';
+import PierDetailContent from './PierDetailContent';
+import PierForm from './PierForm';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PortListPage) — override thay vì dùng
 // fontSizeMd=13 import từ themetokenchk để mọi cell/table/input/button cao ngang nhau.
@@ -140,6 +150,9 @@ const histLabels: Record<string, string> = {
   'Loại đối tượng GIS': 'Loại đối tượng GIS',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
 };
+
+const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'berthId', 'pierCode', 'pierName', 'pierType', 'length', 'width', 'designLoad', 'operationalFunction', 'operationalStatus', 'province', 'detailedLocation', 'coordinateSystem', 'displayRule', 'mapSymbolId', 'constructionGrade', 'structureType', 'conditionStatus', 'currentWaterDepth', 'designBedElevation', 'publishedVesselDWT', 'maintenanceApprovalDate', 'safetyAssessmentDate', 'lastInspectionDate', 'operatingPierCount', 'publishedPierCount', 'investmentAgreementPierCount', 'cargoThroughput', 'receivesLargeVessel', 'documentNumber', 'documentDate', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'waterAreaNeutralScope', 'navigationChannelId'];
+
 export function normalizeHistoryKey(value: string): string {
   return (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 }
@@ -479,8 +492,6 @@ export default function PierListPage() {
     } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); }
   }, []);
 
-  const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'berthId', 'pierCode', 'pierName', 'pierType', 'length', 'width', 'designLoad', 'operationalFunction', 'operationalStatus', 'province', 'detailedLocation', 'coordinateSystem', 'displayRule', 'mapSymbolId', 'constructionGrade', 'structureType', 'conditionStatus', 'currentWaterDepth', 'designBedElevation', 'publishedVesselDWT', 'maintenanceApprovalDate', 'safetyAssessmentDate', 'lastInspectionDate', 'operatingPierCount', 'publishedPierCount', 'investmentAgreementPierCount', 'cargoThroughput', 'receivesLargeVessel', 'documentNumber', 'documentDate', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'waterAreaNeutralScope', 'navigationChannelId'];
-
   const renderPierHistoryTimeline = (records: any[]) => {
     const q = (historyFilters.keyword || '').trim().toLowerCase();
     const from = historyFilters.fromDate || '';
@@ -529,6 +540,33 @@ export default function PierListPage() {
       emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: histLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'mapSymbolId' && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const formatted = formatPierHistoryValue(fn, raw, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+    });
+  }, [filteredHistory, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap, historyTarget, symbolImageMap]);
 
   useEffect(() => {
     (async () => { try { const r = await organizationService.list({ pageSize: 1000 });
@@ -876,7 +914,7 @@ export default function PierListPage() {
       ];
     }
     const st = record.approvalStatus || '';
-    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier', extraApprovePerms: ['pier:approve'] });
+    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' });
     if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditPierId(record.id); setEditBaseStatus(record.approvalStatus); setCreateDrawerVisible(true); } });
     if (['DRAFT','NHAP'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     if (['REJECTED_LEVEL1','REJECTED_LEVEL2'].includes(st) && hasPerm('pier:update')) actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
@@ -1301,7 +1339,7 @@ export default function PierListPage() {
                 Lịch sử thay đổi — {historyTarget?.pierName || historyTarget?.pierCode || ''}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>
@@ -1355,7 +1393,7 @@ export default function PierListPage() {
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
             </div>
-          ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+          ) : hasActiveHistoryFilter && historyUpdateCount === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

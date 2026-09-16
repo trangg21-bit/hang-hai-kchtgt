@@ -6,7 +6,10 @@ import { usePermissionStore } from '../../store/permissionStore';
 import OrgUnitTreeSelect from '../../components/org-unit/OrgUnitTreeSelect';
 import { resolveDefaultOrgUnitId } from '../../components/org-unit/useUserDefaultOrgUnit';
 import CospasSarsatStationList from './cospas-sarsat/CospasSarsatStationList';
-import CospasSarsatStationForm from './cospas-sarsat/CospasSarsatStationForm';
+import CospasSarsatStationForm, {
+  resolveCospasGeometryType,
+  resolveFormProvinceId,
+} from './cospas-sarsat/CospasSarsatStationForm';
 import CospasSarsatStationDetailContent from './cospas-sarsat/CospasSarsatStationDetailContent';
 import type { CoastalStationCospasSarsatResponse } from '../../services/station/types';
 
@@ -98,6 +101,10 @@ vi.mock('../../services/cospasSarsatStationService', () => ({
     approveLevel2: vi.fn(),
     reject: vi.fn(),
     getHistory: vi.fn().mockResolvedValue([]),
+    getAttachments: vi.fn().mockResolvedValue([]),
+    uploadAttachment: vi.fn().mockResolvedValue({}),
+    deleteAttachment: vi.fn().mockResolvedValue(undefined),
+    downloadAttachment: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -175,7 +182,6 @@ describe('CospasSarsatStationList', () => {
     };
     useAuthStore.setState({
       user: testUser as any,
-      currentUser: testUser as any,
       isAuthenticated: true,
     });
     usePermissionStore.getState().setPermissions(testUser.permissions);
@@ -201,10 +207,12 @@ describe('CospasSarsatStationForm & DetailContent', () => {
   const mockRecord: CoastalStationCospasSarsatResponse = {
     id: 'sarsat-01',
     code: 'SARSAT-001',
+    stationCode: 'SARSAT-001',
     name: 'Đài Cospas-Sarsat Hải Phòng',
+    stationName: 'Đài Cospas-Sarsat Hải Phòng',
     orgUnitId: 'org-hp',
     orgUnitName: 'Cảng vụ Hàng hải Hải Phòng',
-    operatingUnit: 'Công ty TNHH MTV Thông tin điện tử Hàng hải Việt Nam',
+    operatingOrgName: 'Công ty TNHH MTV Thông tin điện tử Hàng hải Việt Nam',
     provinceName: 'Hải Phòng',
     address: 'Số 2 Nguyễn Tri Phương, Hải Phòng',
     conditionStatus: 'OPERATIONAL',
@@ -214,23 +222,23 @@ describe('CospasSarsatStationForm & DetailContent', () => {
     approvalStatus: 'APPROVED',
     updatedAt: '2026-09-15T08:00:00Z',
     updatedByName: 'Nguyễn Văn A',
-    gisData: {
-      objectType: 'POINT',
-      symbol: 'station_cospas',
-      coordinateSystem: 'WGS84',
-      coordinates: [{ order: 1, lat: 20.86, lng: 106.68 }],
-    },
+    objectType: 'POINT',
+    geometryType: 'POINT',
+    coordinateSystem: 'WGS84',
+    latitude: 20.86,
+    longitude: 106.68,
+    wktGeometry: 'POINT(106.68 20.86)',
   };
 
-  it('renders CospasSarsatStationDetailContent with 5 tabs', () => {
+  it('renders CospasSarsatStationDetailContent with 4 standard tabs matching VTS', () => {
     const html = renderToStaticMarkup(
       <CospasSarsatStationDetailContent id="sarsat-01" initialData={mockRecord} />
     );
     expect(html).toContain('Thông tin chung');
-    expect(html).toContain('Vị trí (GIS)');
+    expect(html).toContain('Thông tin vị trí');
     expect(html).toContain('File đính kèm');
     expect(html).toContain('Vận hành &amp; bảo trì');
-    expect(html).toContain('Xử lý &amp; theo dõi');
+    expect(html).not.toContain('Xử lý &amp; theo dõi');
     expect(html).toContain('SARSAT-001');
     expect(html).toContain('Đài Cospas-Sarsat Hải Phòng');
   });
@@ -251,7 +259,25 @@ describe('CospasSarsatStationForm & DetailContent', () => {
     expect(html).toContain('Lưu và phê duyệt');
   });
 
-  it('renders CospasSarsatStationForm in edit mode with standard action buttons', () => {
+  it('renders CospasSarsatStationForm in edit mode with standard action buttons for DRAFT record', () => {
+    const html = renderToStaticMarkup(
+      <CospasSarsatStationForm
+        open={true}
+        mode="edit"
+        editId="sarsat-01"
+        initialData={{ ...mockRecord, approvalStatus: 'DRAFT' }}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+    expect(html).toContain('Chỉnh sửa đài Cospas-Sarsat');
+    expect(html).not.toContain('Hủy');
+    expect(html).toContain('Lưu tạm');
+    expect(html).toContain('Lưu và gửi phê duyệt');
+    expect(html).toContain('Lưu và phê duyệt');
+  });
+
+  it('renders CospasSarsatStationForm in edit mode with save & approve for APPROVED record', () => {
     const html = renderToStaticMarkup(
       <CospasSarsatStationForm
         open={true}
@@ -263,9 +289,202 @@ describe('CospasSarsatStationForm & DetailContent', () => {
       />
     );
     expect(html).toContain('Chỉnh sửa đài Cospas-Sarsat');
-    expect(html).toContain('Hủy');
-    expect(html).toContain('Lưu tạm');
-    expect(html).toContain('Lưu và gửi phê duyệt');
+    expect(html).not.toContain('Hủy');
     expect(html).toContain('Lưu và phê duyệt');
+    expect(html).not.toContain('Lưu tạm');
+  });
+
+  it('renders "Dịch vụ cung cấp" on 1 row with LRIT logic & placeholder in both create and edit modes', () => {
+    // Create mode
+    const createHtml = renderToStaticMarkup(
+      <CospasSarsatStationForm
+        open={true}
+        mode="create"
+        initialData={null}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+    expect(createHtml).toContain('Dịch vụ cung cấp');
+    expect(createHtml).toContain('Chọn các dịch vụ cung cấp');
+
+    // Edit mode
+    const editHtml = renderToStaticMarkup(
+      <CospasSarsatStationForm
+        open={true}
+        mode="edit"
+        editId="sarsat-01"
+        initialData={{ ...mockRecord, services: ['COSPAS-SARSAT', 'LRIT'] }}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+    expect(editHtml).toContain('Dịch vụ cung cấp');
+    expect(editHtml).toContain('Chọn các dịch vụ cung cấp');
+
+    // Detail mode renders LRIT badges
+    const detailHtml = renderToStaticMarkup(
+      <CospasSarsatStationDetailContent
+        id="sarsat-01"
+        initialData={{ ...mockRecord, services: ['COSPAS-SARSAT', 'LRIT'] }}
+      />
+    );
+    expect(detailHtml).toContain('Dịch vụ cung cấp');
+    expect(detailHtml).toContain('COSPAS-SARSAT — Tìm kiếm cứu nạn vệ tinh');
+    expect(detailHtml).toContain('LRIT — Nhận dạng và theo dõi tầm xa');
+  });
+
+  it('renders attached files in both detail content and form', () => {
+    const recordWithFiles = {
+      ...mockRecord,
+      attachments: [
+        {
+          id: 'att-1',
+          fileName: 'so_do_tram_cospas.pdf',
+          fileSize: 1048576,
+          uploadedByName: 'Nguyễn Văn A',
+          uploadedDate: '2026-09-15T08:00:00Z',
+        },
+      ],
+    };
+
+    const detailHtml = renderToStaticMarkup(
+      <CospasSarsatStationDetailContent id="sarsat-01" initialData={recordWithFiles} />
+    );
+    expect(detailHtml).toContain('File đính kèm (1)');
+
+    const formHtml = renderToStaticMarkup(
+      <CospasSarsatStationForm
+        open={true}
+        mode="edit"
+        editId="sarsat-01"
+        initialData={recordWithFiles}
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+    expect(formHtml).toContain('File đính kèm (1)');
+  });
+
+  describe('3 Action Buttons in Create Mode (Logic & UI identical to VTS)', () => {
+    it('shows only "Lưu tạm" and "Lưu và gửi phê duyệt" when user only has create permission', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'u-specialist',
+          username: 'chuyen_vien',
+          fullName: 'Chuyên viên tạo mới',
+          unitType: 'CVHH',
+          roles: ['CAN_BO_CV'],
+        } as any,
+      });
+      usePermissionStore.getState().setPermissions(['coastalstationcospassarsat:create']);
+
+      const html = renderToStaticMarkup(
+        <CospasSarsatStationForm
+          open={true}
+          mode="create"
+          initialData={null}
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />
+      );
+
+      expect(html).toContain('Lưu tạm');
+      expect(html).toContain('Lưu và gửi phê duyệt');
+      // Không có quyền phê duyệt -> không hiển thị nút "Lưu và phê duyệt"
+      expect(html).not.toContain('Lưu và phê duyệt');
+    });
+
+    it('shows all 3 buttons when user has create AND approvec2 permission', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'u-approver',
+          username: 'lanh_dao',
+          fullName: 'Lãnh đạo phê duyệt',
+          unitType: 'CUC',
+          roles: ['LANH_DAO_CUC'],
+        } as any,
+      });
+      usePermissionStore.getState().setPermissions([
+        'coastalstationcospassarsat:create',
+        'coastalstationcospassarsat:approvec2',
+      ]);
+
+      const html = renderToStaticMarkup(
+        <CospasSarsatStationForm
+          open={true}
+          mode="create"
+          initialData={null}
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />
+      );
+
+      expect(html).toContain('Lưu tạm');
+      expect(html).toContain('Lưu và gửi phê duyệt');
+      expect(html).toContain('Lưu và phê duyệt');
+    });
+
+    it('validates button styling matches VTS (radiusPill, colors, variants)', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'u-admin',
+          username: 'admin',
+          roles: ['ADMIN'],
+        } as any,
+      });
+      usePermissionStore.getState().setPermissions([
+        'coastalstationcospassarsat:create',
+        'coastalstationcospassarsat:approvec2',
+      ]);
+
+      const html = renderToStaticMarkup(
+        <CospasSarsatStationForm
+          open={true}
+          mode="create"
+          initialData={null}
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />
+      );
+
+      // Nút 1: Lưu tạm (outline / bo tròn 999px)
+      expect(html).toContain('border-radius:999px');
+      expect(html).toContain('ant-btn-variant-outlined');
+
+      // Nút 2: Lưu và gửi phê duyệt (primary)
+      expect(html).toContain('ant-btn-variant-solid');
+
+      // Nút 3: Lưu và phê duyệt (xanh lá statusOperational #1BAF7A)
+      expect(html).toContain('#1BAF7A');
+    });
+  });
+
+  describe('resolveFormProvinceId', () => {
+    it('resolves integer provinceId (e.g. 89) to string option value "89"', () => {
+      expect(resolveFormProvinceId(89)).toBe('89');
+    });
+
+    it('resolves string provinceId "89" to "89"', () => {
+      expect(resolveFormProvinceId('89')).toBe('89');
+    });
+
+    it('resolves provinceId from provinceName "An Giang" when provinceId is null', () => {
+      expect(resolveFormProvinceId(null, 'An Giang')).toBe('89');
+    });
+
+    it('returns undefined when provinceId and provinceName are undefined', () => {
+      expect(resolveFormProvinceId(undefined, undefined)).toBeUndefined();
+    });
+  });
+
+  describe('resolveCospasGeometryType', () => {
+    it('uses the WKT geometry instead of a stale POINT metadata value', () => {
+      expect(resolveCospasGeometryType('POINT', 'LINESTRING(108.5 15.2, 108.7 15.4)')).toBe('LINE');
+    });
+
+    it('keeps polygon geometry when loading an existing spatial object', () => {
+      expect(resolveCospasGeometryType(undefined, 'POLYGON((108 15, 109 15, 108 16, 108 15))')).toBe('POLYGON');
+    });
   });
 });

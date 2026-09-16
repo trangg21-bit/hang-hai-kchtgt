@@ -1,16 +1,16 @@
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
-  SearchOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CommonStatusTabs,
@@ -19,7 +19,9 @@ import {
   ScreenHeader,
   TableColumnType,
   TableFilter,
-  type ScreenHeaderAction
+  type ScreenHeaderAction,
+  type FilterOption,
+  type TableOption,
 } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
@@ -33,50 +35,52 @@ import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
-  createAssetDecrease,
-  createAssetIncrease,
-  createKhaiThac,
-  createStationAsset,
-  deleteInfraAssetAttachment,
-  deleteStationAsset,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchInfraAssetAttachments,
-  fetchKhaiThacList,
-  fetchStationAssets,
-  updateStationAsset,
-  uploadInfraAssetAttachments,
+    createAssetDecrease,
+    createAssetIncrease,
+    createKhaiThac,
+    createStationAsset,
+    deleteInfraAssetAttachment,
+    deleteStationAsset,
+    fetchAssetDecreaseList,
+    fetchAssetIncreaseList,
+    fetchInfraAssetAttachments,
+    fetchKhaiThacList,
+    fetchStationAssets,
+    updateStationAsset,
+    uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  StationAsset,
-  StationAssetFilters,
+    AssetDecreaseResponse,
+    AssetExploitationResponse,
+    AssetIncreaseResponse,
+    StationAsset,
+    StationAssetFilters,
+    StationAssetPayload,
+    AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import type { GenericStationOption } from '../../services/stationOptionsService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  actionPrimary,
-  borderDefault,
-  colors,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  textTertiary,
+    actionPrimary,
+    borderDefault,
+    colors,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd,
+    fontWeightBold,
+    radiusPill,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    textTertiary,
 } from '../../themetokenchk';
-import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 import LritAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
+    type OperationMode,
+    type OperationValues,
 } from './LritAssetOperationForm';
 import StationAssetDetailContent from './StationAssetDetailContent';
 import StationAssetForm, { type StationFormValues } from './StationAssetForm';
@@ -289,13 +293,11 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
 
-  const historyFieldCount = useMemo(
-    () => (Array.isArray(historyRecords) ? historyRecords : []).length,
-    [historyRecords],
-  );
-
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
-  const stationMap = useMemo(() => new Map(stations.map((item) => [item.id, item])), [stations]);
+  const stationMap = useMemo(
+    () => new Map(stations.map((item) => [item.id, { id: item.id, name: item.name || item.stationName || item.code || '', code: item.code || item.stationCode }])),
+    [stations],
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -643,13 +645,13 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         const formatted = formatHistoryValue(fn, raw);
         return isBlankOrDash(formatted) ? '' : formatted;
       },
-      resolveUnitName: (rec) => {
+      resolveUnitName: (rec): string => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
-      resolveActorName: (rawActor, rec) => {
-        return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
+      resolveActorName: (rawActor, rec): string => {
+        return String(rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An');
       },
       emptyMessage:
         q || historyFrom || historyTo
@@ -657,6 +659,68 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const countStationHistoryCards = (records: any[]): number => {
+    const q = historySearch.toLowerCase().trim();
+    const filtered = (records || []).filter((r: any) => {
+      if (q) {
+        const fn = (r.fieldName || r.changedField || '').toLowerCase();
+        const ov = (r.oldValue || r.previousValue || '').toLowerCase();
+        const nv = (r.newValue || r.value || '').toLowerCase();
+        const lb = (ASSET_FIELD_LABELS[r.fieldName || r.changedField] || r.fieldName || '').toLowerCase();
+        const od = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.oldValue || r.previousValue) ??
+            (r.oldValue || r.previousValue || ''),
+        ).toLowerCase();
+        const nd = String(
+          formatHistoryValue(r.fieldName || r.changedField, r.newValue || r.value) ??
+            (r.newValue || r.value || ''),
+        ).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) {
+          return false;
+        }
+      }
+      if (historyFrom || historyTo) {
+        const cd = r.changedAt || r.createdAt || r.approvedDate || '';
+        if (historyFrom && cd.substring(0, 10) < historyFrom) return false;
+        if (historyTo && cd.substring(0, 10) > historyTo) return false;
+      }
+      return true;
+    });
+
+    return countStandardHistoryCards({
+      records: filtered,
+      fieldLabels: ASSET_FIELD_LABELS,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') {
+          if (raw && !isBlankOrDash(raw)) {
+            const files = String(raw)
+              .split(/\s*,\s*/)
+              .map((f) => f.trim())
+              .filter((f) => !isBlankOrDash(f));
+            if (files.length > 0) {
+              return 'attachments';
+            }
+          }
+        }
+        const formatted = formatHistoryValue(fn, raw);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec): string => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const oName = orgId ? orgName.get(orgId) : undefined;
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
+      },
+      resolveActorName: (rawActor, rec): string => {
+        return String(rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An');
+      },
+    });
+  };
+
+  const historyUpdateCount = useMemo(() => {
+    return countStationHistoryCards(historyRecords);
+  }, [historyRecords, historySearch, historyFrom, historyTo, orgName, historyTarget]);
 
   const handleSave = async (status: string) => {
     setSaveAction(status);
@@ -1120,7 +1184,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           ];
         }
 
-        const actionList = [
+        const actionList: any[] = [
           {
             key: 'detail',
             label: 'Xem chi tiết',
@@ -1359,7 +1423,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           config={config}
           form={form}
           organizations={organizations}
-          stations={stations}
+          stations={stations.map((item) => ({ id: item.id, name: item.name || item.stationName || item.code || '', code: item.code || item.stationCode }))}
           attachments={attachments}
           exploitationRows={exploitationRows}
           increaseRows={increaseRows}
@@ -1501,7 +1565,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
                     lineHeight: '20px',
                   }}
                 >
-                  Tổng cộng {historyFieldCount}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>

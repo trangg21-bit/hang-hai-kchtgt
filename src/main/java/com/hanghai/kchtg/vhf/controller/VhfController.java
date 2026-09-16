@@ -108,7 +108,7 @@ public class VhfController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.check(authentication, 'vhf:update')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:update', 'vhf:approvec2')")
   public ResponseEntity<ApiResponse<VhfResponse>> update(
     @Valid @RequestBody UpdateVhfRequest request) {
     log.info("Updating VHF: id={}", request.getId());
@@ -204,7 +204,7 @@ public class VhfController {
   // ── ATTACHMENTS (File đính kèm) ───────────────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'vhf:update')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:update', 'vhf:approvec2')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -221,7 +221,7 @@ public class VhfController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'vhf:update')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:update', 'vhf:approvec2')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

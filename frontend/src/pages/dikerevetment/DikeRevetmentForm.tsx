@@ -69,7 +69,7 @@ const STATUS_MAP: Record<string, string> = {
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 const OPERATING_ORG_OPTIONS = DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }));
-const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || null;
+const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || '';
 
 export interface DikeRevetmentFormProps {
   open?: boolean;
@@ -438,7 +438,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều dài (m):</div>
-                <div style={detailValueStyle}>{record.length !== undefined ? fmtNum(record.length) : null}</div>
+<div style={detailValueStyle}>{record.length !== undefined ? fmtNum(record.length) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Cao trình đỉnh (m):</div>
@@ -458,7 +458,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Chiều cao (m):</div>
-                <div style={detailValueStyle}>{record.height !== undefined ? fmtNum(record.height) : null}</div>
+<div style={detailValueStyle}>{record.height !== undefined ? fmtNum(record.height) : null}</div>
               </div>
               <div style={detailRowStyle}>
                 <div style={detailLabelColStyle}>Tình trạng:</div>

@@ -182,7 +182,7 @@ export default function InfrastructureAttachmentTab({
   loadReadonlyPreviewImage,
   loadPreviewAttachment,
 }: InfrastructureAttachmentTabProps) {
-  const effectiveAttachments = attachments || items || [];
+  const effectiveAttachments = (attachments || items || []).flat(Infinity) as InfrastructureAttachmentItem[];
   const currentUser = useAuthStore((s) => s.user);
   const activeBlobUrlRef = useRef<string | null>(null);
   const activePdfBlobUrlRef = useRef<string | null>(null);
@@ -251,12 +251,15 @@ export default function InfrastructureAttachmentTab({
   };
 
   const resolveLocalFile = (record: InfrastructureAttachmentItem): File | undefined => {
+    const rec = (Array.isArray(record) ? record[0] : record) || {};
+    const fileName = rec.fileName || (rec as any).name;
+    const fileSize = rec.fileSize ?? (rec as any).size;
     return (
-      record.originFileObj ||
-      record.file ||
-      (record.id ? uploadedFilesRef.current.get(record.id) : undefined) ||
-      (record.fileName && record.fileSize ? uploadedFilesRef.current.get(`${record.fileName}_${record.fileSize}`) : undefined) ||
-      (record.fileName ? uploadedFilesRef.current.get(record.fileName) : undefined)
+      rec.originFileObj ||
+      rec.file ||
+      (rec.id ? uploadedFilesRef.current.get(rec.id) : undefined) ||
+      (fileName && fileSize ? uploadedFilesRef.current.get(`${fileName}_${fileSize}`) : undefined) ||
+      (fileName ? uploadedFilesRef.current.get(fileName) : undefined)
     );
   };
 
@@ -511,8 +514,18 @@ export default function InfrastructureAttachmentTab({
       dataIndex: 'fileName',
       key: 'fileName',
       render: (name: string, record: InfrastructureAttachmentItem) => {
-        const isImg = isImageFile(name, record.fileType);
-        const isPdf = isPdfFile(name, record.fileType);
+        const actualRecord = (Array.isArray(record) ? record[0] : record) || {};
+        const resolvedName =
+          name ||
+          actualRecord.fileName ||
+          (actualRecord as any).name ||
+          (actualRecord as any).originalFileName ||
+          (actualRecord as any).filename ||
+          actualRecord.file?.name ||
+          actualRecord.originFileObj?.name ||
+          'Tài liệu đính kèm';
+        const isImg = isImageFile(resolvedName, actualRecord.fileType);
+        const isPdf = isPdfFile(resolvedName, actualRecord.fileType);
         const isPreviewable = isImg || isPdf;
 
         const fileIcon = isImg ? (
@@ -524,12 +537,12 @@ export default function InfrastructureAttachmentTab({
         );
 
         const tooltipTitle = isImg
-          ? `${name} (Nhấp để xem chi tiết ảnh)`
+          ? `${resolvedName} (Nhấp để xem chi tiết ảnh)`
           : isPdf
-          ? `${name} (Nhấp để xem trước PDF)`
+          ? `${resolvedName} (Nhấp để xem trước PDF)`
           : readonly
-          ? `${name} (Nhấp để tải xuống)`
-          : name;
+          ? `${resolvedName} (Nhấp để tải xuống)`
+          : resolvedName;
 
         if (readonly) {
           return (
@@ -548,16 +561,16 @@ export default function InfrastructureAttachmentTab({
               }}
               onClick={() => {
                 if (isPreviewable) {
-                  handlePreview(record);
+                  handlePreview(actualRecord);
                 } else {
-                  handleDownloadRecord({ ...record, fileName: name });
+                  handleDownloadRecord({ ...actualRecord, fileName: resolvedName });
                 }
               }}
               title={tooltipTitle}
             >
               {fileIcon}
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {name}
+                {resolvedName}
               </span>
             </span>
           );
@@ -579,13 +592,13 @@ export default function InfrastructureAttachmentTab({
               cursor: isPreviewable ? 'pointer' : 'default',
             }}
             onClick={() => {
-              if (isPreviewable) handlePreview(record);
+              if (isPreviewable) handlePreview(actualRecord);
             }}
             title={tooltipTitle}
           >
             {fileIcon}
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {name}
+              {resolvedName}
             </span>
           </div>
         );
@@ -597,7 +610,14 @@ export default function InfrastructureAttachmentTab({
       width: 120,
       align: 'left' as const,
       render: (v: number | undefined, record: InfrastructureAttachmentItem) => {
-        const size = v ?? record.fileSize ?? record.size ?? record.originFileObj?.size ?? record.file?.size;
+        const actualRecord = (Array.isArray(record) ? record[0] : record) || {};
+        const size =
+          v ??
+          actualRecord.fileSize ??
+          actualRecord.size ??
+          (actualRecord as any).fileSizeBytes ??
+          actualRecord.originFileObj?.size ??
+          actualRecord.file?.size;
         return formatAttachmentFileSize(size);
       },
     },
@@ -606,13 +626,14 @@ export default function InfrastructureAttachmentTab({
       dataIndex: 'uploadedByName',
       width: 180,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
-        const byUploadedBy = record.uploadedBy ? userMap?.get(record.uploadedBy) : undefined;
+        const actualRecord = (Array.isArray(record) ? record[0] : record) || {};
+        const byUploadedBy = actualRecord.uploadedBy ? userMap?.get(actualRecord.uploadedBy) : undefined;
         const raw = (v ||
-          record.uploadedByName ||
-          record.uploadedBy ||
-          record.uploaderName ||
-          record.createdByName ||
-          record.createdBy) as string | undefined;
+          actualRecord.uploadedByName ||
+          actualRecord.uploadedBy ||
+          actualRecord.uploaderName ||
+          actualRecord.createdByName ||
+          actualRecord.createdBy) as string | undefined;
         const resolved = byUploadedBy || (raw && userMap?.get(raw) ? userMap.get(raw) : raw);
         const isUuid = Boolean(
           resolved && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolved)
@@ -638,16 +659,17 @@ export default function InfrastructureAttachmentTab({
       width: 160,
       align: 'left' as const,
       render: (v: string | undefined, record: InfrastructureAttachmentItem) => {
+        const actualRecord = (Array.isArray(record) ? record[0] : record) || {};
         const dateVal =
           v ||
-          record.uploadedDate ||
-          record.uploadedAt ||
-          record.createdAt ||
-          record.createdDate ||
-          (record.originFileObj
-            ? dayjs(record.originFileObj.lastModified).toISOString()
-            : record.file
-            ? dayjs(record.file.lastModified).toISOString()
+          actualRecord.uploadedDate ||
+          actualRecord.uploadedAt ||
+          actualRecord.createdAt ||
+          actualRecord.createdDate ||
+          (actualRecord.originFileObj
+            ? dayjs(actualRecord.originFileObj.lastModified).toISOString()
+            : actualRecord.file
+            ? dayjs(actualRecord.file.lastModified).toISOString()
             : dayjs().toISOString());
         return dateVal ? dayjs(dateVal).format('DD/MM/YYYY HH:mm') : dayjs().format('DD/MM/YYYY HH:mm');
       },
@@ -657,8 +679,17 @@ export default function InfrastructureAttachmentTab({
       width: readonly ? 90 : 120,
       align: 'center' as const,
       render: (_: unknown, record: InfrastructureAttachmentItem) => {
-        const isImg = isImageFile(record.fileName, record.fileType);
-        const isPdf = isPdfFile(record.fileName, record.fileType);
+        const actualRecord = (Array.isArray(record) ? record[0] : record) || {};
+        const resolvedName =
+          actualRecord.fileName ||
+          (actualRecord as any).name ||
+          (actualRecord as any).originalFileName ||
+          (actualRecord as any).filename ||
+          actualRecord.file?.name ||
+          actualRecord.originFileObj?.name ||
+          'Tài liệu đính kèm';
+        const isImg = isImageFile(resolvedName, actualRecord.fileType);
+        const isPdf = isPdfFile(resolvedName, actualRecord.fileType);
         const isPreviewable = isImg || isPdf;
         const previewTooltip = isImg ? 'Xem chi tiết ảnh' : 'Xem trước PDF';
 
@@ -678,7 +709,7 @@ export default function InfrastructureAttachmentTab({
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  onClick={() => handlePreview(record)}
+onClick={() => handlePreview(actualRecord)}
                   title={previewTooltip}
                 />
               ) : (
@@ -696,7 +727,7 @@ export default function InfrastructureAttachmentTab({
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onClick={() => handleDownloadRecord(record)}
+                onClick={() => handleDownloadRecord(actualRecord)}
                 title="Tải xuống tệp đính kèm"
               />
             </div>
@@ -717,8 +748,8 @@ export default function InfrastructureAttachmentTab({
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onClick={() => handlePreview(record)}
-                title={previewTooltip}
+onClick={() => handlePreview(actualRecord)}
+                  title={previewTooltip}
               />
             ) : (
               <span style={{ width: 32, height: 32, display: 'inline-block' }} />
@@ -734,7 +765,7 @@ export default function InfrastructureAttachmentTab({
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              onClick={() => handleDownloadRecord(record)}
+              onClick={() => handleDownloadRecord(actualRecord)}
               title="Tải xuống tệp đính kèm"
             />
             <Button
@@ -749,7 +780,7 @@ export default function InfrastructureAttachmentTab({
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              onClick={() => onDelete?.(record.id)}
+              onClick={() => onDelete?.(actualRecord.id)}
               title="Xóa tệp đính kèm"
             />
           </div>

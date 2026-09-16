@@ -1,140 +1,138 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import {
-  Button,
-  Modal,
-  Input,
-  Select,
-  Space,
-  Typography,
-  Form,
-  DatePicker,
-  Row,
-  Col,
-  Tabs,
-  InputNumber,
-} from 'antd';
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  EnvironmentOutlined,
-  HistoryOutlined,
-  SearchOutlined,
-  BankOutlined,
-  SlidersOutlined,
-  FileTextOutlined,
-  AuditOutlined,
-  DownOutlined,
-  RightOutlined,
-} from '@ant-design/icons';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
-  dikeRevetmentCRUD,
-  dikeRevetmentApproval,
-} from '../../services/dikeRevetmentService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
+  AuditOutlined,
+  BankOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  EnvironmentOutlined,
+  FileTextOutlined,
+  HistoryOutlined,
+  PlusOutlined,
+  RightOutlined,
+  SearchOutlined,
+  SlidersOutlined,
+} from '@ant-design/icons';
 import {
-  parseWktToCoordinates,
-  validateDmsCoordinates,
-  serializeCoordinatesToWkt,
-  dmsToDd,
-} from '../../utils/gisGeometry';
-import type {
-  DikeRevetmentResponse,
-  DikeRevetmentType,
-  CreateDikeRevetmentRequest,
-  UpdateDikeRevetmentRequest,
-} from '../../types/dikeRevetment';
-import { DIKE_REVETMENT_STATUS_LABELS } from '../../types/dikeRevetment';
-import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
-import { organizationService } from '../../services/organizationService';
-import type { Organization } from '../../services/organizationService';
-import { portCRUD } from '../../services/portService';
-import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
-import { ScreenHeader, DataTable, FilterTableLayout } from '../../components/list-view';
+  Button,
+  Col,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Typography,
+} from 'antd';
+import EmptyState from '../../components/EmptyState';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import EmptyState from '../../components/EmptyState';
-import toast, { message } from '../../components/ToastNotification';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol as MapSymbol } from '../../services/symbolService';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
-import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { colors } from '../../themetokenchk';
-import * as themeTokenChk from '../../themetokenchk';
-import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
-import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
-import { AppDrawer } from '../../components/shared/AppDrawer';
+import toast, { message } from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import * as themeTokenChk from '../../themetokenchk';
 import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
+  DRAWER_WIDTH,
   actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  fontSizeSm,
-  fontSizeMd,
+  borderDefault,
+  cellSubtitleStyle,
+  cellTitleStyle,
+  colors,
+  drawerFooterStyle,
+  drawerTitleStyle,
   fontSizeLg,
+  fontSizeMd,
+  fontSizeSm,
   fontWeightBold,
   fontWeightMedium,
-  surfaceCard,
-  borderDefault,
-  radiusPill,
-  radiusMd,
-  spaceXs,
-  spaceSm,
-  spaceMd,
-  spaceFormField,
-  spaceXl,
-  inputStyle,
-  selectStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
   formFieldStyle,
   formRowGutter,
-  drawerTitleStyle,
-  drawerFooterStyle,
-  DRAWER_WIDTH,
-  requiredMarkStyle,
+  getDatePickerProps,
   getRangePickerProps,
   getSidebarDatePickerProps,
-  getDatePickerProps,
-  cellTitleStyle,
-  cellSubtitleStyle,
-  statusBadgeStyle,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
   historyAccentBarStyle,
-  historyInfoTitleStyle,
+  historyArrowStyle,
   historyChangeRowStyle,
   historyCreateRowStyle,
   historyFieldLabelStyle,
-  historyOldValueStyle,
+  historyGroupGridStyle,
+  historyInfoCardStyle,
+  historyInfoTitleStyle,
+  historyMetaRowStyle,
   historyNewValueStyle,
-  historyArrowStyle,
+  historyOldValueStyle,
+  historyTimeStyle,
+  inputStyle,
+  outlineButtonStyle,
+  primaryButtonStyle,
+  radiusMd,
+  radiusPill,
+  requiredMarkStyle,
+  selectStyle,
+  spaceFormField,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  spaceXs,
+  statusAttention,
+  statusBadgeStyle,
+  statusCritical,
+  statusDraft,
+  statusOperational,
+  surfaceCard,
+  textPrimary,
+  textSecondary,
+  textTertiary,
 } from '../../themetokenchk';
-
+import api from '../../services/api';
 import {
-  parseNumber20,
-  getValueFromEvent20,
+  dikeRevetmentApproval,
+  dikeRevetmentCRUD,
+} from '../../services/dikeRevetmentService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { portCRUD } from '../../services/portService';
+import type { Symbol as MapSymbol } from '../../services/symbolService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import type {
+  CreateDikeRevetmentRequest,
+  DikeRevetmentResponse,
+  DikeRevetmentType,
+  UpdateDikeRevetmentRequest,
+} from '../../types/dikeRevetment';
+import { DIKE_REVETMENT_STATUS_LABELS } from '../../types/dikeRevetment';
+import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import {
+  dmsToDd,
+  parseWktToCoordinates,
+  serializeCoordinatesToWkt,
+  validateDmsCoordinates,
+} from '../../utils/gisGeometry';
+import { fmtInputNumber, fmtNum, normalizeSafeNumber } from '../../utils/numFmt';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import {
   decimalNumberRule,
-  safeNumber,
+  getValueFromEvent20,
+  parseNumber20,
   safeDecimal,
 } from '../../utils/numberRuleHelper';
-import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
@@ -533,13 +531,6 @@ const renderDmsGroup = (
       {messageRow}
     </div>
   );
-};
-
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /berth). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  return parseWktToCoordinates(wkt);
 };
 
 export default function DikeRevetmentList() {
@@ -1473,6 +1464,7 @@ export default function DikeRevetmentList() {
   const historyOldValue = (item: any): string | null => item.previousValue ?? item.oldValue ?? null;
   const historyNewValue = (item: any): string | null => item.newValue ?? null;
   const historyActor = (item: any): string => { const raw = item?.approvedBy || item?.changedBy || ''; return raw || '—'; };
+
   // Render giá trị thay đổi đẹp như /vts-system: tọa độ → DMS, enum/trạng thái/biểu tượng → tên tiếng Việt
   const renderHistoryValue = useCallback((field: string, raw: string | null): React.ReactNode => {
     if (raw === null || raw === undefined || raw === '' || raw === '—' || raw === '(null)' || raw === '(trống)' || raw === 'null' || raw === 'Chưa có' || raw === 'Chua co') {
@@ -1759,7 +1751,7 @@ export default function DikeRevetmentList() {
     }>;
   }, [historyRecords, renderHistoryContent]);
 
-  const historyFieldCount = validHistoryGroups.length;
+  const historyUpdateCount = validHistoryGroups.length;
 
   const renderHistoryTimeline = () => {
     if (validHistoryGroups.length === 0) {
@@ -2270,7 +2262,6 @@ export default function DikeRevetmentList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
-              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
               {...getRangePickerProps({
                 value: filterUpdatedRange,
                 onChange: (range: unknown) => {
@@ -3679,7 +3670,7 @@ export default function DikeRevetmentList() {
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.dikeRevetmentName || historyTarget.code}` : 'Lịch sử thay đổi'}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

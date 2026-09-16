@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -86,6 +87,7 @@ class CoastalStationCospasSarsatControllerTest {
         entity.setContactPhone("+84111222333");
         entity.setSignalRange(5000.0);
         entity.setOperatingMode("Automatic");
+        entity.setServicesProvided("Dịch vụ tìm kiếm cứu nạn");
         entity.setIsActive(true);
         entity.setStatus(StationStatus.DRAFT);
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
@@ -108,6 +110,8 @@ class CoastalStationCospasSarsatControllerTest {
                 .contactPhone("+84111222333")
                 .signalRange(5000.0)
                 .operatingMode("Automatic")
+                .servicesProvided("Dịch vụ tìm kiếm cứu nạn")
+                .services("Dịch vụ tìm kiếm cứu nạn")
                 .status(StationStatus.DRAFT)
                 .approvalStatus(ApprovalStatus.DRAFT)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
@@ -143,7 +147,8 @@ class CoastalStationCospasSarsatControllerTest {
                         .content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("COSPAS-001"))
-                .andExpect(jsonPath("$.name").value("Cospas-Sarsat Station"));
+                .andExpect(jsonPath("$.name").value("Cospas-Sarsat Station"))
+                .andExpect(jsonPath("$.servicesProvided").value("Dịch vụ tìm kiếm cứu nạn"));
 
         verify(service).createStation(any());
     }
@@ -183,6 +188,46 @@ class CoastalStationCospasSarsatControllerTest {
     }
 
     @Test
+    @DisplayName("PUT /api/v1/stations/cospas-sarsat/{id}?action=APPROVE — cập nhật hồ sơ APPROVED không gọi submit/approveLevel")
+    void testUpdateApprovedWithActionApprove() throws Exception {
+        UUID id = UUID.randomUUID();
+        CoastalStationCospasSarsat entity = makeEntity(id);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setName("Updated Approved Cospas");
+        when(service.updateStation(eq(id), any())).thenReturn(entity);
+
+        String json = """
+                {
+                  "stationCode": "COSPAS-001",
+                  "stationName": "Updated Approved Cospas",
+                  "frequency": "406MHz",
+                  "coverageArea": "Global",
+                  "beaconProtocol": "COSPAS",
+                  "emergencyChannel": "121.5MHz",
+                  "antennaType": "Dipole",
+                  "locationAddress": "456 Beacon Rd",
+                  "contactPerson": "Bob Smith",
+                  "contactPhone": "+84111222333",
+                  "signalRange": 5000.0,
+                  "operatingMode": "Automatic"
+                }
+                """;
+
+        mockMvc.perform(put(BASE + "/{id}", id)
+                        .param("action", "APPROVE")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Updated Approved Cospas"))
+                .andExpect(jsonPath("$.approvalStatus").value("APPROVED"));
+
+        verify(service).updateStation(eq(id), any());
+        verify(service, never()).submit(any());
+        verify(service, never()).approveLevel1(any());
+        verify(service, never()).approveLevel2(any());
+    }
+
+    @Test
     @DisplayName("DELETE /api/v1/stations/cospas-sarsat/{id} — soft-deletes and returns 204")
     void testDelete() throws Exception {
         UUID id = UUID.randomUUID();
@@ -204,7 +249,8 @@ class CoastalStationCospasSarsatControllerTest {
         mockMvc.perform(get(BASE + "/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stationCode").value("COSPAS-001"))
-                .andExpect(jsonPath("$.stationName").value("Cospas-Sarsat Station"));
+                .andExpect(jsonPath("$.stationName").value("Cospas-Sarsat Station"))
+                .andExpect(jsonPath("$.servicesProvided").value("Dịch vụ tìm kiếm cứu nạn"));
     }
 
     @Test
@@ -346,11 +392,35 @@ class CoastalStationCospasSarsatControllerTest {
         CoastalStationCospasSarsatHistoryResponse history = new CoastalStationCospasSarsatHistoryResponse();
         history.setId(UUID.randomUUID());
         history.setStationCode("COSPAS-001");
+        history.setChangedField("stationName");
         when(service.getHistory(id)).thenReturn(List.of(history));
 
         mockMvc.perform(get(BASE + "/{id}/history", id))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].stationCode").value("COSPAS-001"));
+                .andExpect(jsonPath("$[0].stationCode").value("COSPAS-001"))
+                .andExpect(jsonPath("$[0].changedField").value("stationName"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/stations/cospas-sarsat/{id}/history with pagination and filters — returns 200")
+    void testGetHistoryWithParams() throws Exception {
+        UUID id = UUID.randomUUID();
+        CoastalStationCospasSarsatHistoryResponse history = new CoastalStationCospasSarsatHistoryResponse();
+        history.setId(UUID.randomUUID());
+        history.setStationCode("COSPAS-001");
+        history.setChangedField("coverageArea");
+        when(service.getHistory(eq(id), eq(0), eq(20), eq("Area"), any(), any()))
+                .thenReturn(List.of(history));
+
+        mockMvc.perform(get(BASE + "/{id}/history", id)
+                        .param("page", "0")
+                        .param("pageSize", "20")
+                        .param("keyword", "Area"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].stationCode").value("COSPAS-001"))
+                .andExpect(jsonPath("$[0].changedField").value("coverageArea"));
+
+        verify(service).getHistory(eq(id), eq(0), eq(20), eq("Area"), any(), any());
     }
 
     @Test

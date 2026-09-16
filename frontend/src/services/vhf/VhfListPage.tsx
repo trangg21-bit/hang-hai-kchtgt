@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  parseWktToCoordinates,
-  ddToDms,
+    ddToDms,
+    parseWktToCoordinates,
 } from "../../utils/gisGeometry";
+import { fmtNum } from "../../utils/numFmt";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
@@ -45,81 +46,80 @@ function formatDate(dateStr: string | null | undefined): string {
   } catch { return dateStr; }
 }
 
-import { usePermissionStore } from "../../store/permissionStore";
 import {
-  Button,
-  DatePicker,
-  Space,
-  Input,
-  Select,
-  Modal,
-  Form,
-  Drawer,
-  Tabs,
-  Typography,
-} from "antd";
-import { FilterOrgUnitTreeSelect } from "../../components/org-unit";
-import {
-  PlusOutlined,
-  SearchOutlined,
-  HistoryOutlined,
-  EnvironmentOutlined,
-  BankOutlined,
-  SlidersOutlined,
-  AuditOutlined,
-  DownOutlined,
-  RightOutlined,
+    AuditOutlined,
+    BankOutlined,
+    DownOutlined,
+    EnvironmentOutlined,
+    HistoryOutlined,
+    PlusOutlined,
+    RightOutlined,
+    SearchOutlined,
+    SlidersOutlined,
 } from "@ant-design/icons";
-import { useSearchParams } from "react-router-dom";
+import {
+    Button,
+    DatePicker,
+    Drawer,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+    Tabs,
+    Typography,
+} from "antd";
 import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
-dayjs.extend(isBetween);
+import { useSearchParams } from "react-router-dom";
+import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import {
-  fetchVhfList,
-  deleteVhf,
-  submitVhf,
-  approveVhfC1,
-  approveVhfC2,
-  fetchVhfHistory,
-  fetchVhfAttachments,
-  downloadVhfAttachment,
-  fetchOperatingOrganizations,
-  generateVhfCode,
-} from "./api";
-import {
-  OPERATIONAL_STATUS_OPTIONS,
-  ATTACHED_INFRA_TYPE_OPTIONS,
-  operationalStatusBadge,
-} from "./schema";
-import type { VhfResponse } from "./types";
-import VhfForm, { type VhfFormRef } from "./VhfForm";
+DataTable,
+    FilterTableLayout,
+    Pagination,
+    ScreenHeader,
+    SidebarFilterField,
+} from "../../components/list-view";
+import { FilterOrgUnitTreeSelect } from "../../components/org-unit";
 import AppDrawer from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
-import { useAuthStore } from "../../store/authStore";
-import {
-  ScreenHeader,
-  DataTable,
-  Pagination,
-  FilterTableLayout,
-  SidebarFilterField,
-} from "../../components/list-view";
-import { VIETNAM_PROVINCES } from "../../types/common";
-import { organizationService } from "../organizationService";
-import { userService } from "../userService";
-import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
-import { isGisHistoryField } from "../../utils/historyGisFormat";
 import DetailTable from "../../components/shared/DetailTable";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
-import GisLocationSelector from "../../components/gis/GisLocationSelector";
-import { ThemeTokenProvider, THEME_SCOPE_CLASS } from "../../context/ThemeTokenContext";
 import toast from "../../components/ToastNotification";
+import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
+import { useAuthStore } from "../../store/authStore";
+import { usePermissionStore } from "../../store/permissionStore";
 import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
-import api from "../api";
+import { VIETNAM_PROVINCES } from "../../types/common";
+import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { isGisHistoryField } from "../../utils/historyGisFormat";
 import { canEditApprovalRecord } from "../../utils/approvalEditPolicy";
-import { fmtNum } from "../../utils/numFmt";
+import api from "../api";
+import { organizationService } from "../organizationService";
+import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
+import { userService } from "../userService";
+import {
+    approveVhfC1,
+    approveVhfC2,
+    deleteVhf,
+    downloadVhfAttachment,
+    fetchOperatingOrganizations,
+    fetchVhfAttachments,
+    fetchVhfHistory,
+    fetchVhfList,
+    generateVhfCode,
+    submitVhf,
+} from "./api";
+import {
+    ATTACHED_INFRA_TYPE_OPTIONS,
+    OPERATIONAL_STATUS_OPTIONS,
+    operationalStatusBadge,
+} from "./schema";
+import type { VhfResponse } from "./types";
+import VhfForm, { type VhfFormRef } from "./VhfForm";
+dayjs.extend(isBetween);
 
 // ── Đơn vị đo (unit of measure) labels ──────────────────────────────
 const UOM_LABELS: Record<number, string> = {
@@ -157,56 +157,56 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
 }
 
 import {
-  colors,
-  DRAWER_TABLE_SCROLL_Y,
-  fontSizeCellTitle,
-  fontSizeMd,
-  fontSizeSm,
-  fontWeightBold,
-  fontWeightMedium,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  statusCritical,
-  statusAttention,
-  statusDraft,
-  statusOperational,
-  statusInfo,
-  actionPrimary,
-  borderDefault,
-  surfaceCard,
-  radiusPill,
-  spaceXs,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  spaceFormField,
-  drawerProps,
-  drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  requiredMarkStyle,
-  statusBadgeStyle,
-  getRangePickerProps,
-  getSidebarDatePickerProps,
-  cellTitleStyle,
-  cellSubtitleStyle,
-  icons,
-  fontSizeLg,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_TABLE_SCROLL_Y,
+    drawerCloseBtnStyle,
+    drawerFooterStyle,
+    drawerProps,
+    drawerTitleStyle,
+    fontSizeCellTitle,
+    fontSizeLg,
+    fontSizeMd,
+    fontSizeSm,
+    fontWeightBold,
+    fontWeightMedium,
+    getRangePickerProps,
+    getSidebarDatePickerProps,
+    historyAccentBarStyle,
+    historyArrowStyle,
+    historyChangeRowStyle,
+    historyCreateRowStyle,
+    historyFieldLabelStyle,
+    historyGroupGridStyle,
+    historyInfoCardStyle,
+    historyInfoTitleStyle,
+    historyMetaRowStyle,
+    historyNewValueStyle,
+    historyOldValueStyle,
+    historyTimeStyle,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    spaceXs,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusInfo,
+    statusOperational,
+    surfaceCard,
+    textPrimary,
+    textSecondary,
+    textTertiary,
 } from "../../themetokenchk";
 
 // ── Card/section trong Drawer Xem chi tiết — đồng bộ chuẩn /cctv (/berth) ──
@@ -1260,7 +1260,7 @@ const VhfListPage = () => {
     }
   }, [rejectingRecord, rejectReason, fetchData, fetchTabCounts]);
 
-  const validHistoryGroups = useMemo(() => {
+const validHistoryGroups = useMemo(() => {
     if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
     const groups: Array<{ tsSec: number; ts: string; actor: string; status: string; approvalLevel: any; items: any[] }> = [];
 
@@ -1334,7 +1334,7 @@ const VhfListPage = () => {
     }>;
   }, [historyRecords, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap]);
 
-  const historyFieldCount = validHistoryGroups.length;
+  const historyUpdateCount = validHistoryGroups.length;
 
   const renderVhfHistoryTimeline = () => {
     const q = (historySearch || '').toLowerCase().trim();
@@ -3289,7 +3289,7 @@ const VhfListPage = () => {
                   {historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi'}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {historyFieldCount}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>

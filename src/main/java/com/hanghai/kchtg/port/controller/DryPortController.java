@@ -164,7 +164,7 @@ public class DryPortController {
      * URL cũ giữ cho giao diện hiện tại; không còn luồng duyệt 2 cấp.
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.checkAny(authentication, 'dryport:approvec1', 'dryport:approvec2', 'dryport:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'dryport:approvec1', 'dryport:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             Authentication authentication) {
@@ -175,7 +175,7 @@ public class DryPortController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'dryport:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'dryport:approvec1', 'dryport:approvec2')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
             @RequestParam @jakarta.validation.constraints.Size(min = 10, message = "Lý do từ chối tối thiểu 10 ký tự") String reason,

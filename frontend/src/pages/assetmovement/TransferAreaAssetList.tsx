@@ -1,87 +1,87 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Input, Space } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
-  SearchOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
-import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
-  CommonStatusTabs,
-  TableColumnType,
-  type TableOption,
-  type FilterOption,
-  type ScreenHeaderAction,
-} from '../../components/list-view';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import AppDrawer from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import { organizationService, type Organization } from '../../services/organizationService';
-import { transferAreaCRUD } from '../../services/portService';
-import type { TransferArea } from '../../types/port';
-import {
-  createKhaiThac,
-  createAssetDecrease,
-  createAssetIncrease,
-  createTransferAreaAsset,
-  deleteTransferAreaAsset,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchInfraAssetHistory,
-  fetchKhaiThacList,
-  fetchTransferAreaAssets,
-  updateTransferAreaAsset,
-} from '../../services/assetmovement/api';
-import { renderStandardHistoryCards, isBlankOrDash, DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
-import { formatHistoryNumber } from '../../utils/numFmt';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { documentApi } from '../../app/document/api';
-import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetValueAdjustmentDetails,
-  TransferAreaAsset,
-  TransferAreaAssetFilters,
-  TransferAreaAssetPayload,
-} from '../../services/assetmovement/types';
 import {
-  type InfrastructureAttachmentItem,
+    CommonStatusTabs,
+    CommonTable,
+    FilterTableLayout,
+    ScreenHeader,
+    TableColumnType,
+    TableFilter,
+    type FilterOption,
+    type ScreenHeaderAction,
+    type TableOption,
+} from '../../components/list-view';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import AppDrawer from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import {
+    type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import {
+    createAssetDecrease,
+    createAssetIncrease,
+    createKhaiThac,
+    createTransferAreaAsset,
+    deleteTransferAreaAsset,
+    fetchAssetDecreaseList,
+    fetchAssetIncreaseList,
+    fetchInfraAssetHistory,
+    fetchKhaiThacList,
+    fetchTransferAreaAssets,
+    updateTransferAreaAsset,
+} from '../../services/assetmovement/api';
+import type {
+    AssetDecreaseResponse,
+    AssetExploitationResponse,
+    AssetIncreaseResponse,
+    AssetValueAdjustmentDetails,
+    TransferAreaAsset,
+    TransferAreaAssetFilters,
+    TransferAreaAssetPayload,
+} from '../../services/assetmovement/types';
+import { organizationService, type Organization } from '../../services/organizationService';
+import { transferAreaCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  colors,
-  borderDefault,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  fontSizeMd,
-  fontSizeLg,
-  fontWeightBold,
-  textTertiary,
-  actionPrimary,
-  drawerTitleStyle,
+    actionPrimary,
+    borderDefault,
+    colors,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd,
+    fontWeightBold,
+    radiusPill,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    textTertiary,
 } from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import TransferAreaAssetForm, { type FormValues } from './TransferAreaAssetForm';
+import type { TransferArea } from '../../types/port';
+import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import TransferAreaAssetDetailContent from './TransferAreaAssetDetailContent';
+import TransferAreaAssetForm, { type FormValues } from './TransferAreaAssetForm';
 import TransferAreaAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
+    type OperationMode,
+    type OperationValues,
 } from './TransferAreaAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -217,10 +217,37 @@ export default function TransferAreaAssetList() {
     });
   }, [historyRecords, historySearch, historyFrom, historyTo]);
 
-  const historyFieldCount = useMemo(
-    () => filteredHistoryRecords.length,
-    [filteredHistoryRecords]
-  );
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistoryRecords,
+      fieldLabels: TRANSFER_AREA_ASSET_FIELD_LABELS,
+      resolveUnitName: () => {
+        const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+      },
+      formatValue: (fn, raw) => {
+        if (isBlankOrDash(raw)) return '';
+        const normKey = (fn || '').toLowerCase();
+        if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
+          return orgName.get(raw!) || raw;
+        }
+        if (fn === 'transferAreaId') {
+          const item = transferAreaMap.get(raw!);
+          return item ? `${item.transferAreaCode} - ${item.transferAreaName}` : raw;
+        }
+        if (
+          fn === 'originalValue' ||
+          fn === 'remainingValue' ||
+          fn === 'accumulatedDepreciation' ||
+          fn === 'monthlyDepreciation' ||
+          fn === 'value'
+        ) {
+          return formatHistoryNumber(raw);
+        }
+        return undefined;
+      },
+    });
+  }, [filteredHistoryRecords, historyTarget, orgName, transferAreaMap]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -1082,7 +1109,7 @@ export default function TransferAreaAssetList() {
                   {historyTarget ? `Lịch sử thay đổi — ${historyTarget.assetName}` : 'Lịch sử thay đổi'}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {historyFieldCount}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>

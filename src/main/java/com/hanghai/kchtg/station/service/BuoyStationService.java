@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.station.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -42,7 +41,6 @@ public class BuoyStationService {
     private final BuoyStationRepository phaoRepo;
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
-    private final ObjectMapper objectMapper;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
     private final PortRepository portRepository;

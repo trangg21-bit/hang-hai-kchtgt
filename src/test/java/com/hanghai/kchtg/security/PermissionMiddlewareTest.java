@@ -243,4 +243,36 @@ class PermissionMiddlewareTest {
         verify(permissionRoleService).checkPermission(eq(auth), eq("vts"), eq("read"));
         verify(filterChain).doFilter(request, response);
     }
+
+    @Test
+    void doFilterInternal_whenCospasSarsatHistory_shouldUseCoastalStationCospasSarsatResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/stations/cospas-sarsat/14363ff9-2bff-44dc-b661-fe2e593f0027/history");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(auth), eq("coastalstationcospassarsat"), eq("history"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(auth), eq("coastalstationcospassarsat"), eq("history"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenLritHistory_shouldUseCoastalStationLritResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/stations/lrit/13f57da1-06e7-4173-8d9f-7598fe90d1ad/history");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(auth), eq("coastalstationlrit"), eq("history"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(auth), eq("coastalstationlrit"), eq("history"));
+        verify(filterChain).doFilter(request, response);
+    }
 }

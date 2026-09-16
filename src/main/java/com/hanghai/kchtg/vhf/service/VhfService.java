@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vhf.service;
 
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+
 import com.hanghai.kchtg.vhf.dto.VhfResponse;
 import com.hanghai.kchtg.vhf.dto.VhfOptionResponse;
 import com.hanghai.kchtg.vhf.dto.CreateVhfRequest;
@@ -301,8 +303,7 @@ public class VhfService {
       }
     }
 
-    if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()
-        && !Objects.equals(request.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
+if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
       previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
     }
     if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {

@@ -426,6 +426,28 @@ public class EffectivePermissionService {
             }
         }
 
+        // 2b. History matching: if action is "history", allow if user has res:history OR res:read (or parent domain history/read)
+        if (ACTION_HISTORY.equals(action) || "history".equals(action)) {
+            for (String res : targetResources) {
+                if (permissions.contains(PermissionConstants.build(res, ACTION_HISTORY))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_READ))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_WILDCARD))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_MANAGE))) {
+                    return true;
+                }
+            }
+            if (parentDomains != null) {
+                for (String parent : parentDomains) {
+                    if (permissions.contains(PermissionConstants.build(parent, ACTION_HISTORY))
+                            || permissions.contains(PermissionConstants.build(parent, ACTION_READ))
+                            || permissions.contains(PermissionConstants.build(parent, ACTION_WILDCARD))
+                            || permissions.contains(PermissionConstants.build(parent, ACTION_MANAGE))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         // 3. Implicit Read: Có bất kỳ quyền thao tác nào trên resource (hoặc domain bao trùm) thì mặc định có quyền xem
         if (isReadAction(action)) {
             for (String p : permissions) {

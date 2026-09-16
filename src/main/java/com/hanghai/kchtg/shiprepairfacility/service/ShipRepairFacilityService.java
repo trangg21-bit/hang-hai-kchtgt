@@ -176,7 +176,7 @@ public class ShipRepairFacilityService {
         }
         if (request.getCoordinates() != null) {
             String newCoord = request.getCoordinates().trim();
-            if (!java.util.Objects.equals(oldCoord, newCoord)) {
+            if (!com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(oldCoord, newCoord)) {
                 previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
             }
             GisGeometryType newGeom = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;

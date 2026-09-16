@@ -203,7 +203,7 @@ export const normalizeConditionStatus = (status?: unknown): ConditionStatus => {
     s === 'DUNG_KHAI_THAC' ||
     s === 'DUNG_HOAT_DONG' ||
     s === 'TAM_DUNG' ||
-    s === '1' ||
+    s === '2' ||
     s === '5'
   ) {
     return ConditionStatus.SUSPENDED;
@@ -213,6 +213,7 @@ export const normalizeConditionStatus = (status?: unknown): ConditionStatus => {
     s === 'NOT_YET_OPERATIONAL' ||
     s === 'CHUA_KHAI_THAC' ||
     s === 'CHUA_HOAT_DONG' ||
+    s === '0' ||
     s === '3' ||
     s === '4'
   ) {

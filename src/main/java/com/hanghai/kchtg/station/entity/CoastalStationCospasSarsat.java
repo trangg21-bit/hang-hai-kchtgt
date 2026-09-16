@@ -96,7 +96,19 @@ public class CoastalStationCospasSarsat extends BaseApprovableEntity {
     @Column(name = "operating_mode", length = 255)
     private String operatingMode;
 
+    @Column(name = "services_provided", length = 1000)
+    private String servicesProvided;
+
     // --- ALIASES & TƯƠNG THÍCH NGƯỢC ---
+
+    /** Tương thích ngược: services ánh xạ với servicesProvided. */
+    public String getServices() {
+        return this.servicesProvided;
+    }
+
+    public void setServices(String services) {
+        this.servicesProvided = services;
+    }
 
     /** Tương thích ngược: unitId ánh xạ trực tiếp vào orgUnitId của BaseApprovableEntity. */
     public UUID getUnitId() {

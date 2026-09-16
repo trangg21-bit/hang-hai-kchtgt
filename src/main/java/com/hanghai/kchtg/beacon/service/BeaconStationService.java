@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.beacon.dto.BeaconHistoryEntry;
 import com.hanghai.kchtg.beacon.dto.beacon_station.BeaconStationResponse;
@@ -802,7 +801,6 @@ public class BeaconStationService {
 
     private void logHistory(BeaconStation entity,
             BeaconHistoryActionType action, String fields, String previousJson, String newJson, String customReason) {
-        Long legacyUserId = resolveCurrentUserId();
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (infraHistoryRepo != null && entity.getId() != null) {
             InfrastructureHistoryStatus status = switch (action) {

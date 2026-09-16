@@ -40,7 +40,7 @@ private void copyEditableFields(InfraAssetRequest source, InfraAsset target) {
             "portAuthorityApprovedBy", "portAuthorityApprovedAt", "portAuthorityApprovalContent",
             "departmentApprovedBy", "departmentApprovedAt", "departmentApprovalContent",
             "approvedBy", "approvedAt", "approvedRemarks");
-    
+
     // Chỉ cập nhật ngày duyệt Cục khi duyệt mới (nếu trước đó chưa có)
     if (status == ApprovalStatus.APPROVED) {
         if (target.getDepartmentApprovedAt() == null) {
@@ -129,18 +129,18 @@ renderStandardHistoryCards({
   formatValue: (fn, raw) => {
     if (isBlankOrDash(raw)) return '';
     const normKey = (fn || '').toLowerCase();
-    
+
     // Map UUID đơn vị sang Tên tiếng Việt
     if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
       return orgName.get(raw!) || raw;
     }
-    
+
     // Map hạ tầng liên kết (khớp đúng trường model của interface)
     if (fn === 'transferAreaId') {
       const item = transferAreaMap.get(raw!);
       return item ? `${item.transferAreaCode} - ${item.transferAreaName}` : raw;
     }
-    
+
     // Định dạng số tiền có phân cách hàng nghìn
     if (
       fn === 'originalValue' ||
@@ -156,23 +156,27 @@ renderStandardHistoryCards({
 })
 ```
 
-### 4.3. Loại trừ trường duyệt & Khớp số lượng badge "Tổng cộng"
-- Trong `changeHistoryRenderer.tsx`, bổ sung toàn bộ trường duyệt vào `DEFAULT_IGNORED_FIELDS`.
-- Trong màn hình danh sách, lọc bỏ các trường ignored trước khi tính tổng số:
+### 4.3. Loại trừ trường duyệt & Đếm số lần update cho badge "Tổng cộng" (Số lần update)
+- **Quy chuẩn hiển thị**: Badge trên header Drawer Lịch sử thay đổi (`Tổng cộng {historyUpdateCount}`) **BẮT BUỘC ĐẾM SỐ LẦN UPDATE (số thẻ thay đổi/phiên cập nhật hiển thị trên UI)**, tuyệt đối **KHÔNG ĐẾM SỐ TRƯỜNG THAY ĐỔI / SỐ DÒNG DIFF THÔ** (`filteredHistoryRecords.length` hoặc `historyRecords.length`).
+- Sử dụng hàm tiện ích chuẩn `countStandardHistoryCards` từ `changeHistoryRenderer.tsx`:
   ```tsx
-  const filteredHistoryRecords = useMemo(() => {
-    return historyRecords.filter((rec) => {
-      const fn = rec.fieldName || rec.changedField;
-      if (fn && DEFAULT_IGNORED_FIELDS.has(fn)) return false;
-      // Tìm kiếm theo từ khóa & khoảng ngày...
-      return true;
-    });
-  }, [historyRecords, historySearch, historyFrom, historyTo]);
+  import { countStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 
-  const historyFieldCount = useMemo(
-    () => filteredHistoryRecords.length,
-    [filteredHistoryRecords]
-  );
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistoryRecords,
+      fieldLabels: YOUR_FEATURE_FIELD_LABELS,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => { /* format logic */ },
+      resolveUnitName: (rec) => { /* resolve unit */ },
+    });
+  }, [filteredHistoryRecords, ...]);
+  ```
+- Hiển thị trên header Drawer:
+  ```tsx
+  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+    Tổng cộng {historyUpdateCount}
+  </span>
   ```
 
 ---
@@ -230,4 +234,4 @@ renderStandardHistoryCards({
 6. [ ] **Frontend Tiếng Việt**: Mỗi màn hình định nghĩa từ điển `fieldLabels` độc lập, không nhồi nhét trường đặc thù vào `GLOBAL_KCHT_FIELD_LABELS`.
 7. [ ] **Frontend UUID Resolution**: Khớp đúng trường code/name trong interface TypeScript (`transferAreaName`, `stormShelterName`...) để resolve sang tên tiếng Việt trong `formatValue`.
 8. [ ] **Frontend Unit Header**: Có hiển thị tên đơn vị quản lý qua `resolveUnitName`.
-9. [ ] **Badge Count**: Số lượng "Tổng cộng" trên header Drawer khớp số lượng thẻ hiển thị thực tế.
+9. [ ] **Badge Count**: Số lượng "Tổng cộng" trên header Drawer đếm chính xác số lần update (số thẻ hiển thị thực tế qua `countStandardHistoryCards`), không đếm số trường raw.

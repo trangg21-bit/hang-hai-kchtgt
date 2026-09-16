@@ -212,7 +212,11 @@ export const lritStationService = {
     const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return res.data?.data || res.data;
+    const data = res.data?.data || res.data;
+    if (Array.isArray(data)) {
+      return data[0] || null;
+    }
+    return data;
   },
 
   async deleteAttachment(id: string, attId: string): Promise<void> {

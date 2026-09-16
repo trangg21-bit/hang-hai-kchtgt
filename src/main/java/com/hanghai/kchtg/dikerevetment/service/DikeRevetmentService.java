@@ -361,7 +361,7 @@ public class DikeRevetmentService {
         applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues);
 
         if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()
-                && !Objects.equals(req.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
+                && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
             previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
         }
         if (req.getGeometryType() != null && req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()

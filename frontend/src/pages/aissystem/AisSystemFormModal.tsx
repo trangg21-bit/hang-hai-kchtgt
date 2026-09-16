@@ -163,7 +163,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
   const canCreate = hasPerm('aissystem:create') || hasPerm('data:create') || isAdmin;
   const canUpdate = canEditApprovalRecord(item?.approvalStatus, { hasPerm, resource: 'aissystem' });
-  const canSaveAndApprove = (hasPerm('aissystem:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canSaveAndApprove = (hasPerm('aissystem:approvec2') || isAdmin);
 
   const [activeTab, setActiveTab] = useState('basic');
   const [submitting, setSubmitting] = useState(false);

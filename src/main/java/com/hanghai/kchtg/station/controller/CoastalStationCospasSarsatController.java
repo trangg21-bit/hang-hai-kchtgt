@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,24 +35,67 @@ public class CoastalStationCospasSarsatController {
 
     private final CoastalStationCospasSarsatService service;
 
+    @GetMapping("/generate-code")
+    @Operation(summary = "Tự sinh mã Đài Cospas-Sarsat (SARSAT-xxxxxx)")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:create', 'specialstation:create', 'data:create')")
+    public ResponseEntity<Map<String, String>> generateCode() {
+        String code = service.generateCode();
+        return ResponseEntity.ok(Map.of("code", code));
+    }
+
     @PostMapping({"", "/create"})
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:create', 'specialstation:create', 'data:create')")
     @Operation(summary = "Tạo mới Đài Cospas-Sarsat")
     public ResponseEntity<CoastalStationCospasSarsat> createStation(
+            @RequestParam(defaultValue = "DRAFT") String action,
             @Valid @RequestBody CoastalStationCospasSarsatRequest request) {
         CoastalStationCospasSarsat created = service.createStation(request);
+        if ("SUBMIT".equalsIgnoreCase(action)) {
+            created = service.submit(created.getId());
+        } else if ("APPROVE".equalsIgnoreCase(action)) {
+            created = service.submit(created.getId());
+            if (created.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL) {
+                created = service.approveLevel1(created.getId());
+            }
+            if (created.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
+                created = service.approveLevel2(created.getId());
+            }
+        }
         return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:update', 'specialstation:update', 'data:update', 'coastalstationcospassarsat:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     @Operation(summary = "Cập nhật Đài Cospas-Sarsat")
     public ResponseEntity<CoastalStationCospasSarsat> updateStation(
             @PathVariable UUID id,
+            @RequestParam(required = false) String action,
             @Valid @RequestBody CoastalStationCospasSarsatUpdateRequest request) {
         CoastalStationCospasSarsat updated = service.updateStation(id, request);
+        if ("SUBMIT".equalsIgnoreCase(action)) {
+            if (updated.getApprovalStatus() == ApprovalStatus.DRAFT
+                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1
+                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2) {
+                updated = service.submit(updated.getId());
+            }
+        } else if ("APPROVE".equalsIgnoreCase(action)) {
+            if (updated.getApprovalStatus() == ApprovalStatus.DRAFT
+                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1
+                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2) {
+                updated = service.submit(updated.getId());
+            }
+            if (updated.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL) {
+                updated = service.approveLevel1(updated.getId());
+            }
+            if (updated.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
+                updated = service.approveLevel2(updated.getId());
+            }
+        }
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:delete', 'specialstation:delete', 'data:delete')")
     @Operation(summary = "Xóa mềm Đài Cospas-Sarsat (chỉ khi DRAFT)")
     public ResponseEntity<Void> deleteStation(@PathVariable UUID id) {
         service.deleteStation(id);
@@ -59,6 +103,7 @@ public class CoastalStationCospasSarsatController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Xem chi tiết Đài Cospas-Sarsat theo ID")
     public ResponseEntity<CoastalStationCospasSarsatResponse> getStationById(@PathVariable UUID id) {
         CoastalStationCospasSarsat entity = service.getStationById(id);
@@ -67,6 +112,7 @@ public class CoastalStationCospasSarsatController {
     }
 
     @GetMapping
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài Cospas-Sarsat chuẩn VTS")
     public ResponseEntity<?> searchOrList(
             @RequestParam(required = false) UUID orgUnitId,
@@ -115,6 +161,7 @@ public class CoastalStationCospasSarsatController {
     }
 
     @GetMapping("/counts")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Đếm số lượng bản ghi theo từng tab trạng thái phê duyệt")
     public ResponseEntity<Map<String, Long>> getCounts(
             @RequestParam(required = false) UUID orgUnitId,
@@ -127,6 +174,7 @@ public class CoastalStationCospasSarsatController {
     }
 
     @GetMapping("/options")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Lấy danh sách chọn nhẹ Đài Cospas-Sarsat (chỉ APPROVED & OPERATIONAL)")
     public ResponseEntity<List<CoastalStationCospasSarsatOptionResponse>> getOptions(
             @RequestParam(required = false) UUID orgUnitId) {
@@ -134,18 +182,21 @@ public class CoastalStationCospasSarsatController {
     }
 
     @GetMapping("/list")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Lấy toàn bộ danh sách Đài Cospas-Sarsat (chưa xóa)")
     public ResponseEntity<List<CoastalStationCospasSarsat>> getAllStations() {
         return ResponseEntity.ok(service.getAllStations());
     }
 
     @GetMapping("/search")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Tìm kiếm Đài Cospas-Sarsat theo từ khóa đơn giản")
     public ResponseEntity<List<CoastalStationCospasSarsat>> searchStations(@RequestParam String keyword) {
         return ResponseEntity.ok(service.searchStations(keyword));
     }
 
     @GetMapping("/by-code/{code}")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Tìm Đài Cospas-Sarsat theo mã")
     public ResponseEntity<CoastalStationCospasSarsat> findByCode(@PathVariable String code) {
         return service.findByCode(code)
@@ -156,24 +207,28 @@ public class CoastalStationCospasSarsatController {
     // --- QUY TRÌNH PHÊ DUYỆT 2 CẤP ---
 
     @PostMapping("/{id}/submit")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:create', 'coastalstationcospassarsat:update', 'specialstation:create', 'specialstation:update', 'data:create', 'data:update')")
     @Operation(summary = "Gửi phê duyệt cấp Cảng vụ/Chi cục")
     public ResponseEntity<CoastalStationCospasSarsat> submit(@PathVariable UUID id) {
         return ResponseEntity.ok(service.submit(id));
     }
 
     @PostMapping("/{id}/approve-l1")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:approvec1', 'specialstation:approvec1', 'data:approvec1')")
     @Operation(summary = "Phê duyệt vòng 1 (Cảng vụ / Chi cục)")
     public ResponseEntity<CoastalStationCospasSarsat> approveLevel1(@PathVariable UUID id) {
         return ResponseEntity.ok(service.approveLevel1(id));
     }
 
     @PostMapping("/{id}/approve-l2")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     @Operation(summary = "Phê duyệt vòng 2 (Cục Hàng hải)")
     public ResponseEntity<CoastalStationCospasSarsat> approveLevel2(@PathVariable UUID id) {
         return ResponseEntity.ok(service.approveLevel2(id));
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     @Operation(summary = "Từ chối phê duyệt")
     public ResponseEntity<CoastalStationCospasSarsat> reject(
             @PathVariable UUID id,
@@ -186,6 +241,7 @@ public class CoastalStationCospasSarsatController {
 
     // Tương thích ngược với endpoint /approve cũ
     @PostMapping("/{id}/approve")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:approvec1', 'coastalstationcospassarsat:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<CoastalStationCospasSarsat> approveLegacy(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
@@ -194,8 +250,82 @@ public class CoastalStationCospasSarsatController {
     }
 
     @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:history', 'coastalstationcospassarsat:read', 'specialstation:history', 'specialstation:read', 'data:read')")
     @Operation(summary = "Xem lịch sử thay đổi của Đài Cospas-Sarsat")
-    public ResponseEntity<List<CoastalStationCospasSarsatHistoryResponse>> getHistory(@PathVariable UUID id) {
-        return ResponseEntity.ok(service.getHistory(id));
+    public ResponseEntity<List<CoastalStationCospasSarsatHistoryResponse>> getHistory(
+            @PathVariable UUID id,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "pageSize", required = false) Integer pageSize,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "fromDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate) {
+        if (page == null && pageSize == null && keyword == null && fromDate == null && toDate == null) {
+            return ResponseEntity.ok(service.getHistory(id));
+        }
+        return ResponseEntity.ok(service.getHistory(id, page, pageSize, keyword, fromDate, toDate));
+    }
+
+    // ── File đính kèm (Attachments) ──
+
+    @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải lên tài liệu đính kèm cho Đài Cospas-Sarsat")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:create', 'coastalstationcospassarsat:update', 'specialstation:create', 'specialstation:update', 'data:create', 'data:update', 'coastalstationcospassarsat:approvec2', 'specialstation:approvec2', 'data:approvec2')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationCospasSarsatAttachmentResponse>>> uploadAttachments(
+            @PathVariable UUID id,
+            @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files) {
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        List<CoastalStationCospasSarsatAttachmentResponse> uploaded = service.uploadAttachments(id, files, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Tải lên tệp đính kèm thành công", uploaded));
+    }
+
+    @GetMapping("/{id}/attachments")
+    @Operation(summary = "Lấy danh sách tài liệu đính kèm của Đài Cospas-Sarsat")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationCospasSarsatAttachmentResponse>>> listAttachments(
+            @PathVariable UUID id) {
+        List<CoastalStationCospasSarsatAttachmentResponse> list = service.listAttachments(id);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Danh sách tài liệu đính kèm", list));
+    }
+
+    @DeleteMapping("/{id}/attachments/{attId}")
+    @Operation(summary = "Xóa tài liệu đính kèm của Đài Cospas-Sarsat")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:update', 'specialstation:update', 'data:update', 'coastalstationcospassarsat:approvec2', 'specialstation:approvec2', 'data:approvec2')")
+    public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
+        service.deleteAttachment(id, attId, userId);
+        return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Xóa tài liệu đính kèm thành công", null));
+    }
+
+    @GetMapping("/{id}/attachments/{attId}/download")
+    @Operation(summary = "Tải xuống tài liệu đính kèm của Đài Cospas-Sarsat")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
+    public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
+            @PathVariable UUID id,
+            @PathVariable UUID attId) {
+        com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = service.getAttachment(id, attId);
+        java.nio.file.Path path = java.nio.file.Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+        try {
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(path.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+            String contentType = "application/octet-stream";
+            try {
+                contentType = java.nio.file.Files.probeContentType(path);
+                if (contentType == null) contentType = "application/octet-stream";
+            } catch (Exception ignored) {}
+
+            String encodedFileName = java.net.URLEncoder.encode(attachment.getFileName(), java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
+                    .body(resource);
+        } catch (java.net.MalformedURLException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

@@ -87,6 +87,15 @@ export const cospasSarsatStationService = {
     };
   },
 
+  async generateCode(): Promise<string> {
+    try {
+      const res = await api.get(`${BASE_PATH}/generate-code`);
+      return res.data?.code || res.data?.data?.code || '';
+    } catch {
+      return '';
+    }
+  },
+
   async getOptions(orgUnitId?: string) {
     const sp = orgUnitId ? `?orgUnitId=${encodeURIComponent(orgUnitId)}` : '';
     const res = await api.get(`${BASE_PATH}/options${sp}`);
@@ -133,8 +142,61 @@ export const cospasSarsatStationService = {
     return res.data;
   },
 
-  async getHistory(id: string): Promise<CoastalStationCospasSarsatHistoryResponse[]> {
-    const res = await api.get(`${BASE_PATH}/${id}/history`);
+  async getHistory(
+    id: string,
+    page?: number,
+    pageSize?: number,
+    filters?: { keyword?: string; fromDate?: string; toDate?: string }
+  ): Promise<CoastalStationCospasSarsatHistoryResponse[]> {
+    const sp = new URLSearchParams();
+    if (page !== undefined) sp.set('page', String(page));
+    if (pageSize !== undefined) sp.set('pageSize', String(pageSize));
+    if (filters?.keyword) sp.set('keyword', filters.keyword);
+    if (filters?.fromDate) sp.set('fromDate', filters.fromDate);
+    if (filters?.toDate) sp.set('toDate', filters.toDate);
+    const qs = sp.toString() ? `?${sp.toString()}` : '';
+    const res = await api.get(`${BASE_PATH}/${id}/history${qs}`);
     return toArray<CoastalStationCospasSarsatHistoryResponse>(res.data);
+  },
+
+  async getAttachments(id: string): Promise<any[]> {
+    try {
+      const res = await api.get(`${BASE_PATH}/${id}/attachments`);
+      const data = res.data?.data || res.data;
+      return toArray<any>(data);
+    } catch {
+      return [];
+    }
+  },
+
+  async uploadAttachment(id: string, file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('files', file);
+    const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const data = res.data?.data || res.data;
+    if (Array.isArray(data)) {
+      return data[0] || null;
+    }
+    return data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`${BASE_PATH}/${id}/attachments/${attId}`);
+  },
+
+  async downloadAttachment(id: string, attId: string, fileName?: string): Promise<void> {
+    const res = await api.get(`${BASE_PATH}/${id}/attachments/${attId}/download`, {
+      responseType: 'blob',
+    });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName || 'attachment');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   },
 };

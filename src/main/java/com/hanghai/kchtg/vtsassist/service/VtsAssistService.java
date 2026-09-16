@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vtsassist.service;
 
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+
 import com.hanghai.kchtg.vtsassist.dto.VtsAssistResponse;
 import com.hanghai.kchtg.vtsassist.dto.VtsAssistOptionResponse;
 import com.hanghai.kchtg.vtsassist.dto.CreateVtsAssistRequest;
@@ -420,9 +422,7 @@ public class VtsAssistService {
       }
     }
 
-    String normOldCoord = oldCoordinates != null ? oldCoordinates.trim().replaceAll("\\s+", " ").replace(" (", "(") : null;
-    String normNewCoord = request.getCoordinates() != null ? request.getCoordinates().trim().replaceAll("\\s+", " ").replace(" (", "(") : null;
-    if (normNewCoord != null && !Objects.equals(normNewCoord, normOldCoord)) {
+if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
       previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
     }
     String newGeomStr = request.getGeometryType() != null ? request.getGeometryType().name() : null;

@@ -1,82 +1,82 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Button,
-  Modal,
-  Input,
-  Select,
-  DatePicker,
-  Space,
-  Form,
-} from 'antd';
-import {
-  HistoryOutlined,
-  SearchOutlined,
+    HistoryOutlined,
+    SearchOutlined,
 } from '@ant-design/icons';
+import {
+    Button,
+    DatePicker,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+} from 'antd';
 import dayjs from 'dayjs';
-import {
-  berthCRUD,
-  berthApproval,
-  portCRUD,
-  pierCRUD,
-} from '../../services/portService';
-import type { Berth } from '../../types/port';
-import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
-import { symbolService } from '../../services/symbolService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
-import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import type { Organization } from '../../services/organizationService';
-import { usePermissionStore } from '../../store/permissionStore';
-import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import { OPERATIONAL_FUNCTION_OPTIONS, formatOperationalFunction } from '../../constants/operationalFunction';
-import { ScreenHeader, DataTable, type ScreenHeaderAction } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import BerthForm from './BerthForm';
-import BerthDetailContent from './BerthDetailContent';
-import PierDetailContent from './PierDetailContent';
-import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  borderDefault,
-  fontSizeLg,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  spaceFormField,
-  drawerTitleStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
-  requiredMarkStyle,
-  icons,
-  statusBadgeStyle,
-  cellTitleStyle,
-  cellSubtitleStyle,
-  DRAWER_WIDTH,
-} from '../../themetokenchk';
-import { colors } from '../../themetokenchk';
-import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import ApprovalModal from '../../components/shared/ApprovalModal';
+import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import toast from '../../components/ToastNotification';
+import { formatOperationalFunction, OPERATIONAL_FUNCTION_OPTIONS } from '../../constants/operationalFunction';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import {
+    berthApproval,
+    berthCRUD,
+    pierCRUD,
+    portCRUD,
+} from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { usePermissionStore } from '../../store/permissionStore';
+import * as themeTokenChk from '../../themetokenchk';
+import {
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_WIDTH,
+    drawerFooterStyle,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontWeightBold,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    textPrimary,
+    textSecondary,
+    textTertiary,
+} from '../../themetokenchk';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import type { Berth } from '../../types/port';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
+import BerthDetailContent from './BerthDetailContent';
+import BerthForm from './BerthForm';
+import PierDetailContent from './PierDetailContent';
 
 const fontSizeMd = 13.5;
 
@@ -151,8 +151,16 @@ const historyFieldLabels: Record<string, string> = {
   'Trạng thái': 'Hành động',
   attachments: 'File đính kèm',
   'Tài liệu đính kèm': 'File đính kèm',
-  'File đính kèm': 'File đính kèm',
 };
+
+const HISTORY_FIELD_ORDER = [
+  'orgUnitId', 'portId', 'berthCode', 'berthName', 'waterway', 'waterwayId', 'berthType', 'length', 'width', 'channelDepth',
+  'operationalFunction', 'operationalStatus', 'provinceId', 'detailedLocation', 'coordinateSystem', 'displayRule',
+  'mapSymbolId', 'operator', 'operatingOrgId', 'totalArea', 'designThroughput', 'currentThroughput', 'maxVesselSize',
+  'plannedThroughput', 'latestCargoVolume', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreement',
+  'structureType', 'File đính kèm', 'Tài liệu đính kèm', 'attachments'
+];
+
 function normalizeHistoryKey(value: string): string {
   return (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
 }
@@ -440,31 +448,9 @@ export default function BerthList() {
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
 
-  const historyFieldCount = useMemo(() => (Array.isArray(historyRecords) ? historyRecords : []).length, [historyRecords]);
-
-  const openHistory = useCallback(async (r: Berth) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
-    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
-    try {
-      const res = await api.get(`/v1/berths/${r.id}/history`);
-      const d = res.data?.data;
-      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
-      setHistoryRecords(ch);
-    } catch { toast.error('Không thể tải lịch sử'); }
-    finally { setHistoryLoading(false); }
-  }, []);
-
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'portId', 'berthCode', 'berthName', 'waterway', 'waterwayId', 'berthType', 'length', 'width', 'channelDepth',
-    'operationalFunction', 'operationalStatus', 'provinceId', 'detailedLocation', 'coordinateSystem', 'displayRule',
-    'mapSymbolId', 'operator', 'operatingOrgId', 'totalArea', 'designThroughput', 'currentThroughput', 'maxVesselSize',
-    'plannedThroughput', 'latestCargoVolume', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreement',
-    'structureType', 'File đính kèm', 'Tài liệu đính kèm', 'attachments'
-  ];
-
-  const renderBerthHistoryTimeline = (records: any[]) => {
+  const filteredHistory = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    const filtered = (records || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: any) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -481,9 +467,69 @@ export default function BerthList() {
       }
       return true;
     });
+  }, [historyRecords, historySearch, historyFrom, historyTo, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap]);
+
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: historyFieldLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if (fn === 'mapSymbolId' && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        if ((fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') && raw) {
+          const files = String(raw)
+            .split(/\s*,\s*/)
+            .map((f) => f.trim())
+            .filter((f) => !isBlankOrDash(f));
+          if (files.length > 0) {
+            return (
+              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                {files.map((file, idx) => (
+                  <span key={idx} style={{ wordBreak: 'break-all' }}>
+                    {file}
+                  </span>
+                ))}
+              </span>
+            );
+          }
+        }
+        const formatted = historyFieldValue(fn, raw, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap);
+        return isBlankOrDash(formatted) ? '' : formatted;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+    });
+  }, [filteredHistory, historyTarget, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap, symbolImageMap]);
+
+  const openHistory = useCallback(async (r: Berth) => {
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    try {
+      const res = await api.get(`/v1/berths/${r.id}/history`);
+      const d = res.data?.data;
+      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
+      setHistoryRecords(ch);
+    } catch { toast.error('Không thể tải lịch sử'); }
+    finally { setHistoryLoading(false); }
+  }, []);
+
+  const renderBerthHistoryTimeline = (_records: any[]) => {
+    const q = historySearch.toLowerCase().trim();
 
     return renderStandardHistoryCards({
-      records: filtered,
+      records: filteredHistory,
       fieldLabels: historyFieldLabels,
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
@@ -894,18 +940,18 @@ export default function BerthList() {
       ];
       const st = record.approvalStatus || '';
       // Chỉnh sửa chỉ áp dụng cho Lưu tạm (DRAFT) và Đã phê duyệt (APPROVED) — chuẩn VTS CHK
-      const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'berth', extraApprovePerms: ['berth:approve'] });
+      const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'berth' });
       if (editable) actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => { setEditBerthId(record.id); setEditBerthName(record.berthName || ''); setEditBerthRecord(record); setEditDrawerOpen(true); } });
       if (['DRAFT','NHAP'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       if (['REJECTED_LEVEL1','REJECTED_LEVEL2','REJECTED','TU_CHOI'].includes(st) && hasPerm('berth:update')) actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       // Lịch sử — luôn hiển thị khi có quyền
       if (hasPerm('berth:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       // Phê duyệt / Từ chối — theo trạng thái 2 cấp
-      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET'].includes(st) && (hasPerm('berth:approvec1') || hasPerm('berth:approve'))) {
+      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET'].includes(st) && hasPerm('berth:approvec1')) {
         actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
         actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
       }
-      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && (hasPerm('berth:approvec2') || hasPerm('berth:approve'))) {
+      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && hasPerm('berth:approvec2')) {
         actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
         actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
       }
@@ -1688,7 +1734,7 @@ export default function BerthList() {
               <span style={drawerTitleStyle}>
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.berthName}` : 'Lịch sử thay đổi'}
               </span>
-              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyFieldCount}</span>
+              <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>Tổng cộng {historyUpdateCount}</span>
             </Space>
           </div>
         }

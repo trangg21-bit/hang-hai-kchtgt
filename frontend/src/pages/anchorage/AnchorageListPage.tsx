@@ -1,69 +1,76 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import {
-  Button, Modal, Input, Select, DatePicker,
-  Drawer, Space, Typography, Form,
-} from 'antd';
-import {
-  HistoryOutlined,
-  SearchOutlined,
-  FileOutlined,
+    HistoryOutlined,
+    SearchOutlined
 } from '@ant-design/icons';
+import {
+    Button,
+    DatePicker,
+    Drawer,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space
+} from 'antd';
 import dayjs from 'dayjs';
-import { anchorageCRUD, anchorageApproval, buoyBerthCRUD, portCRUD } from '../../services/portService';
-import type { Anchorage } from '../../types/port';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import { organizationService } from '../../services/organizationService';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
-import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import { symbolService } from '../../services/symbolService';
-import api from '../../services/api';
-import { userService } from '../../services/userService';
-import type { Organization } from '../../services/organizationService';
-import { usePermissionStore } from '../../store/permissionStore';
-import { useAuthStore } from '../../store/authStore';
-import { VIETNAM_PROVINCES } from '../../types/common';
-import { ScreenHeader, DataTable } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import AnchorageForm from './AnchorageForm';
-import AnchorageDetailContent from './AnchorageDetailContent';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { anchorageApproval, anchorageCRUD, buoyBerthCRUD, portCRUD } from '../../services/portService';
+import { symbolService } from '../../services/symbolService';
+import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-  actionPrimary,
-  textPrimary,
-  textSecondary,
-  textTertiary,
-  borderDefault,
-  fontSizeLg,
-  fontSizeSm,
-  fontWeightMedium,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXs,
-  spaceXl,
-  spaceFormField,
-  drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
-  primaryButtonStyle, outlineButtonStyle, requiredMarkStyle,
-  icons, statusBadgeStyle,
-  cellTitleStyle, cellSubtitleStyle, getRangePickerProps,
-  DRAWER_WIDTH,
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    DRAWER_WIDTH,
+    drawerCloseBtnStyle, drawerFooterStyle,
+    drawerProps, drawerTitleStyle,
+    fontSizeLg,
+    fontWeightBold,
+    getRangePickerProps,
+    icons,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    textPrimary,
+    textSecondary,
+    textTertiary
 } from '../../themetokenchk';
-import { colors } from '../../themetokenchk';
+import { VIETNAM_PROVINCES } from '../../types/common';
+import type { Anchorage } from '../../types/port';
+import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import AnchorageDetailContent from './AnchorageDetailContent';
+import AnchorageForm from './AnchorageForm';
 
 // Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK toàn bộ cell/table/input/button
 const fontSizeMd = 13.5;
@@ -216,6 +223,30 @@ const histLabels: Record<string, string> = {
   departmentApprovalContent: 'Nội dung Cục phê duyệt',
   rejectionReason: 'Lý do từ chối',
 };
+
+const HISTORY_FIELD_ORDER = [
+  'orgUnitId', 'portId', 'navigationChannelId', 'buoyStationId', 'anchorageCode', 'anchorageName',
+  'provinceId', 'province', 'detailedLocation', 'operationalStatus', 'approvalStatus',
+  'shapeDescription', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign',
+  'maxVesselDWT', 'activeAnchorageCount', 'publishedAnchorageCount', 'underInvestmentAnchorageCount',
+  'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
+  'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+  'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tài liệu đính kèm',
+  // Vietnamese label aliases:
+  'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Thuộc luồng hàng hải', 'Luồng hàng hải', 'Thuộc bến phao', 'Bến phao',
+  'Mã khu neo đậu', 'Tên khu neo đậu', 'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố',
+  'Tình trạng', 'Trạng thái', 'Hình dạng', 'Diện tích (ha)',
+  'Độ sâu khu nước theo thiết kế (m)', 'Độ sâu theo thiết kế (m)',
+  'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', 'Độ sâu hiện tại (m)',
+  'Cao độ đáy bến thiết kế', 'Cỡ tàu khai thác theo công bố (DWT)', 'Cỡ tàu khai thác (DWT)',
+  'Số lượng khu neo đậu đang khai thác', 'Số khu neo đang khai thác',
+  'Số lượng khu neo đậu đã công bố', 'Số khu neo đã công bố',
+  'Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng', 'Số khu neo thỏa thuận ĐTXD',
+  'Ghi chú', 'Thời điểm công bố mở, đưa ra sử dụng', 'Ngày công bố mở',
+  'Quyết định công bố/ Văn bản cho phép khai thác', 'Quyết định mở',
+  'Văn bản thỏa thuận đầu tư xây dựng', 'Thỏa thuận đầu tư',
+  'Biểu tượng', 'Biểu tượng bản đồ', 'Hệ quy chiếu', 'Quy tắc hiển thị',
+];
 
 function histField(fn: string): string { return histLabels[fn] || fn; }
 
@@ -436,30 +467,6 @@ export default function AnchorageListPage() {
     }
   }, []);
 
-  const HISTORY_FIELD_ORDER = [
-    'orgUnitId', 'portId', 'navigationChannelId', 'buoyStationId', 'anchorageCode', 'anchorageName',
-    'provinceId', 'province', 'detailedLocation', 'operationalStatus', 'approvalStatus',
-    'shapeDescription', 'area', 'designWaterDepth', 'currentWaterDepth', 'bottomElevationDesign',
-    'maxVesselDWT', 'activeAnchorageCount', 'publishedAnchorageCount', 'underInvestmentAnchorageCount',
-    'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
-    'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
-    'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tài liệu đính kèm',
-    // Vietnamese label aliases:
-    'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Thuộc luồng hàng hải', 'Luồng hàng hải', 'Thuộc bến phao', 'Bến phao',
-    'Mã khu neo đậu', 'Tên khu neo đậu', 'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố',
-    'Tình trạng', 'Trạng thái', 'Hình dạng', 'Diện tích (ha)',
-    'Độ sâu khu nước theo thiết kế (m)', 'Độ sâu theo thiết kế (m)',
-    'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)', 'Độ sâu hiện tại (m)',
-    'Cao độ đáy bến thiết kế', 'Cỡ tàu khai thác theo công bố (DWT)', 'Cỡ tàu khai thác (DWT)',
-    'Số lượng khu neo đậu đang khai thác', 'Số khu neo đang khai thác',
-    'Số lượng khu neo đậu đã công bố', 'Số khu neo đã công bố',
-    'Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng', 'Số khu neo thỏa thuận ĐTXD',
-    'Ghi chú', 'Thời điểm công bố mở, đưa ra sử dụng', 'Ngày công bố mở',
-    'Quyết định công bố/ Văn bản cho phép khai thác', 'Quyết định mở',
-    'Văn bản thỏa thuận đầu tư xây dựng', 'Thỏa thuận đầu tư',
-    'Biểu tượng', 'Biểu tượng bản đồ', 'Hệ quy chiếu', 'Quy tắc hiển thị',
-  ];
-
   const renderAnchorageHistoryTimeline = (records: any[]) => {
     return renderStandardHistoryCards({
       records,
@@ -493,6 +500,39 @@ export default function AnchorageListPage() {
       emptyMessage: hasActiveHistoryFilter ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
+
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredHistory,
+      fieldLabels: histLabels,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        if ((fn === 'mapSymbolId' || fn === 'Biểu tượng bản đồ' || fn === 'Biểu tượng') && raw && !isBlankOrDash(raw)) {
+          const img = symbolImageMap.get(raw);
+          const name = symbolMap.get(raw) || raw;
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {img ? <img src={img} alt="" style={{ width: 18, height: 18, objectFit: 'contain', borderRadius: 4 }} /> : null}
+              {name}
+            </span>
+          );
+        }
+        const resolved = histVal(fn, raw, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) {
+            return formatHistoryNumber(t);
+          }
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec) => {
+        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const orgName = orgId ? orgMap.get(orgId) : undefined;
+        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+      },
+    });
+  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap]);
 
   // Load master data
   useEffect(() => {
@@ -971,7 +1011,7 @@ export default function AnchorageListPage() {
 
     const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
     const st = record.approvalStatus || '';
-    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'anchorage', extraApprovePerms: ['anchorage:approve'] });
+    const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'anchorage' });
     if (editable) {
       actions.push({
         key: 'edit', label: 'Chỉnh sửa', icon: icons.edit,
@@ -1527,7 +1567,7 @@ export default function AnchorageListPage() {
                   Lịch sử thay đổi — {historyTarget?.anchorageName || historyTarget?.anchorageCode || ''}
                 </span>
                 <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                  Tổng cộng {Array.isArray(filteredHistory) ? filteredHistory.length : 0}
+                  Tổng cộng {historyUpdateCount}
                 </span>
               </Space>
             </div>
@@ -1588,7 +1628,7 @@ export default function AnchorageListPage() {
                 <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
               </div>
-            ) : hasActiveHistoryFilter && filteredHistory.length === 0 ? (
+            ) : hasActiveHistoryFilter && historyUpdateCount === 0 ? (
               <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
                 <SearchOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Không tìm thấy kết quả phù hợp</div>

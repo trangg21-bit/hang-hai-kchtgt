@@ -193,6 +193,7 @@ export interface CoastalStationCospasSarsatRequest {
   conditionStatus?: string;
   coverageArea?: string;
   services?: string[];
+  servicesProvided?: string | null;
   frequency?: string;
   description?: string;
   note?: string;
@@ -225,11 +226,15 @@ export interface CoastalStationCospasSarsatResponse {
   orgUnitId?: string;
   orgUnitName?: string;
   operatingOrgId?: string;
+  operatingOrgName?: string;
   provinceId?: number;
+  provinceName?: string;
   locationAddress?: string;
+  address?: string;
   conditionStatus?: string;
   coverageArea?: string;
   services?: string[];
+  servicesProvided?: string | null;
   frequency?: string;
   description?: string;
   note?: string;
@@ -261,6 +266,8 @@ export interface CoastalStationCospasSarsatResponse {
   owningOrgId?: string;
   owningOrgName?: string;
   createdAt?: string;
+  createdBy?: string;
+  createdByName?: string;
   updatedAt?: string;
   updatedBy?: string;
   updatedByName?: string;
@@ -290,8 +297,12 @@ export interface CoastalStationCospasSarsatHistoryResponse {
   id: string;
   stationCode?: string;
   actionType: string;
+  changedField?: string;
   previousValue?: string;
   newValue?: string;
+  description?: string;
+  reason?: string;
+  approvalLevel?: string;
   changedBy?: string;
   changedAt?: string;
 }

@@ -281,6 +281,10 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     };
 
     if (currentValue && currentValue !== '__all__' && !findNode(base, currentValue)) {
+      // Trong form tạo/sửa KCHT, không chèn fallback node Bộ Giao thông Vận tải (G17)
+      if (isForm && (currentValue === '00000000-0000-0000-0000-000000000017' || currentValue === 'G17')) {
+        return base;
+      }
       const org = byId.get(currentValue);
       const title = org
         ? (org.name || (org.code ? `${org.code} - ${org.name}` : org.name))

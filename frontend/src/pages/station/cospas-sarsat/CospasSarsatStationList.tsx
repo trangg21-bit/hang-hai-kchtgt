@@ -17,7 +17,7 @@ import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../../component
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import toast from '../../../components/ToastNotification';
 import {
-  actionPrimary, textSecondary, textTertiary,
+  textSecondary, textTertiary,
   fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
   statusOperational, statusCritical, statusAttention,
@@ -32,6 +32,7 @@ import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, 
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { useStandardApprovalStatusTabs } from '../../../components/shared/approvalStatusTabs';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+import { getOperatingOrgName } from './CospasSarsatStationDetailContent';
 
 const fontSizeMd = 13.5;
 
@@ -236,13 +237,14 @@ export default function CospasSarsatStationList() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // History drawer state
+  const HISTORY_PAGE_SIZE = 20;
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyRecords, setHistoryRecords] = useState<CommonHistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [historyPage, setHistoryPage] = useState(0);
-  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
+  const [historyFilters, setHistoryFilters] = useState<{ keyword?: string; fromDate?: string; toDate?: string }>({});
 
   // Count tabs
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -374,7 +376,7 @@ export default function CospasSarsatStationList() {
     setApproveModalOpen(true);
   };
 
-  const handleApprove = async (content: string) => {
+  const handleApprove = async () => {
     if (!approveTargetId) return;
     try {
       if (approveLevel === 'c1') {
@@ -436,43 +438,49 @@ export default function CospasSarsatStationList() {
       setHistoryRecords([]);
       setHistoryPage(0);
       try {
-        const history = await cospasSarsatStationService.getHistory(selectedRecord.id);
-        if (!cancelled) {
-          const mapped: CommonHistoryEntry[] = (history || []).map((h: any) => ({
-            id: h.id || String(Math.random()),
-            action: h.actionType || h.action || 'UPDATE',
-            actionType: h.actionType || h.action || 'UPDATE',
-            timestamp: h.changedAt || h.createdAt,
-            changedAt: h.changedAt || h.createdAt,
-            performedBy: h.changedBy || h.performedBy || 'Quản trị viên',
-            changedBy: h.changedBy || h.performedBy || 'Quản trị viên',
-            changes: h.changes || (h.fieldName ? [{
-              field: h.fieldName,
-              oldValue: h.oldValue,
-              newValue: h.newValue,
-            }] : []),
-            description: h.description,
-          }));
-          setHistoryRecords(mapped);
-          setHasMoreHistory(false);
-        }
+        const history = await cospasSarsatStationService.getHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historyFilters.keyword || undefined,
+          fromDate: historyFilters.fromDate || undefined,
+          toDate: historyFilters.toDate || undefined,
+        });
+        if (cancelled) return;
+        const items = (history || []) as unknown as CommonHistoryEntry[];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
       } catch {
-        if (!cancelled) setHistoryRecords([]);
+        if (!cancelled) {
+          toast.error('Không thể tải lịch sử thay đổi');
+          setHistoryRecords([]);
+        }
       } finally {
         if (!cancelled) setLoadingHistory(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [historyModalOpen, selectedRecord]);
-
-  const handleHistoryFilterChange = (filters: { keyword: string; fromDate?: string; toDate?: string }) => {
-    setHistoryFilters(filters);
-  };
+  }, [historyModalOpen, selectedRecord, historyFilters]);
 
   const loadMoreHistory = async () => {
-    setLoadingMoreHistory(false);
-    setHasMoreHistory(false);
+    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    setLoadingMoreHistory(true);
+    try {
+      const nextPage = historyPage + 1;
+      const history = await cospasSarsatStationService.getHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historyFilters.keyword || undefined,
+        fromDate: historyFilters.fromDate || undefined,
+        toDate: historyFilters.toDate || undefined,
+      });
+      if (history && history.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...(history as unknown as CommonHistoryEntry[])]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* ignore */ }
+    finally { setLoadingMoreHistory(false); }
   };
+
+  const handleHistoryFilterChange = useCallback((f: { keyword: string; fromDate: string; toDate: string }) => {
+    setHistoryFilters(f);
+  }, []);
 
   const isRejectedTab = filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
     filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2 ||
@@ -547,23 +555,25 @@ export default function CospasSarsatStationList() {
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const id = record.orgUnitId || record.unitId;
         const org = organizations.find((o) => String(o.id) === String(id));
-        const displayName = org ? (org.code ? `${org.code} - ${org.name}` : org.name) : (val || record.orgUnitName || '—');
+        const displayName = org?.name || val || record.orgUnitName || '—';
         return (
-          <span style={{ fontWeight: fontWeightBold }} title={displayName}>{displayName}</span>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={displayName}>
+            {displayName}
+          </div>
         );
       },
     },
     {
-      key: 'operatingOrgId',
+      key: 'operatingOrgName',
       label: 'Đơn vị khai thác',
-      dataIndex: 'operatingOrgId',
+      dataIndex: 'operatingOrgName',
       width: 200,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      sortOrder: sortOrderFor('operatingOrgId'),
-      render: (val: string) => {
-        const opName = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === val)?.name || val || '—';
+      sortOrder: sortOrderFor('operatingOrgName'),
+      render: (val: string, record: CoastalStationCospasSarsatResponse) => {
+        const opName = getOperatingOrgName(record.operatingOrgId, val || record.operatingOrgName);
         return (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={opName}>
             {opName}
@@ -640,7 +650,7 @@ export default function CospasSarsatStationList() {
       sortOrder: sortOrderFor('updatedByName'),
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const name = val || record.updatedByName || record.updatedBy || record.createdByName || '—';
-        const date = record.updatedDate || record.updatedAt || record.createdDate;
+        const date = record.updatedAt || record.createdAt;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             <div
@@ -789,7 +799,12 @@ export default function CospasSarsatStationList() {
         },
       });
     }
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationcospassarsat' })) {
+    if (canEditApprovalRecord(record.approvalStatus, {
+      hasPerm,
+      resource: 'coastalstationcospassarsat',
+      extraUpdatePerms: ['specialstation:update', 'data:update'],
+      extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
+    })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -802,7 +817,13 @@ export default function CospasSarsatStationList() {
         },
       });
     }
-    if (hasPerm('coastalstationcospassarsat:history') || hasPerm('station:read') || hasPerm('data:read')) {
+    if (
+      hasPerm('coastalstationcospassarsat:history') ||
+      hasPerm('specialstation:history') ||
+      hasPerm('coastalstationcospassarsat:read') ||
+      hasPerm('specialstation:read') ||
+      hasPerm('data:read')
+    ) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',
@@ -810,7 +831,7 @@ export default function CospasSarsatStationList() {
         onClick: () => handleViewHistory(record),
       });
     }
-    if (hasPerm('coastalstationcospassarsat:update') && (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 || !record.approvalStatus)) {
+    if ((hasPerm('coastalstationcospassarsat:update') || hasPerm('specialstation:update') || hasPerm('data:update')) && (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2 || !record.approvalStatus)) {
       actions.push({
         key: 'submit',
         label: 'Gửi phê duyệt',
@@ -826,7 +847,7 @@ export default function CospasSarsatStationList() {
         },
       });
     }
-    if ((hasPerm('coastalstationcospassarsat:approvec1') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if ((hasPerm('coastalstationcospassarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approveC1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -841,7 +862,7 @@ export default function CospasSarsatStationList() {
         onClick: () => openRejectModal(record.id, 'c1'),
       });
     }
-    const canApproveC2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin;
+    const canApproveC2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin;
     if (canApproveC2 && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approveC2',
@@ -857,7 +878,11 @@ export default function CospasSarsatStationList() {
         onClick: () => openRejectModal(record.id, 'c2'),
       });
     }
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationcospassarsat' })) {
+    if (canDeleteApprovalRecord(record.approvalStatus, {
+      hasPerm,
+      resource: 'coastalstationcospassarsat',
+      extraDeletePerms: ['specialstation:delete', 'data:delete'],
+    })) {
       actions.push({
         key: 'delete',
         label: 'Xóa',
@@ -942,7 +967,7 @@ export default function CospasSarsatStationList() {
                     key: 'create',
                     label: 'Thêm mới',
                     onClick: () => {
-                      setSelectedRecordId(null);
+                      setEditingId(null);
                       setSelectedRecord(null);
                       setModalMode('create');
                       setIsModalOpen(true);
@@ -1110,7 +1135,7 @@ export default function CospasSarsatStationList() {
               setSelectedRecord(null);
               refreshList();
             }}
-            onEdit={(rec) => {
+            onEdit={(rec: CoastalStationCospasSarsatResponse) => {
               setSelectedRecord(rec);
               setEditingId(rec.id);
               setModalMode('edit');
@@ -1146,6 +1171,18 @@ export default function CospasSarsatStationList() {
             beaconProtocol: 'Giao thức phát',
             emergencyChannel: 'Kênh khẩn cấp',
             antennaType: 'Loại anten',
+            signalRange: 'Cự ly tín hiệu',
+            operatingMode: 'Chế độ hoạt động',
+            servicesProvided: 'Dịch vụ cung cấp',
+            services: 'Dịch vụ cung cấp',
+            contactPerson: 'Người liên hệ',
+            contactPhone: 'Số điện thoại liên hệ',
+            note: 'Ghi chú',
+            description: 'Mô tả',
+            coordinates: 'Tọa độ GIS',
+            geometryType: 'Loại hình học',
+            symbolId: 'Biểu tượng bản đồ',
+            coordinateReferenceSystem: 'Hệ quy chiếu',
           }}
           formatValue={(fieldName, value) => {
             if (value == null || value === '') return '';
@@ -1153,7 +1190,7 @@ export default function CospasSarsatStationList() {
             if (fn.includes('condition') || fn.includes('tinhtrang') || fn === 'tinhtranghoatdong') {
               return themeTokenChk.getVtsConditionStatusLabel(value);
             }
-            return undefined;
+            return String(value);
           }}
         />
 
@@ -1167,7 +1204,7 @@ export default function CospasSarsatStationList() {
 
         {/* Reject Modal */}
         <Modal
-          title="Từ chối"
+          title={rejectLevel === 'c1' ? 'Từ chối cấp Cảng vụ/Chi cục' : 'Từ chối cấp Cục'}
           open={rejectModalOpen}
           onOk={handleReject}
           onCancel={() => setRejectModalOpen(false)}

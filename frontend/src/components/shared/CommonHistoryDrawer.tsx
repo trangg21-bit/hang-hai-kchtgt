@@ -37,8 +37,6 @@ import {
   statusBadgeStyle,
   getConditionStatusColor,
   getConditionStatusLabel,
-  getVtsConditionStatusLabel,
-  getVtsConditionStatusColor,
   historyGroupGridStyle,
   historyTimeStyle,
   historyMetaRowStyle,

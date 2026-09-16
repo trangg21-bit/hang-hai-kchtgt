@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.radarstation.service;
 
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
@@ -252,9 +254,7 @@ public class RadarStationService {
         if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
             newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
-        String normOldCoord = oldCoord != null ? oldCoord.trim().replaceAll("\\s+", " ").replace(" (", "(") : null;
-        String normNewCoord = newCoord != null ? newCoord.trim().replaceAll("\\s+", " ").replace(" (", "(") : null;
-        if (normNewCoord != null && !Objects.equals(normNewCoord, normOldCoord)) {
+if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
             previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
         }
         if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeom)) {

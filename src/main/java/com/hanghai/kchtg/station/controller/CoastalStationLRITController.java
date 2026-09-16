@@ -227,7 +227,7 @@ public class CoastalStationLRITController {
 
     @PutMapping("/{id:[0-9a-fA-F-]{36}}")
     @Operation(summary = "Cập nhật thông tin Đài LRIT")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:update', 'specialstation:update', 'data:update', 'coastalstationlrit:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<?> updateStation(
             @PathVariable UUID id,
             @RequestParam(required = false) String action,
@@ -274,7 +274,7 @@ public class CoastalStationLRITController {
 
     @PostMapping("/{id:[0-9a-fA-F-]{36}}/approve-c1")
     @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approvec1', 'coastalstationlrit:approve', 'specialstation:approve', 'data:approvec1', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approvec1', 'specialstation:approvec1', 'data:approvec1')")
     public ResponseEntity<CoastalStationLRITResponse> approveLevel1(
             @PathVariable UUID id,
             @RequestBody(required = false) CoastalStationLRITApprovalRequest request) {
@@ -286,7 +286,7 @@ public class CoastalStationLRITController {
 
     @PostMapping("/{id:[0-9a-fA-F-]{36}}/approve-c2")
     @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approvec2', 'coastalstationlrit:approve', 'specialstation:approve', 'data:approvec2', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<CoastalStationLRITResponse> approveLevel2(
             @PathVariable UUID id,
             @RequestBody(required = false) CoastalStationLRITApprovalRequest request) {
@@ -298,7 +298,7 @@ public class CoastalStationLRITController {
 
     @PostMapping("/{id}/reject")
     @Operation(summary = "Từ chối phê duyệt hồ sơ")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approvec1', 'coastalstationlrit:approvec2', 'coastalstationlrit:approve', 'specialstation:approve', 'data:approvec1', 'data:approvec2', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approvec1', 'coastalstationlrit:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<?> reject(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
@@ -351,7 +351,7 @@ public class CoastalStationLRITController {
 
     @PostMapping("/{id}/approve")
     @Operation(summary = "Approve an LRIT station (Legacy)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approve', 'coastalstationlrit:approvec1', 'coastalstationlrit:approvec2', 'specialstation:approve', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:approvec1', 'coastalstationlrit:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<CoastalStationLRIT> approveStation(
             @PathVariable UUID id,
             @Valid @RequestBody CoastalStationLRITApprovalRequest request) {
@@ -380,7 +380,7 @@ public class CoastalStationLRITController {
 
     @PostMapping(value = "/{id}/attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Tải lên tài liệu đính kèm cho Đài LRIT")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:update', 'specialstation:update', 'data:update', 'coastalstationlrit:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<List<CoastalStationLRITAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<org.springframework.web.multipart.MultipartFile> files) {
@@ -400,7 +400,7 @@ public class CoastalStationLRITController {
 
     @DeleteMapping("/{id}/attachments/{attId}")
     @Operation(summary = "Xóa tài liệu đính kèm của Đài LRIT")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:update', 'specialstation:update', 'data:update', 'coastalstationlrit:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {

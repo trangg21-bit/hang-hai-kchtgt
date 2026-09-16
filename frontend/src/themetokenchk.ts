@@ -3011,7 +3011,7 @@ export const historyInfoTitleStyle: React.CSSProperties = {
 
 export const historyChangeRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'minmax(120px, 1.15fr) minmax(90px, 0.85fr) 24px minmax(120px, 1.35fr)',
+  gridTemplateColumns: 'minmax(110px, 0.9fr) minmax(130px, 1.25fr) 24px minmax(130px, 1.25fr)',
   gap: spaceSm,
   alignItems: 'start',
   paddingTop: spaceXs,
@@ -3052,6 +3052,7 @@ export const historyNewValueStyle: React.CSSProperties = {
 export const historyArrowStyle: React.CSSProperties = {
   color: textTertiary,
   textAlign: 'center',
+  justifySelf: 'center',
 };
 
 

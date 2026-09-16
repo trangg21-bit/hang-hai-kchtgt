@@ -360,7 +360,7 @@ public class AisSystemService {
         if (request.isFieldPresent("maintenanceInfo") && request.getMaintenanceInfo() == null) entity.setMaintenanceInfo(null);
         if (request.isFieldPresent("note") && request.getNote() == null) entity.setNote(null);
 
-        if (request.getCoordinates() != null && !Objects.equals(request.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
+        if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
             previousValues.put(AisSystemRequest.Fields.coordinates, oldCoordinates != null ? oldCoordinates : "Chưa có");
         }
         if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeometryType)) {
@@ -859,42 +859,49 @@ public class AisSystemService {
                 .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
         validateAllowedOrgUnit(parent.getOrgUnitId());
 
-        LocalDateTime finalApprovalAt = parent.getApprovedDateLevel2();
-        if (finalApprovalAt == null) {
-            return List.of();
+        String normalizedKeyword = normalizeHistoryKeyword(keyword);
+        boolean paged = page != null && pageSize != null && pageSize > 0;
+        List<InfrastructureHistory> list;
+        if (normalizedKeyword == null && fromDate == null && toDate == null) {
+            list = paged
+                    ? historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.AIS_SYSTEM, id, PageRequest.of(page, pageSize))
+                    : historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
+                            InfrastructureType.AIS_SYSTEM, id);
+        } else {
+            list = historyRepository.searchHistory(
+                    InfrastructureType.AIS_SYSTEM, id, normalizedKeyword, fromDate, toDate,
+                    paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
         }
 
-        // Chỉ hiển thị thay đổi phát sinh sau phê duyệt cấp cuối; ẩn log CREATE/duyệt
-        // hoặc log nháp do phiên bản cũ đã ghi vào infrastructure_history.
-        LocalDateTime effectiveFrom = (fromDate == null || fromDate.isBefore(finalApprovalAt))
-                ? finalApprovalAt
-                : fromDate;
-        Pageable pageable = (page != null && pageSize != null && page >= 0 && pageSize > 0)
-                ? PageRequest.of(page, pageSize)
-                : Pageable.unpaged();
-
-        List<InfrastructureHistory> list = historyRepository.searchChangeHistory(
-                InfrastructureType.AIS_SYSTEM, id,
-                List.of(InfrastructureHistoryStatus.CREATED,
-                        InfrastructureHistoryStatus.APPROVED,
-                        InfrastructureHistoryStatus.REJECTED),
-                normalizeHistoryKeyword(keyword), effectiveFrom, toDate, pageable);
         Set<UUID> userIds = list.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<UUID, User> userMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userRepository.findAllById(userIds).stream()
+                userRepository.findAllByIdInWithOrgUnit(userIds).stream()
                         .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
-        List<HistoryEntry> result = list.stream()
+        return list.stream()
                 .map(h -> {
                     User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
                     String userName = u != null
                             ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
                                     : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
                             : null;
-                    String orgUnitName = u != null && u.getOrgUnit() != null ? u.getOrgUnit().getName() : null;
+                    String orgUnitName = null;
+                    if (u != null) {
+                        if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+                            orgUnitName = u.getOrgUnit().getName();
+                        } else if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
+                            orgUnitName = u.getDepartment();
+                        } else {
+                            orgUnitName = "Cục Hàng hải Việt Nam";
+                        }
+                    }
+                    if (orgUnitName == null) {
+                        orgUnitName = "Cục Hàng hải Việt Nam";
+                    }
                     HistoryEntry entry = new HistoryEntry();
                     entry.setId(h.getId());
                     entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
@@ -907,7 +914,6 @@ public class AisSystemService {
                     return entry;
                 })
                 .collect(Collectors.toList());
-        return result;
     }
 
     @Transactional

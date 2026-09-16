@@ -500,7 +500,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
   const hasPerm = usePermissionStore((s: { hasPermission: (k: string) => boolean }) => s.hasPermission);
-  const canApprove = hasPerm('navigationchannel:approve') || hasPerm('navigationchannel:approve:c1') || hasPerm('navigationchannel:approve:c2') || hasPerm('admin:all');
+  const canApprove = hasPerm('navigationchannel:approvec1') || hasPerm('navigationchannel:approvec2') || hasPerm('admin:all');
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;

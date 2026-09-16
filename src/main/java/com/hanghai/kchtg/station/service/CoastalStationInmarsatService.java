@@ -408,12 +408,6 @@ public class CoastalStationInmarsatService {
                     && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
                 oldValues.put("displayRule", entity.getDisplayRule() != null ? entity.getDisplayRule() : null);
             }
-            boolean latChanged = (request.getLatitude() != null
-                    && (entity.getLatitude() == null || request.getLatitude().compareTo(entity.getLatitude()) != 0))
-                    || (request.getLatitude() == null && entity.getLatitude() != null);
-            boolean lngChanged = (request.getLongitude() != null
-                    && (entity.getLongitude() == null || request.getLongitude().compareTo(entity.getLongitude()) != 0))
-                    || (request.getLongitude() == null && entity.getLongitude() != null);
 
             String oldCoord = gisSpatialObjectService != null
                     ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId())
@@ -431,8 +425,7 @@ public class CoastalStationInmarsatService {
                         : (request.getLatitude() != null ? "Vĩ độ: " + request.getLatitude()
                                 : (request.getLongitude() != null ? "Kinh độ: " + request.getLongitude() : null));
             }
-            boolean coordsChanged = (newCoord != null && !Objects.equals(newCoord, oldCoord)) || latChanged
-                    || lngChanged;
+            boolean coordsChanged = newCoord != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord);
             if (coordsChanged) {
                 oldValues.put("coordinates", oldCoord != null ? oldCoord : null);
             }
@@ -1084,16 +1077,20 @@ public class CoastalStationInmarsatService {
             boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                     || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
             if (historyService != null && wasApproved) {
-                historyService.recordHistory(
-                        InfrastructureType.INMARSAT_STATION,
-                        id,
-                        com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
-                        "Tài liệu đính kèm",
-                        "—",
-                        originalFilename,
-                        "Tải lên tài liệu đính kèm: " + originalFilename,
-                        userId,
-                        batchNow);
+                boolean isNewlyCreated = entity.getCreatedAt() != null
+                        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
+                if (!isNewlyCreated) {
+                    historyService.recordHistory(
+                            InfrastructureType.INMARSAT_STATION,
+                            id,
+                            com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                            "Tài liệu đính kèm",
+                            "—",
+                            originalFilename,
+                            "Tải lên tài liệu đính kèm: " + originalFilename,
+                            userId,
+                            batchNow);
+                }
             }
         }
         return savedAttachments.stream().map(this::toAttachmentResponse).toList();

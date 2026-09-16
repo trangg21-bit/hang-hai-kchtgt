@@ -22,7 +22,7 @@ import {
   actionPrimary, textSecondary,
   fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
-  statusOperational, statusCritical, statusAttention,
+  statusOperational, statusCritical, statusAttention, statusDraft,
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   textAreaStyle, colors, radiusPill,
   getRangePickerProps,
@@ -54,6 +54,8 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.STOPPED]: statusCritical,
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+  [ConditionStatus.NOT_YET_OPERATIONAL]: statusDraft,
+  [ConditionStatus.SUSPENDED]: statusCritical,
 };
 
 const InmarsatStationGlobalStyles = React.memo(() => (
@@ -253,6 +255,7 @@ export default function InmarsatStationList() {
   const [filterProvinceId, setFilterProvinceId] = useState<number | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
+  const [isOptionsReady, setIsOptionsReady] = useState(false);
 
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
   const [symbols, setSymbols] = useState<Array<{ id: string; code?: string; name?: string; image?: string }>>([]);
@@ -297,8 +300,8 @@ export default function InmarsatStationList() {
   const userUnitType = currentUser?.unitType || '';
   const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approve') || hasPerm('data:approvec1') || hasPerm('data:approve') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
-  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('coastalstationinmarsat:approve') || hasPerm('specialstation:approvec2') || hasPerm('specialstation:approve') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin);
+  const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
+  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -335,12 +338,14 @@ export default function InmarsatStationList() {
   }, [isMapLinkedView, linkedAction, linkedRecordId]);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         const [orgs, syms] = await Promise.all([
           organizationService.getAll().catch(() => []),
           symbolService.getOptions().catch(() => []),
         ]);
+        if (!mounted) return;
         const list = Array.isArray(orgs) ? orgs : ((orgs as any)?.content || (orgs as any)?.data || []);
         const mappedOrgs = (list || []).map((o: any) => ({
           id: String(o.id),
@@ -358,9 +363,16 @@ export default function InmarsatStationList() {
         }
       } catch (e) {
         console.error('Failed to fetch lookup options', e);
+      } finally {
+        if (mounted) {
+          setIsOptionsReady(true);
+        }
       }
     })();
-  }, []);
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser]);
 
   const fetchData = useCallback(async () => {
     const requestId = ++listRequestId.current;
@@ -411,6 +423,7 @@ export default function InmarsatStationList() {
   ]);
 
   useEffect(() => {
+    if (!isOptionsReady) return;
     let mounted = true;
     queueMicrotask(() => {
       if (mounted) {
@@ -420,7 +433,7 @@ export default function InmarsatStationList() {
     return () => {
       mounted = false;
     };
-  }, [fetchData]);
+  }, [fetchData, isOptionsReady]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
     if (!order) {
@@ -787,7 +800,7 @@ export default function InmarsatStationList() {
       hasPerm,
       resource: 'coastalstationinmarsat',
       extraUpdatePerms: ['specialstation:update', 'data:update'],
-      extraApprovePerms: ['specialstation:approvec2', 'specialstation:approve'],
+      extraApprovePerms: ['specialstation:approvec2'],
     })) {
       actions.push({
         key: 'edit',

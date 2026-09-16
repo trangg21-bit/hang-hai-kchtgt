@@ -29,6 +29,7 @@ import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -376,7 +377,7 @@ public class CctvService {
       }
     }
 
-    if (request.getCoordinates() != null && !EntityUpdateUtils.areEqual(request.getCoordinates().trim(), oldCoordinates != null ? oldCoordinates.trim() : null)) {
+if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
       previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
     }
     if (request.getGeometryType() != null && !EntityUpdateUtils.areEqual(request.getGeometryType().name(), oldGeometryType)) {

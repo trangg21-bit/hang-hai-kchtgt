@@ -41,6 +41,8 @@ public class CoastalStationCospasSarsatRequest {
     private String contactPhone;
     private Double signalRange;
     private String operatingMode;
+    private String servicesProvided;
+    private Object services;
 
     private String description;
     private String note;
@@ -50,10 +52,54 @@ public class CoastalStationCospasSarsatRequest {
     private String coordinates;
     private UUID symbolId;
     private String coordinateReferenceSystem;
+    private String objectType;
+    private String coordinateSystem;
+    private String displayRule;
+    private String wktGeometry;
+    private Double latitude;
+    private Double longitude;
 
     private ApprovalStatus approvalStatus;
 
     // --- Helper methods / Aliases ---
+
+    public String getEffectiveServicesProvided() {
+        if (servicesProvided != null && !servicesProvided.trim().isEmpty()) {
+            return servicesProvided.trim();
+        }
+        if (services instanceof String s && !s.trim().isEmpty()) {
+            return s.trim();
+        }
+        if (services instanceof java.util.List<?> list) {
+            return list.stream()
+                    .map(Object::toString)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(java.util.stream.Collectors.joining(", "));
+        }
+        return null;
+    }
+
+    public String getEffectiveCoordinates() {
+        if (coordinates != null && !coordinates.trim().isEmpty()) return coordinates.trim();
+        return wktGeometry != null ? wktGeometry.trim() : null;
+    }
+
+    public GisGeometryType getEffectiveGeometryType() {
+        if (geometryType != null) return geometryType;
+        if (objectType != null) {
+            String ot = objectType.trim().toUpperCase();
+            if (ot.contains("LINE")) return GisGeometryType.LINE;
+            if (ot.contains("POLY")) return GisGeometryType.POLYGON;
+            return GisGeometryType.POINT;
+        }
+        return GisGeometryType.POINT;
+    }
+
+    public String getEffectiveCoordinateReferenceSystem() {
+        if (coordinateReferenceSystem != null && !coordinateReferenceSystem.trim().isEmpty()) return coordinateReferenceSystem.trim();
+        return coordinateSystem != null ? coordinateSystem.trim() : null;
+    }
 
     public String getEffectiveCode() {
         if (code != null && !code.trim().isEmpty()) return code.trim();

@@ -21,7 +21,6 @@ import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
@@ -52,7 +51,6 @@ public class PierService {
     private final PortRepository portRepository;
     private final ChangeHistoryService changeHistoryService;
     private final GisSpatialObjectService gisSpatialObjectService;
-    private final UserResolverService userResolverService;
     private final UserRepository userRepository;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
     private final OrgUnitCacheService orgUnitCacheService;

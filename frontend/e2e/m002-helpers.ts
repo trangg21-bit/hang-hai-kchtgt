@@ -6,7 +6,7 @@ export const BE = 'http://localhost:8080';
 export async function loginAdmin(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Tài khoản').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('admin123');
+  await page.getByLabel('Mật khẩu').fill('Asdqwe@123');
   await page.getByRole('button', { name: /đăng nhập/i }).click();
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 20_000 });
 }
@@ -14,7 +14,7 @@ export async function loginAdmin(page: Page) {
 /** Get an admin JWT via the API (for fixture setup/cleanup, not the thing under test). */
 export async function adminToken(request: APIRequestContext): Promise<string> {
   const res = await request.post(`${BE}/api/auth/login`, {
-    data: { username: 'admin', password: 'admin123' },
+    data: { username: 'admin', password: 'Asdqwe@123' },
   });
   expect(res.ok()).toBeTruthy();
   const body = await res.json();

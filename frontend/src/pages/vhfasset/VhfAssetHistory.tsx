@@ -1,33 +1,33 @@
-import { useState, useMemo, useCallback } from 'react';
+import { HistoryOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Input, Space } from 'antd';
 import dayjs from 'dayjs';
-import { HistoryOutlined, SearchOutlined } from '@ant-design/icons';
-import { AppDrawer } from '../../components/shared/AppDrawer';
+import { useCallback, useMemo, useState } from 'react';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import toast from '../../components/ToastNotification';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { formatHistoryNumber } from '../../utils/numFmt';
 import { fetchVhfAssetHistory } from '../../services/vhfAsset/api';
 import type { VhfAsset } from '../../services/vhfAsset/types';
 import {
-  colors,
-  actionPrimary,
-  borderDefault,
-  fontSizeLg,
-  fontSizeMd,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  textTertiary,
-  drawerTitleStyle,
+    actionPrimary,
+    borderDefault,
+    colors,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd,
+    fontWeightBold,
+    radiusPill,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    textTertiary,
 } from '../../themetokenchk';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import {
-  EXCLUDED_CHANGE_FIELDS,
-  NUMERIC_HISTORY_FIELDS,
-  TRANSMISSION_ASSET_FIELD_LABELS as VHF_ASSET_FIELD_LABELS,
-  histVal,
+    EXCLUDED_CHANGE_FIELDS,
+    NUMERIC_HISTORY_FIELDS,
+    TRANSMISSION_ASSET_FIELD_LABELS as VHF_ASSET_FIELD_LABELS,
+    histVal,
 } from '../transmissionasset/TransmissionAssetHistory';
 
 export { VHF_ASSET_FIELD_LABELS };
@@ -166,6 +166,33 @@ export default function VhfAssetHistory({
         : 'Chưa có thay đổi nào được ghi nhận',
     });
 
+  const historyUpdateCount = useMemo(() => {
+    return countStandardHistoryCards({
+      records: filteredRecords,
+      fieldLabels: VHF_ASSET_FIELD_LABELS,
+      groupOrder: HISTORY_FIELD_ORDER,
+      formatValue: (fn, raw) => {
+        const resolved = histVal(fn, raw, orgName, transmissionMap);
+        if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
+          const t = String(raw).trim();
+          if (/^-?\d+(\.\d+)?$/.test(t)) return formatHistoryNumber(t);
+        }
+        return isBlankOrDash(resolved) ? '' : resolved;
+      },
+      resolveUnitName: (rec: Record<string, unknown>) => {
+        const userUnitName = (rec.orgUnitName as string) || (rec.unitName as string);
+        if (userUnitName && userUnitName.trim()) {
+          return userUnitName;
+        }
+        const userOrgId = (rec.userOrgUnitId as string);
+        if (userOrgId && orgName.has(userOrgId)) {
+          return orgName.get(userOrgId) || '';
+        }
+        return '';
+      },
+    });
+  }, [filteredRecords, orgName, transmissionMap]);
+
   return (
     <AppDrawer
       width="min(880px, 96vw)"
@@ -184,7 +211,7 @@ export default function VhfAssetHistory({
               fontSize: fontSizeLg - 1, fontWeight: fontWeightBold,
               background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px',
             }}>
-              Tổng cộng {filteredRecords.length}
+              Tổng cộng {historyUpdateCount}
             </span>
           </Space>
         </div>

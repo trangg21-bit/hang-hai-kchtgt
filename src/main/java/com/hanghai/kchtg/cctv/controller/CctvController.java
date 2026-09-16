@@ -117,7 +117,7 @@ public class CctvController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.check(authentication, 'cctv:update')")
+  @PreAuthorize("@auth.checkAny(authentication, 'cctv:update', 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<CctvResponse>> update(
     @Valid @RequestBody UpdateCctvRequest request) {
     log.info("Updating CCTV: id={}", request.getId());
@@ -200,7 +200,7 @@ public class CctvController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'cctv:update') or @auth.check(authentication, 'cctv:create')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:update') or @auth.check(authentication, 'cctv:create') or @auth.check(authentication, 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -220,7 +220,7 @@ public class CctvController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'cctv:update') or @auth.check(authentication, 'cctv:create') or @auth.check(authentication, 'cctv:delete')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:update') or @auth.check(authentication, 'cctv:create') or @auth.check(authentication, 'cctv:delete') or @auth.check(authentication, 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

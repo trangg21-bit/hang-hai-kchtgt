@@ -212,7 +212,7 @@ public class CoastalStationInmarsatController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật thông tin Đài Inmarsat (F-099)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update', 'coastalstationinmarsat:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<CoastalStationInmarsatResponse> updateStation(
             @PathVariable UUID id,
             @RequestParam(required = false) String action,
@@ -258,7 +258,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping("/{id}/approve-l1")
     @Operation(summary = "Phê duyệt cấp 1 (Cảng vụ / Chi cục) Đài Inmarsat (F-101)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approvec1', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'specialstation:approvec1', 'data:approvec1')")
     public ResponseEntity<CoastalStationInmarsatResponse> approveLevel1(@PathVariable UUID id) {
         CoastalStationInmarsat approved = service.approveLevel1(id);
         return ResponseEntity.ok(service.buildResponse(approved));
@@ -266,7 +266,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping("/{id}/approve-l2")
     @Operation(summary = "Phê duyệt cấp 2 (Cục Hàng hải Việt Nam) Đài Inmarsat (F-101)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec2', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approvec2', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     public ResponseEntity<CoastalStationInmarsatResponse> approveLevel2(@PathVariable UUID id) {
         CoastalStationInmarsat approved = service.approveLevel2(id);
         return ResponseEntity.ok(service.buildResponse(approved));
@@ -274,7 +274,7 @@ public class CoastalStationInmarsatController {
 
     @PostMapping("/{id}/reject")
     @Operation(summary = "Từ chối phê duyệt Đài Inmarsat kèm lý do (F-101)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:reject', 'coastalstationinmarsat:approve', 'specialstation:approve', 'data:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     public ResponseEntity<CoastalStationInmarsatResponse> reject(
             @PathVariable UUID id,
             @RequestBody CoastalStationInmarsatApprovalRequest request) {
@@ -325,7 +325,7 @@ public class CoastalStationInmarsatController {
         return ResponseEntity.ok(com.hanghai.kchtg.common.dto.ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:update', 'specialstation:update', 'data:update', 'coastalstationinmarsat:approvec2', 'specialstation:approvec2', 'data:approvec2')")
     @DeleteMapping("/{id}/attachments/{attId}")
     @Operation(summary = "Xóa tài liệu đính kèm")
     public ResponseEntity<com.hanghai.kchtg.common.dto.ApiResponse<Void>> deleteAttachment(
@@ -415,7 +415,7 @@ public class CoastalStationInmarsatController {
      * Duyệt vòng đang mở. Giữ URL cũ cho tích hợp chưa chuyển đổi nhưng nay đòi
      * đúng quyền duyệt như /approve-l1 và /approve-l2.
      */
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approvec2', 'coastalstationinmarsat:approve', 'specialstation:approve')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:approvec1', 'coastalstationinmarsat:approvec2', 'specialstation:approvec1', 'specialstation:approvec2', 'data:approvec1', 'data:approvec2')")
     @PostMapping("/{id}/approve")
     @Operation(summary = "Phê duyệt Đài Inmarsat (Legacy)")
     public ResponseEntity<CoastalStationInmarsat> approveStation(

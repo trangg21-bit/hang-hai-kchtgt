@@ -9,9 +9,9 @@ test('M-002 smoke: admin login reaches app', async ({ page }) => {
   await expect(page).not.toHaveURL(/login/);
 });
 
-test('M-002 smoke: /cangbien route accessible to admin (no permission wall)', async ({ page }) => {
+test('M-002 smoke: /port route accessible to admin (no permission wall)', async ({ page }) => {
   await loginAdmin(page);
-  await page.goto('/cangbien');
+  await page.goto('/port');
   await expect(page.getByText('Không có quyền truy cập')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /tạo mới|thêm/i }).first()).toBeVisible({ timeout: 15_000 });
 });

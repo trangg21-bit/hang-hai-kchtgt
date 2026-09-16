@@ -1,98 +1,114 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
-  Button,
-  Modal,
-  Input,
-  Select,
-  Space,
-  Typography,
-  Form,
-  DatePicker,
-  Tabs,
-} from 'antd';
-import {
-  PlusOutlined,
-  EnvironmentOutlined,
-  HistoryOutlined,
-  SearchOutlined,
-  DownOutlined,
-  RightOutlined,
-  BankOutlined,
-  SlidersOutlined,
-  AuditOutlined,
+    AuditOutlined,
+    BankOutlined,
+    DownOutlined,
+    EnvironmentOutlined,
+    HistoryOutlined,
+    PlusOutlined,
+    RightOutlined,
+    SearchOutlined,
+    SlidersOutlined,
 } from '@ant-design/icons';
-import { normalizeSafeNumber } from '../../utils/numFmt';
+import {
+    Button,
+    DatePicker,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Space,
+    Tabs,
+    Typography,
+} from 'antd';
+import { normalizeSafeNumber, fmtNum } from '../../utils/numFmt';
 import { parseWktToCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
-
-import {
-  beaconStationCRUD,
-  approval,
-  beaconHistory,
-} from '../../services/beaconService';
-import type { BeaconStation } from '../../types/beacon';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import {
-  BEACON_STATUS_MAP,
-  BEACON_LIGHT_TYPE_OPTIONS,
-  type BeaconStatus,
-} from '../../types/beacon';
-import { organizationService } from '../../services/organizationService';
-import { userService } from '../../services/userService';
-import type { Organization } from '../../services/organizationService';
-import api from '../../services/api';
-import { ScreenHeader, DataTable } from '../../components/list-view';
-import Pagination from '../../components/list-view/Pagination';
-import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import EmptyState from '../../components/EmptyState';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { DataTable, ScreenHeader } from '../../components/list-view';
+import FilterTableLayout from '../../components/list-view/FilterTableLayout';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { FilterOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 import toast from '../../components/ToastNotification';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { portCRUD } from '../../services/portService';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol as MapSymbol } from '../../services/symbolService';
+import { symbolService, type Symbol as MapSymbol } from '../../services/symbolService';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
-import { FilterOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import { fmtNum } from '../../utils/numFmt';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import BeaconStationForm from './BeaconStationForm';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import {
-  actionPrimary, textPrimary, textSecondary, textTertiary,
-  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeLg,
-  radiusPill,
-  spaceXs, spaceSm, spaceMd, spaceFormField, spaceXl,
-  surfaceCard,
-  statusOperational, statusDraft, statusCritical, statusAttention,
-  drawerTitleStyle, drawerFooterStyle, DRAWER_WIDTH, selectStyle,
-  borderDefault, statusBadgeStyle, cellTitleStyle, cellSubtitleStyle,
-  inputStyle, colors, primaryButtonStyle, outlineButtonStyle,
-  requiredMarkStyle,
-  DRAWER_TABLE_SCROLL_Y,
-  getRangePickerProps,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
-} from '../../themetokenchk';
+    approval,
+    beaconHistory,
+    beaconStationCRUD,
+} from '../../services/beaconService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
+import type { Organization } from '../../services/organizationService';
+import { organizationService } from '../../services/organizationService';
+import { userService } from '../../services/userService';
 import * as themeTokenChk from '../../themetokenchk';
+import {
+    DRAWER_TABLE_SCROLL_Y,
+    DRAWER_WIDTH,
+    actionPrimary,
+    borderDefault,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    drawerFooterStyle,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeSm,
+    fontWeightBold, fontWeightMedium,
+    getRangePickerProps,
+    historyAccentBarStyle,
+    historyArrowStyle,
+    historyChangeRowStyle,
+    historyCreateRowStyle,
+    historyFieldLabelStyle,
+    historyGroupGridStyle,
+    historyInfoCardStyle,
+    historyInfoTitleStyle,
+    historyMetaRowStyle,
+    historyNewValueStyle,
+    historyOldValueStyle,
+    historyTimeStyle,
+    inputStyle,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    requiredMarkStyle,
+    selectStyle,
+    spaceFormField,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    spaceXs,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusDraft,
+    statusOperational,
+    surfaceCard,
+    textPrimary, textSecondary, textTertiary,
+} from '../../themetokenchk';
+import type { BeaconStation } from '../../types/beacon';
+import {
+    BEACON_LIGHT_TYPE_OPTIONS,
+    BEACON_STATUS_MAP,
+    type BeaconStatus,
+} from '../../types/beacon';
+import BeaconStationForm from './BeaconStationForm';
 
 // Cỡ chữ màn /beacon-stations: 13.5px chuẩn /berth (bỏ token tĩnh themetokenchk fontSizeMd=13px).
 const fontSizeMd = 13.5;
@@ -1646,6 +1662,7 @@ export default function BeaconStationList() {
   const historyTimestamp = (item: any): string => item.approvedDate || item.changedAt || item.createdAt || '';
   const historyActorName = (item: any): string => item.changedByName || item.actor || item.changedBy || '—';
 
+
   const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
     const item = group.items?.[0] || {};
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
@@ -1935,7 +1952,7 @@ export default function BeaconStationList() {
     }>;
   }, [historyRecords, isMeaningfulChange]);
 
-  const historyFieldCount = validHistoryGroups.length;
+  const historyUpdateCount = validHistoryGroups.length;
 
   function renderHistoryTimeline() {
     if (validHistoryGroups.length === 0) {
@@ -2604,7 +2621,7 @@ export default function BeaconStationList() {
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.name}` : 'Lịch sử thay đổi'}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>

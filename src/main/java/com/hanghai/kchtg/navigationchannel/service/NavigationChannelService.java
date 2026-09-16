@@ -331,7 +331,7 @@ public class NavigationChannelService {
                         ? gisSpatialObjectService.findById(nc.getSpatialId())
                         : Optional.empty();
                 boolean gisChanged = existing
-                        .map(sp -> !req.getCoordinates().trim().equals(sp.getCoordinates()))
+                        .map(sp -> !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), sp.getCoordinates()))
                         .orElse(true);
                 boolean gisNameChanged = previousValues
                         .containsKey(NavigationChannelUpdateRequest.Fields.channelName);

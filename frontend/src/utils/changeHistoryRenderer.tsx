@@ -27,6 +27,7 @@ import {
 } from '../themetokenchk';
 import { VIETNAM_PROVINCES } from '../types/common';
 import { formatHistoryNumber } from './numFmt';
+import { getServicesProvidedHistoryDelta, isServicesProvidedHistoryField } from './serviceHistoryDelta';
 
 export const isBlankOrDash = (v: unknown): boolean => {
   if (v === null || v === undefined) return true;
@@ -551,7 +552,7 @@ export const DEFAULT_IGNORED_FIELDS = new Set([
   'approvedRemarks',
 ]);
 
-export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactNode {
+export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactElement[] {
   const {
     records,
     fieldLabels = {},
@@ -560,7 +561,6 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
     resolveUnitName,
     resolveActorName,
     ignoredFields = DEFAULT_IGNORED_FIELDS,
-    emptyMessage = 'Chưa có thay đổi nào được ghi nhận',
   } = options;
 
   const norm = (v: string | null | undefined): string | null => {
@@ -657,6 +657,19 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
       const oldV = norm(it.oldValue ?? it.previousValue);
       const newV = norm(it.newValue ?? it.value);
 
+      const serviceDeltas = getServicesProvidedHistoryDelta(fn, oldV, newV);
+      if (isServicesProvidedHistoryField(fn)) {
+        serviceDeltas.forEach((delta) => {
+          fieldMap.set(delta.field, {
+            rowId: String(it.id ?? `${g.tsMs}-${delta.field}`),
+            field: delta.field,
+            oldValue: norm(delta.oldValue),
+            newValue: norm(delta.newValue),
+          });
+        });
+        continue;
+      }
+
       if (!fieldMap.has(fn)) {
         fieldMap.set(fn, {
           rowId: String(it.id ?? `${g.tsMs}-${fn}`),
@@ -721,7 +734,7 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
         const it = attachmentItems[i];
         const oldV = norm(it.oldValue ?? it.previousValue);
         if (oldV) {
-          oldV.split(',').map((s: string) => s.trim()).filter(Boolean).forEach((f) => {
+          oldV.split(',').map((s) => s.trim()).filter(Boolean).forEach((f) => {
             if (!oldFilesList.includes(f)) oldFilesList.push(f);
           });
         }
@@ -839,6 +852,7 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
         return renderWharfAreaHistory(rawV);
       }
 
+
       if (formatValue) {
         const custom = formatValue(fn, rawV);
         if (custom !== undefined && custom !== rawV) {
@@ -867,6 +881,17 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
       });
 
     if (validRows.length === 0) return null;
+
+    const renderServiceHistoryValue = (field: string, value: React.ReactNode) => {
+      if (!isServicesProvidedHistoryField(field) || typeof value !== 'string') return value;
+      const services = value.split(/[,\r\n]+/).map((item) => item.trim()).filter(Boolean);
+      if (services.length <= 1) return value;
+      return (
+        <span style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
+          {services.map((service) => <span key={service}>{service}</span>)}
+        </span>
+      );
+    };
 
     const meta = g.items?.[0] || {};
     const barColor = actionPrimary;
@@ -924,11 +949,11 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
               <div key={x.rowId} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                 <Typography.Text style={historyFieldLabelStyle}>{x.label}</Typography.Text>
                 <span style={historyOldValueStyle} title={typeof x.ov === 'string' && x.ov ? x.ov : undefined}>
-                  {x.ov}
+                  {renderServiceHistoryValue(x.field, x.ov)}
                 </span>
                 <Typography.Text style={historyArrowStyle}>→</Typography.Text>
                 <span style={historyNewValueStyle} title={typeof x.nv === 'string' && x.nv ? x.nv : undefined}>
-                  {x.nv}
+                  {renderServiceHistoryValue(x.field, x.nv)}
                 </span>
               </div>
             );
@@ -936,7 +961,18 @@ export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions
         </div>
       </div>
     );
-  }).filter(Boolean);
+  }).filter(Boolean) as React.ReactElement[];
+
+  return cards;
+}
+
+export function countStandardHistoryCards(options: ChangeHistoryRendererOptions): number {
+  return getStandardHistoryCards(options).length;
+}
+
+export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactNode {
+  const { emptyMessage = 'Chưa có thay đổi nào được ghi nhận' } = options;
+  const cards = getStandardHistoryCards(options);
 
   if (cards.length === 0) {
     return (

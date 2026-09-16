@@ -136,7 +136,6 @@ import {
   parseNumber20,
   getValueFromEvent20,
   decimalNumberRule,
-  safeNumber,
   safeDecimal,
 } from './radarStationRules';
 
@@ -1129,7 +1128,7 @@ export default function RadarStationList() {
     }>;
   }, [historyRecords]);
 
-  const historyFieldCount = validHistoryGroups.length;
+  const historyUpdateCount = validHistoryGroups.length;
 
   // Trạng thái cho phép gửi duyệt lại / gửi tiếp sau lưu (áp cho nút phụ trong drawer Cập nhật)
   const editingCanResubmit = !!editingRecord && !isDetailMode
@@ -4257,7 +4256,7 @@ export default function RadarStationList() {
                 {historyTarget ? `Lịch sử thay đổi — ${historyTarget.stationName || historyTarget.code || ''}` : 'Lịch sử thay đổi'}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                Tổng cộng {historyFieldCount}
+                Tổng cộng {historyUpdateCount}
               </span>
             </Space>
           </div>
