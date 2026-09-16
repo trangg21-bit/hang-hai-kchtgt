@@ -30,7 +30,7 @@ public class PointObjectService {
     private final GisSpatialObjectRepository spatialRepository;
 
     public List<PointObjectResponse> findAll() {
-        return repository.findAll().stream()
+        return repository.findManualAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -43,12 +43,13 @@ public class PointObjectService {
 
     public List<PointObjectResponse> findByObjectType(ObjectType objectType) {
         return repository.findByObjectType(objectType).stream()
+                .filter(p -> p.getRefId() == null || p.getRefType() == null || p.getRefType() == 0)
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<PointObjectResponse> findByStatus(Status status) {
-        return repository.findByStatus(status).stream()
+        return repository.findManualByStatus(status).stream()
                 .map(this::toResponse)
                 .toList();
     }

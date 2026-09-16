@@ -29,15 +29,30 @@ public class StringToInfrastructureTypeConverter implements Converter<String, In
                 return InfrastructureType.WATER_AREA;
             case "SHIPYARD":
             case "SHIP_REPAIR_FACILITY":
+            case "SHIP_REPAIR_YARD":
                 return InfrastructureType.SHIP_REPAIR_FACILITY;
             case "LIGHTHOUSE":
                 return InfrastructureType.LIGHTHOUSE;
             case "BUOY":
                 return InfrastructureType.BUOY;
+            case "BUOY_BERTH":
+            case "BEN_PHAO":
+            case "BENPHAO":
+                return InfrastructureType.BUOY_BERTH;
+            case "STORM_SHELTER":
+            case "STORM_SHELTER_AREA":
+            case "KHUTRANH_TRU_BAO":
+                return InfrastructureType.STORM_SHELTER_AREA;
+            case "DAI_TTDH":
+            case "DAITTDH":
+            case "COASTAL_RADIO_STATION":
+            case "COASTAL_STATION":
+                return InfrastructureType.COASTAL_RADIO_STATION;
             case "VTS":
             case "VTS_SYSTEM":
                 return InfrastructureType.VTS_SYSTEM;
             case "RADAR":
+            case "RADAR_STATION":
             case "RADAR_STATION_LEGACY":
                 return InfrastructureType.RADAR_STATION_LEGACY;
             default:

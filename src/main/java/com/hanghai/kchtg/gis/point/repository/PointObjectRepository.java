@@ -3,6 +3,7 @@ package com.hanghai.kchtg.gis.point.repository;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
+import com.hanghai.kchtg.port.entity.Port;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,7 +25,19 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
 
     List<PointObject> findByObjectType(ObjectType objectType);
 
+    List<PointObject> findByRefIdIsNull();
+
     List<PointObject> findByStatus(Status status);
+
+    List<PointObject> findByStatusAndRefIdIsNull(Status status);
+
+    @Query("SELECT p FROM PointObject p WHERE (:status IS NULL OR p.status = :status) " +
+            "AND (p.refId IS NULL OR (p.refType = 0 AND NOT EXISTS (SELECT 1 FROM Port pt WHERE pt.spatialId = p.id)))")
+    List<PointObject> findManualByStatus(@Param("status") Status status);
+
+    @Query("SELECT p FROM PointObject p WHERE " +
+            "(p.refId IS NULL OR (p.refType = 0 AND NOT EXISTS (SELECT 1 FROM Port pt WHERE pt.spatialId = p.id)))")
+    List<PointObject> findManualAll();
 
     Page<PointObject> findByStatus(Status status, Pageable pageable);
 
@@ -35,7 +48,7 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
     List<PointObject> findByCodeContainingIgnoreCase(String code);
 
     @Query(value = "SELECT * FROM gis_spatial_objects p WHERE " +
-            "p.geometry_type = 1 AND p.deleted_at IS NULL AND p.ref_id IS NULL AND " +
+            "p.geometry_type = 1 AND p.deleted_at IS NULL AND (p.ref_id IS NULL OR (p.ref_type = 0 AND NOT EXISTS (SELECT 1 FROM ports pt WHERE pt.spatial_id = p.id))) AND " +
             "(cast(:name as text) IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', cast(:name as text), '%'))) AND " +
             "(cast(:code as text) IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', cast(:code as text), '%'))) AND " +
             "(cast(:objectType as integer) IS NULL OR p.object_type = cast(:objectType as integer)) AND " +

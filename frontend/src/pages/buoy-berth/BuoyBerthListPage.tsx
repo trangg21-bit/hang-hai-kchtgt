@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
@@ -298,6 +299,13 @@ function histVal(
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BuoyBerthList() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
+
   const authUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = authUser?.permissions || [];
@@ -636,7 +644,9 @@ export default function BuoyBerthList() {
     filterProvince, filterOperationalStatus,
     filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
-  useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
+  useEffect(() => {
+    if (orgUnitReady && !isEmbeddedAction) void fetchData();
+  }, [fetchData, orgUnitReady, isEmbeddedAction]);
   useEffect(() => { if (orgUnitReady) void fetchCounts(managingUnitId); }, [managingUnitId, fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
@@ -684,6 +694,55 @@ export default function BuoyBerthList() {
     } catch { setInfrastructureList([]); }
     finally { setDetailLoading(false); }
   }, []);
+
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, []);
+
+  const closeFormDrawer = useCallback(() => {
+    setCreateDrawerVisible(false);
+    createForm.resetFields();
+    setEditBuoyBerthId(undefined);
+    setEditBaseStatus(undefined);
+    notifyEmbeddedActionClosed();
+  }, [createForm, notifyEmbeddedActionClosed]);
+
+  const closeDetailDrawer = useCallback(() => {
+    setDetailDrawerVisible(false);
+    setDetailRecord(null);
+    setInfrastructureList([]);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
+
+  // ── Embedded GIS action handler (?action=detail|edit&id=...) ──────
+  useEffect(() => {
+    if (!linkedRecordId || (linkedAction !== 'detail' && linkedAction !== 'edit')) return;
+    let cancelled = false;
+
+    buoyBerthCRUD.findById(linkedRecordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        if (linkedAction === 'detail') {
+          void openDetailDrawer(record);
+        } else {
+          setEditBuoyBerthId(linkedRecordId);
+          setEditBaseStatus(record.approvalStatus);
+          setCreateDrawerVisible(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết bến phao');
+          notifyEmbeddedActionClosed();
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedAction, linkedRecordId, openDetailDrawer, notifyEmbeddedActionClosed]);
 
   // ── Kết cấu hạ tầng detail (giống bến cảng: mở drawer chi tiết KCHT) ──
   const openInfraDetail = useCallback(async (id: string) => {
@@ -1466,7 +1525,7 @@ export default function BuoyBerthList() {
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         afterOpenChange={(open) => { if (!open) { setEditBuoyBerthId(undefined); setEditBaseStatus(undefined); } }}
-        extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+        extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={<div style={drawerFooterStyle}>{(() => {
           const st = !editBuoyBerthId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
           if (st === 'APPROVED') {
@@ -1539,7 +1598,7 @@ export default function BuoyBerthList() {
             form={createForm}
             id={editBuoyBerthId}
             onFinish={() => {
-              setCreateDrawerVisible(false);
+              closeFormDrawer();
               setSortField('updatedAt');
               setSortOrder('descend');
               setPage(1);
@@ -1558,7 +1617,7 @@ export default function BuoyBerthList() {
         className="buoy-berth-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết bến phao{detailRecord ? ` - ${detailRecord.buoyBerthName}` : ''}</span>}
         open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); setInfrastructureList([]); }}
+        onClose={closeDetailDrawer}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px', overflow: 'hidden' },

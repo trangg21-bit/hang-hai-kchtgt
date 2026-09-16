@@ -4,28 +4,66 @@ import { LeftOutlined, RightOutlined, DoubleLeftOutlined, DoubleRightOutlined } 
 import { useThemeToken } from '../../context/ThemeTokenContext';
 
 export interface PaginationProps {
-  total: number; current: number; pageSize: number;
-  pageSizeOptions?: number[]; onChange: (page: number, pageSize: number) => void;
+  total: number;
+  current: number;
+  pageSize: number;
+  pageSizeOptions?: number[];
+  onChange: (page: number, pageSize: number) => void;
+  compact?: boolean;
+  align?: 'left' | 'center' | 'right' | 'space-between';
+  showSizeChanger?: boolean;
+  showTotal?: boolean;
+  fontSize?: number;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
-  total, current, pageSize, pageSizeOptions = [20, 50, 100], onChange,
+  total,
+  current,
+  pageSize,
+  pageSizeOptions = [20, 50, 100],
+  onChange,
+  compact = false,
+  align = 'space-between',
+  showSizeChanger = true,
+  showTotal = true,
+  fontSize = 13.5,
+  className,
+  style,
 }) => {
   const {
-    textSecondary, fontSizeMd, fontWeightBold, fontWeightMedium,
+    textSecondary, fontWeightBold, fontWeightMedium,
     borderDefault, spaceSm, radiusPill, paginationSizeSelectStyle, dataSea1,
   } = useThemeToken();
 
+  const btnSize = 32;
+  const btnFontSize = fontSize;
+  const controlGap = compact ? 4 : 6;
+  const selectWidth = 114;
+
   const btnBase: React.CSSProperties = {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    width: 32, height: 32, border: `1px solid ${borderDefault}`, borderRadius: '50%',
-    cursor: 'pointer', fontWeight: fontWeightMedium, fontSize: fontSizeMd,
-    color: textSecondary, transition: 'background 0.15s, color 0.15s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: btnSize,
+    height: btnSize,
+    minWidth: btnSize,
+    border: `1px solid ${borderDefault}`,
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontWeight: fontWeightMedium,
+    fontSize: btnFontSize,
+    color: textSecondary,
+    transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+    padding: 0,
+    flexShrink: 0,
+    boxSizing: 'border-box',
   };
 
   const totalPages = Math.ceil(total / pageSize);
   const isFirst = current <= 1;
-  const isLast = current >= totalPages;
+  const isLast = current >= totalPages || totalPages <= 1;
 
   const getPageNumbers = (): (number | '...')[] => {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -43,10 +81,30 @@ const Pagination: React.FC<PaginationProps> = ({
   const pageNumbers = getPageNumbers();
 
   const pageBtn = (p: number | '...', idx: number) => {
-    if (p === '...') return <span key={`dots-${idx}`} style={{ ...btnBase, border: 'none', cursor: 'default', width: 32, height: 32 }}>...</span>;
+    if (p === '...') {
+      return (
+        <span
+          key={`dots-${idx}`}
+          style={{
+            ...btnBase,
+            border: 'none',
+            cursor: 'default',
+            width: compact ? 20 : btnSize,
+            minWidth: compact ? 20 : btnSize,
+          }}
+        >
+          ...
+        </span>
+      );
+    }
     const isActive = p === current;
     return (
-      <button key={p} type="button" onClick={() => onChange(p, pageSize)}
+      <button
+        key={p}
+        type="button"
+        onClick={() => onChange(p, pageSize)}
+        aria-label={`Trang ${p}`}
+        aria-current={isActive ? 'page' : undefined}
         style={{
           ...btnBase,
           background: isActive ? `${dataSea1}15` : 'transparent',
@@ -54,44 +112,177 @@ const Pagination: React.FC<PaginationProps> = ({
           borderColor: isActive ? `${dataSea1}40` : borderDefault,
           fontWeight: isActive ? fontWeightBold : fontWeightMedium,
           cursor: isActive ? 'default' : 'pointer',
-          width: 32, height: 32,
-        }}>
+        }}
+      >
         {p}
       </button>
     );
   };
 
   return (
-    <div className="list-view-pagination" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-      padding: '8px 0', flexWrap: 'wrap', gap: spaceSm }}>
-      <style>{`.page-size-select .ant-select-item-option { border-radius: ${radiusPill}px !important; margin: 2px 4px; }`}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
-        <span style={{ color: textSecondary, fontSize: fontSizeMd }}>
-          Tổng cộng:{' '}
-          <span style={{ fontWeight: fontWeightBold }}>{total}</span>
-        </span>
-        <button type="button" style={{ ...btnBase, opacity: isFirst ? 0.35 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
-          disabled={isFirst} onClick={() => onChange(1, pageSize)}>
-          <DoubleLeftOutlined />
-        </button>
-        <button type="button" style={{ ...btnBase, opacity: isFirst ? 0.35 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
-          disabled={isFirst} onClick={() => onChange(current - 1, pageSize)}>
+    <div
+      className={`list-view-pagination ${className || ''} ${compact ? 'list-view-pagination--compact' : ''}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: align === 'space-between'
+          ? 'space-between'
+          : align === 'left'
+            ? 'flex-start'
+            : align === 'center'
+              ? 'center'
+              : 'flex-end',
+        flexWrap: 'wrap',
+        rowGap: 8,
+        columnGap: compact ? 6 : spaceSm,
+        padding: '8px 0',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        ...style,
+      }}
+    >
+      <style>{`
+        .list-view-pagination {
+          container-type: inline-size;
+        }
+        .page-size-select .ant-select-item-option {
+          border-radius: ${radiusPill}px !important;
+          margin: 2px 4px;
+        }
+        .page-size-select .ant-select-selector {
+          font-size: ${btnFontSize}px !important;
+          height: ${btnSize}px !important;
+          display: flex !important;
+          align-items: center !important;
+        }
+        .page-size-select .ant-select-selection-item {
+          font-size: ${btnFontSize}px !important;
+          line-height: ${btnSize - 2}px !important;
+        }
+        .page-size-select-popup .ant-select-item-option-content {
+          font-size: ${btnFontSize}px !important;
+        }
+        @container (max-width: 540px) {
+          .list-view-pagination .pagination-btn-extreme {
+            display: none !important;
+          }
+        }
+        @media (max-width: 576px) {
+          .list-view-pagination .pagination-btn-extreme {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {showTotal && (
+        <div
+          className="pagination-total"
+          style={{
+            color: textSecondary,
+            fontSize: btnFontSize,
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+            lineHeight: `${btnSize}px`,
+          }}
+        >
+          {compact ? 'Tổng:' : 'Tổng cộng:'}{' '}
+          <span style={{ fontWeight: fontWeightBold }}>
+            {total.toLocaleString('vi-VN')}
+          </span>
+        </div>
+      )}
+
+      <div
+        className="pagination-controls"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: controlGap,
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
+          maxWidth: '100%',
+        }}
+      >
+        {!compact && (
+          <button
+            type="button"
+            className="pagination-btn-extreme"
+            style={{
+              ...btnBase,
+              opacity: isFirst ? 0.35 : 1,
+              cursor: isFirst ? 'not-allowed' : 'pointer',
+            }}
+            disabled={isFirst}
+            onClick={() => onChange(1, pageSize)}
+            title="Trang đầu"
+            aria-label="Trang đầu"
+          >
+            <DoubleLeftOutlined />
+          </button>
+        )}
+        <button
+          type="button"
+          style={{
+            ...btnBase,
+            opacity: isFirst ? 0.35 : 1,
+            cursor: isFirst ? 'not-allowed' : 'pointer',
+          }}
+          disabled={isFirst}
+          onClick={() => onChange(current - 1, pageSize)}
+          title="Trang trước"
+          aria-label="Trang trước"
+        >
           <LeftOutlined />
         </button>
         {pageNumbers.map(pageBtn)}
-        <button type="button" style={{ ...btnBase, opacity: isLast ? 0.35 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
-          disabled={isLast} onClick={() => onChange(current + 1, pageSize)}>
+        <button
+          type="button"
+          style={{
+            ...btnBase,
+            opacity: isLast ? 0.35 : 1,
+            cursor: isLast ? 'not-allowed' : 'pointer',
+          }}
+          disabled={isLast}
+          onClick={() => onChange(current + 1, pageSize)}
+          title="Trang sau"
+          aria-label="Trang sau"
+        >
           <RightOutlined />
         </button>
-        <button type="button" style={{ ...btnBase, opacity: isLast ? 0.35 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
-          disabled={isLast} onClick={() => onChange(totalPages, pageSize)}>
-          <DoubleRightOutlined />
-        </button>
-        <Select className="page-size-select" value={pageSize} onChange={(val) => onChange(1, val)}
-          options={pageSizeOptions.map((n) => ({ value: n, label: `${n} / trang` }))}
-          style={{ ...paginationSizeSelectStyle, width: 110, height: 32, fontSize: fontSizeMd }}
-          popupMatchSelectWidth={false}
-        />
+        {!compact && (
+          <button
+            type="button"
+            className="pagination-btn-extreme"
+            style={{
+              ...btnBase,
+              opacity: isLast ? 0.35 : 1,
+              cursor: isLast ? 'not-allowed' : 'pointer',
+            }}
+            disabled={isLast}
+            onClick={() => onChange(totalPages, pageSize)}
+            title="Trang cuối"
+            aria-label="Trang cuối"
+          >
+            <DoubleRightOutlined />
+          </button>
+        )}
+        {showSizeChanger && (
+          <Select
+            className="page-size-select"
+            popupClassName="page-size-select-popup"
+            value={pageSize}
+            onChange={(val) => onChange(1, val)}
+            options={pageSizeOptions.map((n) => ({ value: n, label: `${n} / trang` }))}
+            style={{
+              ...paginationSizeSelectStyle,
+              width: selectWidth,
+              height: btnSize,
+              fontSize: btnFontSize,
+            }}
+            popupMatchSelectWidth={false}
+          />
+        )}
       </div>
     </div>
   );

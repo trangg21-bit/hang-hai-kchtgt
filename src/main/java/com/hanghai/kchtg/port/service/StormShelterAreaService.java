@@ -22,6 +22,8 @@ import com.hanghai.kchtg.port.dto.stormshelter.StormShelterAreaResponse;
 import com.hanghai.kchtg.port.dto.stormshelter.UpdateStormShelterAreaRequest;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.entity.BuoyBerth;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.entity.StormShelterArea;
 import com.hanghai.kchtg.port.entity.StormShelterMooringWaterArea;
@@ -71,6 +73,7 @@ public class StormShelterAreaService {
     private final AttachmentRepository attachmentRepository;
     private final BuoyBerthRepository buoyBerthRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final NavigationChannelRepository navigationChannelRepository;
     private final StormShelterMooringWaterAreaRepository stormShelterMooringWaterAreaRepository;
     private final StormShelterMooringWaterAreaAnchorPointRepository stormShelterMooringWaterAreaAnchorPointRepository;
     private final ChangeHistoryService changeHistoryService;
@@ -635,6 +638,26 @@ public class StormShelterAreaService {
         return buoyBerthRepository.findById(buoyStationId).map(BuoyBerth::getBuoyBerthName).orElse(null);
     }
 
+    private String resolveNavigationChannelName(UUID navigationChannelId) {
+        if (navigationChannelId == null) return null;
+        return navigationChannelRepository.findById(navigationChannelId)
+                .map(NavigationChannel::getChannelName)
+                .orElseGet(() -> gisSpatialObjectService.findById(navigationChannelId)
+                        .map(GisSpatialObject::getName)
+                        .orElse(null));
+    }
+
+    private String resolvePortName(UUID portId) {
+        if (portId == null) return null;
+        String name = portCacheService.getName(portId);
+        if (name != null) return name;
+        return portRepository.findById(portId)
+                .map(Port::getPortName)
+                .orElseGet(() -> gisSpatialObjectService.findById(portId)
+                        .map(GisSpatialObject::getName)
+                        .orElse(null));
+    }
+
     public StormShelterAreaResponse toResponse(StormShelterArea entity) {
         return toResponse(entity, null, null);
     }
@@ -652,10 +675,11 @@ public class StormShelterAreaService {
                 .stormShelterCode(entity.getStormShelterCode())
                 .stormShelterName(entity.getStormShelterName())
                 .portId(entity.getPortId())
-                .portName(preResolvedPortName != null ? preResolvedPortName : portCacheService.getName(entity.getPortId()))
+                .portName(preResolvedPortName != null ? preResolvedPortName : resolvePortName(entity.getPortId()))
                 .orgUnitId(entity.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .navigationChannelId(entity.getNavigationChannelId())
+                .waterway(resolveNavigationChannelName(entity.getNavigationChannelId()))
                 .buoyStationId(entity.getBuoyStationId())
                 .buoyStationName(resolveBuoyStationName(entity.getBuoyStationId(), buoyStationNameMap))
                 .classification(entity.getClassification())
