@@ -1,7 +1,3 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Form } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -12,60 +8,64 @@ import {
   PlusOutlined,
   RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
-  type TableActionOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableActionOption,
+  type TableOption,
 } from '../../components/list-view';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import toast from '../../components/ToastNotification';
-import { organizationService, type Organization } from '../../services/organizationService';
 import {
-  fetchInmarsatAssets,
-  fetchInmarsatAssetCounts,
-  deleteInmarsatAsset,
-  createInmarsatAsset,
-  updateInmarsatAsset,
-  fetchInmarsatExploitations,
-  createInmarsatExploitation,
-  fetchInmarsatAdjustments,
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
+import {
   createInmarsatAdjustment,
-  fetchInmarsatStationOptions,
-  fetchInmarsatAssetAttachments,
-  uploadInmarsatAssetAttachments,
+  createInmarsatAsset,
+  createInmarsatExploitation,
+  deleteInmarsatAsset,
   downloadInmarsatAssetAttachment,
+  fetchInmarsatAdjustments,
+  fetchInmarsatAssetAttachments,
+  fetchInmarsatAssetCounts,
+  fetchInmarsatAssets,
+  fetchInmarsatExploitations,
+  fetchInmarsatStationOptions,
+  updateInmarsatAsset,
+  uploadInmarsatAssetAttachments,
 } from '../../services/inmarsatAsset/api';
 import type {
   InmarsatAsset,
+  InmarsatAssetAdjustment,
+  InmarsatAssetExploitation,
   InmarsatAssetFilters,
   InmarsatAssetPayload,
-  InmarsatAssetExploitation,
-  InmarsatAssetAdjustment,
 } from '../../services/inmarsatAsset/types';
-import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import api from '../../services/api';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import InmarsatAssetForm, { type FormValues } from './InmarsatAssetForm';
+import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import InmarsatAssetDetailContent from './InmarsatAssetDetailContent';
+import InmarsatAssetForm, { type FormValues } from './InmarsatAssetForm';
+import InmarsatAssetHistory, { useInmarsatHistory } from './InmarsatAssetHistory';
 import InmarsatAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './InmarsatAssetOperationForm';
-import InmarsatAssetHistory, { useInmarsatHistory } from './InmarsatAssetHistory';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -162,26 +162,27 @@ export default function InmarsatAssetList() {
       setData(res.content || []);
       setTotal(res.totalElements || 0);
 
-      if (
-        rawCounts &&
-        requestVersion === statusCountRequestVersion.current &&
-        latestStatusCountFilterKey.current === filterKey
-      ) {
-        const nextCounts: Record<string, number> = {
-          all: Number(rawCounts.ALL ?? rawCounts.all ?? 0),
-          ...Object.fromEntries(
-            STATUS_COUNT_KEYS.map((key) => [key, Number(rawCounts[key] ?? 0)])
-          ),
-        };
-        const rejectedTotal = (nextCounts.REJECTED_LEVEL1 || 0) + (nextCounts.REJECTED_LEVEL2 || 0);
-        nextCounts.REJECTED_LEVEL1 = rejectedTotal;
-        delete nextCounts.REJECTED_LEVEL2;
-        setStatusCounts(nextCounts);
-        statusCountFilterKey.current = filterKey;
-        statusCountLoadingKey.current = undefined;
-      } else if (shouldLoadCounts && statusCountLoadingKey.current === filterKey) {
-        statusCountLoadingKey.current = undefined;
-      }
+      const baseFilters = { ...filters, approvalStatus: undefined, page: 0, size: 1 };
+      const emptyPage: { totalElements: number; content: InmarsatAsset[] } = {
+        totalElements: 0,
+        content: [],
+      };
+      const [all, ...statusPages] = await Promise.all([
+        fetchInmarsatAssets(baseFilters).catch(() => emptyPage),
+        ...STATUS_COUNT_KEYS.map((approvalStatus) =>
+          fetchInmarsatAssets({ ...baseFilters, approvalStatus }).catch(() => emptyPage)
+        ),
+      ]);
+      const nextCounts: Record<string, number> = {
+        all: all?.totalElements || 0,
+        ...Object.fromEntries(
+          STATUS_COUNT_KEYS.map((key, index) => [key, statusPages[index]?.totalElements || 0])
+        ),
+      };
+      const rejectedTotal = (nextCounts.REJECTED_LEVEL1 || 0) + (nextCounts.REJECTED_LEVEL2 || 0);
+      nextCounts.REJECTED_LEVEL1 = rejectedTotal;
+      delete nextCounts.REJECTED_LEVEL2;
+      setStatusCounts(nextCounts);
     } catch (cause: unknown) {
       if (shouldLoadCounts && statusCountLoadingKey.current === filterKey) {
         statusCountLoadingKey.current = undefined;

@@ -2,25 +2,24 @@ import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { PortTerminalAsset } from '../../services/assetmovement/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import type { Organization } from '../../../services/organizationService';
+import { fmtInputNumber } from '../../../utils/numFmt';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
   type FormTabConfig,
   type FormSidebarAction,
-} from '../../components/shared/dynamic-form-sidebar';
-import {
-  createAssetAdjustmentOperationSection,
-  handleAssetAdjustmentValuesChange,
-} from '../../components/shared/asset-value';
+} from '../dynamic-form-sidebar';
+import { createAssetAdjustmentOperationSection } from './assetValueFormFields';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
-export interface OperationValues {
+export interface CommonOperationValues {
+  [key: string]: unknown;
+  // Exploit fields
   operatorOrgUnitId?: string;
+  assetCategory?: string;
   unitOfMeasure?: string;
   quantity?: number;
   exploitationDeadline?: Dayjs;
@@ -28,12 +27,18 @@ export interface OperationValues {
   relatedCosts?: number;
   stateBudgetPayment?: number;
   projectAmount?: number;
-  notes?: string;
+
+  // Decision & adjustment fields
   decisionNumber?: string;
   decisionDate?: Dayjs;
   adjustmentDate?: Dayjs;
   adjustmentReason?: string;
+
+  // Values & depreciation
+  originalValueBefore?: number;
   originalValue?: number;
+  remainingValueBefore?: number;
+  remainingValueAfter?: number;
   declarationDate?: Dayjs;
   depreciationRate?: number;
   assignmentDecisionNumber?: string;
@@ -41,33 +46,40 @@ export interface OperationValues {
   depreciationMonths?: number;
   depreciationEndDate?: Dayjs;
   accumulatedDepreciation?: number;
-  disposalMethod?: string;
-  [key: string]: unknown;
+  monthlyDepreciation?: number;
+  notes?: string;
 }
 
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
 const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
+  'Đầu tư nâng cấp, mở rộng',
+  'Đánh giá lại giá trị tài sản',
+  'Tháo dỡ một phần',
+  'Hư hỏng do thiên tai',
+  'Quyết định của cấp có thẩm quyền',
   'Khác',
 ];
 
-export interface PortTerminalAssetOperationFormProps {
+const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm', 'Hệ thống'];
+
+export interface CommonAssetOperationFormProps {
   open: boolean;
   operationMode?: OperationMode;
-  selected?: PortTerminalAsset;
+  selected?: {
+    id: string;
+    assetName?: string;
+    assetCode?: string;
+    originalValue?: number | null;
+    remainingValue?: number | null;
+  } | null;
   organizations: Organization[];
-  form: FormInstance<OperationValues>;
+  form: FormInstance<CommonOperationValues>;
   saving: boolean;
   drawerClassName?: string;
   onClose: () => void;
   onSubmit: () => Promise<void> | void;
 }
 
-export function PortTerminalAssetOperationForm({
+export function CommonAssetOperationForm({
   open,
   operationMode,
   selected,
@@ -77,7 +89,7 @@ export function PortTerminalAssetOperationForm({
   drawerClassName = 'berth-drawer-scope',
   onClose,
   onSubmit,
-}: PortTerminalAssetOperationFormProps) {
+}: CommonAssetOperationFormProps) {
   const title = useMemo(() => {
     if (!operationMode || !selected) return '';
     const actionText =
@@ -86,10 +98,10 @@ export function PortTerminalAssetOperationForm({
         : operationMode === 'increase'
           ? 'Tăng nguyên giá tài sản'
           : 'Giảm nguyên giá tài sản';
-    return `${actionText} — ${selected.assetName || ''}`;
+    return `${actionText} — ${selected.assetName || selected.assetCode || ''}`;
   }, [operationMode, selected]);
 
-  const sections = useMemo<FormSectionConfig<OperationValues>[]>(() => {
+  const sections = useMemo<FormSectionConfig<CommonOperationValues>[]>(() => {
     if (!operationMode || !selected) return [];
 
     if (operationMode === 'exploit') {
@@ -227,14 +239,14 @@ export function PortTerminalAssetOperationForm({
           },
         ],
       },
-      createAssetAdjustmentOperationSection<OperationValues>({
+      createAssetAdjustmentOperationSection<CommonOperationValues>({
         selectedRecord: selected,
         operationMode,
       }),
     ];
   }, [operationMode, selected, organizations]);
 
-  const tabs = useMemo<FormTabConfig<OperationValues>[]>(() => {
+  const tabs = useMemo<FormTabConfig<CommonOperationValues>[]>(() => {
     if (!sections || sections.length === 0) return [];
     const tabIcon =
       operationMode === 'exploit' ? <RocketOutlined /> : <AuditOutlined />;
@@ -246,42 +258,46 @@ export function PortTerminalAssetOperationForm({
         sections,
       },
     ];
-  }, [sections, operationMode]);
+  }, [operationMode, sections]);
 
-  const footerActions = useMemo<FormSidebarAction[]>(() => [
-    {
-      key: 'cancel',
-      label: 'Hủy',
-      variant: 'outline',
-      onClick: onClose,
-    },
-    {
-      key: 'submit',
-      label: 'Lưu thông tin',
-      variant: 'primary',
-      loading: saving,
-      onClick: onSubmit,
-    },
-  ], [onClose, onSubmit, saving]);
+  const footerActions = useMemo<FormSidebarAction[]>(() => {
+    return [
+      {
+        key: 'cancel',
+        label: 'Hủy',
+        variant: 'default',
+        onClick: onClose,
+      },
+      {
+        key: 'save',
+        label: 'Lưu thông tin',
+        variant: 'primary',
+        loading: saving,
+        onClick: () => {
+          void onSubmit();
+        },
+      },
+    ];
+  }, [onClose, onSubmit, saving]);
 
-  if (!operationMode || !selected) return null;
+  if (!open || !operationMode || !selected) {
+    return null;
+  }
 
   return (
-    <DynamicFormSidebar<OperationValues>
+    <DynamicFormSidebar<CommonOperationValues>
       open={open}
       title={title}
-      onClose={onClose}
       form={form}
-      rootClassName={`berth-drawer-scope ${drawerClassName}`}
-      className={`berth-drawer-scope ${drawerClassName}`}
       tabs={tabs}
       footerActions={footerActions}
-      footerAlign="center"
-      onValuesChange={(changed, all) => {
-        handleAssetAdjustmentValuesChange(form, changed, all);
-      }}
+      loading={saving}
+      onClose={onClose}
+      rootClassName={drawerClassName}
+      className={drawerClassName}
+      destroyOnClose
     />
   );
 }
 
-export default PortTerminalAssetOperationForm;
+export default CommonAssetOperationForm;

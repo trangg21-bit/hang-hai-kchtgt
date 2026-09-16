@@ -11,7 +11,7 @@ import {
   Tabs,
 } from "antd";
 import type { FormInstance, Rule } from "antd/es/form";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useThemeToken } from "../../../context/ThemeTokenContext";
 import {
   actionPrimary,
@@ -27,7 +27,7 @@ import {
   readonlyInputStyle,
   spaceFormField,
 } from "../../../themetokenchk";
-import { fmtInputNumber } from "../../../utils/numFmt";
+import { formatDotNumber, parseDotNumber } from "../../../utils/numFmt";
 import { OrgUnitTreeSelect } from "../../org-unit";
 import { AppDrawer } from "../AppDrawer";
 import {
@@ -124,8 +124,8 @@ function renderFormField<T extends Record<string, unknown>>(
         <InputNumber
           min={field.min}
           max={field.max}
-          formatter={field.formatter || fmtInputNumber}
-          parser={field.parser as any}
+          formatter={field.formatter || formatDotNumber}
+          parser={(field.parser || parseDotNumber) as any}
           placeholder={field.placeholder ?? (labelText ? `Nhập ${labelText}` : '0')}
           disabled={field.disabled}
           readOnly={field.readOnly}
@@ -205,23 +205,49 @@ function renderFormField<T extends Record<string, unknown>>(
       break;
     }
     case FormFieldType.Readonly: {
-      const computedVal = field.computedValue
-        ? field.computedValue(form, formValues)
-        : formValues[field.name as keyof T];
-      const displayVal = field.valueFormatter
-        ? field.valueFormatter(computedVal)
-        : computedVal != null
-          ? String(computedVal)
-          : "";
-      controlNode = (
-        <Input
-          disabled
-          value={displayVal as any}
-          placeholder={field.placeholder}
-          style={{ ...readonlyInputStyle, ...field.controlStyle }}
-        />
+      return (
+        <Col key={String(field.name)} span={field.colSpan || 12}>
+          <Form.Item
+            noStyle={false}
+            label={labelNode}
+            dependencies={
+              field.dependencies && field.dependencies.length > 0
+                ? field.dependencies
+                : undefined
+            }
+            shouldUpdate={
+              !field.dependencies || field.dependencies.length === 0
+                ? true
+                : undefined
+            }
+            style={{ marginBottom: spaceFormField, ...field.itemStyle }}
+          >
+            {() => {
+              const allFormVals = {
+                ...form.getFieldsValue(true),
+                ...formValues,
+              };
+              const rawVal = field.computedValue
+                ? field.computedValue(form, allFormVals)
+                : (allFormVals?.[field.name as keyof T] ??
+                    form?.getFieldValue?.(field.name as any));
+              const displayVal = field.valueFormatter
+                ? field.valueFormatter(rawVal)
+                : rawVal != null
+                  ? String(rawVal)
+                  : "";
+              return (
+                <Input
+                  disabled
+                  value={displayVal as any}
+                  placeholder={field.placeholder}
+                  style={{ ...readonlyInputStyle, ...field.controlStyle }}
+                />
+              );
+            }}
+          </Form.Item>
+        </Col>
       );
-      break;
     }
     case FormFieldType.Custom: {
       controlNode = field.customRender
@@ -258,11 +284,7 @@ function renderFormField<T extends Record<string, unknown>>(
   return (
     <Col key={String(field.name)} span={field.colSpan || 12}>
       <Form.Item
-        name={
-          field.type === FormFieldType.Readonly && field.computedValue
-            ? undefined
-            : (field.name as any)
-        }
+        name={field.name as any}
         label={labelNode}
         rules={rules}
         required={field.required}
@@ -340,6 +362,7 @@ export function DynamicFormSidebar<
 }: DynamicFormSidebarProps<T>) {
   const [internalForm] = Form.useForm<T>();
   const form = externalForm || internalForm;
+  const [, setTick] = useState(0);
   const formValues = (Form.useWatch([], form) as T) || ({} as T);
 
   const {
@@ -540,7 +563,12 @@ export function DynamicFormSidebar<
           preserve={true}
           initialValues={initialValues}
           onFinish={handleFinish}
-          onValuesChange={onValuesChange}
+          onValuesChange={(changedValues, allValues) => {
+            setTick((prev) => prev + 1);
+            if (onValuesChange) {
+              onValuesChange(changedValues, allValues);
+            }
+          }}
         >
           {renderBodyContent()}
         </Form>

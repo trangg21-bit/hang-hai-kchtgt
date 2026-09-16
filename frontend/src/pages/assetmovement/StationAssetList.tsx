@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs from 'dayjs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CommonStatusTabs,
   CommonTable,
@@ -19,15 +19,14 @@ import {
   ScreenHeader,
   TableColumnType,
   TableFilter,
-  type ScreenHeaderAction,
-  type TableActionOption,
+  type ScreenHeaderAction
 } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-  triggerBlobDownload,
   resolveMimeType,
+  triggerBlobDownload,
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
@@ -73,16 +72,15 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 import LritAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './LritAssetOperationForm';
-import { type StationTypeConfig } from './stationConfigs';
 import StationAssetDetailContent from './StationAssetDetailContent';
 import StationAssetForm, { type StationFormValues } from './StationAssetForm';
+import { type StationTypeConfig } from './stationConfigs';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
