@@ -31,6 +31,8 @@ import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.repository.BuoyBerthRepository;
 import com.hanghai.kchtg.port.repository.MooringWaterAreaAnchorPointRepository;
 import com.hanghai.kchtg.port.repository.MooringWaterAreaRepository;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
@@ -68,6 +70,7 @@ public class AnchorageService {
     private final AttachmentRepository attachmentRepository;
     private final BuoyBerthRepository buoyBerthRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final NavigationChannelRepository navigationChannelRepository;
     private final MooringWaterAreaRepository mooringWaterAreaRepository;
     private final MooringWaterAreaAnchorPointRepository mooringWaterAreaAnchorPointRepository;
     private final InfrastructureHistoryRepository historyRepository;
@@ -580,6 +583,26 @@ public class AnchorageService {
         return buoyBerthRepository.findById(buoyStationId).map(BuoyBerth::getBuoyBerthName).orElse(null);
     }
 
+    private String resolveNavigationChannelName(UUID navigationChannelId) {
+        if (navigationChannelId == null) return null;
+        return navigationChannelRepository.findById(navigationChannelId)
+                .map(NavigationChannel::getChannelName)
+                .orElseGet(() -> gisSpatialObjectService.findById(navigationChannelId)
+                        .map(GisSpatialObject::getName)
+                        .orElse(null));
+    }
+
+    private String resolvePortName(UUID portId) {
+        if (portId == null) return null;
+        String name = portCacheService.getName(portId);
+        if (name != null) return name;
+        return portRepository.findById(portId)
+                .map(Port::getPortName)
+                .orElseGet(() -> gisSpatialObjectService.findById(portId)
+                        .map(GisSpatialObject::getName)
+                        .orElse(null));
+    }
+
     public AnchorageResponse toResponse(Anchorage entity) {
         return toResponse(entity, null, null);
     }
@@ -597,10 +620,11 @@ public class AnchorageService {
                 .anchorageCode(entity.getAnchorageCode())
                 .anchorageName(entity.getAnchorageName())
                 .portId(entity.getPortId())
-                .portName(preResolvedPortName != null ? preResolvedPortName : portCacheService.getName(entity.getPortId()))
+                .portName(preResolvedPortName != null ? preResolvedPortName : resolvePortName(entity.getPortId()))
                 .orgUnitId(entity.getOrgUnitId())
                 .orgUnitName(orgUnitCacheService.getName(entity.getOrgUnitId()))
                 .navigationChannelId(entity.getNavigationChannelId())
+                .waterway(resolveNavigationChannelName(entity.getNavigationChannelId()))
                 .buoyStationId(entity.getBuoyStationId())
                 .buoyStationName(resolveBuoyStationName(entity.getBuoyStationId(), buoyStationNameMap))
                 .provinceId(entity.getProvinceId())

@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
@@ -347,6 +348,13 @@ function histVal(
 
 
 export default function StormShelterListPage() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
+
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
@@ -607,7 +615,7 @@ export default function StormShelterListPage() {
     filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize,
   ]);
 
-  useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
+  useEffect(() => { if (initialLoadDone && !isEmbeddedAction) void fetchData(); }, [fetchData, initialLoadDone, isEmbeddedAction]);
   useEffect(() => { void fetchCounts(orgUnit); }, [orgUnit, fetchCounts]);
 
   const handleFilterApply = useCallback(() => {
@@ -646,10 +654,53 @@ export default function StormShelterListPage() {
     } catch {}
   }, []);
 
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, []);
+
+  const closeFormDrawer = useCallback(() => {
+    setCreateDrawerVisible(false);
+    createForm.resetFields();
+    setEditStormShelterId(undefined);
+    setEditBaseStatus(undefined);
+    notifyEmbeddedActionClosed();
+  }, [createForm, notifyEmbeddedActionClosed]);
+
   const closeDetailDrawer = useCallback(() => {
     setDetailDrawerVisible(false);
     setDetailRecord(null);
-  }, []);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
+
+  // ── Embedded GIS action handler (?action=detail|edit&id=...) ──────
+  useEffect(() => {
+    if (!linkedRecordId || (linkedAction !== 'detail' && linkedAction !== 'edit')) return;
+    let cancelled = false;
+
+    stormShelterCRUD.findById(linkedRecordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        if (linkedAction === 'detail') {
+          void openDetailDrawer(record);
+        } else {
+          setEditStormShelterId(linkedRecordId);
+          setEditBaseStatus(record.approvalStatus);
+          setCreateDrawerVisible(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết khu tránh, trú bão');
+          notifyEmbeddedActionClosed();
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedAction, linkedRecordId, openDetailDrawer, notifyEmbeddedActionClosed]);
 
   const dd2dms = (dd: number) => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -1395,7 +1446,7 @@ export default function StormShelterListPage() {
           destroyOnHidden
           onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
           afterOpenChange={(open) => { if (!open) { setEditStormShelterId(undefined); setEditBaseStatus(undefined); } }}
-          extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+          extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           footer={<div style={drawerFooterStyle}>{(() => {
             const st = !editStormShelterId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
             if (st === 'APPROVED') {
@@ -1435,8 +1486,7 @@ export default function StormShelterListPage() {
               form={createForm}
               id={editStormShelterId}
               onFinish={() => {
-                setCreateDrawerVisible(false);
-                createForm.resetFields();
+                closeFormDrawer();
                 setSortField('updatedAt');
                 setSortOrder('descend');
                 setPage(1);

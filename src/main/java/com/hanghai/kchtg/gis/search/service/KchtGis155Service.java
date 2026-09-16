@@ -100,6 +100,10 @@ public class KchtGis155Service {
   private final NavigationChannelRepository navigationChannelRepository;
   private final com.hanghai.kchtg.port.repository.AnchorageRepository anchorageRepository;
   private final com.hanghai.kchtg.port.repository.TransferAreaRepository transferAreaRepository;
+  private final DaiTtdhRepository daiTtdhRepository;
+  private final BuoyBerthRepository buoyBerthRepository;
+  private final StormShelterAreaRepository stormShelterAreaRepository;
+  private final ShipRepairYardRepository shipRepairYardRepository;
   private final DikeRevetmentRepository dikeRevetmentRepository;
   private final ShipRepairFacilityRepository shipRepairFacilityRepository;
   private final BuoyStationRepository buoyStationRepository;
@@ -279,6 +283,18 @@ public class KchtGis155Service {
     return spatialMap;
   }
 
+  private InfrastructureType canonicalType(InfrastructureType type) {
+    if (type == null) {
+      return null;
+    }
+    return switch (type) {
+      case DAI_TTDH -> InfrastructureType.COASTAL_RADIO_STATION;
+      case SHIP_REPAIR_YARD -> InfrastructureType.SHIP_REPAIR_FACILITY;
+      case RADAR_STATION -> InfrastructureType.RADAR_STATION_LEGACY;
+      default -> type;
+    };
+  }
+
   public KchtGisSearchPage search(
       UUID rawOrgUnitId,
       List<InfrastructureType> kchtTypes,
@@ -297,6 +313,7 @@ public class KchtGis155Service {
     } else {
       types = kchtTypes.stream()
           .filter(Objects::nonNull)
+          .map(this::canonicalType)
           .filter(SEARCHABLE_TYPES::contains)
           .distinct()
           .collect(Collectors.toList());
@@ -332,16 +349,17 @@ public class KchtGis155Service {
               orgUnitId == null, orgUnitIds, null, null, provinceLocal, null,
               ApprovalStatus.APPROVED, null, null, null, null, searchLower, PageRequest.of(0, MAX_FETCH_SIZE))
               .getContent();
-          Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
-          if (!ports.isEmpty()) {
-            List<UUID> cbIds = ports.stream().map(Port::getId).collect(Collectors.toList());
-            gisSpatialObjectRepository.findByRefIdInAndRefType(cbIds, InfrastructureType.SEAPORT)
-                .forEach(so -> cbSpatialMap.put(so.getRefId(), so));
-          }
+          Map<UUID, GisSpatialObject> cbSpatialMap = loadSpatialMap(
+              ports.stream().map(Port::getId).filter(Objects::nonNull).toList(),
+              InfrastructureType.SEAPORT,
+              ports.stream().map(Port::getSpatialId).filter(Objects::nonNull).toList());
           for (Port cb : ports) {
-            GisSpatialObject spatial = cbSpatialMap.get(cb.getId());
-            double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
-                : null;
+            GisSpatialObject spatial = cb.getSpatialId() != null
+                ? cbSpatialMap.get(cb.getSpatialId())
+                : cbSpatialMap.get(cb.getId());
+            if (spatial == null && cb.getId() != null) {
+              spatial = cbSpatialMap.get(cb.getId());
+            }
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(cb.getId() != null ? cb.getId().toString() : null)
                 .name(cb.getPortName())
@@ -354,12 +372,24 @@ public class KchtGis155Service {
                 .location(cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "")
                 .diaChiChiTiet("")
                 .build();
+            if (spatial != null) {
+              String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+              r.setGeometryType(geomTypeStr);
+              r.setCoordinates(spatial.getCoordinates());
+              enrichRepresentativeCoordinate(r);
+            }
             if (objectType != null) {
-              populateSpatialAndFilterFromMap(results, r, cb.getId(), objectType, GisObjectType.POINT,
-                  cbSpatialMap);
+              if (spatial != null && spatial.getGeometryType() != null
+                  && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                results.add(r);
+              }
             } else {
               results.add(r);
-              spatialIdMap.put(r.getId(), cb.getId());
+              if (cb.getSpatialId() != null) {
+                spatialIdMap.put(r.getId(), cb.getSpatialId());
+              } else if (cb.getId() != null) {
+                spatialIdMap.put(r.getId(), cb.getId());
+              }
             }
           }
           break;
@@ -374,20 +404,21 @@ public class KchtGis155Service {
           if (!cbIds.isEmpty()) {
             portRepository.findAllById(cbIds).forEach(cb -> bcPortMap.put(cb.getId(), cb));
           }
-          Map<UUID, GisSpatialObject> bcSpatialMap = new HashMap<>();
-          if (!berths.isEmpty()) {
-            List<UUID> bcIds = berths.stream().map(Berth::getId).collect(Collectors.toList());
-            gisSpatialObjectRepository.findByRefIdInAndRefType(bcIds, InfrastructureType.PORT_TERMINAL)
-                .forEach(so -> bcSpatialMap.put(so.getRefId(), so));
-          }
+          Map<UUID, GisSpatialObject> bcSpatialMap = loadSpatialMap(
+              berths.stream().map(Berth::getId).filter(Objects::nonNull).toList(),
+              InfrastructureType.PORT_TERMINAL,
+              berths.stream().map(Berth::getSpatialId).filter(Objects::nonNull).toList());
           for (Berth bc : berths) {
             Port parent = (bc.getPortId() != null) ? bcPortMap.get(bc.getPortId()) : null;
             String parentProvince = (parent != null && parent.getProvince() != null)
                 ? String.valueOf(parent.getProvince())
                 : "";
-            GisSpatialObject spatial = bcSpatialMap.get(bc.getId());
-            double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
-                : null;
+            GisSpatialObject spatial = bc.getSpatialId() != null
+                ? bcSpatialMap.get(bc.getSpatialId())
+                : bcSpatialMap.get(bc.getId());
+            if (spatial == null && bc.getId() != null) {
+              spatial = bcSpatialMap.get(bc.getId());
+            }
             KchtGisSearchResult r = KchtGisSearchResult.builder()
                 .id(bc.getId() != null ? bc.getId().toString() : null)
                 .name(bc.getBerthName())
@@ -401,12 +432,24 @@ public class KchtGis155Service {
                 .location(parentProvince)
                 .diaChiChiTiet(bc.getWaterway() != null ? bc.getWaterway() : "")
                 .build();
+            if (spatial != null) {
+              String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+              r.setGeometryType(geomTypeStr);
+              r.setCoordinates(spatial.getCoordinates());
+              enrichRepresentativeCoordinate(r);
+            }
             if (objectType != null) {
-              populateSpatialAndFilterFromMap(results, r, bc.getId(), objectType, GisObjectType.POINT,
-                  bcSpatialMap);
+              if (spatial != null && spatial.getGeometryType() != null
+                  && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                results.add(r);
+              }
             } else {
               results.add(r);
-              spatialIdMap.put(r.getId(), bc.getId());
+              if (bc.getSpatialId() != null) {
+                spatialIdMap.put(r.getId(), bc.getSpatialId());
+              } else if (bc.getId() != null) {
+                spatialIdMap.put(r.getId(), bc.getId());
+              }
             }
           }
           break;
@@ -898,40 +941,131 @@ public class KchtGis155Service {
           break;
 
         case SHIP_REPAIR_FACILITY:
+        case SHIP_REPAIR_YARD:
+          List<ShipRepairYard> shipYards = shipRepairYardRepository.searchShipRepairYards(
+              true,
+              List.of(),
+              searchLower,
+              null,
+              null,
+              null,
+              null,
+              provinceId,
+              ApprovalStatus.APPROVED,
+              null,
+              false,
+              null,
+              null,
+              PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+
+          List<UUID> syPortIds = shipYards.stream().map(ShipRepairYard::getPortId).filter(Objects::nonNull).distinct().toList();
+          Map<UUID, Port> syPortMap = new HashMap<>();
+          if (!syPortIds.isEmpty()) {
+            portRepository.findAllById(syPortIds).forEach(p -> syPortMap.put(p.getId(), p));
+          }
+
+          List<UUID> syRefIds = shipYards.stream().map(ShipRepairYard::getId).filter(Objects::nonNull).toList();
+          List<UUID> sySpatialIds = shipYards.stream().map(ShipRepairYard::getSpatialId).filter(Objects::nonNull).toList();
+          Map<UUID, GisSpatialObject> sySpatialMap = loadSpatialMap(syRefIds, InfrastructureType.SHIP_REPAIR_YARD, sySpatialIds);
+          if (!syRefIds.isEmpty()) {
+            gisSpatialObjectRepository.findByRefIdInAndRefType(syRefIds, InfrastructureType.SHIP_REPAIR_FACILITY)
+                .forEach(spatial -> {
+                  sySpatialMap.put(spatial.getId(), spatial);
+                  if (spatial.getRefId() != null) {
+                    sySpatialMap.put(spatial.getRefId(), spatial);
+                  }
+                });
+          }
+
+          Set<String> seenShipYardCodes = new HashSet<>();
+          for (ShipRepairYard yard : shipYards) {
+            if (yard.getShipRepairYardCode() != null) {
+              seenShipYardCodes.add(yard.getShipRepairYardCode().toUpperCase());
+            }
+            Port parent = yard.getPortId() != null ? syPortMap.get(yard.getPortId()) : null;
+            String parentProvince = (parent != null && parent.getProvince() != null)
+                ? String.valueOf(parent.getProvince())
+                : "";
+            GisSpatialObject spatial = yard.getSpatialId() != null
+                ? sySpatialMap.get(yard.getSpatialId())
+                : sySpatialMap.get(yard.getId());
+            KchtGisSearchResult r = KchtGisSearchResult.builder()
+                .id(yard.getId() != null ? yard.getId().toString() : null)
+                .name(yard.getShipRepairYardName())
+                .code(yard.getShipRepairYardCode())
+                .orgUnitId(yard.getOrgUnitId())
+                .orgName(getOrgName(yard.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Cơ sở sửa chữa, đóng tàu")
+                .mapSymbolId(yard.getMapSymbolId())
+                .provinceId(yard.getProvinceId())
+                .location(parentProvince)
+                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                .build();
+            if (spatial != null) {
+              String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+              r.setGeometryType(geomTypeStr);
+              r.setCoordinates(spatial.getCoordinates());
+              enrichRepresentativeCoordinate(r);
+            }
+            if (objectType != null) {
+              if (spatial != null && spatial.getGeometryType() != null
+                  && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                results.add(r);
+              }
+            } else {
+              results.add(r);
+              if (yard.getSpatialId() != null) {
+                spatialIdMap.put(r.getId(), yard.getSpatialId());
+              } else if (yard.getId() != null) {
+                spatialIdMap.put(r.getId(), yard.getId());
+              }
+            }
+          }
+
           String csSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
           List<ShipRepairFacility> csList = shipRepairFacilityRepository.searchFiltered(orgUnitId,
               csSearchParam).stream().toList();
-          Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
-          if (!csList.isEmpty()) {
+          if (csList != null && !csList.isEmpty()) {
+            Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
             List<UUID> csSpatialIds = csList.stream().map(ShipRepairFacility::getSpatialId)
                 .filter(Objects::nonNull).distinct().collect(Collectors.toList());
             if (!csSpatialIds.isEmpty()) {
               gisSpatialObjectRepository.findAllById(csSpatialIds)
                   .forEach(so -> csSpatialMap.put(so.getId(), so));
             }
-          }
-          for (ShipRepairFacility cs : csList) {
-            GisSpatialObject spatial = csSpatialMap.get(cs.getSpatialId());
-            double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
-                : null;
-            KchtGisSearchResult r = KchtGisSearchResult.builder()
-                .id(String.valueOf(cs.getId()))
-                .name(cs.getFacilityName())
-                .orgUnitId(cs.getOrgUnitId())
-                .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
-                .infrastructureType(type)
-                .kchtTypeLabel("Cơ sở sửa chữa")
-                .provinceId(cs.getProvinceId())
-                .location("")
-                .diaChiChiTiet(cs.getAddress() != null ? cs.getAddress() : "")
-                .build();
-            if (objectType != null) {
-              populateSpatialAndFilterFromMap(results, r, cs.getSpatialId(), objectType,
-                  GisObjectType.POINT, csSpatialMap);
-            } else {
-              results.add(r);
-              if (cs.getSpatialId() != null) {
-                spatialIdMap.put(r.getId(), cs.getSpatialId());
+            for (ShipRepairFacility cs : csList) {
+              if (cs.getFacilityName() != null && seenShipYardCodes.contains(cs.getFacilityName().toUpperCase())) {
+                continue;
+              }
+              GisSpatialObject spatial = csSpatialMap.get(cs.getSpatialId());
+              KchtGisSearchResult r = KchtGisSearchResult.builder()
+                  .id(String.valueOf(cs.getId()))
+                  .name(cs.getFacilityName())
+                  .orgUnitId(cs.getOrgUnitId())
+                  .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Cơ sở sửa chữa, đóng tàu")
+                  .provinceId(cs.getProvinceId())
+                  .location("")
+                  .diaChiChiTiet(cs.getAddress() != null ? cs.getAddress() : "")
+                  .build();
+              if (spatial != null) {
+                String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+                r.setGeometryType(geomTypeStr);
+                r.setCoordinates(spatial.getCoordinates());
+                enrichRepresentativeCoordinate(r);
+              }
+              if (objectType != null) {
+                if (spatial != null && spatial.getGeometryType() != null
+                    && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                  results.add(r);
+                }
+              } else {
+                results.add(r);
+                if (cs.getSpatialId() != null) {
+                  spatialIdMap.put(r.getId(), cs.getSpatialId());
+                }
               }
             }
           }
@@ -1054,37 +1188,113 @@ public class KchtGis155Service {
           break;
 
         case COASTAL_RADIO_STATION:
+        case DAI_TTDH:
+          List<DaiTtdh> daiTtdhList = daiTtdhRepository.searchDaiTtdh(
+              true,
+              List.of(),
+              searchLower,
+              null,
+              null,
+              null,
+              provinceId,
+              ApprovalStatus.APPROVED,
+              null,
+              false,
+              null,
+              null,
+              PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+
+          List<UUID> dttdhRefIds = daiTtdhList.stream().map(DaiTtdh::getId).filter(Objects::nonNull).toList();
+          List<UUID> dttdhSpatialIds = daiTtdhList.stream().map(DaiTtdh::getSpatialId).filter(Objects::nonNull).toList();
+          Map<UUID, GisSpatialObject> dttdhSpatialMap = loadSpatialMap(dttdhRefIds, InfrastructureType.DAI_TTDH, dttdhSpatialIds);
+          if (!dttdhRefIds.isEmpty()) {
+            gisSpatialObjectRepository.findByRefIdInAndRefType(dttdhRefIds, InfrastructureType.COASTAL_RADIO_STATION)
+                .forEach(spatial -> {
+                  dttdhSpatialMap.put(spatial.getId(), spatial);
+                  if (spatial.getRefId() != null) {
+                    dttdhSpatialMap.put(spatial.getRefId(), spatial);
+                  }
+                });
+          }
+
+          Set<String> seenDaiTtdhCodes = new HashSet<>();
+          for (DaiTtdh station : daiTtdhList) {
+            if (station.getDaiTtdhCode() != null) {
+              seenDaiTtdhCodes.add(station.getDaiTtdhCode().toUpperCase());
+            }
+            GisSpatialObject spatial = station.getSpatialId() != null
+                ? dttdhSpatialMap.get(station.getSpatialId())
+                : dttdhSpatialMap.get(station.getId());
+            KchtGisSearchResult r = KchtGisSearchResult.builder()
+                .id(station.getId() != null ? station.getId().toString() : null)
+                .name(station.getDaiTtdhName())
+                .code(station.getDaiTtdhCode())
+                .orgUnitId(station.getOrgUnitId())
+                .orgName(getOrgName(station.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Đài TTDH")
+                .provinceId(station.getProvinceId())
+                .mapSymbolId(station.getMapSymbolId())
+                .location("")
+                .diaChiChiTiet(station.getDetailedLocation() != null ? station.getDetailedLocation() : "")
+                .build();
+            if (spatial != null) {
+              String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+              r.setGeometryType(geomTypeStr);
+              r.setCoordinates(spatial.getCoordinates());
+              enrichRepresentativeCoordinate(r);
+            }
+            if (objectType != null) {
+              if (spatial != null && spatial.getGeometryType() != null
+                  && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                results.add(r);
+              }
+            } else {
+              results.add(r);
+              if (station.getSpatialId() != null) {
+                spatialIdMap.put(r.getId(), station.getSpatialId());
+              } else if (station.getId() != null) {
+                spatialIdMap.put(r.getId(), station.getId());
+              }
+            }
+          }
+
           String vtsStSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
           List<CoastalStationVTS> vtsStationList = coastalStationVTSRepository.searchGis(orgUnitId,
               vtsStSearchParam);
-          Map<UUID, GisSpatialObject> vtsStationSpatialMap = new HashMap<>();
-          if (objectType != null && !vtsStationList.isEmpty()) {
-            List<UUID> vtsStationIds = vtsStationList.stream().map(CoastalStationVTS::getId)
-                .collect(Collectors.toList());
-            gisSpatialObjectRepository
-                .findByRefIdInAndRefType(vtsStationIds, InfrastructureType.COASTAL_RADIO_STATION)
-                .forEach(so -> vtsStationSpatialMap.put(so.getRefId(), so));
-          }
-          for (CoastalStationVTS vtsStation : vtsStationList) {
-            KchtGisSearchResult r = KchtGisSearchResult.builder()
-                .id(vtsStation.getId() != null ? vtsStation.getId().toString() : null)
-                .name(vtsStation.getName())
-                .code(vtsStation.getCode())
-                .orgUnitId(vtsStation.getUnitId())
-                .orgName(getOrgName(vtsStation.getUnitId(), orgNameMap))
-                .infrastructureType(type)
-                .kchtTypeLabel("Đài TTDH")
-                .provinceId(vtsStation.getProvinceId())
-                .location("")
-                .diaChiChiTiet("Mô tả: "
-                    + (vtsStation.getDescription() != null ? vtsStation.getDescription() : ""))
-                .build();
+          if (vtsStationList != null && !vtsStationList.isEmpty()) {
+            Map<UUID, GisSpatialObject> vtsStationSpatialMap = new HashMap<>();
             if (objectType != null) {
-              populateSpatialAndFilterFromMap(results, r, vtsStation.getId(), objectType,
-                  GisObjectType.POINT, vtsStationSpatialMap);
-            } else {
-              results.add(r);
-              spatialIdMap.put(r.getId(), vtsStation.getId());
+              List<UUID> vtsStationIds = vtsStationList.stream().map(CoastalStationVTS::getId)
+                  .collect(Collectors.toList());
+              gisSpatialObjectRepository
+                  .findByRefIdInAndRefType(vtsStationIds, InfrastructureType.COASTAL_RADIO_STATION)
+                  .forEach(so -> vtsStationSpatialMap.put(so.getRefId(), so));
+            }
+            for (CoastalStationVTS vtsStation : vtsStationList) {
+              if (vtsStation.getCode() != null && seenDaiTtdhCodes.contains(vtsStation.getCode().toUpperCase())) {
+                continue;
+              }
+              KchtGisSearchResult r = KchtGisSearchResult.builder()
+                  .id(vtsStation.getId() != null ? vtsStation.getId().toString() : null)
+                  .name(vtsStation.getName())
+                  .code(vtsStation.getCode())
+                  .orgUnitId(vtsStation.getUnitId())
+                  .orgName(getOrgName(vtsStation.getUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Đài TTDH")
+                  .provinceId(vtsStation.getProvinceId())
+                  .location("")
+                  .diaChiChiTiet("Mô tả: "
+                      + (vtsStation.getDescription() != null ? vtsStation.getDescription() : ""))
+                  .build();
+              if (objectType != null) {
+                populateSpatialAndFilterFromMap(results, r, vtsStation.getId(), objectType,
+                    GisObjectType.POINT, vtsStationSpatialMap);
+              } else {
+                results.add(r);
+                spatialIdMap.put(r.getId(), vtsStation.getId());
+              }
             }
           }
           break;
@@ -1281,6 +1491,7 @@ public class KchtGis155Service {
           }
           break;
 
+        case RADAR_STATION:
         case RADAR_STATION_LEGACY:
           String radarSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
           List<RadarStation> radarList = radarStationRepository.searchFiltered(orgUnitId, radarSearchParam)
@@ -1323,53 +1534,134 @@ public class KchtGis155Service {
           break;
 
         case BUOY_BERTH:
+          List<BuoyBerth> buoyBerths = buoyBerthRepository.searchBuoyBerths(
+              true,
+              List.of(),
+              searchLower,
+              null,
+              null,
+              null,
+              null,
+              null,
+              provinceId,
+              ApprovalStatus.APPROVED,
+              null,
+              false,
+              null,
+              null,
+              PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+
+          List<UUID> bpPortIds = buoyBerths.stream().map(BuoyBerth::getPortId).filter(Objects::nonNull).distinct().toList();
+          Map<UUID, Port> bpPortMap = new HashMap<>();
+          if (!bpPortIds.isEmpty()) {
+            portRepository.findAllById(bpPortIds).forEach(p -> bpPortMap.put(p.getId(), p));
+          }
+
+          List<UUID> bpRefIds = buoyBerths.stream().map(BuoyBerth::getId).filter(Objects::nonNull).toList();
+          List<UUID> bpSpatialIds = buoyBerths.stream().map(BuoyBerth::getSpatialId).filter(Objects::nonNull).toList();
+          Map<UUID, GisSpatialObject> bpSpatialMap = loadSpatialMap(bpRefIds, InfrastructureType.BUOY_BERTH, bpSpatialIds);
+
+          Set<String> seenBuoyBerthCodes = new HashSet<>();
+          for (BuoyBerth bb : buoyBerths) {
+            if (bb.getBuoyBerthCode() != null) {
+              seenBuoyBerthCodes.add(bb.getBuoyBerthCode().toUpperCase());
+            }
+            Port parent = bb.getPortId() != null ? bpPortMap.get(bb.getPortId()) : null;
+            String parentProvince = (parent != null && parent.getProvince() != null)
+                ? String.valueOf(parent.getProvince())
+                : "";
+            GisSpatialObject spatial = bb.getSpatialId() != null
+                ? bpSpatialMap.get(bb.getSpatialId())
+                : bpSpatialMap.get(bb.getId());
+            KchtGisSearchResult r = KchtGisSearchResult.builder()
+                .id(bb.getId() != null ? bb.getId().toString() : null)
+                .name(bb.getBuoyBerthName())
+                .code(bb.getBuoyBerthCode())
+                .orgUnitId(bb.getOrgUnitId())
+                .orgName(getOrgName(bb.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Bến phao")
+                .mapSymbolId(bb.getMapSymbolId())
+                .provinceId(bb.getProvinceId())
+                .location(parentProvince)
+                .diaChiChiTiet(bb.getDetailedLocation() != null && !bb.getDetailedLocation().isBlank()
+                    ? bb.getDetailedLocation()
+                    : (parent != null ? "Thuộc cảng biển: " + parent.getPortName() : ""))
+                .build();
+            if (spatial != null) {
+              String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+              r.setGeometryType(geomTypeStr);
+              r.setCoordinates(spatial.getCoordinates());
+              enrichRepresentativeCoordinate(r);
+            }
+            if (objectType != null) {
+              if (spatial != null && spatial.getGeometryType() != null
+                  && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                results.add(r);
+              }
+            } else {
+              results.add(r);
+              if (bb.getSpatialId() != null) {
+                spatialIdMap.put(r.getId(), bb.getSpatialId());
+              } else if (bb.getId() != null) {
+                spatialIdMap.put(r.getId(), bb.getId());
+              }
+            }
+          }
+
           List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
                 orgUnitId, null, searchLower, WaterZoneType.MOORING_BUOY, null,
                 null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
                 .stream().collect(Collectors.toList());
-          List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct()
-              .collect(Collectors.toList());
-          Map<UUID, Port> bpPortMap = new HashMap<>();
-          if (!bpCbIds.isEmpty()) {
-            portRepository.findAllById(bpCbIds).forEach(cb -> bpPortMap.put(cb.getId(), cb));
-          }
-          Map<UUID, GisSpatialObject> bpSpatialMap = new HashMap<>();
-          if (!benPhaos.isEmpty()) {
-            List<UUID> bpSpatialIds = benPhaos.stream().map(WaterZone::getSpatialId)
-                .filter(Objects::nonNull).distinct().collect(Collectors.toList());
-            if (!bpSpatialIds.isEmpty()) {
-              gisSpatialObjectRepository.findAllById(bpSpatialIds)
-                  .forEach(so -> bpSpatialMap.put(so.getId(), so));
+          if (benPhaos != null && !benPhaos.isEmpty()) {
+            List<UUID> wzPortIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().toList();
+            Map<UUID, Port> wzPortMap = new HashMap<>();
+            if (!wzPortIds.isEmpty()) {
+              portRepository.findAllById(wzPortIds).forEach(cb -> wzPortMap.put(cb.getId(), cb));
             }
-          }
-          for (WaterZone vn : benPhaos) {
-            Port parent = (vn.getPortId() != null) ? bpPortMap.get(vn.getPortId()) : null;
-            String parentProvince = (parent != null && parent.getProvince() != null)
-                ? String.valueOf(parent.getProvince())
-                : "";
-            GisSpatialObject spatial = bpSpatialMap.get(vn.getSpatialId());
-            double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
-                : null;
-            KchtGisSearchResult r = KchtGisSearchResult.builder()
-                .id(vn.getId() != null ? vn.getId().toString() : null)
-                .name(vn.getWaterZoneName())
-                .code(vn.getWaterZoneCode())
-                .orgUnitId(vn.getOrgUnitId())
-                .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
-                .infrastructureType(type)
-                .kchtTypeLabel("Bến phao")
-                .mapSymbolId(vn.getMapSymbolId())
-                .provinceId(vn.getProvinceId())
-                .location(parentProvince)
-                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
-                .build();
-            if (objectType != null) {
-              populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType,
-                  GisObjectType.POLYGON, bpSpatialMap);
-            } else {
-              results.add(r);
-              if (vn.getSpatialId() != null) {
-                spatialIdMap.put(r.getId(), vn.getSpatialId());
+            List<UUID> wzSpatialIds = benPhaos.stream().map(WaterZone::getSpatialId).filter(Objects::nonNull).distinct().toList();
+            Map<UUID, GisSpatialObject> wzSpatialMap = new HashMap<>();
+            if (!wzSpatialIds.isEmpty()) {
+              gisSpatialObjectRepository.findAllById(wzSpatialIds).forEach(so -> wzSpatialMap.put(so.getId(), so));
+            }
+            for (WaterZone vn : benPhaos) {
+              if (vn.getWaterZoneCode() != null && seenBuoyBerthCodes.contains(vn.getWaterZoneCode().toUpperCase())) {
+                continue;
+              }
+              Port parent = (vn.getPortId() != null) ? wzPortMap.get(vn.getPortId()) : null;
+              String parentProvince = (parent != null && parent.getProvince() != null)
+                  ? String.valueOf(parent.getProvince())
+                  : "";
+              GisSpatialObject spatial = wzSpatialMap.get(vn.getSpatialId());
+              KchtGisSearchResult r = KchtGisSearchResult.builder()
+                  .id(vn.getId() != null ? vn.getId().toString() : null)
+                  .name(vn.getWaterZoneName())
+                  .code(vn.getWaterZoneCode())
+                  .orgUnitId(vn.getOrgUnitId())
+                  .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Bến phao")
+                  .mapSymbolId(vn.getMapSymbolId())
+                  .provinceId(vn.getProvinceId())
+                  .location(parentProvince)
+                  .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                  .build();
+              if (spatial != null) {
+                String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+                r.setGeometryType(geomTypeStr);
+                r.setCoordinates(spatial.getCoordinates());
+                enrichRepresentativeCoordinate(r);
+              }
+              if (objectType != null) {
+                if (spatial != null && spatial.getGeometryType() != null
+                    && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                  results.add(r);
+                }
+              } else {
+                results.add(r);
+                if (vn.getSpatialId() != null) {
+                  spatialIdMap.put(r.getId(), vn.getSpatialId());
+                }
               }
             }
           }
@@ -1480,53 +1772,133 @@ public class KchtGis155Service {
           break;
 
         case STORM_SHELTER_AREA:
+          List<StormShelterArea> stormShelters = stormShelterAreaRepository.searchStormShelterAreas(
+              true,
+              List.of(),
+              searchLower,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              provinceId,
+              ApprovalStatus.APPROVED,
+              null,
+              false,
+              null,
+              null,
+              PageRequest.of(0, MAX_FETCH_SIZE)).getContent();
+
+          List<UUID> ssaPortIds = stormShelters.stream().map(StormShelterArea::getPortId).filter(Objects::nonNull).distinct().toList();
+          Map<UUID, Port> ssaPortMap = new HashMap<>();
+          if (!ssaPortIds.isEmpty()) {
+            portRepository.findAllById(ssaPortIds).forEach(p -> ssaPortMap.put(p.getId(), p));
+          }
+
+          List<UUID> ssaRefIds = stormShelters.stream().map(StormShelterArea::getId).filter(Objects::nonNull).toList();
+          List<UUID> ssaSpatialIds = stormShelters.stream().map(StormShelterArea::getSpatialId).filter(Objects::nonNull).toList();
+          Map<UUID, GisSpatialObject> ssaSpatialMap = loadSpatialMap(ssaRefIds, InfrastructureType.STORM_SHELTER_AREA, ssaSpatialIds);
+
+          Set<String> seenStormShelterCodes = new HashSet<>();
+          for (StormShelterArea ssa : stormShelters) {
+            if (ssa.getStormShelterCode() != null) {
+              seenStormShelterCodes.add(ssa.getStormShelterCode().toUpperCase());
+            }
+            Port parent = ssa.getPortId() != null ? ssaPortMap.get(ssa.getPortId()) : null;
+            String parentProvince = (parent != null && parent.getProvince() != null)
+                ? String.valueOf(parent.getProvince())
+                : "";
+            GisSpatialObject spatial = ssa.getSpatialId() != null
+                ? ssaSpatialMap.get(ssa.getSpatialId())
+                : ssaSpatialMap.get(ssa.getId());
+            KchtGisSearchResult r = KchtGisSearchResult.builder()
+                .id(ssa.getId() != null ? ssa.getId().toString() : null)
+                .name(ssa.getStormShelterName())
+                .code(ssa.getStormShelterCode())
+                .orgUnitId(ssa.getOrgUnitId())
+                .orgName(getOrgName(ssa.getOrgUnitId(), orgNameMap))
+                .infrastructureType(type)
+                .kchtTypeLabel("Khu tránh, trú bão")
+                .mapSymbolId(ssa.getMapSymbolId())
+                .provinceId(ssa.getProvinceId())
+                .location(parentProvince)
+                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                .build();
+            if (spatial != null) {
+              String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+              r.setGeometryType(geomTypeStr);
+              r.setCoordinates(spatial.getCoordinates());
+              enrichRepresentativeCoordinate(r);
+            }
+            if (objectType != null) {
+              if (spatial != null && spatial.getGeometryType() != null
+                  && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                results.add(r);
+              }
+            } else {
+              results.add(r);
+              if (ssa.getSpatialId() != null) {
+                spatialIdMap.put(r.getId(), ssa.getSpatialId());
+              } else if (ssa.getId() != null) {
+                spatialIdMap.put(r.getId(), ssa.getId());
+              }
+            }
+          }
+
           List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
                 orgUnitId, null, searchLower, WaterZoneType.STORM_SHELTER, null,
                 null, PageRequest.of(0, MAX_FETCH_SIZE)).getContent()
                 .stream().collect(Collectors.toList());
-          List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull)
-              .distinct().collect(Collectors.toList());
-          Map<UUID, Port> ktPortMap = new HashMap<>();
-          if (!ktCbIds.isEmpty()) {
-            portRepository.findAllById(ktCbIds).forEach(cb -> ktPortMap.put(cb.getId(), cb));
-          }
-          Map<UUID, GisSpatialObject> ktSpatialMap = new HashMap<>();
-          if (!khuTranhs.isEmpty()) {
-            List<UUID> ktSpatialIds = khuTranhs.stream().map(WaterZone::getSpatialId)
-                .filter(Objects::nonNull).distinct().collect(Collectors.toList());
-            if (!ktSpatialIds.isEmpty()) {
-              gisSpatialObjectRepository.findAllById(ktSpatialIds)
-                  .forEach(so -> ktSpatialMap.put(so.getId(), so));
+          if (khuTranhs != null && !khuTranhs.isEmpty()) {
+            List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().toList();
+            Map<UUID, Port> ktPortMap = new HashMap<>();
+            if (!ktCbIds.isEmpty()) {
+              portRepository.findAllById(ktCbIds).forEach(cb -> ktPortMap.put(cb.getId(), cb));
             }
-          }
-          for (WaterZone vn : khuTranhs) {
-            Port parent = (vn.getPortId() != null) ? ktPortMap.get(vn.getPortId()) : null;
-            String parentProvince = (parent != null && parent.getProvince() != null)
-                ? String.valueOf(parent.getProvince())
-                : "";
-            GisSpatialObject spatial = ktSpatialMap.get(vn.getSpatialId());
-            double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates())
-                : null;
-            KchtGisSearchResult r = KchtGisSearchResult.builder()
-                .id(vn.getId() != null ? vn.getId().toString() : null)
-                .name(vn.getWaterZoneName())
-                .code(vn.getWaterZoneCode())
-                .orgUnitId(vn.getOrgUnitId())
-                .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
-                .infrastructureType(type)
-                .kchtTypeLabel("Khu tránh trú bão")
-                .mapSymbolId(vn.getMapSymbolId())
-                .provinceId(vn.getProvinceId())
-                .location(parentProvince)
-                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
-                .build();
-            if (objectType != null) {
-              populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType,
-                  GisObjectType.POLYGON, ktSpatialMap);
-            } else {
-              results.add(r);
-              if (vn.getSpatialId() != null) {
-                spatialIdMap.put(r.getId(), vn.getSpatialId());
+            List<UUID> ktSpatialIds = khuTranhs.stream().map(WaterZone::getSpatialId).filter(Objects::nonNull).distinct().toList();
+            Map<UUID, GisSpatialObject> ktSpatialMap = new HashMap<>();
+            if (!ktSpatialIds.isEmpty()) {
+              gisSpatialObjectRepository.findAllById(ktSpatialIds).forEach(so -> ktSpatialMap.put(so.getId(), so));
+            }
+            for (WaterZone vn : khuTranhs) {
+              if (vn.getWaterZoneCode() != null && seenStormShelterCodes.contains(vn.getWaterZoneCode().toUpperCase())) {
+                continue;
+              }
+              Port parent = (vn.getPortId() != null) ? ktPortMap.get(vn.getPortId()) : null;
+              String parentProvince = (parent != null && parent.getProvince() != null)
+                  ? String.valueOf(parent.getProvince())
+                  : "";
+              GisSpatialObject spatial = ktSpatialMap.get(vn.getSpatialId());
+              KchtGisSearchResult r = KchtGisSearchResult.builder()
+                  .id(vn.getId() != null ? vn.getId().toString() : null)
+                  .name(vn.getWaterZoneName())
+                  .code(vn.getWaterZoneCode())
+                  .orgUnitId(vn.getOrgUnitId())
+                  .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
+                  .infrastructureType(type)
+                  .kchtTypeLabel("Khu tránh, trú bão")
+                  .mapSymbolId(vn.getMapSymbolId())
+                  .provinceId(vn.getProvinceId())
+                  .location(parentProvince)
+                  .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                  .build();
+              if (spatial != null) {
+                String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+                r.setGeometryType(geomTypeStr);
+                r.setCoordinates(spatial.getCoordinates());
+                enrichRepresentativeCoordinate(r);
+              }
+              if (objectType != null) {
+                if (spatial != null && spatial.getGeometryType() != null
+                    && objectType.name().equalsIgnoreCase(spatial.getGeometryType().name())) {
+                  results.add(r);
+                }
+              } else {
+                results.add(r);
+                if (vn.getSpatialId() != null) {
+                  spatialIdMap.put(r.getId(), vn.getSpatialId());
+                }
               }
             }
           }

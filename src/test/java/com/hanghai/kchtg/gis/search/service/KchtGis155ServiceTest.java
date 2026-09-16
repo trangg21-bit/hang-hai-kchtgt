@@ -67,6 +67,12 @@ class KchtGis155ServiceTest {
     @Mock private BerthRepository berthRepository;
     @Mock private PierRepository pierRepository;
     @Mock private DryPortRepository dryPortRepository;
+    @Mock private com.hanghai.kchtg.port.repository.AnchorageRepository anchorageRepository;
+    @Mock private com.hanghai.kchtg.port.repository.TransferAreaRepository transferAreaRepository;
+    @Mock private com.hanghai.kchtg.port.repository.DaiTtdhRepository daiTtdhRepository;
+    @Mock private com.hanghai.kchtg.port.repository.BuoyBerthRepository buoyBerthRepository;
+    @Mock private com.hanghai.kchtg.port.repository.StormShelterAreaRepository stormShelterAreaRepository;
+    @Mock private com.hanghai.kchtg.port.repository.ShipRepairYardRepository shipRepairYardRepository;
     @Mock private OrgUnitScopeService orgUnitScopeService;
     @Mock private WaterZoneRepository waterZoneRepository;
     @Mock private NavigationChannelRepository navigationChannelRepository;
@@ -326,6 +332,149 @@ class KchtGis155ServiceTest {
         assertThat(result.getContent().get(0).getCode()).isEqualTo("TTVTS-000001");
         assertThat(result.getContent().get(0).getKchtTypeLabel()).isEqualTo("Trung tâm điều hành VTS");
         assertThat(result.getContent().get(0).getMapSymbolId()).isEqualTo(mapSymbolId);
+    }
+
+    @Test
+    void coastalRadioStationSearchReturnsDaiTtdhRecords() {
+        UUID orgUnitId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        com.hanghai.kchtg.port.entity.DaiTtdh station = new com.hanghai.kchtg.port.entity.DaiTtdh();
+        station.setId(UUID.randomUUID());
+        station.setDaiTtdhCode("DTTDH-001");
+        station.setDaiTtdhName("Đài TTDH Hải Phòng");
+        station.setOrgUnitId(orgUnitId);
+        station.setMapSymbolId(mapSymbolId);
+        station.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of(orgUnitId, "Công ty TNHH MTV TTDH VN"));
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(daiTtdhRepository.searchDaiTtdh(
+                eq(true), eq(List.of()), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), isNull(), eq(false), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(station)));
+        when(coastalStationVTSRepository.searchGis(isNull(), isNull())).thenReturn(List.of());
+
+        KchtGisSearchPage result = service.search(
+                null, List.of(InfrastructureType.COASTAL_RADIO_STATION), null, null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getCode()).isEqualTo("DTTDH-001");
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Đài TTDH Hải Phòng");
+        assertThat(result.getContent().get(0).getKchtTypeLabel()).isEqualTo("Đài TTDH");
+        assertThat(result.getContent().get(0).getMapSymbolId()).isEqualTo(mapSymbolId);
+    }
+
+    @Test
+    void daiTtdhAliasSearchMapsToCoastalRadioStationAndReturnsDaiTtdhRecords() {
+        UUID orgUnitId = UUID.randomUUID();
+        com.hanghai.kchtg.port.entity.DaiTtdh station = new com.hanghai.kchtg.port.entity.DaiTtdh();
+        station.setId(UUID.randomUUID());
+        station.setDaiTtdhCode("DTTDH-002");
+        station.setDaiTtdhName("Đài TTDH Đà Nẵng");
+        station.setOrgUnitId(orgUnitId);
+        station.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(daiTtdhRepository.searchDaiTtdh(
+                eq(true), eq(List.of()), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), isNull(), eq(false), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(station)));
+        when(coastalStationVTSRepository.searchGis(isNull(), isNull())).thenReturn(List.of());
+
+        KchtGisSearchPage result = service.search(
+                null, List.of(InfrastructureType.DAI_TTDH), null, null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getCode()).isEqualTo("DTTDH-002");
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Đài TTDH Đà Nẵng");
+        assertThat(result.getContent().get(0).getKchtTypeLabel()).isEqualTo("Đài TTDH");
+    }
+
+    @Test
+    void buoyBerthSearchReturnsApprovedBuoyBerths() {
+        UUID orgUnitId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        com.hanghai.kchtg.port.entity.BuoyBerth buoyBerth = new com.hanghai.kchtg.port.entity.BuoyBerth();
+        buoyBerth.setId(UUID.randomUUID());
+        buoyBerth.setBuoyBerthCode("HP-BP-01");
+        buoyBerth.setBuoyBerthName("Bến phao BP1");
+        buoyBerth.setOrgUnitId(orgUnitId);
+        buoyBerth.setMapSymbolId(mapSymbolId);
+        buoyBerth.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(buoyBerthRepository.searchBuoyBerths(
+                eq(true), eq(List.of()), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), isNull(), eq(false), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(buoyBerth)));
+        when(waterZoneRepository.searchWaterZones(isNull(), isNull(), isNull(), any(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        KchtGisSearchPage result = service.search(
+                null, List.of(InfrastructureType.BUOY_BERTH), null, null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getCode()).isEqualTo("HP-BP-01");
+        assertThat(result.getContent().get(0).getKchtTypeLabel()).isEqualTo("Bến phao");
+    }
+
+    @Test
+    void stormShelterAreaSearchReturnsApprovedRecords() {
+        UUID orgUnitId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        com.hanghai.kchtg.port.entity.StormShelterArea shelter = new com.hanghai.kchtg.port.entity.StormShelterArea();
+        shelter.setId(UUID.randomUUID());
+        shelter.setStormShelterCode("BC-HP-TTB-01");
+        shelter.setStormShelterName("Khu tránh bão Bạch Long Vĩ");
+        shelter.setOrgUnitId(orgUnitId);
+        shelter.setMapSymbolId(mapSymbolId);
+        shelter.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(stormShelterAreaRepository.searchStormShelterAreas(
+                eq(true), eq(List.of()), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), isNull(), eq(false), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(shelter)));
+        when(waterZoneRepository.searchWaterZones(isNull(), isNull(), isNull(), any(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        KchtGisSearchPage result = service.search(
+                null, List.of(InfrastructureType.STORM_SHELTER_AREA), null, null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getCode()).isEqualTo("BC-HP-TTB-01");
+        assertThat(result.getContent().get(0).getKchtTypeLabel()).isEqualTo("Khu tránh, trú bão");
+    }
+
+    @Test
+    void shipRepairYardSearchReturnsApprovedRecords() {
+        UUID orgUnitId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        com.hanghai.kchtg.port.entity.ShipRepairYard yard = new com.hanghai.kchtg.port.entity.ShipRepairYard();
+        yard.setId(UUID.randomUUID());
+        yard.setShipRepairYardCode("CS-SC-01");
+        yard.setShipRepairYardName("Xưởng sửa chữa tàu Phà Rừng");
+        yard.setOrgUnitId(orgUnitId);
+        yard.setMapSymbolId(mapSymbolId);
+        yard.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(shipRepairYardRepository.searchShipRepairYards(
+                eq(true), eq(List.of()), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                eq(ApprovalStatus.APPROVED), isNull(), eq(false), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(yard)));
+        when(shipRepairFacilityRepository.searchFiltered(isNull(), isNull())).thenReturn(List.of());
+
+        KchtGisSearchPage result = service.search(
+                null, List.of(InfrastructureType.SHIP_REPAIR_FACILITY), null, null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getCode()).isEqualTo("CS-SC-01");
+        assertThat(result.getContent().get(0).getKchtTypeLabel()).isEqualTo("Cơ sở sửa chữa, đóng tàu");
     }
 
     private Berth approvedBerth(UUID orgUnitId, String code, OperationalStatus operationalStatus) {

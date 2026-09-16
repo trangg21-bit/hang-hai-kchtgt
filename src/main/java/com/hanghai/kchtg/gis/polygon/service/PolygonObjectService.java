@@ -30,7 +30,7 @@ public class PolygonObjectService {
     private final GisSpatialObjectRepository spatialRepository;
 
     public List<PolygonObjectResponse> findAll() {
-        return repository.findAll().stream()
+        return repository.findManualAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -43,12 +43,13 @@ public class PolygonObjectService {
 
     public List<PolygonObjectResponse> findByObjectType(ObjectType objectType) {
         return repository.findByObjectType(objectType).stream()
+                .filter(p -> p.getRefType() == null || p.getRefType() == 0)
                 .map(this::toResponse)
                 .toList();
     }
 
     public List<PolygonObjectResponse> findByStatus(Status status) {
-        return repository.findByStatus(status).stream()
+        return repository.findManualByStatus(status).stream()
                 .map(this::toResponse)
                 .toList();
     }

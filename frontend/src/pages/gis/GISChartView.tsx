@@ -30,6 +30,7 @@ import {
   FullscreenOutlined,
   FullscreenExitOutlined,
   EditOutlined,
+  CloseCircleFilled,
 } from '@ant-design/icons';
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
@@ -121,7 +122,7 @@ import {
   findMapGeometryHits,
   geoJsonToMapHitGeometries,
   getMapHitGeometryBounds,
-  isVietnamMapCoordinate,
+  isValidMapCoordinate,
   normalizeLineCoordinates,
   normalizePointCoordinates,
   normalizePolygonCoordinates,
@@ -258,13 +259,24 @@ const KCHT_RICH_DETAIL_SCREEN_TYPES = new Set([
   'DRY_PORT',
   'WATER_AREA',
   'ANCHORAGE_AREA',
+  'TRANSSHIPMENT_AREA',
+  'STORM_SHELTER_AREA',
+  'BUOY_BERTH',
+  'BUOY',
+  'BUOY_STATION',
   'DIKE_REVETMENT',
   'NAVIGATION_CHANNEL',
   'SHIP_REPAIR_FACILITY',
+  'SHIP_REPAIR_YARD',
   'LIGHTHOUSE',
   'RADAR_STATION',
   'RADAR_STATION_LEGACY',
+  'DAI_TTDH',
   'COASTAL_RADIO_STATION',
+  'INMARSAT_STATION',
+  'COSPAS_SARSAT_STATION',
+  'LRIT_STATION',
+  'HANOI_STATION',
   'AIS_SYSTEM',
   'CCTV',
   'SCADA',
@@ -648,21 +660,40 @@ const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'Navigat
       const matched = orgUnitsGlobalCache.find(o => String(o.id) === String(id));
       name = matched ? matched.name : '';
       if (!name) {
-        const org = await organizationService.getById(id);
-        name = org.name;
+        const org = await api.get(`/org-units/${id}`, { headers: { 'X-Silent-Error': 'true' } })
+          .then(r => r.data?.data ?? r.data)
+          .catch(() => null);
+        name = org?.name || '';
       }
     } else if (type === 'Port') {
-      const cb = await portCRUD.findById(id);
-      name = cb.portName;
+      try {
+        const portOpts = await portCRUD.getOptions();
+        const matchedPort = portOpts?.find((p: any) => String(p.id) === String(id));
+        if (matchedPort?.portName) {
+          name = matchedPort.portName;
+        }
+      } catch {}
+      if (!name) {
+        const cb = await api.get(`/v1/ports/${id}`, { headers: { 'X-Silent-Error': 'true' } })
+          .then(r => r.data?.data ?? r.data)
+          .catch(() => null);
+        name = cb?.portName || '';
+      }
     } else if (type === 'Berth') {
-      const bc = await berthCRUD.findById(id);
-      name = bc.berthName;
+      const bc = await api.get(`/v1/berths/${id}`, { headers: { 'X-Silent-Error': 'true' } })
+        .then(r => r.data?.data ?? r.data)
+        .catch(() => null);
+      name = bc?.berthName || '';
     } else if (type === 'NavigationChannel') {
-      const channel = await navigationChannelCRUD.getById(id);
-      name = channel.channelName;
+      const channel = await api.get(`/v1/navigation-channel/${id}`, { headers: { 'X-Silent-Error': 'true' } })
+        .then(r => r.data?.data ?? r.data)
+        .catch(() => null);
+      name = channel?.channelName || '';
     } else if (type === 'User') {
-      const response = await userService.getById(id);
-      name = response.data?.fullName || response.data?.username || '';
+      const response = await api.get(`/v1/users/${id}`, { headers: { 'X-Silent-Error': 'true' } })
+        .then(r => r.data)
+        .catch(() => null);
+      name = response?.data?.fullName || response?.data?.username || response?.fullName || response?.username || '';
     }
     if (name) {
       resolvedNamesCache.set(cacheKey, name);
@@ -671,7 +702,8 @@ const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'Navigat
   } catch (err) {
     console.error(`Failed to resolve name for ID: ${id}`, err);
   }
-  return type === 'User' ? '' : id;
+  resolvedNamesCache.set(cacheKey, '');
+  return '';
 };
 
 const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[] => {
@@ -1394,20 +1426,23 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
 
       // Lazy-resolve only the specific parent IDs present in data
       let orgUnitNameResolved = '';
-      let cangBienNameResolved = '';
-      let benCangNameResolved = '';
-      let waterwayNameResolved = data.waterway || '';
+      let cangBienNameResolved = data.portName || data.tenCangBien || '';
+      let benCangNameResolved = data.berthName || data.tenBenCang || '';
+      let waterwayNameResolved = data.waterway || data.waterwayName || data.navigationChannelName || data.channelName || '';
       
       const orgId = data.orgUnitId || data.unitId || data.donViQuanLy;
       if (orgId) {
         const rawOrgName = data.donViQuanLy || data.orgName || data.orgUnitName || data.unitName || '';
         orgUnitNameResolved = rawOrgName.split(' > ').pop()?.trim() || rawOrgName;
+        if (!orgUnitNameResolved && UUID_PATTERN.test(String(orgId))) {
+          orgUnitNameResolved = await resolveName(String(orgId), 'org');
+        }
       }
-      if (data.portId || data.tenCangBien) {
-        cangBienNameResolved = data.tenCangBien || (data.portId ? await resolveName(data.portId, 'Port') : '');
+      if (!cangBienNameResolved && data.portId) {
+        cangBienNameResolved = await resolveName(data.portId, 'Port');
       }
-      if (data.berthId || data.tenBenCang) {
-        benCangNameResolved = data.tenBenCang || (data.berthId ? await resolveName(data.berthId, 'Berth') : '');
+      if (!benCangNameResolved && data.berthId) {
+        benCangNameResolved = await resolveName(data.berthId, 'Berth');
       }
       const waterwayId = data.waterwayId || data.navigationChannelId;
       if (!waterwayNameResolved && waterwayId) {
@@ -1466,15 +1501,15 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           let val = valExists ? rawValue : '';
           
           if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
-            val = orgUnitNameResolved || val;
-          } else if (k === 'portId') {
-            val = cangBienNameResolved || val;
-          } else if (k === 'berthId') {
-            val = benCangNameResolved || val;
-          } else if (k === 'waterway' || k === 'navigationChannelId') {
-            val = waterwayNameResolved || val;
-          } else if (k === 'buoyStationId') {
-            val = data.buoyStationName || val;
+            val = orgUnitNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+          } else if (k === 'portId' || k === 'fkCangBien') {
+            val = cangBienNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+          } else if (k === 'berthId' || k === 'fkBenCang') {
+            val = benCangNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+          } else if (k === 'waterway' || k === 'navigationChannelId' || k === 'fkLuongHh') {
+            val = waterwayNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+          } else if (k === 'buoyStationId' || k === 'fkNhaTram') {
+            val = data.buoyStationName || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
           }
           
           if (valExists) {
@@ -1497,6 +1532,9 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
             if (k === 'loaiCau') val = getLoaiCauText(val);
             if (!isLegacyDateField) {
               val = formatDetailFieldValue(k, val);
+            }
+            if (typeof val === 'string' && UUID_PATTERN.test(val.trim())) {
+              val = '';
             }
           }
           
@@ -1522,13 +1560,13 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
             let val = data[k];
             
             if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
-              val = orgUnitNameResolved || val;
-            } else if (k === 'portId') {
-              val = cangBienNameResolved || val;
-            } else if (k === 'berthId') {
-              val = benCangNameResolved || val;
-            } else if (k === 'waterway' || k === 'navigationChannelId') {
-              val = waterwayNameResolved || val;
+              val = orgUnitNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+            } else if (k === 'portId' || k === 'fkCangBien') {
+              val = cangBienNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+            } else if (k === 'berthId' || k === 'fkBenCang') {
+              val = benCangNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+            } else if (k === 'waterway' || k === 'navigationChannelId' || k === 'fkLuongHh') {
+              val = waterwayNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
             }
             
             if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
@@ -1536,6 +1574,9 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
             if (k === 'loaiCau') val = getLoaiCauText(val);
             if (k === 'thoiDiemCongBoMo') val = formatDate(val);
             val = formatDetailFieldValue(k, val);
+            if (typeof val === 'string' && UUID_PATTERN.test(val.trim())) {
+              val = '';
+            }
             
             rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
             renderedKeys.add(k);
@@ -1715,7 +1756,7 @@ const resolveSearchHitGeometry = (record: KchtGisSearchResult): MapHitGeometry |
   const geometryType = String(record.geometryType || record.loaiHinhHoc || '').toUpperCase();
   const useValidMapCoordinates = (geometry: MapHitGeometry | null): MapHitGeometry | null => {
     if (!geometry) return null;
-    return everyMapHitGeometryCoordinate(geometry, isVietnamMapCoordinate)
+    return everyMapHitGeometryCoordinate(geometry, isValidMapCoordinate)
       ? geometry
       : null;
   };
@@ -1916,7 +1957,7 @@ export default function GISChartView() {
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === 'CLOSE_KCHT_MODAL') {
+      if (e.data && (e.data.type === 'CLOSE_KCHT_MODAL' || e.data.type === 'CLOSE_GIS_MODAL' || e.data.action === 'close')) {
         setActiveModalUrl(null);
         refreshActivePopup();
         if (fetchFeaturesInViewportRef.current) {
@@ -2258,7 +2299,7 @@ export default function GISChartView() {
       record.longitude,
       record.latitude,
     );
-    const validCoordinates = mapLocation?.coordinates.filter(isVietnamMapCoordinate) || [];
+    const validCoordinates = mapLocation?.coordinates.filter(isValidMapCoordinate) || [];
 
     if (!mapLocation || validCoordinates.length === 0) {
       toast.info('Đối tượng này chưa được cấu hình tọa độ trên bản đồ');
@@ -2688,10 +2729,8 @@ export default function GISChartView() {
 
     customGisGroupRef.current.clearLayers();
     customKchtHitTargetsRef.current = [];
-    // The lookup screen starts clean. KCHT is only drawn after the user has
-    // explicitly searched, while the independently toggled planning layer
-    // remains available from the layer manager.
-    if (!hasSearched || customGisFeatures.length === 0) return;
+    // Custom manual GIS features are always rendered when available.
+    if (customGisFeatures.length === 0) return;
 
     const resultsById = new Map(
       infrastructureResults.map((record) => [String(record.id), record]),
@@ -2699,24 +2738,27 @@ export default function GISChartView() {
     const selectedIds = new Set(selectedRowKeys.map(String));
     const visibleCustomFeatures = customGisFeatures.filter((feature) => {
       const featureId = String(feature.id);
-      const referenceId = feature.refId ? String(feature.refId) : '';
-      const matchingResult = resultsById.get(referenceId) || resultsById.get(featureId);
+      const isSystemLinkedRecord = feature.refType !== null && feature.refType !== undefined && feature.refType !== 0 && feature.refType !== 'SEAPORT';
+      const referenceId = (isSystemLinkedRecord && feature.refId) ? String(feature.refId) : '';
+      const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
 
-      // The result table is the source of truth for map visibility. In
-      // particular, synchronized CCTV polygons must not leak from the custom
-      // GIS layer before their business record's checkbox is selected.
-      if (!matchingResult || !selectedIds.has(String(matchingResult.id))) {
-        return false;
+      if (matchingResult) {
+        if (!selectedIds.has(String(matchingResult.id))) {
+          return false;
+        }
+        return resolveSearchHitGeometry(matchingResult) === null;
       }
 
-      // Normal selected results are rendered by renderSearchMarkers. Keep this
-      // custom layer only as a fallback for legacy rows whose search response
-      // does not contain usable geometry, avoiding duplicate shapes.
-      return resolveSearchHitGeometry(matchingResult) === null;
+      // Standalone user-drawn manual GIS objects are always visible on the map
+      return true;
     });
 
     visibleCustomFeatures.forEach((feature) => {
       try {
+        const featureId = String(feature.id);
+        const isSystemLinkedRecord = feature.refType !== null && feature.refType !== undefined && feature.refType !== 0 && feature.refType !== 'SEAPORT';
+        const referenceId = (isSystemLinkedRecord && feature.refId) ? String(feature.refId) : '';
+        const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
         let layer: any = null;
         let interactionPosition: [number, number] | null = null;
         let hitGeometry: MapHitGeometry | null = null;
@@ -2793,6 +2835,11 @@ export default function GISChartView() {
           );
 
           const isPort = feature.refType === 0 || feature.refType === 'SEAPORT';
+          const isSystemRef = Boolean(matchingResult || (isSystemLinkedRecord && feature.refId));
+          const systemRefType = (matchingResult?.infrastructureType || feature.refType || 'PORT_TERMINAL') as string;
+          const kchtTypeDisplay = isSystemRef
+            ? (matchingResult?.kchtTypeLabel || getKchtGisTypeByCategoryId(feature.categoryId) || 'Kết cấu hạ tầng')
+            : getObjectTypeLabel(feature.type, feature.objectType, feature.categoryId);
 
           const getPopupHtml = (portName: string) => `
             <div style="min-width: 250px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px;">
@@ -2809,7 +2856,7 @@ export default function GISChartView() {
                 </div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
                   <span style="font-weight: 600; color: #888;">Loại KCHT:</span>
-                  <span style="font-weight: bold; color: #fa8c16;">${getObjectTypeLabel(feature.type, feature.objectType, feature.categoryId)}</span>
+                  <span style="font-weight: bold; color: #fa8c16;">${kchtTypeDisplay}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
                   <span style="font-weight: 600; color: #888;">Địa điểm:</span>
@@ -2839,18 +2886,53 @@ export default function GISChartView() {
 
               <!-- Action Buttons -->
               <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
-                <button class="btn-delete-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #E34948; background: #E34948; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
-                  Xóa
-                </button>
-                <button class="btn-edit-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #0E6FD6; background: transparent; color: #0E6FD6; font-weight: 500; outline: none; transition: background 0.2s;">
-                  Chỉnh sửa
-                </button>
+                ${isSystemRef ? `
+                  <button onclick="window.handleKchtAction('${feature.refId}', '${kchtTypeDisplay}', 'view', '${systemRefType}')" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #0E6FD6; background: #0E6FD6; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
+                    Xem chi tiết
+                  </button>
+                  <button onclick="window.handleKchtAction('${feature.refId}', '${kchtTypeDisplay}', 'edit', '${systemRefType}')" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #52c41a; background: transparent; color: #52c41a; font-weight: 500; outline: none; transition: background 0.2s;">
+                    Chỉnh sửa
+                  </button>
+                ` : `
+                  <button class="btn-delete-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #E34948; background: #E34948; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
+                    Xóa
+                  </button>
+                  <button class="btn-edit-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #0E6FD6; background: transparent; color: #0E6FD6; font-weight: 500; outline: none; transition: background 0.2s;">
+                    Chỉnh sửa
+                  </button>
+                `}
               </div>
             </div>
           `;
 
           const openPopupAt = async (latlng: any) => {
             const requestId = ++activePopupRequestRef.current;
+            if (matchingResult) {
+              const popup = L.popup({ minWidth: 460, maxWidth: 500, autoPanPadding: [50, 100] })
+                .setLatLng(latlng)
+                .setContent(`<div style="padding: ${spaceSm}px; font-size: ${fontSizeMd}px; font-family: ${fontSans};">Đang tải thông tin chi tiết...</div>`)
+                .openOn(mapRef.current);
+
+              activePopupRef.current = popup;
+              activePopupRecordRef.current = matchingResult;
+              popup.on('close', () => {
+                if (activePopupRef.current === popup) {
+                  activePopupRef.current = null;
+                  activePopupRecordRef.current = null;
+                }
+              });
+
+              const detailsHtml = await fetchAndFormatPopupDetails(matchingResult);
+              if (
+                requestId === activePopupRequestRef.current
+                && activePopupRef.current === popup
+                && mapRef.current?.hasLayer(popup)
+              ) {
+                popup.setContent(detailsHtml);
+              }
+              return;
+            }
+
             const popup = L.popup({ minWidth: 280, maxWidth: 360, autoPanPadding: [50, 100] })
               .setLatLng(latlng)
               .setContent(getPopupHtml(feature.refId && isPort ? 'Đang tải...' : '—'))
@@ -2890,8 +2972,8 @@ export default function GISChartView() {
           if (hitGeometry) {
             customKchtHitTargetsRef.current.push({
               key: `custom:${feature.type}:${feature.id}`,
-              label: feature.name || feature.code || 'Kết cấu hạ tầng',
-              source: 'custom',
+              label: matchingResult?.name || matchingResult?.code || matchingResult?.kchtTypeLabel || feature.name || feature.code || 'Kết cấu hạ tầng',
+              source: matchingResult ? 'search' : 'custom',
               geometry: hitGeometry,
               openPopup: openPopupAt,
             });
@@ -2914,7 +2996,7 @@ export default function GISChartView() {
       }
     });
 
-  }, [customGisFeatures, hasSearched, infrastructureResults, mapInstance, selectedRowKeys]);
+  }, [customGisFeatures, infrastructureResults, mapInstance, selectedRowKeys]);
 
   // Render planning features as vector layers on the map
   useEffect(() => {
@@ -3076,8 +3158,8 @@ export default function GISChartView() {
       return { x: projected.x, y: projected.y };
     };
     const allKchtTargets = [
-      ...customKchtHitTargetsRef.current,
       ...searchKchtHitTargetsRef.current,
+      ...customKchtHitTargetsRef.current,
     ];
     const kchtHits = findMapGeometryHits(
       { x: clickLayerPoint.x, y: clickLayerPoint.y },
@@ -3439,6 +3521,12 @@ export default function GISChartView() {
         const name = deleteBtn.getAttribute('data-name');
         if (!id || !type) return;
 
+        const feature = customGisFeaturesDataRef.current.find((candidate) => String(candidate.id) === id);
+        if (feature?.refId) {
+          toast.warning('Dữ liệu kết cấu hạ tầng hệ thống không thể xóa từ bản đồ thủ công.');
+          return;
+        }
+
         modal.confirm({
           title: 'Xóa đối tượng KCHT',
           content: `Bạn có chắc chắn muốn xóa đối tượng "${name}" không?`,
@@ -3481,16 +3569,20 @@ export default function GISChartView() {
 
         const feature = customGisFeaturesDataRef.current.find((candidate) => String(candidate.id) === id);
         if (feature) {
+          const isSystemLinkedRecord = feature.refType !== null && feature.refType !== undefined && feature.refType !== 0 && feature.refType !== 'SEAPORT';
+          const referenceId = (isSystemLinkedRecord && feature.refId) ? String(feature.refId) : '';
+          const matchingResult = resultsById.get(String(feature.id)) || (referenceId ? resultsById.get(referenceId) : undefined);
           const refType = String(feature.refType ?? '').toUpperCase();
           const kchtType = getKchtGisTypeByCategoryId(feature.categoryId);
-          const isCctvReference = Boolean(feature.refId)
-            && (refType === 'CCTV' || Number(feature.refType) === 28 || kchtType === 'CCTV');
+          const isSystemRef = Boolean(matchingResult || (isSystemLinkedRecord && feature.refId));
 
-          // Hồ sơ CCTV đồng bộ hình học vào gis_spatial_objects với refId trỏ
-          // về bản ghi nghiệp vụ. Chỉnh sửa phải mở Drawer CCTV chuẩn, không
-          // được rơi vào modal chỉnh sửa đối tượng vẽ tay của Leaflet.
-          if (isCctvReference) {
-            window.handleKchtAction(String(feature.refId), 'Hệ thống CCTV', 'edit');
+          if (isSystemRef) {
+            const systemTargetId = referenceId || String(feature.id);
+            const infraType = matchingResult?.infrastructureType
+              || (refType === 'CCTV' || Number(feature.refType) === 28 || kchtType === 'CCTV' ? 'CCTV' : (refType || 'PORT_TERMINAL'));
+            const typeLabel = matchingResult?.kchtTypeLabel
+              || (infraType === 'CCTV' ? 'Hệ thống CCTV' : infraType === 'PORT_TERMINAL' ? 'Bến cảng' : 'Kết cấu hạ tầng');
+            window.handleKchtAction(systemTargetId, typeLabel, 'edit', infraType);
             if (mapRef.current) {
               mapRef.current.closePopup();
             }
@@ -3643,6 +3735,7 @@ export default function GISChartView() {
             coordinates: result.coordinates
           });
         }
+        return result;
       };
 
       map.on('pm:create', (e: any) => {
@@ -3660,7 +3753,7 @@ export default function GISChartView() {
         }
         activeDrawnLayer = layer;
 
-        updateDrawnGeometry(layer, shape);
+        const drawnRes = updateDrawnGeometry(layer, shape);
 
         const geo = shape === 'Circle' ? circleLayerToPolygonFeature(layer) : layer.toGeoJSON();
         const geomTypeMap: Record<string, 'draw-point' | 'draw-line' | 'draw-polygon'> = {
@@ -3673,17 +3766,21 @@ export default function GISChartView() {
         };
         const drawResult: DrawResult = {
           geojson: geo,
-          type: geomTypeMap[shape] || 'draw-point'
+          type: geomTypeMap[shape] || 'draw-point',
+          coordinates: drawnRes?.coordinates,
+          wkt: drawnRes?.wkt,
         };
         setPendingDrawResult(drawResult);
         setSaveModalOpen(true);
 
         layer.on('pm:edit', () => {
-          updateDrawnGeometry(layer, shape);
+          const updatedRes = updateDrawnGeometry(layer, shape);
           const updatedGeo = shape === 'Circle' ? circleLayerToPolygonFeature(layer) : layer.toGeoJSON();
           setPendingDrawResult({
             geojson: updatedGeo,
-            type: geomTypeMap[shape] || 'draw-point'
+            type: geomTypeMap[shape] || 'draw-point',
+            coordinates: updatedRes?.coordinates,
+            wkt: updatedRes?.wkt,
           });
         });
 
@@ -3748,7 +3845,7 @@ export default function GISChartView() {
           ]
         : null;
 
-      if (renderCenter && hitGeometry && isVietnamMapCoordinate(renderCenter)) {
+      if (renderCenter && hitGeometry && isValidMapCoordinate(renderCenter)) {
         const [lon, lat] = renderCenter;
         const geometryType = (record.geometryType || record.loaiHinhHoc || '').toUpperCase();
         const isVectorGeometry = hitGeometry.type === 'LineString' || hitGeometry.type === 'Polygon';
@@ -3988,7 +4085,7 @@ export default function GISChartView() {
           record.latitude,
         );
         mapLocation?.coordinates
-          .filter(isVietnamMapCoordinate)
+          .filter(isValidMapCoordinate)
           .forEach(([lng, lat]) => pts.push([lat, lng]));
       });
       if (pts.length > 0) {
@@ -4680,7 +4777,8 @@ export default function GISChartView() {
                         maxWidth: '100%',
                         minWidth: 0,
                         boxSizing: 'border-box',
-                        overflow: 'hidden',
+                        maxHeight: '60vh',
+                        overflowY: 'auto',
                         padding: spaceMd,
                       }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceMd }}>
@@ -4716,11 +4814,30 @@ export default function GISChartView() {
 
                       <Form.Item name="kchtType" label={<span style={filterLabelStyle}>Loại kết cấu hạ tầng</span>} style={formFieldStyle}>
                         <Select
+                          className="kcht-type-select"
                           mode="multiple"
                           showSearch
+                          allowClear={{
+                            clearIcon: (
+                              <CloseCircleFilled
+                                style={{
+                                  color: textTertiary,
+                                  fontSize: 14,
+                                  cursor: 'pointer',
+                                }}
+                                title="Bỏ chọn tất cả"
+                              />
+                            ),
+                          }}
                           filterOption={(input, option) => String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                           placeholder="Chọn loại kết cấu..."
-                          style={{ ...selectStyle, width: '100%', height: 'auto', minHeight: controlHeight }}
+                          style={{
+                            ...selectStyle,
+                            borderRadius: 20,
+                            width: '100%',
+                            height: 'auto',
+                            minHeight: controlHeight,
+                          }}
                           options={[...KCHT_GIS_TYPE_OPTIONS]}
                         />
                       </Form.Item>
@@ -4871,8 +4988,12 @@ export default function GISChartView() {
                               data-gis-pagination
                               style={{
                                 flex: '0 0 auto',
-                                paddingTop: 0,
+                                paddingTop: 4,
                                 background: surfaceCard,
+                                width: '100%',
+                                maxWidth: '100%',
+                                boxSizing: 'border-box',
+                                overflow: 'hidden',
                               }}
                             >
                               <Pagination
@@ -4881,6 +5002,8 @@ export default function GISChartView() {
                                 pageSize={searchPageSize}
                                 pageSizeOptions={[20, 50, 100, 5000]}
                                 onChange={(page, pageSize) => void handleSearchInfrastructure(page, pageSize)}
+                                compact
+                                align="space-between"
                               />
                             </div>
                           </>
@@ -5206,6 +5329,68 @@ export default function GISChartView() {
         [data-gis-search-results] .list-view-table .ant-table-thead > tr > th,
         [data-gis-search-results] .list-view-table .ant-table-tbody > tr > td {
           font-size: ${fontSizeMd}px !important;
+        }
+        /* ── Ô Loại kết cấu hạ tầng: Bo góc chuẩn 20px (viên thuốc), tự mở rộng tự nhiên hiển thị đủ tag, icon X bỏ chọn tất cả ── */
+        .gis-search-panel .kcht-type-select,
+        .gis-search-panel .kcht-type-select .ant-select-selector {
+          border-radius: 20px !important;
+          min-height: ${controlHeight}px !important;
+          height: auto !important;
+          max-height: none !important;
+          padding: 4px 28px 4px 8px !important;
+          align-items: flex-start !important;
+          overflow: visible !important;
+        }
+        .gis-search-panel .kcht-type-select .ant-select-content,
+        .gis-search-panel .kcht-type-select .ant-select-selection-overflow {
+          height: auto !important;
+          max-height: none !important;
+          overflow-y: visible !important;
+          overflow: visible !important;
+          padding-right: 4px !important;
+        }
+        .gis-search-panel .kcht-type-select .ant-select-content-item,
+        .gis-search-panel .kcht-type-select .ant-select-selection-overflow-item {
+          margin: 2px 3px !important;
+        }
+        .gis-search-panel .kcht-type-select .ant-select-selection-item {
+          border-radius: 4px !important;
+          background: #f1f5f9 !important;
+          border: 1px solid #e2e8f0 !important;
+          font-size: 12px !important;
+          line-height: 20px !important;
+          height: 22px !important;
+        }
+        .gis-search-panel .kcht-type-select .ant-select-clear {
+          position: absolute !important;
+          top: 16px !important;
+          right: 10px !important;
+          transform: translateY(-50%) !important;
+          opacity: 0.85 !important;
+          background: #ffffff !important;
+          border-radius: 50% !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          z-index: 5 !important;
+        }
+        .gis-search-panel .kcht-type-select:hover .ant-select-clear {
+          opacity: 1 !important;
+        }
+        .gis-search-panel .kcht-type-select .ant-select-suffix,
+        .gis-search-panel .kcht-type-select .ant-select-arrow {
+          position: absolute !important;
+          top: 50% !important;
+          right: 12px !important;
+          transform: translateY(-50%) !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          line-height: 1 !important;
+        }
+        .gis-search-panel .kcht-type-select.ant-select-allow-clear:hover .ant-select-suffix,
+        .gis-search-panel .kcht-type-select.ant-select-allow-clear:hover .ant-select-arrow {
+          opacity: 0 !important;
         }
       `}} />
     </div>

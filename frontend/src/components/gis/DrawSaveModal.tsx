@@ -31,10 +31,20 @@ import {
 
 const { TextArea } = Input;
 
+interface GeoJsonLike {
+  geometry?: {
+    type?: string;
+    coordinates?: unknown;
+  };
+  coordinates?: unknown;
+}
+
 // Types of coordinates and features
 export interface DrawResult {
-  geojson: any;
+  geojson?: GeoJsonLike | unknown;
   type: 'draw-point' | 'draw-line' | 'draw-polygon';
+  coordinates?: unknown;
+  wkt?: string;
 }
 
 interface DrawSaveModalProps {
@@ -218,15 +228,21 @@ export default function DrawSaveModal({
           _coords: geometryCoordinatesToRows(editRecord.type, editRecord.coordinates),
         });
       } else if (drawResult) {
-        const geom = drawResult.geojson?.geometry;
+        const geojsonObj = drawResult.geojson as GeoJsonLike | undefined;
+        const coordsSource = drawResult.coordinates
+          ?? drawResult.wkt
+          ?? geojsonObj?.geometry?.coordinates
+          ?? geojsonObj?.geometry
+          ?? geojsonObj?.coordinates
+          ?? drawResult.geojson;
         form.setFieldsValue({
-          _coords: geometryCoordinatesToRows(geometryType, geom?.coordinates),
+          _coords: geometryCoordinatesToRows(geometryType, coordsSource),
         });
       }
     } else {
       form.resetFields();
     }
-  }, [open, drawResult, editRecord, form]);
+  }, [open, drawResult, editRecord, form, geometryType]);
 
   const handleSave = async () => {
     if (!drawResult && !editRecord) return;
@@ -332,30 +348,37 @@ export default function DrawSaveModal({
 
   const geomSummary = () => {
     if (editRecord) {
-      if (editRecord.type === 'Point' && editRecord.coordinates) {
-        return `📍 Điểm — ${Number(editRecord.coordinates[1]).toFixed(5)}°N, ${Number(editRecord.coordinates[0]).toFixed(5)}°E`;
+      const rows = geometryCoordinatesToRows(editRecord.type, editRecord.coordinates);
+      if (editRecord.type === 'Point') {
+        const pt = rows[0];
+        return pt ? `📍 Điểm — ${Number(pt.lat).toFixed(5)}°N, ${Number(pt.lng).toFixed(5)}°E` : '📍 Điểm';
       }
       if (editRecord.type === 'LineString') {
-        return `╱ Đường`;
+        return `╱ Đường — ${rows.length} điểm`;
       }
       if (editRecord.type === 'Polygon') {
-        return `△ Vùng đa giác`;
+        return `△ Vùng đa giác — ${rows.length} đỉnh`;
       }
     }
     if (!drawResult) return '—';
     const type = GEOM_TYPE_LABELS[drawResult.type] || drawResult.type;
-    const geom = drawResult.geojson?.geometry;
-    if (!geom) return type;
-    if (geom.type === 'Point' || geom.type === 'Marker') {
-      const [lng, lat] = geom.coordinates;
-      return `${type} — ${Number(lat).toFixed(5)}°N, ${Number(lng).toFixed(5)}°E`;
+    const geojsonObj = drawResult.geojson as GeoJsonLike | undefined;
+    const coordsSource = drawResult.coordinates
+      ?? drawResult.wkt
+      ?? geojsonObj?.geometry?.coordinates
+      ?? geojsonObj?.geometry
+      ?? geojsonObj?.coordinates
+      ?? drawResult.geojson;
+    const rows = geometryCoordinatesToRows(geometryType, coordsSource);
+    if (geometryType === 'Point') {
+      const pt = rows[0];
+      return pt ? `${type} — ${Number(pt.lat).toFixed(5)}°N, ${Number(pt.lng).toFixed(5)}°E` : type;
     }
-    if (geom.type === 'LineString' || geom.type === 'Polyline') {
-      return `${type} — ${geom.coordinates.length} điểm`;
+    if (geometryType === 'LineString') {
+      return `${type} — ${rows.length} điểm`;
     }
-    if (geom.type === 'Polygon') {
-      const ring = Array.isArray(geom.coordinates[0]) ? geom.coordinates[0] : geom.coordinates;
-      return `${type} — ${ring.length - 1} đỉnh`;
+    if (geometryType === 'Polygon') {
+      return `${type} — ${rows.length} đỉnh`;
     }
     return type;
   };

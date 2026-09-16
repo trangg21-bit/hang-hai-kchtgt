@@ -4,6 +4,7 @@
 // + DocumentUploadModal. Handlers moved from the old routed BuoyList screen.
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Button,
   Modal,
@@ -12,6 +13,7 @@ import {
   Form,
   DatePicker,
   Select,
+  Spin,
 } from 'antd';
 import { SearchOutlined, HistoryOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -254,6 +256,14 @@ function ddToDms(dd: number | null | undefined): { d: number; m: number; s: numb
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BuoyListPage() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
+  const isEmbeddedDetail = isEmbeddedAction && linkedAction === 'detail';
+
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s: any) => s.user);
 
@@ -317,6 +327,7 @@ export default function BuoyListPage() {
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // ── Create/Edit Drawers ─────────────────────────────────────────
+  const [actionClosed, setActionClosed] = useState(false);
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Buoy | null>(null);
   const [createForm] = Form.useForm();
@@ -563,7 +574,11 @@ export default function BuoyListPage() {
     }
   }, [filterName, filterCode, filterCondition, filterProvince, managingUnitId, filterStationId, filterWaterwayId, filterClassification, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, organizations]);
 
-  useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
+  useEffect(() => {
+    if (initialLoadDone && !isEmbeddedAction) {
+      void fetchData();
+    }
+  }, [fetchData, initialLoadDone, isEmbeddedAction]);
 
   // ── Filter handlers ─────────────────────────────────────────────
 
@@ -626,11 +641,18 @@ export default function BuoyListPage() {
     }
   }, []);
 
-  const closeDetailDrawer = useCallback(() => {
-    setDetailDrawerOpen(false);
-    setDetailRecord(null);
-    setDetailFiles([]);
+  // ── Embedded iframe action support (GIS Map modal integration) ──
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
   }, []);
+
+  const closeDetailDrawer = useCallback(() => {
+    setActionClosed(true);
+    setDetailDrawerOpen(false);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
 
   // ── Create/Edit Drawers ─────────────────────────────────────────
 
@@ -646,12 +668,10 @@ export default function BuoyListPage() {
   }, [createForm]);
 
   const closeCreateDrawer = useCallback(() => {
+    setActionClosed(true);
     setCreateDrawerOpen(false);
-    createForm.resetFields();
-    setUploadFileList([]);
-    setPendingDeletedAttachmentIds([]);
-    setCreateCoords([]);
-  }, [createForm]);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
 
   const handleDeleteAttachment = useCallback((uid: string) => {
     setPendingDeletedAttachmentIds((prev) => [...prev, uid]);
@@ -721,10 +741,40 @@ export default function BuoyListPage() {
       });
     } catch {
       toast.error('Không thể tải thông tin phao tiêu');
-      setCreateDrawerOpen(false);
-      setEditingRecord(null);
+      closeCreateDrawer();
     }
-  }, [createForm]);
+  }, [createForm, closeCreateDrawer]);
+
+  // ── Embedded GIS action handler (?action=detail|edit&id=...) ──────
+  useEffect(() => {
+    if (!linkedRecordId || (linkedAction !== 'detail' && linkedAction !== 'edit')) return;
+    let cancelled = false;
+
+    fetchBuoyById(linkedRecordId)
+      .catch(async () => {
+        const list = await searchBuoys({ code: linkedRecordId });
+        if (list && list.length > 0) return list[0];
+        throw new Error('Không tìm thấy thông tin phao, tiêu');
+      })
+      .then((record) => {
+        if (cancelled || !record) return;
+        if (isEmbeddedDetail) {
+          void openDetailDrawer(record);
+        } else {
+          void openEditDrawer(record);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : 'Không tải được thông tin phao, tiêu');
+          notifyEmbeddedActionClosed();
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEmbeddedDetail, linkedAction, linkedRecordId, openDetailDrawer, openEditDrawer, notifyEmbeddedActionClosed]);
 
   // ── Upload helper (after save) ──────────────────────────────────
 
@@ -1698,19 +1748,21 @@ export default function BuoyListPage() {
           padding: 4px 2px !important;
         }
       `}</style>
-      <ScreenHeader
-        breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý Phao, tiêu' }]}
-        actions={headerActions}
-      />
+      {!isEmbeddedAction ? (
+        <>
+          <ScreenHeader
+            breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý Phao, tiêu' }]}
+            actions={headerActions}
+          />
 
-      <FilterTableLayout
-        filterCollapsed={filterCollapsed}
-        onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
-        onFilterApply={handleFilterApply}
-        onFilterReset={handleFilterReset}
-        loading={isLoading}
-        error={isError}
-        onRetry={fetchData}
+          <FilterTableLayout
+            filterCollapsed={filterCollapsed}
+            onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+            onFilterApply={handleFilterApply}
+            onFilterReset={handleFilterReset}
+            loading={isLoading}
+            error={isError}
+            onRetry={fetchData}
         filterContent={<>
           {/* ── Bộ lọc thường (luôn hiển thị) ──────────────────────── */}
           <div style={{ marginBottom: 12, marginTop: spaceMd }}>
@@ -1848,18 +1900,54 @@ export default function BuoyListPage() {
           onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
         />
       </FilterTableLayout>
+        </>
+      ) : (
+        <div
+          style={{
+            width: '100%',
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#ffffff',
+            gap: 16,
+          }}
+        >
+          {!actionClosed && !createDrawerOpen && !detailDrawerOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <Spin size="large" />
+              <span style={{ color: textSecondary, fontSize: fontSizeMd, fontWeight: 500 }}>
+                {linkedAction === 'detail' ? 'Đang tải chi tiết phao, tiêu...' : 'Đang tải thông tin chỉnh sửa...'}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Create / Edit Drawer (Hợp nhất 1 Drawer chuẩn Cầu cảng / VTS CHK) ── */}
       <AppDrawer
         width={DRAWER_WIDTH}
+        style={{ maxWidth: isEmbeddedAction ? '100%' : '96vw' }}
         rootClassName="buoy-drawer-scope"
         className="buoy-drawer-scope"
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingRecord ? `Chỉnh sửa thông tin phao, tiêu — ${editingRecord.name || ''}` : 'Thêm mới thông tin phao, tiêu'}</span>}
+        title={
+          <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+            {editingRecord
+              ? `Chỉnh sửa thông tin phao, tiêu — ${editingRecord.name || ''}`
+              : isEmbeddedAction || linkedAction === 'edit'
+              ? 'Chỉnh sửa thông tin phao, tiêu'
+              : 'Thêm mới thông tin phao, tiêu'}
+          </span>
+        }
         open={createDrawerOpen}
         onClose={closeCreateDrawer}
         footer={
           <div style={drawerFooterStyle}>
             {(() => {
+              if ((isEmbeddedAction || linkedAction === 'edit') && !editingRecord) {
+                return null;
+              }
               const st = !editingRecord ? 'DRAFT' : (editingRecord.status ? String(editingRecord.status).toUpperCase() : 'DRAFT');
               if (st === 'PUBLISHED' || st === 'APPROVED' || st === 'APPROVED_L2') {
                 return (
@@ -1925,6 +2013,10 @@ export default function BuoyListPage() {
         afterOpenChange={(open) => {
           if (!open) {
             setEditingRecord(null);
+            createForm.resetFields();
+            setUploadFileList([]);
+            setPendingDeletedAttachmentIds([]);
+            setCreateCoords([]);
           }
         }}
       >
@@ -1981,6 +2073,7 @@ export default function BuoyListPage() {
       {/* ── Detail Drawer ──────────────────────────────────────────── */}
       <AppDrawer
         width={DRAWER_WIDTH}
+        style={{ maxWidth: isEmbeddedAction ? '100%' : '96vw' }}
         rootClassName="buoy-drawer-scope"
         className="buoy-drawer-scope"
         title={<span style={drawerTitleStyle}>
@@ -1988,6 +2081,12 @@ export default function BuoyListPage() {
         </span>}
         open={detailDrawerOpen}
         onClose={closeDetailDrawer}
+        afterOpenChange={(open) => {
+          if (!open) {
+            setDetailRecord(null);
+            setDetailFiles([]);
+          }
+        }}
         footer={null}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -2012,6 +2111,7 @@ export default function BuoyListPage() {
       {/* ── History Drawer ─────────────────────────────────────────── */}
       <AppDrawer
         width={DRAWER_WIDTH}
+        style={{ maxWidth: isEmbeddedAction ? '100%' : '96vw' }}
         rootClassName="buoy-drawer-scope"
         className="buoy-drawer-scope"
         title={
