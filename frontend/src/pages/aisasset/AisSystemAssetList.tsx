@@ -1,57 +1,36 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
 import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
   DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
   HistoryOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from '../../components/ToastNotification';
 
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
-  borderDefault,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  actionPrimary,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  textTertiary,
-} from '../../themetokenchk';
-import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
-import api from '../../services/api';
-import {
-  organizationService,
-  type Organization,
-} from '../../services/organizationService';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
   createAisSystemAsset,
   deleteAisSystemAsset,
@@ -66,6 +45,7 @@ import type {
   AisSystemAssetFilters,
   AisSystemAssetPayload,
 } from '../../services/aisasset/types';
+import api from '../../services/api';
 import {
   createAssetDecrease,
   createAssetIncrease,
@@ -80,15 +60,36 @@ import type {
   AssetIncreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {
-  saveAttachmentFile,
+  organizationService,
+  type Organization,
+} from '../../services/organizationService';
+import { useAuthStore } from '../../store/authStore';
+import * as themeTokenChk from '../../themetokenchk';
+import {
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
+import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
+  saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import { useAuthStore } from '../../store/authStore';
-import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
+import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 import AisSystemAssetDetailContent from './AisSystemAssetDetailContent';
+import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
 import AisSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
@@ -472,6 +473,10 @@ export default function AisSystemAssetList() {
 
   const openEdit = useCallback(
     (record: AisSystemAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.resetFields();
@@ -899,36 +904,6 @@ export default function AisSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'aisSystemId',
-      label: 'Mã hệ thống AIS',
-      type: 'select',
-      placeholder: 'Chọn hệ thống AIS',
-      options: aisSystems.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: AIS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -942,10 +917,45 @@ export default function AisSystemAssetList() {
       options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
     },
     {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
+    },
+    {
+      key: 'aisSystemId',
+      label: 'Mã hệ thống AIS',
+      type: 'select',
+      placeholder: 'Chọn hệ thống AIS',
+      options: aisSystems.map((item) => ({
+        value: item.id,
+        label: `${item.code} - ${item.name}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: AIS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
+    },
+    {
       key: 'updatedRange',
       label: 'Khoảng ngày cập nhật',
       type: 'dateRange',
       placeholder: ['Từ ngày', 'Đến ngày'],
+      isAdvanced: true,
     },
   ], [organizations, aisSystems]);
 
@@ -1077,12 +1087,16 @@ export default function AisSystemAssetList() {
         icon: <EyeOutlined />,
         onClick: () => void openDetail(record),
       },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
+      ...(isAssetRecordEditable(record.approvalStatus)
+        ? [
+            {
+              key: 'edit',
+              label: 'Sửa',
+              icon: <EditOutlined />,
+              onClick: () => openEdit(record),
+            },
+          ]
+        : []),
       {
         key: 'exploit',
         label: 'Khai thác tài sản',
@@ -1191,7 +1205,6 @@ export default function AisSystemAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

@@ -21,7 +21,7 @@ import { CommonStatusTabs } from '@/components/shared/common-status-tabs';
 
 ---
 
-## 2. Quy chuẩn 6 Tab trạng thái phê duyệt bất biến
+## 2. Quy chuẩn 8 Tab trạng thái phê duyệt bất biến (chuẩn Quản lý khu neo đậu)
 
 Dãy tab trạng thái phê duyệt **BẮT BUỘC** tuân thủ đúng thứ tự, nhãn và màu sắc semantic sau:
 
@@ -29,17 +29,18 @@ Dãy tab trạng thái phê duyệt **BẮT BUỘC** tuân thủ đúng thứ t�
 |:---:|---|---|---|---|---|
 | **1** | `all` | **Tất cả** | `#0E6FD6` | `actionPrimary` | `undefined` (không lọc) |
 | **2** | `DRAFT` | **Lưu tạm** | `#93A3B3` | `statusDraft` | `'DRAFT'` |
-| **3** | `PENDING_APPROVAL` | **Chờ Cảng vụ duyệt** | `#EDA100` | `statusAttention` | `'PENDING_APPROVAL'` |
-| **4** | `APPROVED_LEVEL1` | **Chờ Cục duyệt** | `#0284C7` | `statusInfo` | `'APPROVED_LEVEL1'` |
-| **5** | `APPROVED` | **Đã duyệt** | `#1BAF7A` | `statusOperational` | `'APPROVED'` |
-| **6** | `REJECTED_LEVEL1` | **Từ chối** | `#E34948` | `statusCritical` | `'REJECTED_LEVEL1'` |
+| **3** | `PENDING_APPROVAL` | **Chờ phê duyệt cấp Cảng vụ/Chi cục** | `#204E9C` | `actionPrimary` | `'PENDING_APPROVAL'` |
+| **4** | `APPROVED_LEVEL1` | **Chờ phê duyệt cấp Cục** | `#EDA100` | `statusAttention` | `'APPROVED_LEVEL1'` |
+| **5** | `APPROVED` | **Đã phê duyệt** | `#1BAF7A` | `statusOperational` | `'APPROVED'` |
+| **6** | `REJECTED_LEVEL1` | **Từ chối cấp Cảng vụ/Chi cục** | `#E34948` | `statusCritical` | `'REJECTED_LEVEL1'` |
+| **7** | `REJECTED_LEVEL2` | **Từ chối cấp Cục** | `#E34948` | `statusCritical` | `'REJECTED_LEVEL2'` |
+| **8** | `ARCHIVED` | **Đã xóa** | `#E34948` | `statusCritical` | `'ARCHIVED'` |
 
 ### Quy tắc số lượng bản ghi (MANDATORY):
 1. **Số lượng tab Tất cả**: Bắt buộc bằng tổng số các tab con:
-   $$\text{Tất cả} = \text{Lưu tạm} + \text{Chờ Cảng vụ duyệt} + \text{Chờ Cục duyệt} + \text{Đã duyệt} + \text{Từ chối}$$
+   $$\text{Tất cả} = \text{Lưu tạm} + \text{Chờ Cảng vụ} + \text{Chờ Cục} + \text{Đã phê duyệt} + \text{Từ chối C1} + \text{Từ chối C2} + \text{Đã xóa}$$
    `CommonStatusTabs` đã cài đặt sẵn logic tự động cộng dồn này, không cần tính toán thủ công ở component cha.
-2. **Gộp trạng thái Từ chối**: Nếu backend trả về riêng `REJECTED_LEVEL1` và `REJECTED_LEVEL2`, component tự động gộp cả 2 vào tab "Từ chối".
-3. **Tuyệt đối không dùng mã legacy**: Không dùng các mã cũ như `PROPOSED (1)`, `APPROVED_LEVEL2 (4)`, `REJECTED (6)` mà chỉ dùng các enum chuỗi chuẩn trên.
+2. **Tuyệt đối không dùng mã legacy**: Không dùng các mã cũ như `PROPOSED (1)`, `APPROVED_LEVEL2 (4)`, `REJECTED (6)` mà chỉ dùng các enum chuỗi chuẩn trên.
 
 ---
 

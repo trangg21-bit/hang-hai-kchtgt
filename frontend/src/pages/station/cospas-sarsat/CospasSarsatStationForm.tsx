@@ -38,6 +38,7 @@ import {
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
+import { usePermissionStore } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -51,6 +52,47 @@ import {
 import CospasSarsatStationDetailContent, {
   COSPAS_SERVICE_OPTIONS,
 } from './CospasSarsatStationDetailContent';
+
+export const resolveFormProvinceId = (
+  provinceId?: number | string | null,
+  provinceName?: string | null
+): string | undefined => {
+  if (provinceId != null && provinceId !== '') {
+    return String(provinceId);
+  }
+  if (provinceName) {
+    const found = VIETNAM_PROVINCE_OPTIONS.find(
+      (p) => p.label.toLowerCase() === provinceName.trim().toLowerCase()
+    );
+    if (found) return found.value;
+  }
+  return undefined;
+};
+
+export const resolveCospasGeometryType = (
+  geometryType?: string,
+  wktGeometry?: string
+): string => {
+  if (wktGeometry) {
+    const upperWkt = wktGeometry.trim().toUpperCase();
+    if (upperWkt.startsWith('LINESTRING') || upperWkt.startsWith('MULTILINESTRING')) {
+      return 'LINE';
+    }
+    if (upperWkt.startsWith('POLYGON') || upperWkt.startsWith('MULTIPOLYGON')) {
+      return 'POLYGON';
+    }
+    if (upperWkt.startsWith('POINT') || upperWkt.startsWith('MULTIPOINT')) {
+      return 'POINT';
+    }
+  }
+  if (geometryType) {
+    const upper = geometryType.trim().toUpperCase();
+    if (upper === 'LINESTRING' || upper === 'LINE') return 'LINE';
+    if (upper === 'POLYGON' || upper === 'MULTIPOLYGON') return 'POLYGON';
+    if (upper === 'POINT' || upper === 'MULTIPOINT') return 'POINT';
+  }
+  return 'POINT';
+};
 
 export interface CospasSarsatStationFormProps {
   open?: boolean;
@@ -126,13 +168,25 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const [currentGisCoord, setCurrentGisCoord] = useState<{ lat: number; lng: number } | undefined>();
 
   // Attachments
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<any[]>(initialData?.attachments || (initialData as any)?.files || []);
 
   const isView = mode === 'detail';
   const isEdit = mode === 'edit';
   const isCreate = mode === 'create';
 
   const user = useAuthStore((s: AuthState) => s.user);
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const isAdmin = (user as any)?.role === 'SUPER_ADMIN' || (user as any)?.role === 'ADMIN' || (user as any)?.roleName === 'SUPER_ADMIN' || (user as any)?.roleName === 'ADMIN' || user?.roles?.some((r: string) => r.toUpperCase().includes('ADMIN')) ?? false;
+
+  const canCreate = hasPerm('coastalstationcospassarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canUpdate = hasPerm('coastalstationcospassarsat:update') || hasPerm('specialstation:update') || hasPerm('data:update') || isAdmin;
+  const canApprove =
+    isAdmin ||
+    hasPerm('coastalstationcospassarsat:approvec2') ||
+    hasPerm('coastalstationcospassarsat:approve') ||
+    hasPerm('coastalstationcospassarsat:approvec1') ||
+    hasPerm('specialstation:approvec2') ||
+    hasPerm('data:approvec2');
 
   // Tự sinh mã đài SARSAT-{timestamp} khi tạo mới
   const generateStationCode = () => `SARSAT-${Date.now().toString().slice(-4)}`;
@@ -276,35 +330,88 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       );
     }
 
-    return (
-      <>
-        {isEdit && (
-          <Button style={{ ...outlineButtonStyle, borderRadius: radiusPill }} onClick={handleClose}>
-            Hủy
-          </Button>
-        )}
-        <Button
-          style={{ ...outlineButtonStyle, borderRadius: radiusPill, borderColor: actionPrimary, color: actionPrimary }}
-          loading={submitting}
-          onClick={() => handleSave('DRAFT')}
-        >
-          Lưu tạm
-        </Button>
+    if (isCreate) {
+      return (
+        <>
+          {canCreate && (
+            <>
+              <Button
+                style={{ ...outlineButtonStyle, borderRadius: radiusPill }}
+                loading={submitting}
+                onClick={() => handleSave('DRAFT')}
+              >
+                Lưu tạm
+              </Button>
+              <Button
+                type="primary"
+                style={{ ...primaryButtonStyle, borderRadius: radiusPill }}
+                loading={submitting}
+                onClick={() => handleSave('SUBMIT')}
+              >
+                Lưu và gửi phê duyệt
+              </Button>
+            </>
+          )}
+          {canApprove && (
+            <Button
+              type="primary"
+              style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill }}
+              loading={submitting}
+              onClick={() => handleSave('APPROVE')}
+            >
+              Lưu và phê duyệt
+            </Button>
+          )}
+        </>
+      );
+    }
+
+    const isRecordApproved = recordData?.approvalStatus === 'APPROVED' || recordData?.approvalStatus === 'APPROVED_LEVEL2';
+
+    if (isRecordApproved) {
+      return canApprove ? (
         <Button
           type="primary"
-          style={{ ...primaryButtonStyle, borderRadius: radiusPill }}
-          loading={submitting}
-          onClick={() => handleSave('SUBMIT')}
-        >
-          Lưu và gửi phê duyệt
-        </Button>
-        <Button
           style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill }}
           loading={submitting}
           onClick={() => handleSave('APPROVE')}
         >
           Lưu và phê duyệt
         </Button>
+      ) : null;
+    }
+
+    return (
+      <>
+        {canUpdate && (
+          <>
+            <Button
+              style={{ ...outlineButtonStyle, borderRadius: radiusPill }}
+              loading={submitting}
+              onClick={() => handleSave('DRAFT')}
+            >
+              Lưu tạm
+            </Button>
+            <Button
+              type="primary"
+              style={{ ...primaryButtonStyle, borderRadius: radiusPill }}
+              loading={submitting}
+              onClick={() => handleSave('SUBMIT')}
+            >
+              Lưu và gửi phê duyệt
+            </Button>
+          </>
+        )}
+        {canApprove && (
+          <Button
+            type="primary"
+            style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill }}
+            loading={submitting}
+            onClick={() => handleSave('APPROVE')}
+          >
+            Lưu và phê duyệt
+          </Button>
+        )}
       </>
     );
   };
@@ -520,12 +627,12 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                         <Col span={24}>
                           <Form.Item
                             name="services"
-                            label="Dịch vụ cung cấp (multi-select)"
+                            label="Dịch vụ cung cấp"
                             style={{ marginBottom: spaceFormField }}
                           >
                             <ServiceMultiSelect
                               options={COSPAS_SERVICE_OPTIONS}
-                              placeholder="Chọn các dịch vụ Cospas-Sarsat cung cấp..."
+                              placeholder="Chọn các dịch vụ cung cấp..."
                             />
                           </Form.Item>
                         </Col>
@@ -669,7 +776,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
               },
               {
                 key: 'files',
-                label: 'TAB 3: File đính kèm',
+                label: `TAB 3: File đính kèm${files.length > 0 ? ` (${files.length})` : ''}`,
                 children: (
                   <div style={{ paddingTop: 8 }}>
                     <div style={sectionBoxStyle}>
@@ -716,24 +823,6 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                       </div>
                       <p style={{ color: textTertiary }}>
                         Các thông tin kế hoạch vận hành, lịch bảo trì và sự cố được đồng bộ tự động từ phân hệ quản lý vận hành khai thác.
-                      </p>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: 'track',
-                label: 'TAB 5: Xử lý & theo dõi',
-                children: (
-                  <div style={{ paddingTop: 8 }}>
-                    <div style={sectionBoxStyle}>
-                      <div style={sectionHeaderStyle}>
-                        <div style={sectionTitleStyle}>
-                          <span>Tiến trình xử lý hồ sơ phê duyệt</span>
-                        </div>
-                      </div>
-                      <p style={{ color: textTertiary }}>
-                        Lịch sử gửi duyệt, thẩm định và phê duyệt hồ sơ 2 cấp (Cảng vụ / Chi cục và Cục Hàng hải Việt Nam).
                       </p>
                     </div>
                   </div>

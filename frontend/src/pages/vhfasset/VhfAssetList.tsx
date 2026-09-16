@@ -1,72 +1,72 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
-  CommonStatusTabs,
-  TableColumnType,
-  type TableOption,
-  type TableActionOption,
-  type FilterOption,
-  type ScreenHeaderAction,
+    CommonStatusTabs,
+    CommonTable,
+    FilterTableLayout,
+    ScreenHeader,
+    TableColumnType,
+    TableFilter,
+    type FilterOption,
+    type ScreenHeaderAction,
+    type TableActionOption,
+    type TableOption,
 } from '../../components/list-view';
-import { canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import {
+    resolveMimeType,
+    triggerBlobDownload,
+    type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchTransmissionOptions } from '../../services/transmission/api';
 import type { TransmissionOptionResponse } from '../../services/transmission/types';
 import {
-  fetchVhfAssets,
-  deleteVhfAsset,
-  createVhfAsset,
-  updateVhfAsset,
-  fetchVhfExploitations,
-  createVhfExploitation,
-  fetchVhfAdjustments,
-  createVhfAdjustment,
-  VHF_ASSET_TYPE,
-  fetchVhfAssetAttachments,
-  uploadVhfAssetAttachments,
-  downloadVhfAssetAttachment,
+    createVhfAdjustment,
+    createVhfAsset,
+    createVhfExploitation,
+    deleteVhfAsset,
+    downloadVhfAssetAttachment,
+    fetchVhfAdjustments,
+    fetchVhfAssetAttachments,
+    fetchVhfAssets,
+    fetchVhfExploitations,
+    updateVhfAsset,
+    uploadVhfAssetAttachments,
+    VHF_ASSET_TYPE,
 } from '../../services/vhfAsset/api';
 import type {
-  VhfAsset,
-  VhfAssetFilters,
-  VhfAssetPayload,
-  VhfAssetExploitation,
-  VhfAssetAdjustment,
+    VhfAsset,
+    VhfAssetAdjustment,
+    VhfAssetExploitation,
+    VhfAssetFilters,
+    VhfAssetPayload,
 } from '../../services/vhfAsset/types';
-import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import VhfAssetForm, { type FormValues } from './VhfAssetForm';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import VhfAssetDetailContent from './VhfAssetDetailContent';
-import VhfAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
-} from './VhfAssetOperationForm';
+import VhfAssetForm, { type FormValues } from './VhfAssetForm';
 import VhfAssetHistory, { useVhfHistory } from './VhfAssetHistory';
+import VhfAssetOperationForm, {
+    type OperationMode,
+    type OperationValues,
+} from './VhfAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -193,6 +193,10 @@ export default function VhfAssetList() {
 
   const openEdit = useCallback(
     (record: VhfAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -454,36 +458,6 @@ export default function VhfAssetList() {
         placeholder: 'Chọn đơn vị...',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị...',
-      },
-      {
-        key: 'transmissionId',
-        label: 'Mã thiết bị',
-        type: 'select',
-        placeholder: 'Chọn thiết bị VHF / truyền dẫn',
-        options: transmissions.map((item) => ({
-          value: item.id,
-          label: `${item.deviceCode} - ${item.deviceName}`,
-        })),
-      },
-      {
-        key: 'assetType',
-        label: 'Loại tài sản',
-        type: 'select',
-        placeholder: 'Chọn loại tài sản',
-        options: [{ value: VHF_ASSET_TYPE, label: VHF_ASSET_TYPE }],
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -497,9 +471,44 @@ export default function VhfAssetList() {
         options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
       },
       {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị...',
+        isAdvanced: true,
+      },
+      {
+        key: 'transmissionId',
+        label: 'Mã thiết bị',
+        type: 'select',
+        placeholder: 'Chọn thiết bị VHF / truyền dẫn',
+        options: transmissions.map((item) => ({
+          value: item.id,
+          label: `${item.deviceCode} - ${item.deviceName}`,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: [{ value: VHF_ASSET_TYPE, label: VHF_ASSET_TYPE }],
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
+      },
+      {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ],
     [transmissions, organizations]
@@ -689,12 +698,16 @@ export default function VhfAssetList() {
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
           },
-          {
-            key: 'edit',
-            label: 'Chỉnh sửa',
-            icon: <EditOutlined />,
-            onClick: () => openEdit(record),
-          },
+          ...(isAssetRecordEditable(record.approvalStatus)
+            ? [
+                {
+                  key: 'edit',
+                  label: 'Chỉnh sửa',
+                  icon: <EditOutlined />,
+                  onClick: () => openEdit(record),
+                },
+              ]
+            : []),
           {
             key: 'history',
             label: 'Lịch sử',
@@ -777,7 +790,6 @@ export default function VhfAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

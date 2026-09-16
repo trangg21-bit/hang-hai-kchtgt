@@ -54,18 +54,17 @@ const StatusTabs: React.FC<StatusTabsProps> = ({ tabs = [], onChange }) => {
           flex-wrap: nowrap !important;
           overflow-x: auto !important;
           overflow-y: hidden !important;
-          justify-content: center !important;
           justify-content: safe center !important;
           align-items: center !important;
           scrollbar-width: thin !important;
           scrollbar-color: #cbd5e1 #f8fafc !important;
           scroll-behavior: smooth !important;
           -webkit-overflow-scrolling: touch !important;
-          padding: 2px 16px 6px 16px !important;
-          gap: 20px !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
         }
         .chk-status-tabs-container::-webkit-scrollbar {
-          height: 6px !important;
+          height: 4px !important;
           display: block !important;
         }
         .chk-status-tabs-container::-webkit-scrollbar-track {
@@ -83,6 +82,7 @@ const StatusTabs: React.FC<StatusTabsProps> = ({ tabs = [], onChange }) => {
           white-space: nowrap !important;
           flex-shrink: 0 !important;
           cursor: pointer !important;
+          padding: 4px 2px !important;
         }
       `}</style>
       <div
@@ -96,8 +96,8 @@ const StatusTabs: React.FC<StatusTabsProps> = ({ tabs = [], onChange }) => {
           flexWrap: 'nowrap',
           justifyContent: 'safe center',
           alignItems: 'center',
-          gap: 20,
-          padding: '2px 16px 6px 16px',
+          gap: 'clamp(6px, 1vw, 14px)',
+          padding: '2px 8px 4px 8px',
           scrollbarWidth: 'thin',
           scrollbarColor: '#cbd5e1 #f8fafc',
         }}

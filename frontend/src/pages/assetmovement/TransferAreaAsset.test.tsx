@@ -240,9 +240,10 @@ describe('Module 2: Tài sản khu chuyển tải (docs/checklists/CHECKLIST-TAI
     expect(html).toContain('Tài sản khu chuyển tải');
     expect(html).toContain('Thêm mới');
     expect(html).toContain('Tìm kiếm');
-    expect(html).toContain('Mã khu chuyển tải');
+    expect(html).toContain('Tên tài sản');
+    expect(html).toContain('Mở rộng bộ lọc nâng cao');
     expect(html).toContain('Tất cả');
-    expect(html).toContain('Chờ Cảng vụ duyệt');
+    expect(html).toContain('Chờ phê duyệt cấp Cảng vụ/Chi cục');
     expect(html).toContain('TÊN/MÃ TÀI SẢN');
     expect(html).toContain('MÃ KHU CHUYỂN TẢI');
     expect(html).toContain('LOẠI TÀI SẢN');
@@ -327,7 +328,7 @@ describe('Module 2: Tài sản khu chuyển tải (docs/checklists/CHECKLIST-TAI
     expect(html).toContain('Thông tin chi tiết');
     expect(html).toContain('Khai thác tài sản (1)');
     expect(html).toContain('Lịch sử thay đổi nguyên giá (1)');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
+    expect(html).toContain('Thông tin phê duyệt');
     expect(html).toContain('KCT-QN-01');
     expect(html).toContain('TS-KCT-001');
     expect(html).toContain('Tài sản khu chuyển tải');

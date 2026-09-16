@@ -137,6 +137,18 @@ public class TransmissionAssetService {
     @Transactional
     public TransmissionAssetResponse update(UUID id, TransmissionAssetRequest request) {
         TransmissionAsset entity = requireAsset(id);
+        ApprovalStatus previousStatus = entity.getApprovalStatus();
+        if (entity.getDeletedAt() != null
+                || previousStatus == ApprovalStatus.ARCHIVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL1
+                || previousStatus == ApprovalStatus.PENDING_APPROVAL
+                || previousStatus == ApprovalStatus.PROPOSED) {
+            String label = previousStatus != null ? previousStatus.getLabel() : "Đã xóa";
+            throw new IllegalStateException("Hồ sơ ở trạng thái " + label + " không được phép chỉnh sửa");
+        }
+        boolean wasApproved = previousStatus == ApprovalStatus.APPROVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL2;
+
         TransmissionAsset oldEntity = new TransmissionAsset();
         BeanUtils.copyProperties(entity, oldEntity);
 
@@ -146,8 +158,10 @@ public class TransmissionAssetService {
         calculateValues(entity);
         TransmissionAsset saved = repository.save(entity);
 
-        String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
-        changeTrackingService.recordChanges("TRANSMISSION", id.toString(), actorId, oldEntity, saved);
+        if (wasApproved) {
+            String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
+            changeTrackingService.recordChanges("TRANSMISSION", id.toString(), actorId, oldEntity, saved);
+        }
 
         return toResponse(saved);
     }
@@ -168,7 +182,10 @@ public class TransmissionAssetService {
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> getHistory(UUID id) {
-        requireAsset(id);
+        TransmissionAsset entity = requireAsset(id);
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return java.util.Map.of("changeHistory", java.util.Collections.emptyList());
+        }
         String entityId = id.toString();
         String entityType = "TransmissionAsset";
 

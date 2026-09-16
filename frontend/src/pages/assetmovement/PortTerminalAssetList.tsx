@@ -1,4 +1,6 @@
 import {
+    CheckOutlined,
+    CloseOutlined,
     DeleteOutlined,
     EditOutlined,
     EyeOutlined,
@@ -8,12 +10,14 @@ import {
     PlusOutlined,
     RocketOutlined,
     SearchOutlined,
+    SendOutlined,
 } from "@ant-design/icons";
 import { Button, DatePicker, Form, Input, Space } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import toast from "../../components/ToastNotification";
+import { KchtApprovalModals } from "../../components/kcht/KchtApprovalModals";
 import {
     CommonStatusTabs,
     CommonTable,
@@ -35,6 +39,8 @@ import {
 } from "../../context/ThemeTokenContext";
 import api from "../../services/api";
 import {
+    approveInfraAssetC1,
+    approveInfraAssetC2,
     createAssetDecrease,
     createAssetIncrease,
     createInfrastructureAsset,
@@ -47,6 +53,9 @@ import {
     fetchInfraAssetHistory,
     fetchInfrastructureAssets,
     fetchKhaiThacList,
+    rejectInfraAssetC1,
+    rejectInfraAssetC2,
+    submitInfraAssetApproval,
     updateInfrastructureAsset,
     uploadInfraAssetAttachments,
 } from "../../services/assetmovement/api";
@@ -82,6 +91,7 @@ import {
     spaceXl,
     textTertiary,
 } from "../../themetokenchk";
+import { isAssetRecordEditable } from "../../utils/approvalEditPolicy";
 import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from "../../utils/changeHistoryRenderer";
 import { formatHistoryNumber } from "../../utils/numFmt";
 import PortTerminalAssetDetailContent from "./PortTerminalAssetDetailContent";
@@ -321,7 +331,13 @@ function PortTerminalAssetList({
         if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
           return orgName.get(raw!) || raw;
         }
-        if (fn === 'berthId' || fn === 'portTerminalId') {
+        if (
+          fn === 'berthId' ||
+          fn === 'portTerminalId' ||
+          fn === 'beaconStationId' ||
+          fn === 'anchorageId' ||
+          fn === 'dikeRevetmentId'
+        ) {
           const item = relatedInfrastructureMap.get(raw!);
           return item ? `${item.code} - ${item.name}` : raw;
         }
@@ -337,7 +353,7 @@ function PortTerminalAssetList({
         return undefined;
       },
     });
-  }, [filteredHistoryRecords, historyTarget, orgName, relatedInfrastructureMap]);
+  }, [filteredHistoryRecords, orgName, relatedInfrastructureMap, historyTarget]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -410,6 +426,87 @@ function PortTerminalAssetList({
       );
   }, [screenConfig]);
 
+  // ── Approval state & handlers ──────────────────────────────────────
+  const [approvingRecord, setApprovingRecord] = useState<PortTerminalAsset | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [rejectingRecord, setRejectingRecord] = useState<PortTerminalAsset | null>(null);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const handleOpenApproveModal = useCallback((record: PortTerminalAsset, level: 'c1' | 'c2') => {
+    setApprovingRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const handleApproveConfirm = useCallback(async (content: string) => {
+    if (!approvingRecord) return;
+    setApproveLoading(true);
+    try {
+      if (approveLevel === 'c1') {
+        await approveInfraAssetC1(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await approveInfraAssetC2(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Phê duyệt thất bại'));
+    } finally {
+      setApproveLoading(false);
+    }
+  }, [approvingRecord, approveLevel, loadData]);
+
+  const handleOpenRejectModal = useCallback((record: PortTerminalAsset, level: 'c1' | 'c2') => {
+    setRejectingRecord(record);
+    setRejectLevel(level);
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleRejectConfirm = useCallback(async (reason: string) => {
+    if (!rejectingRecord) return;
+    setRejectLoading(true);
+    try {
+      if (rejectLevel === 'c1') {
+        await rejectInfraAssetC1(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await rejectInfraAssetC2(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cục');
+      }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Từ chối phê duyệt thất bại'));
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectLevel, loadData]);
+
+  const handleSubmitApproval = useCallback(async (record: PortTerminalAsset) => {
+    try {
+      await submitInfraAssetApproval(record.id);
+      const isReSubmit =
+        record.approvalStatus === 'REJECTED_LEVEL1' ||
+        record.approvalStatus === 'REJECTED_LEVEL2' ||
+        (record as any).status === 'REJECTED_LEVEL1' ||
+        (record as any).status === 'REJECTED_LEVEL2' ||
+        record.approvalStatus === 'REJECTED';
+      toast.success(isReSubmit ? 'Đã gửi lại phê duyệt' : 'Đã gửi Cảng vụ phê duyệt');
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Gửi phê duyệt thất bại'));
+    }
+  }, [loadData]);
+
   const openCreate = useCallback(() => {
     setSelected(undefined);
     setDrawerMode("create");
@@ -426,6 +523,10 @@ function PortTerminalAssetList({
 
   const openEdit = useCallback(
     async (record: PortTerminalAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning("Hồ sơ đang ở trạng thái không được phép chỉnh sửa.");
+        return;
+      }
       setSelected(record);
       setDrawerMode("edit");
       form.setFieldsValue({
@@ -822,36 +923,6 @@ function PortTerminalAssetList({
         placeholder: "Chọn đơn vị...",
       },
       {
-        key: "usingOrgUnitId",
-        label: "Đơn vị sử dụng",
-        type: "treeSelect",
-        organizations,
-        placeholder: "Chọn đơn vị...",
-      },
-      {
-        key: screenConfig.relationField,
-        label: screenConfig.relationCodeLabel,
-        type: "select",
-        placeholder: screenConfig.relationPlaceholder,
-        options: relatedInfrastructure.map((item) => ({
-          value: item.id,
-          label: `${item.code} - ${item.name}`,
-        })),
-      },
-      {
-        key: "assetType",
-        label: "Loại tài sản",
-        type: "select",
-        placeholder: "Chọn loại tài sản",
-        options: [{ value: screenConfig.assetType, label: screenConfig.title }],
-      },
-      {
-        key: "assetCode",
-        label: "Mã tài sản",
-        type: "text",
-        placeholder: "Tìm theo mã tài sản",
-      },
-      {
         key: "assetName",
         label: "Tên tài sản",
         type: "text",
@@ -865,9 +936,44 @@ function PortTerminalAssetList({
         options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
       },
       {
+        key: "usingOrgUnitId",
+        label: "Đơn vị sử dụng",
+        type: "treeSelect",
+        organizations,
+        placeholder: "Chọn đơn vị...",
+        isAdvanced: true,
+      },
+      {
+        key: screenConfig.relationField,
+        label: screenConfig.relationCodeLabel,
+        type: "select",
+        placeholder: screenConfig.relationPlaceholder,
+        options: relatedInfrastructure.map((item) => ({
+          value: item.id,
+          label: `${item.code} - ${item.name}`,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: "assetType",
+        label: "Loại tài sản",
+        type: "select",
+        placeholder: "Chọn loại tài sản",
+        options: [{ value: screenConfig.assetType, label: screenConfig.title }],
+        isAdvanced: true,
+      },
+      {
+        key: "assetCode",
+        label: "Mã tài sản",
+        type: "text",
+        placeholder: "Tìm theo mã tài sản",
+        isAdvanced: true,
+      },
+      {
         key: "updatedRange",
         label: "Ngày cập nhật",
         type: "dateRange",
+        isAdvanced: true,
       },
     ],
     [organizations, relatedInfrastructure, screenConfig],
@@ -1034,18 +1140,144 @@ function PortTerminalAssetList({
         allowSort: true,
       },
     ],
-    actions: (record: PortTerminalAsset) => [
-      { key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(record) },
-      { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEdit(record) },
-      { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
-      { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
-      { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
-      { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistory(record) },
-      ...(record.approvalStatus === 'DRAFT'
-        ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]
-        : []),
-    ],
-  }), [openDetail, openEdit, openHistory, operationForm, orgName, relatedInfrastructureMap, screenConfig]);
+    actions: (record: PortTerminalAsset) => {
+      const st = record.approvalStatus || (record as any).status || '';
+      const actionsList: any[] = [
+        {
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        },
+      ];
+
+      if (isAssetRecordEditable(st)) {
+        actionsList.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+
+      if (st === 'DRAFT') {
+        actionsList.push({
+          key: 'submit',
+          label: 'Gửi Cảng vụ phê duyệt',
+          icon: <SendOutlined />,
+          onClick: () => void handleSubmitApproval(record),
+        });
+      } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+        actionsList.push({
+          key: 'submit',
+          label: 'Gửi lại phê duyệt',
+          icon: <SendOutlined />,
+          onClick: () => void handleSubmitApproval(record),
+        });
+      }
+
+      if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
+        actionsList.push(
+          {
+            key: 'approveC1',
+            label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c1'),
+          },
+          {
+            key: 'rejectC1',
+            label: 'Từ chối cấp Cảng vụ/Chi cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c1'),
+          }
+        );
+      }
+
+      if (st === 'APPROVED_LEVEL1') {
+        actionsList.push(
+          {
+            key: 'approveC2',
+            label: 'Phê duyệt cấp Cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c2'),
+          },
+          {
+            key: 'rejectC2',
+            label: 'Từ chối cấp Cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c2'),
+          }
+        );
+      }
+
+      if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+        actionsList.push(
+          {
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('exploit');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('increase');
+              operationForm.resetFields();
+            },
+          },
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('decrease');
+              operationForm.resetFields();
+            },
+          }
+        );
+      }
+
+      actionsList.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: <HistoryOutlined />,
+        onClick: () => void openHistory(record),
+      });
+
+      if (st === 'DRAFT') {
+        actionsList.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+
+      return actionsList;
+    },
+  }), [
+    openDetail,
+    openEdit,
+    openHistory,
+    operationForm,
+    handleOpenApproveModal,
+    handleOpenRejectModal,
+    handleSubmitApproval,
+    orgName,
+    relatedInfrastructureMap,
+    screenConfig,
+  ]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
@@ -1117,18 +1349,17 @@ function PortTerminalAssetList({
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
             overflow-y: hidden !important;
-            justify-content: center !important;
             justify-content: safe center !important;
             align-items: center !important;
             scrollbar-width: thin !important;
             scrollbar-color: #cbd5e1 #f8fafc !important;
             scroll-behavior: smooth !important;
             -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
           }
           .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
+            height: 4px !important;
             display: block !important;
           }
           .berth-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
@@ -1169,7 +1400,6 @@ function PortTerminalAssetList({
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || "all"}
@@ -1297,6 +1527,26 @@ function PortTerminalAssetList({
                 toast.error(getErrorMessage(cause, "Không thể xóa tài sản.")),
               )
               .finally(() => setSaving(false));
+          }}
+        />
+
+        {/* ── Approval Modals 2 cấp ──────────────────────────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          approveLoading={approveLoading}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveCancel={() => {
+            setApproveModalOpen(false);
+            setApprovingRecord(null);
+          }}
+          rejectOpen={rejectModalOpen}
+          rejectLevel={rejectLevel}
+          rejectLoading={rejectLoading}
+          onRejectConfirm={handleRejectConfirm}
+          onRejectCancel={() => {
+            setRejectModalOpen(false);
+            setRejectingRecord(null);
           }}
         />
         {/* ── History Drawer (chuẩn /berth) ────────────────────────── */}

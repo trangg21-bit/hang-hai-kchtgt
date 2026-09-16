@@ -110,18 +110,28 @@ const sectionTitleStyle: React.CSSProperties = {
 
 const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: "Lưu tạm" },
+  NHAP: { color: statusDraft, label: "Lưu tạm" },
   PENDING_APPROVAL: {
-    color: statusAttention,
-    label: "Chờ Cảng vụ duyệt",
+    color: actionPrimary,
+    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
   },
-  APPROVED_LEVEL1: { color: "#0284C7", label: "Chờ Cục duyệt" },
-  APPROVED: { color: statusOperational, label: "Đã duyệt" },
+  CHO_PHE_DUYET: {
+    color: actionPrimary,
+    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
+  },
+  APPROVED_LEVEL1: { color: statusAttention, label: "Chờ phê duyệt cấp Cục" },
+  APPROVED: { color: statusOperational, label: "Đã phê duyệt" },
+  DA_PHE_DUYET: { color: statusOperational, label: "Đã phê duyệt" },
+  DA_DUYET: { color: statusOperational, label: "Đã phê duyệt" },
   REJECTED_LEVEL1: {
     color: statusCritical,
-    label: "Cảng vụ từ chối",
+    label: "Từ chối cấp Cảng vụ/Chi cục",
   },
-  REJECTED_LEVEL2: { color: statusCritical, label: "Cục từ chối" },
+  REJECTED_LEVEL2: { color: statusCritical, label: "Từ chối cấp Cục" },
   REJECTED: { color: statusCritical, label: "Từ chối" },
+  TU_CHOI: { color: statusCritical, label: "Từ chối" },
+  ARCHIVED: { color: statusCritical, label: "Đã xóa" },
+  DA_XOA: { color: statusCritical, label: "Đã xóa" },
 };
 
 const fmtDateTime = (v?: string | null): string =>
@@ -582,10 +592,20 @@ export default function PortTerminalAssetDetailContent({
             defaultCollapsed: false,
             fields: [
               {
-                label: "Trạng thái",
+                label: "Trạng thái phê duyệt",
                 type: ViewFieldType.Badge,
+                colSpan: 24,
                 value: () => approvalInfo.label,
                 badgeColor: () => approvalInfo.color,
+              },
+              {
+                name: "updatedByName",
+                label: "Cán bộ cập nhật",
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || "")}
+                  </span>
+                ),
               },
               {
                 name: "updatedAt",
@@ -593,8 +613,8 @@ export default function PortTerminalAssetDetailContent({
                 type: ViewFieldType.DateTime,
               },
               {
-                name: "updatedByName",
-                label: "Cán bộ cập nhật",
+                name: "submittedByName",
+                label: "Cán bộ gửi phê duyệt",
                 render: (val) => (
                   <span style={{ fontWeight: fontWeightBold }}>
                     {String(val || "")}
@@ -607,36 +627,46 @@ export default function PortTerminalAssetDetailContent({
                 type: ViewFieldType.DateTime,
               },
               {
-                name: "submittedByName",
-                label: "Người gửi phê duyệt",
+                name: "portAuthorityApprovedByName",
+                label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || rec?.approvedLevel1ByName || "")}
+                  </span>
+                ),
               },
               {
-                name: "approvedLevel1At",
-                label: "Ngày duyệt cấp 1",
+                name: "portAuthorityApprovedAt",
+                label: "Ngày phê duyệt cấp Cảng vụ/Chi cục",
                 type: ViewFieldType.DateTime,
+                value: (rec) => rec?.portAuthorityApprovedAt || rec?.approvedLevel1At,
               },
               {
-                name: "approvedLevel1ByName",
-                label: "Người duyệt cấp 1",
-              },
-              {
-                name: "approvalContentLevel1",
-                label: "Nội dung phê duyệt cấp 1",
+                name: "portAuthorityApprovalContent",
+                label: "Nội dung phê duyệt cấp Cảng vụ/Chi cục",
                 colSpan: 24,
+                value: (rec) => rec?.portAuthorityApprovalContent || rec?.approvalContentLevel1,
               },
               {
-                name: "approvedLevel2At",
-                label: "Ngày duyệt cấp 2",
+                name: "departmentApprovedByName",
+                label: "Cán bộ phê duyệt cấp Cục",
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || rec?.approvedLevel2ByName || "")}
+                  </span>
+                ),
+              },
+              {
+                name: "departmentApprovedAt",
+                label: "Ngày phê duyệt cấp Cục",
                 type: ViewFieldType.DateTime,
+                value: (rec) => rec?.departmentApprovedAt || rec?.approvedLevel2At,
               },
               {
-                name: "approvedLevel2ByName",
-                label: "Người duyệt cấp 2",
-              },
-              {
-                name: "approvalContentLevel2",
-                label: "Nội dung phê duyệt cấp 2",
+                name: "departmentApprovalContent",
+                label: "Nội dung phê duyệt cấp Cục",
                 colSpan: 24,
+                value: (rec) => rec?.departmentApprovalContent || rec?.approvalContentLevel2,
               },
               {
                 name: "rejectionReason",
@@ -956,87 +986,6 @@ export default function PortTerminalAssetDetailContent({
             )}
           </div>
         ),
-      },
-      {
-        key: "tracking",
-        label: "Xử lý & theo dõi",
-        sections: [
-          {
-            key: "approval_info",
-            title: "Xử lý & theo dõi",
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                label: "Trạng thái",
-                type: ViewFieldType.Badge,
-                value: () => approvalInfo.label,
-                badgeColor: () => approvalInfo.color,
-              },
-              {
-                name: "updatedAt",
-                label: "Ngày cập nhật",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "updatedByName",
-                label: "Cán bộ cập nhật",
-                render: (val) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {String(val || "—")}
-                  </span>
-                ),
-              },
-              {
-                name: "submittedAt",
-                label: "Ngày gửi phê duyệt",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "submittedByName",
-                label: "Cán bộ gửi phê duyệt",
-              },
-              {
-                name: "portAuthorityApprovedAt",
-                label: "Ngày phê duyệt cấp Cảng vụ/Chi cục",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "portAuthorityApprovedByName",
-                label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
-              },
-              {
-                name: "portAuthorityApprovalContent",
-                label: "Nội dung phê duyệt cấp Cảng vụ/Chi cục",
-                colSpan: 24,
-              },
-              {
-                name: "departmentApprovedAt",
-                label: "Ngày phê duyệt cấp Cục",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "departmentApprovedByName",
-                label: "Cán bộ phê duyệt cấp Cục",
-              },
-              {
-                name: "departmentApprovalContent",
-                label: "Nội dung phê duyệt cấp Cục",
-                colSpan: 24,
-              },
-              {
-                name: "rejectionReason",
-                label: "Lý do từ chối",
-                colSpan: 24,
-                hidden: (rec) => !rec.rejectionReason,
-                render: (val) => (
-                  <span style={{ color: statusCritical, fontWeight: 500 }}>
-                    {String(val)}
-                  </span>
-                ),
-              },
-            ],
-          },
-        ],
       },
     ];
   }, [

@@ -1,7 +1,8 @@
 import ScreenHeader from "./ScreenHeader";
 import type { ScreenHeaderProps, ScreenHeaderAction } from "./ScreenHeader";
 import FilterBar from "./FilterBar";
-import FilterTableLayout from "./FilterTableLayout";
+import FilterTableLayout, { FilterTableLayoutContext } from "./FilterTableLayout";
+import type { FilterTableLayoutProps, FilterTableLayoutContextType } from "./FilterTableLayout";
 import StatusTabs from "./StatusTabs";
 import DataTable from "./DataTable";
 import Pagination from "./Pagination";
@@ -23,6 +24,7 @@ export {
   ScreenHeader,
   FilterBar,
   FilterTableLayout,
+  FilterTableLayoutContext,
   StatusTabs,
   DataTable,
   Pagination,
@@ -36,6 +38,7 @@ export {
   DynamicViewSidebar,
 };
 export type { ScreenHeaderProps, ScreenHeaderAction };
+export type { FilterTableLayoutProps, FilterTableLayoutContextType };
 export type { ListPageContainerProps } from "./ListPageContainer";
 export type { SidebarFilterFieldProps } from "./SidebarFilterField";
 export type { CommonTableProps } from "../shared/common-table/CommonTable";

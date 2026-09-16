@@ -243,9 +243,10 @@ describe('Module 5: Tài sản cầu cảng (docs/checklists/CHECKLIST-TAI-SAN-C
     expect(html).toContain('Quản lý tài sản KCHT hàng hải');
     expect(html).toContain('Tài sản cầu cảng');
     expect(html).toContain('Thêm mới');
-    expect(html).toContain('Mã cầu cảng');
+    expect(html).toContain('Tên tài sản');
+    expect(html).toContain('Mở rộng bộ lọc nâng cao');
     expect(html).toContain('Tất cả');
-    expect(html).toContain('Đã duyệt');
+    expect(html).toContain('Đã phê duyệt');
     expect(html).toContain('TÊN/MÃ TÀI SẢN');
     expect(html).toContain('MÃ CẦU CẢNG');
     expect(html).toContain('LOẠI TÀI SẢN');
@@ -329,7 +330,7 @@ describe('Module 5: Tài sản cầu cảng (docs/checklists/CHECKLIST-TAI-SAN-C
     expect(html).toContain('Thông tin chi tiết');
     expect(html).toContain('Khai thác tài sản (1)');
     expect(html).toContain('Lịch sử thay đổi nguyên giá (1)');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
+    expect(html).toContain('Thông tin phê duyệt');
     expect(html).toContain('CC-SG-01');
     expect(html).toContain('TS-CC-001');
 

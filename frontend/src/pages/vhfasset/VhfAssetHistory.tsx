@@ -8,26 +8,26 @@ import toast from '../../components/ToastNotification';
 import { fetchVhfAssetHistory } from '../../services/vhfAsset/api';
 import type { VhfAsset } from '../../services/vhfAsset/types';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import {
-    EXCLUDED_CHANGE_FIELDS,
-    NUMERIC_HISTORY_FIELDS,
-    TRANSMISSION_ASSET_FIELD_LABELS as VHF_ASSET_FIELD_LABELS,
-    histVal,
+  EXCLUDED_CHANGE_FIELDS,
+  NUMERIC_HISTORY_FIELDS,
+  TRANSMISSION_ASSET_FIELD_LABELS as VHF_ASSET_FIELD_LABELS,
+  histVal,
 } from '../transmissionasset/TransmissionAssetHistory';
 
 export { VHF_ASSET_FIELD_LABELS };

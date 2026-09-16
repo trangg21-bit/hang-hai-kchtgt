@@ -161,28 +161,31 @@ export function autoFormatHistoryValue(fn: string, raw: unknown): string | null 
     DRAFT: 'Lưu tạm',
     NHAP: 'Lưu tạm',
     '0': 'Lưu tạm',
-    PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-    CHO_PHE_DUYET: 'Chờ Cảng vụ duyệt',
-    CHO_PD_CAP_CUC: 'Chờ Cục duyệt',
-    PROPOSED: 'Chờ Cảng vụ duyệt',
-    APPROVED_LEVEL1: 'Chờ Cục duyệt',
-    APPROVED_L1: 'Chờ Cục duyệt',
-    SUBMITTED_PORT_AUTHORITY: 'Chờ Cảng vụ duyệt',
-    CHO_DUYET_CAP_1: 'Chờ Cảng vụ duyệt',
-    SUBMITTED_DEPARTMENT: 'Chờ Cục duyệt',
-    CHO_DUYET_CAP_2: 'Chờ Cục duyệt',
-    APPROVED_LEVEL2: 'Đã duyệt',
-    APPROVED_L2: 'Đã duyệt',
-    APPROVED: 'Đã duyệt',
-    DA_PHE_DUYET: 'Đã duyệt',
-    DA_DUYET: 'Đã duyệt',
-    PUBLISHED: 'Đã duyệt',
-    REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ',
-    REJECTED_L1: 'Từ chối cấp Cảng vụ',
+    PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    CHO_PD_CAP_CUC: 'Chờ phê duyệt cấp Cục',
+    PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+    APPROVED_L1: 'Chờ phê duyệt cấp Cục',
+    SUBMITTED_PORT_AUTHORITY: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    CHO_DUYET_CAP_1: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    SUBMITTED_DEPARTMENT: 'Chờ phê duyệt cấp Cục',
+    CHO_DUYET_CAP_2: 'Chờ phê duyệt cấp Cục',
+    APPROVED_LEVEL2: 'Đã phê duyệt',
+    APPROVED_L2: 'Đã phê duyệt',
+    APPROVED: 'Đã phê duyệt',
+    DA_PHE_DUYET: 'Đã phê duyệt',
+    DA_DUYET: 'Đã phê duyệt',
+    PUBLISHED: 'Đã phê duyệt',
+    REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+    REJECTED_L1: 'Từ chối cấp Cảng vụ/Chi cục',
     REJECTED_LEVEL2: 'Từ chối cấp Cục',
     REJECTED_L2: 'Từ chối cấp Cục',
     REJECTED: 'Từ chối',
     TU_CHOI: 'Từ chối',
+    ARCHIVED: 'Đã xóa',
+    DA_XOA: 'Đã xóa',
+    DELETED: 'Đã xóa',
   };
   if (approvalMap[s.toUpperCase()]) {
     return approvalMap[s.toUpperCase()];
@@ -552,14 +555,23 @@ export const DEFAULT_IGNORED_FIELDS = new Set([
   'approvedRemarks',
 ]);
 
-export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactElement[] {
+export interface HistoryUpdateSession {
+  group: { tsMs: number; ts: string; actor: string; items: RawHistoryRecord[] };
+  validRows: Array<{
+    rowId: string;
+    field: string;
+    label: string;
+    ov: React.ReactNode | string | null;
+    nv: React.ReactNode | string | null;
+  }>;
+}
+
+export function buildHistoryUpdateSessions(options: ChangeHistoryRendererOptions): HistoryUpdateSession[] {
   const {
     records,
     fieldLabels = {},
     groupOrder = [],
     formatValue,
-    resolveUnitName,
-    resolveActorName,
     ignoredFields = DEFAULT_IGNORED_FIELDS,
   } = options;
 
@@ -596,14 +608,6 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
     return String(bt) < String(at) ? -1 : String(bt) > String(at) ? 1 : 0;
   });
 
-  const normalizeGroupFn = (fn: string): string => {
-    const t = (fn || '').trim();
-    if (t === 'attachments' || t === 'Tài liệu đính kèm' || t === 'File đính kèm') {
-      return 'attachments';
-    }
-    return t;
-  };
-
   // Gom nhóm trong khoảng 10 giây (chuẩn Cảng biển)
   const groups: { tsMs: number; ts: string; actor: string; items: RawHistoryRecord[] }[] = [];
   for (const r of sorted) {
@@ -611,20 +615,16 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
     const timeMs = ts ? new Date(ts).getTime() || 0 : 0;
     const actor = String(r.changedBy ?? r.createdBy ?? r.approvedBy ?? r.actorName ?? '');
     const g = groups[groups.length - 1];
-    const rawFn = normalizeGroupFn(r.changedField ?? r.fieldName ?? '');
-    const alreadyHasField = Boolean(
-      rawFn &&
-      g &&
-      g.items.some((it: RawHistoryRecord) => normalizeGroupFn(it.changedField ?? it.fieldName ?? '') === rawFn)
-    );
-    if (g && g.actor === actor && Math.abs(g.tsMs - timeMs) <= 10000 && !alreadyHasField) {
+    if (g && g.actor === actor && Math.abs(g.tsMs - timeMs) <= 10000) {
       g.items.push(r);
     } else {
       groups.push({ tsMs: timeMs, ts, actor, items: [r] });
     }
   }
 
-  const cards = groups.map((g, gi) => {
+  const sessions: HistoryUpdateSession[] = [];
+
+  for (const g of groups) {
     const attachmentItems: RawHistoryRecord[] = [];
     const nonAttachmentItems: RawHistoryRecord[] = [];
 
@@ -721,7 +721,6 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
         }
       }
 
-      // oldValue: Danh sách file ban đầu trước khi thực hiện thao tác sửa
       const oldFilesList: string[] = [];
       const oldestAtt = attachmentItems[attachmentItems.length - 1];
       const oldestOldV = norm(oldestAtt?.oldValue ?? oldestAtt?.previousValue);
@@ -739,7 +738,6 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
           });
         }
       }
-      // Đảm bảo 100% mọi file đã bị xóa bằng thùng rác đều có mặt đầy đủ trong oldFilesList
       for (const f of deletedFileNames) {
         if (!oldFilesList.includes(f)) {
           oldFilesList.push(f);
@@ -754,7 +752,6 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
         return true;
       });
 
-      // newValue: Danh sách file sau cùng sau khi hoàn tất thao tác sửa
       const newFilesList: string[] = [];
       const newestAtt = attachmentItems[0];
       const newestNewV = norm(newestAtt?.newValue ?? newestAtt?.value);
@@ -770,7 +767,6 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
           newFilesList.push(f);
         }
       }
-      // Giữ lại các file cũ không bị xóa (retained files)
       for (const f of finalOldFilesList) {
         if (!deletedFileNames.has(f) && !newFilesList.includes(f)) {
           newFilesList.push(f);
@@ -802,7 +798,7 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
       return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
     });
 
-    if (ordered.length === 0) return null;
+    if (ordered.length === 0) continue;
 
     const paintValue = (fn: string, rawV: string | null) => {
       if (isBlankOrDash(rawV)) return '';
@@ -880,19 +876,38 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
         return true;
       });
 
-    if (validRows.length === 0) return null;
+    if (validRows.length === 0) continue;
 
-    const renderServiceHistoryValue = (field: string, value: React.ReactNode) => {
-      if (!isServicesProvidedHistoryField(field) || typeof value !== 'string') return value;
-      const services = value.split(/[,\r\n]+/).map((item) => item.trim()).filter(Boolean);
-      if (services.length <= 1) return value;
-      return (
-        <span style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-          {services.map((service) => <span key={service}>{service}</span>)}
-        </span>
-      );
-    };
+    sessions.push({
+      group: g,
+      validRows,
+    });
+  }
 
+  return sessions;
+}
+
+const renderServiceHistoryValue = (field: string, value: React.ReactNode) => {
+  if (!isServicesProvidedHistoryField(field) || typeof value !== 'string') return value;
+  const services = value.split(/[,\r\n]+/).map((item) => item.trim()).filter(Boolean);
+  if (services.length <= 1) return value;
+  return (
+    <span style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
+      {services.map((service) => <span key={service}>{service}</span>)}
+    </span>
+  );
+};
+
+export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactElement[] {
+  const {
+    resolveUnitName,
+    resolveActorName,
+  } = options;
+
+  const sessions = buildHistoryUpdateSessions(options);
+
+  return sessions.map((session, gi) => {
+    const { group: g, validRows } = session;
     const meta = g.items?.[0] || {};
     const barColor = actionPrimary;
     const accent = historyAccentBarStyle(barColor);
@@ -902,7 +917,7 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
     return (
       <div
         key={g.tsMs !== 0 && g.tsMs ? `g-${g.tsMs}-${g.actor}` : `gi-${gi}`}
-        style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}
+        style={{ ...historyGroupGridStyle, marginBottom: gi < sessions.length - 1 ? spaceSm : 0 }}
       >
         <div style={{ minWidth: 0, paddingTop: spaceXs }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
@@ -962,8 +977,21 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
       </div>
     );
   }).filter(Boolean) as React.ReactElement[];
+}
 
-  return cards;
+/**
+ * Đếm số lần update (sessions) thay vì số trường update.
+ * Gom các trường được sửa trong cùng 1 lần (<= 10s + cùng actor) thành 1 lần update.
+ */
+export function countHistoryUpdates(
+  records: RawHistoryRecord[] | null | undefined,
+  options?: Partial<ChangeHistoryRendererOptions>
+): number {
+  if (!records || records.length === 0) return 0;
+  return buildHistoryUpdateSessions({
+    records,
+    ...options,
+  }).length;
 }
 
 export function countStandardHistoryCards(options: ChangeHistoryRendererOptions): number {

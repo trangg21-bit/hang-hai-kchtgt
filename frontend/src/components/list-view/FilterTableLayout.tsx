@@ -1,9 +1,16 @@
 import React from 'react';
-import { Button, Spin } from 'antd';
+import { Button, Spin, Tooltip } from 'antd';
 import { SearchOutlined, ReloadOutlined, FilterOutlined } from '@ant-design/icons';
 import { useThemeToken } from '../../context/ThemeTokenContext';
 import StatusTabs, { type StatusTab } from './StatusTabs';
 export type { StatusTab };
+
+export interface FilterTableLayoutContextType {
+  isAdvancedOpen: boolean;
+  toggleAdvanced: () => void;
+}
+
+export const FilterTableLayoutContext = React.createContext<FilterTableLayoutContextType | null>(null);
 
 export interface FilterTableLayoutProps {
   /** Filter fields rendered in the sidebar */
@@ -53,8 +60,8 @@ export default function FilterTableLayout({
   onStatusTabChange = () => {},
   onFilterApply,
   onFilterReset,
-  filterCollapsed = false,
-  onToggleCollapse = () => {},
+  filterCollapsed,
+  onToggleCollapse,
   hideFilterToggle = false,
   filterTopOffset = 0,
   hideStatusTabs = false,
@@ -68,69 +75,83 @@ export default function FilterTableLayout({
   const { cardStyle, borderDefault, textSecondary, actionPrimary, buttonRadius, fontSizeMd, statusTabsPadding } = useThemeToken();
   const handleApply = onFilterApply ?? (() => {});
   const handleReset = onFilterReset ?? (() => {});
+
+  const [internalCollapsed, setInternalCollapsed] = React.useState(false);
+  const isAdvancedOpen = filterCollapsed !== undefined ? filterCollapsed : internalCollapsed;
+  const handleToggle = React.useCallback(() => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    }
+    setInternalCollapsed((prev) => !prev);
+  }, [onToggleCollapse]);
+
   return (
-    <div style={{ display: 'flex', gap: 5, alignItems: 'stretch', flex: 1, minHeight: 0 }}>
-      {/* ── Left: Vertical Filter Panel ── */}
-      <div
-        style={{
-          ...cardStyle,
-          width: 280,
-          flexShrink: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          padding: 0,
-        }}
-      >
-        {/* Scrollable filter fields */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: 16, paddingBottom: 12, paddingLeft: 16, paddingTop: filterTopOffset ? filterTopOffset : 0 }}>
-          {filterContent}
-        </div>
-
-        {/* Action Buttons — fixed bottom */}
-        <div className="filter-action-footer" style={{ borderTop: `1px solid ${borderDefault}`, padding: '12px 16px', display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={handleReset}
-            shape="circle"
-            title="Làm mới bộ lọc"
-            style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd, flexShrink: 0 }}
-          />
-          <Button
-            type="primary"
-            icon={<SearchOutlined />}
-            onClick={handleApply}
-            style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: buttonRadius, height: 40, fontSize: fontSizeMd, padding: '0 16px', fontWeight: 500 }}
-          >
-            {applyLabel}
-          </Button>
-          {!hideFilterToggle && (
-            <Button
-              icon={<FilterOutlined />}
-              onClick={onToggleCollapse}
-              shape="circle"
-              title={filterCollapsed ? 'Thu gọn bộ lọc nâng cao' : 'Mở rộng bộ lọc nâng cao'}
-              style={{
-                color: filterCollapsed ? actionPrimary : textSecondary,
-                borderColor: filterCollapsed ? actionPrimary : borderDefault,
-                width: 38,
-                height: 38,
-                fontSize: fontSizeMd,
-                flexShrink: 0,
-              }}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* ── Right: Main Content ── */}
-      <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {/* StatusTabs */}
-        {!hideStatusTabs && (
-          <div style={{ ...cardStyle, marginBottom: 5, padding: statusTabsPadding, flexShrink: 0 }}>
-            {statusTabsNode ?? <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />}
+    <FilterTableLayoutContext.Provider value={{ isAdvancedOpen, toggleAdvanced: handleToggle }}>
+      <div style={{ display: 'flex', gap: 5, alignItems: 'stretch', flex: 1, minHeight: 0 }}>
+        {/* ── Left: Vertical Filter Panel ── */}
+        <div
+          style={{
+            ...cardStyle,
+            width: 280,
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            padding: 0,
+          }}
+        >
+          {/* Scrollable filter fields */}
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: 16, paddingBottom: 12, paddingLeft: 16, paddingTop: filterTopOffset ? filterTopOffset : 0 }}>
+            {filterContent}
           </div>
-        )}
+
+          {/* Action Buttons — fixed bottom */}
+          <div className="filter-action-footer" style={{ borderTop: `1px solid ${borderDefault}`, padding: '12px 16px', display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleReset}
+              shape="circle"
+              title="Làm mới bộ lọc"
+              style={{ color: textSecondary, borderColor: borderDefault, width: 38, height: 38, fontSize: fontSizeMd, flexShrink: 0 }}
+            />
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={handleApply}
+              style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: buttonRadius, height: 40, fontSize: fontSizeMd, padding: '0 16px', fontWeight: 500 }}
+            >
+              {applyLabel}
+            </Button>
+            {!hideFilterToggle && (
+              <Tooltip title={isAdvancedOpen ? 'Thu gọn bộ lọc nâng cao' : 'Mở rộng bộ lọc nâng cao'}>
+                <Button
+                  icon={<FilterOutlined />}
+                  onClick={handleToggle}
+                  shape="circle"
+                  title={isAdvancedOpen ? 'Thu gọn bộ lọc nâng cao' : 'Mở rộng bộ lọc nâng cao'}
+                  style={{
+                    color: isAdvancedOpen ? actionPrimary : textSecondary,
+                    borderColor: isAdvancedOpen ? actionPrimary : borderDefault,
+                    background: isAdvancedOpen ? `${actionPrimary}15` : undefined,
+                    width: 38,
+                    height: 38,
+                    fontSize: fontSizeMd,
+                    flexShrink: 0,
+                  }}
+                />
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
+        {/* ── Right: Main Content ── */}
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {/* StatusTabs */}
+          {!hideStatusTabs && (
+            <div style={{ ...cardStyle, marginBottom: 5, padding: statusTabsPadding, flexShrink: 0 }}>
+              {statusTabsNode ?? <StatusTabs tabs={statusTabs} onChange={onStatusTabChange} />}
+            </div>
+          )}
 
         {/* DataTable card */}
         <div style={{ ...cardStyle, padding: 10, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
@@ -158,5 +179,6 @@ export default function FilterTableLayout({
         `}
       </style>
     </div>
+    </FilterTableLayoutContext.Provider>
   );
 }

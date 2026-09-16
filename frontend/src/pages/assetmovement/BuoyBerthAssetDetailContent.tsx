@@ -94,6 +94,8 @@ const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  DA_XOA: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const fmtDateTime = (v?: string | null): string =>
@@ -298,6 +300,103 @@ export default function BuoyBerthAssetDetailContent({
                 name: 'address',
                 label: 'Địa chỉ',
                 colSpan: 24,
+              },
+            ],
+          },
+          {
+            key: 'approval_info',
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined />,
+            collapsible: true,
+            defaultCollapsed: false,
+            fields: [
+              {
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Badge,
+                colSpan: 24,
+                value: () => approvalInfo.label,
+                badgeColor: () => approvalInfo.color,
+              },
+              {
+                name: 'updatedByName',
+                label: 'Cán bộ cập nhật',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'updatedAt',
+                label: 'Ngày cập nhật',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'submittedByName',
+                label: 'Cán bộ gửi phê duyệt',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'submittedAt',
+                label: 'Ngày gửi phê duyệt',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'portAuthorityApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel1ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'portAuthorityApprovedAt',
+                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.portAuthorityApprovedAt || (rec as any)?.approvedLevel1At,
+              },
+              {
+                name: 'portAuthorityApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                colSpan: 24,
+                value: (rec) => rec?.portAuthorityApprovalContent || (rec as any)?.approvalContentLevel1,
+              },
+              {
+                name: 'departmentApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel2ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'departmentApprovedAt',
+                label: 'Ngày phê duyệt cấp Cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.departmentApprovedAt || (rec as any)?.approvedLevel2At,
+              },
+              {
+                name: 'departmentApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cục',
+                colSpan: 24,
+                value: (rec) => rec?.departmentApprovalContent || (rec as any)?.approvalContentLevel2,
+              },
+              {
+                name: 'rejectionReason',
+                label: 'Lý do từ chối',
+                colSpan: 24,
+                hidden: (rec) => !(rec as any)?.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
               },
             ],
           },
@@ -659,87 +758,6 @@ export default function BuoyBerthAssetDetailContent({
             )}
           </div>
         ),
-      },
-      {
-        key: 'tracking',
-        label: 'Xử lý & theo dõi',
-        sections: [
-          {
-            key: 'approval_info',
-            title: 'Xử lý & theo dõi',
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                label: 'Trạng thái',
-                type: ViewFieldType.Badge,
-                value: () => approvalInfo.label,
-                badgeColor: () => approvalInfo.color,
-              },
-              {
-                name: 'updatedAt',
-                label: 'Ngày cập nhật',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-                render: (val) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {String(val || '—')}
-                  </span>
-                ),
-              },
-              {
-                name: 'submittedAt',
-                label: 'Ngày gửi phê duyệt',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-              },
-              {
-                name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
-                colSpan: 24,
-              },
-              {
-                name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt cấp Cục',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cục',
-                colSpan: 24,
-              },
-              {
-                name: 'rejectionReason',
-                label: 'Lý do từ chối',
-                colSpan: 24,
-                hidden: (rec) => !rec.rejectionReason,
-                render: (val) => (
-                  <span style={{ color: statusCritical, fontWeight: 500 }}>
-                    {String(val)}
-                  </span>
-                ),
-              },
-            ],
-          },
-        ],
       },
     ];
   }, [

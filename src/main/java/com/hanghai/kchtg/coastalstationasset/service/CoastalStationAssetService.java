@@ -184,6 +184,18 @@ public class CoastalStationAssetService {
     @Transactional
     public CoastalStationAssetResponse update(UUID id, CoastalStationAssetRequest request) {
         CoastalStationAsset entity = requireAsset(id);
+        ApprovalStatus previousStatus = entity.getApprovalStatus();
+        if (entity.getDeletedAt() != null
+                || previousStatus == ApprovalStatus.ARCHIVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL1
+                || previousStatus == ApprovalStatus.PENDING_APPROVAL
+                || previousStatus == ApprovalStatus.PROPOSED) {
+            String label = previousStatus != null ? previousStatus.getLabel() : "Đã xóa";
+            throw new IllegalStateException("Hồ sơ ở trạng thái " + label + " không được phép chỉnh sửa");
+        }
+        boolean wasApproved = previousStatus == ApprovalStatus.APPROVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL2;
+
         CoastalStationAsset oldEntity = new CoastalStationAsset();
         BeanUtils.copyProperties(entity, oldEntity);
 
@@ -193,8 +205,10 @@ public class CoastalStationAssetService {
         calculateValues(entity);
         CoastalStationAsset saved = repository.save(entity);
 
-        String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
-        changeTrackingService.recordChanges("COASTAL_STATION_ASSET", id.toString(), actorId, oldEntity, saved);
+        if (wasApproved) {
+            String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
+            changeTrackingService.recordChanges("COASTAL_STATION_ASSET", id.toString(), actorId, oldEntity, saved);
+        }
 
         return toResponse(saved);
     }
@@ -215,7 +229,10 @@ public class CoastalStationAssetService {
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> getHistory(UUID id) {
-        requireAsset(id);
+        CoastalStationAsset entity = requireAsset(id);
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return java.util.Map.of("changeHistory", java.util.Collections.emptyList());
+        }
         String entityId = id.toString();
         String entityType = "CoastalStationAsset";
 

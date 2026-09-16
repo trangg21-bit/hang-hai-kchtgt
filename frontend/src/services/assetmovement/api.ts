@@ -876,3 +876,33 @@ export async function downloadInfraAssetAttachment(
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
+
+// ==========================================
+// 12. Phê duyệt tài sản kết cấu hạ tầng (2 cấp)
+// ==========================================
+
+export async function submitInfraAssetApproval(id: string): Promise<any> {
+  const res = await api.post(`/v1/asset/infra-assets/${id}/submit`);
+  return res.data.data;
+}
+
+export async function approveInfraAssetC1(id: string, content?: string): Promise<any> {
+  const res = await api.post(`/v1/asset/infra-assets/${id}/approve-c1`, { content });
+  return res.data.data;
+}
+
+export async function rejectInfraAssetC1(id: string, reason: string): Promise<any> {
+  const res = await api.post(`/v1/asset/infra-assets/${id}/reject-c1`, { reason });
+  return res.data.data;
+}
+
+export async function approveInfraAssetC2(id: string, content?: string): Promise<any> {
+  const res = await api.post(`/v1/asset/infra-assets/${id}/approve-c2`, { content });
+  return res.data.data;
+}
+
+export async function rejectInfraAssetC2(id: string, reason: string): Promise<any> {
+  const res = await api.post(`/v1/asset/infra-assets/${id}/reject-c2`, { reason });
+  return res.data.data;
+}
+

@@ -8,18 +8,18 @@ import toast from '../../components/ToastNotification';
 import { fetchTransmissionAssetHistory } from '../../services/transmissionAsset/api';
 import type { TransmissionAsset } from '../../services/transmissionAsset/types';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';

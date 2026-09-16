@@ -180,10 +180,12 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
 }));
 
 // Automatically sync permissionStore whenever authStore user/permissions change (login, logout, token renewal)
-useAuthStore.subscribe((state) => {
-  const currentPerms = state.user?.permissions || [];
-  const existingPerms = usePermissionStore.getState().permissions;
-  if (currentPerms !== existingPerms) {
-    usePermissionStore.setState({ permissions: currentPerms });
-  }
-});
+if (typeof useAuthStore?.subscribe === 'function') {
+  useAuthStore.subscribe((state) => {
+    const currentPerms = state.user?.permissions || [];
+    const existingPerms = usePermissionStore.getState().permissions;
+    if (currentPerms !== existingPerms) {
+      usePermissionStore.setState({ permissions: currentPerms });
+    }
+  });
+}

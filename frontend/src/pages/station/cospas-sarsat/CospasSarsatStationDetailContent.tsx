@@ -631,6 +631,10 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
               </span>
             </div>
             <div className="chk-detail-row">
+              <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
+              <span className="chk-detail-value"><strong style={{ color: '#0F172A' }}>{data.updatedByName || data.updatedBy || '—'}</strong></span>
+            </div>
+            <div className="chk-detail-row">
               <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
               <span className="chk-detail-value">
                 {fmtDateTime(data.updatedAt || (data as any).updatedDate || data.createdAt || (data as any).createdDate)}

@@ -287,23 +287,22 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     expect(html).toContain('Tài sản bến cảng');
     expect(html).toContain('Thêm mới');
 
-    // Sidebar bộ lọc
+    // Sidebar bộ lọc (cơ bản + nút mở rộng bộ lọc nâng cao)
     expect(html).toContain('Tìm kiếm');
     expect(html).toContain('Đơn vị quản lý');
-    expect(html).toContain('Đơn vị sử dụng');
-    expect(html).toContain('Mã bến cảng');
-    expect(html).toContain('Tình trạng tài sản');
-    expect(html).toContain('Mã tài sản');
     expect(html).toContain('Tên tài sản');
-    expect(html).toContain('Ngày cập nhật');
+    expect(html).toContain('Tình trạng tài sản');
+    expect(html).toContain('Mở rộng bộ lọc nâng cao');
 
-    // 6 Status tabs
+    // 8 Status tabs (chuẩn Quản lý khu neo đậu)
     expect(html).toContain('Tất cả');
     expect(html).toContain('Lưu tạm');
-    expect(html).toContain('Chờ Cảng vụ duyệt');
-    expect(html).toContain('Chờ Cục duyệt');
-    expect(html).toContain('Đã duyệt');
-    expect(html).toContain('Từ chối');
+    expect(html).toContain('Chờ phê duyệt cấp Cảng vụ/Chi cục');
+    expect(html).toContain('Chờ phê duyệt cấp Cục');
+    expect(html).toContain('Đã phê duyệt');
+    expect(html).toContain('Từ chối cấp Cảng vụ/Chi cục');
+    expect(html).toContain('Từ chối cấp Cục');
+    expect(html).toContain('Đã xóa');
 
     // Table Column Headers
     expect(html).toContain('TÊN/MÃ TÀI SẢN');
@@ -403,7 +402,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     expect(html).toContain('Thông tin chi tiết');
     expect(html).toContain('Khai thác tài sản (1)');
     expect(html).toContain('Lịch sử thay đổi nguyên giá (1)');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
+    expect(html).toContain('Thông tin phê duyệt');
 
     // Tab 1: Thông tin chung
     expect(html).toContain('Cầu cảng Container số 1');

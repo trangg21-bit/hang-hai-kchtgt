@@ -38,6 +38,7 @@ import { getRangePickerProps, getSidebarDatePickerProps } from '../../../themeto
 import OrgUnitTreeSelect from '../../org-unit/OrgUnitTreeSelect';
 import { resolveDefaultOrgUnitId } from '../../org-unit/useUserDefaultOrgUnit';
 import { useAuthStore } from '../../../store/authStore';
+import { FilterTableLayoutContext } from '../../list-view/FilterTableLayout';
 import type {
   FilterOption,
   FilterControlOption,
@@ -74,6 +75,10 @@ export interface TableFilterProps<T extends Record<string, unknown> = Record<str
   hideControls?: boolean;
   /** Ẩn nút phễu lọc nâng cao */
   hideFilterToggle?: boolean;
+  /** Trạng thái mở rộng bộ lọc nâng cao (controlled mode) */
+  showAdvanced?: boolean;
+  /** Callback khi toggle bộ lọc nâng cao */
+  onToggleAdvance?: () => void;
   /** Khoảng cách đẩy xuống từ đỉnh container (px) */
   filterTopOffset?: number;
   /** Trạng thái loading khi đang tìm kiếm */
@@ -101,6 +106,8 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
     width = 280,
     hideControls: propHideControls,
     hideFilterToggle: propHideFilterToggle,
+    showAdvanced: propShowAdvanced,
+    onToggleAdvance: propOnToggleAdvance,
     filterTopOffset: propFilterTopOffset,
     loading: propLoading,
     className,
@@ -151,8 +158,15 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
     } as T;
   });
 
-  // Quản lý trạng thái mở rộng bộ lọc nâng cao
-  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  // Lấy trạng thái mở rộng từ Context hoặc Props hoặc State nội bộ
+  const layoutContext = React.useContext(FilterTableLayoutContext);
+  const [internalShowAdvanced, setInternalShowAdvanced] = useState<boolean>(false);
+
+  const showAdvanced = useMemo(() => {
+    if (propShowAdvanced !== undefined) return propShowAdvanced;
+    if (layoutContext !== null) return layoutContext.isAdvancedOpen;
+    return internalShowAdvanced;
+  }, [propShowAdvanced, layoutContext, internalShowAdvanced]);
 
   // Kiểm tra xem có trường nâng cao nào không
   const hasAdvancedFilters = useMemo(() => {
@@ -231,8 +245,14 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
 
   // Xử lý toggle bộ lọc nâng cao
   const handleToggleAdvance = useCallback(() => {
-    setShowAdvanced((prev) => !prev);
-  }, []);
+    if (propOnToggleAdvance) {
+      propOnToggleAdvance();
+    } else if (layoutContext !== null) {
+      layoutContext.toggleAdvanced();
+    } else {
+      setInternalShowAdvanced((prev) => !prev);
+    }
+  }, [propOnToggleAdvance, layoutContext]);
 
   // Expose ref
   useImperativeHandle(

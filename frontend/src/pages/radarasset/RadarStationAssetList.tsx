@@ -1,7 +1,3 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -13,45 +9,37 @@ import {
   RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from '../../components/ToastNotification';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import api from '../../services/api';
+import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
-import { organizationService, type Organization } from '../../services/organizationService';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
-  fetchRadarStationAssets,
-  createRadarStationAsset,
-  updateRadarStationAsset,
-  deleteRadarStationAsset,
-  fetchRadarStationOptions,
-  type RadarStationOption,
-} from '../../services/radarasset/api';
-import type {
-  RadarStationAsset,
-  RadarStationAssetFilters,
-  RadarStationAssetPayload,
-} from '../../services/radarasset/types';
-import {
-  fetchKhaiThacList,
-  fetchAssetIncreaseList,
-  fetchAssetDecreaseList,
-  createKhaiThac,
-  createAssetIncrease,
   createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchKhaiThacList,
 } from '../../services/assetmovement/api';
 import type {
   AssetDecreaseResponse,
@@ -59,30 +47,43 @@ import type {
   AssetIncreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { organizationService, type Organization } from '../../services/organizationService';
 import {
-  saveAttachmentFile,
-  downloadAttachmentFile,
-  getAttachmentPreviewUrl,
-} from '../../utils/attachmentStorage';
+  createRadarStationAsset,
+  deleteRadarStationAsset,
+  fetchRadarStationAssets,
+  fetchRadarStationOptions,
+  updateRadarStationAsset,
+  type RadarStationOption,
+} from '../../services/radarasset/api';
+import type {
+  RadarStationAsset,
+  RadarStationAssetFilters,
+  RadarStationAssetPayload,
+} from '../../services/radarasset/types';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
+  actionPrimary,
   borderDefault,
+  colors,
   drawerTitleStyle,
   fontSizeLg,
   fontSizeMd,
-  actionPrimary,
+  fontWeightBold,
   radiusPill,
-  spaceSm,
   spaceMd,
+  spaceSm,
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import RadarStationAssetForm, { type FormValues } from './RadarStationAssetForm';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
+import {
+  downloadAttachmentFile,
+  getAttachmentPreviewUrl,
+  saveAttachmentFile,
+} from '../../utils/attachmentStorage';
 import RadarStationAssetDetailContent from './RadarStationAssetDetailContent';
+import RadarStationAssetForm, { type FormValues } from './RadarStationAssetForm';
 import RadarStationAssetOperationForm, {
   type OperationMode,
   type OperationValues,
@@ -453,6 +454,10 @@ export default function RadarStationAssetList() {
 
   const openEdit = useCallback(
     (record: RadarStationAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -762,36 +767,6 @@ export default function RadarStationAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'radarStationId',
-      label: 'Mã trạm radar',
-      type: 'select',
-      placeholder: 'Chọn trạm radar',
-      options: radarStations.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: RADAR_ASSET_TYPES.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -805,9 +780,44 @@ export default function RadarStationAssetList() {
       options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
     },
     {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
+    },
+    {
+      key: 'radarStationId',
+      label: 'Mã trạm radar',
+      type: 'select',
+      placeholder: 'Chọn trạm radar',
+      options: radarStations.map((item) => ({
+        value: item.id,
+        label: `${item.code} - ${item.name}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: RADAR_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
+    },
+    {
       key: 'updatedRange',
       label: 'Ngày cập nhật',
       type: 'dateRange',
+      isAdvanced: true,
     },
   ], [organizations, radarStations]);
 
@@ -955,12 +965,16 @@ export default function RadarStationAssetList() {
         icon: <EyeOutlined />,
         onClick: () => void openDetail(record),
       },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
+      ...(isAssetRecordEditable(record.approvalStatus)
+        ? [
+            {
+              key: 'edit',
+              label: 'Sửa',
+              icon: <EditOutlined />,
+              onClick: () => openEdit(record),
+            },
+          ]
+        : []),
       {
         key: 'exploit',
         label: 'Khai thác tài sản',
@@ -1072,7 +1086,6 @@ export default function RadarStationAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

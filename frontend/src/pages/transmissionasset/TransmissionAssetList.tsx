@@ -31,7 +31,6 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -60,11 +59,7 @@ import type {
 } from '../../services/transmissionAsset/types';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
-import {
-  calculateAssetAdjustmentValues,
-  validateAdjustmentOriginalValue,
-} from '../../utils/assetValueCalculation';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import TransmissionAssetDetailContent from './TransmissionAssetDetailContent';
 import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
 import TransmissionAssetHistory, { useTransmissionHistory } from './TransmissionAssetHistory';
@@ -197,6 +192,10 @@ export default function TransmissionAssetList() {
 
   const openEdit = useCallback(
     (record: TransmissionAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -528,36 +527,6 @@ export default function TransmissionAssetList() {
         placeholder: 'Chọn đơn vị...',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị...',
-      },
-      {
-        key: 'transmissionId',
-        label: 'Mã thiết bị',
-        type: 'select',
-        placeholder: 'Chọn thiết bị truyền dẫn',
-        options: transmissions.map((item) => ({
-          value: item.id,
-          label: `${item.deviceCode} - ${item.deviceName}`,
-        })),
-      },
-      {
-        key: 'assetType',
-        label: 'Loại tài sản',
-        type: 'select',
-        placeholder: 'Chọn loại tài sản',
-        options: MARITIME_ASSET_TYPE_OPTIONS,
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -571,9 +540,44 @@ export default function TransmissionAssetList() {
         options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
       },
       {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị...',
+        isAdvanced: true,
+      },
+      {
+        key: 'transmissionId',
+        label: 'Mã thiết bị',
+        type: 'select',
+        placeholder: 'Chọn thiết bị truyền dẫn',
+        options: transmissions.map((item) => ({
+          value: item.id,
+          label: `${item.deviceCode} - ${item.deviceName}`,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: [{ value: 'Tài sản HT truyền dẫn', label: 'Tài sản HT truyền dẫn' }],
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
+      },
+      {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ],
     [transmissions, organizations]
@@ -763,12 +767,16 @@ export default function TransmissionAssetList() {
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
           },
-          {
-            key: 'edit',
-            label: 'Chỉnh sửa',
-            icon: <EditOutlined />,
-            onClick: () => openEdit(record),
-          },
+          ...(isAssetRecordEditable(record.approvalStatus)
+            ? [
+                {
+                  key: 'edit',
+                  label: 'Chỉnh sửa',
+                  icon: <EditOutlined />,
+                  onClick: () => openEdit(record),
+                },
+              ]
+            : []),
           {
             key: 'history',
             label: 'Lịch sử',
@@ -874,7 +882,6 @@ export default function TransmissionAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
