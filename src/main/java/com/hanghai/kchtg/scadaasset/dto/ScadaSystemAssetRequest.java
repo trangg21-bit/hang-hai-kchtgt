@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.scadaasset.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.validation.constraints.NotBlank;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ScadaSystemAssetRequest {
     private String assetCode;
 

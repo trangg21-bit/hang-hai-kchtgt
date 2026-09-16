@@ -2,9 +2,15 @@ package com.hanghai.kchtg.vtsasset.service;
 
 import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.util.EntityCopyUtils;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtsasset.dto.VtsSystemAssetRequest;
 import com.hanghai.kchtg.vtsasset.dto.VtsSystemAssetResponse;
 import com.hanghai.kchtg.vtsasset.entity.VtsSystemAsset;
@@ -25,8 +31,15 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +50,9 @@ public class VtsSystemAssetService {
     private final UserResolverService userResolverService;
     private final VtsSystemRepository vtsSystemRepository;
     private final OrgUnitRepository orgUnitRepository;
+    private final InfrastructureHistoryRepository historyRepository;
+    private final UserRepository userRepository;
+    private final ChangeHistoryService changeHistoryService;
 
     @Transactional
     public VtsSystemAssetResponse create(VtsSystemAssetRequest request) {
@@ -108,11 +124,25 @@ public class VtsSystemAssetService {
     @Transactional
     public VtsSystemAssetResponse update(UUID id, VtsSystemAssetRequest request) {
         VtsSystemAsset entity = requireAsset(id);
+
+        VtsSystemAsset snapshot = new VtsSystemAsset();
+        BeanUtils.copyProperties(entity, snapshot);
+
         String assetCode = entity.getAssetCode();
         copyEditableFields(request, entity);
         entity.setAssetCode(assetCode);
         calculateValues(entity);
-        return toResponse(repository.save(entity));
+        VtsSystemAsset saved = repository.save(entity);
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy()
+                    : (entity.getCreatedBy() != null ? entity.getCreatedBy() : null);
+        }
+        String actorId = currentUserId != null ? currentUserId.toString() : "system";
+        changeHistoryService.recordChanges("VTS_SYSTEM", saved.getId().toString(), actorId, snapshot, saved);
+
+        return toResponse(saved);
     }
 
     @Transactional
@@ -139,8 +169,19 @@ public class VtsSystemAssetService {
     }
 
     private void copyEditableFields(VtsSystemAssetRequest source, VtsSystemAsset target) {
-        BeanUtils.copyProperties(source, target, "assetCode", "status", "approvalStatus",
-                "remainingValue", "createdAt", "createdBy", "updatedAt", "updatedBy");
+        // Dùng EntityCopyUtils: tự động chỉ copy các field có trong DTO,
+        // loại trừ thêm assetCode (không đổi), remainingValue + monthlyDepreciation (computed).
+        // Các trường audit/phê duyệt (submittedBy, departmentApprovedAt...) không có trong DTO
+        // nên tự nhiên không bị ghi đè — không cần liệt kê thủ công.
+        EntityCopyUtils.copyDtoToEntity(source, target,
+                "assetCode",          // Mã tài sản — sinh một lần, không cho phép đổi
+                "status",             // String trong DTO → AssetStatus enum: xử lý thủ công bên dưới
+                "approvalStatus",     // String trong DTO → ApprovalStatus enum: xử lý thủ công bên dưới
+                "remainingValue",      // Tính tự động bởi calculateValues()
+                "monthlyDepreciation" // Tính tự động bởi calculateValues()
+        );
+
+        // Xử lý status (enum)
         if (source.getStatus() != null && !source.getStatus().isBlank()) {
             try {
                 target.setStatus(AssetStatus.valueOf(source.getStatus()));
@@ -148,15 +189,17 @@ public class VtsSystemAssetService {
                 target.setStatus(AssetStatus.MANAGED);
             }
         }
+
+        // Xử lý approvalStatus + ghi nhận người/ngày duyệt
         if (source.getApprovalStatus() != null && !source.getApprovalStatus().isBlank()) {
             try {
                 ApprovalStatus status = ApprovalStatus.fromString(source.getApprovalStatus());
                 target.setApprovalStatus(status);
                 UUID currentUserId = SecurityUtils.getCurrentUserId();
-                if (status == ApprovalStatus.PENDING_APPROVAL) {
+                if (status == ApprovalStatus.PENDING_APPROVAL && target.getSubmittedBy() == null) {
                     target.setSubmittedBy(currentUserId);
                     target.setSubmittedAt(Instant.now());
-                } else if (status == ApprovalStatus.APPROVED) {
+                } else if (status == ApprovalStatus.APPROVED && target.getDepartmentApprovedBy() == null) {
                     target.setDepartmentApprovedBy(currentUserId);
                     target.setDepartmentApprovedAt(Instant.now());
                 }
@@ -208,5 +251,68 @@ public class VtsSystemAssetService {
         response.setUpdatedByName(userResolverService.resolveName(entity.getUpdatedBy()));
         response.setCreatedByName(userResolverService.resolveName(entity.getCreatedBy()));
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getHistory(UUID id) {
+        VtsSystemAsset entity = requireAsset(id);
+        String entityId = id.toString();
+        String entityType = "VtsSystemAsset";
+
+        List<InfrastructureHistory> list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
+
+        Set<UUID> userIds = list.stream()
+                .map(InfrastructureHistory::getApprovedBy)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
+                userRepository.findAllById(userIds).stream()
+                        .collect(Collectors.toMap(
+                                User::getId,
+                                u -> (u.getFullName() != null && !u.getFullName().isBlank())
+                                        ? u.getFullName() : u.getUsername()
+                        ));
+
+        List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> h.getChangedField() != null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("changedField", h.getChangedField());
+                    m.put("oldValue", h.getPreviousValue() == null ? "" : h.getPreviousValue());
+                    m.put("previousValue", h.getPreviousValue() == null ? "" : h.getPreviousValue());
+                    m.put("newValue", h.getNewValue() == null ? "" : h.getNewValue());
+                    m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("changedAt", h.getApprovedDate());
+                    m.put("orgUnitId", entity.getOrgUnitId());
+                    return m;
+                })
+                .toList();
+
+        List<Map<String, Object>> approvalLog = list.stream()
+                .filter(h -> h.getStatus() != null && h.getChangedField() == null)
+                .map(h -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", h.getId());
+                    m.put("entityType", entityType);
+                    m.put("entityId", entityId);
+                    m.put("status", h.getStatus().name());
+                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedAt", h.getApprovedDate());
+                    m.put("orgUnitId", entity.getOrgUnitId());
+                    return m;
+                })
+                .toList();
+
+        return Map.of(
+                "entityId", entityId,
+                "entityType", entityType,
+                "currentApprovalStatus", entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : "",
+                "changeHistory", changeHistory,
+                "approvalLog", approvalLog,
+                "histories", list
+        );
     }
 }
