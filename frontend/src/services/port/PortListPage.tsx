@@ -836,8 +836,8 @@ export default function PortListPage() {
   const [orgUnitReady, setOrgUnitReady] = useState(false);
   const [debouncedName, setDebouncedName] = useState('');
   const [debouncedCode, setDebouncedCode] = useState('');
-  const [sortField, setSortField] = useState('updatedByName');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedByName');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [activeStatusTab, setActiveStatusTab] = useState('');
   const [page, setPage] = useState(1);
@@ -2428,7 +2428,7 @@ export default function PortListPage() {
               </div>
               <div style={{ marginBottom: 12 }}>
                 <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Tên cảng biển</div>
-                <Input placeholder="Tìm theo tên cảng biển..." allowClear
+                <Input placeholder="Tìm theo tên cảng biển" allowClear
                   value={filterValues.portName || ''}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, portName: e.target.value }))}
                   onPressEnter={handleFilterApply}
@@ -2498,7 +2498,7 @@ export default function PortListPage() {
           >
             <DataTable columns={columns}
               dataSource={[...dataSource].sort((a: any, b: any) => {
-                if (!sortField) return 0;
+                if (!sortField || !sortOrder) return 0;
                 const resolve = (r: any) => {
                   if (sortField === 'orgUnitId') return orgLevel2Map.get(r.orgUnitId) ?? r.orgUnitName ?? '';
                   // Cột "Cán bộ cập nhật" — nhấn sort phải sắp theo THỜI GIAN cập nhật (mới nhất/cũ nhất),
@@ -2520,7 +2520,16 @@ export default function PortListPage() {
                 return sortOrder === 'ascend' ? cmp : -cmp;
               })}
               rowKey="id" rowActions={rowActions} loading={false}
-              onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+              onSort={(key: string, order: 'asc' | 'desc' | null) => {
+                if (!order) {
+                  setSortField(null);
+                  setSortOrder(null);
+                } else {
+                  setSortField(key);
+                  setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+                }
+                setPage(1);
+              }}
               scroll={{ x: 'max-content' }}
             />
             <Pagination total={total} current={page} pageSize={pageSize}

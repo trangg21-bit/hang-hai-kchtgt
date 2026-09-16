@@ -291,7 +291,15 @@ export default function UsersPage() {
     setPage(1);
   }, []);
 
-  const handleSort = useCallback((key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); }, []);
+  const handleSort = useCallback((key: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(key);
+      setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+    }
+  }, []);
 
   const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
 

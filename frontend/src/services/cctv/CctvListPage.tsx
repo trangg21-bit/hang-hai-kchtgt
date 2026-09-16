@@ -336,6 +336,7 @@ const CctvListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
+      { key: "REJECTED", status: "REJECTED" },
       { key: "ARCHIVED", status: "ARCHIVED" },
     ];
     const filterScope = {
@@ -367,6 +368,12 @@ const CctvListPage = () => {
     results.forEach((r, i) => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
+    // Gộp trạng thái từ chối legacy (REJECTED) vào REJECTED_LEVEL2 nếu có
+    if (counts.REJECTED) {
+      counts.REJECTED_LEVEL2 = (counts.REJECTED_LEVEL2 || 0) + counts.REJECTED;
+    }
+    // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
+    counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
     // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
     setTotalAll(
@@ -376,7 +383,7 @@ const CctvListPage = () => {
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
         (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || counts.DELETED || 0)
+        (counts.ARCHIVED || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -573,10 +580,15 @@ const CctvListPage = () => {
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend">("descend");
-  const handleSort = useCallback((field: string, order: "asc" | "desc") => {
-    setSortField(field);
-    setSortOrder(order === "asc" ? "ascend" : "descend");
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
+  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order === "asc" ? "ascend" : "descend");
+    }
     setPage(0);
   }, []);
 
@@ -704,6 +716,7 @@ const CctvListPage = () => {
         label: "Đơn vị tính",
         dataIndex: "unitOfMeasure",
         width: 130,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val != null ? formatUnitOfMeasure(val) : null}</span>
         ),
@@ -712,8 +725,9 @@ const CctvListPage = () => {
         key: "quantity",
         label: "Số lượng",
         dataIndex: "quantity",
-        width: 140,
+        width: 120,
         type: "number" as const,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -724,8 +738,9 @@ const CctvListPage = () => {
         key: "yearOfUse",
         label: "Năm đưa vào sử dụng",
         dataIndex: "yearOfUse",
-        width: 220,
+        width: 210,
         type: "mono" as const,
+        align: 'center' as const,
         ellipsis: false,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
@@ -759,7 +774,7 @@ const CctvListPage = () => {
         key: "approvalStatus",
         label: "Trạng thái",
         dataIndex: "approvalStatus",
-        width: 240,
+        width: 300,
         type: "status" as const,
         render: (val: string, record: CctvResponse) => {
           const isDeleted = Boolean(record.deletedAt || record.deletedBy);
@@ -1075,17 +1090,37 @@ const CctvListPage = () => {
     'Tài liệu đính kèm',
   ];
 
-  const renderCctvHistoryTimeline = (records: any[]) => {
+  const isMeaningfulChange = (
+    _field: string,
+    rawOld: string | null | undefined,
+    rawNew: string | null | undefined,
+  ): boolean => {
+    const ov = rawOld != null ? String(rawOld).trim() : '';
+    const nv = rawNew != null ? String(rawNew).trim() : '';
+    if (ov === '' && nv === '') return false;
+    if (ov !== '' && nv !== '' && ov === nv) return false;
+    // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 5555.0000 vs 5555, 1.00 vs 1)
+    if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
+      return false;
+    }
+    // Bỏ qua nếu sau khi format hiển thị giống nhau
+    const ovFmt = !isNaN(Number(ov)) ? fmtNum(ov) : ov;
+    const nvFmt = !isNaN(Number(nv)) ? fmtNum(nv) : nv;
+    if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
+      return false;
+    }
+    return true;
+  };
+
+  const validHistoryGroups = useMemo(() => {
+    if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort(
+    const sorted = [...historyRecords].sort(
       (a: any, b: any) =>
         new Date(historyTimestamp(b) || 0).getTime() -
         new Date(historyTimestamp(a) || 0).getTime()
     );
-    const q = historySearch.toLowerCase().trim();
 
-    // Chuẩn /vts-operation-center: gộp nhóm theo ĐÚNG giây (một lần Lưu ghi nhiều dòng cùng
-    // thời điểm) và merge liên tiếp các hành động dạng update (UPDATED/đính kèm) cùng người dùng.
     const isUpdateAction = (status: string, reason?: string) => {
       const s = String(status || '').toUpperCase();
       const r = String(reason || '').toLowerCase();
@@ -1107,7 +1142,57 @@ const CctvListPage = () => {
       else groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
     }
 
-    if (groups.length === 0)
+    return groups.map((g) => {
+      const changes = deduplicateAttachmentHistoryChanges(
+        g.items.flatMap((item: any) => {
+          const fn = historyField(item);
+          if (!fn) return [];
+          const ov = historyOldValue(item);
+          const nv = historyNewValue(item);
+          if (!isMeaningfulChange(fn, ov, nv)) return [];
+          return [{ field: fn, oldValue: ov, newValue: nv }];
+        })
+      );
+
+      const orderedChanges = [...changes]
+        .sort((a: any, b: any) => {
+          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        })
+        .filter(
+          (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments'
+        );
+
+      const reasons = g.items.map((i: any) => i.reason || i.note).filter(Boolean);
+
+      if (orderedChanges.length === 0 && reasons.length === 0) {
+        return null;
+      }
+
+      return {
+        ...g,
+        orderedChanges,
+        reasons,
+      };
+    }).filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      status?: any;
+      approvalLevel?: any;
+      items: any[];
+      orderedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }>;
+      reasons: string[];
+    }>;
+  }, [historyRecords]);
+
+  const historyFieldCount = validHistoryGroups.length;
+
+  const renderCctvHistoryTimeline = () => {
+    const q = historySearch.toLowerCase().trim();
+
+    if (validHistoryGroups.length === 0)
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
@@ -1122,7 +1207,7 @@ const CctvListPage = () => {
 
     return (
       <div>
-        {groups.map((g, gi) => {
+        {validHistoryGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : '';
@@ -1131,27 +1216,13 @@ const CctvListPage = () => {
             (orgName ? orgName.split(' - ').pop() || orgName : '') ||
             selectedRecord?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
-          // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
-          const changes = deduplicateAttachmentHistoryChanges(
-            g.items.flatMap((item: any) => {
-              const fn = historyField(item);
-              return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
-            })
-          );
+          const changes = g.orderedChanges;
           const actionMeta = resolveHistoryActionMeta(g.items[0] || {});
           const isCreate = changes.every(
             (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
           );
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-          const orderedChanges = [...changes]
-            .sort((a: any, b: any) => {
-              const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-              const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-              return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-            })
-            .filter(
-              (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments'
-            );
+          const orderedChanges = changes;
 
           const formatHistoryValue = (fn: string, raw: string | null) => {
             if (raw === null || raw === '(null)' || raw === '') return null;
@@ -1849,11 +1920,12 @@ const CctvListPage = () => {
           height: 10px !important;
           display: block !important;
         }
-        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13) */
+        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13.5) */
         .cctv-page-wrapper.cctv-page-wrapper .ant-table-row .kcht-cell-title.kcht-cell-title { font-size: 14px !important; }
         .cctv-page-wrapper.cctv-page-wrapper .kcht-cell-code { font-size: 12px !important; }
         .cctv-page-wrapper.cctv-page-wrapper .kcht-cell-badge { font-size: 13px !important; }
-        .cctv-page-wrapper.cctv-page-wrapper button[aria-pressed] span { font-size: 13px !important; }
+        .cctv-page-wrapper.cctv-page-wrapper button[aria-pressed],
+        .cctv-page-wrapper.cctv-page-wrapper button[aria-pressed] span { font-size: 13.5px !important; }
         /* Divider giữa các dòng của tab "Thông tin chung" — nhạt như /berth (#f1f5f9). Drawer portal ra body nên anchor theo .cctv-drawer-scope */
         .cctv-drawer-scope.cctv-drawer-scope .chk-detail-row,
         .cctv-page-wrapper.cctv-page-wrapper .chk-detail-row { border-bottom: 1px solid #f1f5f9 !important; }
@@ -2058,7 +2130,7 @@ const CctvListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị..." allowClear
+              <Input placeholder="Tìm theo tên thiết bị" allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
@@ -2068,7 +2140,7 @@ const CctvListPage = () => {
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị..." allowClear
+                  <Input placeholder="Tìm theo mã thiết bị" allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
@@ -2213,14 +2285,18 @@ const CctvListPage = () => {
           {
             key: "REJECTED_LEVEL2",
             label: "Từ chối cấp cục",
-            count: filterValues.approvalStatus === "REJECTED_LEVEL2" ? total : (tabCounts["REJECTED_LEVEL2"] ?? 0),
+            count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
+              ? total
+              : (tabCounts["REJECTED_LEVEL2"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+            active: filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED",
           },
           {
             key: "ARCHIVED",
             label: "Đã xóa",
-            count: filterValues.approvalStatus === "DELETED" ? total : (tabCounts["DELETED"] ?? 0),
+            count: (filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED")
+              ? total
+              : (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
@@ -2233,7 +2309,6 @@ const CctvListPage = () => {
             approvalStatus,
           }));
           setPage(0);
-          fetchData();
         }}
       >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -3239,8 +3314,7 @@ const CctvListPage = () => {
                 {historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi'}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusSm, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                {/* Nhật ký nạp theo trang nên đây là số đã tải, không phải tổng (chuẩn /vts-operation-center). */}
-                {`Đã tải ${historyRecords.length}`}
+                {`Tổng cộng ${historyFieldCount}`}
               </span>
             </Space>
           </div>
@@ -3300,11 +3374,11 @@ const CctvListPage = () => {
           </Button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
-          {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+          {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : validHistoryGroups.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>
           ) : (
             <>
-              {renderCctvHistoryTimeline(historyRecords)}
+              {renderCctvHistoryTimeline()}
               {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
             </>
           )}

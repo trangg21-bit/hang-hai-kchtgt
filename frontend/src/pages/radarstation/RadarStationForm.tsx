@@ -245,7 +245,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             quantity: data.quantity,
             conditionStatus: data.conditionStatus || '1',
             towerHeight: normalizeSafeNumber(data.towerHeight),
-            radarRange: data.radarRange,
+            radarRange: normalizeSafeNumber(data.radarRange),
             note: data.note,
             gisLocation:
               data.coordinates
@@ -570,7 +570,9 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           <Descriptions.Item label="Chiều cao tháp radar (m)">
             {record.towerHeight != null ? fmtNum(record.towerHeight) : '—'}
           </Descriptions.Item>
-          <Descriptions.Item label="Tầm hiệu lực radar">{record.radarRange || '—'}</Descriptions.Item>
+          <Descriptions.Item label="Tầm hiệu lực radar">
+            {record.radarRange != null ? fmtNum(record.radarRange) : '—'}
+          </Descriptions.Item>
           <Descriptions.Item label="Trạng thái">
             {(() => {
               const s = RADAR_STATION_STATUS_STYLE_MAP[st] || { color: textTertiary, label: st || '—' };
@@ -891,8 +893,21 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item label="Tầm hiệu lực radar" name="radarRange">
-            <Input placeholder="Nhập tầm hiệu lực (tối đa 20 ký tự)" maxLength={20} showCount style={inputStyle} />
+          <Form.Item
+            label="Tầm hiệu lực radar"
+            name="radarRange"
+            getValueFromEvent={getValueFromEvent20}
+            rules={[decimalNumberRule]}
+          >
+            <NumberInputWithCount
+              min={0}
+              step={0.01}
+              placeholder="0"
+              style={numberInputStyle}
+              maxLength={20}
+              parser={parseNumber20}
+              formatter={fmtInputNumber}
+            />
           </Form.Item>
         </Col>
       </Row>
@@ -914,11 +929,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
         ]}
       >
-        <Input.TextArea rows={2} maxLength={500} showCount placeholder="Mô tả vị trí đặt trạm radar..." style={{ borderRadius: radiusPill }} />
+        <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập địa điểm chi tiết" style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <Form.Item label="Ghi chú" name="note">
-        <Input.TextArea rows={3} maxLength={2000} placeholder="Nhập ghi chú (tối đa 2000 ký tự)" showCount style={{ borderRadius: radiusPill }} />
+        <Input.TextArea rows={3} maxLength={2000} placeholder="Nhập ghi chú" showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <Form.Item label="Tọa độ GIS (điểm)">

@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.radarstation.service;
 
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
@@ -38,6 +39,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -108,6 +110,7 @@ class RadarStationServiceTest {
                 });
         lenient().when(orgUnitScopeService.currentUserScope())
                 .thenReturn(OrgUnitScopeService.Scope.all());
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "attachmentPath", "target/test-uploads");
 
         entity = RadarStation.builder()
                 .id(TEST_ID)
@@ -437,6 +440,44 @@ class RadarStationServiceTest {
         }
 
         @Test
+        @DisplayName("Update on approved entity with equivalent BigDecimal scale should not create history")
+        void updateApprovedEntity_withSameBigDecimalScaleDifference_doesNotCreateHistory() {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setTowerHeight(new BigDecimal("25.0000"));
+            entity.setRadarRange(new BigDecimal("10.00"));
+            entity.setEmissionArea(new BigDecimal("50.0"));
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
+                    .towerHeight(new BigDecimal("25"))
+                    .radarRange(new BigDecimal("10"))
+                    .emissionArea(new BigDecimal("50"))
+                    .build();
+
+            service.update(TEST_ID, updateReq, USER_ID);
+
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Update on approved entity with no changes should not create empty fallback history")
+        void updateApprovedEntity_withoutChanges_doesNotCreateHistory() {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setStationName("Trạm Hiện Tại");
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
+                    .stationName("Trạm Hiện Tại")
+                    .build();
+
+            service.update(TEST_ID, updateReq, USER_ID);
+
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
         @DisplayName("Criterion 6: formatDisplayValue correctly maps IDs to human-readable names")
         void formatDisplayValue_mapping() {
             UUID mockSymbolId = UUID.randomUUID();
@@ -483,6 +524,88 @@ class RadarStationServiceTest {
             assertThat(service.formatDisplayValue("approvalStatus", "APPROVED")).isEqualTo("Đã duyệt");
             assertThat(service.formatDisplayValue("coordinateSystem", "1")).isEqualTo("WGS 84");
             assertThat(service.formatDisplayValue("coordinateSystem", "2")).isEqualTo("VN-2000");
+        }
+
+        @Test
+        @DisplayName("Uploading attachments on draft entity should NOT record history")
+        void uploadAttachments_onDraftEntity_shouldNotRecordHistory() {
+            entity.setApprovalStatus(ApprovalStatus.DRAFT);
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            org.springframework.mock.web.MockMultipartFile file =
+                    new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+
+            when(attachmentRepository.save(any())).thenAnswer(inv -> {
+                InfrastructureAttachment att = inv.getArgument(0);
+                att.setId(UUID.randomUUID());
+                return att;
+            });
+
+            service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
+
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Uploading attachments on approved entity should record history")
+        void uploadAttachments_onApprovedEntity_shouldRecordHistory() {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            org.springframework.mock.web.MockMultipartFile file =
+                    new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+
+            when(attachmentRepository.save(any())).thenAnswer(inv -> {
+                InfrastructureAttachment att = inv.getArgument(0);
+                att.setId(UUID.randomUUID());
+                return att;
+            });
+
+            service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
+
+            verify(historyRepository, times(1)).save(any());
+        }
+
+        @Test
+        @DisplayName("Deleting attachment on draft entity should NOT record history")
+        void deleteAttachment_onDraftEntity_shouldNotRecordHistory() {
+            entity.setApprovalStatus(ApprovalStatus.DRAFT);
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            UUID attId = UUID.randomUUID();
+            InfrastructureAttachment att = InfrastructureAttachment.builder()
+                    .id(attId)
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .fileName("doc.pdf")
+                    .filePath("uploads/doc.pdf")
+                    .build();
+            when(attachmentRepository.findByIdAndRefIdAndRefType(attId, TEST_ID, InfrastructureType.RADAR_STATION))
+                    .thenReturn(Optional.of(att));
+
+            service.deleteAttachment(TEST_ID, attId, USER_ID);
+
+            verify(attachmentRepository).delete(att);
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Deleting attachment on approved entity should record history")
+        void deleteAttachment_onApprovedEntity_shouldRecordHistory() {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            UUID attId = UUID.randomUUID();
+            InfrastructureAttachment att = InfrastructureAttachment.builder()
+                    .id(attId)
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .fileName("doc.pdf")
+                    .filePath("uploads/doc.pdf")
+                    .build();
+            when(attachmentRepository.findByIdAndRefIdAndRefType(attId, TEST_ID, InfrastructureType.RADAR_STATION))
+                    .thenReturn(Optional.of(att));
+
+            service.deleteAttachment(TEST_ID, attId, USER_ID);
+
+            verify(attachmentRepository).delete(att);
+            verify(historyRepository, times(1)).save(any());
         }
     }
 }

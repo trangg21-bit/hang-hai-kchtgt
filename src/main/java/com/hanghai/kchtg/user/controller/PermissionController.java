@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -43,6 +44,11 @@ public class PermissionController {
         this.permissionRoleService = permissionRoleService;
     }
 
+    private static final Set<String> DEPRECATED_PERMISSIONS = Set.of(
+            "cctv:approve", "vhf:approve", "scada:approve", "transmission:approve", "vtsassist:approve",
+            "beaconstation:approve", "dikerevetment:approve", "radarstation:approve"
+    );
+
     /**
      * GET /api/permissions — trả về toàn bộ danh sách permission.
      */
@@ -56,6 +62,7 @@ public class PermissionController {
         List<Permission> permissions = permissionRepository.findAll().stream()
                 .filter(p -> !"vhf".equalsIgnoreCase(p.getResource())
                         && (p.getCode() == null || !p.getCode().toLowerCase().startsWith("vhf:")))
+                .filter(p -> p.getCode() == null || !DEPRECATED_PERMISSIONS.contains(p.getCode().toLowerCase()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(permissions));
     }

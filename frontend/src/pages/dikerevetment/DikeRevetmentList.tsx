@@ -546,8 +546,8 @@ export default function DikeRevetmentList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s: any) => s.user);
   // Phê duyệt 2 cấp (M-1006): C1 = Cảng vụ/Chi cục, C2 = Cục — quyền theo cấp duyệt.
-  const canApproveC1 = hasPerm('dikerevetment:approvec1') || hasPerm('dikerevetment:approve');
-  const canApproveC2 = hasPerm('dikerevetment:approvec2') || hasPerm('dikerevetment:approve') || hasPerm('*');
+  const canApproveC1 = hasPerm('dikerevetment:approvec1');
+  const canApproveC2 = hasPerm('dikerevetment:approvec2') || hasPerm('*');
   const canSubmitForApproval = hasPerm('dikerevetment:update');
   // Đơn vị cha/Cục (scope_all, admin) được chọn đơn vị con khi thêm mới; tài khoản thường bị khóa theo đơn vị của mình
   const isElevatedOrg = hasPerm('orgunit:scope_all') || hasPerm('*')
@@ -820,15 +820,6 @@ export default function DikeRevetmentList() {
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [historyPage, setHistoryPage] = useState(0);
 
-  const historyFieldCount = useMemo(() => {
-    if (!Array.isArray(historyRecords)) return 0;
-    let count = 0;
-    for (const r of historyRecords) {
-      count += (r.changes && r.changes.length > 0) ? r.changes.length : 1;
-    }
-    return count;
-  }, [historyRecords]);
-
   // ── Đơn vị vận hành: danh mục chung (chuẩn cctv/radar — /common/options/operating-organizations) ──
   const [operatingUnits, setOperatingUnits] = useState<Array<{ id: string; code: string; name: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   useEffect(() => {
@@ -845,10 +836,10 @@ export default function DikeRevetmentList() {
     return () => { cancelled = true; };
   }, []);
   const operatingUnitOptions = useMemo(() => operatingUnits.map((o) => ({ value: o.id, label: o.name })), [operatingUnits]);
-  const operatingUnitNameById = (id?: string): string | null => {
+  const operatingUnitNameById = useCallback((id?: string): string | null => {
     if (!id) return null;
     return operatingUnits.find((o) => o.id === id)?.name || id;
-  };
+  }, [operatingUnits]);
 
   // ── Init: organizations (DataScope + auto mặc định theo user) — chuẩn màn /berth ──
   // Đơn vị quản lý bắt buộc: tự chọn mặc định = đơn vị user đang đăng nhập;
@@ -1483,7 +1474,7 @@ export default function DikeRevetmentList() {
   const historyNewValue = (item: any): string | null => item.newValue ?? null;
   const historyActor = (item: any): string => { const raw = item?.approvedBy || item?.changedBy || ''; return raw || '—'; };
   // Render giá trị thay đổi đẹp như /vts-system: tọa độ → DMS, enum/trạng thái/biểu tượng → tên tiếng Việt
-  const renderHistoryValue = (field: string, raw: string | null): React.ReactNode => {
+  const renderHistoryValue = useCallback((field: string, raw: string | null): React.ReactNode => {
     if (raw === null || raw === undefined || raw === '' || raw === '—' || raw === '(null)' || raw === '(trống)' || raw === 'null' || raw === 'Chưa có' || raw === 'Chua co') {
       return <span style={{ color: textTertiary }}>—</span>;
     }
@@ -1534,7 +1525,34 @@ export default function DikeRevetmentList() {
     if (String(raw).toLowerCase() === 'true') return 'Có';
     if (String(raw).toLowerCase() === 'false') return 'Không';
     return raw;
-  };
+  }, [symbols, orgMap, seaportMap, operatingUnitNameById]);
+
+  const renderHistoryContent = useCallback((field: string, val: string | null): React.ReactNode => {
+    if (val === null || val === undefined || val === '' || val === '(null)' || val === '—') {
+      return <span style={{ color: textTertiary }}>—</span>;
+    }
+    const nk = field.toLowerCase();
+    if (nk.includes('toa do') || nk.includes('coordinates')) return renderCoordinatesDisplay(val);
+    const str = String(val).trim();
+    const sv = str.toUpperCase();
+    if (sv.startsWith('POINT') || sv.startsWith('LINESTRING') || sv.startsWith('POLYGON') || sv.startsWith('MULTIPOINT')) {
+      return renderCoordinatesDisplay(str);
+    }
+    if (str.includes(',') && str.length > 25) {
+      const items = str.split(',').map((s) => s.trim()).filter(Boolean);
+      if (items.length > 1) {
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+            {items.map((item, idx) => (
+              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>{item}</div>
+            ))}
+          </div>
+        );
+      }
+    }
+    return renderHistoryValue(field, val);
+  }, [renderHistoryValue]);
+
   const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
     const item = group?.items?.[0] || {};
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
@@ -1666,17 +1684,10 @@ export default function DikeRevetmentList() {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
   };
 
-  const renderHistoryTimeline = (records: any[]) => {
-    if (!records || records.length === 0) {
-      return (
-        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-        </div>
-      );
-    }
+  const validHistoryGroups = useMemo(() => {
+    if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+    const sorted = [...historyRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
 
     const isUpdateAction = (status: string, reason?: string) => {
       const s = String(status || '').toUpperCase();
@@ -1686,79 +1697,96 @@ export default function DikeRevetmentList() {
     };
 
     // Gộp theo ĐÚNG giây + người thực hiện; các dòng UPDATED cùng lúc được gộp chung 1 nhóm
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
+    const rawGroups: { tsSec: number; ts: string; actor: string; status?: any; approvalLevel?: any; items: any[] }[] = [];
     for (const r of sorted) {
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
+      const prev = rawGroups[rawGroups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
       const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+        rawGroups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
       }
+    }
+
+    const isMeaningful = (field: string, rawOld: any, rawNew: any): boolean => {
+      const ov = rawOld != null ? String(rawOld).trim() : '';
+      const nv = rawNew != null ? String(rawNew).trim() : '';
+      if (ov === '' && nv === '') return false;
+      if (ov !== '' && nv !== '' && ov === nv) return false;
+      // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 5555.0000 vs 5555)
+      if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
+        return false;
+      }
+      // Bỏ qua nếu sau khi định dạng hiển thị hai giá trị chuỗi giống hệt nhau
+      const ovNode = renderHistoryContent(field, rawOld);
+      const nvNode = renderHistoryContent(field, rawNew);
+      if (typeof ovNode === 'string' && typeof nvNode === 'string' && ovNode.trim() !== '' && ovNode.trim() === nvNode.trim()) {
+        return false;
+      }
+      return true;
+    };
+
+    return rawGroups.map((g) => {
+      const changes = g.items
+        .map((item) => ({ field: historyField(item) || '', oldValue: historyOldValue(item), newValue: historyNewValue(item) }))
+        .filter((c: any) => c.field !== '' || (c.oldValue != null && c.oldValue !== '') || (c.newValue != null && c.newValue !== ''))
+        .filter((c: any) => isMeaningful(c.field, c.oldValue, c.newValue));
+      if (changes.length === 0) return null;
+      const orderedChanges = [...changes].sort((a: any, b: any) => {
+        const ia = DIKE_REVETMENT_HISTORY_FIELD_ORDER.indexOf(a.field);
+        const ib = DIKE_REVETMENT_HISTORY_FIELD_ORDER.indexOf(b.field);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      }).filter((c: any) => c.field !== 'attachments' && c.field !== 'spatialId');
+      if (orderedChanges.length === 0) return null;
+      return {
+        ...g,
+        changes,
+        orderedChanges,
+      };
+    }).filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      status?: any;
+      approvalLevel?: any;
+      items: any[];
+      changes: any[];
+      orderedChanges: any[];
+    }>;
+  }, [historyRecords, renderHistoryContent]);
+
+  const historyFieldCount = validHistoryGroups.length;
+
+  const renderHistoryTimeline = () => {
+    if (validHistoryGroups.length === 0) {
+      return (
+        <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+          <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+          <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
+        </div>
+      );
     }
     const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
     return (
       <div>
-        {groups.map((g, gi) => {
+        {validHistoryGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const rawUnit = rec0.orgUnitName || rec0.unitName;
           const orgId = rec0.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
           const unitName = (rawUnit && rawUnit !== '—' ? rawUnit : (orgName ? (orgName.split(' - ').pop() || orgName) : undefined)) || 'Cục Hàng hải Việt Nam';
           const barColor = actionPrimary;
-          const changes = g.items
-            .map((item) => ({ field: historyField(item) || '', oldValue: historyOldValue(item), newValue: historyNewValue(item) }))
-            .filter((c: any) => c.field !== '' || (c.oldValue != null && c.oldValue !== '') || (c.newValue != null && c.newValue !== ''))
-            .filter((c: any) => {
-              const ov = c.oldValue != null ? String(c.oldValue).trim() : '';
-              const nv = c.newValue != null ? String(c.newValue).trim() : '';
-              if (ov === '' && nv === '') return false;
-              if (ov !== '' && nv !== '' && ov === nv) return false;
-              return true;
-            });
-          if (changes.length === 0) return null;
-          const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+          const isCreate = g.changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-          const orderedChanges = [...changes].sort((a: any, b: any) => {
-            const ia = DIKE_REVETMENT_HISTORY_FIELD_ORDER.indexOf(a.field);
-            const ib = DIKE_REVETMENT_HISTORY_FIELD_ORDER.indexOf(b.field);
-            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-          }).filter((c: any) => c.field !== 'attachments' && c.field !== 'spatialId');
-          if (orderedChanges.length === 0) return null;
-          const am = resolveHistoryActionMeta(g, changes);
-
-          const renderHistoryContent = (field: string, val: string | null): React.ReactNode => {
-            if (val === null || val === undefined || val === '' || val === '(null)' || val === '—') {
-              return <span style={{ color: textTertiary }}>—</span>;
-            }
-            const nk = field.toLowerCase();
-            if (nk.includes('toa do') || nk.includes('coordinates')) return renderCoordinatesDisplay(val);
-            const str = String(val).trim();
-            const sv = str.toUpperCase();
-            if (sv.startsWith('POINT') || sv.startsWith('LINESTRING') || sv.startsWith('POLYGON') || sv.startsWith('MULTIPOINT')) {
-              return renderCoordinatesDisplay(str);
-            }
-            if (str.includes(',') && str.length > 25) {
-              const items = str.split(',').map((s) => s.trim()).filter(Boolean);
-              if (items.length > 1) {
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                    {items.map((item, idx) => (
-                      <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>{item}</div>
-                    ))}
-                  </div>
-                );
-              }
-            }
-            return renderHistoryValue(field, val);
-          };
+          const orderedChanges = g.orderedChanges;
+          const am = resolveHistoryActionMeta(g, g.changes);
 
           return (
-            <div key={`${gi}-${g.ts}-${g.actor}`} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+            <div key={`${gi}-${g.ts}-${g.actor}`} style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
@@ -1931,7 +1959,8 @@ export default function DikeRevetmentList() {
       key: 'commissioningDate',
       label: 'Thời điểm đưa vào khai thác',
       dataIndex: 'commissioningDate',
-      width: 250,
+      width: 240,
+      align: 'center' as const,
       render: (val: string) => formatYear(val),
     },
     {
@@ -2229,7 +2258,7 @@ export default function DikeRevetmentList() {
               picker="year"
               {...getSidebarDatePickerProps({
                 picker: 'year',
-                placeholder: 'Chọn năm...',
+                placeholder: 'Chọn năm',
                 format: 'YYYY',
                 value: filterCommissioningYear ? dayjs(filterCommissioningYear) : null,
                 onChange: (d: any) => { setFilterCommissioningYear(d ? d.format('YYYY') : undefined); setPage(1); },
@@ -3157,7 +3186,7 @@ export default function DikeRevetmentList() {
                                 validateStatus={atMax.note ? 'error' : undefined}
                                 help={atMax.note ? 'Đã đạt tối đa 500 ký tự' : undefined}
                               >
-                                <Input placeholder="Nhập ghi chú..." maxLength={500} showCount style={inputStyle} />
+                                <Input placeholder="Nhập ghi chú" maxLength={500} showCount style={inputStyle} />
                               </Form.Item>
                             </Col>
                           </Row>
@@ -3179,14 +3208,14 @@ export default function DikeRevetmentList() {
                             </Col>
                             <Col span={12}>
                               <Form.Item name="commissioningDate" {...labelProps('Thời điểm đưa vào khai thác')} style={formFieldStyle} rules={[{ required: true, message: 'Vui lòng chọn thời điểm đưa vào khai thác' }]}>
-                                <DatePicker picker="year" {...getDatePickerProps({ picker: 'year', placeholder: 'Chọn năm...', format: 'YYYY' })} />
+                                <DatePicker picker="year" {...getDatePickerProps({ picker: 'year', placeholder: 'Chọn năm', format: 'YYYY' })} />
                               </Form.Item>
                             </Col>
                           </Row>
                           <Row gutter={formRowGutter}>
                             <Col span={12}>
                               <Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={formFieldStyle}>
-                                <DatePicker picker="year" {...getDatePickerProps({ picker: 'year', placeholder: 'Chọn năm...', format: 'YYYY' })} />
+                                <DatePicker picker="year" {...getDatePickerProps({ picker: 'year', placeholder: 'Chọn năm', format: 'YYYY' })} />
                               </Form.Item>
                             </Col>
                           </Row>
@@ -3704,7 +3733,7 @@ export default function DikeRevetmentList() {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
           {historyLoading ? (
             <LoadingSkeleton rows={5} />
-          ) : historyRecords.length === 0 ? (
+          ) : validHistoryGroups.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
@@ -3713,7 +3742,7 @@ export default function DikeRevetmentList() {
             </div>
           ) : (
             <>
-              {renderHistoryTimeline(historyRecords)}
+              {renderHistoryTimeline()}
               {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
             </>
           )}

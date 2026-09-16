@@ -36,9 +36,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -163,6 +165,41 @@ class VhfServiceTest {
 
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
         verify(historyRepository, atLeastOnce()).save(any());
+    }
+
+    @Test
+    void updateApprovedRecord_withoutChanges_doesNotCreateEmptyFallbackHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVhfRequest req = new UpdateVhfRequest();
+        req.setId(ID);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        VhfResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void updateApprovedRecord_withSameStringWhitespaceDifference_doesNotCreateFieldHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVhfRequest req = new UpdateVhfRequest();
+        req.setId(ID);
+        req.setDeviceName("  Hệ thống VHF Hòn Dấu  ");
+        req.setQuantity(1);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        VhfResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        verify(historyRepository, never()).save(argThat(h -> h != null && "Tên thiết bị".equals(h.getChangedField())));
+        verify(historyRepository, never()).save(argThat(h -> h != null && h.getChangedField() == null));
     }
 
     @Test

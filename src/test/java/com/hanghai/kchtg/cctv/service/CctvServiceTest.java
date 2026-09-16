@@ -374,4 +374,80 @@ class CctvServiceTest {
         String code = service.generateCctvCode();
         assertEquals("CCTV-000007", code);
     }
+
+    @Test
+    void updateApproved_withoutChanges_shouldNotRecordHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setDeviceName("Camera cảng Hải Phòng");
+        entity.setQuantity(1);
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("Camera cảng Hải Phòng");
+        req.setQuantity(1);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void updateApproved_withWhitespaceOnlyDifference_shouldNotRecordHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setDeviceName("Camera cảng Hải Phòng");
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("  Camera cảng Hải Phòng  ");
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteAttachment_onDraftEntity_shouldNotRecordHistory() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        UUID attId = UUID.randomUUID();
+        com.hanghai.kchtg.port.entity.Attachment att = new com.hanghai.kchtg.port.entity.Attachment();
+        att.setId(attId);
+        att.setEntityType("CCTV");
+        att.setEntityId(ID);
+        att.setFileName("doc.pdf");
+        att.setFilePath("target/test.pdf");
+        when(attachmentRepository.findById(attId)).thenReturn(Optional.of(att));
+
+        service.deleteAttachment(ID, attId, USER_ID);
+
+        verify(attachmentRepository).delete(att);
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteAttachment_onApprovedEntity_shouldRecordHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        UUID attId = UUID.randomUUID();
+        com.hanghai.kchtg.port.entity.Attachment att = new com.hanghai.kchtg.port.entity.Attachment();
+        att.setId(attId);
+        att.setEntityType("CCTV");
+        att.setEntityId(ID);
+        att.setFileName("doc.pdf");
+        att.setFilePath("target/test.pdf");
+        when(attachmentRepository.findById(attId)).thenReturn(Optional.of(att));
+
+        service.deleteAttachment(ID, attId, USER_ID);
+
+        verify(attachmentRepository).delete(att);
+        verify(historyRepository).save(any());
+    }
 }

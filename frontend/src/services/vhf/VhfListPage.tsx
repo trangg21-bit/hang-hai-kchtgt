@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { fmtNum } from "../../utils/numFmt";
 import {
   parseWktToCoordinates,
   ddToDms,
@@ -119,6 +118,8 @@ import toast from "../../components/ToastNotification";
 import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
 import api from "../api";
+import { canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import { fmtNum } from "../../utils/numFmt";
 
 // ── Đơn vị đo (unit of measure) labels ──────────────────────────────
 const UOM_LABELS: Record<number, string> = {
@@ -521,6 +522,38 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
     return s === 'UPDATED' || s === 'UPDATE' || (!s && (r.includes('cập nhật') || r.includes('chỉnh sửa')));
   };
 
+  const isMeaningfulChange = (field: string, rawOld: any, rawNew: any): boolean => {
+    void field;
+    const normalize = (v: any) => {
+      if (v == null) return '';
+      const s = String(v).trim();
+      if (s === '(null)' || s === 'null' || s === 'Chưa có') return '';
+      return s;
+    };
+    const ov = normalize(rawOld);
+    const nv = normalize(rawNew);
+    if (ov === '' && nv === '') return false;
+    if (ov !== '' && nv !== '' && ov === nv) return false;
+
+    // Lọc sạch dấu phẩy nếu là chuỗi số có định dạng hàng nghìn (VD: "5,555" hoặc "5555.0000")
+    const cleanOv = ov.replace(/,/g, '');
+    const cleanNv = nv.replace(/,/g, '');
+
+    // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25, 5,555 vs 5555.0000)
+    if (cleanOv !== '' && cleanNv !== '' && !isNaN(Number(cleanOv)) && !isNaN(Number(cleanNv)) && Math.abs(Number(cleanOv) - Number(cleanNv)) < 1e-9) {
+      return false;
+    }
+
+    // Bỏ qua nếu sau khi định dạng số hiển thị cả 2 bằng nhau
+    const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? fmtNum(cleanOv) : ov;
+    const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? fmtNum(cleanNv) : nv;
+    if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
+      return false;
+    }
+
+    return true;
+  };
+
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'Đơn vị quản lý',
     'seaportId', 'Thuộc cảng biển',
@@ -566,10 +599,15 @@ const VhfListPage = () => {
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend">("descend");
-  const handleSort = useCallback((field: string, order: "asc" | "desc") => {
-    setSortField(field);
-    setSortOrder(order === "asc" ? "ascend" : "descend");
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
+  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order === "asc" ? "ascend" : "descend");
+    }
     setPage(0);
   }, []);
 
@@ -660,15 +698,6 @@ const VhfListPage = () => {
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
   const [historyPage, setHistoryPage] = useState(0);
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
-
-  const historyFieldCount = useMemo(() => {
-    if (!Array.isArray(historyRecords)) return 0;
-    let count = 0;
-    for (const r of historyRecords) {
-      count += (r.changes && r.changes.length > 0) ? r.changes.length : 1;
-    }
-    return count;
-  }, [historyRecords]);
 
   // Danh mục đơn vị quản lý (chuẩn /radar-station)
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -967,7 +996,7 @@ const VhfListPage = () => {
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
         sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder === "ascend" ? "asc" : "desc",
+        sortOrder: sortOrder ? (sortOrder === "ascend" ? "asc" : "desc") : undefined,
       });
       setData(result.content || []);
       setTotal(result.totalElements || 0);
@@ -1018,16 +1047,20 @@ const VhfListPage = () => {
       results.forEach((r, i) => {
         counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements || 0) : 0;
       });
+      // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
+      counts.DELETED = counts.ARCHIVED || 0;
       setTabCounts(counts);
 
-      const allRes = await fetchVhfList({
-        page: 0,
-        size: 1,
-        ...filterScope,
-      });
-      const allTotal = allRes.totalElements || 0;
-      const sumChild = Object.values(counts).reduce((a, b) => a + b, 0);
-      setTotalAll(allTotal || sumChild);
+      // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
+      setTotalAll(
+        (counts.DRAFT || 0) +
+          (counts.PENDING_APPROVAL || 0) +
+          (counts.APPROVED_LEVEL1 || 0) +
+          (counts.APPROVED || 0) +
+          (counts.REJECTED_LEVEL1 || 0) +
+          (counts.REJECTED_LEVEL2 || 0) +
+          (counts.ARCHIVED || 0)
+      );
     } catch {
       // ignore
     }
@@ -1119,6 +1152,10 @@ const VhfListPage = () => {
   };
 
   const handleOpenEdit = (record: VhfResponse) => {
+    if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'vhf' })) {
+      toast.warning('Bản ghi đang trong quy trình phê duyệt hoặc không có quyền chỉnh sửa');
+      return;
+    }
     updateForm.resetFields();
     setUpdateTarget(record);
     setUpdateModalOpen(true);
@@ -1223,23 +1260,86 @@ const VhfListPage = () => {
     }
   }, [rejectingRecord, rejectReason, fetchData, fetchTabCounts]);
 
-  const renderVhfHistoryTimeline = (records: any[]) => {
-    const q = (historySearch || '').toLowerCase().trim();
+  const validHistoryGroups = useMemo(() => {
+    if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
     const groups: Array<{ tsSec: number; ts: string; actor: string; status: string; approvalLevel: any; items: any[] }> = [];
 
-    for (const r of records) {
+    for (const r of historyRecords) {
       const ts = historyTimestamp(r);
       const sec = ts ? Math.floor(new Date(ts).getTime() / 2000) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
       const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
-      if (isSameGroup)
+      if (isSameGroup) {
         prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      } else {
+        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
     }
 
-    if (groups.length === 0)
+    return groups.map((g) => {
+      const rec0 = g.items[0] || {};
+      const actionMeta = resolveHistoryActionMeta(rec0);
+      const isCreate = actionMeta.label === 'Thêm mới';
+      const isUpdate = isUpdateAction(g.status, rec0.reason || rec0.note) || actionMeta.label === 'Cập nhật';
+
+      const changes = deduplicateAttachmentHistoryChanges(
+        g.items.flatMap((item: any) => {
+          const fn = historyField(item);
+          if (!fn) return [];
+          const ov = historyOldValue(item);
+          const nv = historyNewValue(item);
+          if (!isMeaningfulChange(fn, ov, nv)) return [];
+          const dispOv = historyFieldValue(fn, ov, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
+          const dispNv = historyFieldValue(fn, nv, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
+          if (!isCreate && String(dispOv).trim() === String(dispNv).trim()) return [];
+          return [{ field: fn, oldValue: ov, newValue: nv }];
+        })
+      );
+
+      const orderedChanges = [...changes].sort((a, b) => {
+        const getIndex = (field: string) => {
+          const idx = HISTORY_FIELD_ORDER.indexOf(field);
+          return idx >= 0 ? idx : 999;
+        };
+        return getIndex(a.field) - getIndex(b.field);
+      });
+
+      const reasons = g.items.map((i: any) => i.reason || i.note).filter(Boolean);
+
+      // Nếu là hành động cập nhật mà không có trường nào thực sự thay đổi -> loại bỏ card rỗng
+      if (isUpdate && orderedChanges.length === 0) {
+        return null;
+      }
+
+      if (orderedChanges.length === 0 && reasons.length === 0) {
+        return null;
+      }
+
+      return {
+        ...g,
+        orderedChanges,
+        reasons,
+      };
+    }).filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      status: string;
+      approvalLevel: any;
+      items: any[];
+      orderedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }>;
+      reasons: string[];
+    }>;
+  }, [historyRecords, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap]);
+
+  const historyFieldCount = validHistoryGroups.length;
+
+  const renderVhfHistoryTimeline = () => {
+    const q = (historySearch || '').toLowerCase().trim();
+
+    if (validHistoryGroups.length === 0)
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
@@ -1254,7 +1354,7 @@ const VhfListPage = () => {
 
     return (
       <div>
-        {groups.map((g, gi) => {
+        {validHistoryGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : '';
@@ -1263,31 +1363,18 @@ const VhfListPage = () => {
             (orgName ? orgName.split(' - ').pop() || orgName : '') ||
             selectedRecord?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
-          const changes = deduplicateAttachmentHistoryChanges(
-            g.items.flatMap((item: any) => {
-              const fn = historyField(item);
-              return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
-            })
-          );
-
-          const orderedChanges = [...changes].sort((a, b) => {
-            const getIndex = (field: string) => {
-              const idx = HISTORY_FIELD_ORDER.indexOf(field);
-              return idx >= 0 ? idx : 999;
-            };
-            return getIndex(a.field) - getIndex(b.field);
-          });
+          const orderedChanges = g.orderedChanges;
 
           const actionMeta = resolveHistoryActionMeta(rec0);
           const isCreate = actionMeta.label === 'Thêm mới';
           const actorResolved = g.actor && userMap.has(g.actor) ? userMap.get(g.actor)! : g.actor;
 
-          if (orderedChanges.length === 0) return null;
+          if (orderedChanges.length === 0 && g.reasons.length === 0) return null;
 
           return (
             <div
               key={gi}
-              style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}
+              style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
@@ -1372,6 +1459,9 @@ const VhfListPage = () => {
                           </div>
                         );
                       }
+                      if (!isCreate && String(ov).trim() === String(nv).trim()) {
+                        return null;
+                      }
                       return (
                         <div
                           key={`${fn}-${ri}`}
@@ -1397,11 +1487,11 @@ const VhfListPage = () => {
                       );
                     })}
                   </div>
-                ) : (
-                  <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>
-                    Không có thông tin chi tiết
+                ) : g.reasons.length > 0 ? (
+                  <Typography.Text style={{ color: textSecondary, fontSize: fontSizeMd }}>
+                    {g.reasons.join('; ')}
                   </Typography.Text>
-                )}
+                ) : null}
               </div>
             </div>
           );
@@ -1571,7 +1661,7 @@ const VhfListPage = () => {
       key: "approvalStatus",
       label: "Trạng thái",
       dataIndex: "approvalStatus",
-      width: 240,
+      width: 300,
       type: "status" as const,
       render: (val: string, record: VhfResponse) => renderApprovalBadge(val, record),
     },
@@ -1649,7 +1739,7 @@ const VhfListPage = () => {
       return actions;
     }
 
-    if (hasPerm?.("vhf:update")) {
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "vhf" })) {
       actions.push({
         key: "edit",
         label: "Chỉnh sửa",
@@ -1671,7 +1761,8 @@ const VhfListPage = () => {
       hasPerm?.("vhf:update") &&
       (record.approvalStatus === "DRAFT" ||
         record.approvalStatus === "REJECTED_LEVEL1" ||
-        record.approvalStatus === "REJECTED_LEVEL2")
+        record.approvalStatus === "REJECTED_LEVEL2" ||
+        record.approvalStatus === "REJECTED")
     ) {
       actions.push({
         key: "submit",
@@ -1685,7 +1776,7 @@ const VhfListPage = () => {
     }
 
     if (
-      (hasPerm?.("vhf:approvec1") || hasPerm?.("vhf:approve")) &&
+      hasPerm?.("vhf:approvec1") &&
       record.approvalStatus === "PENDING_APPROVAL"
     ) {
       actions.push({
@@ -1707,7 +1798,7 @@ const VhfListPage = () => {
     }
 
     if (
-      (hasPerm?.("vhf:approvec2") || hasPerm?.("vhf:approve")) &&
+      hasPerm?.("vhf:approvec2") &&
       record.approvalStatus === "APPROVED_LEVEL1"
     ) {
       actions.push({
@@ -1795,8 +1886,9 @@ const VhfListPage = () => {
           .vhf-page-wrapper.vhf-page-wrapper .ant-table-row .kcht-cell-badge * {
             font-size: 13px !important;
           }
+          .vhf-page-wrapper.vhf-page-wrapper button[aria-pressed],
           .vhf-page-wrapper.vhf-page-wrapper button[aria-pressed] span {
-            font-size: 13px !important;
+            font-size: 13.5px !important;
           }
           .vhf-page-wrapper .list-view-table .ant-table-cell {
             padding-block: 8.5px !important;
@@ -2032,7 +2124,7 @@ const VhfListPage = () => {
 
               <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
                 <Input
-                  placeholder="Tìm theo tên thiết bị..."
+                  placeholder="Tìm theo tên thiết bị"
                   allowClear
                   value={filterValues.deviceName || ""}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, deviceName: e.target.value }))}
@@ -2045,7 +2137,7 @@ const VhfListPage = () => {
                 <>
                   <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
                     <Input
-                      placeholder="Tìm theo mã thiết bị..."
+                      placeholder="Tìm theo mã thiết bị"
                       allowClear
                       value={filterValues.deviceCode || ""}
                       onChange={(e) => setFilterValues((prev) => ({ ...prev, deviceCode: e.target.value }))}
@@ -2214,14 +2306,18 @@ const VhfListPage = () => {
             {
               key: "REJECTED_LEVEL2",
               label: "Từ chối cấp cục",
-              count: filterValues.approvalStatus === "REJECTED_LEVEL2" ? total : (tabCounts["REJECTED_LEVEL2"] ?? 0),
+              count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
+                ? total
+                : (tabCounts["REJECTED_LEVEL2"] ?? 0),
               color: statusCritical,
-              active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+              active: filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED",
             },
             {
               key: "ARCHIVED",
               label: "Đã xóa",
-              count: filterValues.approvalStatus === "DELETED" ? total : (tabCounts["DELETED"] ?? 0),
+              count: (filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED")
+                ? total
+                : (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
               color: statusCritical,
               active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
             },
@@ -3250,7 +3346,7 @@ const VhfListPage = () => {
           <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
             {loadingHistory && historyRecords.length === 0 ? (
               <LoadingSkeleton rows={5} />
-            ) : historyRecords.length === 0 ? (
+            ) : validHistoryGroups.length === 0 ? (
               <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
                 <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
                 <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
@@ -3259,7 +3355,7 @@ const VhfListPage = () => {
               </div>
             ) : (
               <>
-                {renderVhfHistoryTimeline(historyRecords)}
+                {renderVhfHistoryTimeline()}
                 {loadingMoreHistory && (
                   <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>
                     Đang tải thêm...

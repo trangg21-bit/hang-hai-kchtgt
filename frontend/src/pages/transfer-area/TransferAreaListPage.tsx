@@ -341,9 +341,8 @@ export default function TransferAreaListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
-  const [sortField, setSortField] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
@@ -1175,7 +1174,7 @@ export default function TransferAreaListPage() {
   ]);
 
   const sortedDataSource = useMemo(() => {
-    if (!sortField) return dataSource;
+    if (!sortField || !sortOrder) return dataSource;
     if (sortField === 'stt') {
       return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
     }
@@ -1470,9 +1469,14 @@ export default function TransferAreaListPage() {
             rowKey="id"
             rowActions={rowActions}
             loading={false}
-            onSort={(k: string, o: 'asc' | 'desc') => {
-              setSortField(k);
-              setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+            onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              if (!o) {
+                setSortField(null);
+                setSortOrder(null);
+              } else {
+                setSortField(k);
+                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+              }
               setPage(1);
             }}
             scroll={{ x: 'max-content' }}

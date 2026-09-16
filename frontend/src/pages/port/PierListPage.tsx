@@ -386,9 +386,8 @@ export default function PierListPage() {
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Pier[]>([]); const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false); const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
-  const [sortField, setSortField] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
@@ -1156,8 +1155,17 @@ export default function PierListPage() {
         onStatusTabChange={handleTabChange} onFilterApply={handleFilterApply} onFilterReset={handleFilterReset}
         filterCollapsed={filterCollapsed} onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         loading={isLoading} error={isError} onRetry={() => void fetchData()}>
-        <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
-          rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc') => { setSortField(k); setSortOrder(o === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+        <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField || !sortOrder) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
+          rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc' | null) => {
+            if (!o) {
+              setSortField(null);
+              setSortOrder(null);
+            } else {
+              setSortField(k);
+              setSortOrder(o === 'asc' ? 'ascend' : 'descend');
+            }
+            setPage(1);
+          }}
           scroll={{ x: 'max-content' }} />
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>

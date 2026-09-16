@@ -62,7 +62,7 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
             "AND (CAST(:deviceCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string)) " +
             "AND (CAST(:deviceName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceName AS string), '%'))) AS string)) " +
             "AND (:operationalStatus IS NULL OR v.operationalStatus = :operationalStatus) " +
-            "AND (:approvalStatus IS NULL OR v.approvalStatus = :approvalStatus) " +
+            "AND (:approvalStatus IS NULL OR v.approvalStatus = :approvalStatus OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 AND v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED) OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)) " +
             "AND (:yearOfUse IS NULL OR v.yearOfUse = :yearOfUse) " +
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR v.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR v.updatedAt <= :updatedTo) " +

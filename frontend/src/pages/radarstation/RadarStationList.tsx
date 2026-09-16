@@ -105,6 +105,7 @@ import {
   primaryButtonStyle,
   outlineButtonStyle,
   drawerTitleStyle,
+  drawerFooterStyle,
   requiredMarkStyle,
   filterLabelStyle,
   statusInfo,
@@ -575,12 +576,40 @@ function normalizedHistoryFields(value: string): string[] {
   return fields;
 }
 
+function isMeaningfulChange(field: string, rawOld: any, rawNew: any): boolean {
+  void field;
+  const ov = rawOld != null ? String(rawOld).trim() : '';
+  const nv = rawNew != null ? String(rawNew).trim() : '';
+  if (ov === '' && nv === '') return false;
+  if (ov !== '' && nv !== '' && ov === nv) return false;
+  // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25 hoặc 5,555 vs 5555)
+  const cleanOv = ov.replace(/,/g, '');
+  const cleanNv = nv.replace(/,/g, '');
+  if (cleanOv !== '' && cleanNv !== '' && !isNaN(Number(cleanOv)) && !isNaN(Number(cleanNv)) && Math.abs(Number(cleanOv) - Number(cleanNv)) < 1e-9) {
+    return false;
+  }
+  // Bỏ qua nếu sau khi format hiển thị giống nhau
+  const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? fmtNum(cleanOv) : ov;
+  const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? fmtNum(cleanNv) : nv;
+  if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
+    return false;
+  }
+  return true;
+}
+
 function historyChangeRows(item: HistoryEntry): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
   const fields = normalizedHistoryFields(historyField(item));
   const oldVal = historyOldValue(item);
   const newVal = historyNewValue(item);
   if (fields.length <= 1) {
-    return [{ field: fields[0] || '', oldValue: oldVal, newValue: newVal }];
+    const f = fields[0] || '';
+    if (!f && !oldVal && !newVal) {
+      return [];
+    }
+    if (!isMeaningfulChange(f, oldVal, newVal)) {
+      return [];
+    }
+    return [{ field: f, oldValue: oldVal, newValue: newVal }];
   }
   const oldMap = new Map<string, string>();
   if (oldVal) {
@@ -602,7 +631,7 @@ function historyChangeRows(item: HistoryEntry): Array<{ field: string; oldValue:
     newValue: newMap.get(fn) ?? (fields.length === 1 ? newVal : null),
   })).filter((r) => {
     if (r.oldValue === null && r.newValue === null) return false;
-    return r.oldValue !== r.newValue;
+    return isMeaningfulChange(r.field, r.oldValue, r.newValue);
   });
 }
 
@@ -1006,15 +1035,101 @@ export default function RadarStationList() {
   const [symbolOptions, setSymbolOptions] = useState<{ value: string; label: string }[]>([]);
   const [symbols, setSymbols] = useState<{ id: string; name: string; code?: string; image: string }[]>([]);
 
-  const historyFieldCount = useMemo(() => {
-    if (!Array.isArray(historyRecords)) return 0;
-    let count = 0;
-    for (const r of historyRecords) {
-      const rows = historyChangeRows(r).filter((c) => c.field);
-      count += rows.length > 0 ? rows.length : 1;
+  const validHistoryGroups = useMemo(() => {
+    if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...historyRecords].sort((a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+
+    const isUpdateAction = (status: string | undefined, reason?: string | undefined) => {
+      const s = String(status || '').toUpperCase();
+      const r = String(reason || '').toLowerCase();
+      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
+        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
+    };
+
+    const rawGroups: Array<{ tsSec: number; ts: string; actor: string; status?: string; approvalLevel?: string; items: HistoryEntry[] }> = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const prev = rawGroups[rawGroups.length - 1];
+      const actor = historyActor(r);
+      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
+      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      if (isSameGroup) {
+        prev.items.push(r);
+      } else {
+        rawGroups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
+      }
     }
-    return count;
+
+    return rawGroups.map((g) => {
+      const allChanges = deduplicateAttachmentHistoryChanges(g.items.flatMap((item) => historyChangeRows(item))).sort((a, b) => {
+        const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+        const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+        return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+      });
+
+      const listFields = new Set<string>();
+      allChanges.forEach((c) => {
+        if (isListDeltaField(c.field)) {
+          const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
+          const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
+          if (ov.startsWith('[') || nv.startsWith('[')) {
+            listFields.add(normalizeHistoryKey(c.field || ''));
+          }
+        }
+      });
+
+      const dedupedChanges = allChanges.filter((c) => {
+        if (isListDeltaField(c.field)) {
+          const normKey = normalizeHistoryKey(c.field || '');
+          if (listFields.has(normKey)) {
+            const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
+            const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
+            if (!ov.startsWith('[') && !nv.startsWith('[')) {
+              return false;
+            }
+          }
+        }
+        return true;
+      });
+
+      const uniqueChangesMap = new Map<string, { field: string; oldValue: string | null; newValue: string | null }>();
+      dedupedChanges.forEach((c) => {
+        const key = `${c.field}::${c.oldValue}::${c.newValue}`;
+        if (!uniqueChangesMap.has(key)) {
+          uniqueChangesMap.set(key, c);
+        }
+      });
+
+      const validChanges = Array.from(uniqueChangesMap.values()).filter((c) => {
+        return isMeaningfulChange(c.field, c.oldValue, c.newValue);
+      });
+
+      const reasons = g.items.map((i) => i.reason || i.note).filter(Boolean);
+
+      if (validChanges.length === 0 && reasons.length === 0) {
+        return null;
+      }
+
+      return {
+        ...g,
+        validChanges,
+        reasons,
+      };
+    }).filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      status?: string;
+      approvalLevel?: string;
+      items: HistoryEntry[];
+      validChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }>;
+      reasons: string[];
+    }>;
   }, [historyRecords]);
+
+  const historyFieldCount = validHistoryGroups.length;
 
   // Trạng thái cho phép gửi duyệt lại / gửi tiếp sau lưu (áp cho nút phụ trong drawer Cập nhật)
   const editingCanResubmit = !!editingRecord && !isDetailMode
@@ -1310,7 +1425,7 @@ export default function RadarStationList() {
       quantity: record.quantity,
       conditionStatus: record.conditionStatus,
       towerHeight: normalizeSafeNumber(record.towerHeight),
-      radarRange: record.radarRange,
+      radarRange: normalizeSafeNumber(record.radarRange),
       note: record.note,
       geometryType: record.geometryType || undefined,
       mapIcon: record.mapIcon ? String(record.mapIcon) : undefined,
@@ -1346,6 +1461,7 @@ export default function RadarStationList() {
         if (detail && detail.id) {
           createForm.setFieldsValue({
             towerHeight: normalizeSafeNumber(detail.towerHeight),
+            radarRange: normalizeSafeNumber(detail.radarRange),
           });
         }
       })
@@ -1641,7 +1757,7 @@ export default function RadarStationList() {
         quantity: values.quantity,
         conditionStatus: values.conditionStatus || '1',
         towerHeight: safeDecimal(values.towerHeight),
-        radarRange: values.radarRange,
+        radarRange: safeDecimal(values.radarRange),
         note: values.note?.trim() || undefined,
         longitude,
         latitude,
@@ -1660,18 +1776,14 @@ export default function RadarStationList() {
         for (const file of newFiles) {
           try { await radarStationAttachment.upload(editingRecord.id, file); } catch { /* ignore */ }
         }
-        if (mode !== 'save' && savedId) {
-          const submitted = await radarStationApproval.submitForApproval(savedId);
-          if (mode === 'approve' && (submitted.status === 'APPROVED_LEVEL1' || submitted.approvalStatus === 'APPROVED_LEVEL1')) {
-            await radarStationApproval.approveLevel2(savedId);
-            toast.success('Đã cập nhật và phê duyệt trạm radar');
-          } else if (mode === 'approve') {
-            toast.info('Đã lưu và gửi phê duyệt — hồ sơ đang chờ Cảng vụ/Chi cục duyệt');
-          } else {
-            toast.success('Đã cập nhật và gửi phê duyệt trạm radar');
-          }
+        if (mode === 'submit' && savedId) {
+          await radarStationApproval.submitForApproval(savedId);
+          toast.success('Đã cập nhật và gửi phê duyệt trạm radar');
+        } else if (mode === 'approve') {
+          // Ca sử dụng 8: Khi sửa bản ghi đã duyệt, backend giữ nguyên APPROVED và ghi nhật ký thay đổi
+          toast.success('Lưu và phê duyệt trạm radar thành công');
         } else {
-          toast.success('Đã cập nhật trạm radar');
+          toast.success('Đã lưu tạm trạm radar');
         }
       } else {
         const created = await radarStationCRUD.create(payload);
@@ -1685,18 +1797,20 @@ export default function RadarStationList() {
             try { await radarStationAttachment.upload(created.id, file); } catch { /* ignore */ }
           }
         }
-        if (mode !== 'save' && savedId) {
-          const submitted = await radarStationApproval.submitForApproval(savedId);
-          if (mode === 'approve' && (submitted.status === 'APPROVED_LEVEL1' || submitted.approvalStatus === 'APPROVED_LEVEL1')) {
+        if (mode === 'submit' && savedId) {
+          await radarStationApproval.submitForApproval(savedId);
+          toast.success('Đã tạo mới và gửi phê duyệt trạm radar');
+        } else if (mode === 'approve' && savedId) {
+          const sent = await radarStationApproval.submitForApproval(savedId);
+          if (sent?.status === 'APPROVED_LEVEL1' || sent?.approvalStatus === 'APPROVED_LEVEL1') {
             await radarStationApproval.approveLevel2(savedId);
-            toast.success('Đã tạo mới và phê duyệt trạm radar');
-          } else if (mode === 'approve') {
-            toast.info('Đã tạo mới và gửi phê duyệt — hồ sơ đang chờ Cảng vụ/Chi cục duyệt');
           } else {
-            toast.success('Đã tạo mới và gửi phê duyệt trạm radar');
+            await radarStationApproval.approveLevel1(savedId);
+            await radarStationApproval.approveLevel2(savedId);
           }
+          toast.success('Đã tạo mới và phê duyệt trạm radar');
         } else {
-          toast.success('Đã tạo mới trạm radar');
+          toast.success('Đã lưu tạm trạm radar');
         }
       }
       setDrawerVisible(false);
@@ -1851,11 +1965,11 @@ export default function RadarStationList() {
       },
     },
     {
-      key: 'unitOfMeasure', label: 'Đơn vị tính', dataIndex: 'unitOfMeasure', width: 170,
+      key: 'unitOfMeasure', label: 'Đơn vị tính', dataIndex: 'unitOfMeasure', width: 128, align: 'center' as const,
       render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || null}</span>,
     },
     {
-      key: 'quantity', label: 'Số lượng', dataIndex: 'quantity', width: 130,
+      key: 'quantity', label: 'Số lượng', dataIndex: 'quantity', width: 114, align: 'center' as const,
       render: (v: number | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? String(v) : null}</span>,
     },
     {
@@ -2112,7 +2226,7 @@ export default function RadarStationList() {
   const detailTechnicalRows: DetailRow[] = detailRecord
     ? [
         { label: 'Chiều cao tháp radar (m)', value: detailRecord.towerHeight != null ? fmtNum(detailRecord.towerHeight) : null },
-        { label: 'Tầm hiệu lực radar', value: detailRecord.radarRange != null ? Number(detailRecord.radarRange).toLocaleString('en-US') : null },
+        { label: 'Tầm hiệu lực radar', value: detailRecord.radarRange != null ? fmtNum(detailRecord.radarRange) : null },
         { label: 'Ghi chú', value: detailRecord.note || null, fullWidth: true },
       ]
     : [];
@@ -2852,34 +2966,10 @@ export default function RadarStationList() {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
   };
 
-  const renderHistoryTimeline = (records: HistoryEntry[]) => {
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
+  const renderHistoryTimeline = () => {
     const q = historySearch.toLowerCase().trim();
 
-    const isUpdateAction = (status: string | undefined, reason?: string | undefined) => {
-      const s = String(status || '').toUpperCase();
-      const r = String(reason || '').toLowerCase();
-      return s === 'UPDATED' || s === 'UPDATE' || s === 'EDIT' || s === 'ATTACHMENT_UPLOADED' || s === 'ATTACHMENT_DELETED'
-        || r.includes('cập nhật') || r.includes('chỉnh sửa') || r.includes('tải lên') || r.includes('xóa tệp') || r.includes('xóa tài liệu');
-    };
-
-    const groups: Array<{ tsSec: number; ts: string; actor: string; status?: string; approvalLevel?: string; items: HistoryEntry[] }> = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const prev = groups[groups.length - 1];
-      const actor = historyActor(r);
-      const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
-      if (isSameGroup) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
-      }
-    }
-
-    if (groups.length === 0) return (
+    if (validHistoryGroups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
         <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
         <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
@@ -2887,18 +2977,15 @@ export default function RadarStationList() {
     );
 
     return (
-      <div>{groups.map((g, gi) => {
-        const changes = deduplicateAttachmentHistoryChanges(g.items.flatMap((item) => historyChangeRows(item))).sort((a, b) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        });
+      <div>{validHistoryGroups.map((g, gi) => {
+        const changes = g.validChanges;
+        const reasons = g.reasons;
         const rec0: any = g.items[0] || {};
         const rawUnit = rec0.orgUnitName;
         const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
         const resolvedName = orgId ? orgNameById(orgId) : undefined;
         const unitName = (rawUnit && rawUnit !== '—' && rawUnit !== '-') ? rawUnit : (resolvedName && resolvedName !== '—' && resolvedName !== '-' ? (resolvedName.split(' - ').pop() || resolvedName) : 'Cục Hàng hải Việt Nam');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
+        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '' || c.oldValue === 'Chưa có');
         const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
         const formatHistoryValue = (fn: string, raw: string | null) => {
           if (raw === null || raw === '(null)' || raw === '') return null;
@@ -2913,12 +3000,11 @@ export default function RadarStationList() {
           }
           return historyFieldValue(fn, raw);
         };
-        if (changes.length === 0) return null;
         const actionMeta = resolveHistoryActionMeta(g.items[0]);
         return (
           <div
             key={gi}
-            style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}
+            style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}
           >
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
@@ -2981,53 +3067,10 @@ export default function RadarStationList() {
                   return renderHistoryValueTag(field, val);
                 };
 
-                const listFields = new Set<string>();
-                changes.forEach((c) => {
-                  if (isListDeltaField(c.field)) {
-                    const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
-                    const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
-                    if (ov.startsWith('[') || nv.startsWith('[')) {
-                      listFields.add(normalizeHistoryKey(c.field || ''));
-                    }
-                  }
-                });
-
-                const dedupedChanges = changes.filter((c) => {
-                  if (isListDeltaField(c.field)) {
-                    const normKey = normalizeHistoryKey(c.field || '');
-                    if (listFields.has(normKey)) {
-                      const ov = typeof c.oldValue === 'string' ? c.oldValue.trim() : '';
-                      const nv = typeof c.newValue === 'string' ? c.newValue.trim() : '';
-                      if (!ov.startsWith('[') && !nv.startsWith('[')) {
-                        return false;
-                      }
-                    }
-                  }
-                  return true;
-                });
-
-                const uniqueChangesMap = new Map<string, { field: string; oldValue: string | null; newValue: string | null }>();
-                dedupedChanges.forEach((c) => {
-                  const key = `${c.field}::${c.oldValue}::${c.newValue}`;
-                  if (!uniqueChangesMap.has(key)) {
-                    uniqueChangesMap.set(key, c);
-                  }
-                });
-
-                const validChanges = Array.from(uniqueChangesMap.values()).filter((c) => {
-                  if (!c.field && !c.oldValue && !c.newValue) return false;
-                  const ov = formatHistoryValue(c.field, c.oldValue);
-                  const nv = formatHistoryValue(c.field, c.newValue);
-                  if (ov == null && nv == null) return false;
-                  if (ov !== null && nv !== null && String(ov).trim() === String(nv).trim()) return false;
-                  return true;
-                });
-                const reasons = g.items.map((i) => i.reason || i.note).filter(Boolean);
-
-                if (validChanges.length > 0) {
+                if (changes.length > 0) {
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-                      {validChanges.map((change, ri: number) => {
+                      {changes.map((change, ri: number) => {
                         const fn = change.field;
                         const ov = formatHistoryValue(fn, change.oldValue);
                         const nv = formatHistoryValue(fn, change.newValue);
@@ -3123,7 +3166,7 @@ export default function RadarStationList() {
                   );
                 }
 
-                return <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd }}>Không có thông tin chi tiết</Typography.Text>;
+                return null;
               })()}
             </div>
           </div>
@@ -3366,37 +3409,67 @@ export default function RadarStationList() {
         }}
         footer={
           isDetailMode ? null : editingRecord ? (
-            <>
-              <Button type="primary" onClick={() => handleSubmit('save')} loading={submitting && actionType === 'save'} style={outlineButtonStyle}>
-                Lưu tạm
-              </Button>
-              {editingCanResubmit && (
-                <>
-                  <Button onClick={() => handleSubmit('submit')} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
+            // Ca sử dụng 8 (approval-2-level-spec.md 3.9) — bộ nút chân form theo trạng thái hồ sơ:
+            editingRecord.approvalStatus === 'APPROVED' ? (
+              <div style={drawerFooterStyle}>
+                <Button
+                  type="primary"
+                  onClick={() => handleSubmit('approve')}
+                  loading={submitting && actionType === 'approve'}
+                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                >
+                  Lưu và phê duyệt
+                </Button>
+              </div>
+            ) : (
+              <div style={drawerFooterStyle}>
+                <Button
+                  onClick={() => handleSubmit('save')}
+                  loading={submitting && actionType === 'save'}
+                  style={outlineButtonStyle}
+                >
+                  Lưu tạm
+                </Button>
+                {editingCanResubmit && (
+                  <Button
+                    type="primary"
+                    onClick={() => handleSubmit('submit')}
+                    loading={submitting && actionType === 'submit'}
+                    style={primaryButtonStyle}
+                  >
                     Lưu và gửi phê duyệt
                   </Button>
-                  {hasPerm('radarstation:approvec2') && (
-                    <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                      Lưu và phê duyệt
-                    </Button>
-                  )}
-                </>
-              )}
-            </>
+                )}
+              </div>
+            )
           ) : (
-            <>
-              <Button onClick={() => handleSubmit('save')} loading={submitting && actionType === 'save'} style={outlineButtonStyle}>
+            <div style={drawerFooterStyle}>
+              <Button
+                onClick={() => handleSubmit('save')}
+                loading={submitting && actionType === 'save'}
+                style={outlineButtonStyle}
+              >
                 Lưu tạm
               </Button>
-              <Button type="primary" onClick={() => handleSubmit('submit')} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
+              <Button
+                type="primary"
+                onClick={() => handleSubmit('submit')}
+                loading={submitting && actionType === 'submit'}
+                style={primaryButtonStyle}
+              >
                 Lưu và gửi phê duyệt
               </Button>
               {hasPerm('radarstation:approvec2') && (
-                <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
+                <Button
+                  type="primary"
+                  onClick={() => handleSubmit('approve')}
+                  loading={submitting && actionType === 'approve'}
+                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                >
                   Lưu và phê duyệt
                 </Button>
               )}
-            </>
+            </div>
           )
         }
       >
@@ -3644,11 +3717,18 @@ export default function RadarStationList() {
                               name="radarRange"
                               {...labelProps('Tầm hiệu lực radar')}
                               style={{ marginBottom: spaceFormField }}
-                              validateStatus={atMax.radarRange ? 'error' : undefined}
-                              help={atMax.radarRange ? 'Đã đạt tối đa 20 ký tự' : undefined}
-                              rules={[{ max: 20, message: 'Tầm hiệu lực radar tối đa 20 ký tự' }]}
+                              getValueFromEvent={getValueFromEvent20}
+                              rules={[decimalNumberRule]}
                             >
-                              <Input placeholder="Nhập tầm hiệu lực (tối đa 20 ký tự)" maxLength={20} showCount style={inputStyle} />
+                              <NumberInputWithCount
+                                min={0}
+                                step={0.01}
+                                placeholder="0"
+                                style={numberInputStyle}
+                                maxLength={20}
+                                parser={parseNumber20}
+                                formatter={fmtInputNumber}
+                              />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -3662,7 +3742,7 @@ export default function RadarStationList() {
                               help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                               rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
                             >
-                              <Input.TextArea rows={3} maxLength={2000} placeholder="Nhập ghi chú (tối đa 2000 ký tự)" showCount style={textAreaStyle} />
+                              <Input.TextArea rows={3} maxLength={2000} placeholder="Nhập ghi chú" showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                         </Row>
@@ -3672,7 +3752,7 @@ export default function RadarStationList() {
                 },
                 {
                   key: 'location',
-                  label: 'Thông tin vị trí',
+                  label: `Thông tin vị trí (${coordinateList.length})`,
                   forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
@@ -4235,7 +4315,7 @@ export default function RadarStationList() {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
           {historyLoading && historyRecords.length === 0 ? (
             <LoadingSkeleton rows={5} />
-          ) : historyRecords.length === 0 ? (
+          ) : validHistoryGroups.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
@@ -4244,7 +4324,7 @@ export default function RadarStationList() {
             </div>
           ) : (
             <>
-              {renderHistoryTimeline(historyRecords)}
+              {renderHistoryTimeline()}
               {loadingMoreHistory && (
                 <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>
                   Đang tải thêm…

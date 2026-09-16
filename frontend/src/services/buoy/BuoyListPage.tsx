@@ -295,7 +295,7 @@ export default function BuoyListPage() {
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   const [activeTab, setActiveTab] = useState('all');
-  const [sortField, setSortField] = useState<string>('updatedAt');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
@@ -594,9 +594,14 @@ export default function BuoyListPage() {
     setPage(1);
   }, []);
 
-  const handleSortChange = useCallback((key: string, order: 'asc' | 'desc') => {
-    setSortField(key);
-    setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+  const handleSortChange = useCallback((key: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(key);
+      setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+    }
     setPage(1);
   }, []);
 
@@ -1765,7 +1770,7 @@ export default function BuoyListPage() {
         <DataTable
           columns={columns}
           dataSource={(() => {
-            if (!sortField) return dataSource;
+            if (!sortField || !sortOrder) return dataSource;
             if (sortField === 'sequenceNo') {
               const arr = [...dataSource];
               return sortOrder === 'descend' ? arr.reverse() : arr;

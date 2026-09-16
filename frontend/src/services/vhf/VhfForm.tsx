@@ -468,7 +468,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           note: data.note,
           geometryType: data.geometryType || undefined,
           mapSymbolId: data.mapSymbolId || undefined,
-          coordinateSystem: data.coordinateSystem || (data.geometryType ? 1 : undefined),
+          coordinateSystem: data.geometryType ? (data.coordinateSystem || 1) : undefined,
           displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
         });
 
@@ -599,11 +599,6 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
     setGisModalOpen(false);
   };
 
-  const hasCoordinates = coordinateList.some(
-    (c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null,
-  );
-  const hasLocation = Boolean(watchedGeometryType || form.getFieldValue('mapSymbolId') || hasCoordinates);
-
   useImperativeHandle(ref, () => ({
     submit: async (saveAction: VhfSaveAction) => {
       await handleSave(saveAction);
@@ -611,61 +606,73 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   }));
 
   const handleSave = useCallback(async (saveAction: VhfSaveAction) => {
+    const values = form.getFieldsValue(true);
     try {
-      if (hasCoordinates && !form.getFieldValue('geometryType')) {
-        toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      await form.validateFields();
+    } catch (e: unknown) {
+      const err = e as { errorFields?: Array<{ name: Array<string | number>; errors?: string[] }> };
+      const errFields = err?.errorFields ?? [];
+      const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
+      toast.error(firstError);
+      if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) {
         setActiveTabKey('location');
-        return;
+      } else {
+        setActiveTabKey('general');
       }
-      if (hasLocation && !form.getFieldValue('mapSymbolId')) {
-        toast.error('Biểu tượng bản đồ là bắt buộc');
-        setActiveTabKey('location');
-        return;
-      }
+      return;
+    }
 
-      // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-      const coordResult = validateDmsCoordinates(coordinateList, form.getFieldValue('geometryType'));
-      if (!coordResult.valid) {
-        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
-        toast.error(errMsg);
-        setGpsError(errMsg);
-        setActiveTabKey('location');
-        return;
-      }
-      const validCoords = coordResult.validCoords;
-      const wktCoordinates = serializeCoordinatesToWkt(validCoords, form.getFieldValue('geometryType') || 'POINT');
+    if (values.operationalStatus === undefined || values.operationalStatus === null) {
+      toast.error('Tình trạng hoạt động là bắt buộc');
+      setActiveTabKey('general');
+      return;
+    }
 
-      setGpsError(null);
-      let values: Record<string, unknown>;
-      try {
-        values = await form.validateFields();
-      } catch (err: any) {
-        if (err?.errorFields?.length) {
-          const firstError = err.errorFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
-          toast.error(firstError);
-          const firstField = err.errorFields[0].name[0];
-          if (['geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule'].includes(firstField)) {
-            setActiveTabKey('location');
-          } else {
-            setActiveTabKey('general');
-          }
-        }
-        return;
-      }
+    const geomType = values.geometryType || undefined;
+    const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
 
-      setSubmitting(true);
-      onSubmittingChange?.(true);
+    // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
+    if (hasCoordinates && !geomType) {
+      toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
+      setActiveTabKey('location');
+      return;
+    }
+    if (geomType && !values.mapSymbolId) {
+      toast.error('Biểu tượng bản đồ là bắt buộc');
+      setActiveTabKey('location');
+      return;
+    }
 
+    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
+    const coordResult = validateDmsCoordinates(coordinateList, geomType);
+    if (!coordResult.valid) {
+      const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+      toast.error(errMsg);
+      setGpsError(errMsg);
+      setActiveTabKey('location');
+      return;
+    }
+    setGpsError(null);
+    const validCoords = coordResult.validCoords;
+    const wktCoordinates = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
+
+    setSubmitting(true);
+    onSubmittingChange?.(true);
+
+    try {
       const currentAction = saveAction === 'DRAFT' ? 'draft' : saveAction === 'SUBMIT' ? 'submit' : 'approve';
+      const rawYear = values.yearOfUse;
+      const submittedYear = rawYear != null ? (dayjs.isDayjs(rawYear) ? rawYear.year() : Number(rawYear)) : undefined;
+
       const payload: Record<string, unknown> = {
         ...values,
-        yearOfUse: values.yearOfUse ? (values.yearOfUse as dayjs.Dayjs).year() : undefined,
+        yearOfUse: submittedYear,
         quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
-        coordinates: wktCoordinates ? wktCoordinates : (isEdit ? '' : undefined),
-        geometryType: values.geometryType || undefined,
+        coordinates: wktCoordinates || undefined,
+        geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
         mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+        coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+        displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
       };
 
       let targetId: string;
@@ -712,7 +719,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish, hasCoordinates, hasLocation]);
+  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish]);
 
   const tabItems = [
     // Tab 1: Thông tin chung (3 Section Cards chuẩn /cctv, /berth)
@@ -823,7 +830,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
               <Col span={12}>
                 <Form.Item name="attachedInfrastructureType" {...labelProps('Thuộc loại hạ tầng')} style={{ marginBottom: spaceFormField }}>
                   <Select
-                    placeholder="Chọn loại hạ tầng..."
+                    placeholder="Chọn loại hạ tầng"
                     options={ATTACHED_INFRA_TYPE_OPTIONS}
                     allowClear
                     onChange={() => form.setFieldsValue({ attachedInfrastructureId: undefined })}
@@ -840,9 +847,9 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   <Select
                     placeholder={
                       watchedAttachedType === 2
-                        ? 'Chọn trạm Radar...'
+                        ? 'Chọn trạm Radar'
                         : watchedAttachedType === 1
-                          ? 'Chọn Trung Tâm Điều Hành VTS...'
+                          ? 'Chọn Trung Tâm Điều Hành VTS'
                           : 'Chọn loại hạ tầng trước'
                     }
                     options={
@@ -921,7 +928,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                 <Form.Item name="yearOfUse" {...labelProps('Năm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
                   <DatePicker
                     picker="year"
-                    placeholder="Chọn năm..."
+                    placeholder="Chọn năm"
                     style={{ ...inputStyle, width: '100%' }}
                     disabledDate={(d) => d && d.year() > new Date().getFullYear()}
                   />
@@ -999,7 +1006,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                   help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1013,7 +1020,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   validateStatus={atMax.note ? 'error' : undefined}
                   help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1039,15 +1046,27 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} allowClear style={selectStyle} />
+                  <Select
+                    placeholder="Chọn loại đối tượng"
+                    options={GEOMETRY_TYPE_OPTIONS}
+                    allowClear
+                    style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+                        setCoordinateList([]);
+                        setGpsError(null);
+                      }
+                    }}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
                   name="mapSymbolId"
                   {...labelProps('Biểu tượng')}
-                  required={hasLocation}
-                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  required={!!watchedGeometryType}
+                  rules={watchedGeometryType ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select

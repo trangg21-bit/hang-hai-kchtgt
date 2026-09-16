@@ -544,9 +544,14 @@ export default function NavigationChannelList() {
     setPage(1);
   }, []);
 
-  const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
-    setSortField(key);
-    setSortOrder(order);
+  const handleSort = useCallback((key: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(key);
+      setSortOrder(order);
+    }
     setPage(1);
   }, []);
 
@@ -852,7 +857,7 @@ export default function NavigationChannelList() {
         width: 260,
         fixed: 'left' as const,
         sortable: true,
-        sortOrder: sortField === 'channelName' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
+        sortOrder: sortField === 'channelName' && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -900,9 +905,9 @@ export default function NavigationChannelList() {
         dataIndex: 'conditionStatus',
         width: 150,
         sortable: true,
-        sortOrder: sortField === 'conditionStatus' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
+        sortOrder: sortField === 'conditionStatus' && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         render: (v: string | undefined) => {
-          if (!v) return null;
+          if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
@@ -923,7 +928,7 @@ export default function NavigationChannelList() {
         dataIndex: 'updatedAt',
         width: 220,
         sortable: true,
-        sortOrder: sortField === 'updatedAt' ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
+        sortOrder: sortField === 'updatedAt' && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => {
           const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
@@ -1126,7 +1131,7 @@ export default function NavigationChannelList() {
 
   const sortedData = useMemo(() => {
     return [...dataSource].sort((a: any, b: any) => {
-      if (!sortField) return 0;
+      if (!sortField || !sortOrder) return 0;
       const aVal = getSortValue(a, sortField);
       const bVal = getSortValue(b, sortField);
       const cmp = typeof aVal === 'number' && typeof bVal === 'number'
