@@ -55,7 +55,7 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
     List<Vhf> findAllActiveForCache();
 
     @Query("SELECT v FROM Vhf v WHERE " +
-            "(:isDeleted IS NULL OR (:isDeleted = true AND (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL)) OR (:isDeleted = false AND v.deletedAt IS NULL AND v.deletedBy IS NULL)) " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) OR (:isDeleted = false AND v.deletedAt IS NULL AND v.deletedBy IS NULL AND v.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "AND (:includeAll = true OR v.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR v.orgUnitId IN :filterOrgUnitIds) " +
             "AND (:seaportId IS NULL OR v.seaportId = :seaportId) " +

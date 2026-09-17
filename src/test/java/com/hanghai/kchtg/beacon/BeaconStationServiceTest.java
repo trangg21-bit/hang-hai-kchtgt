@@ -257,6 +257,7 @@ class BeaconStationServiceTest {
             BeaconStationResponse res = service.findById(id);
 
             assertThat(res.getStatus()).isEqualTo("DELETED");
+            assertThat(res.getApprovalStatus()).isEqualTo("ARCHIVED");
             assertThat(res.getDeletedAt()).isEqualTo(now);
             assertThat(res.getDeletedBy()).isEqualTo(userId);
         }
@@ -329,6 +330,35 @@ class BeaconStationServiceTest {
             assertThat(result.getStatus()).isEqualTo("PENDING_APPROVAL");
             assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
             verify(infraHistoryRepo).save(any());
+        }
+
+        @Test
+        @DisplayName("create with action=approved — sets APPROVED status and does NOT create history")
+        void createWithApprovedAction_doesNotCreateHistory() {
+            org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                    new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+                            "admin", "pass", java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))));
+            try {
+                UUID savedId = UUID.randomUUID();
+                CreateBeaconStationRequest request = makeCreateRequest();
+                request.setAction("approved");
+
+                when(beaconStationRepo.existsByCode("DEN-002")).thenReturn(false);
+                when(buoyRepo.existsByCode("DEN-002")).thenReturn(false);
+                when(beaconStationRepo.save(any())).thenAnswer(invocation -> {
+                    BeaconStation entity = invocation.getArgument(0);
+                    setId(entity, savedId);
+                    return entity;
+                });
+
+                BeaconStationResponse result = service.create(request);
+
+                assertThat(result.getStatus()).isEqualTo("APPROVED");
+                assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_2);
+                verify(infraHistoryRepo, never()).save(any());
+            } finally {
+                org.springframework.security.core.context.SecurityContextHolder.clearContext();
+            }
         }
 
         @Test
@@ -529,6 +559,7 @@ class BeaconStationServiceTest {
             verify(beaconStationRepo).save(beaconStationCaptor.capture());
             BeaconStation saved = beaconStationCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("DELETED");
+            assertThat(saved.getApprovalStatus()).isEqualTo(ApprovalStatus.ARCHIVED);
             assertThat(saved.getDeletedAt()).isNotNull();
             verify(infraHistoryRepo).save(any());
             verify(gisSpatialObjectService).delete(entity.getSpatialId());
@@ -826,5 +857,96 @@ class BeaconStationServiceTest {
 
             assertThat(changedFields).contains("Chiều cao tháp đèn (m)", "Chiều cao tâm sáng (m)", "Màu sắc tháp đèn");
         }
+
+        @Test
+        @DisplayName("getHistory — lọc bỏ các bản ghi CREATED, approvalStatus và các bản ghi không thay đổi giá trị")
+        void getHistoryFiltersOutCreatedAndApprovalStatusAndEqualValues() {
+            UUID stationId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(makeEntity(stationId, "APPROVED")));
+
+            InfrastructureHistory createdRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.CREATED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .newValue("{\"name\":\"Đèn biển\"}")
+                    .build();
+
+            InfrastructureHistory approvalStatusRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Trạng thái phê duyệt")
+                    .previousValue("Đã duyệt")
+                    .newValue("Đã duyệt")
+                    .build();
+
+            InfrastructureHistory equalValueRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Ghi chú")
+                    .previousValue("Không có")
+                    .newValue("Không có")
+                    .build();
+
+            InfrastructureHistory genuineRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Tên đèn biển")
+                    .previousValue("Đèn biển cũ")
+                    .newValue("Đèn biển mới")
+                    .build();
+
+            when(infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), any(Pageable.class)))
+                    .thenReturn(List.of(createdRecord, approvalStatusRecord, equalValueRecord, genuineRecord));
+            when(userRepository.findAllByIdInWithOrgUnit(any()))
+                    .thenReturn(List.of());
+
+            List<BeaconHistoryEntry> entries = service.getHistory(stationId, 0, 20, null, null, null);
+
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).getChangedField()).isEqualTo("Tên đèn biển");
+        }
+
+        @Test
+        @DisplayName("uploadAttachments — hồ sơ vừa tạo mới không ghi nhận lịch sử đính kèm")
+        void uploadAttachmentsForNewlyCreatedRecordDoesNotLogHistory() {
+            UUID stationId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+            BeaconStation newlyCreatedStation = makeEntity(stationId, "APPROVED");
+            newlyCreatedStation.setCreatedAt(LocalDateTime.now().minusSeconds(5));
+
+            org.springframework.test.util.ReflectionTestUtils.setField(service, "attachmentPath", "target/test-uploads");
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(newlyCreatedStation));
+
+            org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                    "files", "test.pdf", "application/pdf", "test content".getBytes());
+
+            when(attachmentRepository.countByEntityTypeAndEntityId(any(), any())).thenReturn(0L);
+            when(attachmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            service.uploadAttachments(stationId, List.of(file), userId);
+
+            verify(infraHistoryRepo, never()).save(any());
+        }
     }
 }
+
+
+

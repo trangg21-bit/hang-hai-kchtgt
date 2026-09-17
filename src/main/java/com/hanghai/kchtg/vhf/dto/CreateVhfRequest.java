@@ -67,4 +67,15 @@ public class CreateVhfRequest {
 
     private GisGeometryType geometryType;
     private String coordinates;
+
+    /**
+     * Hành động khi tạo: 'draft' (Lưu tạm) | 'submit' (Gửi duyệt — mặc định) | 'approve' (Lưu và phê duyệt).
+     * Cơ chế giống màn /cctv, /scada, /port.
+     */
+    private String action;
+
+    /**
+     * Trạng thái phê duyệt (fallback tương thích với payload frontend): 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED'.
+     */
+    private String approvalStatus;
 }

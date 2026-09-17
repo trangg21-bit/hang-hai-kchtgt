@@ -79,6 +79,7 @@ class DikeRevetmentServiceTest {
                 repo, approvalHistoryRepo, approvalService, gisSpatialObjectService,
                 orgUnitCacheService, orgUnitScopeService, portCacheService, userResolverService,
                 infrastructureAttachmentRepository, userRepository, jdbcTemplate);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "uploadDir", "target/test-uploads");
 
         testEntity = DikeRevetment.builder()
                 .id(TEST_ID)
@@ -476,6 +477,162 @@ class DikeRevetmentServiceTest {
 
             assertThat(fromCaptor.getValue()).isEqualTo(LocalDate.of(2024, 1, 1));
             assertThat(toCaptor.getValue()).isEqualTo(LocalDate.of(2024, 12, 31));
+        }
+
+        @Test
+        @DisplayName("searchPaged without approvalStatus should pass isDeleted=false to repository to exclude deleted records in All tab")
+        void searchPaged_withoutApprovalStatus_shouldPassIsDeletedFalseToRepository() {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+            when(repo.searchPaged(any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testEntity)));
+
+            service.searchPaged(null, null, null, null, null, null, null, null, null, null, null, null, null, pageable);
+
+            ArgumentCaptor<Boolean> isDeletedCaptor = ArgumentCaptor.forClass(Boolean.class);
+            verify(repo).searchPaged(
+                    isDeletedCaptor.capture(), anyBoolean(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any(), any(),
+                    any(), any(), any(), any(),
+                    eq(pageable));
+
+            assertThat(isDeletedCaptor.getValue()).isFalse();
+        }
+
+        @Test
+        @DisplayName("searchPaged with ARCHIVED approvalStatus should pass isDeleted=true to repository")
+        void searchPaged_withArchivedApprovalStatus_shouldPassIsDeletedTrueToRepository() {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+            when(repo.searchPaged(any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testEntity)));
+
+            service.searchPaged(null, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null, pageable);
+
+            ArgumentCaptor<Boolean> isDeletedCaptor = ArgumentCaptor.forClass(Boolean.class);
+            verify(repo).searchPaged(
+                    isDeletedCaptor.capture(), anyBoolean(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any(), any(),
+                    any(), any(), any(), any(),
+                    eq(pageable));
+
+            assertThat(isDeletedCaptor.getValue()).isTrue();
+        }
+
+        @Test
+        @DisplayName("getTabCounts should exclude ARCHIVED from total count")
+        void getTabCounts_shouldExcludeArchivedFromTotal() {
+            when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+            List<Object[]> mockCounts = List.of(
+                    new Object[]{ApprovalStatus.DRAFT, 5L},
+                    new Object[]{ApprovalStatus.PENDING_APPROVAL, 3L},
+                    new Object[]{ApprovalStatus.APPROVED, 10L},
+                    new Object[]{ApprovalStatus.ARCHIVED, 2L}
+            );
+            when(repo.countByApprovalStatus(anyBoolean(), any(), any(), any(), any())).thenReturn(mockCounts);
+
+            java.util.Map<String, Long> counts = service.getTabCounts(null, null, null, null);
+
+            assertThat(counts.get("DRAFT")).isEqualTo(5L);
+            assertThat(counts.get("PENDING_APPROVAL")).isEqualTo(3L);
+            assertThat(counts.get("APPROVED")).isEqualTo(10L);
+            assertThat(counts.get("ARCHIVED")).isEqualTo(2L);
+            // Total should be 5 + 3 + 10 = 18, NOT 20 (excluding ARCHIVED)
+            assertThat(counts.get("")).isEqualTo(18L);
+        }
+
+        @Test
+        @DisplayName("getHistory filters out approvalStatus, Trạng thái phê duyệt, and identical values")
+        void getHistory_shouldFilterOutApprovalStatusAndIdenticalValues() {
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+
+            InfrastructureHistory approvalStatusHist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("approvalStatus")
+                    .previousValue("Đã duyệt")
+                    .newValue("Đã duyệt")
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory trangThaiHist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("Trạng thái phê duyệt")
+                    .previousValue("Lưu tạm")
+                    .newValue("Đã duyệt")
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory identicalHist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("Ghi chú")
+                    .previousValue("Đê biển")
+                    .newValue("Đê biển")
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory genuineHist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("Chiều dài (m)")
+                    .previousValue("100")
+                    .newValue("200")
+                    .approvedBy(USER_ID)
+                    .build();
+
+            when(approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, TEST_ID))
+                    .thenReturn(List.of(approvalStatusHist, trangThaiHist, identicalHist, genuineHist));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("Chiều dài (m)");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("100");
+            assertThat(result.get(0).getNewValue()).isEqualTo("200");
+        }
+
+        @Test
+        @DisplayName("Uploading attachments on newly created entity (<=30s) even if approved should NOT record history")
+        void uploadAttachments_whenNewlyCreatedAndApproved_shouldNotRecordHistory() {
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+            testEntity.setCreatedAt(LocalDateTime.now().minusSeconds(5));
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+            org.springframework.mock.web.MockMultipartFile file =
+                    new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+
+            when(infrastructureAttachmentRepository.save(any())).thenAnswer(inv -> {
+                com.hanghai.kchtg.common.entity.InfrastructureAttachment att = inv.getArgument(0);
+                att.setId(UUID.randomUUID());
+                return att;
+            });
+
+            service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
+
+            verify(approvalHistoryRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Uploading attachments on existing approved entity (>30s) should record history")
+        void uploadAttachments_whenExistingApproved_shouldRecordHistory() {
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+            testEntity.setCreatedAt(LocalDateTime.now().minusDays(2));
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+            org.springframework.mock.web.MockMultipartFile file =
+                    new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+
+            when(infrastructureAttachmentRepository.save(any())).thenAnswer(inv -> {
+                com.hanghai.kchtg.common.entity.InfrastructureAttachment att = inv.getArgument(0);
+                att.setId(UUID.randomUUID());
+                return att;
+            });
+
+            service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
+
+            verify(approvalHistoryRepo, times(1)).save(any());
         }
     }
 }

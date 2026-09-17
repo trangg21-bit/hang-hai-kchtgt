@@ -632,7 +632,7 @@ export default function PierListPage() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const r = await pierCRUD.search({
         orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
@@ -653,7 +653,7 @@ export default function PierListPage() {
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
-    } catch (ex: unknown) { setIsError(true); setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách cầu cảng')); }
+    } catch { setIsError(true); }
     finally { setIsLoading(false); }
   }, [orgUnit, pierNameInput, pierCodeInput, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus,
     filterWaterwayId, filterConstructionGrade, filterStructureType, filterOperationalFunction, filterUpdatedFrom, filterUpdatedTo,

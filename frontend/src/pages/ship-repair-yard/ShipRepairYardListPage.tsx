@@ -481,7 +481,7 @@ export default function ShipRepairYardList() {
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const res = await shipRepairYardCRUD.search({
         orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
@@ -498,9 +498,8 @@ export default function ShipRepairYardList() {
         pageSize,
       });
       setDataSource(res.data); setTotal(res.total);
-    } catch (err: unknown) {
+    } catch {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách cơ sở sửa chữa, đóng tàu'));
     } finally { setIsLoading(false); }
   }, [managingUnitId, filterName, filterCode, filterPortId, filterPierId,
     filterProvince, filterOperationalStatus,

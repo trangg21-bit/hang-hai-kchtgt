@@ -35,12 +35,17 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.PageImpl;
 
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -98,7 +103,7 @@ class VhfServiceTest {
         when(principal.getId()).thenReturn(USER_ID);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
 
         entity = Vhf.builder()
                 .id(ID)
@@ -136,6 +141,66 @@ class VhfServiceTest {
     }
 
     @Test
+    void createWithApproveActionDirectlyApprovesWithoutHistory() {
+        User principal = mock(User.class);
+        when(principal.getId()).thenReturn(USER_ID);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "pass",
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateVhfRequest req = createRequest();
+        req.setAction("approve");
+
+        VhfResponse result = service.create(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        assertNotNull(result.getSubmittedDate());
+        assertEquals(USER_ID, result.getSubmittedBy());
+        assertNotNull(result.getApprovedDateLevel2());
+        assertEquals(USER_ID, result.getApproverLevel2());
+        assertEquals("Lưu và phê duyệt", result.getApprovalContentLevel2());
+        // Tạo mới chọn "Lưu và phê duyệt" tuyệt đối KHÔNG ghi lịch sử thay đổi hay approvalStatus ảo
+        verify(historyRepository, never()).save(any());
+        verify(changeHistoryService, never()).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createWithApproveAction_WithoutApproveC2Permission_ThrowsAccessDeniedException() {
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        User regularUser = mock(User.class);
+        when(regularUser.getId()).thenReturn(USER_ID);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(regularUser, "pass",
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        CreateVhfRequest req = createRequest();
+        req.setAction("approve");
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class, () -> service.create(req));
+    }
+
+    @Test
+    void createWithSubmitAction_AppliesRule14ViaApprovalService() {
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateVhfRequest req = createRequest();
+        req.setAction("submit");
+
+        VhfResponse result = service.create(req);
+
+        // Sub-level user submit -> PENDING_APPROVAL
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
+        assertNotNull(result.getSubmittedDate());
+        assertEquals(USER_ID, result.getSubmittedBy());
+    }
+
+    @Test
     void updateApprovedRecordForcesReApproval() {
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
@@ -152,6 +217,12 @@ class VhfServiceTest {
 
     @Test
     void updateApprovedRecordWithApproveActionRetainsApprovedAndRecordsHistory() {
+        User principal = mock(User.class);
+        when(principal.getId()).thenReturn(USER_ID);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "pass",
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
+
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
         when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -276,5 +347,73 @@ class VhfServiceTest {
 
         String code = service.generateDeviceCode();
         assertEquals("VHF-000007", code);
+    }
+
+    @Test
+    void findAll_whenApprovalStatusIsNull_passesIsDeletedFalseAndNullApprovalStatus() {
+        when(vhfRepository.searchVhf(
+                any(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 10, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        verify(vhfRepository).searchVhf(
+                eq(Boolean.FALSE),
+                anyBoolean(), any(), anyBoolean(), any(),
+                isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+    }
+
+    @Test
+    void findAll_whenApprovalStatusIsArchived_passesIsDeletedTrueAndNullApprovalStatus() {
+        when(vhfRepository.searchVhf(
+                any(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 10, null, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null, null, null, null);
+
+        verify(vhfRepository).searchVhf(
+                eq(Boolean.TRUE),
+                anyBoolean(), any(), anyBoolean(), any(),
+                isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+    }
+
+    @Test
+    void findAll_whenApprovalStatusIsDraft_passesIsDeletedFalseAndDraftApprovalStatus() {
+        when(vhfRepository.searchVhf(
+                any(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 10, null, null, null, null, null, null, "DRAFT", null, null, null, null, null, null, null, null, null);
+
+        verify(vhfRepository).searchVhf(
+                eq(Boolean.FALSE),
+                anyBoolean(), any(), anyBoolean(), any(),
+                isNull(), isNull(), isNull(), isNull(), eq(ApprovalStatus.DRAFT),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+    }
+
+    @Test
+    void findAll_whenApprovalStatusIsAll_passesIsDeletedFalseAndNullApprovalStatus() {
+        when(vhfRepository.searchVhf(
+                any(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 10, null, null, null, null, null, null, "ALL", null, null, null, null, null, null, null, null, null);
+
+        verify(vhfRepository).searchVhf(
+                eq(Boolean.FALSE),
+                anyBoolean(), any(), anyBoolean(), any(),
+                isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
     }
 }

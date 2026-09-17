@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.scada.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.scada.dto.ApprovalRequest;
 import com.hanghai.kchtg.scada.dto.ScadaResponse;
@@ -197,13 +198,33 @@ public class ScadaApprovalService {
       list = historyRepository.searchHistory(InfrastructureType.SCADA, id, normalizedKeyword, fromDate, toDate,
           paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
     }
-    Set<UUID> userIds = list.stream()
+
+    List<InfrastructureHistory> filteredList = list.stream()
+        .filter(h -> {
+          if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
+            return false;
+          }
+          String field = h.getChangedField();
+          if (field != null) {
+            String norm = field.trim().toLowerCase();
+            if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+              return false;
+            }
+          }
+          if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+            return false;
+          }
+          return true;
+        })
+        .collect(Collectors.toList());
+
+    Set<UUID> userIds = filteredList.stream()
         .map(InfrastructureHistory::getApprovedBy)
         .filter(Objects::nonNull)
         .collect(Collectors.toSet());
     Map<UUID, User> userMap = resolveUsers(userIds);
 
-    return list.stream()
+    return filteredList.stream()
         .map(h -> {
           User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
           String userName = formatUserIdentity(u);
@@ -345,7 +366,7 @@ public class ScadaApprovalService {
           if (rs.isPresent()) return rs.get().getStationName();
         }
         if (jdbcTemplate != null) {
-          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
           List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);

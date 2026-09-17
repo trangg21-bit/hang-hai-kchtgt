@@ -689,6 +689,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       } else {
         const res = await createVhf({
           ...payload,
+          action: currentAction,
           approvalStatus: saveAction === 'APPROVED' ? 'APPROVED' : saveAction === 'SUBMIT' ? 'PENDING_APPROVAL' : 'DRAFT',
         } as unknown as CreateVhfRequest);
         targetId = res.id;

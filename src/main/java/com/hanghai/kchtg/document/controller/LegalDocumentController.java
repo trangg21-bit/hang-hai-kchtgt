@@ -154,7 +154,7 @@ public class LegalDocumentController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename(attachment.getDocumentName()).build().toString())
+                        ContentDisposition.attachment().filename(attachment.getDocumentName(), java.nio.charset.StandardCharsets.UTF_8).build().toString())
                 .body(resource);
     }
 
@@ -284,7 +284,7 @@ public class LegalDocumentController {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.setContentDisposition(ContentDisposition.attachment()
-                .filename((doc.getDocumentNumber() != null ? doc.getDocumentNumber() : "van-ban") + ".pdf").build());
+                .filename((doc.getDocumentNumber() != null ? doc.getDocumentNumber() : "van-ban") + ".pdf", java.nio.charset.StandardCharsets.UTF_8).build());
         return new ResponseEntity<>(baos.toByteArray(), headers, HttpStatus.OK);
     }
 

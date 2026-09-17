@@ -901,15 +901,14 @@ const VtsAssistListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || 0)
+        (counts.REJECTED_LEVEL2 || 0)
     );
   }, [
     filterValues.orgUnitId,

@@ -18,6 +18,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -56,6 +57,8 @@ public class RadarStationController {
         try {
             RadarStationResponse response = service.create(request, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
+        } catch (AccessDeniedException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("Lỗi khi tạo trạm radar: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
@@ -173,6 +176,8 @@ public class RadarStationController {
         try {
             RadarStationResponse response = service.update(id, request, getUserId(authentication));
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
+        } catch (AccessDeniedException e) {
+            throw e;
         } catch (Exception e) {
             log.warn("Lỗi khi cập nhật trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

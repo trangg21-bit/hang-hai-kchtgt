@@ -31,6 +31,7 @@ export interface ListParams {
   conditionStatus?: string;
   status?: string;
   approvalStatus?: string;
+  isDeleted?: boolean;
   updatedBy?: string;
   updatedFrom?: string;
   updatedTo?: string;
@@ -82,6 +83,7 @@ export const dikeRevetmentCRUD = {
       conditionStatus: params?.conditionStatus,
       status: params?.status,
       approvalStatus: params?.approvalStatus,
+      isDeleted: params?.isDeleted,
       updatedBy: params?.updatedBy,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,

@@ -674,7 +674,7 @@ export default function AnchorageListPage() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const r = await anchorageCRUD.search({
         orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
@@ -692,8 +692,8 @@ export default function AnchorageListPage() {
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
-    } catch (ex: unknown) {
-      setIsError(true); setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách khu neo đậu'));
+    } catch {
+      setIsError(true);
     } finally {
       setIsLoading(false);
     }

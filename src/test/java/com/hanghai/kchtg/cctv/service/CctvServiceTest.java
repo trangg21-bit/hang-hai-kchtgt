@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -96,7 +97,7 @@ class CctvServiceTest {
         // Constructor 3 tham số → authenticated=true để SecurityUtils.getCurrentUserId() trả USER_ID.
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
 
         entity = Cctv.builder()
                 .id(ID)
@@ -145,6 +146,38 @@ class CctvServiceTest {
         // "Lưu và gửi phê duyệt" khi tạo mới phải ghi nhận thông tin gửi duyệt
         assertNotNull(result.getSubmittedDate());
         assertEquals(USER_ID, result.getSubmittedBy());
+    }
+
+    @Test
+    void createWithApproveActionDirectlyApprovesWithoutHistory() {
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-001")).thenReturn(false);
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CctvResponse result = service.create(createRequest("approve"));
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        assertNotNull(result.getSubmittedDate());
+        assertEquals(USER_ID, result.getSubmittedBy());
+        assertNotNull(result.getApprovedDateLevel2());
+        assertEquals(USER_ID, result.getApproverLevel2());
+        assertEquals("Lưu và phê duyệt", result.getApprovalContentLevel2());
+        // Tạo mới chọn "Lưu và phê duyệt" tuyệt đối KHÔNG ghi lịch sử thay đổi hay approvalStatus ảo
+        verify(historyRepository, never()).save(any());
+        verify(changeHistoryService, never()).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createWithApproveAction_WithoutApproveC2Permission_ThrowsAccessDeniedException() {
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-001")).thenReturn(false);
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        User regularUser = mock(User.class);
+        when(regularUser.getId()).thenReturn(USER_ID);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(regularUser, "pass",
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        assertThrows(AccessDeniedException.class, () -> service.create(createRequest("approve")));
     }
 
     @Test
@@ -449,5 +482,41 @@ class CctvServiceTest {
 
         verify(attachmentRepository).delete(att);
         verify(historyRepository).save(any());
+    }
+
+    @Test
+    void findAll_whenApprovalStatusNull_shouldPassIsDeletedFalse() {
+        when(cctvRepository.searchCctv(
+                org.mockito.ArgumentMatchers.eq(Boolean.FALSE),
+                any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(entity)));
+
+        org.springframework.data.domain.Page<CctvResponse> page = service.findAll(
+                0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+
+        assertEquals(1, page.getTotalElements());
+        verify(cctvRepository).searchCctv(
+                org.mockito.ArgumentMatchers.eq(Boolean.FALSE),
+                any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void findAll_whenApprovalStatusArchived_shouldPassIsDeletedTrue() {
+        when(cctvRepository.searchCctv(
+                org.mockito.ArgumentMatchers.eq(Boolean.TRUE),
+                any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        org.springframework.data.domain.Page<CctvResponse> page = service.findAll(
+                0, 20, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null, null, null, null);
+
+        assertEquals(0, page.getTotalElements());
+        verify(cctvRepository).searchCctv(
+                org.mockito.ArgumentMatchers.eq(Boolean.TRUE),
+                any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 }

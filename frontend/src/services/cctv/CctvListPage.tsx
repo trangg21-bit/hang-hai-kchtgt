@@ -59,7 +59,8 @@ import AppDrawer from "../../components/shared/AppDrawer";
 import CctvForm, { type CctvFormRef } from "./CctvForm";
 import { DetailTable } from "../../components/shared/DetailTable";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
+import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { useAuthStore } from "../../store/authStore";
@@ -375,15 +376,15 @@ const CctvListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+    // (Bản ghi "Đã xóa" không tính vào tab Tất cả theo quy chuẩn AGENTS.md)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || 0)
+        (counts.REJECTED_LEVEL2 || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -945,12 +946,17 @@ const CctvListPage = () => {
     return raw || null;
   };
 
-  const resolveHistoryActionMeta = (item: any): { label: string; color: string; bg: string } => {
+  const resolveHistoryActionMeta = (item: any, changes?: any[]): { label: string; color: string; bg: string } => {
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
     const rawReason = String(item?.reason ?? '').toLowerCase();
     const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
     if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
       return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}15` };
+    }
+    // Nếu có trường dữ liệu thông thường thay đổi, ưu tiên hiển thị [Cập nhật]
+    const hasFieldUpdate = changes && changes.some((c: any) => !isAttachmentField(c.field));
+    if (hasFieldUpdate) {
+      return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}15` };
     }
     if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
       return { label: 'Tải lên tệp', color: statusInfo, bg: `${statusInfo}15` };
@@ -1077,7 +1083,6 @@ const CctvListPage = () => {
     'unitOfMeasure', 'Đơn vị tính',
     'yearOfUse', 'Năm đưa vào sử dụng',
     'operationalStatus', 'Trạng thái hoạt động', 'Tình trạng hoạt động',
-    'approvalStatus', 'Trạng thái phê duyệt',
     'specifications', 'Thông số kỹ thuật',
     'maintenanceInformation', 'Thông tin bảo trì',
     'note', 'Ghi chú',
@@ -1091,10 +1096,21 @@ const CctvListPage = () => {
   ];
 
   const isMeaningfulChange = (
-    _field: string,
+    field: string,
     rawOld: string | null | undefined,
     rawNew: string | null | undefined,
   ): boolean => {
+    const f = (field || '').trim();
+    const fLower = f.toLowerCase();
+    if (
+      DEFAULT_IGNORED_FIELDS.has(f) ||
+      DEFAULT_IGNORED_FIELDS.has(fLower) ||
+      fLower === 'approvalstatus' ||
+      fLower === 'trạng thái phê duyệt' ||
+      fLower === 'trang thai phe duyet'
+    ) {
+      return false;
+    }
     const ov = rawOld != null ? String(rawOld).trim() : '';
     const nv = rawNew != null ? String(rawNew).trim() : '';
     if (ov === '' && nv === '') return false;
@@ -1166,7 +1182,7 @@ const CctvListPage = () => {
 
       const reasons = g.items.map((i: any) => i.reason || i.note).filter(Boolean);
 
-      if (orderedChanges.length === 0 && reasons.length === 0) {
+      if (orderedChanges.length === 0) {
         return null;
       }
 
@@ -1217,7 +1233,7 @@ const CctvListPage = () => {
             selectedRecord?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
           const changes = g.orderedChanges;
-          const actionMeta = resolveHistoryActionMeta(g.items[0] || {});
+          const actionMeta = resolveHistoryActionMeta(g.items[0] || {}, changes);
           const isCreate = changes.every(
             (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
           );
@@ -1258,7 +1274,7 @@ const CctvListPage = () => {
                 gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
                 gap: spaceLg,
                 alignItems: 'start',
-                marginBottom: gi < groups.length - 1 ? spaceMd : 0,
+                marginBottom: gi < validHistoryGroups.length - 1 ? spaceMd : 0,
               }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
@@ -1584,7 +1600,11 @@ const CctvListPage = () => {
         sortBy: sortField || "updatedAt",
         sortOrder: sortOrder === "ascend" ? "asc" : "desc",
       });
-      setData(result.content);
+      const isAllTab = !filterValues.approvalStatus || filterValues.approvalStatus === 'all';
+      const content = isAllTab
+        ? (result.content || []).filter((r: CctvResponse) => !r.deletedAt && !r.deletedBy)
+        : (result.content || []);
+      setData(content);
       setTotal(result.totalElements);
       setPage(result.number);
     } catch (error: unknown) {

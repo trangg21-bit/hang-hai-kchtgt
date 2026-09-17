@@ -131,8 +131,11 @@ public class CctvService {
     UUID orgUnitId = request.getOrgUnitId();
     validateAllowedOrgUnit(orgUnitId);
 
-    // Build entity
-    ApprovalStatus targetApprovalStatus = resolveCreateApprovalStatus(request.getAction());
+    String action = request.getAction();
+    if ("approve".equalsIgnoreCase(action)) {
+      approvalService.requireApproveC2Permission(currentUserId, "cctv:approvec2");
+    }
+    ApprovalStatus targetApprovalStatus = resolveCreateApprovalStatus(action);
     Cctv entity = Cctv.builder()
       .deviceCode(deviceCode)
       .deviceName(request.getDeviceName())
@@ -178,7 +181,6 @@ public class CctvService {
       saved = cctvRepository.save(saved);
     }
 
-    String action = request.getAction();
     if ("submit".equalsIgnoreCase(action)) {
       // "Lưu và gửi phê duyệt" khi tạo mới — đi qua approvalService.submit() để áp dụng
       // Rule 14 (người gửi cấp Cục → thẳng "Chờ Cục duyệt"; cấp dưới → "Chờ Cảng vụ / Chi cục duyệt")
@@ -190,10 +192,20 @@ public class CctvService {
       saved.setApprovalContentLevel2(null);
       saved = cctvRepository.save(saved);
     } else if ("approve".equalsIgnoreCase(action)) {
-      // "Lưu và phê duyệt" khi tạo mới (T12) — ghi nhận người duyệt, ngày duyệt
-      // và bản ghi lịch sử thay vì chỉ set trạng thái APPROVED.
-      approvalService.recordSaveAndApprove(saved, InfrastructureType.CCTV,
-          "Tạo mới và phê duyệt", currentUserId);
+      // "Lưu và phê duyệt" khi tạo mới: thiết lập trạng thái Đã duyệt và cán bộ phê duyệt,
+      // KHÔNG ghi nhận lịch sử thay đổi (tạo mới không có biến động dữ liệu cũ -> mới).
+      LocalDateTime now = LocalDateTime.now();
+      saved.setApprovalStatus(ApprovalStatus.APPROVED);
+      saved.setSubmittedDate(now);
+      saved.setSubmittedBy(currentUserId);
+      saved.setApproverLevel1(currentUserId);
+      saved.setApprovedDateLevel1(now);
+      saved.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+      saved.setApprovalContentLevel1("Cấp Cục phê duyệt trực tiếp");
+      saved.setApproverLevel2(currentUserId);
+      saved.setApprovedDateLevel2(now);
+      saved.setLevel2ApprovalContent("Lưu và phê duyệt");
+      saved.setApprovalContentLevel2("Lưu và phê duyệt");
       saved = cctvRepository.save(saved);
     }
 
@@ -263,9 +275,9 @@ public class CctvService {
         : List.of();
 
     OperationalStatus opStatus = parseOperationalStatus(operationalStatus);
-    Boolean isDeleted = null;
+    Boolean isDeleted = Boolean.FALSE;
     ApprovalStatus apprStatus = null;
-    if (approvalStatus != null && !approvalStatus.isBlank()) {
+    if (approvalStatus != null && !approvalStatus.isBlank() && !"ALL".equalsIgnoreCase(approvalStatus.trim())) {
       String upper = approvalStatus.trim().toUpperCase();
       if ("DELETED".equals(upper) || "ARCHIVED".equals(upper) || "DA_XOA".equals(upper)) {
         isDeleted = Boolean.TRUE;
@@ -409,6 +421,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
       // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
       // người duyệt/ngày duyệt; ngoài ra phải duyệt lại.
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
+        approvalService.requireApproveC2Permission(currentUserId, "cctv:approvec2");
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         if (entity.getApproverLevel1() == null) {
           entity.setApproverLevel1(currentUserId);
@@ -748,7 +761,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
           if (rs.isPresent()) return rs.get().getStationName();
         }
         if (jdbcTemplate != null) {
-          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
           List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);
@@ -980,8 +993,11 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
     List<Attachment> saved = new ArrayList<>();
     java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
     // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_UPLOADED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
+    // Guard: Thêm mới không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát thời điểm hiện tại).
     Cctv entity = cctvRepository.findById(entityId).orElse(null);
-    boolean wasApproved = entity != null
+    boolean isNewlyCreated = entity != null && entity.getCreatedAt() != null
+        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
+    boolean wasApproved = !isNewlyCreated && entity != null
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     for (MultipartFile file : files) {
