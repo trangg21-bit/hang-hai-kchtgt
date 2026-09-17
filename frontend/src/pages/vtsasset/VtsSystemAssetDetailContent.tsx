@@ -59,8 +59,6 @@ export interface VtsSystemAssetDetailContentProps {
 
 const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
-const fmtNum = (v?: number | null): string =>
-  v != null ? Number(v).toLocaleString('vi-VN') : '—';
 
 export default function VtsSystemAssetDetailContent({
   open,

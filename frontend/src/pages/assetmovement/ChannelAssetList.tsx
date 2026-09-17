@@ -1187,11 +1187,6 @@ export default function ChannelAssetList() {
         onClick: openCreate,
       },
     ];
-  }, [openCreate, perms.canCreate]);
-        variant: 'primary',
-        onClick: openCreate,
-      },
-    ];
   }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (

@@ -53,7 +53,6 @@ import type {
   AisSystemAssetFilters,
   AisSystemAssetPayload,
 } from '../../services/aisasset/types';
-import api from '../../services/api';
 import {
   createAssetDecrease,
   createAssetIncrease,
@@ -68,10 +67,6 @@ import type {
   AssetIncreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
-import {
-  organizationService,
-  type Organization,
-} from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
@@ -88,7 +83,6 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
