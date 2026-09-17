@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -17,6 +17,7 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 
 export type FormValues = Omit<
   ScadaSystemAssetPayload,
@@ -34,34 +35,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Phương tiện vận tải',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const SCADA_ASSET_TYPES = [
-  'Thiết bị đầu cuối thu thập dữ liệu (RTU)',
-  'Bộ điều khiển logic lập trình (PLC)',
-  'Máy chủ điều khiển & máy chủ dữ liệu SCADA',
-  'Trạm giao diện người - máy (HMI / Workstation)',
-  'Hệ thống truyền thông mạng SCADA (Switch / Router / Modem)',
-  'Cảm biến & Bộ đo lường thu thập số liệu',
-  'Tủ điều khiển SCADA & Nguồn dự phòng UPS',
-  'Hệ thống phụ trợ SCADA',
-  'Khác',
-];
-const UNITS = ['Bộ', 'Cái', 'Chiếc', 'Hệ thống', 'm', 'm²'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface ScadaSystemAssetFormProps {
   open: boolean;
@@ -163,7 +144,7 @@ export default function ScadaSystemAssetForm({
             name: 'assetType',
             label: 'Loại tài sản',
             type: FormFieldType.Select,
-            options: SCADA_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+            options: MARITIME_ASSET_TYPE_OPTIONS,
             placeholder: 'Chọn loại tài sản',
             colSpan: 12,
           },
@@ -180,6 +161,7 @@ export default function ScadaSystemAssetForm({
             label: 'Tên tài sản',
             type: FormFieldType.TextArea,
             rows: 2,
+            maxLength: 255,
             required: true,
             rules: [{ required: true, message: 'Vui lòng nhập tên tài sản' }],
             placeholder: 'Nhập tên tài sản',
@@ -189,6 +171,7 @@ export default function ScadaSystemAssetForm({
             name: 'barcode',
             label: 'Barcode',
             type: FormFieldType.Text,
+            maxLength: 100,
             placeholder: 'Nhập barcode',
             colSpan: 12,
           },
@@ -196,7 +179,7 @@ export default function ScadaSystemAssetForm({
             name: 'assetCondition',
             label: 'Tình trạng tài sản',
             type: FormFieldType.Select,
-            options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+            options: ASSET_CONDITION_OPTIONS,
             placeholder: 'Chọn tình trạng',
             colSpan: 12,
           },
@@ -204,7 +187,7 @@ export default function ScadaSystemAssetForm({
             name: 'usageStatus',
             label: 'Hiện trạng sử dụng',
             type: FormFieldType.Select,
-            options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
+            options: USAGE_STATUS_OPTIONS,
             placeholder: 'Chọn hiện trạng sử dụng',
             colSpan: 12,
           },
@@ -212,7 +195,7 @@ export default function ScadaSystemAssetForm({
             name: 'assetGroup',
             label: 'Nhóm tài sản',
             type: FormFieldType.Select,
-            options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+            options: ASSET_GROUP_OPTIONS,
             placeholder: 'Chọn nhóm tài sản',
             colSpan: 12,
           },
@@ -220,6 +203,7 @@ export default function ScadaSystemAssetForm({
             name: 'assetSubgroup',
             label: 'Phân nhóm tài sản',
             type: FormFieldType.Text,
+            maxLength: 200,
             placeholder: 'Nhập phân nhóm tài sản',
             colSpan: 12,
           },
@@ -227,7 +211,7 @@ export default function ScadaSystemAssetForm({
             name: 'origin',
             label: 'Nguồn gốc',
             type: FormFieldType.Select,
-            options: ORIGINS.map((v) => ({ value: v, label: v })),
+            options: ASSET_ORIGIN_OPTIONS,
             placeholder: 'Chọn nguồn gốc',
             colSpan: 12,
           },
@@ -236,6 +220,7 @@ export default function ScadaSystemAssetForm({
             label: 'Địa chỉ',
             type: FormFieldType.TextArea,
             rows: 2,
+            maxLength: 2000,
             placeholder: 'Nhập địa chỉ tài sản',
             colSpan: 24,
           },
@@ -243,14 +228,26 @@ export default function ScadaSystemAssetForm({
             name: 'quantity',
             label: 'Số lượng',
             type: FormFieldType.Number,
+            required: true,
+            rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
             placeholder: 'Nhập số lượng',
             colSpan: 12,
+            renderInput: () => (
+              <InputNumber
+                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                min={1}
+                placeholder="Nhập số lượng"
+                {...fmtInputNumber}
+              />
+            ),
           },
           {
             name: 'quantityUnit',
             label: 'Đơn vị tính số lượng',
             type: FormFieldType.Select,
-            options: UNITS.map((v) => ({ value: v, label: v })),
+            required: true,
+            rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính số lượng' }],
+            options: ASSET_QUANTITY_UNIT_OPTIONS,
             placeholder: 'Chọn đơn vị tính',
             colSpan: 12,
           },
@@ -258,6 +255,7 @@ export default function ScadaSystemAssetForm({
             name: 'model',
             label: 'Model',
             type: FormFieldType.Text,
+            maxLength: 100,
             placeholder: 'Nhập model',
             colSpan: 12,
           },
@@ -265,6 +263,7 @@ export default function ScadaSystemAssetForm({
             name: 'serialNumber',
             label: 'Serial',
             type: FormFieldType.Text,
+            maxLength: 100,
             placeholder: 'Nhập serial',
             colSpan: 12,
           },
@@ -272,6 +271,7 @@ export default function ScadaSystemAssetForm({
             name: 'countryOfOrigin',
             label: 'Xuất xứ',
             type: FormFieldType.Text,
+            maxLength: 100,
             placeholder: 'Nhập xuất xứ',
             colSpan: 12,
           },
@@ -279,6 +279,7 @@ export default function ScadaSystemAssetForm({
             name: 'manufacturer',
             label: 'Hãng sản xuất',
             type: FormFieldType.Text,
+            maxLength: 200,
             placeholder: 'Nhập hãng sản xuất',
             colSpan: 12,
           },
@@ -315,6 +316,7 @@ export default function ScadaSystemAssetForm({
             label: 'Vị trí tài sản',
             type: FormFieldType.TextArea,
             rows: 2,
+            maxLength: 2000,
             placeholder: 'Nhập vị trí tài sản',
             colSpan: 24,
           },
@@ -327,8 +329,6 @@ export default function ScadaSystemAssetForm({
         customContent: (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
-              refType="SCADA_SYSTEM_ASSET"
-              refId={selected?.id || 'new'}
               attachments={attachments}
               readonly={false}
               onUpload={onUploadAttachment}
@@ -411,6 +411,7 @@ export default function ScadaSystemAssetForm({
             name: 'assignmentDecisionNumber',
             label: 'Số quyết định giao (bao gồm cả tăng vốn)',
             type: FormFieldType.Text,
+            maxLength: 200,
             placeholder: 'Nhập số quyết định giao',
             colSpan: 12,
           },
@@ -489,7 +490,9 @@ export default function ScadaSystemAssetForm({
             name: 'disposalMethod',
             label: 'Hình thức xử lý tài sản',
             type: FormFieldType.Select,
-            options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+            required: true,
+            rules: [{ required: true, message: 'Vui lòng chọn hình thức xử lý' }],
+            options: DISPOSAL_METHOD_OPTIONS,
             placeholder: 'Chọn hình thức xử lý',
             colSpan: 12,
           },
@@ -506,7 +509,6 @@ export default function ScadaSystemAssetForm({
       onDownloadAttachment,
       form,
       handleLoadReadonlyPreviewImage,
-      selected?.id,
     ]
   );
 
@@ -540,7 +542,7 @@ export default function ScadaSystemAssetForm({
     <DynamicFormSidebar
       open={open}
       title={title}
-      form={form}
+      form={form as unknown as FormInstance<Record<string, unknown>>}
       tabs={tabs}
       footerActions={sidebarActions}
       actions={sidebarActions}

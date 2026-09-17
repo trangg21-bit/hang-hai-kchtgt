@@ -1,50 +1,50 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
-  BankOutlined,
-  SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
+  BankOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  RocketOutlined,
+  SlidersOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type {
-  PortTerminalAsset,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
-  AssetValueAdjustmentDetails,
-} from "../../services/assetmovement/types";
-import {
-  PORT_TERMINAL_ASSET_SCREEN,
-  type InfrastructureAssetScreenConfig,
-  type InfrastructureReferenceOption,
-} from "./infrastructureAssetScreen";
-import { fmtNum } from "../../utils/numFmt";
-import toast from "../../components/ToastNotification";
-import api from "../../services/api";
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-  triggerBlobDownload,
-  resolveMimeType,
-} from "../../components/shared/InfrastructureAttachmentTab";
-import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
-import {
-  colors,
-  actionPrimary,
-  textTertiary,
-  fontSizeMd,
-  fontWeightBold,
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-} from "../../themetokenchk";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from "../../components/shared/dynamic-view-sidebar";
+import InfrastructureAttachmentTab, {
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from "../../components/shared/InfrastructureAttachmentTab";
+import toast from "../../components/ToastNotification";
+import api from "../../services/api";
+import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+  PortTerminalAsset,
+} from "../../services/assetmovement/types";
+import {
+  actionPrimary,
+  colors,
+  fontSizeMd,
+  fontWeightBold,
+  statusAttention,
+  statusCritical,
+  statusDraft,
+  statusOperational,
+  textTertiary,
+} from "../../themetokenchk";
+import { fmtNum } from "../../utils/numFmt";
+import {
+  PORT_TERMINAL_ASSET_SCREEN,
+  type InfrastructureAssetScreenConfig,
+  type InfrastructureReferenceOption,
+} from "./infrastructureAssetScreen";
 
 export interface PortTerminalAssetDetailContentProps {
   open: boolean;
@@ -421,11 +421,9 @@ export default function PortTerminalAssetDetailContent({
                 label: "Tình trạng tài sản",
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === "Tốt"
+                  val === ""
                     ? statusOperational
-                    : val === "Không sử dụng được"
-                      ? statusCritical
-                      : statusAttention,
+                    : statusCritical,
               },
               {
                 name: "usageStatus",
@@ -746,7 +744,9 @@ export default function PortTerminalAssetDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Danh mục tài sản</span>
                       <span className="chk-detail-value">
-                        {row.assetCategory || "—"}
+                        {(!row.assetCategory || (r && row.assetCategory === r.assetName))
+                          ? ([r?.assetCode, r?.assetName].filter(Boolean).join(' - ') || row.assetCategory || "—")
+                          : row.assetCategory}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -818,7 +818,7 @@ export default function PortTerminalAssetDetailContent({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Ghi chú</span>
                       <span className="chk-detail-value">
-                        {row.description || ""}
+                        {row.description || row.notes || "—"}
                       </span>
                     </div>
                   </div>

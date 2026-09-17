@@ -8,17 +8,18 @@ import type {
   VhfAsset,
   VhfAssetPayload,
 } from '../../services/vhfAsset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import { spaceFormField } from '../../themetokenchk';
+import { createAssetDepreciationFormSection } from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 
 export type FormValues = Omit<
   VhfAssetPayload,
@@ -36,25 +37,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Hệ thống thông tin liên lạc VHF',
-  'Máy thu phát VHF cố định',
-  'Máy thu phát VHF cầm tay',
-  'Hệ thống anten và cột anten VHF',
-  'Thiết bị ghi âm chuyên dụng VHF',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Tuyến', 'Chiếc'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+} from '../../constants/assetDropdown';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export interface VhfAssetFormProps {
   open: boolean;
@@ -94,6 +84,7 @@ export default function VhfAssetForm({
       transmissions.map((item) => ({
         value: item.id,
         label: `${item.deviceCode} - ${item.deviceName}`,
+        orgUnitId: item.orgUnitId ?? undefined,
       })),
     [transmissions],
   );
@@ -148,11 +139,9 @@ export default function VhfAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'Tài sản HTTT liên lạc VHF',
                 placeholder: 'Chọn loại tài sản',
-                options: [
-                  { value: 'Tài sản HTTT liên lạc VHF', label: 'Tài sản HTTT liên lạc VHF' },
-                ],
+                options: MARITIME_ASSET_TYPE_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'assetCode',
@@ -165,6 +154,7 @@ export default function VhfAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -173,45 +163,53 @@ export default function VhfAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã vạch barcode',
               },
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'Tốt',
-                options: ASSET_CONDITIONS.map((c) => ({ value: c, label: c })),
+                placeholder: 'Chọn tình trạng',
+                options: ASSET_CONDITION_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: FormFieldType.Select,
-                initialValue: 'Đang sử dụng',
-                options: USAGE_STATUSES.map((s) => ({ value: s, label: s })),
+                placeholder: 'Chọn hiện trạng',
+                options: USAGE_STATUS_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'assetGroup',
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((g) => ({ value: g, label: g })),
+                options: ASSET_GROUP_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
                 name: 'origin',
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
-                options: ORIGINS.map((o) => ({ value: o, label: o })),
+                placeholder: 'Chọn nguồn gốc',
+                options: ASSET_ORIGIN_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 placeholder: 'Nhập địa chỉ đặt tài sản',
                 colSpan: 24,
               },
@@ -226,38 +224,47 @@ export default function VhfAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
-                min: 0,
-                initialValue: 1,
+                required: true,
+                min: 1,
+                formatter: fmtInputNumber,
+                placeholder: '0',
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               },
               {
                 name: 'quantityUnit',
                 label: 'Đơn vị tính số lượng',
                 type: FormFieldType.Select,
-                initialValue: 'Bộ',
-                options: UNITS.map((u) => ({ value: u, label: u })),
+                required: true,
+                placeholder: 'Chọn đơn vị tính',
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập model thiết bị',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập số serial thiết bị',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ (quốc gia)',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 50,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -277,6 +284,7 @@ export default function VhfAssetForm({
                 label: 'Diện tích đất (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 15,
                 placeholder: 'Nhập diện tích đất',
               },
               {
@@ -284,12 +292,14 @@ export default function VhfAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 15,
                 placeholder: 'Nhập diện tích sàn',
               },
               {
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 placeholder: 'Nhập mô tả vị trí lắp đặt / trạm phát sóng VHF',
                 colSpan: 24,
               },
@@ -316,100 +326,7 @@ export default function VhfAssetForm({
         key: 'details',
         label: 'Thông tin chi tiết',
         sections: [
-          {
-            key: 'depreciation_info',
-            title: 'Giá trị tài sản & Khấu hao hao mòn',
-            icon: <SlidersOutlined />,
-            fields: [
-              {
-                name: 'declarationDate',
-                label: 'Ngày kê khai tài sản',
-                type: FormFieldType.Date,
-              },
-              {
-                name: 'originalValue',
-                label: 'Nguyên giá (VNĐ)',
-                type: FormFieldType.Number,
-                min: 0,
-                placeholder: 'Nhập nguyên giá',
-              },
-              {
-                name: 'depreciationRate',
-                label: 'Tỷ lệ hao mòn/khấu hao (%)',
-                type: FormFieldType.Number,
-                min: 0,
-                max: 100,
-                placeholder: 'Nhập tỷ lệ (%)',
-              },
-              {
-                name: 'remainingValue',
-                label: 'Giá trị còn lại (VNĐ)',
-                type: FormFieldType.Readonly,
-                computedValue: (_f, values) => {
-                  const original = Number(values.originalValue) || 0;
-                  const accumulated = Number(values.accumulatedDepreciation) || 0;
-                  return Math.max(0, original - accumulated);
-                },
-                valueFormatter: (val) => fmtInputNumber(Number(val) || 0) + ' VNĐ',
-              },
-              {
-                name: 'valueUnit',
-                label: 'Đơn vị tính giá trị',
-                type: FormFieldType.Select,
-                disabled: true,
-                initialValue: 'VNĐ',
-                options: [{ value: 'VNĐ', label: 'VNĐ' }],
-              },
-              {
-                name: 'assignmentDecisionNumber',
-                label: 'Số quyết định giao',
-                type: FormFieldType.Text,
-                placeholder: 'Nhập số quyết định giao',
-              },
-              {
-                name: 'depreciationStartDate',
-                label: 'Ngày tính khấu hao',
-                type: FormFieldType.Date,
-              },
-              {
-                name: 'depreciationMonths',
-                label: 'Số tháng tính khấu hao',
-                type: FormFieldType.Number,
-                min: 0,
-                placeholder: 'Nhập số tháng',
-              },
-              {
-                name: 'depreciationEndDate',
-                label: 'Ngày hết khấu hao',
-                type: FormFieldType.Date,
-              },
-              {
-                name: 'accumulatedDepreciation',
-                label: 'Khấu hao lũy kế (VNĐ)',
-                type: FormFieldType.Number,
-                min: 0,
-                placeholder: 'Nhập khấu hao lũy kế',
-              },
-              {
-                name: 'monthlyDepreciation',
-                label: 'Khấu hao tháng (VNĐ)',
-                type: FormFieldType.Readonly,
-                computedValue: (_f, values) => {
-                  const original = Number(values.originalValue) || 0;
-                  const months = Number(values.depreciationMonths) || 0;
-                  return months > 0 ? Math.round(original / months) : 0;
-                },
-                valueFormatter: (val) => fmtInputNumber(Number(val) || 0) + ' VNĐ',
-              },
-              {
-                name: 'disposalMethod',
-                label: 'Hình thức xử lý tài sản',
-                type: FormFieldType.Select,
-                placeholder: 'Chọn hình thức xử lý',
-                options: DISPOSAL_METHODS.map((d) => ({ value: d, label: d })),
-              },
-            ],
-          },
+          createAssetDepreciationFormSection<FormValues>(),
         ],
       },
     ];

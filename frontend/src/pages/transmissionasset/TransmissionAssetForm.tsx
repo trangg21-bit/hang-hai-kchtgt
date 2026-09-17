@@ -38,22 +38,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Hệ thống mạng truyền dẫn',
-  'Thiết bị truyền dẫn quang/vi ba',
-  'Máy móc, thiết bị viễn thông',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Tuyến', 'Chiếc'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
+
 
 export interface TransmissionAssetFormProps {
   open: boolean;
@@ -93,6 +85,7 @@ export default function TransmissionAssetForm({
       transmissions.map((item) => ({
         value: item.id,
         label: `${item.deviceCode} - ${item.deviceName}`,
+        orgUnitId: item.orgUnitId ?? undefined,
       })),
     [transmissions],
   );
@@ -162,6 +155,7 @@ export default function TransmissionAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -170,45 +164,49 @@ export default function TransmissionAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã vạch barcode',
               },
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'Tốt',
-                options: ASSET_CONDITIONS.map((c) => ({ value: c, label: c })),
+                placeholder: 'Chọn tình trạng',
+                options: ASSET_CONDITION_OPTIONS,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: FormFieldType.Select,
-                initialValue: 'Đang sử dụng',
-                options: USAGE_STATUSES.map((s) => ({ value: s, label: s })),
+                placeholder: 'Chọn hiện trạng',
+                options: USAGE_STATUS_OPTIONS,
               },
               {
                 name: 'assetGroup',
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((g) => ({ value: g, label: g })),
+                options: ASSET_GROUP_OPTIONS,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
                 name: 'origin',
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
-                options: ORIGINS.map((o) => ({ value: o, label: o })),
+                placeholder: 'Chọn nguồn gốc',
+                options: ASSET_ORIGIN_OPTIONS,
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 placeholder: 'Nhập địa chỉ đặt tài sản',
                 colSpan: 24,
               },
@@ -223,38 +221,47 @@ export default function TransmissionAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
+                required: true,
                 min: 0,
                 initialValue: 1,
+                maxLength: 12,
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               },
               {
                 name: 'quantityUnit',
                 label: 'Đơn vị tính số lượng',
                 type: FormFieldType.Select,
-                initialValue: 'Bộ',
-                options: UNITS.map((u) => ({ value: u, label: u })),
+                required: true,
+                placeholder: 'Chọn đơn vị tính',
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập model thiết bị',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập số serial thiết bị',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ (quốc gia)',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 50,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -274,6 +281,7 @@ export default function TransmissionAssetForm({
                 label: 'Diện tích đất (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 15,
                 placeholder: 'Nhập diện tích đất',
               },
               {
@@ -281,12 +289,14 @@ export default function TransmissionAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 15,
                 placeholder: 'Nhập diện tích sàn',
               },
               {
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 placeholder: 'Nhập mô tả vị trí lắp đặt / trạm truyền dẫn',
                 colSpan: 24,
               },

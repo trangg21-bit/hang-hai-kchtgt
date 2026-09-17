@@ -11,7 +11,7 @@ import {
   Tabs,
 } from "antd";
 import type { FormInstance, Rule } from "antd/es/form";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import { useThemeToken } from "../../../context/ThemeTokenContext";
 import {
   actionPrimary,
@@ -28,9 +28,16 @@ import {
   spaceFormField,
 } from "../../../themetokenchk";
 import { formatDotNumber, parseDotNumber } from "../../../utils/numFmt";
-import { OrgUnitTreeSelect } from "../../org-unit";
+import { NumberInputWithCount } from "../NumberInputWithCount";
+import { resolveOrgSubtreeIds } from "../../org-unit";
+import { DynamicOrgUnitTreeSelect } from "./DynamicOrgUnitTreeSelect";
+import {
+  useDynamicFormOrgSync,
+  resolveEffectiveTabs,
+} from "./useDynamicFormOrgSync";
 import { AppDrawer } from "../AppDrawer";
 import {
+  type DynamicCascadingHelper,
   type DynamicFormSidebarProps,
   type FormFieldConfig,
   type FormSectionConfig,
@@ -85,6 +92,7 @@ function renderFormField<T extends Record<string, unknown>>(
   field: FormFieldConfig<T>,
   form: FormInstance<T>,
   formValues: T,
+  cascadingHelper?: DynamicCascadingHelper,
 ) {
   if (
     typeof field.hidden === "function"
@@ -120,27 +128,71 @@ function renderFormField<T extends Record<string, unknown>>(
 
   switch (field.type) {
     case FormFieldType.Number: {
-      controlNode = (
-        <InputNumber
-          min={field.min}
-          max={field.max}
-          formatter={field.formatter || formatDotNumber}
-          parser={(field.parser || parseDotNumber) as any}
-          placeholder={field.placeholder ?? (labelText ? `Nhập ${labelText}` : '0')}
-          disabled={field.disabled}
-          readOnly={field.readOnly}
-          style={{ ...defaultNumberInputStyle, ...field.controlStyle }}
-        />
-      );
+      const numberPlaceholder =
+        field.placeholder ?? (labelText ? `Nhập ${labelText}` : '0');
+      // Có maxLength => dùng ô số kèm hậu tố đếm chữ số; không có => giữ InputNumber mặc định.
+      // NumberInputWithCount không hỗ trợ `parser` (nó tự xử lý chuỗi số bằng stringMode),
+      // nên field Number vừa có maxLength vừa có parser là cấu hình xung đột -> báo lỗi rõ ràng
+      // thay vì âm thầm nuốt parser rồi đổi kiểu giá trị.
+      if (field.maxLength != null && field.parser) {
+        throw new Error(
+          `FormFieldConfig "${String(field.name)}": không thể dùng đồng thời "maxLength" và "parser" cho kiểu number. ` +
+            'NumberInputWithCount tự chuẩn hoá chuỗi số; hãy bỏ "parser" hoặc bỏ "maxLength".'
+        );
+      }
+      controlNode =
+        field.maxLength != null ? (
+          <NumberInputWithCount
+            maxLength={field.maxLength}
+            min={field.min}
+            max={field.max}
+            formatter={field.formatter || formatDotNumber}
+            placeholder={numberPlaceholder}
+            disabled={field.disabled}
+            readOnly={field.readOnly}
+            style={{ ...defaultNumberInputStyle, ...field.controlStyle }}
+          />
+        ) : (
+          <InputNumber
+            min={field.min}
+            max={field.max}
+            formatter={field.formatter || formatDotNumber}
+            parser={(field.parser || parseDotNumber) as (displayValue: string | undefined) => string | number}
+            placeholder={numberPlaceholder}
+            disabled={field.disabled}
+            readOnly={field.readOnly}
+            style={{ ...defaultNumberInputStyle, ...field.controlStyle }}
+          />
+        );
       break;
     }
     case FormFieldType.Select: {
+      let selectOptions = field.options;
+      // Tự động lọc thiết bị / bến cảng theo Đơn vị quản lý đã chọn nếu option có thuộc tính orgUnitId
+      if (cascadingHelper?.selectedOrgUnitId && selectOptions && selectOptions.length > 0) {
+        const hasOrgField = selectOptions.some((opt) => (opt as { orgUnitId?: unknown }).orgUnitId != null);
+        if (hasOrgField) {
+          const allowedOrgIds = resolveOrgSubtreeIds(
+            cascadingHelper.allOrganizations,
+            cascadingHelper.selectedOrgUnitId,
+          );
+          selectOptions = selectOptions.filter((opt) => {
+            const itemOrg = (opt as { orgUnitId?: unknown }).orgUnitId;
+            return (
+              !itemOrg ||
+              allowedOrgIds.has(String(itemOrg)) ||
+              String(itemOrg) === String(cascadingHelper.selectedOrgUnitId)
+            );
+          });
+        }
+      }
+
       controlNode = (
         <Select
           allowClear={field.allowClear}
           showSearch={field.showSearch ?? true}
           optionFilterProp="label"
-          options={field.options}
+          options={selectOptions}
           placeholder={defaultSelectPlaceholder}
           disabled={field.disabled}
           style={{ ...defaultSelectStyle, ...field.controlStyle }}
@@ -150,13 +202,10 @@ function renderFormField<T extends Record<string, unknown>>(
     }
     case FormFieldType.TreeSelect: {
       controlNode = (
-        <OrgUnitTreeSelect
-          organizations={field.organizations || []}
-          variant="form"
-          showPath
-          disabled={field.disabled}
-          placeholder={field.placeholder ?? (labelText ? `Chọn ${labelText}...` : 'Chọn đơn vị...')}
-          {...field.treeSelectProps}
+        <DynamicOrgUnitTreeSelect
+          field={field}
+          cascadingHelper={cascadingHelper}
+          labelText={labelText}
         />
       );
       break;
@@ -196,6 +245,8 @@ function renderFormField<T extends Record<string, unknown>>(
       controlNode = (
         <Input.TextArea
           rows={field.rows || 2}
+          maxLength={field.maxLength}
+          showCount={field.showCount ?? field.maxLength != null}
           placeholder={defaultInputPlaceholder}
           disabled={field.disabled}
           readOnly={field.readOnly}
@@ -230,7 +281,7 @@ function renderFormField<T extends Record<string, unknown>>(
               const rawVal = field.computedValue
                 ? field.computedValue(form, allFormVals)
                 : (allFormVals?.[field.name as keyof T] ??
-                    form?.getFieldValue?.(field.name as any));
+                    form?.getFieldValue?.(field.name as never));
               const displayVal = field.valueFormatter
                 ? field.valueFormatter(rawVal)
                 : rawVal != null
@@ -239,7 +290,7 @@ function renderFormField<T extends Record<string, unknown>>(
               return (
                 <Input
                   disabled
-                  value={displayVal as any}
+                  value={typeof displayVal === "string" || typeof displayVal === "number" ? displayVal : (displayVal ? String(displayVal) : "")}
                   placeholder={field.placeholder}
                   style={{ ...readonlyInputStyle, ...field.controlStyle }}
                 />
@@ -259,6 +310,8 @@ function renderFormField<T extends Record<string, unknown>>(
     default: {
       controlNode = (
         <Input
+          maxLength={field.maxLength}
+          showCount={field.showCount ?? field.maxLength != null}
           placeholder={defaultInputPlaceholder}
           disabled={field.disabled}
           readOnly={field.readOnly}
@@ -284,7 +337,7 @@ function renderFormField<T extends Record<string, unknown>>(
   return (
     <Col key={String(field.name)} span={field.colSpan || 12}>
       <Form.Item
-        name={field.name as any}
+        name={field.name as never}
         label={labelNode}
         rules={rules}
         required={field.required}
@@ -302,6 +355,7 @@ function renderSection<T extends Record<string, unknown>>(
   section: FormSectionConfig<T>,
   form: FormInstance<T>,
   formValues: T,
+  cascadingHelper?: DynamicCascadingHelper,
 ) {
   if (
     typeof section.hidden === "function"
@@ -329,7 +383,7 @@ function renderSection<T extends Record<string, unknown>>(
       )}
       <Row gutter={[24, 0]}>
         {section.fields.map((field) =>
-          renderFormField(field, form, formValues),
+          renderFormField(field, form, formValues, cascadingHelper),
         )}
       </Row>
     </div>
@@ -362,7 +416,6 @@ export function DynamicFormSidebar<
 }: DynamicFormSidebarProps<T>) {
   const [internalForm] = Form.useForm<T>();
   const form = externalForm || internalForm;
-  const [, setTick] = useState(0);
   const formValues = (Form.useWatch([], form) as T) || ({} as T);
 
   const {
@@ -378,6 +431,19 @@ export function DynamicFormSidebar<
       await onSubmit(values);
     }
   };
+
+  const effectiveTabs = useMemo(
+    () => resolveEffectiveTabs(tabs, sections, fields),
+    [tabs, sections, fields],
+  );
+
+  const { cascadingHelper, handleValuesChange } = useDynamicFormOrgSync({
+    open,
+    form,
+    formValues,
+    effectiveTabs,
+    onValuesChange,
+  });
 
   const renderActionButtons = useCallback(
     (actions: FormSidebarAction[]) => {
@@ -449,29 +515,6 @@ export function DynamicFormSidebar<
     return null;
   }, [actions, footer, footerActions, renderActionButtons]);
 
-  const effectiveTabs = useMemo<FormTabConfig<T>[] | undefined>(() => {
-    if (tabs && tabs.length > 0) return tabs;
-    if (sections && sections.length > 0) {
-      return [
-        {
-          key: "general",
-          label: "Thông tin chung",
-          sections,
-        },
-      ];
-    }
-    if (fields && fields.length > 0) {
-      return [
-        {
-          key: "general",
-          label: "Thông tin chung",
-          fields,
-        },
-      ];
-    }
-    return undefined;
-  }, [tabs, sections, fields]);
-
   const renderBodyContent = () => {
     if (!effectiveTabs || effectiveTabs.length === 0) return null;
 
@@ -504,12 +547,12 @@ export function DynamicFormSidebar<
             >
               {tab.sections &&
                 tab.sections.map((section) =>
-                  renderSection(section, form, formValues),
+                  renderSection(section, form, formValues, cascadingHelper),
                 )}
               {tab.fields && (
                 <Row gutter={[24, 0]}>
                   {tab.fields.map((field) =>
-                    renderFormField(field, form, formValues),
+                    renderFormField(field, form, formValues, cascadingHelper),
                   )}
                 </Row>
               )}
@@ -563,12 +606,7 @@ export function DynamicFormSidebar<
           preserve={true}
           initialValues={initialValues}
           onFinish={handleFinish}
-          onValuesChange={(changedValues, allValues) => {
-            setTick((prev) => prev + 1);
-            if (onValuesChange) {
-              onValuesChange(changedValues, allValues);
-            }
-          }}
+          onValuesChange={handleValuesChange}
         >
           {renderBodyContent()}
         </Form>

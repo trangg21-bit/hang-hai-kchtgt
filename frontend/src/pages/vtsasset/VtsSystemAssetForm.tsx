@@ -1,23 +1,15 @@
-import React, { useMemo, useCallback } from 'react';
-import { Form, Select, InputNumber } from 'antd';
+import { useMemo, useCallback } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { BankOutlined, SlidersOutlined, ProfileOutlined } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { VtsSystemAsset, VtsSystemAssetPayload } from '../../services/vtsasset/types';
 import type { VtsSystemOption } from '../../services/vtsasset/api';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  colors,
-  fontWeightBold,
-  fontSizeMd,
-  radiusPill,
-  spaceSm,
-  spaceFormField,
-} from '../../themetokenchk';
 import {
   DynamicFormSidebar,
   FormFieldType,
@@ -42,32 +34,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Phương tiện vận tải',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const VTS_ASSET_TYPES = [
-  'Trạm radar',
-  'Hệ thống trạm bờ AIS',
-  'Quản lý hệ thống CCTV',
-  'Quản lý hệ thống SCADA',
-  'Quản lý hệ thống truyền dẫn',
-  'Quản lý hệ thống phụ trợ VTS',
-  'Khác',
-];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'Hệ thống', 'm²', 'm'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface VtsSystemAssetFormProps {
   open: boolean;
@@ -169,8 +143,9 @@ export default function VtsSystemAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                options: VTS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+                options: MARITIME_ASSET_TYPE_OPTIONS,
                 placeholder: 'Chọn loại tài sản',
+                allowClear: true,
                 required: true,
                 rules: [{ required: true, message: 'Loại tài sản là bắt buộc' }],
               },
@@ -185,6 +160,7 @@ export default function VtsSystemAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 255,
                 colSpan: 24,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
@@ -194,13 +170,14 @@ export default function VtsSystemAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập barcode',
               },
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+                options: ASSET_CONDITION_OPTIONS,
                 placeholder: 'Chọn tình trạng',
                 required: true,
                 rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }],
@@ -209,33 +186,35 @@ export default function VtsSystemAssetForm({
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: FormFieldType.Select,
-                options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
-                placeholder: 'Chọn hiện trạng sử dụng',
+                options: USAGE_STATUS_OPTIONS,
+                placeholder: 'Chọn hiện trạng',
               },
               {
                 name: 'assetGroup',
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+                options: ASSET_GROUP_OPTIONS,
                 placeholder: 'Chọn nhóm tài sản',
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
                 name: 'origin',
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
-                options: ORIGINS.map((v) => ({ value: v, label: v })),
+                options: ASSET_ORIGIN_OPTIONS,
                 placeholder: 'Chọn nguồn gốc',
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 placeholder: 'Nhập địa chỉ',
               },
@@ -243,6 +222,7 @@ export default function VtsSystemAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 placeholder: 'Nhập vị trí tài sản',
               },
@@ -257,9 +237,11 @@ export default function VtsSystemAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
-                min: 0,
+                min: 1,
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
                 formatter: fmtInputNumber,
-                placeholder: '0',
+                placeholder: 'Nhập số lượng',
                 colSpan: 12,
               },
               {
@@ -268,31 +250,37 @@ export default function VtsSystemAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn đơn vị tính',
                 allowClear: true,
-                options: UNITS.map((v) => ({ value: v, label: v })),
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính' }],
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
                 colSpan: 12,
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập serial',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập nơi xuất xứ',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -394,6 +382,7 @@ export default function VtsSystemAssetForm({
                 name: 'assignmentDecisionNumber',
                 label: 'Số quyết định giao (bao gồm cả tăng vốn)',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập số quyết định giao',
               },
               {
@@ -438,7 +427,7 @@ export default function VtsSystemAssetForm({
                 name: 'disposalMethod',
                 label: 'Hình thức xử lý tài sản',
                 type: FormFieldType.Select,
-                options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+                options: DISPOSAL_METHOD_OPTIONS,
                 placeholder: 'Chọn hình thức xử lý',
               },
             ],

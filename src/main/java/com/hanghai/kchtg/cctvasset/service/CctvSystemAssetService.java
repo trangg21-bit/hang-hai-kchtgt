@@ -32,6 +32,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -54,6 +55,7 @@ public class CctvSystemAssetService {
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public CctvSystemAssetResponse create(CctvSystemAssetRequest request) {
@@ -88,15 +90,9 @@ public class CctvSystemAssetService {
             if (assetName != null && !assetName.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetName")), "%" + assetName.toLowerCase(Locale.ROOT) + "%"));
             }
-            if (parentOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            }
-            if (orgUnitId != null) {
-                predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            }
-            if (usingOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
-            }
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "parentOrgUnitId", parentOrgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "orgUnitId", orgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "usingOrgUnitId", usingOrgUnitId);
             if (cctvId != null) {
                 predicates.add(cb.equal(root.get("cctvId"), cctvId));
             }

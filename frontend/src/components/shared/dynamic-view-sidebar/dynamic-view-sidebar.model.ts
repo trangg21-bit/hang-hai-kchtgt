@@ -42,6 +42,11 @@ export interface ViewFieldConfig<T = Record<string, unknown>> {
   prefix?: React.ReactNode;
   /** Ẩn trường theo điều kiện */
   hidden?: boolean | ((record: T) => boolean);
+  /**
+   * Rút gọn giá trị văn bản dài xuống tối đa N dòng, kèm tooltip hiện đầy đủ khi hover.
+   * Bỏ trống (mặc định) = hiển thị nguyên văn như trước.
+   */
+  clampLines?: number;
   /** Class CSS tùy biến */
   className?: string;
   /** Style inline tùy biến cho dòng hiển thị */

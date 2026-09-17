@@ -17,6 +17,7 @@ import type {
 } from '../../services/assetmovement/types';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
@@ -216,9 +217,9 @@ export default function BuoyBerthAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Tốt'
+                  val === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : val === 'Không sử dụng được'
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
                       ? statusCritical
                       : statusAttention,
               },
@@ -227,11 +228,10 @@ export default function BuoyBerthAssetDetailContent({
                 label: 'Hiện trạng sử dụng',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Đang sử dụng'
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
                     ? statusOperational
-                    : val === 'Tạm dừng sử dụng'
-                      ? statusCritical
-                      : statusDraft,
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',
@@ -645,7 +645,7 @@ export default function BuoyBerthAssetDetailContent({
                   <div key={row.id} style={sectionBoxStyle}>
                     <div style={sectionHeaderStyle}>
                       <div style={sectionTitleStyle}>
-                        {row.icon}
+                        <SlidersOutlined style={{ color: row.changeType === 'Tăng nguyên giá' ? statusOperational : statusCritical }} />
                         <span>
                           {row.changeType} — Lần {index + 1} ({fmtDateTime(row.updatedAt || row.createdAt)})
                         </span>

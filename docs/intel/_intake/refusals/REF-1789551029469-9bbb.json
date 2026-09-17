@@ -1,0 +1,16 @@
+{
+  "at": 1789551029468,
+  "kind": "seam_verification_failed",
+  "change_class": "C2",
+  "shape": "scaffolded",
+  "candidate_files": 3,
+  "claims": 5,
+  "failures": [
+    {
+      "file": "frontend/src/components/shared/dynamic-form-sidebar/DynamicFormSidebar.tsx",
+      "line": 317,
+      "kind": "short_quote"
+    }
+  ],
+  "detail": "frontend/src/components/shared/dynamic-form-sidebar/DynamicFormSidebar.tsx:317 — short_quote"
+}

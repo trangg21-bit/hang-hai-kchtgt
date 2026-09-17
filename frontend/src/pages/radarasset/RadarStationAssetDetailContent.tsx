@@ -29,10 +29,12 @@ import type {
   AssetIncreaseResponse,
 } from '../../services/assetmovement/types';
 import type { RadarStationAsset } from '../../services/radarasset/types';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   fontWeightBold,
   fontWeightMedium,
+  statusAttention,
   statusCritical,
   statusOperational,
 } from '../../themetokenchk';
@@ -162,7 +164,19 @@ export default function RadarStationAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) || selectedRecord?.assetName || '—',
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
+              return (
+                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -216,6 +230,8 @@ export default function RadarStationAssetDetailContent({
           dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -490,13 +506,24 @@ export default function RadarStationAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === AssetCondition.DANG_SU_DUNG
+                    ? statusOperational
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
                 colSpan: 12,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
+                    ? statusOperational
+                    : statusAttention,
                 colSpan: 12,
               },
               {

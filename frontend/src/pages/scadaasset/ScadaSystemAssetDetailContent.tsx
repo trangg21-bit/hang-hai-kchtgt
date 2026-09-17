@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -17,16 +17,14 @@ import type {
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
-  actionPrimary,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
   statusAttention,
   statusCritical,
-  statusDraft,
-  radiusPill,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
@@ -37,7 +35,6 @@ import {
   CommonTable,
   TableColumnType,
   type TableOption,
-  APPROVAL_MAP,
   renderApprovalStatusBadge,
 } from '../../components/shared/common-table';
 import {
@@ -45,8 +42,6 @@ import {
   getAttachmentPreviewUrl,
   downloadAttachmentFile,
 } from '../../utils/attachmentStorage';
-
-export { renderApprovalStatusBadge };
 
 export interface ScadaSystemAssetDetailContentProps {
   open: boolean;
@@ -64,6 +59,11 @@ const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
 const fmtDate = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY') : '—';
+const fmtNum = (v?: number | string | null): string => {
+  if (v == null || v === '') return '—';
+  const n = Number(v);
+  return isNaN(n) ? String(v) : n.toLocaleString('vi-VN');
+};
 
 export default function ScadaSystemAssetDetailContent({
   open,
@@ -197,6 +197,19 @@ export default function ScadaSystemAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
+              return (
+                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -250,6 +263,8 @@ export default function ScadaSystemAssetDetailContent({
           dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -276,6 +291,7 @@ export default function ScadaSystemAssetDetailContent({
     remainingValueAfter?: number;
     notes?: string;
     status?: string;
+    [key: string]: unknown;
   }
 
   const combinedAdjustments = useMemo<AdjustmentRowItem[]>(() => {
@@ -535,13 +551,22 @@ export default function ScadaSystemAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) => {
+                  if (val === AssetCondition.DANG_SU_DUNG) return statusOperational;
+                  if (val === AssetCondition.HONG_KHONG_SU_DUNG) return statusCritical;
+                  return statusAttention;
+                },
                 colSpan: 12,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === UsageStatus.QUAN_LY_NHA_NUOC || val === UsageStatus.HDSN_KHONG_KINH_DOANH
+                    ? statusOperational
+                    : statusAttention,
                 colSpan: 12,
               },
               {
@@ -759,8 +784,6 @@ export default function ScadaSystemAssetDetailContent({
         customContent: () => (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
-              refType="SCADA_SYSTEM_ASSET"
-              refId={selectedRecord.id}
               attachments={detailAttachments}
               readonly
               onDownload={handleDownloadAttachment}
@@ -900,11 +923,12 @@ export default function ScadaSystemAssetDetailContent({
     orgName,
     scadaDeviceMap,
     exploitationRows,
-    increaseRows,
-    decreaseRows,
     detailAttachments,
     handleDownloadAttachment,
     handleLoadReadonlyPreviewImage,
+    exploitationTableOption,
+    adjustmentTableOption,
+    combinedAdjustments,
   ]);
 
   return (

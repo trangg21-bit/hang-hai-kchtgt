@@ -20,6 +20,7 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
@@ -254,22 +255,21 @@ export default function ChannelAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (v) =>
-                  v === 'Tốt'
+                  v === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : v === 'Hư hỏng cần sửa chữa'
-                      ? statusAttention
-                      : statusCritical,
+                    : v === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: ViewFieldType.Badge,
                 badgeColor: (v) =>
-                  v === 'Đang sử dụng'
+                  v === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  v === UsageStatus.HDSN_KHONG_KINH_DOANH
                     ? statusOperational
-                    : v === 'Đang bảo trì/sửa chữa'
-                      ? statusAttention
-                      : statusDraft,
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',
@@ -304,7 +304,7 @@ export default function ChannelAssetDetailContent({
                 label: 'Số lượng',
                 render: (_v, r) =>
                   r.quantity != null
-                    ? `${fmtNum(r.quantity)} ${r.quantityUnit || ''}`.trim()
+                    ? `${fmtNum(Number(r.quantity))} ${r.quantityUnit || ''}`.trim()
                     : '—',
               },
               {

@@ -20,6 +20,7 @@ import type {
 } from '../../services/assetmovement/types';
 import type { Organization } from '../../services/organizationService';
 import type { BuoyBerth } from '../../types/port';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 
 export type FormValues = Omit<
@@ -39,22 +40,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface BuoyBerthAssetFormProps {
   open: boolean;
@@ -151,11 +144,9 @@ export default function BuoyBerthAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'BUOY_BERTH',
-                disabled: true,
-                options: [
-                  { value: 'BUOY_BERTH', label: 'Tài sản bến phao' },
-                ],
+                placeholder: 'Chọn loại tài sản',
+                options: MARITIME_ASSET_TYPE_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'assetCode',
@@ -168,6 +159,7 @@ export default function BuoyBerthAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -176,6 +168,7 @@ export default function BuoyBerthAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã barcode',
               },
               {
@@ -184,7 +177,7 @@ export default function BuoyBerthAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn tình trạng',
                 required: true,
-                options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+                options: ASSET_CONDITION_OPTIONS,
                 rules: [
                   { required: true, message: 'Tình trạng tài sản là bắt buộc' },
                 ],
@@ -195,7 +188,7 @@ export default function BuoyBerthAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn hiện trạng',
                 required: true,
-                options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
+                options: USAGE_STATUS_OPTIONS,
                 rules: [
                   { required: true, message: 'Hiện trạng sử dụng là bắt buộc' },
                 ],
@@ -206,12 +199,13 @@ export default function BuoyBerthAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+                options: ASSET_GROUP_OPTIONS,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
@@ -220,7 +214,7 @@ export default function BuoyBerthAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn nguồn gốc',
-                options: ORIGINS.map((v) => ({ value: v, label: v })),
+                options: ASSET_ORIGIN_OPTIONS,
               },
               {
                 name: 'quantity',
@@ -229,6 +223,8 @@ export default function BuoyBerthAssetForm({
                 min: 0,
                 formatter: fmtInputNumber,
                 placeholder: '0',
+                required: true,
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
                 colSpan: 12,
               },
               {
@@ -237,31 +233,37 @@ export default function BuoyBerthAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn đơn vị tính',
                 allowClear: true,
-                options: UNITS.map((v) => ({ value: v, label: v })),
+                required: true,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
                 colSpan: 12,
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập serial',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -294,6 +296,7 @@ export default function BuoyBerthAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 rows: 2,
                 placeholder: 'Nhập vị trí tài sản',
@@ -302,6 +305,7 @@ export default function BuoyBerthAssetForm({
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 rows: 2,
                 placeholder: 'Nhập địa chỉ tài sản',
@@ -381,6 +385,7 @@ export default function BuoyBerthAssetForm({
                 name: 'assignmentDecisionNumber',
                 label: 'Số quyết định giao (bao gồm cả tăng vốn)',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập số quyết định',
               },
               {
@@ -430,7 +435,7 @@ export default function BuoyBerthAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn hình thức xử lý',
-                options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+                options: DISPOSAL_METHOD_OPTIONS,
               },
             ],
           },

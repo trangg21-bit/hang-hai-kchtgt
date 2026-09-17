@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { VtsAssistAsset } from '../../services/vtsAssistAsset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  createAssetAdjustmentOperationSection,
+  handleAssetAdjustmentValuesChange,
+} from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -52,16 +55,12 @@ export interface OperationValues extends Record<string, unknown> {
   disposalMethod?: string;
 }
 
-const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Tuyến', 'Chiếc'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư nâng cấp hệ thống',
-  'Mở rộng công suất phụ trợ VTS',
-  'Đánh giá lại giá trị',
-  'Hao mòn kỹ thuật',
-  'Thanh lý thiết bị hư hỏng',
-  'Khác',
-];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+} from '../../constants/assetDropdown';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export interface VtsAssistAssetOperationFormProps {
   open: boolean;
@@ -117,56 +116,70 @@ export default function VtsAssistAssetOperationForm({
               name: 'assetCategory',
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
-              initialValue: selected.assetName,
-              valueFormatter: () => selected.assetName || '—',
+              initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
+              valueFormatter: () =>
+                [selected.assetCode, selected.assetName].filter(Boolean).join(' - ') || '—',
             },
             {
               name: 'unitOfMeasure',
               label: 'Đơn vị tính',
               type: FormFieldType.Select,
+              required: true,
               placeholder: 'Chọn đơn vị tính',
-              options: UNITS.map((value) => ({ value, label: value })),
+              options: ASSET_QUANTITY_UNIT_OPTIONS,
+              rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
             },
             {
               name: 'quantity',
               label: 'Số lượng',
               type: FormFieldType.Number,
-              min: 0,
-              initialValue: 1,
+              required: true,
+              min: 1,
+              formatter: fmtInputNumber,
+              placeholder: '0',
+              rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
             },
             {
               name: 'exploitationDeadline',
               label: 'Thời hạn khai thác',
               type: FormFieldType.Date,
+              required: true,
               placeholder: 'Chọn thời hạn khai thác',
+              rules: [{ required: true, message: 'Thời hạn khai thác là bắt buộc' }],
             },
             {
               name: 'totalRevenue',
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
+              required: true,
               min: 0,
-              placeholder: 'Nhập tổng thu',
+              formatter: fmtInputNumber,
+              placeholder: '0',
+              rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
             },
             {
               name: 'relatedCosts',
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
-              placeholder: 'Nhập chi phí',
+              formatter: fmtInputNumber,
+              placeholder: '0',
             },
             {
               name: 'stateBudgetPayment',
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
-              placeholder: 'Nhập số tiền nộp NSNN',
+              formatter: fmtInputNumber,
+              placeholder: '0',
             },
             {
               name: 'projectAmount',
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
-              placeholder: 'Nhập số tiền dự án',
+              formatter: fmtInputNumber,
+              placeholder: '0',
             },
             {
               name: 'description',
@@ -181,6 +194,7 @@ export default function VtsAssistAssetOperationForm({
     }
 
     const isIncrease = operationMode === 'increase';
+    const reasonOptions = isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS;
     return [
       {
         key: 'adjustment_decision',
@@ -216,7 +230,7 @@ export default function VtsAssistAssetOperationForm({
             label: `Lý do ${isIncrease ? 'tăng' : 'giảm'} nguyên giá`,
             type: FormFieldType.Select,
             placeholder: 'Chọn lý do',
-            options: ADJUSTMENT_REASONS.map((r) => ({ value: r, label: r })),
+            options: reasonOptions,
             required: true,
             rules: [{ required: true, message: 'Lý do là bắt buộc' }],
           },
@@ -229,101 +243,10 @@ export default function VtsAssistAssetOperationForm({
           },
         ],
       },
-      {
-        key: 'adjustment_values',
-        title: 'Giá trị điều chỉnh & Khấu hao',
-        icon: <SlidersOutlined />,
-        fields: [
-          {
-            name: 'originalValueBefore',
-            label: 'Nguyên giá trước khi điều chỉnh (VNĐ)',
-            type: FormFieldType.Readonly,
-            valueFormatter: (val) => fmtInputNumber(Number(val) || 0) + ' VNĐ',
-          },
-          {
-            name: 'originalValueAfter',
-            label: `Nguyên giá sau khi ${isIncrease ? 'tăng' : 'giảm'} (VNĐ)`,
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập nguyên giá mới',
-            required: true,
-            rules: [{ required: true, message: 'Nguyên giá sau điều chỉnh là bắt buộc' }],
-          },
-          {
-            name: 'remainingValueBefore',
-            label: 'Giá trị còn lại trước điều chỉnh (VNĐ)',
-            type: FormFieldType.Readonly,
-            valueFormatter: (val) => fmtInputNumber(Number(val) || 0) + ' VNĐ',
-          },
-          {
-            name: 'remainingValueAfter',
-            label: `Giá trị còn lại sau khi ${isIncrease ? 'tăng' : 'giảm'} (VNĐ)`,
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập giá trị còn lại mới',
-          },
-          {
-            name: 'declarationDate',
-            label: 'Ngày kê khai tài sản',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày kê khai',
-          },
-          {
-            name: 'depreciationRate',
-            label: 'Tỷ lệ hao mòn/Khấu hao (%)',
-            type: FormFieldType.Number,
-            min: 0,
-            max: 100,
-            placeholder: 'Nhập tỷ lệ',
-          },
-          {
-            name: 'assignmentDecisionNumber',
-            label: 'Số quyết định giao (bao gồm cả tăng vốn)',
-            type: FormFieldType.Text,
-            placeholder: 'Nhập số quyết định giao',
-          },
-          {
-            name: 'depreciationStartDate',
-            label: 'Ngày tính khấu hao',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày tính KH',
-          },
-          {
-            name: 'depreciationMonths',
-            label: 'Số tháng tính khấu hao',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập số tháng',
-          },
-          {
-            name: 'depreciationEndDate',
-            label: 'Ngày hết khấu hao',
-            type: FormFieldType.Date,
-            placeholder: 'Chọn ngày hết KH',
-          },
-          {
-            name: 'accumulatedDepreciation',
-            label: 'Khấu hao lũy kế (VNĐ)',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập khấu hao lũy kế',
-          },
-          {
-            name: 'monthlyDepreciation',
-            label: 'Khấu hao tháng (VNĐ)',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập khấu hao tháng',
-          },
-          {
-            name: 'disposalMethod',
-            label: 'Hình thức xử lý tài sản',
-            type: FormFieldType.Select,
-            placeholder: 'Chọn hình thức xử lý',
-            options: DISPOSAL_METHODS.map((d) => ({ value: d, label: d })),
-          },
-        ],
-      },
+      createAssetAdjustmentOperationSection<OperationValues>({
+        selectedRecord: selected,
+        operationMode,
+      }),
     ];
   }, [operationMode, selected, organizations]);
 
@@ -360,6 +283,9 @@ export default function VtsAssistAssetOperationForm({
       form={form}
       sections={sections}
       footerActions={footerActions}
+      onValuesChange={(changed, all) => {
+        handleAssetAdjustmentValuesChange(form, changed, all);
+      }}
       rootClassName="vts-assist-operation-drawer"
       className="vts-assist-operation-drawer"
     />

@@ -1,3 +1,4 @@
+
 import {
   DeleteOutlined,
   EditOutlined,
@@ -25,12 +26,16 @@ import {
   type ScreenHeaderAction,
   type TableOption,
 } from '../../components/list-view';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import {
   createAisSystemAsset,
   deleteAisSystemAsset,
@@ -86,29 +91,13 @@ import {
   getAttachmentPreviewUrl,
   saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
-import AisSystemAssetDetailContent from './AisSystemAssetDetailContent';
-import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import AisSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './AisSystemAssetOperationForm';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const AIS_ASSET_TYPES = [
-  'Hệ thống AIS',
-  'Trạm bờ AIS',
-  'Thiết bị thu phát AIS (Transponder)',
-  'Anten AIS',
-  'Máy chủ xử lý dữ liệu AIS',
-  'Phần mềm khai thác AIS',
-  'Hệ thống phụ trợ',
-  'Khác',
-];
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -203,7 +192,7 @@ const AIS_HISTORY_FIELD_ORDER = [
   'attachments',
 ];
 
-const BREADCRUMB_ITEMS: BreadcrumbItem[] = [
+const BREADCRUMB_ITEMS = [
   { label: 'Trang chủ', path: '/' },
   { label: 'Quản lý tài sản KCHT hàng hải' },
   { label: 'Tài sản hệ thống AIS' },
@@ -244,7 +233,7 @@ export default function AisSystemAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<AisSystemAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -260,7 +249,7 @@ export default function AisSystemAssetList() {
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -327,7 +316,7 @@ export default function AisSystemAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -363,7 +352,7 @@ export default function AisSystemAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderAisHistoryTimeline = (filtered: any[]) => {
+  const renderAisHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -396,7 +385,7 @@ export default function AisSystemAssetList() {
       resolveUnitName: (rec) => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -459,16 +448,6 @@ export default function AisSystemAssetList() {
     setDrawerMode('create');
     setAttachments([]);
     form.resetFields();
-    form.setFieldsValue({
-      valueUnit: 'VNĐ',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      assetGroup: 'Máy móc, thiết bị',
-      assetType: 'Hệ thống AIS',
-      origin: 'Mua sắm',
-    });
   }, [form]);
 
   const openEdit = useCallback(
@@ -695,7 +674,7 @@ export default function AisSystemAssetList() {
       const s = val.trim();
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
     }
-    const parsed = dayjs(val as any);
+    const parsed = dayjs(val as string | number | Date);
     return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
   };
 
@@ -717,7 +696,7 @@ export default function AisSystemAssetList() {
           attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
       };
 
-      const cleanPayload: Record<string, any> = { ...payload };
+      const cleanPayload: Record<string, unknown> = { ...payload };
       const excludeKeys = [
         'id',
         'parentOrgUnitName',
@@ -746,7 +725,7 @@ export default function AisSystemAssetList() {
       });
 
       if (drawerMode === 'create') {
-        await createAisSystemAsset(cleanPayload as any);
+        await createAisSystemAsset(cleanPayload as unknown as AisSystemAssetPayload);
         toast.success(
           status === 'DRAFT'
             ? 'Đã lưu tạm tài sản hệ thống AIS'
@@ -755,7 +734,7 @@ export default function AisSystemAssetList() {
             : 'Đã tạo và phê duyệt tài sản hệ thống AIS'
         );
       } else if (selected) {
-        await updateAisSystemAsset(selected.id, cleanPayload as any);
+        await updateAisSystemAsset(selected.id, cleanPayload as unknown as AisSystemAssetPayload);
         toast.success('Đã cập nhật tài sản hệ thống AIS thành công');
       }
 
@@ -810,7 +789,7 @@ export default function AisSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -876,6 +855,7 @@ export default function AisSystemAssetList() {
             assetName: selected.assetName,
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             reason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
@@ -904,43 +884,11 @@ export default function AisSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'assetName',
-      label: 'Tên tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo tên tài sản',
-    },
-    {
-      key: 'assetCondition',
-      label: 'Tình trạng tài sản',
-      type: 'select',
-      placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-      isAdvanced: true,
-    },
-    {
-      key: 'aisSystemId',
-      label: 'Mã hệ thống AIS',
-      type: 'select',
-      placeholder: 'Chọn hệ thống AIS',
-      options: aisSystems.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      })),
-      isAdvanced: true,
-    },
-    {
       key: 'assetType',
       label: 'Loại tài sản',
       type: 'select',
       placeholder: 'Chọn loại tài sản',
-      options: AIS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      options: MARITIME_ASSET_TYPE_OPTIONS,
       isAdvanced: true,
     },
     {
@@ -1006,7 +954,7 @@ export default function AisSystemAssetList() {
         type: TableColumnType.Text,
         width: 180,
         allowSort: true,
-        render: (v) => v || '—',
+        render: (v) => (v ? String(v) : '—'),
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -1141,7 +1089,6 @@ export default function AisSystemAssetList() {
         key: 'delete',
         label: 'Xóa',
         icon: <DeleteOutlined />,
-        danger: true,
         onClick: () => setDeleteTarget(record),
       },
     ],

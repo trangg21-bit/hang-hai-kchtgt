@@ -17,12 +17,14 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
+  statusAttention,
   statusCritical,
   textTertiary,
 } from '../../themetokenchk';
@@ -103,7 +105,19 @@ export default function VtsAssistAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) ?? '',
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
+              return (
+                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -154,9 +168,11 @@ export default function VtsAssistAssetDetailContent({
         },
         {
           title: 'Ghi chú',
-          dataIndex: 'notes',
+          dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -382,44 +398,23 @@ export default function VtsAssistAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                render: (val) =>
-                  val ? (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: fontWeightMedium,
-                        background: '#ecfdf5',
-                        color: '#059669',
-                        border: '1px solid #a7f3d0',
-                      }}
-                    >
-                      {String(val)}
-                    </span>
-                  ) : '',
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === AssetCondition.DANG_SU_DUNG
+                    ? statusOperational
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                render: (val) =>
-                  val ? (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: fontWeightMedium,
-                        background: '#eff6ff',
-                        color: '#2563eb',
-                        border: '1px solid #bfdbfe',
-                      }}
-                    >
-                      {String(val)}
-                    </span>
-                  ) : '',
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
+                    ? statusOperational
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',

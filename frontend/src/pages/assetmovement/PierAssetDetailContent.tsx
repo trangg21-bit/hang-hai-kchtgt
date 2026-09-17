@@ -17,6 +17,7 @@ import type {
 } from '../../services/assetmovement/types';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
@@ -139,7 +140,7 @@ export default function PierAssetDetailContent({
                 name: 'parentOrgUnitId',
                 label: 'Cơ quan quản lý cấp trên',
                 type: ViewFieldType.Text,
-                render: (_v, rec) => (rec.parentOrgUnitId ? orgName.get(rec.parentOrgUnitId) : undefined),
+                render: (_v, rec) => (rec.parentOrgUnitId ? orgName.get(String(rec.parentOrgUnitId)) : undefined),
               },
               {
                 name: 'orgUnitId',
@@ -147,7 +148,7 @@ export default function PierAssetDetailContent({
                 type: ViewFieldType.Text,
                 render: (_v, rec) => (
                   <span style={{ fontWeight: fontWeightBold }}>
-                    {rec.orgUnitId ? orgName.get(rec.orgUnitId) : undefined}
+                    {rec.orgUnitId ? orgName.get(String(rec.orgUnitId)) : undefined}
                   </span>
                 ),
               },
@@ -157,7 +158,7 @@ export default function PierAssetDetailContent({
                 type: ViewFieldType.Text,
                 render: (_v, rec) => (
                   <span style={{ fontWeight: fontWeightBold }}>
-                    {rec.usingOrgUnitId ? orgName.get(rec.usingOrgUnitId) : undefined}
+                    {rec.usingOrgUnitId ? orgName.get(String(rec.usingOrgUnitId)) : undefined}
                   </span>
                 ),
               },
@@ -165,12 +166,12 @@ export default function PierAssetDetailContent({
                 name: 'pierId',
                 label: 'Mã cầu cảng',
                 type: ViewFieldType.Text,
-                render: (_v, rec) => (rec.pierId ? pierMap.get(rec.pierId)?.pierCode : undefined),
+                render: (_v, rec) => (rec.pierId ? pierMap.get(String(rec.pierId))?.pierCode : undefined),
               },
               {
                 label: 'Tên cầu cảng',
                 type: ViewFieldType.Text,
-                render: (_v, rec) => (rec.pierId ? pierMap.get(rec.pierId)?.pierName : undefined),
+                render: (_v, rec) => (rec.pierId ? pierMap.get(String(rec.pierId))?.pierName : undefined),
               },
               {
                 name: 'assetType',
@@ -196,7 +197,13 @@ export default function PierAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === AssetCondition.DANG_SU_DUNG
+                    ? statusOperational
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
@@ -530,7 +537,9 @@ export default function PierAssetDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Danh mục tài sản</span>
                       <span className="chk-detail-value">
-                        {row.assetCategory || '—'}
+                        {(!row.assetCategory || (selectedRecord && row.assetCategory === selectedRecord.assetName))
+                          ? ([selectedRecord?.assetCode, selectedRecord?.assetName].filter(Boolean).join(' - ') || row.assetCategory || '—')
+                          : row.assetCategory}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -592,7 +601,7 @@ export default function PierAssetDetailContent({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Ghi chú</span>
                       <span className="chk-detail-value">
-                        {row.description || '—'}
+                        {row.description || row.notes || '—'}
                       </span>
                     </div>
                   </div>

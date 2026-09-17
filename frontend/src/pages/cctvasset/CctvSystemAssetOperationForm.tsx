@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -12,10 +12,16 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
-export interface OperationValues {
+export interface OperationValues extends Record<string, unknown> {
   operatorOrgUnitId?: string;
   unitOfMeasure?: string;
   quantity?: number;
@@ -39,16 +45,6 @@ export interface OperationValues {
   accumulatedDepreciation?: number;
   disposalMethod?: string;
 }
-
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'Hệ thống', 'm²', 'm'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
 
 export interface CctvSystemAssetOperationFormProps {
   open: boolean;
@@ -99,6 +95,8 @@ export default function CctvSystemAssetOperationForm({
                   label: 'Đơn vị khai thác',
                   type: FormFieldType.TreeSelect,
                   organizations,
+                  required: true,
+                  rules: [{ required: true, message: 'Vui lòng chọn đơn vị khai thác' }],
                   placeholder: 'Chọn đơn vị...',
                   colSpan: 12,
                 },
@@ -106,6 +104,8 @@ export default function CctvSystemAssetOperationForm({
                   name: 'exploitationDeadline',
                   label: 'Thời hạn khai thác',
                   type: FormFieldType.Date,
+                  required: true,
+                  rules: [{ required: true, message: 'Vui lòng chọn thời hạn khai thác' }],
                   placeholder: 'Chọn thời hạn...',
                   colSpan: 12,
                 },
@@ -113,15 +113,19 @@ export default function CctvSystemAssetOperationForm({
                   name: 'unitOfMeasure',
                   label: 'Đơn vị tính',
                   type: FormFieldType.Select,
+                  required: true,
+                  rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính' }],
                   placeholder: 'Chọn đơn vị tính...',
-                  options: UNITS.map((u) => ({ value: u, label: u })),
+                  options: ASSET_QUANTITY_UNIT_OPTIONS,
                   colSpan: 12,
                 },
                 {
                   name: 'quantity',
                   label: 'Số lượng',
                   type: FormFieldType.Number,
-                  min: 0,
+                  min: 1,
+                  required: true,
+                  rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
                   formatter: fmtInputNumber,
                   placeholder: '1',
                   colSpan: 12,
@@ -131,6 +135,8 @@ export default function CctvSystemAssetOperationForm({
                   label: 'Tổng số tiền thu được (VNĐ)',
                   type: FormFieldType.Number,
                   min: 0,
+                  required: true,
+                  rules: [{ required: true, message: 'Vui lòng nhập tổng số tiền thu được' }],
                   formatter: fmtInputNumber,
                   placeholder: '0',
                   colSpan: 12,
@@ -176,6 +182,8 @@ export default function CctvSystemAssetOperationForm({
       ];
     }
 
+    const reasonOptions = isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS;
+
     const sections: FormSectionConfig<OperationValues>[] = [
       {
         key: 'adjustment_main',
@@ -212,7 +220,7 @@ export default function CctvSystemAssetOperationForm({
             type: FormFieldType.Select,
             required: true,
             placeholder: 'Chọn lý do...',
-            options: ADJUSTMENT_REASONS.map((r) => ({ value: r, label: r })),
+            options: reasonOptions,
             rules: [{ required: true, message: 'Vui lòng chọn lý do' }],
             colSpan: 12,
           },
@@ -232,6 +240,8 @@ export default function CctvSystemAssetOperationForm({
             label: 'Khấu hao lũy kế sau thay đổi (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            required: true,
+            rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
             formatter: fmtInputNumber,
             placeholder: '0',
             colSpan: 12,
@@ -297,8 +307,9 @@ export default function CctvSystemAssetOperationForm({
           {
             name: 'disposalMethod',
             label: 'Hình thức xử lý tài sản',
-            type: FormFieldType.Text,
-            placeholder: 'Nhập hình thức xử lý...',
+            type: FormFieldType.Select,
+            placeholder: 'Chọn hình thức xử lý...',
+            options: DISPOSAL_METHOD_OPTIONS,
             colSpan: 12,
           },
         ],

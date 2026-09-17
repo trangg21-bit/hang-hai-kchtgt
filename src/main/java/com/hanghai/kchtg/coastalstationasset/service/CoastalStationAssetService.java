@@ -103,9 +103,9 @@ public class CoastalStationAssetService {
             if (assetName != null && !assetName.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetName")), "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%"));
             }
-            if (parentOrgUnitId != null) predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            if (orgUnitId != null) predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            if (usingOrgUnitId != null) predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "parentOrgUnitId", parentOrgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "orgUnitId", orgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "usingOrgUnitId", usingOrgUnitId);
             if (stationId != null) {
                 predicates.add(cb.or(
                     cb.equal(root.get("stationId"), stationId),

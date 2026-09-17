@@ -1,6 +1,18 @@
 import type { FormInstance, Rule } from 'antd/es/form';
 import type React from 'react';
 import type { Organization } from '../../../services/organizationService';
+import type { OrgUnitTreeOption } from '../../org-unit';
+
+/**
+ * Trạng thái và dữ liệu phân cấp tổ chức dùng cho các trường TreeSelect
+ */
+export interface DynamicCascadingHelper {
+  allOrganizations?: readonly OrgUnitTreeOption[];
+  parentOrgOptions?: readonly OrgUnitTreeOption[];
+  orgsForOrgUnit?: readonly OrgUnitTreeOption[];
+  orgsForUsing?: readonly OrgUnitTreeOption[];
+  selectedOrgUnitId?: string;
+}
 
 /**
  * Các loại trường hỗ trợ bởi DynamicFormSidebar.
@@ -48,6 +60,10 @@ export interface FormFieldConfig<T extends Record<string, unknown> = Record<stri
   disabled?: boolean;
   /** Chế độ chỉ đọc */
   readOnly?: boolean;
+  /** Chiều dài ký tự / số chữ số tối đa */
+  maxLength?: number;
+  /** Bật hiển thị bộ đếm ký tự */
+  showCount?: boolean;
   /** Số cột lưới Ant Design (1 - 24, mặc định 12 cho form 2 cột) */
   colSpan?: number;
   /** Giá trị khởi tạo */

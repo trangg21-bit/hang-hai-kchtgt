@@ -21,7 +21,10 @@ export function NumberInputWithCount({ maxLength, value, onKeyDown, onPaste, for
   const hasDot = cleanValStr.includes('.');
   const maxDigits = maxLength === 20 ? 20 : maxLength;
   const htmlMaxLength = maxLength === 20 ? (hasDot ? 21 : 20) : maxLength;
-  const effectiveFormatter = formatter ?? (maxLength === 20 ? fmtInputNumber : undefined);
+  // Formatter mặc định luôn có giá trị: nếu trước đây chỉ riêng maxLength === 20 mới được
+  // gắn fmtInputNumber thì mọi giới hạn khác (12, 15, ...) đều mất dấu chấm phân cách hàng nghìn.
+  // Caller vẫn có thể truyền formatter riêng để ghi đè.
+  const effectiveFormatter = formatter ?? fmtInputNumber;
 
   return (
     <InputNumber

@@ -19,6 +19,7 @@ import type {
 } from '../../services/assetmovement/types';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
@@ -227,9 +228,9 @@ export default function TransferAreaAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Tốt'
+                  val === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : val === 'Không sử dụng được'
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
                       ? statusCritical
                       : statusAttention,
               },
@@ -551,7 +552,9 @@ export default function TransferAreaAssetDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Danh mục tài sản</span>
                       <span className="chk-detail-value">
-                        {row.assetCategory || '—'}
+                        {(!row.assetCategory || (r && row.assetCategory === r.assetName))
+                          ? ([r?.assetCode, r?.assetName].filter(Boolean).join(' - ') || row.assetCategory || '—')
+                          : row.assetCategory}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -621,7 +624,7 @@ export default function TransferAreaAssetDetailContent({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Ghi chú</span>
                       <span className="chk-detail-value">
-                        {row.description || '—'}
+                        {row.description || row.notes || '—'}
                       </span>
                     </div>
                   </div>

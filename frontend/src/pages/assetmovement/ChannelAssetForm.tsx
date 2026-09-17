@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import {
@@ -10,6 +10,7 @@ import {
 import type { Organization } from '../../services/organizationService';
 import type { NavigationChannelResponse } from '../../types/navigationChannel';
 import type { ChannelAsset } from '../../services/assetmovement/types';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
@@ -28,7 +29,7 @@ export interface ChannelFormValues {
   navigationChannelId?: string;
   assetCode?: string;
   assetName?: string;
-  assetType?: 'NAVIGATION_CHANNEL';
+  assetType?: string;
   barcode?: string;
   assetCondition?: string;
   usageStatus?: string;
@@ -61,21 +62,17 @@ export interface ChannelFormValues {
   disposalMethod?: string;
   status?: string;
   approvalStatus?: string;
+  [key: string]: unknown;
 }
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng', 'Đang bảo trì/sửa chữa'];
-const ASSET_GROUPS = [
-  'Tuyến luồng hàng hải',
-  'Vũng quay tàu',
-  'Khu nước luồng hàng hải',
-  'Thiết bị phụ trợ luồng',
-  'Công trình nạo vét luồng',
-  'Khác',
-];
-const ORIGINS = ['Đầu tư ngân sách', 'Tiếp nhận/Bàn giao', 'Mua sắm mới', 'Tài trợ/Viện trợ', 'Khác'];
-const UNITS = ['Tuyến', 'Hệ thống', 'Công trình', 'Bộ', 'Cái', 'Chiếc', 'm', 'km', 'm²'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface ChannelAssetFormProps {
   open: boolean;
@@ -165,9 +162,9 @@ export default function ChannelAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'NAVIGATION_CHANNEL',
-                disabled: true,
-                options: [{ value: 'NAVIGATION_CHANNEL', label: 'Tài sản luồng hàng hải' }],
+                placeholder: 'Chọn loại tài sản',
+                allowClear: true,
+                options: MARITIME_ASSET_TYPE_OPTIONS,
               },
               {
                 name: 'assetCode',
@@ -180,6 +177,7 @@ export default function ChannelAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 255,
                 required: true,
                 colSpan: 12,
                 placeholder: 'Nhập tên tài sản',
@@ -189,6 +187,7 @@ export default function ChannelAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã barcode',
               },
               {
@@ -197,7 +196,7 @@ export default function ChannelAssetForm({
                 type: FormFieldType.Select,
                 required: true,
                 placeholder: 'Chọn tình trạng',
-                options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+                options: ASSET_CONDITION_OPTIONS,
                 rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }],
               },
               {
@@ -206,7 +205,7 @@ export default function ChannelAssetForm({
                 type: FormFieldType.Select,
                 required: true,
                 placeholder: 'Chọn hiện trạng',
-                options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
+                options: USAGE_STATUS_OPTIONS,
                 rules: [{ required: true, message: 'Hiện trạng sử dụng là bắt buộc' }],
               },
               {
@@ -214,12 +213,13 @@ export default function ChannelAssetForm({
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+                options: ASSET_GROUP_OPTIONS,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
@@ -227,46 +227,54 @@ export default function ChannelAssetForm({
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn nguồn gốc',
-                options: ORIGINS.map((v) => ({ value: v, label: v })),
+                options: ASSET_ORIGIN_OPTIONS,
               },
               {
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
+                required: true,
                 min: 0,
                 placeholder: '0',
                 colSpan: 6,
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               },
               {
                 name: 'quantityUnit',
                 label: 'Đơn vị tính',
                 type: FormFieldType.Select,
-                placeholder: 'Đơn vị',
-                options: UNITS.map((v) => ({ value: v, label: v })),
+                required: true,
+                placeholder: 'Chọn đơn vị tính',
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
                 colSpan: 6,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model',
               },
               {
                 name: 'serialNumber',
                 label: 'Số Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập serial',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -299,6 +307,7 @@ export default function ChannelAssetForm({
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 placeholder: 'Nhập địa chỉ tài sản',
               },
@@ -306,6 +315,7 @@ export default function ChannelAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 placeholder: 'Nhập vị trí chi tiết của tài sản luồng hàng hải',
               },
@@ -349,6 +359,7 @@ export default function ChannelAssetForm({
                 name: 'assignmentDecisionNumber',
                 label: 'Số quyết định giao (bao gồm cả tăng vốn)',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập số quyết định giao',
               },
               {
@@ -357,7 +368,7 @@ export default function ChannelAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn hình thức xử lý',
-                options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+                options: DISPOSAL_METHOD_OPTIONS,
               },
             ],
           },

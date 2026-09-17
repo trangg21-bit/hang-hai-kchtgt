@@ -1,0 +1,88 @@
+{
+  "triage_id": "TRI-1789552735093-8864",
+  "created_at": 1789552735093,
+  "request_summary": "Sửa maxLength của field model từ 255 xuống 100 tại 3 form, khớp đúng cột infra_assets.model VARCHAR(100) trong migration để không cho nhập quá giới hạn DB.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/transmissionasset/TransmissionAssetForm.tsx",
+      "frontend/src/pages/vhfasset/VhfAssetForm.tsx",
+      "frontend/src/pages/vtsassistasset/VtsAssistAssetForm.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/pages/transmissionasset/TransmissionAssetForm.tsx",
+      "frontend/src/pages/vhfasset/VhfAssetForm.tsx",
+      "frontend/src/pages/vtsassistasset/VtsAssistAssetForm.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C3: 3 edit-target files in one package, no one-way door — pre-declared write scope required; prior C2 undeclared_path breach escalates to C3 (3 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer Thêm mới/Sửa của /asset/transmission, /asset/vhf, /asset/vts-assist — ô nhập 'Model'.",
+  "blast_radius": 3,
+  "done_oracle": "Field `model` ở 3 màn truyền dẫn / VHF / VTS assist có maxLength: 100 đúng bằng cột infra_assets.model VARCHAR(100), không còn 255; các trường khác không đổi. Gate: npx tsc --noEmit -p tsconfig.json exit 0 tại frontend.",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.json",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/pages/transmissionasset/TransmissionAssetForm.tsx",
+      "line": 239,
+      "quote": "                maxLength: 255,",
+      "source_hash": "7a7bfddfd56e762f17370ac89fe085cdaef789b56d1b3de1d5751332ddb04c65",
+      "quote_hash": "5e61a7521f038bafadc568e5fb55123edd52199dc3ca7bf9feef4476c6868f72"
+    },
+    {
+      "file": "frontend/src/pages/vhfasset/VhfAssetForm.tsx",
+      "line": 244,
+      "quote": "                maxLength: 255,",
+      "source_hash": "978a8492e780f253692a7a4a5eef7f65db7cc52a559fc0bc3e6180881d9d9d86",
+      "quote_hash": "5e61a7521f038bafadc568e5fb55123edd52199dc3ca7bf9feef4476c6868f72"
+    },
+    {
+      "file": "frontend/src/pages/vtsassistasset/VtsAssistAssetForm.tsx",
+      "line": 244,
+      "quote": "                maxLength: 255,",
+      "source_hash": "8415a5957bba356dc787243b78ec7cdbff6e1cc26c9480690b4c5bfe36c214af",
+      "quote_hash": "5e61a7521f038bafadc568e5fb55123edd52199dc3ca7bf9feef4476c6868f72"
+    },
+    {
+      "file": "src/main/resources/db/migration/V20260909160000__add_port_terminal_asset_fields.sql",
+      "line": 14,
+      "quote": "ALTER TABLE infra_assets ADD COLUMN IF NOT EXISTS model VARCHAR(100);",
+      "source_hash": "7433a41a76bfcec124e2f447061fde72ef1d0884f5535d44b8d1b42fdbde7766",
+      "quote_hash": "42b90720d3ce29d34d76bb502f51b2338d99fbc5e6a881795c2dac911e16d5b8",
+      "note": "Cột thật là VARCHAR(100) nên giá trị đúng là 100."
+    }
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1789552674824-8ebf",
+    "breach_kind": "undeclared_path",
+    "change_class": "C2",
+    "loc_changed": 4,
+    "files_touched": 1
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "629d8f92016de7672cc5aa6ca122dbe6c7830914",
+    "dirty": true,
+    "captured_at": 1789552735335
+  },
+  "budget": {
+    "wall_clock_ms": 14880000,
+    "turns": 916,
+    "turns_used": 295
+  }
+}

@@ -1,48 +1,49 @@
-import { useMemo } from 'react';
 import {
+  AuditOutlined,
   BankOutlined,
   DeploymentUnitOutlined,
-  SlidersOutlined,
-  AuditOutlined,
-  PlusCircleOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  SlidersOutlined,
 } from '@ant-design/icons';
-import type {
-  TransmissionAsset,
-  TransmissionAssetExploitation,
-  TransmissionAssetAdjustment,
-} from '../../services/transmissionAsset/types';
-import { fmtNum } from '../../utils/numFmt';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
+import { useMemo } from 'react';
 import {
-  colors,
-  actionPrimary,
-  fontWeightBold,
-  fontWeightMedium,
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  textTertiary,
-} from '../../themetokenchk';
+  APPROVAL_MAP,
+  CommonTable,
+  renderApprovalStatusBadge,
+  TableColumnType,
+  type TableOption,
+} from '../../components/shared/common-table';
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from '../../components/shared/dynamic-view-sidebar';
-import {
-  CommonTable,
-  TableColumnType,
-  type TableOption,
-  APPROVAL_MAP,
-  renderApprovalStatusBadge,
-} from '../../components/shared/common-table';
-import {
-  fetchTransmissionAssetAttachments,
-  downloadTransmissionAssetAttachment,
-} from '../../services/transmissionAsset/api';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import { useAssetAttachments } from '../../hooks/useAssetAttachments';
+import {
+  downloadTransmissionAssetAttachment,
+  fetchTransmissionAssetAttachments,
+} from '../../services/transmissionAsset/api';
+import type {
+  TransmissionAsset,
+  TransmissionAssetAdjustment,
+  TransmissionAssetExploitation,
+} from '../../services/transmissionAsset/types';
+import {
+  actionPrimary,
+  colors,
+  fontWeightBold,
+  fontWeightMedium,
+  statusAttention,
+  statusCritical,
+  statusOperational,
+  textTertiary,
+} from '../../themetokenchk';
+import { fmtNum } from '../../utils/numFmt';
 
 export interface TransmissionAssetDetailContentProps {
   open: boolean;
@@ -103,7 +104,19 @@ export default function TransmissionAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) ?? '',
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
+              return (
+                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -154,9 +167,11 @@ export default function TransmissionAssetDetailContent({
         },
         {
           title: 'Ghi chú',
-          dataIndex: 'notes',
+          dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -166,7 +181,7 @@ export default function TransmissionAssetDetailContent({
         },
       ],
     }),
-    [orgName]
+    [orgName, selectedRecord]
   );
 
   const adjustmentTableOption = useMemo<TableOption<TransmissionAssetAdjustment>>(
@@ -382,30 +397,23 @@ export default function TransmissionAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                render: (val) =>
-                  val ? (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        background:
-                          val === 'Tốt'
-                            ? `${statusOperational}18`
-                            : `${statusAttention}18`,
-                        color:
-                          val === 'Tốt' ? statusOperational : statusAttention,
-                      }}
-                    >
-                      {String(val)}
-                    </span>
-                  ) : '',
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === AssetCondition.DANG_SU_DUNG
+                    ? statusOperational
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
+                    ? statusOperational
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',

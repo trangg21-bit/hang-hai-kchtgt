@@ -71,6 +71,7 @@ export interface VtsSystemAsset {
   updatedBy?: string;
   updatedByName?: string;
   updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export type VtsSystemAssetPayload = Omit<
@@ -95,4 +96,5 @@ export interface VtsSystemAssetFilters {
   updatedRange?: unknown;
   sortBy?: string;
   sortDir?: 'ASC' | 'DESC';
+  [key: string]: unknown;
 }

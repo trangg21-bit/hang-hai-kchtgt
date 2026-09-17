@@ -21,6 +21,7 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
@@ -261,22 +262,21 @@ export default function BuoyAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (v) =>
-                  v === 'Tốt'
+                  v === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : v === 'Hư hỏng cần sửa chữa'
-                      ? statusAttention
-                      : statusCritical,
+                    : v === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: ViewFieldType.Badge,
                 badgeColor: (v) =>
-                  v === 'Đang sử dụng'
+                  v === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  v === UsageStatus.HDSN_KHONG_KINH_DOANH
                     ? statusOperational
-                    : v === 'Đang bảo trì/sửa chữa'
-                      ? statusAttention
-                      : statusDraft,
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',
@@ -311,7 +311,7 @@ export default function BuoyAssetDetailContent({
                 label: 'Số lượng',
                 render: (_v, r) =>
                   r.quantity != null
-                    ? `${fmtNum(r.quantity)} ${r.quantityUnit || ''}`.trim()
+                    ? `${fmtNum(Number(r.quantity))} ${r.quantityUnit || ''}`.trim()
                     : '—',
               },
               {
@@ -735,6 +735,17 @@ export default function BuoyAssetDetailContent({
             >
               {allRows.map((item, idx) => {
                 const isInc = item.changeType === 'INCREASE';
+                const details = item.adjustmentDetails;
+                const decisionNumber = details?.decisionNumber || ('increaseCode' in item ? (item as any).increaseCode : ('decreaseCode' in item ? (item as any).decreaseCode : ''));
+                const decisionDate = details?.decisionDate || (item as any).decisionDate;
+                const adjustmentDate = details?.adjustmentDate || (item as any).adjustmentDate;
+                const adjustmentReason = details?.adjustmentReason || (item as any).adjustmentReason || (item as any).reason;
+                const originalValueBefore = details?.originalValueBefore ?? (item as any).originalValueBefore ?? 0;
+                const originalValueAfter = details?.originalValueAfter ?? (item as any).originalValueAfter ?? 0;
+                const remainingValueBefore = details?.remainingValueBefore ?? (item as any).remainingValueBefore;
+                const remainingValueAfter = details?.remainingValueAfter ?? (item as any).remainingValueAfter;
+                const adjustmentNotes = details?.notes || (item as any).adjustmentNotes;
+
                 return (
                   <div key={item.id || idx} style={sectionBoxStyle}>
                     <div style={sectionHeaderStyle}>
@@ -751,8 +762,8 @@ export default function BuoyAssetDetailContent({
                         </span>
                       </div>
                       <span style={{ fontSize: 12, color: textTertiary }}>
-                        {item.adjustmentDate
-                          ? dayjs(item.adjustmentDate).format('DD/MM/YYYY')
+                        {adjustmentDate
+                          ? dayjs(adjustmentDate).format('DD/MM/YYYY')
                           : item.createdAt
                             ? dayjs(item.createdAt).format('DD/MM/YYYY')
                             : '—'}
@@ -771,7 +782,7 @@ export default function BuoyAssetDetailContent({
                           Số quyết định:{' '}
                         </span>
                         <span style={{ fontWeight: fontWeightBold }}>
-                          {item.decisionNumber || '—'}
+                          {decisionNumber || '—'}
                         </span>
                       </div>
                       <div>
@@ -779,8 +790,8 @@ export default function BuoyAssetDetailContent({
                           Ngày ra quyết định:{' '}
                         </span>
                         <span>
-                          {item.decisionDate
-                            ? dayjs(item.decisionDate).format('DD/MM/YYYY')
+                          {decisionDate
+                            ? dayjs(decisionDate).format('DD/MM/YYYY')
                             : '—'}
                         </span>
                       </div>
@@ -788,7 +799,7 @@ export default function BuoyAssetDetailContent({
                         <span style={{ color: textTertiary }}>
                           Lý do điều chỉnh:{' '}
                         </span>
-                        <span>{item.adjustmentReason || '—'}</span>
+                        <span>{adjustmentReason || '—'}</span>
                       </div>
                       <div>
                         <span style={{ color: textTertiary }}>
@@ -803,8 +814,8 @@ export default function BuoyAssetDetailContent({
                           {isInc ? '+' : '-'}
                           {fmtNum(
                             Math.abs(
-                              (item.originalValueAfter || 0) -
-                                (item.originalValueBefore || 0),
+                              (originalValueAfter || 0) -
+                                (originalValueBefore || 0),
                             ),
                           )}{' '}
                           VNĐ
@@ -815,8 +826,8 @@ export default function BuoyAssetDetailContent({
                           Nguyên giá trước:{' '}
                         </span>
                         <span>
-                          {item.originalValueBefore != null
-                            ? fmtNum(item.originalValueBefore) + ' VNĐ'
+                          {originalValueBefore != null
+                            ? fmtNum(originalValueBefore) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
@@ -825,8 +836,8 @@ export default function BuoyAssetDetailContent({
                           Nguyên giá sau:{' '}
                         </span>
                         <span style={{ fontWeight: fontWeightBold }}>
-                          {item.originalValueAfter != null
-                            ? fmtNum(item.originalValueAfter) + ' VNĐ'
+                          {originalValueAfter != null
+                            ? fmtNum(originalValueAfter) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
@@ -835,8 +846,8 @@ export default function BuoyAssetDetailContent({
                           Giá trị còn lại trước:{' '}
                         </span>
                         <span>
-                          {item.remainingValueBefore != null
-                            ? fmtNum(item.remainingValueBefore) + ' VNĐ'
+                          {remainingValueBefore != null
+                            ? fmtNum(remainingValueBefore) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
@@ -845,14 +856,14 @@ export default function BuoyAssetDetailContent({
                           Giá trị còn lại sau:{' '}
                         </span>
                         <span style={{ fontWeight: fontWeightBold }}>
-                          {item.remainingValueAfter != null
-                            ? fmtNum(item.remainingValueAfter) + ' VNĐ'
+                          {remainingValueAfter != null
+                            ? fmtNum(remainingValueAfter) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
                       <div style={{ gridColumn: 'span 2' }}>
                         <span style={{ color: textTertiary }}>Ghi chú: </span>
-                        <span>{item.adjustmentNotes || '—'}</span>
+                        <span>{adjustmentNotes || '—'}</span>
                       </div>
                     </div>
                   </div>

@@ -1,0 +1,10 @@
+{
+  "at": 1789551023375,
+  "kind": "tripwire_breach",
+  "change_class": "C1",
+  "breach_kind": "undeclared_path",
+  "triage_id": "TRI-1789547612579-06c9",
+  "loc_changed": 0,
+  "files_touched": 0,
+  "detail": "Intake tripwire — undeclared path: writing \"frontend/src/components/shared/dynamic-form-sidebar/dynamic-form-sidebar.model.ts\" is outside this C1 lane's pre-declared write scope [frontend/src/pages/vtsasset/VtsSystemAssetList.tsx, frontend/src/pages/vtsasset/VtsSystemAssetOperationForm.tsx]. A C1 inline fix may touch only its declared scope — the edit is refused. FIX: add \"frontend/src/components/…"
+}

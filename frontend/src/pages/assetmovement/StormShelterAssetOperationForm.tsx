@@ -41,15 +41,12 @@ export interface OperationValues {
   [key: string]: unknown;
 }
 
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface StormShelterAssetOperationFormProps {
   open: boolean;
@@ -107,14 +104,18 @@ export function StormShelterAssetOperationForm({
             name: 'assetNameDisplay',
             label: 'Danh mục tài sản',
             type: FormFieldType.Readonly,
-            initialValue: selected?.assetName || selected?.assetCode || '—',
-            valueFormatter: () => selected?.assetName || selected?.assetCode || '—',
+            initialValue: [selected?.assetCode, selected?.assetName].filter(Boolean).join(' - '),
+            valueFormatter: () =>
+              [selected?.assetCode, selected?.assetName].filter(Boolean).join(' - ') || '—',
           },
           {
             name: 'unitOfMeasure',
             label: 'Đơn vị tính',
             type: FormFieldType.Select,
-            options: UNITS.map((u) => ({ value: u, label: u })),
+            placeholder: 'Chọn đơn vị tính',
+            required: true,
+            rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
+            options: ASSET_QUANTITY_UNIT_OPTIONS,
             initialValue: selected?.quantityUnit || 'Bộ',
           },
           {
@@ -122,26 +123,36 @@ export function StormShelterAssetOperationForm({
             label: 'Số lượng',
             type: FormFieldType.Number,
             min: 0,
+            required: true,
+            formatter: fmtInputNumber,
+            placeholder: '0',
+            rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
             initialValue: selected?.quantity || 1,
           },
           {
             name: 'exploitationDeadline',
             label: 'Thời hạn khai thác',
             type: FormFieldType.Date,
+            required: true,
             placeholder: 'Chọn thời hạn',
+            rules: [{ required: true, message: 'Thời hạn khai thác là bắt buộc' }],
           },
           {
             name: 'totalRevenue',
             label: 'Tổng số tiền thu được (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            required: true,
+            formatter: fmtInputNumber,
             placeholder: '0',
+            rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
           },
           {
             name: 'relatedCosts',
             label: 'Chi phí có liên quan (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            formatter: fmtInputNumber,
             placeholder: '0',
           },
           {
@@ -149,6 +160,7 @@ export function StormShelterAssetOperationForm({
             label: 'Nộp NSNN (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            formatter: fmtInputNumber,
             placeholder: '0',
           },
           {
@@ -156,6 +168,7 @@ export function StormShelterAssetOperationForm({
             label: 'Số tiền được thực hiện dự án (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            formatter: fmtInputNumber,
             placeholder: '0',
           },
           {
@@ -212,9 +225,10 @@ export function StormShelterAssetOperationForm({
           name: 'adjustmentReason',
           label: `Lý do ${labelPrefix} nguyên giá`,
           type: FormFieldType.Select,
-          options: ADJUSTMENT_REASONS.map((r) => ({ value: r, label: r })),
+          placeholder: 'Chọn lý do',
+          options: isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS,
           required: true,
-          rules: [{ required: true, message: 'Vui lòng chọn lý do' }],
+          rules: [{ required: true, message: `Lý do ${labelPrefix} nguyên giá là bắt buộc` }],
         },
         {
           name: 'notes',
@@ -245,8 +259,28 @@ export function StormShelterAssetOperationForm({
           type: FormFieldType.Number,
           min: 0,
           required: true,
+          formatter: fmtInputNumber,
           rules: [{ required: true, message: 'Vui lòng nhập số tiền điều chỉnh' }],
           placeholder: '0',
+        },
+        {
+          name: 'accumulatedDepreciation',
+          label: 'Khấu hao lũy kế (VNĐ)',
+          type: FormFieldType.Number,
+          min: 0,
+          required: true,
+          formatter: fmtInputNumber,
+          rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
+          placeholder: '0',
+        },
+        {
+          name: 'disposalMethod',
+          label: 'Hình thức xử lý tài sản',
+          type: FormFieldType.Select,
+          required: true,
+          placeholder: 'Chọn hình thức xử lý',
+          options: DISPOSAL_METHOD_OPTIONS,
+          rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
         },
         {
           name: 'afterOriginalDisplay',

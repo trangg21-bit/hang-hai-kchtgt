@@ -308,10 +308,10 @@ public class VtsAssistService {
     Sort sort = buildSort(sortBy, sortOrder);
     Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(size, 100), sort);
 
-    // Filter "Đơn vị quản lý": lọc theo đúng đơn vị được chọn (chuẩn như /radar-station)
+    // Filter "Đơn vị quản lý": mở rộng cây đơn vị con (chuẩn như /vhf)
     boolean filterEnabled = orgUnitId != null;
     Collection<UUID> filterOrgUnitIds = filterEnabled
-        ? List.of(orgUnitId)
+        ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
         : List.of();
 
     OperationalStatus opStatus = parseOperationalStatus(operationalStatus);

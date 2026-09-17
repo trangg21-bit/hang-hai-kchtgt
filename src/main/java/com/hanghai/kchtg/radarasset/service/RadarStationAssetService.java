@@ -28,6 +28,7 @@ import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.util.EntityCopyUtils;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.radarasset.dto.RadarStationAssetRequest;
@@ -55,6 +56,7 @@ public class RadarStationAssetService {
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public RadarStationAssetResponse create(RadarStationAssetRequest request) {
@@ -87,15 +89,9 @@ public class RadarStationAssetService {
             if (assetName != null && !assetName.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetName")), "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%"));
             }
-            if (parentOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            }
-            if (orgUnitId != null) {
-                predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            }
-            if (usingOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
-            }
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "parentOrgUnitId", parentOrgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "orgUnitId", orgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "usingOrgUnitId", usingOrgUnitId);
             if (radarStationId != null) {
                 predicates.add(cb.equal(root.get("radarStationId"), radarStationId));
             }

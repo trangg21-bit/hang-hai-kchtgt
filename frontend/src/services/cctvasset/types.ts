@@ -71,6 +71,7 @@ export interface CctvSystemAsset {
   updatedBy?: string;
   updatedByName?: string;
   updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export type CctvSystemAssetPayload = Omit<
@@ -95,6 +96,7 @@ export interface CctvSystemAssetFilters {
   updatedRange?: unknown;
   sortBy?: string;
   sortDir?: 'ASC' | 'DESC';
+  [key: string]: unknown;
 }
 
 export interface CctvDeviceOption {

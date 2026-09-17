@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import {
@@ -17,6 +17,7 @@ import type {
   AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
 import type { OperationMode } from './BuoyAssetOperationForm';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
@@ -29,6 +30,7 @@ import {
 } from '../../components/shared/dynamic-form-sidebar';
 
 export interface BuoyFormValues {
+  [key: string]: unknown;
   parentOrgUnitId?: string;
   orgUnitId?: string;
   usingOrgUnitId?: string;
@@ -37,7 +39,7 @@ export interface BuoyFormValues {
   buoyStationId?: string;
   assetCode?: string;
   assetName?: string;
-  assetType?: 'BUOY';
+  assetType?: string;
   barcode?: string;
   assetCondition?: string;
   usageStatus?: string;
@@ -72,12 +74,14 @@ export interface BuoyFormValues {
   approvalStatus?: string;
 }
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng', 'Đang bảo trì/sửa chữa'];
-const ASSET_GROUPS = ['Phao tiêu dẫn luồng', 'Phao báo hiệu nguy hiểm', 'Phao chuyên dùng', 'Nhà trạm quản lý vận hành', 'Thiết bị trạm phao tiêu', 'Khác'];
-const ORIGINS = ['Đầu tư ngân sách', 'Tiếp nhận/Bàn giao', 'Mua sắm mới', 'Tài trợ/Viện trợ', 'Khác'];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface BuoyAssetFormProps {
   open: boolean;
@@ -129,8 +133,8 @@ export default function BuoyAssetForm({
       label: `[Phao tieu] ${item.code} - ${item.name}`,
     }));
     return [
-      { label: 'Nhà trạm quản lý vận hành', options: stationOpts },
-      { label: 'Phao, tiêu hàng hải', options: buoyOpts },
+      ...stationOpts,
+      ...buoyOpts,
     ];
   }, [buoyStations, buoys]);
 
@@ -150,27 +154,27 @@ export default function BuoyAssetForm({
               { name: 'orgUnitId', label: 'Đơn vị quản lý', type: FormFieldType.TreeSelect, organizations, required: true, rules: [{ required: true, message: 'Đơn vị quản lý là bắt buộc' }] },
               { name: 'usingOrgUnitId', label: 'Đơn vị sử dụng', type: FormFieldType.TreeSelect, organizations, required: true, rules: [{ required: true, message: 'Đơn vị sử dụng là bắt buộc' }] },
               { name: 'refId', label: 'Mã nhà trạm, phao tiêu', type: FormFieldType.Select, options: refOptions, placeholder: 'Chọn nhà trạm hoặc chọn phao tiêu', required: true, showSearch: true, rules: [{ required: true, message: 'Mã nhà trạm, phao tiêu là bắt buộc' }] },
-              { name: 'assetType', label: 'Loại tài sản', type: FormFieldType.Select, initialValue: 'BUOY', disabled: true, options: [{ value: 'BUOY', label: 'Tài sản phao, tiêu và nhà trạm QLVH' }] },
+              { name: 'assetType', label: 'Loại tài sản', type: FormFieldType.Select, placeholder: 'Chọn loại tài sản', options: MARITIME_ASSET_TYPE_OPTIONS, allowClear: true },
               { name: 'assetCode', label: 'Mã tài sản', type: FormFieldType.Text, placeholder: 'Hệ thống tự sinh (TS-PT-...)', disabled: true },
-              { name: 'assetName', label: 'Tên tài sản', type: FormFieldType.TextArea, required: true, colSpan: 12, placeholder: 'Nhập tên tài sản', rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }] },
-              { name: 'barcode', label: 'Barcode', type: FormFieldType.Text, placeholder: 'Nhập mã barcode' },
-              { name: 'assetCondition', label: 'Tình trạng tài sản', type: FormFieldType.Select, required: true, placeholder: 'Chọn tình trạng', options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })), rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }] },
-              { name: 'usageStatus', label: 'Hiện trạng sử dụng', type: FormFieldType.Select, required: true, placeholder: 'Chọn hiện trạng', options: USAGE_STATUSES.map((v) => ({ value: v, label: v })), rules: [{ required: true, message: 'Hiện trạng sử dụng là bắt buộc' }] },
-              { name: 'assetGroup', label: 'Nhóm tài sản', type: FormFieldType.Select, placeholder: 'Chọn nhóm tài sản', options: ASSET_GROUPS.map((v) => ({ value: v, label: v })) },
-              { name: 'assetSubgroup', label: 'Phân nhóm tài sản', type: FormFieldType.Text, placeholder: 'Nhập phân nhóm tài sản' },
-              { name: 'origin', label: 'Nguồn gốc', type: FormFieldType.Select, placeholder: 'Chọn nguồn gốc', options: ORIGINS.map((v) => ({ value: v, label: v })) },
-              { name: 'quantity', label: 'Số lượng', type: FormFieldType.Number, min: 0, placeholder: '0', colSpan: 6 },
-              { name: 'quantityUnit', label: 'Đơn vị tính', type: FormFieldType.Select, placeholder: 'Đơn vị', options: UNITS.map((v) => ({ value: v, label: v })), colSpan: 6 },
-              { name: 'model', label: 'Model', type: FormFieldType.Text, placeholder: 'Nhập model' },
-              { name: 'serialNumber', label: 'Số Serial', type: FormFieldType.Text, placeholder: 'Nhập serial' },
-              { name: 'countryOfOrigin', label: 'Xuất xứ', type: FormFieldType.Text, placeholder: 'Nhập xuất xứ' },
-              { name: 'manufacturer', label: 'Hãng sản xuất', type: FormFieldType.Text, placeholder: 'Nhập hãng sản xuất' },
+              { name: 'assetName', label: 'Tên tài sản', type: FormFieldType.TextArea, maxLength: 255, required: true, colSpan: 12, placeholder: 'Nhập tên tài sản', rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }] },
+              { name: 'barcode', label: 'Barcode', type: FormFieldType.Text, maxLength: 100, placeholder: 'Nhập mã barcode' },
+              { name: 'assetCondition', label: 'Tình trạng tài sản', type: FormFieldType.Select, required: true, placeholder: 'Chọn tình trạng', options: ASSET_CONDITION_OPTIONS, rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }] },
+              { name: 'usageStatus', label: 'Hiện trạng sử dụng', type: FormFieldType.Select, required: true, placeholder: 'Chọn hiện trạng', options: USAGE_STATUS_OPTIONS, rules: [{ required: true, message: 'Hiện trạng sử dụng là bắt buộc' }] },
+              { name: 'assetGroup', label: 'Nhóm tài sản', type: FormFieldType.Select, placeholder: 'Chọn nhóm tài sản', options: ASSET_GROUP_OPTIONS },
+              { name: 'assetSubgroup', label: 'Phân nhóm tài sản', type: FormFieldType.Text, maxLength: 200, placeholder: 'Nhập phân nhóm tài sản' },
+              { name: 'origin', label: 'Nguồn gốc', type: FormFieldType.Select, placeholder: 'Chọn nguồn gốc', options: ASSET_ORIGIN_OPTIONS },
+              { name: 'quantity', label: 'Số lượng', type: FormFieldType.Number, min: 0, placeholder: '0', required: true, rules: [{ required: true, message: 'Số lượng là bắt buộc' }], colSpan: 6 },
+              { name: 'quantityUnit', label: 'Đơn vị tính', type: FormFieldType.Select, placeholder: 'Đơn vị', options: ASSET_QUANTITY_UNIT_OPTIONS, required: true, rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }], colSpan: 6 },
+              { name: 'model', label: 'Model', type: FormFieldType.Text, maxLength: 100, placeholder: 'Nhập model' },
+              { name: 'serialNumber', label: 'Số Serial', type: FormFieldType.Text, maxLength: 100, placeholder: 'Nhập serial' },
+              { name: 'countryOfOrigin', label: 'Xuất xứ', type: FormFieldType.Text, maxLength: 100, placeholder: 'Nhập xuất xứ' },
+              { name: 'manufacturer', label: 'Hãng sản xuất', type: FormFieldType.Text, maxLength: 200, placeholder: 'Nhập hãng sản xuất' },
               { name: 'constructionYear', label: 'Năm xây dựng', type: FormFieldType.Year, placeholder: 'Chọn năm' },
               { name: 'useDate', label: 'Ngày sử dụng tài sản', type: FormFieldType.Date, placeholder: 'Chọn ngày' },
               { name: 'landArea', label: 'Diện tích (đất, sàn sử dụng: m²)', type: FormFieldType.Number, min: 0, placeholder: '0.00' },
               { name: 'floorArea', label: 'Diện tích sàn sử dụng (m²)', type: FormFieldType.Number, min: 0, placeholder: '0.00' },
-              { name: 'address', label: 'Địa chỉ', type: FormFieldType.TextArea, colSpan: 24, placeholder: 'Nhập địa chỉ tài sản' },
-              { name: 'assetLocation', label: 'Vị trí tài sản', type: FormFieldType.TextArea, colSpan: 24, placeholder: 'Nhập vị trí chi tiết của tài sản' },
+              { name: 'address', label: 'Địa chỉ', type: FormFieldType.TextArea, maxLength: 2000, colSpan: 24, placeholder: 'Nhập địa chỉ tài sản' },
+              { name: 'assetLocation', label: 'Vị trí tài sản', type: FormFieldType.TextArea, maxLength: 2000, colSpan: 24, placeholder: 'Nhập vị trí chi tiết của tài sản' },
             ],
           },
         ],
@@ -202,8 +206,8 @@ export default function BuoyAssetForm({
             icon: <AuditOutlined />,
             fields: [
               { name: 'declarationDate', label: 'Ngày kê khai tài sản', type: FormFieldType.Date, placeholder: 'Chọn ngày' },
-              { name: 'assignmentDecisionNumber', label: 'Số quyết định giao (bao gồm cả tăng vốn)', type: FormFieldType.Text, placeholder: 'Nhập số quyết định giao' },
-              { name: 'disposalMethod', label: 'Hình thức xử lý tài sản', type: FormFieldType.Select, allowClear: true, placeholder: 'Chọn hình thức xử lý', options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })) },
+              { name: 'assignmentDecisionNumber', label: 'Số quyết định giao (bao gồm cả tăng vốn)', type: FormFieldType.Text, maxLength: 200, placeholder: 'Nhập số quyết định giao' },
+              { name: 'disposalMethod', label: 'Hình thức xử lý tài sản', type: FormFieldType.Select, allowClear: true, placeholder: 'Chọn hình thức xử lý', options: DISPOSAL_METHOD_OPTIONS },
             ],
           },
           {

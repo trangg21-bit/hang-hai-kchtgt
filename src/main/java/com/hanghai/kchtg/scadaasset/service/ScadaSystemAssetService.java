@@ -1,5 +1,29 @@
 package com.hanghai.kchtg.scadaasset.service;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.scada.repository.ScadaRepository;
+import com.hanghai.kchtg.scadaasset.dto.ScadaSystemAssetRequest;
+import com.hanghai.kchtg.scadaasset.dto.ScadaSystemAssetResponse;
+import com.hanghai.kchtg.scadaasset.entity.ScadaSystemAsset;
+import com.hanghai.kchtg.scadaasset.repository.ScadaSystemAssetRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -53,6 +77,7 @@ public class ScadaSystemAssetService {
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public ScadaSystemAssetResponse create(ScadaSystemAssetRequest request) {
@@ -90,15 +115,9 @@ public class ScadaSystemAssetService {
             if (assetName != null && !assetName.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetName")), "%" + assetName.toLowerCase(Locale.ROOT) + "%"));
             }
-            if (parentOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            }
-            if (orgUnitId != null) {
-                predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            }
-            if (usingOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
-            }
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "parentOrgUnitId", parentOrgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "orgUnitId", orgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "usingOrgUnitId", usingOrgUnitId);
             if (scadaId != null) {
                 predicates.add(cb.equal(root.get("scadaId"), scadaId));
             }

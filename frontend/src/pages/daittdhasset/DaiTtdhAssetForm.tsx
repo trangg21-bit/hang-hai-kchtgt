@@ -16,6 +16,8 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import { createAssetDepreciationFormSection } from '../../components/shared/asset-value/assetValueFormFields';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 
 export type FormValues = Omit<
   DaiTtdhAssetPayload,
@@ -33,23 +35,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Thiết bị thông tin duyên hải',
-  'Thiết bị phát sóng / thu sóng',
-  'Máy móc, thiết bị phụ trợ',
-  'Hệ thống nguồn & ăng-ten',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Chiếc', 'Máy'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+} from '../../constants/assetDropdown';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export interface DaiTtdhAssetFormProps {
   open: boolean;
@@ -139,9 +132,8 @@ export default function DaiTtdhAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'Tài sản đài TTDH',
                 placeholder: 'Chọn loại tài sản',
-                options: [{ value: 'Tài sản đài TTDH', label: 'Tài sản đài TTDH' }],
+                options: MARITIME_ASSET_TYPE_OPTIONS,
               },
               {
                 name: 'assetCode',
@@ -154,6 +146,7 @@ export default function DaiTtdhAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 255,
                 required: true,
                 rules: [{ required: true, message: 'Vui lòng nhập tên tài sản' }],
                 placeholder: 'Nhập tên tài sản',
@@ -163,46 +156,53 @@ export default function DaiTtdhAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã vạch/barcode',
               },
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_CONDITIONS.map((c) => ({ value: c, label: c })),
+                options: ASSET_CONDITION_OPTIONS,
                 placeholder: 'Chọn tình trạng',
+                allowClear: true,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: FormFieldType.Select,
-                options: USAGE_STATUSES.map((s) => ({ value: s, label: s })),
-                placeholder: 'Chọn hiện trạng sử dụng',
+                options: USAGE_STATUS_OPTIONS,
+                placeholder: 'Chọn hiện trạng',
+                allowClear: true,
               },
               {
                 name: 'assetGroup',
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_GROUPS.map((g) => ({ value: g, label: g })),
+                options: ASSET_GROUP_OPTIONS,
                 placeholder: 'Chọn nhóm tài sản',
+                allowClear: true,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
                 name: 'origin',
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
-                options: ORIGINS.map((o) => ({ value: o, label: o })),
-                placeholder: 'Chọn nguồn gốc tài sản',
+                options: ASSET_ORIGIN_OPTIONS,
+                placeholder: 'Chọn nguồn gốc',
+                allowClear: true,
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 placeholder: 'Nhập địa chỉ nơi đặt tài sản',
                 colSpan: 24,
               },
@@ -217,38 +217,47 @@ export default function DaiTtdhAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
-                min: 0,
-                initialValue: 1,
+                required: true,
+                min: 1,
+                formatter: fmtInputNumber,
+                placeholder: '0',
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               },
               {
                 name: 'quantityUnit',
                 label: 'Đơn vị tính số lượng',
                 type: FormFieldType.Select,
-                initialValue: 'Bộ',
-                options: UNITS.map((u) => ({ value: u, label: u })),
+                required: true,
+                placeholder: 'Chọn đơn vị tính',
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model thiết bị',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập số serial',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập nước xuất xứ',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập tên hãng sản xuất',
               },
               {
@@ -275,6 +284,7 @@ export default function DaiTtdhAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 placeholder: 'Mô tả chi tiết vị trí lắp đặt tài sản',
                 colSpan: 24,
               },
@@ -296,6 +306,13 @@ export default function DaiTtdhAssetForm({
             />
           </div>
         ),
+      },
+      {
+        key: 'details',
+        label: 'Thông tin chi tiết',
+        sections: [
+          createAssetDepreciationFormSection<FormValues>(),
+        ],
       },
     ];
   }, [
