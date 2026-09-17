@@ -31,6 +31,8 @@ import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -39,6 +41,8 @@ import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
+  approveInfraAssetC1,
+  approveInfraAssetC2,
   createAssetDecrease,
   createAssetIncrease,
   createKhaiThac,
@@ -51,6 +55,9 @@ import {
   fetchInfraAssetHistory,
   fetchKhaiThacList,
   fetchPierAssets,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
   updatePierAsset,
   uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
@@ -80,7 +87,8 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import type { Pier } from '../../types/port';
+import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import PierAssetDetailContent from './PierAssetDetailContent';
@@ -101,8 +109,6 @@ const STATUS_COUNT_KEYS = [
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const PIER_ASSET_FIELD_LABELS: Record<string, string> = {
   parentOrgUnitId: 'Cơ quan quản lý cấp trên',
@@ -178,7 +184,7 @@ export default function PierAssetList() {
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<PierAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -378,7 +384,7 @@ export default function PierAssetList() {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({ assetType: 'PIER', status: 'MANAGED' });
+    form.setFieldsValue({ status: 'MANAGED' });
     setAttachments([]);
     setExploitationRows([]);
     setIncreaseRows([]);
@@ -505,7 +511,7 @@ export default function PierAssetList() {
           cleanPath = `/${cleanPath}`;
         }
         const res = await api.get(cleanPath, { responseType: 'blob' });
-        const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+        const contentType = String(res.headers?.['content-type'] || 'application/octet-stream');
         const blob = new Blob([res.data], { type: contentType });
         triggerBlobDownload(blob, fileName || 'tai-lieu');
         toast.success(`Đã tải xuống tệp: ${fileName}`);
@@ -553,7 +559,7 @@ export default function PierAssetList() {
 
       const payload: PierAssetPayload = {
         ...values,
-        assetType: 'PIER',
+        assetType: values.assetType || 'PIER',
         constructionYear: values.constructionYear ? Number(values.constructionYear.format('YYYY')) : undefined,
         useDate: values.useDate?.format('YYYY-MM-DD'),
         declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
@@ -597,6 +603,31 @@ export default function PierAssetList() {
       setSaving(false);
     }
   };
+
+  const openOperation = useCallback((mode: OperationMode, record: PierAsset) => {
+    setSelected(record);
+    setOperationMode(mode);
+    operationForm.resetFields();
+    if (mode === 'exploit') {
+      operationForm.setFieldsValue({
+        operatorOrgUnitId: record.orgUnitId,
+        unitOfMeasure: record.quantityUnit,
+        quantity: record.quantity,
+      });
+    } else {
+      operationForm.setFieldsValue({
+        originalValue: record.originalValue,
+        declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+        depreciationRate: record.depreciationRate,
+        assignmentDecisionNumber: record.assignmentDecisionNumber,
+        depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+        depreciationMonths: record.depreciationMonths,
+        depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+        accumulatedDepreciation: record.accumulatedDepreciation,
+        disposalMethod: record.disposalMethod,
+      });
+    }
+  }, [operationForm]);
 
   const saveOperation = async () => {
     if (!selected || !operationMode) return;
@@ -647,7 +678,7 @@ export default function PierAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
@@ -707,7 +738,7 @@ export default function PierAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+      options: ASSET_CONDITION_OPTIONS,
     },
     {
       key: 'usingOrgUnitId',
@@ -726,6 +757,14 @@ export default function PierAssetList() {
         value: item.id,
         label: `${item.pierCode} - ${item.pierName}`,
       })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: MARITIME_ASSET_TYPE_OPTIONS,
       isAdvanced: true,
     },
     {
@@ -969,31 +1008,19 @@ export default function PierAssetList() {
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('exploit');
-              operationForm.resetFields();
-            },
+            onClick: () => openOperation('exploit', record),
           },
           {
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('increase');
-              operationForm.resetFields();
-            },
+            onClick: () => openOperation('increase', record),
           },
           {
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('decrease');
-              operationForm.resetFields();
-            },
+            onClick: () => openOperation('decrease', record),
           }
         );
       }
@@ -1022,6 +1049,7 @@ export default function PierAssetList() {
     openDetail,
     openEdit,
     openHistory,
+    openOperation,
     operationForm,
     handleOpenApproveModal,
     handleOpenRejectModal,
@@ -1105,10 +1133,6 @@ export default function PierAssetList() {
           organizations={organizations}
           piers={piers}
           attachments={attachments}
-          exploitationRows={exploitationRows}
-          increaseRows={increaseRows}
-          decreaseRows={decreaseRows}
-          orgName={(id) => orgName.get(id || '') || ''}
           saving={saving}
           saveAction={saveAction}
           onClose={() => setDrawerMode(undefined)}

@@ -60,6 +60,11 @@ import type {
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import {
+  calculateAssetAdjustmentValues,
+  validateAdjustmentOriginalValue,
+} from '../../utils/assetValueCalculation';
 import VtsAssistAssetDetailContent from './VtsAssistAssetDetailContent';
 import VtsAssistAssetForm, { type FormValues } from './VtsAssistAssetForm';
 import VtsAssistAssetHistory, { useVtsAssistHistory } from './VtsAssistAssetHistory';
@@ -78,9 +83,9 @@ const STATUS_COUNT_KEYS = [
   'ARCHIVED',
 ];
 
-type DrawerMode = 'create' | 'edit' | 'detail';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+type DrawerMode = 'create' | 'edit' | 'detail';
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   if (cause && typeof cause === 'object' && 'response' in cause) {
@@ -185,13 +190,6 @@ export default function VtsAssistAssetList() {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({
-      assetType: 'Tài sản hệ thống phụ trợ VTS',
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-    });
     setAttachments([]);
   }, [form]);
 
@@ -465,13 +463,43 @@ export default function VtsAssistAssetList() {
       if (operationMode === 'exploit') {
         await createVtsAssistExploitation(selected.id, {
           ...values,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
         });
         toast.success('Lưu thông tin khai thác tài sản thành công.');
       } else {
+        const origVal = (values.originalValueAfter ?? values.originalValue) as number | undefined;
+        const valCheck = validateAdjustmentOriginalValue(
+          operationMode,
+          origVal,
+          selected.originalValue
+        );
+        if (!valCheck.isValid) {
+          toast.error(valCheck.message || 'Nguyên giá sau điều chỉnh không hợp lệ.');
+          return;
+        }
+
+        setSaving(true);
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
+
         await createVtsAssistAdjustment(selected.id, {
           ...values,
-          adjustmentType: operationMode === 'increase' ? 'TANG' : 'GIAM',
+          originalValue: origVal,
+          originalValueAfter: origVal,
+          originalValueBefore: selected.originalValue,
+          remainingValueBefore: selected.remainingValue,
+          remainingValueAfter: calc.remainingValueAfter,
+          accumulatedDepreciation:
+            calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
+          adjustmentType: operationMode === 'increase' ? 'INCREASE' : 'DECREASE',
           decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
           adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
           declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
@@ -516,7 +544,7 @@ export default function VtsAssistAssetList() {
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
       },
       {
         key: 'usingOrgUnitId',
@@ -542,7 +570,7 @@ export default function VtsAssistAssetList() {
         label: 'Loại tài sản',
         type: 'select',
         placeholder: 'Chọn loại tài sản',
-        options: [{ value: 'Tài sản hệ thống phụ trợ VTS', label: 'Tài sản hệ thống phụ trợ VTS' }],
+        options: MARITIME_ASSET_TYPE_OPTIONS,
         isAdvanced: true,
       },
       {
@@ -787,6 +815,17 @@ export default function VtsAssistAssetList() {
               setSelected(record);
               setOperationMode('increase');
               operationForm.resetFields();
+              operationForm.setFieldsValue({
+                originalValueBefore: record.originalValue,
+                remainingValueBefore: record.remainingValue,
+                declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+                depreciationRate: record.depreciationRate,
+                assignmentDecisionNumber: record.assignmentDecisionNumber,
+                depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+                depreciationMonths: record.depreciationMonths,
+                depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+                accumulatedDepreciation: record.accumulatedDepreciation,
+              });
             },
           },
           {
@@ -797,6 +836,17 @@ export default function VtsAssistAssetList() {
               setSelected(record);
               setOperationMode('decrease');
               operationForm.resetFields();
+              operationForm.setFieldsValue({
+                originalValueBefore: record.originalValue,
+                remainingValueBefore: record.remainingValue,
+                declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+                depreciationRate: record.depreciationRate,
+                assignmentDecisionNumber: record.assignmentDecisionNumber,
+                depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+                depreciationMonths: record.depreciationMonths,
+                depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+                accumulatedDepreciation: record.accumulatedDepreciation,
+              });
             },
           },
         ];

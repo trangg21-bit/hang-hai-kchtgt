@@ -42,6 +42,7 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -60,6 +61,7 @@ public class InfraAssetService {
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -70,7 +72,7 @@ public class InfraAssetService {
             AttachmentRepository attachmentRepository,
             InfrastructureHistoryRepository historyRepository,
             UserRepository userRepository) {
-        this(repository, userResolverService, attachmentRepository, historyRepository, userRepository, null);
+        this(repository, userResolverService, attachmentRepository, historyRepository, userRepository, null, null);
     }
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -80,13 +82,15 @@ public class InfraAssetService {
             AttachmentRepository attachmentRepository,
             InfrastructureHistoryRepository historyRepository,
             UserRepository userRepository,
-            @org.springframework.beans.factory.annotation.Autowired(required = false) ChangeHistoryService changeHistoryService) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) ChangeHistoryService changeHistoryService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) OrgUnitCacheService orgUnitCacheService) {
         this.repository = repository;
         this.userResolverService = userResolverService;
         this.attachmentRepository = attachmentRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
         this.changeHistoryService = changeHistoryService;
+        this.orgUnitCacheService = orgUnitCacheService;
     }
 
     @Transactional
@@ -138,14 +142,14 @@ public class InfraAssetService {
                 predicates.add(cb.like(cb.lower(root.get("assetName")),
                         "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%"));
             }
-            if (parentOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            }
-            if (orgUnitId != null) {
-                predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            }
-            if (usingOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
+            if (orgUnitCacheService != null) {
+                orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "parentOrgUnitId", parentOrgUnitId);
+                orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "orgUnitId", orgUnitId);
+                orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "usingOrgUnitId", usingOrgUnitId);
+            } else {
+                if (parentOrgUnitId != null) predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
+                if (orgUnitId != null) predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
+                if (usingOrgUnitId != null) predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
             }
             if (berthId != null) {
                 predicates.add(cb.equal(root.get("berthId"), berthId));

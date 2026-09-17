@@ -71,6 +71,7 @@ export interface RadarStationAsset {
   updatedBy?: string;
   updatedByName?: string;
   updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export type RadarStationAssetPayload = Omit<
@@ -95,4 +96,5 @@ export interface RadarStationAssetFilters {
   updatedRange?: unknown;
   sortBy?: string;
   sortDir?: 'ASC' | 'DESC';
+  [key: string]: unknown;
 }

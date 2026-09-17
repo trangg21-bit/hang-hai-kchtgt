@@ -12,7 +12,6 @@ import {
   CommonTable,
   TableColumnType,
   type TableOption,
-  APPROVAL_MAP,
   renderApprovalStatusBadge,
 } from '../../components/shared/common-table';
 import {
@@ -29,15 +28,13 @@ import type {
   AssetIncreaseResponse,
 } from '../../services/assetmovement/types';
 import type { VtsSystemAsset } from '../../services/vtsasset/types';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
-  actionPrimary,
   fontWeightBold,
   fontWeightMedium,
-  radiusPill,
   statusAttention,
   statusCritical,
-  statusDraft,
   statusOperational,
 } from '../../themetokenchk';
 import {
@@ -61,8 +58,8 @@ export interface VtsSystemAssetDetailContentProps {
 
 const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
-const fmtDate = (v?: string | null): string =>
-  v ? dayjs(v).format('DD/MM/YYYY') : '—';
+const fmtNum = (v?: number | null): string =>
+  v != null ? Number(v).toLocaleString('vi-VN') : '—';
 
 export default function VtsSystemAssetDetailContent({
   open,
@@ -165,6 +162,19 @@ export default function VtsSystemAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (r && raw === r.assetName)) {
+              return (
+                [r?.assetCode, r?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -218,6 +228,8 @@ export default function VtsSystemAssetDetailContent({
           dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -230,7 +242,7 @@ export default function VtsSystemAssetDetailContent({
     [orgName]
   );
 
-  interface AdjustmentRowItem {
+  interface AdjustmentRowItem extends Record<string, unknown> {
     id: string;
     adjustmentType: 'TANG' | 'GIAM';
     code?: string;
@@ -486,9 +498,9 @@ export default function VtsSystemAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Tốt'
+                  val === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : val === 'Không sử dụng được'
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
                       ? statusCritical
                       : statusAttention,
               },
@@ -497,11 +509,10 @@ export default function VtsSystemAssetDetailContent({
                 label: 'Hiện trạng sử dụng',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Đang sử dụng'
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
                     ? statusOperational
-                    : val === 'Tạm dừng sử dụng'
-                      ? statusCritical
-                      : statusDraft,
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',

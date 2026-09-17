@@ -80,7 +80,9 @@ const STATUS_COUNT_KEYS = [
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+
+
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -182,10 +184,7 @@ export default function TransmissionAssetList() {
     setDrawerMode('create');
     form.resetFields();
     form.setFieldsValue({
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
       quantity: 1,
-      quantityUnit: 'Bộ',
     });
     setAttachments([]);
   }, [form]);
@@ -462,6 +461,7 @@ export default function TransmissionAssetList() {
         setSaving(true);
         await createTransmissionExploitation(selected.id, {
           ...values,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
         });
       } else {
@@ -537,7 +537,7 @@ export default function TransmissionAssetList() {
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
       },
       {
         key: 'usingOrgUnitId',
@@ -811,6 +811,7 @@ export default function TransmissionAssetList() {
                 depreciationMonths: record.depreciationMonths,
                 depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
                 accumulatedDepreciation: record.accumulatedDepreciation,
+                disposalMethod: record.disposalMethod,
               });
             },
           },
@@ -832,6 +833,7 @@ export default function TransmissionAssetList() {
                 depreciationMonths: record.depreciationMonths,
                 depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
                 accumulatedDepreciation: record.accumulatedDepreciation,
+                disposalMethod: record.disposalMethod,
               });
             },
           },

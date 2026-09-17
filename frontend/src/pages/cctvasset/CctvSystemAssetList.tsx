@@ -1,3 +1,4 @@
+
 import {
   DeleteOutlined,
   EditOutlined,
@@ -16,7 +17,7 @@ import toast from '../../components/ToastNotification';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import api from '../../services/api';
-import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 
 import {
@@ -30,9 +31,9 @@ import {
   type ScreenHeaderAction,
   type TableOption,
 } from '../../components/list-view';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
   createAssetDecrease,
@@ -94,22 +95,9 @@ import CctvSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './CctvSystemAssetOperationForm';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const CCTV_ASSET_TYPES = [
-  'Hệ thống CCTV',
-  'Camera giám sát (CCTV)',
-  'Đầu ghi hình (NVR/DVR)',
-  'Màn hình hiển thị',
-  'Máy chủ lưu trữ video',
-  'Hạ tầng truyền dẫn/mạng',
-  'Phần mềm giám sát CCTV',
-  'Thiết bị phụ trợ',
-  'Khác',
-];
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -206,7 +194,7 @@ const CCTV_HISTORY_FIELD_ORDER = [
   'attachments',
 ];
 
-const BREADCRUMB_ITEMS: BreadcrumbItem[] = [
+const BREADCRUMB_ITEMS = [
   { label: 'Trang chủ', path: '/' },
   { label: 'Quản lý tài sản KCHT hàng hải' },
   { label: 'Tài sản HT CCTV' },
@@ -247,7 +235,7 @@ export default function CctvSystemAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<CctvSystemAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -258,12 +246,12 @@ export default function CctvSystemAssetList() {
     [organizations]
   );
   const cctvDeviceMap = useMemo(
-    () => new Map(cctvDevices.map((item) => [item.id, { code: item.code, name: item.name }])),
+    () => new Map(cctvDevices.map((item) => [item.id, { deviceCode: item.deviceCode, deviceName: item.deviceName }])),
     [cctvDevices]
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -286,7 +274,7 @@ export default function CctvSystemAssetList() {
       }
       if (field === 'cctvId' || field === 'cctvDeviceId') {
         const dev = cctvDeviceMap.get(String(val));
-        return dev ? (dev.code ? `${dev.code} - ${dev.name}` : dev.name) : String(val);
+        return dev ? (dev.deviceCode ? `${dev.deviceCode} - ${dev.deviceName}` : dev.deviceName) : String(val);
       }
       if (field === 'constructionYear') {
         const str = String(val).trim();
@@ -330,7 +318,7 @@ export default function CctvSystemAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -366,7 +354,7 @@ export default function CctvSystemAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderCctvHistoryTimeline = (filtered: any[]) => {
+  const renderCctvHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -399,7 +387,7 @@ export default function CctvSystemAssetList() {
       resolveUnitName: (rec) => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -464,13 +452,6 @@ export default function CctvSystemAssetList() {
     form.resetFields();
     form.setFieldsValue({
       valueUnit: 'VNĐ',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      assetGroup: 'Máy móc, thiết bị',
-      assetType: 'Hệ thống CCTV',
-      origin: 'Mua sắm',
     });
   }, [form]);
 
@@ -698,7 +679,7 @@ export default function CctvSystemAssetList() {
       const s = val.trim();
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
     }
-    const parsed = dayjs(val as any);
+    const parsed = dayjs(val as string | number | Date);
     return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
   };
 
@@ -720,7 +701,7 @@ export default function CctvSystemAssetList() {
           attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
       };
 
-      const cleanPayload: Record<string, any> = { ...payload };
+      const cleanPayload: Record<string, unknown> = { ...payload };
       const excludeKeys = [
         'id',
         'parentOrgUnitName',
@@ -749,7 +730,7 @@ export default function CctvSystemAssetList() {
       });
 
       if (drawerMode === 'create') {
-        await createCctvSystemAsset(cleanPayload as any);
+        await createCctvSystemAsset(cleanPayload as unknown as CctvSystemAssetPayload);
         toast.success(
           status === 'DRAFT'
             ? 'Đã lưu tạm tài sản HT CCTV'
@@ -758,7 +739,7 @@ export default function CctvSystemAssetList() {
             : 'Đã tạo và phê duyệt tài sản HT CCTV'
         );
       } else if (selected) {
-        await updateCctvSystemAsset(selected.id, cleanPayload as any);
+        await updateCctvSystemAsset(selected.id, cleanPayload as unknown as CctvSystemAssetPayload);
         toast.success('Đã cập nhật tài sản HT CCTV thành công');
       }
 
@@ -813,7 +794,7 @@ export default function CctvSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -879,6 +860,7 @@ export default function CctvSystemAssetList() {
             assetName: selected.assetName,
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             reason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
@@ -917,7 +899,7 @@ export default function CctvSystemAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+      options: ASSET_CONDITION_OPTIONS,
     },
     {
       key: 'usingOrgUnitId',
@@ -934,7 +916,7 @@ export default function CctvSystemAssetList() {
       placeholder: 'Chọn thiết bị CCTV',
       options: cctvDevices.map((item) => ({
         value: item.id,
-        label: `${item.code} - ${item.name}`,
+        label: `${item.deviceCode} - ${item.deviceName}`,
       })),
       isAdvanced: true,
     },
@@ -943,7 +925,7 @@ export default function CctvSystemAssetList() {
       label: 'Loại tài sản',
       type: 'select',
       placeholder: 'Chọn loại tài sản',
-      options: CCTV_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      options: MARITIME_ASSET_TYPE_OPTIONS,
       isAdvanced: true,
     },
     {
@@ -1000,7 +982,7 @@ export default function CctvSystemAssetList() {
         allowSort: true,
         render: (v, record) => {
           const a = v ? cctvDeviceMap.get(v as string) : undefined;
-          return a ? `${a.code} - ${a.name}` : record.cctvDeviceCode || '—';
+          return a ? `${a.deviceCode} - ${a.deviceName}` : (record.cctvDeviceCode ? String(record.cctvDeviceCode) : '—');
         },
       },
       {
@@ -1009,7 +991,7 @@ export default function CctvSystemAssetList() {
         type: TableColumnType.Text,
         width: 180,
         allowSort: true,
-        render: (v) => v || '—',
+        render: (v) => (v ? String(v) : '—'),
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -1144,7 +1126,6 @@ export default function CctvSystemAssetList() {
         key: 'delete',
         label: 'Xóa',
         icon: <DeleteOutlined />,
-        danger: true,
         onClick: () => setDeleteTarget(record),
       },
     ],

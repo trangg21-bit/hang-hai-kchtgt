@@ -1,13 +1,18 @@
 import OrgUnitTreeSelect, {
   FilterOrgUnitTreeSelect,
   FormOrgUnitTreeSelect,
+} from './OrgUnitTreeSelect';
+
+import {
   buildOrgUnitTreeData,
   normalizeSearchText,
   resolveOrgLevel2Name,
   resolveOrgTailPath,
   resolveOrgFullPath,
   resolveOrgSubtreeIds,
-} from './OrgUnitTreeSelect';
+  getRootOrgUnits,
+  findRootOrgUnitId,
+} from './orgUnitHelpers';
 
 export {
   OrgUnitTreeSelect,
@@ -19,8 +24,11 @@ export {
   resolveOrgTailPath,
   resolveOrgFullPath,
   resolveOrgSubtreeIds,
+  getRootOrgUnits,
+  findRootOrgUnitId,
 };
-export type { OrgUnitTreeOption, OrgUnitTreeNode, OrgUnitTreeSelectProps } from './OrgUnitTreeSelect';
+export type { OrgUnitTreeOption, OrgUnitTreeNode } from './orgUnitHelpers';
+export type { OrgUnitTreeSelectProps } from './OrgUnitTreeSelect';
 
 export {
   useUserDefaultOrgUnit,

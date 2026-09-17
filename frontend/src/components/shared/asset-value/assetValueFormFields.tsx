@@ -14,8 +14,7 @@ import {
   calculateInitialRemainingValue,
   calculateAssetAdjustmentValues,
 } from '../../../utils/assetValueCalculation';
-
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import { DISPOSAL_METHOD_OPTIONS } from '../../../constants/assetDropdown';
 
 export interface AssetDepreciationSectionOptions<T extends Record<string, unknown> = Record<string, unknown>> {
   key?: string;
@@ -85,6 +84,10 @@ export function createAssetDepreciationFormSection<T extends Record<string, unkn
         name: 'assignmentDecisionNumber' as keyof T,
         label: 'Số quyết định giao (bao gồm cả tăng vốn)',
         type: FormFieldType.Text,
+        // 200 là CHÍNH SÁCH hiển thị (không phải ràng buộc schema: cột
+        // assignment_decision_number là varchar không giới hạn trong migration),
+        // khớp độ dài chuẩn của cột số quyết định ở các migration khác.
+        maxLength: 200,
         placeholder: 'Nhập số quyết định',
         disabled: isReadonly,
       },
@@ -140,7 +143,7 @@ export function createAssetDepreciationFormSection<T extends Record<string, unkn
         label: 'Hình thức xử lý tài sản',
         type: FormFieldType.Select,
         placeholder: 'Chọn hình thức xử lý',
-        options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+        options: DISPOSAL_METHOD_OPTIONS,
         allowClear: true,
         disabled: isReadonly,
       },
@@ -273,10 +276,21 @@ export function createAssetAdjustmentOperationSection<T extends Record<string, u
         name: 'accumulatedDepreciation' as keyof T,
         label: 'Khấu hao lũy kế',
         type: FormFieldType.Number,
+        required: true,
         min: 0,
         formatter: formatDotNumber,
         parser: parseDotNumber as any,
         placeholder: '0',
+        rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
+      },
+      {
+        name: 'disposalMethod' as keyof T,
+        label: 'Hình thức xử lý tài sản',
+        type: FormFieldType.Select,
+        required: true,
+        placeholder: 'Chọn hình thức xử lý',
+        options: DISPOSAL_METHOD_OPTIONS,
+        rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
       },
       {
         name: 'monthlyDepreciation' as keyof T,

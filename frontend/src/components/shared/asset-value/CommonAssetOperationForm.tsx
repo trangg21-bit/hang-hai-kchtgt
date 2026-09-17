@@ -13,6 +13,12 @@ import {
 } from '../dynamic-form-sidebar';
 import { createAssetAdjustmentOperationSection } from './assetValueFormFields';
 
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+} from '../../../constants/assetDropdown';
+
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
 export interface CommonOperationValues {
@@ -49,17 +55,6 @@ export interface CommonOperationValues {
   monthlyDepreciation?: number;
   notes?: string;
 }
-
-const ADJUSTMENT_REASONS = [
-  'Đầu tư nâng cấp, mở rộng',
-  'Đánh giá lại giá trị tài sản',
-  'Tháo dỡ một phần',
-  'Hư hỏng do thiên tai',
-  'Quyết định của cấp có thẩm quyền',
-  'Khác',
-];
-
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm', 'Hệ thống'];
 
 export interface CommonAssetOperationFormProps {
   open: boolean;
@@ -123,23 +118,28 @@ export function CommonAssetOperationForm({
               name: 'assetCategory',
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
-              initialValue: selected.assetName,
-              valueFormatter: () => selected.assetName || '',
+              initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
+              valueFormatter: () =>
+                [selected.assetCode, selected.assetName].filter(Boolean).join(' - ') || '',
             },
             {
               name: 'unitOfMeasure',
               label: 'Đơn vị tính',
               type: FormFieldType.Select,
+              required: true,
               placeholder: 'Chọn đơn vị tính',
-              options: UNITS.map((value) => ({ value, label: value })),
+              options: ASSET_QUANTITY_UNIT_OPTIONS,
+              rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
             },
             {
               name: 'quantity',
               label: 'Số lượng',
               type: FormFieldType.Number,
-              min: 0,
+              min: 1,
+              required: true,
               formatter: fmtInputNumber,
-              placeholder: '0',
+              placeholder: '1',
+              rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
             },
             {
               name: 'exploitationDeadline',
@@ -154,8 +154,10 @@ export function CommonAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              required: true,
               formatter: fmtInputNumber,
               placeholder: '0',
+              rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
             },
             {
               name: 'relatedCosts',
@@ -197,6 +199,7 @@ export function CommonAssetOperationForm({
 
     const isIncrease = operationMode === 'increase';
     const actionLabel = isIncrease ? 'tăng' : 'giảm';
+    const reasonOptions = isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS;
 
     return [
       {
@@ -234,7 +237,7 @@ export function CommonAssetOperationForm({
             type: FormFieldType.Select,
             required: true,
             placeholder: 'Chọn lý do',
-            options: ADJUSTMENT_REASONS.map((value) => ({ value, label: value })),
+            options: reasonOptions,
             rules: [{ required: true, message: 'Lý do là bắt buộc' }],
           },
         ],

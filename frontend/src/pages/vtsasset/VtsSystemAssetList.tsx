@@ -1,3 +1,4 @@
+
 import {
   DeleteOutlined,
   EditOutlined,
@@ -31,8 +32,10 @@ import {
   type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import {
   createAssetDecrease,
   createAssetIncrease,
@@ -48,6 +51,15 @@ import type {
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
+import {
+  saveAttachmentFile,
+  downloadAttachmentFile,
+  getAttachmentPreviewUrl,
+} from '../../utils/attachmentStorage';
+import {
+  calculateAssetAdjustmentValues,
+  validateAdjustmentOriginalValue,
+} from '../../utils/assetValueCalculation';
 import {
   createVtsSystemAsset,
   deleteVtsSystemAsset,
@@ -69,12 +81,8 @@ import {
   fontSizeMd, fontWeightBold, radiusPill, spaceMd, spaceSm, spaceXl,
   textTertiary
 } from '../../themetokenchk';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
-import {
-  downloadAttachmentFile,
-  getAttachmentPreviewUrl,
-  saveAttachmentFile,
-} from '../../utils/attachmentStorage';
 import VtsSystemAssetDetailContent from './VtsSystemAssetDetailContent';
 import VtsSystemAssetForm, { type FormValues } from './VtsSystemAssetForm';
 import VtsSystemAssetOperationForm, {
@@ -177,17 +185,6 @@ const VTS_HISTORY_FIELD_ORDER = [
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const VTS_ASSET_TYPES = [
-  'Trạm radar',
-  'Hệ thống trạm bờ AIS',
-  'Quản lý hệ thống CCTV',
-  'Quản lý hệ thống SCADA',
-  'Quản lý hệ thống truyền dẫn',
-  'Quản lý hệ thống phụ trợ VTS',
-  'Khác',
-];
-
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
   return error.response?.data?.message || fallback;
@@ -222,7 +219,7 @@ export default function VtsSystemAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<VtsSystemAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -238,7 +235,7 @@ export default function VtsSystemAssetList() {
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -305,7 +302,7 @@ export default function VtsSystemAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -341,7 +338,7 @@ export default function VtsSystemAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderVtsHistoryTimeline = (filtered: any[]) => {
+  const renderVtsHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -377,7 +374,7 @@ export default function VtsSystemAssetList() {
       resolveUnitName: (rec) => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -600,7 +597,7 @@ export default function VtsSystemAssetList() {
       const s = val.trim();
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
     }
-    const parsed = dayjs(val as any);
+    const parsed = dayjs(val as string | number | Date);
     return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
   };
 
@@ -623,7 +620,7 @@ export default function VtsSystemAssetList() {
           attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
       };
 
-      const cleanPayload: Record<string, any> = { ...payload };
+      const cleanPayload: Record<string, unknown> = { ...payload };
       const excludeKeys = [
         'id',
         'parentOrgUnitName',
@@ -719,7 +716,7 @@ export default function VtsSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -732,6 +729,24 @@ export default function VtsSystemAssetList() {
         });
         toast.success('Đã thêm hồ sơ khai thác tài sản thành công');
       } else {
+        const origVal = values.originalValue;
+        const valCheck = validateAdjustmentOriginalValue(
+          operationMode,
+          origVal,
+          selected.originalValue
+        );
+        if (!valCheck.isValid) {
+          toast.error(valCheck.message || 'Nguyên giá sau điều chỉnh không hợp lệ.');
+          return;
+        }
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
         const adjustmentDetails: AssetValueAdjustmentDetails = {
           decisionNumber: values.decisionNumber,
           decisionDate: values.decisionDate ? values.decisionDate.format('YYYY-MM-DD') : undefined,
@@ -741,12 +756,9 @@ export default function VtsSystemAssetList() {
           adjustmentReason: values.adjustmentReason,
           adjustmentNotes: values.notes,
           originalValueBefore: selected.originalValue,
-          originalValueAfter: values.originalValue,
+          originalValueAfter: origVal,
           remainingValueBefore: selected.remainingValue,
-          remainingValueAfter:
-            values.originalValue != null && values.accumulatedDepreciation != null
-              ? Math.max(0, values.originalValue - values.accumulatedDepreciation)
-              : undefined,
+          remainingValueAfter: calc.remainingValueAfter,
           declarationDate: values.declarationDate
             ? values.declarationDate.format('YYYY-MM-DD')
             : undefined,
@@ -760,11 +772,9 @@ export default function VtsSystemAssetList() {
           depreciationEndDate: values.depreciationEndDate
             ? values.depreciationEndDate.format('YYYY-MM-DD')
             : undefined,
-          accumulatedDepreciation: values.accumulatedDepreciation,
-          monthlyDepreciation:
-            values.originalValue && values.depreciationMonths
-              ? Math.round(values.originalValue / values.depreciationMonths)
-              : undefined,
+          accumulatedDepreciation:
+            calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
           disposalMethod: values.disposalMethod,
         };
 
@@ -785,6 +795,7 @@ export default function VtsSystemAssetList() {
             assetName: selected.assetName,
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             reason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
@@ -823,7 +834,7 @@ export default function VtsSystemAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+      options: ASSET_CONDITION_OPTIONS,
     },
     {
       key: 'usingOrgUnitId',
@@ -849,7 +860,7 @@ export default function VtsSystemAssetList() {
       label: 'Loại tài sản',
       type: 'select',
       placeholder: 'Chọn loại tài sản',
-      options: VTS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      options: MARITIME_ASSET_TYPE_OPTIONS,
       isAdvanced: true,
     },
     {
@@ -1048,6 +1059,13 @@ export default function VtsSystemAssetList() {
           setSelected(record);
           setOperationMode('increase');
           operationForm.resetFields();
+          operationForm.setFieldsValue({
+            originalValueBefore: record.originalValue,
+            originalValue: record.originalValue,
+            remainingValueBefore: record.remainingValue,
+            remainingValue: record.remainingValue,
+            depreciationRate: record.depreciationRate,
+          });
         },
       },
       {
@@ -1058,6 +1076,13 @@ export default function VtsSystemAssetList() {
           setSelected(record);
           setOperationMode('decrease');
           operationForm.resetFields();
+          operationForm.setFieldsValue({
+            originalValueBefore: record.originalValue,
+            originalValue: record.originalValue,
+            remainingValueBefore: record.remainingValue,
+            remainingValue: record.remainingValue,
+            depreciationRate: record.depreciationRate,
+          });
         },
       },
       {
@@ -1237,8 +1262,9 @@ export default function VtsSystemAssetList() {
 
         <DeleteConfirmModal
           open={Boolean(deleteTarget)}
-          targetName={deleteTarget?.assetName}
-          confirmLoading={saving}
+          itemName={deleteTarget?.assetName}
+          itemCode={deleteTarget?.assetCode}
+          loading={saving}
           onCancel={() => setDeleteTarget(undefined)}
           onConfirm={handleDelete}
         />

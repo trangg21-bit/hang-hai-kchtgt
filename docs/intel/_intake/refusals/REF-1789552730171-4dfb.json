@@ -1,0 +1,10 @@
+{
+  "at": 1789552730169,
+  "kind": "tripwire_breach",
+  "change_class": "C2",
+  "breach_kind": "undeclared_path",
+  "triage_id": "TRI-1789552674824-8ebf",
+  "loc_changed": 4,
+  "files_touched": 1,
+  "detail": "Intake tripwire — undeclared path: writing \"frontend/src/pages/transmissionasset/TransmissionAssetForm.tsx\" is outside this C2 lane's pre-declared write scope [frontend/src/components/shared/NumberInputWithCount.tsx]. A C2 inline fix may touch only its declared scope — the edit is refused. FIX: add \"frontend/src/pages/transmissionasset/TransmissionAssetForm.tsx\" to your candidate_files, re-run int…"
+}

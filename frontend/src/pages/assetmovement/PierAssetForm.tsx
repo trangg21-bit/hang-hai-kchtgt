@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import {
@@ -11,6 +11,7 @@ import type {
   PierAsset,
   PierAssetPayload,
 } from '../../services/assetmovement/types';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -39,22 +40,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface PierAssetFormProps {
   open: boolean;
@@ -97,6 +90,7 @@ export default function PierAssetForm({
       piers.map((item) => ({
         value: item.id,
         label: `${item.pierCode} - ${item.pierName}`,
+        orgUnitId: item.orgUnitId ?? undefined,
       })),
     [piers],
   );
@@ -151,11 +145,9 @@ export default function PierAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'PIER',
-                disabled: true,
-                options: [
-                  { value: 'PIER', label: 'Tài sản cầu cảng' },
-                ],
+                placeholder: 'Chọn loại tài sản',
+                options: MARITIME_ASSET_TYPE_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'assetCode',
@@ -168,6 +160,7 @@ export default function PierAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -176,39 +169,46 @@ export default function PierAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã barcode',
               },
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_CONDITIONS.map((c) => ({ value: c, label: c })),
+                options: ASSET_CONDITION_OPTIONS,
                 placeholder: 'Chọn tình trạng',
+                required: true,
+                rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }],
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: FormFieldType.Select,
-                options: USAGE_STATUSES.map((s) => ({ value: s, label: s })),
+                options: USAGE_STATUS_OPTIONS,
                 placeholder: 'Chọn hiện trạng',
+                required: true,
+                rules: [{ required: true, message: 'Hiện trạng sử dụng là bắt buộc' }],
               },
               {
                 name: 'assetGroup',
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_GROUPS.map((g) => ({ value: g, label: g })),
+                options: ASSET_GROUP_OPTIONS,
                 placeholder: 'Chọn nhóm tài sản',
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 placeholder: 'Nhập địa chỉ tài sản',
               },
@@ -216,7 +216,7 @@ export default function PierAssetForm({
                 name: 'origin',
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
-                options: ORIGINS.map((o) => ({ value: o, label: o })),
+                options: ASSET_ORIGIN_OPTIONS,
                 placeholder: 'Chọn nguồn gốc tài sản',
               },
             ],
@@ -231,37 +231,45 @@ export default function PierAssetForm({
                 label: 'Số lượng',
                 type: FormFieldType.Number,
                 min: 0,
+                required: true,
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
                 placeholder: 'Nhập số lượng',
               },
               {
                 name: 'quantityUnit',
                 label: 'Đơn vị tính số lượng',
                 type: FormFieldType.Select,
-                options: UNITS.map((u) => ({ value: u, label: u })),
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
+                required: true,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
                 placeholder: 'Chọn đơn vị tính',
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập serial',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -294,6 +302,7 @@ export default function PierAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 placeholder: 'Nhập mô tả vị trí tài sản',
               },
@@ -365,6 +374,7 @@ export default function PierAssetForm({
                 name: 'assignmentDecisionNumber',
                 label: 'Số quyết định giao (bao gồm cả tăng vốn)',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập số quyết định',
               },
               {
@@ -403,7 +413,7 @@ export default function PierAssetForm({
                 name: 'disposalMethod',
                 label: 'Hình thức xử lý tài sản',
                 type: FormFieldType.Select,
-                options: DISPOSAL_METHODS.map((m) => ({ value: m, label: m })),
+                options: DISPOSAL_METHOD_OPTIONS,
                 placeholder: 'Chọn hình thức xử lý',
               },
             ],

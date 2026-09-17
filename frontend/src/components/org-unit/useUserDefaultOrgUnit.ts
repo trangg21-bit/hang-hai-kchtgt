@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthStore, type User } from '../../store/authStore';
 import { organizationService, type Organization } from '../../services/organizationService';
-import type { OrgUnitTreeOption } from './OrgUnitTreeSelect';
-import { resolveOrgLevel2Name } from './OrgUnitTreeSelect';
+import type { OrgUnitTreeOption } from './orgUnitHelpers';
+import { resolveOrgLevel2Name } from './orgUnitHelpers';
 
 export const MINISTRY_ROOT_ID = '00000000-0000-0000-0000-000000000017';
 export const MINISTRY_ROOT_CODE = 'G17';

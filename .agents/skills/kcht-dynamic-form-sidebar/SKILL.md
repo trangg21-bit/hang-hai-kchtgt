@@ -19,16 +19,21 @@ Component được đặt tại `frontend/src/components/shared/dynamic-form-sid
 ```tsx
 import {
   DynamicFormSidebar,
+  DynamicOrgUnitTreeSelect,
+  CascadingOrgUnitTreeSelect,
+  useDynamicOrgUnitCascading,
   FormFieldType,
   type FormFieldConfig,
   type FormSectionConfig,
   type FormTabConfig,
   type FormSidebarAction,
   type DynamicFormSidebarProps,
+  type DynamicOrgUnitTreeSelectProps,
 } from '@/components/list-view';
 // hoặc import từ:
 import {
   DynamicFormSidebar,
+  DynamicOrgUnitTreeSelect,
   FormFieldType,
 } from '@/components/shared/dynamic-form-sidebar';
 ```

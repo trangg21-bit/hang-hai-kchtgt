@@ -31,6 +31,8 @@ import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -88,7 +90,7 @@ import {
 } from '../../themetokenchk';
 import type { StormShelterArea } from '../../types/port';
 import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
-import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import StormShelterAssetDetailContent from './StormShelterAssetDetailContent';
 import StormShelterAssetForm, { type FormValues } from './StormShelterAssetForm';
@@ -108,8 +110,6 @@ const STATUS_COUNT_KEYS = [
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const STORM_SHELTER_ASSET_FIELD_LABELS: Record<string, string> = {
   parentOrgUnitId: 'Cơ quan quản lý cấp trên',
@@ -185,7 +185,7 @@ export default function StormShelterAssetList() {
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<StormShelterAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -397,8 +397,6 @@ export default function StormShelterAssetList() {
       parentOrgUnitId: currentUser?.orgUnitId,
       orgUnitId: currentUser?.orgUnitId,
       usingOrgUnitId: currentUser?.orgUnitId,
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
       valueUnit: 'VNĐ',
       declarationDate: dayjs(),
       depreciationStartDate: dayjs(),
@@ -556,7 +554,7 @@ export default function StormShelterAssetList() {
           cleanPath = `/${cleanPath}`;
         }
         const res = await api.get(cleanPath, { responseType: 'blob' });
-        const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+        const contentType = String(res.headers?.['content-type'] || 'application/octet-stream');
         const blob = new Blob([res.data], { type: contentType });
         triggerBlobDownload(blob, fileName || 'tai-lieu');
         toast.success(`Đã tải xuống tệp: ${fileName}`);
@@ -588,7 +586,7 @@ export default function StormShelterAssetList() {
 
       const payload: StormShelterAssetPayload = {
         ...values,
-        assetType: 'STORM_SHELTER',
+        assetType: values.assetType || 'STORM_SHELTER',
         approvalStatus: targetApprovalStatus,
         constructionYear: values.constructionYear ? values.constructionYear.year() : undefined,
         useDate: values.useDate?.format('YYYY-MM-DD'),
@@ -662,6 +660,7 @@ export default function StormShelterAssetList() {
         depreciationMonths: record.depreciationMonths,
         depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
         accumulatedDepreciation: record.accumulatedDepreciation,
+        disposalMethod: record.disposalMethod,
       });
     }
   }, [operationForm]);
@@ -715,7 +714,7 @@ export default function StormShelterAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
@@ -794,45 +793,45 @@ export default function StormShelterAssetList() {
       type: 'treeSelect',
       organizations,
     },
-    {
-      key: 'assetName',
-      label: 'Tên tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo tên tài sản',
-    },
-    {
-      key: 'assetCondition',
-      label: 'Tình trạng tài sản',
-      type: 'select',
-      placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
-    },
-    {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      isAdvanced: true,
-    },
-    {
-      key: 'stormShelterId',
-      label: 'Mã khu tránh, trú bão',
-      type: 'select',
-      placeholder: 'Chọn khu tránh, trú bão',
-      options: stormShelters.map((item) => ({
-        value: item.id,
-        label: `${item.stormShelterCode} - ${item.stormShelterName}`,
-      })),
-      isAdvanced: true,
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: [{ value: 'STORM_SHELTER', label: 'Tài sản khu tránh, trú bão' }],
-      isAdvanced: true,
-    },
+      {
+        key: 'assetName',
+        label: 'Tên tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo tên tài sản',
+      },
+      {
+        key: 'assetCondition',
+        label: 'Tình trạng tài sản',
+        type: 'select',
+        placeholder: 'Chọn tình trạng',
+        options: ASSET_CONDITION_OPTIONS,
+      },
+      {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        isAdvanced: true,
+      },
+      {
+        key: 'stormShelterId',
+        label: 'Mã khu tránh, trú bão',
+        type: 'select',
+        placeholder: 'Chọn khu tránh, trú bão',
+        options: stormShelters.map((item) => ({
+          value: item.id,
+          label: `${item.stormShelterCode} - ${item.stormShelterName}`,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: MARITIME_ASSET_TYPE_OPTIONS,
+        isAdvanced: true,
+      },
     {
       key: 'assetCode',
       label: 'Mã tài sản',
@@ -1214,10 +1213,6 @@ export default function StormShelterAssetList() {
             organizations={organizations}
             stormShelters={stormShelters}
             attachments={attachments}
-            exploitationRows={exploitationRows}
-            increaseRows={increaseRows}
-            decreaseRows={decreaseRows}
-            orgName={(id) => orgName.get(id || '') || id || '—'}
             saving={saving}
             saveAction={saveAction as 'draft' | 'submit' | 'approve'}
             onClose={closeDrawer}

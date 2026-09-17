@@ -41,15 +41,12 @@ export interface OperationValues {
   [key: string]: unknown;
 }
 
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface TransferAreaAssetOperationFormProps {
   open: boolean;
@@ -94,23 +91,28 @@ export function TransferAreaAssetOperationForm({
               name: 'assetCategory',
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
-              initialValue: selected.assetName,
-              valueFormatter: () => selected.assetName || '—',
+              initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
+              valueFormatter: () =>
+                [selected.assetCode, selected.assetName].filter(Boolean).join(' - ') || '—',
             },
             {
               name: 'unitOfMeasure',
               label: 'Đơn vị tính',
               type: FormFieldType.Select,
               placeholder: 'Chọn đơn vị tính',
-              options: UNITS.map((value) => ({ value, label: value })),
+              required: true,
+              rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
+              options: ASSET_QUANTITY_UNIT_OPTIONS,
             },
             {
               name: 'quantity',
               label: 'Số lượng',
               type: FormFieldType.Number,
               min: 0,
+              required: true,
               formatter: fmtInputNumber,
               placeholder: '0',
+              rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
             },
             {
               name: 'exploitationDeadline',
@@ -125,8 +127,10 @@ export function TransferAreaAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              required: true,
               formatter: fmtInputNumber,
               placeholder: '0',
+              rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
             },
             {
               name: 'relatedCosts',
@@ -205,7 +209,7 @@ export function TransferAreaAssetOperationForm({
             type: FormFieldType.Select,
             required: true,
             placeholder: 'Chọn lý do',
-            options: ADJUSTMENT_REASONS.map((value) => ({ value, label: value })),
+            options: isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS,
             rules: [{ required: true, message: 'Lý do điều chỉnh là bắt buộc' }],
           },
           {
@@ -277,9 +281,20 @@ export function TransferAreaAssetOperationForm({
             name: 'accumulatedDepreciation',
             label: 'Khấu hao lũy kế (VNĐ)',
             type: FormFieldType.Number,
+            required: true,
             min: 0,
             formatter: fmtInputNumber,
             placeholder: '0',
+            rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
+          },
+          {
+            name: 'disposalMethod',
+            label: 'Hình thức xử lý tài sản',
+            type: FormFieldType.Select,
+            required: true,
+            placeholder: 'Chọn hình thức xử lý',
+            options: DISPOSAL_METHOD_OPTIONS,
+            rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
           },
           {
             name: 'remainingValue',

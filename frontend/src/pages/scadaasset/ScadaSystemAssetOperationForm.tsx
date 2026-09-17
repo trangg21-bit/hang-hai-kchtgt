@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -12,10 +12,15 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
-export interface OperationValues {
+export interface OperationValues extends Record<string, unknown> {
   operatorOrgUnitId?: string;
   unitOfMeasure?: string;
   quantity?: number;
@@ -39,16 +44,6 @@ export interface OperationValues {
   accumulatedDepreciation?: number;
   disposalMethod?: string;
 }
-
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'Hệ thống', 'm²', 'm'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
 
 export interface ScadaSystemAssetOperationFormProps {
   open: boolean;
@@ -75,10 +70,11 @@ export default function ScadaSystemAssetOperationForm({
   const isIncrease = operationMode === 'increase';
 
   const title = useMemo(() => {
-    if (isExploit) return 'Khai thác tài sản hệ thống SCADA';
-    if (isIncrease) return 'Tăng nguyên giá tài sản hệ thống SCADA';
-    return 'Giảm nguyên giá tài sản hệ thống SCADA';
-  }, [isExploit, isIncrease]);
+    const assetSuffix = selected ? ` — ${selected.assetCode || ''} ${selected.assetName || ''}` : '';
+    if (isExploit) return `Khai thác tài sản hệ thống SCADA${assetSuffix}`;
+    if (isIncrease) return `Tăng nguyên giá tài sản hệ thống SCADA${assetSuffix}`;
+    return `Giảm nguyên giá tài sản hệ thống SCADA${assetSuffix}`;
+  }, [isExploit, isIncrease, selected]);
 
   const exploitSections = useMemo<FormSectionConfig[]>(() => [
     {
@@ -98,7 +94,9 @@ export default function ScadaSystemAssetOperationForm({
           name: 'unitOfMeasure',
           label: 'Đơn vị tính',
           type: FormFieldType.Select,
-          options: UNITS.map((v) => ({ value: v, label: v })),
+          required: true,
+          rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính' }],
+          options: ASSET_QUANTITY_UNIT_OPTIONS,
           placeholder: 'Chọn đơn vị tính',
           colSpan: 12,
         },
@@ -106,6 +104,9 @@ export default function ScadaSystemAssetOperationForm({
           name: 'quantity',
           label: 'Số lượng',
           type: FormFieldType.Number,
+          min: 1,
+          required: true,
+          rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
           placeholder: 'Nhập số lượng',
           colSpan: 12,
         },
@@ -125,6 +126,9 @@ export default function ScadaSystemAssetOperationForm({
           name: 'totalRevenue',
           label: 'Tổng số tiền thu được (VNĐ)',
           type: FormFieldType.Number,
+          min: 0,
+          required: true,
+          rules: [{ required: true, message: 'Vui lòng nhập số tiền thu được' }],
           placeholder: 'Nhập số tiền thu được',
           colSpan: 12,
           inputNumberProps: fmtInputNumber,
@@ -165,6 +169,8 @@ export default function ScadaSystemAssetOperationForm({
     },
   ], [organizations]);
 
+  const reasonOptions = isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS;
+
   const adjustmentSections = useMemo<FormSectionConfig[]>(() => [
     {
       title: isIncrease ? 'Thông tin tăng nguyên giá' : 'Thông tin giảm nguyên giá',
@@ -196,7 +202,9 @@ export default function ScadaSystemAssetOperationForm({
           name: 'adjustmentReason',
           label: isIncrease ? 'Lý do tăng nguyên giá' : 'Lý do giảm nguyên giá',
           type: FormFieldType.Select,
-          options: ADJUSTMENT_REASONS.map((v) => ({ value: v, label: v })),
+          required: true,
+          rules: [{ required: true, message: 'Vui lòng chọn lý do' }],
+          options: reasonOptions,
           placeholder: 'Chọn lý do',
           colSpan: 12,
         },
@@ -269,13 +277,15 @@ export default function ScadaSystemAssetOperationForm({
           name: 'accumulatedDepreciation',
           label: 'Khấu hao lũy kế (VNĐ)',
           type: FormFieldType.Number,
+          required: true,
+          rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
           placeholder: 'Nhập khấu hao lũy kế',
           colSpan: 12,
           inputNumberProps: fmtInputNumber,
         },
       ],
     },
-  ], [isIncrease]);
+  ], [isIncrease, reasonOptions]);
 
   const tabs = useMemo<FormTabConfig[]>(() => {
     if (isExploit) {
@@ -311,9 +321,7 @@ export default function ScadaSystemAssetOperationForm({
   return (
     <DynamicFormSidebar
       open={open}
-      mode="create"
       title={title}
-      subTitle={selected ? `${selected.assetCode} - ${selected.assetName}` : undefined}
       form={form}
       tabs={tabs}
       actions={sidebarActions}

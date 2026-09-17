@@ -56,15 +56,12 @@ export interface OperationValues extends Record<string, unknown> {
   disposalMethod?: string;
 }
 
-const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Tuyến', 'Chiếc'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư nâng cấp hệ thống',
-  'Mở rộng công suất truyền dẫn',
-  'Đánh giá lại giá trị',
-  'Hao mòn kỹ thuật',
-  'Thanh lý thiết bị hư hỏng',
-  'Khác',
-];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface TransmissionAssetOperationFormProps {
   open: boolean;
@@ -120,20 +117,25 @@ export default function TransmissionAssetOperationForm({
               name: 'assetCategory',
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
-              initialValue: selected.assetName,
-              valueFormatter: () => selected.assetName || '—',
+              initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
+              valueFormatter: () =>
+                [selected.assetCode, selected.assetName].filter(Boolean).join(' - ') || '—',
             },
             {
               name: 'unitOfMeasure',
               label: 'Đơn vị tính',
               type: FormFieldType.Select,
               placeholder: 'Chọn đơn vị tính',
-              options: UNITS.map((value) => ({ value, label: value })),
+              required: true,
+              rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
+              options: ASSET_QUANTITY_UNIT_OPTIONS,
             },
             {
               name: 'quantity',
               label: 'Số lượng',
               type: FormFieldType.Number,
+              required: true,
+              rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               min: 0,
               initialValue: 1,
             },
@@ -147,6 +149,8 @@ export default function TransmissionAssetOperationForm({
               name: 'totalRevenue',
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
+              required: true,
+              rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
               min: 0,
               placeholder: 'Nhập tổng thu',
             },
@@ -219,7 +223,7 @@ export default function TransmissionAssetOperationForm({
             label: `Lý do ${isIncrease ? 'tăng' : 'giảm'} nguyên giá`,
             type: FormFieldType.Select,
             placeholder: 'Chọn lý do',
-            options: ADJUSTMENT_REASONS.map((r) => ({ value: r, label: r })),
+            options: isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS,
             required: true,
             rules: [{ required: true, message: 'Lý do là bắt buộc' }],
           },
@@ -228,6 +232,17 @@ export default function TransmissionAssetOperationForm({
       createAssetAdjustmentOperationSection<OperationValues>({
         selectedRecord: selected,
         operationMode,
+        extraFields: [
+          {
+            name: 'disposalMethod',
+            label: 'Hình thức xử lý tài sản',
+            type: FormFieldType.Select,
+            placeholder: 'Chọn hình thức xử lý',
+            required: true,
+            rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
+            options: DISPOSAL_METHOD_OPTIONS,
+          },
+        ],
       }),
     ];
   }, [operationMode, selected, organizations]);

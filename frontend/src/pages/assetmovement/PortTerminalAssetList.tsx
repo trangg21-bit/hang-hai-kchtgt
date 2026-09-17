@@ -16,6 +16,7 @@ import { Button, DatePicker, Form, Input, Space } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
+import { ASSET_CONDITION_OPTIONS } from "../../constants/assetDropdown";
 import toast from "../../components/ToastNotification";
 import { KchtApprovalModals } from "../../components/kcht/KchtApprovalModals";
 import {
@@ -120,7 +121,6 @@ const STATUS_COUNT_KEYS = [
 
 type DrawerMode = "create" | "edit" | "detail";
 
-const ASSET_CONDITIONS = ["Tốt", "Hư hỏng cần sửa chữa", "Không sử dụng được"];
 
 const PORT_TERMINAL_ASSET_FIELD_LABELS: Record<string, string> = {
   parentOrgUnitId: 'Cơ quan quản lý cấp trên',
@@ -184,36 +184,40 @@ async function loadRelatedInfrastructure(
 ): Promise<InfrastructureReferenceOption[]> {
   if (screenConfig.assetType === "DIKE_REVETMENT") {
     const items = await dikeRevetmentCRUD.getOptions();
-    return items.map((item) => ({
+    return items.map((item: any) => ({
       id: item.id,
       code: item.code,
       name: item.dikeRevetmentName,
+      orgUnitId: item.orgUnitId,
     }));
   }
 
   if (screenConfig.assetType === "LIGHTHOUSE") {
     const items = await beaconStationCRUD.findAll();
-    return items.map((item) => ({
+    return items.map((item: any) => ({
       id: item.id,
       code: item.code,
       name: item.name,
+      orgUnitId: item.orgUnitId,
     }));
   }
 
   if (screenConfig.assetType === "ANCHORAGE") {
     const page = await anchorageCRUD.findAll({ page: 1, size: 5000 });
-    return page.data.map((item) => ({
+    return page.data.map((item: any) => ({
       id: item.id,
       code: item.anchorageCode,
       name: item.anchorageName,
+      orgUnitId: item.orgUnitId,
     }));
   }
 
   const page = await berthCRUD.findAll({ page: 1, size: 5000 });
-  return page.data.map((item) => ({
+  return page.data.map((item: any) => ({
     id: item.id,
     code: item.berthCode,
     name: item.berthName,
+    orgUnitId: item.orgUnitId,
   }));
 }
 
@@ -512,14 +516,13 @@ function PortTerminalAssetList({
     setDrawerMode("create");
     form.resetFields();
     form.setFieldsValue({
-      assetType: screenConfig.assetType,
       status: "MANAGED",
     });
     setAttachments([]);
     setExploitationRows([]);
     setIncreaseRows([]);
     setDecreaseRows([]);
-  }, [form, screenConfig.assetType]);
+  }, [form]);
 
   const openEdit = useCallback(
     async (record: PortTerminalAsset) => {
@@ -743,7 +746,7 @@ function PortTerminalAssetList({
 
       const payload: PortTerminalAssetPayload = {
         ...values,
-        assetType: screenConfig.assetType,
+        assetType: values.assetType || screenConfig.assetType,
         constructionYear: values.constructionYear
           ? Number(values.constructionYear.format("YYYY"))
           : undefined,
@@ -846,9 +849,10 @@ function PortTerminalAssetList({
           : undefined;
 
       const adjustmentDetails: AssetValueAdjustmentDetails = {
-        ...values,
+        decisionNumber: values.decisionNumber,
         decisionDate: values.decisionDate?.format("YYYY-MM-DD"),
         adjustmentDate: values.adjustmentDate?.format("YYYY-MM-DD"),
+        adjustmentReason: values.adjustmentReason,
         declarationDate: values.declarationDate?.format("YYYY-MM-DD"),
         depreciationStartDate:
           values.depreciationStartDate?.format("YYYY-MM-DD"),
@@ -871,7 +875,7 @@ function PortTerminalAssetList({
           depreciation: values.relatedCosts || 0,
           description: values.notes || "",
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline:
@@ -933,7 +937,7 @@ function PortTerminalAssetList({
         label: "Tình trạng tài sản",
         type: "select",
         placeholder: "Chọn tình trạng",
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
       },
       {
         key: "usingOrgUnitId",

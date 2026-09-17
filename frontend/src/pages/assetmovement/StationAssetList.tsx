@@ -86,7 +86,7 @@ import {
   textTertiary,
 } from '../../themetokenchk';
 import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
-import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 import LritAssetOperationForm, {
   type OperationMode,
@@ -242,9 +242,9 @@ const HISTORY_FIELD_ORDER = [
   'rejectionReason',
 ];
 
-type DrawerMode = 'create' | 'edit' | 'detail';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+type DrawerMode = 'create' | 'edit' | 'detail';
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -297,7 +297,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<StationAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -535,7 +535,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   }, []);
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       const strVal = String(val).trim();
       if (!strVal || strVal === '-') return '';
@@ -689,9 +689,9 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
     [config.stationFieldName, config.type],
   );
 
-  const renderStationHistoryTimeline = (records: any[]) => {
+  const renderStationHistoryTimeline = (records: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
-    const filtered = (records || []).filter((r: any) => {
+    const filtered = (records || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -835,7 +835,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
       const stationIdValue = (merged as unknown as Record<string, unknown>)[config.stationFieldName] as string | undefined || merged.stationId;
       const payload: StationAssetPayload = {
         ...merged,
-        assetType: config.type,
+        assetType: merged.assetType || config.type,
         types: config.types,
         stationId: stationIdValue,
         [config.stationFieldName]: stationIdValue,
@@ -969,6 +969,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           assetId: selected.id,
           assetName: selected.assetName,
           operatorOrgUnitId: values.operatorOrgUnitId || undefined,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationYear: deadlineDate && deadlineDate.isValid() ? deadlineDate.year() : dayjs().year(),
           doanhThu: values.totalRevenue || 0,
           depreciation: values.relatedCosts || 0,
@@ -1081,7 +1082,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
       },
       {
         key: 'usingOrgUnitId',
@@ -1125,7 +1126,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         isAdvanced: true,
       },
     ],
-    [config.stationFieldName, config.stationLabel, config.stationPlaceholder, config.title, config.type, organizations, stations],
+    [config.stationFieldName, config.stationLabel, config.stationPlaceholder, organizations, stations],
   );
 
   const handleFilterApply = useCallback(() => {
@@ -1201,6 +1202,10 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           type: TableColumnType.Status,
           width: 190,
           allowSort: true,
+          statusMapping: {
+            'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
+            'Hỏng không sử dụng': { label: 'Hỏng không sử dụng', color: themeTokenChk.statusCritical },
+          },
         },
         {
           title: 'HIỆN TRẠNG SỬ DỤNG',
@@ -1208,6 +1213,15 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           type: TableColumnType.Status,
           width: 190,
           allowSort: true,
+          statusMapping: {
+            'Quản lý nhà nước': { label: 'Quản lý nhà nước', color: themeTokenChk.statusOperational },
+            'Hoạt động sự nghiệp: Không kinh doanh': { label: 'Hoạt động sự nghiệp: Không kinh doanh', color: themeTokenChk.statusOperational },
+            'Hoạt động sự nghiệp: Kinh doanh': { label: 'Hoạt động sự nghiệp: Kinh doanh', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Cho thuê': { label: 'Hoạt động sự nghiệp: Cho thuê', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Liên doanh, liên kết': { label: 'Hoạt động sự nghiệp: Liên doanh, liên kết', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Sử dụng hỗn hợp': { label: 'Hoạt động sự nghiệp: Sử dụng hỗn hợp', color: themeTokenChk.statusAttention },
+            'Sử dụng khác': { label: 'Sử dụng khác', color: themeTokenChk.statusAttention },
+          },
         },
         {
           title: 'NHÓM TÀI SẢN',
@@ -1405,7 +1419,6 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
             key: 'delete',
             label: 'Xóa',
             icon: <DeleteOutlined />,
-            danger: true,
             onClick: () => setDeleteTarget(record),
           });
         }
@@ -1692,7 +1705,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           config={config}
           onClose={() => setDrawerMode(undefined)}
           orgName={orgName}
-          stationMap={stationMap}
+          stationMap={stationMap as any}
           exploitationRows={exploitationRows}
           increaseRows={increaseRows}
           decreaseRows={decreaseRows}

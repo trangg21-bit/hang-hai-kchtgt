@@ -31,8 +31,11 @@ import {
     type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
+import { organizationService, type Organization } from '../../services/organizationService';
 import {
     createDaiTtdhAdjustment,
     createDaiTtdhAsset,
@@ -55,7 +58,10 @@ import type {
     DaiTtdhAssetPayload,
     PageResponse,
 } from '../../services/daiTtdhAsset/types';
-import { organizationService, type Organization } from '../../services/organizationService';
+import {
+  calculateAssetAdjustmentValues,
+  validateAdjustmentOriginalValue,
+} from '../../utils/assetValueCalculation';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
@@ -78,8 +84,6 @@ const STATUS_COUNT_KEYS = [
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -184,12 +188,6 @@ export default function DaiTtdhAssetList() {
     setSelected(undefined);
     setAttachments([]);
     form.resetFields();
-    form.setFieldsValue({
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-    });
     setDrawerMode('create');
   }, [form]);
 
@@ -353,7 +351,7 @@ export default function DaiTtdhAssetList() {
         const values = await form.validateFields();
         const payload: DaiTtdhAssetPayload = {
           ...values,
-          assetType: 'Tài sản đài TTDH',
+          assetType: values.assetType || 'Hệ thống thông tin giao thông, thông tin liên lạc và hệ thống điện, nước trong khu vực bến cảng',
           constructionYear: values.constructionYear ? values.constructionYear.year() : undefined,
           useDate: values.useDate ? values.useDate.format('YYYY-MM-DD') : undefined,
           declarationDate: values.declarationDate ? values.declarationDate.format('YYYY-MM-DD') : undefined,
@@ -409,7 +407,7 @@ export default function DaiTtdhAssetList() {
       operationForm.resetFields();
       if (mode === 'exploit') {
         operationForm.setFieldsValue({
-          assetCategory: record.assetName,
+          assetCategory: [record.assetCode, record.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: record.quantityUnit || 'Bộ',
           quantity: record.quantity || 1,
           totalRevenue: 0,
@@ -422,9 +420,9 @@ export default function DaiTtdhAssetList() {
         const remaining = record.remainingValue || 0;
         operationForm.setFieldsValue({
           originalValueBefore: original,
-          originalValueAfter: original,
+          originalValue: original,
           remainingValueBefore: remaining,
-          remainingValueAfter: remaining,
+          remainingValue: remaining,
           depreciationRate: record.depreciationRate || 0,
           depreciationMonths: record.depreciationMonths || 0,
           accumulatedDepreciation: record.accumulatedDepreciation || 0,
@@ -442,14 +440,40 @@ export default function DaiTtdhAssetList() {
       if (operationMode === 'exploit') {
         await createDaiTtdhExploitation(selected.id, {
           ...values,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationDeadline: values.exploitationDeadline
             ? values.exploitationDeadline.format('YYYY-MM-DD')
             : undefined,
         });
         toast.success('Thêm thông tin khai thác tài sản đài TTDH thành công.');
       } else {
+        const origVal = values.originalValue;
+        const valCheck = validateAdjustmentOriginalValue(
+          operationMode,
+          origVal,
+          selected.originalValue
+        );
+        if (!valCheck.isValid) {
+          toast.error(valCheck.message || 'Nguyên giá sau điều chỉnh không hợp lệ.');
+          return;
+        }
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
         await createDaiTtdhAdjustment(selected.id, {
           ...values,
+          originalValueBefore: selected.originalValue,
+          originalValueAfter: origVal,
+          remainingValueBefore: selected.remainingValue,
+          remainingValueAfter: calc.remainingValueAfter,
+          accumulatedDepreciation:
+            calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
           adjustmentType: operationMode === 'increase' ? 'INCREASE' : 'DECREASE',
           decisionDate: values.decisionDate ? values.decisionDate.format('YYYY-MM-DD') : undefined,
           adjustmentDate: values.adjustmentDate ? values.adjustmentDate.format('YYYY-MM-DD') : undefined,
@@ -515,10 +539,17 @@ export default function DaiTtdhAssetList() {
         placeholder: 'Tìm kiếm theo tên / mã tài sản',
       },
       {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: MARITIME_ASSET_TYPE_OPTIONS,
+      },
+      {
         key: 'assetCondition',
         label: 'Tình trạng tài sản',
         type: 'select',
-        options: ASSET_CONDITIONS.map((c) => ({ value: c, label: c })),
+        options: ASSET_CONDITION_OPTIONS,
         placeholder: 'Chọn tình trạng',
       },
       {
@@ -600,7 +631,7 @@ export default function DaiTtdhAssetList() {
           type: TableColumnType.Text,
           width: 180,
           allowSort: true,
-          render: (v) => (v as string) || 'Tài sản đài TTDH',
+          render: (v) => (v ? String(v) : '—'),
         },
         {
           title: 'TÌNH TRẠNG TÀI SẢN',

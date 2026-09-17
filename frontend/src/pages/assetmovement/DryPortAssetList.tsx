@@ -35,8 +35,10 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
+
 import {
   createAssetDecrease,
   createAssetIncrease,
@@ -79,7 +81,7 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import { fmtInputNumber } from '../../utils/numFmt';
 import DryPortAssetDetailContent from './DryPortAssetDetailContent';
@@ -186,9 +188,9 @@ const HISTORY_FIELD_ORDER = [
   'attachments',
 ];
 
-type DrawerMode = 'create' | 'edit' | 'detail';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+type DrawerMode = 'create' | 'edit' | 'detail';
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -236,7 +238,7 @@ export default function DryPortAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<DryPortAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -473,7 +475,7 @@ export default function DryPortAssetList() {
   }, []);
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -547,9 +549,9 @@ export default function DryPortAssetList() {
     }
   }, []);
 
-  const renderDryPortHistoryTimeline = (records: any[]) => {
+  const renderDryPortHistoryTimeline = (records: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
-    const filtered = (records || []).filter((r: any) => {
+    const filtered = (records || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -605,7 +607,7 @@ export default function DryPortAssetList() {
       resolveUnitName: (rec) => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -692,7 +694,7 @@ export default function DryPortAssetList() {
       };
       const payload: DryPortAssetPayload = {
         ...merged,
-        assetType: 'DRY_PORT',
+        assetType: merged.assetType || 'DRY_PORT',
         types: 'DRY_PORT',
         constructionYear: merged.constructionYear
           ? (dayjs.isDayjs(merged.constructionYear)
@@ -824,6 +826,7 @@ export default function DryPortAssetList() {
           assetId: selected.id,
           assetName: selected.assetName,
           operatorOrgUnitId: values.operatorOrgUnitId || undefined,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationYear: deadlineDate && deadlineDate.isValid() ? deadlineDate.year() : dayjs().year(),
           doanhThu: values.totalRevenue || 0,
           depreciation: values.relatedCosts || 0,
@@ -936,7 +939,7 @@ export default function DryPortAssetList() {
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
       },
       {
         key: 'usingOrgUnitId',
@@ -961,9 +964,8 @@ export default function DryPortAssetList() {
         key: 'assetType',
         label: 'Loại tài sản',
         type: 'select',
-        disabled: true,
-        defaultValue: 'DRY_PORT',
-        options: [{ value: 'DRY_PORT', label: 'Tài sản cảng cạn' }],
+        placeholder: 'Chọn loại tài sản',
+        options: MARITIME_ASSET_TYPE_OPTIONS,
         isAdvanced: true,
       },
       {
@@ -1055,6 +1057,10 @@ export default function DryPortAssetList() {
           type: TableColumnType.Status,
           width: 190,
           allowSort: true,
+          statusMapping: {
+            'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
+            'Hỏng không sử dụng': { label: 'Hỏng không sử dụng', color: themeTokenChk.statusCritical },
+          },
         },
         {
           title: 'HIỆN TRẠNG SỬ DỤNG',
@@ -1062,6 +1068,15 @@ export default function DryPortAssetList() {
           type: TableColumnType.Status,
           width: 190,
           allowSort: true,
+          statusMapping: {
+            'Quản lý nhà nước': { label: 'Quản lý nhà nước', color: themeTokenChk.statusOperational },
+            'Hoạt động sự nghiệp: Không kinh doanh': { label: 'Hoạt động sự nghiệp: Không kinh doanh', color: themeTokenChk.statusOperational },
+            'Hoạt động sự nghiệp: Kinh doanh': { label: 'Hoạt động sự nghiệp: Kinh doanh', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Cho thuê': { label: 'Hoạt động sự nghiệp: Cho thuê', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Liên doanh, liên kết': { label: 'Hoạt động sự nghiệp: Liên doanh, liên kết', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Sử dụng hỗn hợp': { label: 'Hoạt động sự nghiệp: Sử dụng hỗn hợp', color: themeTokenChk.statusAttention },
+            'Sử dụng khác': { label: 'Sử dụng khác', color: themeTokenChk.statusAttention },
+          },
         },
         {
           title: 'NHÓM TÀI SẢN',
@@ -1240,7 +1255,6 @@ export default function DryPortAssetList() {
             key: 'delete',
             label: 'Xóa',
             icon: <DeleteOutlined />,
-            danger: true,
             onClick: () => setDeleteTarget(record),
           });
         }

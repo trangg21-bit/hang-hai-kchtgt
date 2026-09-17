@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Tabs, Spin } from "antd";
+import { Tabs, Spin, Tooltip } from "antd";
 import { DownOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { AppDrawer } from "../AppDrawer";
@@ -66,7 +66,6 @@ function formatFieldValue<T>(
   if (field.render) {
     return field.render(rawValue, record);
   }
-
   if (rawValue == null || rawValue === "") {
     return "";
   }
@@ -242,6 +241,24 @@ function ViewSectionItem<T>({
 
             const isFullWidth = field.colSpan === 24;
             const displayValue = formatFieldValue(field, record);
+            // clampLines: rút gọn giá trị dài + tooltip đầy đủ; không khai thì giữ nguyên hành vi cũ.
+            const clamped =
+              field.clampLines != null && typeof displayValue === "string" ? (
+                <Tooltip title={displayValue} placement="topLeft">
+                  <span
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: field.clampLines,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {displayValue}
+                  </span>
+                </Tooltip>
+              ) : (
+                displayValue
+              );
 
             return (
               <div
@@ -250,7 +267,7 @@ function ViewSectionItem<T>({
                 style={field.style}
               >
                 <span className="chk-detail-label">{field.label}</span>
-                <span className="chk-detail-value">{displayValue}</span>
+                <span className="chk-detail-value">{clamped}</span>
               </div>
             );
           })}

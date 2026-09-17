@@ -1,0 +1,10 @@
+{
+  "at": 1789552666446,
+  "kind": "tripwire_breach",
+  "change_class": "C1",
+  "breach_kind": "undeclared_path",
+  "triage_id": "TRI-1789551387524-59ca",
+  "loc_changed": 89,
+  "files_touched": 3,
+  "detail": "Intake tripwire — undeclared path: writing \"frontend/src/components/shared/NumberInputWithCount.tsx\" is outside this C1 lane's pre-declared write scope [frontend/src/pages/transmissionasset/TransmissionAssetForm.tsx, frontend/src/pages/vhfasset/VhfAssetForm.tsx, frontend/src/pages/vtsassistasset/VtsAssistAssetForm.tsx]. A C1 inline fix may touch only its declared scope — the edit is refused. FIX: …"
+}

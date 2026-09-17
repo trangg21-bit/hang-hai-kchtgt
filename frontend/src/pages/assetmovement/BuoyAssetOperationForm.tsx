@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -38,17 +38,15 @@ export interface OperationValues {
   depreciationEndDate?: Dayjs;
   accumulatedDepreciation?: number;
   disposalMethod?: string;
+  [key: string]: unknown;
 }
 
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface BuoyAssetOperationFormProps {
   open: boolean;
@@ -103,7 +101,7 @@ export function BuoyAssetOperationForm({
             name: 'assetCategory',
             label: 'Danh mục tài sản',
             type: FormFieldType.Text,
-            initialValue: selected.assetName,
+            initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
             disabled: true,
           },
           {
@@ -111,7 +109,10 @@ export function BuoyAssetOperationForm({
             label: 'Đơn vị tính',
             type: FormFieldType.Select,
             allowClear: true,
-            options: UNITS.map((v) => ({ value: v, label: v })),
+            placeholder: 'Chọn đơn vị tính',
+            options: ASSET_QUANTITY_UNIT_OPTIONS,
+            required: true,
+            rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
           },
           {
             name: 'quantity',
@@ -119,6 +120,8 @@ export function BuoyAssetOperationForm({
             type: FormFieldType.Number,
             min: 0,
             placeholder: '0',
+            required: true,
+            rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
           },
           {
             name: 'exploitationDeadline',
@@ -131,6 +134,8 @@ export function BuoyAssetOperationForm({
             type: FormFieldType.Number,
             min: 0,
             placeholder: '0',
+            required: true,
+            rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
           },
           {
             name: 'relatedCosts',
@@ -205,7 +210,8 @@ export function BuoyAssetOperationForm({
           label: isIncrease ? 'Lý do tăng nguyên giá' : 'Lý do giảm nguyên giá',
           type: FormFieldType.Select,
           required: true,
-          options: ADJUSTMENT_REASONS.map((v) => ({ value: v, label: v })),
+          placeholder: 'Chọn lý do',
+          options: isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS,
           rules: [{ required: true, message: 'Lý do điều chỉnh là bắt buộc' }],
         },
         {
@@ -326,6 +332,8 @@ export function BuoyAssetOperationForm({
           label: 'Khấu hao lũy kế (VNĐ)',
           type: FormFieldType.Number,
           min: 0,
+          required: true,
+          rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
           placeholder: '0',
         },
         {
@@ -343,8 +351,10 @@ export function BuoyAssetOperationForm({
           name: 'disposalMethod',
           label: 'Hình thức xử lý tài sản',
           type: FormFieldType.Select,
-          allowClear: true,
-          options: UNITS.map((v) => ({ value: v, label: v })),
+          placeholder: 'Chọn hình thức xử lý',
+          options: DISPOSAL_METHOD_OPTIONS,
+          required: true,
+          rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
         },
       ],
     };

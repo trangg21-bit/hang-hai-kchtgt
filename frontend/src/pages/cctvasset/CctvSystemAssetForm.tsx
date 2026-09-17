@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Form, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { BankOutlined, SlidersOutlined, ProfileOutlined } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { CctvSystemAsset, CctvSystemAssetPayload, CctvDeviceOption } from '../../services/cctvasset/types';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
 import InfrastructureAttachmentTab, {
@@ -38,34 +39,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Phương tiện vận tải',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const CCTV_ASSET_TYPES = [
-  'Camera quan sát (Camera PTZ/Fixed)',
-  'Đầu ghi hình (NVR/DVR)',
-  'Máy chủ quản lý CCTV (VMS Server)',
-  'Màn hình hiển thị giám sát',
-  'Bộ chuyển mạch/Switch PoE',
-  'Bộ lưu điện UPS CCTV',
-  'Cáp tín hiệu/Quang CCTV',
-  'Hệ thống phụ trợ',
-  'Khác',
-];
-const UNITS = ['Bộ', 'Cái', 'Chiếc', 'Hệ thống', 'm', 'm²'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface CctvSystemAssetFormProps {
   open: boolean;
@@ -178,7 +159,8 @@ export default function CctvSystemAssetForm({
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn loại tài sản',
-                options: CCTV_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+                allowClear: true,
+                options: MARITIME_ASSET_TYPE_OPTIONS,
                 required: true,
                 colSpan: 12,
               },
@@ -194,6 +176,7 @@ export default function CctvSystemAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 colSpan: 24,
@@ -202,6 +185,7 @@ export default function CctvSystemAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập barcode',
                 colSpan: 12,
               },
@@ -209,30 +193,37 @@ export default function CctvSystemAssetForm({
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
                 type: FormFieldType.Select,
+                required: true,
                 placeholder: 'Chọn tình trạng',
-                options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+                options: ASSET_CONDITION_OPTIONS,
+                rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }],
                 colSpan: 12,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: FormFieldType.Select,
+                required: true,
                 placeholder: 'Chọn hiện trạng',
-                options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
+                options: USAGE_STATUS_OPTIONS,
+                rules: [{ required: true, message: 'Hiện trạng sử dụng là bắt buộc' }],
                 colSpan: 12,
               },
               {
                 name: 'assetGroup',
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
+                required: true,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+                options: ASSET_GROUP_OPTIONS,
+                rules: [{ required: true, message: 'Nhóm tài sản là bắt buộc' }],
                 colSpan: 12,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
                 colSpan: 12,
               },
@@ -241,13 +232,14 @@ export default function CctvSystemAssetForm({
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn nguồn gốc',
-                options: ORIGINS.map((v) => ({ value: v, label: v })),
+                options: ASSET_ORIGIN_OPTIONS,
                 colSpan: 12,
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.Text,
+                maxLength: 2000,
                 placeholder: 'Nhập địa chỉ tài sản',
                 colSpan: 24,
               },
@@ -261,23 +253,28 @@ export default function CctvSystemAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
-                placeholder: 'Nhập số lượng',
-                min: 0,
+                min: 1,
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
                 formatter: fmtInputNumber,
+                placeholder: '1',
                 colSpan: 12,
               },
               {
                 name: 'quantityUnit',
-                label: 'Đơn vị tính số lượng',
+                label: 'Đơn vị tính',
                 type: FormFieldType.Select,
-                placeholder: 'Chọn đơn vị',
-                options: UNITS.map((v) => ({ value: v, label: v })),
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính' }],
+                placeholder: 'Chọn đơn vị tính',
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
                 colSpan: 12,
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model',
                 colSpan: 12,
               },
@@ -285,6 +282,7 @@ export default function CctvSystemAssetForm({
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập serial',
                 colSpan: 12,
               },
@@ -292,6 +290,7 @@ export default function CctvSystemAssetForm({
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ',
                 colSpan: 12,
               },
@@ -299,6 +298,7 @@ export default function CctvSystemAssetForm({
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
                 colSpan: 12,
               },
@@ -338,6 +338,7 @@ export default function CctvSystemAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.Text,
+                maxLength: 2000,
                 placeholder: 'Nhập vị trí tài sản',
                 colSpan: 24,
               },
@@ -352,8 +353,6 @@ export default function CctvSystemAssetForm({
         customContent: (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
-              refType="CCTV_SYSTEM_ASSET"
-              refId={selected?.id || 'new'}
               attachments={attachments}
               readonly={false}
               onUpload={onUploadAttachment}
@@ -419,6 +418,7 @@ export default function CctvSystemAssetForm({
                 name: 'assignmentDecisionNumber',
                 label: 'Số quyết định giao (bao gồm cả tăng vốn)',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập số quyết định giao',
                 colSpan: 12,
               },
@@ -487,7 +487,7 @@ export default function CctvSystemAssetForm({
                 label: 'Hình thức xử lý tài sản',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn hình thức',
-                options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+                options: DISPOSAL_METHOD_OPTIONS,
                 colSpan: 12,
               },
             ],
@@ -499,7 +499,6 @@ export default function CctvSystemAssetForm({
     organizations,
     cctvDevices,
     attachments,
-    selected?.id,
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,

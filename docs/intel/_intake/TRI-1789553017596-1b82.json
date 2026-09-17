@@ -1,0 +1,70 @@
+{
+  "triage_id": "TRI-1789553017596-1b82",
+  "created_at": 1789553017596,
+  "request_summary": "Gắn maxLength 200 cho field assignmentDecisionNumber trong section dùng chung createAssetDepreciationFormSection, vốn là field văn bản duy nhất của tab Thông tin chi tiết.",
+  "change_class": "C0",
+  "handling": "inline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/shared/asset-value/assetValueFormFields.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/components/shared/asset-value/assetValueFormFields.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C0: 1 edit-target files in one package, no one-way door (1 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Drawer Thêm mới/Chỉnh sửa tài sản → tab 'Thông tin chi tiết' → ô 'Số quyết định giao (bao gồm cả tăng vốn)' (mọi màn dùng createAssetDepreciationFormSection).",
+  "blast_radius": 1,
+  "done_oracle": "Tab 'Thông tin chi tiết' trong form Thêm mới/Sửa của mọi màn tài sản: ô 'Số quyết định giao (bao gồm cả tăng vốn)' hiển thị bộ đếm ký tự x/200 và chặn nhập quá 200; các field khác trong section không đổi hành vi, form không ném lỗi runtime. Gate: npx tsc --noEmit -p tsconfig.json exit 0 tại frontend.",
+  "verification_commands": [
+    {
+      "command": "npx tsc --noEmit -p tsconfig.json",
+      "cwd": "frontend",
+      "timeout_ms": 300000
+    }
+  ],
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "frontend/src/components/shared/asset-value/assetValueFormFields.tsx",
+      "line": 86,
+      "quote": "        type: FormFieldType.Text,",
+      "source_hash": "54ebaad1a8e58aa3601937fc1e76da9a503028f086238dc84b9ace4e67fa0364",
+      "quote_hash": "5d9120319611fe0b14625db1d1863ddc78e88175d78de70dd7fd676b411a6892"
+    },
+    {
+      "file": "frontend/src/components/shared/asset-value/assetValueFormFields.tsx",
+      "line": 84,
+      "quote": "        name: 'assignmentDecisionNumber' as keyof T,",
+      "source_hash": "54ebaad1a8e58aa3601937fc1e76da9a503028f086238dc84b9ace4e67fa0364",
+      "quote_hash": "0ed6c230a8ee3c517d17212b4663c132e487b9f4b4d94d5833dbc92abdb95452"
+    },
+    {
+      "file": "frontend/src/components/shared/asset-value/assetValueFormFields.tsx",
+      "line": 118,
+      "quote": "        parser: parseDotNumber as any,",
+      "source_hash": "54ebaad1a8e58aa3601937fc1e76da9a503028f086238dc84b9ace4e67fa0364",
+      "quote_hash": "b37a4868e91c6ae496b9c1337534b08f4f2ba0897446ecbaa73fd7c6ff7cf720",
+      "note": "Hai field tiền có parser nên KHÔNG được gắn maxLength — sẽ ném lỗi guard trong DynamicFormSidebar."
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "629d8f92016de7672cc5aa6ca122dbe6c7830914",
+    "dirty": true,
+    "captured_at": 1789553017837
+  },
+  "budget": {
+    "wall_clock_ms": 1260000,
+    "turns": 52,
+    "turns_used": 322
+  }
+}

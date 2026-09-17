@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Form, Select, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import {
@@ -13,18 +12,11 @@ import type {
   TransferAreaAsset,
   TransferAreaAssetPayload,
 } from '../../services/assetmovement/types';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  colors,
-  fontWeightBold,
-  fontSizeMd,
-  radiusPill,
-  spaceSm,
-  spaceFormField,
-} from '../../themetokenchk';
 import {
   DynamicFormSidebar,
   FormFieldType,
@@ -49,22 +41,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface TransferAreaAssetFormProps {
   open: boolean;
@@ -157,9 +141,9 @@ export default function TransferAreaAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'TRANSFER_AREA',
-                disabled: true,
-                options: [{ value: 'TRANSFER_AREA', label: 'Tài sản khu chuyển tải' }],
+                placeholder: 'Chọn loại tài sản',
+                options: MARITIME_ASSET_TYPE_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'assetCode',
@@ -172,6 +156,7 @@ export default function TransferAreaAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -180,6 +165,7 @@ export default function TransferAreaAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã barcode',
               },
               {
@@ -188,7 +174,7 @@ export default function TransferAreaAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn tình trạng',
                 required: true,
-                options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+                options: ASSET_CONDITION_OPTIONS,
                 rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }],
               },
               {
@@ -197,7 +183,7 @@ export default function TransferAreaAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn hiện trạng',
                 required: true,
-                options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
+                options: USAGE_STATUS_OPTIONS,
                 rules: [{ required: true, message: 'Hiện trạng sử dụng là bắt buộc' }],
               },
               {
@@ -206,12 +192,13 @@ export default function TransferAreaAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+                options: ASSET_GROUP_OPTIONS,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
@@ -220,12 +207,13 @@ export default function TransferAreaAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn nguồn gốc',
-                options: ORIGINS.map((v) => ({ value: v, label: v })),
+                options: ASSET_ORIGIN_OPTIONS,
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 rows: 2,
                 placeholder: 'Nhập địa chỉ tài sản',
@@ -242,8 +230,10 @@ export default function TransferAreaAssetForm({
                 label: 'Số lượng',
                 type: FormFieldType.Number,
                 min: 0,
+                required: true,
                 formatter: fmtInputNumber,
                 placeholder: '0',
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
                 colSpan: 12,
               },
               {
@@ -251,19 +241,53 @@ export default function TransferAreaAssetForm({
                 label: 'Đơn vị tính số lượng',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn đơn vị tính',
+                required: true,
                 allowClear: true,
-                options: UNITS.map((v) => ({ value: v, label: v })),
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
                 colSpan: 12,
               },
-              { name: 'model', label: 'Model', type: FormFieldType.Text, placeholder: 'Nhập model' },
-              { name: 'serialNumber', label: 'Serial', type: FormFieldType.Text, placeholder: 'Nhập serial' },
-              { name: 'countryOfOrigin', label: 'Xuất xứ', type: FormFieldType.Text, placeholder: 'Nhập xuất xứ' },
-              { name: 'manufacturer', label: 'Hãng sản xuất', type: FormFieldType.Text, placeholder: 'Nhập hãng sản xuất' },
+              {
+                name: 'model',
+                label: 'Model',
+                type: FormFieldType.Text,
+                maxLength: 100,
+                placeholder: 'Nhập model',
+              },
+              {
+                name: 'serialNumber',
+                label: 'Serial',
+                type: FormFieldType.Text,
+                maxLength: 100,
+                placeholder: 'Nhập serial',
+              },
+              {
+                name: 'countryOfOrigin',
+                label: 'Xuất xứ',
+                type: FormFieldType.Text,
+                maxLength: 100,
+                placeholder: 'Nhập xuất xứ',
+              },
+              {
+                name: 'manufacturer',
+                label: 'Hãng sản xuất',
+                type: FormFieldType.Text,
+                maxLength: 200,
+                placeholder: 'Nhập hãng sản xuất',
+              },
               { name: 'constructionYear', label: 'Năm xây dựng', type: FormFieldType.Year, placeholder: 'Chọn năm' },
               { name: 'useDate', label: 'Ngày sử dụng tài sản', type: FormFieldType.Date, placeholder: 'Chọn ngày' },
               { name: 'landArea', label: 'Diện tích (đất, sàn sử dụng: m2)', type: FormFieldType.Number, min: 0, placeholder: '0' },
               { name: 'floorArea', label: 'Diện tích (sàn sử dụng: m2)', type: FormFieldType.Number, min: 0, placeholder: '0' },
-              { name: 'assetLocation', label: 'Vị trí tài sản', type: FormFieldType.TextArea, colSpan: 24, rows: 2, placeholder: 'Nhập vị trí tài sản' },
+              {
+                name: 'assetLocation',
+                label: 'Vị trí tài sản',
+                type: FormFieldType.TextArea,
+                maxLength: 2000,
+                colSpan: 24,
+                rows: 2,
+                placeholder: 'Nhập vị trí tài sản',
+              },
             ],
           },
         ],
@@ -306,7 +330,7 @@ export default function TransferAreaAssetForm({
                 valueFormatter: (val) => (val != null ? fmtInputNumber(Number(val)) : '—'),
               },
               { name: 'valueUnit', label: 'Đơn vị tính giá trị', type: FormFieldType.Readonly, initialValue: 'VNĐ', valueFormatter: () => 'VNĐ' },
-              { name: 'assignmentDecisionNumber', label: 'Số quyết định giao (bao gồm cả tăng vốn)', type: FormFieldType.Text, placeholder: 'Nhập số quyết định' },
+              { name: 'assignmentDecisionNumber', label: 'Số quyết định giao (bao gồm cả tăng vốn)', type: FormFieldType.Text, maxLength: 200, placeholder: 'Nhập số quyết định' },
               { name: 'depreciationStartDate', label: 'Ngày tính khấu hao', type: FormFieldType.Date, placeholder: 'Chọn ngày tính' },
               { name: 'depreciationMonths', label: 'Số tháng tính khấu hao', type: FormFieldType.Number, min: 0, placeholder: '0' },
               { name: 'depreciationEndDate', label: 'Ngày hết khấu hao', type: FormFieldType.Date, placeholder: 'Chọn ngày hết' },
@@ -329,7 +353,7 @@ export default function TransferAreaAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn hình thức xử lý',
-                options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+                options: DISPOSAL_METHOD_OPTIONS,
               },
             ],
           },

@@ -32,6 +32,8 @@ import {
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
@@ -85,7 +87,7 @@ import {
 } from '../../themetokenchk';
 import type { TransferArea } from '../../types/port';
 import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
-import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import TransferAreaAssetDetailContent from './TransferAreaAssetDetailContent';
 import TransferAreaAssetForm, { type FormValues } from './TransferAreaAssetForm';
@@ -106,7 +108,6 @@ const STATUS_COUNT_KEYS = [
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const TRANSFER_AREA_ASSET_FIELD_LABELS: Record<string, string> = {
   parentOrgUnitId: 'Cơ quan quản lý cấp trên',
@@ -183,7 +184,7 @@ export default function TransferAreaAssetList() {
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<TransferAreaAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -383,7 +384,7 @@ export default function TransferAreaAssetList() {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({ assetType: 'TRANSFER_AREA', status: 'MANAGED' } as unknown as FormValues);
+    form.setFieldsValue({ status: 'MANAGED' } as unknown as FormValues);
     setAttachments([]);
     setExploitationRows([]);
     setIncreaseRows([]);
@@ -506,7 +507,7 @@ export default function TransferAreaAssetList() {
       const downloadPath = documentApi.downloadUrl(minioKey);
       const cleanPath = downloadPath.replace(/^\/api/, '');
       const res = await (await import('../../services/api')).default.get(cleanPath, { responseType: 'blob' });
-      const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+      const contentType = String(res.headers?.['content-type'] || 'application/octet-stream');
       const blob = new Blob([res.data], { type: contentType });
       triggerBlobDownload(blob, fileName || 'tai-lieu');
       toast.success(`Đã tải xuống tệp: ${fileName}`);
@@ -562,7 +563,7 @@ export default function TransferAreaAssetList() {
 
       const payload: TransferAreaAssetPayload = {
         ...values,
-        assetType: 'TRANSFER_AREA',
+        assetType: values.assetType,
         constructionYear: values.constructionYear ? Number(values.constructionYear.format('YYYY')) : undefined,
         useDate: values.useDate?.format('YYYY-MM-DD'),
         declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
@@ -640,6 +641,7 @@ export default function TransferAreaAssetList() {
         depreciationMonths: record.depreciationMonths,
         depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
         accumulatedDepreciation: record.accumulatedDepreciation,
+        disposalMethod: record.disposalMethod,
       });
     }
   }, [operationForm]);
@@ -693,7 +695,7 @@ export default function TransferAreaAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
@@ -783,7 +785,7 @@ export default function TransferAreaAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+      options: ASSET_CONDITION_OPTIONS,
     },
     {
       key: 'usingOrgUnitId',
@@ -808,7 +810,7 @@ export default function TransferAreaAssetList() {
       label: 'Loại tài sản',
       type: 'select',
       placeholder: 'Chọn loại tài sản',
-      options: [{ value: 'TRANSFER_AREA', label: 'Tài sản khu chuyển tải' }],
+      options: MARITIME_ASSET_TYPE_OPTIONS,
       isAdvanced: true,
     },
     {
@@ -1219,10 +1221,6 @@ export default function TransferAreaAssetList() {
           organizations={organizations}
           transferAreas={transferAreas}
           attachments={attachments}
-          exploitationRows={exploitationRows}
-          increaseRows={increaseRows}
-          decreaseRows={decreaseRows}
-          orgName={orgName}
           saving={saving}
           saveAction={saveAction}
           onClose={() => {

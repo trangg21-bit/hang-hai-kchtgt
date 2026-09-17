@@ -31,6 +31,7 @@ import {
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import {
     triggerBlobDownload,
     type InfrastructureAttachmentItem,
@@ -106,9 +107,9 @@ const STATUS_COUNT_KEYS = [
   'ARCHIVED',
 ];
 
-type DrawerMode = 'create' | 'edit' | 'detail';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+type DrawerMode = 'create' | 'edit' | 'detail';
 
 const CHANNEL_ASSET_FIELD_LABELS: Record<string, string> = {
   parentOrgUnitId: 'Cơ quan quản lý cấp trên',
@@ -248,7 +249,7 @@ export default function ChannelAssetList() {
         }
         if (fn === 'navigationChannelId') {
           const item = channels.find((x) => x.id === raw);
-          return item ? `${item.code} - ${item.name}` : raw;
+          return item ? `${item.channelCode || ''} - ${item.channelName || ''}` : raw;
         }
         if (
           fn === 'originalValue' ||
@@ -391,7 +392,7 @@ export default function ChannelAssetList() {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({ assetType: 'NAVIGATION_CHANNEL', status: 'MANAGED' });
+    form.setFieldsValue({ status: 'MANAGED' });
     setAttachments([]);
   }, [form]);
 
@@ -527,7 +528,7 @@ export default function ChannelAssetList() {
             cleanPath = `/${cleanPath}`;
           }
           const res = await api.get(cleanPath, { responseType: 'blob' });
-          const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+          const contentType = String(res.headers?.['content-type'] || 'application/octet-stream');
           const blob = new Blob([res.data], { type: contentType });
           triggerBlobDownload(blob, fileName || 'tai-lieu');
           toast.success(`Đã tải xuống tệp: ${fileName}`);
@@ -606,7 +607,7 @@ export default function ChannelAssetList() {
         navigationChannelId: values.navigationChannelId,
         assetCode: values.assetCode || '',
         assetName: values.assetName || '',
-        assetType: 'NAVIGATION_CHANNEL',
+        assetType: values.assetType || 'NAVIGATION_CHANNEL',
         barcode: values.barcode,
         assetCondition: values.assetCondition,
         usageStatus: values.usageStatus,
@@ -701,6 +702,7 @@ export default function ChannelAssetList() {
           depreciation: 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
@@ -715,25 +717,23 @@ export default function ChannelAssetList() {
         await createAssetIncrease({
           assetId: selected.id,
           assetName: selected.assetName,
-          tangValue: diff,
-          lyDo: values.adjustmentReason || '',
-          notes: values.notes,
-          decisionNumber: values.decisionNumber,
-          decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
-          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
-          originalValueBefore: selected.originalValue || 0,
-          originalValueAfter: (selected.originalValue || 0) + diff,
-          remainingValueBefore: selected.remainingValue || 0,
-          remainingValueAfter: (selected.remainingValue || 0) + diff,
-          declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
-          depreciationRate: values.depreciationRate,
-          valueUnit: 'VNĐ',
-          assignmentDecisionNumber: values.assignmentDecisionNumber,
-          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
-          depreciationMonths: values.depreciationMonths,
-          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
-          adjustmentAccumulatedDepreciation: values.accumulatedDepreciation,
-          disposalMethod: values.disposalMethod,
+          quantity: 1,
+          unitOfMeasure: 'VNĐ',
+          increaseCode: values.decisionNumber || `TC-LHH-${Date.now().toString().slice(-6)}`,
+          reason: values.notes || values.adjustmentReason || '',
+          adjustmentDetails: {
+            ...values,
+            decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
+            adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
+            declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
+            depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
+            depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
+            originalValueBefore: selected.originalValue || 0,
+            originalValueAfter: (selected.originalValue || 0) + diff,
+            remainingValueBefore: selected.remainingValue || 0,
+            remainingValueAfter: (selected.remainingValue || 0) + diff,
+            valueUnit: 'VNĐ',
+          },
         });
         toast.success('Yêu cầu tăng nguyên giá tài sản đã được tạo.');
       } else {
@@ -741,25 +741,24 @@ export default function ChannelAssetList() {
         await createAssetDecrease({
           assetId: selected.id,
           assetName: selected.assetName,
-          giamValue: diff,
-          lyDo: values.adjustmentReason || '',
-          notes: values.notes,
-          decisionNumber: values.decisionNumber,
-          decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
-          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
-          originalValueBefore: selected.originalValue || 0,
-          originalValueAfter: Math.max(0, (selected.originalValue || 0) - diff),
-          remainingValueBefore: selected.remainingValue || 0,
-          remainingValueAfter: Math.max(0, (selected.remainingValue || 0) - diff),
-          declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
-          depreciationRate: values.depreciationRate,
-          valueUnit: 'VNĐ',
-          assignmentDecisionNumber: values.assignmentDecisionNumber,
-          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
-          depreciationMonths: values.depreciationMonths,
-          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
-          adjustmentAccumulatedDepreciation: values.accumulatedDepreciation,
-          disposalMethod: values.disposalMethod,
+          quantity: 1,
+          unitOfMeasure: 'VNĐ',
+          decreaseCode: values.decisionNumber || `GC-LHH-${Date.now().toString().slice(-6)}`,
+          decreaseReason: values.adjustmentReason || 'Giảm nguyên giá',
+          reason: values.notes || values.adjustmentReason || '',
+          adjustmentDetails: {
+            ...values,
+            decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
+            adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
+            declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
+            depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
+            depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
+            originalValueBefore: selected.originalValue || 0,
+            originalValueAfter: Math.max(0, (selected.originalValue || 0) - diff),
+            remainingValueBefore: selected.remainingValue || 0,
+            remainingValueAfter: Math.max(0, (selected.remainingValue || 0) - diff),
+            valueUnit: 'VNĐ',
+          },
         });
         toast.success('Yêu cầu giảm nguyên giá tài sản đã được tạo.');
       }
@@ -817,7 +816,7 @@ export default function ChannelAssetList() {
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((val) => ({ value: val, label: val })),
+        options: ASSET_CONDITION_OPTIONS,
       },
       {
         key: 'usingOrgUnitId',
@@ -832,6 +831,14 @@ export default function ChannelAssetList() {
         type: 'select',
         placeholder: 'Chọn luồng hàng hải',
         options: channelOpts,
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: MARITIME_ASSET_TYPE_OPTIONS,
         isAdvanced: true,
       },
       {
@@ -909,9 +916,8 @@ export default function ChannelAssetList() {
         width: 190,
         allowSort: true,
         statusMapping: {
-          'Tốt': { label: 'Tốt', color: themeTokenChk.statusOperational },
-          'Hư hỏng cần sửa chữa': { label: 'Hư hỏng cần sửa chữa', color: themeTokenChk.statusAttention },
-          'Không sử dụng được': { label: 'Không sử dụng được', color: themeTokenChk.statusCritical },
+          'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
+          'Hỏng không sử dụng': { label: 'Hỏng không sử dụng', color: themeTokenChk.statusCritical },
         },
       },
       {
@@ -921,10 +927,13 @@ export default function ChannelAssetList() {
         width: 190,
         allowSort: true,
         statusMapping: {
-          'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
-          'Đang bảo trì/sửa chữa': { label: 'Đang bảo trì/sửa chữa', color: themeTokenChk.statusAttention },
-          'Tạm dừng sử dụng': { label: 'Tạm dừng sử dụng', color: themeTokenChk.statusCritical },
-          'Chưa sử dụng': { label: 'Chưa sử dụng', color: themeTokenChk.statusDraft },
+          'Quản lý nhà nước': { label: 'Quản lý nhà nước', color: themeTokenChk.statusOperational },
+          'Hoạt động sự nghiệp: Không kinh doanh': { label: 'Hoạt động sự nghiệp: Không kinh doanh', color: themeTokenChk.statusOperational },
+          'Hoạt động sự nghiệp: Kinh doanh': { label: 'Hoạt động sự nghiệp: Kinh doanh', color: themeTokenChk.statusAttention },
+          'Hoạt động sự nghiệp: Cho thuê': { label: 'Hoạt động sự nghiệp: Cho thuê', color: themeTokenChk.statusAttention },
+          'Hoạt động sự nghiệp: Liên doanh, liên kết': { label: 'Hoạt động sự nghiệp: Liên doanh, liên kết', color: themeTokenChk.statusAttention },
+          'Hoạt động sự nghiệp: Sử dụng hỗn hợp': { label: 'Hoạt động sự nghiệp: Sử dụng hỗn hợp', color: themeTokenChk.statusAttention },
+          'Sử dụng khác': { label: 'Sử dụng khác', color: themeTokenChk.statusAttention },
         },
       },
       {
@@ -1358,7 +1367,7 @@ export default function ChannelAssetList() {
                   }
                   if (fn === 'navigationChannelId') {
                     const item = channelMap.get(raw!);
-                    return item ? `${item.code} - ${item.name}` : raw;
+                    return item ? `${item.channelCode || ''} - ${item.channelName}` : raw;
                   }
                   if (
                     fn === 'originalValue' ||
@@ -1386,8 +1395,8 @@ export default function ChannelAssetList() {
 
         <DeleteConfirmModal
           open={Boolean(deleteTarget)}
-          title="Xác nhận xóa tài sản luồng hàng hải"
-          content={`Bạn có chắc chắn muốn xóa tài sản "${deleteTarget?.assetName}" (${deleteTarget?.assetCode}) không? Thao tác này không thể hoàn tác.`}
+          itemName={deleteTarget?.assetName}
+          itemCode={deleteTarget?.assetCode}
           onConfirm={() => void confirmDelete()}
           onCancel={() => setDeleteTarget(undefined)}
         />

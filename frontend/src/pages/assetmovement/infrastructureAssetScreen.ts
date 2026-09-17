@@ -13,6 +13,7 @@ export interface InfrastructureReferenceOption {
   id: string;
   code: string;
   name: string;
+  orgUnitId?: string;
 }
 
 export interface InfrastructureAssetScreenConfig {

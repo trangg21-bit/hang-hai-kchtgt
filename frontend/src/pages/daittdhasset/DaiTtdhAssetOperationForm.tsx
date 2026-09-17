@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { Organization } from '../../services/organizationService';
 import type { DaiTtdhAsset } from '../../services/daiTtdhAsset/types';
 import {
@@ -10,6 +10,10 @@ import {
   type FormSectionConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  createAssetAdjustmentOperationSection,
+  handleAssetAdjustmentValuesChange,
+} from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -37,9 +41,11 @@ export interface OperationValues extends Record<string, unknown> {
   adjustmentDate?: Dayjs;
   adjustmentReason?: string;
   originalValueBefore?: number;
-  originalValueAfter?: number;
+  /** Nguyên giá sau khi tăng/giảm — khóa chuẩn của section dùng chung asset-value. */
+  originalValue?: number;
   remainingValueBefore?: number;
-  remainingValueAfter?: number;
+  /** Giá trị còn lại sau điều chỉnh — khóa chuẩn của section dùng chung asset-value. */
+  remainingValue?: number;
   declarationDate?: Dayjs;
   depreciationRate?: number;
   assignmentDecisionNumber?: string;
@@ -51,16 +57,12 @@ export interface OperationValues extends Record<string, unknown> {
   disposalMethod?: string;
 }
 
-const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Chiếc', 'Máy'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư nâng cấp hệ thống phát sóng',
-  'Mở rộng công suất đài TTDH',
-  'Đánh giá lại giá trị tài sản',
-  'Hao mòn kỹ thuật sau thời gian vận hành',
-  'Điều chỉnh theo quyết định phê duyệt cấp trên',
-  'Lý do khác',
-];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+} from '../../constants/assetDropdown';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export interface DaiTtdhAssetOperationFormProps {
   open: boolean;
@@ -106,40 +108,54 @@ export default function DaiTtdhAssetOperationForm({
             {
               name: 'assetCategory',
               label: 'Danh mục tài sản',
-              type: FormFieldType.Text,
-              disabled: true,
+              type: FormFieldType.Readonly,
+              initialValue: [selected?.assetCode, selected?.assetName].filter(Boolean).join(' - '),
+              valueFormatter: () =>
+                [selected?.assetCode, selected?.assetName].filter(Boolean).join(' - ') || '—',
             },
             {
               name: 'unitOfMeasure',
               label: 'Đơn vị tính',
               type: FormFieldType.Select,
-              options: UNITS.map((u) => ({ value: u, label: u })),
+              required: true,
+              placeholder: 'Chọn đơn vị tính',
+              options: ASSET_QUANTITY_UNIT_OPTIONS,
+              rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
             },
             {
               name: 'quantity',
               label: 'Số lượng khai thác',
               type: FormFieldType.Number,
-              min: 0,
-              placeholder: '1',
+              required: true,
+              min: 1,
+              formatter: fmtInputNumber,
+              placeholder: '0',
+              rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
             },
             {
               name: 'exploitationDeadline',
               label: 'Thời hạn khai thác',
               type: FormFieldType.Date,
+              required: true,
               placeholder: 'Chọn thời hạn kết thúc khai thác',
+              rules: [{ required: true, message: 'Thời hạn khai thác là bắt buộc' }],
             },
             {
               name: 'totalRevenue',
               label: 'Tổng tiền thu được (VNĐ)',
               type: FormFieldType.Number,
+              required: true,
               min: 0,
+              formatter: fmtInputNumber,
               placeholder: '0',
+              rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
             },
             {
               name: 'relatedCosts',
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              formatter: fmtInputNumber,
               placeholder: '0',
             },
             {
@@ -147,6 +163,7 @@ export default function DaiTtdhAssetOperationForm({
               label: 'Nộp ngân sách nhà nước (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              formatter: fmtInputNumber,
               placeholder: '0',
             },
             {
@@ -154,6 +171,7 @@ export default function DaiTtdhAssetOperationForm({
               label: 'Số tiền thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              formatter: fmtInputNumber,
               placeholder: '0',
             },
             {
@@ -173,6 +191,8 @@ export default function DaiTtdhAssetOperationForm({
         },
       ];
     }
+
+    const reasonOptions = isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS;
 
     return [
       {
@@ -206,91 +226,19 @@ export default function DaiTtdhAssetOperationForm({
             name: 'adjustmentReason',
             label: 'Lý do điều chỉnh',
             type: FormFieldType.Select,
-            options: ADJUSTMENT_REASONS.map((r) => ({ value: r, label: r })),
+            options: reasonOptions,
             placeholder: 'Chọn lý do',
-          },
-          {
-            name: 'originalValueBefore',
-            label: 'Nguyên giá trước điều chỉnh (VNĐ)',
-            type: FormFieldType.Number,
-            disabled: true,
-          },
-          {
-            name: 'originalValueAfter',
-            label: isIncrease ? 'Nguyên giá sau khi tăng (VNĐ)' : 'Nguyên giá sau khi giảm (VNĐ)',
-            type: FormFieldType.Number,
-            min: 0,
             required: true,
-            rules: [{ required: true, message: 'Vui lòng nhập nguyên giá sau điều chỉnh' }],
-            placeholder: 'Nhập giá trị nguyên giá mới',
-          },
-          {
-            name: 'remainingValueBefore',
-            label: 'Giá trị còn lại trước điều chỉnh (VNĐ)',
-            type: FormFieldType.Number,
-            disabled: true,
-          },
-          {
-            name: 'remainingValueAfter',
-            label: 'Giá trị còn lại sau điều chỉnh (VNĐ)',
-            type: FormFieldType.Number,
-            min: 0,
-            placeholder: 'Nhập giá trị còn lại mới',
-          },
-          {
-            name: 'notes',
-            label: 'Ghi chú điều chỉnh',
-            type: FormFieldType.TextArea,
-            placeholder: 'Nhập lý do chi tiết hoặc nội dung thuyết minh',
-            colSpan: 24,
+            rules: [{ required: true, message: 'Lý do điều chỉnh là bắt buộc' }],
           },
         ],
       },
-      {
-        key: 'depreciation_followup',
-        title: 'Thông tin khấu hao sau điều chỉnh',
-        icon: <SlidersOutlined />,
-        fields: [
-          {
-            name: 'depreciationRate',
-            label: 'Tỷ lệ hao mòn/khấu hao (%)',
-            type: FormFieldType.Number,
-            min: 0,
-            max: 100,
-            placeholder: '0.00',
-          },
-          {
-            name: 'depreciationStartDate',
-            label: 'Ngày tính khấu hao mới',
-            type: FormFieldType.Date,
-          },
-          {
-            name: 'depreciationMonths',
-            label: 'Số tháng tính khấu hao còn lại',
-            type: FormFieldType.Number,
-            min: 0,
-          },
-          {
-            name: 'depreciationEndDate',
-            label: 'Ngày hết khấu hao mới',
-            type: FormFieldType.Date,
-          },
-          {
-            name: 'accumulatedDepreciation',
-            label: 'Khấu hao lũy kế mới (VNĐ)',
-            type: FormFieldType.Number,
-            min: 0,
-          },
-          {
-            name: 'disposalMethod',
-            label: 'Hình thức xử lý',
-            type: FormFieldType.Select,
-            options: DISPOSAL_METHODS.map((m) => ({ value: m, label: m })),
-          },
-        ],
-      },
+      createAssetAdjustmentOperationSection<OperationValues>({
+        selectedRecord: selected,
+        operationMode,
+      }),
     ];
-  }, [isExploit, isIncrease, organizations]);
+  }, [isExploit, isIncrease, organizations, operationMode, selected]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
     return [
@@ -329,6 +277,9 @@ export default function DaiTtdhAssetOperationForm({
       sections={sections}
       footerActions={footerActions}
       footerAlign="center"
+      onValuesChange={(changed, all) => {
+        handleAssetAdjustmentValuesChange(form, changed, all);
+      }}
       rootClassName="daittdh-asset-operation-drawer"
       className="daittdh-asset-operation-drawer"
     />

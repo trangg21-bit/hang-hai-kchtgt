@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -18,16 +18,14 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
-  actionPrimary,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
   statusAttention,
   statusCritical,
-  statusDraft,
-  radiusPill,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
@@ -38,7 +36,6 @@ import {
   CommonTable,
   TableColumnType,
   type TableOption,
-  APPROVAL_MAP,
   renderApprovalStatusBadge,
 } from '../../components/shared/common-table';
 import {
@@ -198,6 +195,19 @@ export default function CctvSystemAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
+              return (
+                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -251,6 +261,8 @@ export default function CctvSystemAssetDetailContent({
           dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -263,7 +275,7 @@ export default function CctvSystemAssetDetailContent({
     [orgName]
   );
 
-  interface AdjustmentRowItem {
+  interface AdjustmentRowItem extends Record<string, unknown> {
     id: string;
     adjustmentType: 'TANG' | 'GIAM';
     code?: string;
@@ -536,13 +548,22 @@ export default function CctvSystemAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) => {
+                  if (val === AssetCondition.DANG_SU_DUNG) return statusOperational;
+                  if (val === AssetCondition.HONG_KHONG_SU_DUNG) return statusCritical;
+                  return statusAttention;
+                },
                 colSpan: 12,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === UsageStatus.QUAN_LY_NHA_NUOC || val === UsageStatus.HDSN_KHONG_KINH_DOANH
+                    ? statusOperational
+                    : statusAttention,
                 colSpan: 12,
               },
               {
@@ -760,8 +781,6 @@ export default function CctvSystemAssetDetailContent({
         customContent: (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
-              refType="CCTV_SYSTEM_ASSET"
-              refId={selectedRecord.id}
               attachments={detailAttachments}
               readonly
               onDownload={handleDownloadAttachment}

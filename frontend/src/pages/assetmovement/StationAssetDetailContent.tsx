@@ -19,6 +19,7 @@ import type { StationTypeConfig } from './stationConfigs';
 import { fmtNum } from '../../utils/numFmt';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
   triggerBlobDownload,
@@ -331,7 +332,7 @@ export default function StationAssetDetailContent({
       ((r as unknown as Record<string, unknown>)?.[config.stationFieldName] as
         | string
         | undefined) || r?.stationId;
-    const stationItem = stationValue ? stationMap.get(stationValue) : undefined;
+    const stationItem = stationValue ? stationMap.get(String(stationValue)) : undefined;
 
     return [
       {
@@ -405,9 +406,9 @@ export default function StationAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Tốt'
+                  val === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : val === 'Không sử dụng được'
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
                       ? statusCritical
                       : statusAttention,
               },
@@ -416,11 +417,10 @@ export default function StationAssetDetailContent({
                 label: 'Hiện trạng sử dụng',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Đang sử dụng'
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
                     ? statusOperational
-                    : val === 'Tạm dừng sử dụng'
-                      ? statusCritical
-                      : statusDraft,
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',

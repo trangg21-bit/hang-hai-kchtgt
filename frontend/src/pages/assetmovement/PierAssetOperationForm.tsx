@@ -40,15 +40,12 @@ export interface OperationValues {
   [key: string]: unknown;
 }
 
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface PierAssetOperationFormProps {
   open: boolean;
@@ -107,20 +104,24 @@ export function PierAssetOperationForm({
               label: 'Danh mục tài sản',
               type: FormFieldType.Text,
               disabled: true,
-              initialValue: selected.assetName,
+              initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
             },
             {
               name: 'unitOfMeasure',
               label: 'Đơn vị tính',
               type: FormFieldType.Select,
-              options: UNITS.map((u) => ({ value: u, label: u })),
+              options: ASSET_QUANTITY_UNIT_OPTIONS,
               placeholder: 'Chọn đơn vị tính',
+              required: true,
+              rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
             },
             {
               name: 'quantity',
               label: 'Số lượng',
               type: FormFieldType.Number,
               min: 0,
+              required: true,
+              rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               placeholder: 'Nhập số lượng khai thác',
             },
             {
@@ -134,6 +135,8 @@ export function PierAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              required: true,
+              rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
               placeholder: 'Nhập tổng số tiền',
             },
             {
@@ -199,8 +202,10 @@ export function PierAssetOperationForm({
             name: 'adjustmentReason',
             label: 'Lý do tăng/giảm nguyên giá',
             type: FormFieldType.Select,
-            options: ADJUSTMENT_REASONS.map((r) => ({ value: r, label: r })),
+            options: operationMode === 'increase' ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS,
             placeholder: 'Chọn lý do',
+            required: true,
+            rules: [{ required: true, message: 'Lý do là bắt buộc' }],
           },
           {
             name: 'notes',
@@ -279,20 +284,18 @@ export function PierAssetOperationForm({
             label: 'Khấu hao lũy kế',
             type: FormFieldType.Number,
             min: 0,
+            required: true,
+            rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
             placeholder: 'Nhập khấu hao lũy kế',
           },
           {
             name: 'disposalMethod',
             label: 'Hình thức xử lý tài sản',
             type: FormFieldType.Select,
-            options: [
-              { value: 'Bán', label: 'Bán' },
-              { value: 'Thanh lý', label: 'Thanh lý' },
-              { value: 'Điều chuyển', label: 'Điều chuyển' },
-              { value: 'Tiêu hủy', label: 'Tiêu hủy' },
-              { value: 'Khác', label: 'Khác' },
-            ],
+            options: DISPOSAL_METHOD_OPTIONS,
             placeholder: 'Chọn hình thức xử lý',
+            required: true,
+            rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
           },
         ],
       },

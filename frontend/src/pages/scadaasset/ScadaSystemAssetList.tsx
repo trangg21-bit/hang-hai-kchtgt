@@ -1,3 +1,4 @@
+
 import {
   DeleteOutlined,
   EditOutlined,
@@ -16,7 +17,7 @@ import toast from '../../components/ToastNotification';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import api from '../../services/api';
-import { isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 
 import {
@@ -30,9 +31,9 @@ import {
   type ScreenHeaderAction,
   type TableOption,
 } from '../../components/list-view';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
   createAssetDecrease,
@@ -94,22 +95,9 @@ import ScadaSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './ScadaSystemAssetOperationForm';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const SCADA_ASSET_TYPES = [
-  'Thiết bị đầu cuối thu thập dữ liệu (RTU)',
-  'Bộ điều khiển logic lập trình (PLC)',
-  'Máy chủ điều khiển & máy chủ dữ liệu SCADA',
-  'Trạm giao diện người - máy (HMI / Workstation)',
-  'Hệ thống truyền thông mạng SCADA (Switch / Router / Modem)',
-  'Cảm biến & Bộ đo lường thu thập số liệu',
-  'Tủ điều khiển SCADA & Nguồn dự phòng UPS',
-  'Hệ thống phụ trợ SCADA',
-  'Khác',
-];
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -206,7 +194,7 @@ const SCADA_HISTORY_FIELD_ORDER = [
   'attachments',
 ];
 
-const BREADCRUMB_ITEMS: BreadcrumbItem[] = [
+const BREADCRUMB_ITEMS = [
   { label: 'Trang chủ', path: '/' },
   { label: 'Quản lý tài sản KCHT hàng hải' },
   { label: 'Tài sản HT SCADA' },
@@ -247,7 +235,7 @@ export default function ScadaSystemAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<ScadaSystemAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -269,7 +257,7 @@ export default function ScadaSystemAssetList() {
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -336,7 +324,7 @@ export default function ScadaSystemAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -372,7 +360,7 @@ export default function ScadaSystemAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderScadaHistoryTimeline = (filtered: any[]) => {
+  const renderScadaHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -470,13 +458,6 @@ export default function ScadaSystemAssetList() {
     form.resetFields();
     form.setFieldsValue({
       valueUnit: 'VNĐ',
-      quantity: 1,
-      quantityUnit: 'Hệ thống',
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      assetGroup: 'Máy móc, thiết bị',
-      assetType: 'Thiết bị đầu cuối thu thập dữ liệu (RTU)',
-      origin: 'Mua sắm',
       attachmentName: undefined,
     });
   }, [form]);
@@ -777,7 +758,7 @@ export default function ScadaSystemAssetList() {
             attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
         };
 
-        const cleanPayload: Record<string, any> = { ...payload };
+        const cleanPayload: Record<string, unknown> = { ...(payload as unknown as Record<string, unknown>) };
         const excludeKeys = [
           'id',
           'parentOrgUnitName',
@@ -806,7 +787,7 @@ export default function ScadaSystemAssetList() {
         });
 
         if (drawerMode === 'create' || !selected?.id) {
-          await createScadaSystemAsset(cleanPayload as any);
+          await createScadaSystemAsset(cleanPayload as unknown as ScadaSystemAssetPayload);
           toast.success(
             status === 'DRAFT'
               ? 'Đã lưu tạm tài sản HT SCADA'
@@ -815,7 +796,7 @@ export default function ScadaSystemAssetList() {
               : 'Đã tạo và phê duyệt tài sản HT SCADA'
           );
         } else if (selected) {
-          await updateScadaSystemAsset(selected.id, cleanPayload as any);
+          await updateScadaSystemAsset(selected.id, cleanPayload as unknown as ScadaSystemAssetPayload);
           toast.success('Đã cập nhật tài sản HT SCADA thành công');
         }
 
@@ -872,7 +853,7 @@ export default function ScadaSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -939,6 +920,7 @@ export default function ScadaSystemAssetList() {
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
             reason: values.adjustmentReason || 'Thanh lý một phần',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
           });
@@ -966,6 +948,7 @@ export default function ScadaSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
+
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -976,7 +959,7 @@ export default function ScadaSystemAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+      options: ASSET_CONDITION_OPTIONS,
     },
     {
       key: 'usingOrgUnitId',
@@ -1002,7 +985,7 @@ export default function ScadaSystemAssetList() {
       label: 'Loại tài sản',
       type: 'select',
       placeholder: 'Chọn loại tài sản',
-      options: SCADA_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      options: MARITIME_ASSET_TYPE_OPTIONS,
       isAdvanced: true,
     },
     {
@@ -1059,7 +1042,7 @@ export default function ScadaSystemAssetList() {
         allowSort: true,
         render: (v, record) => {
           const a = v ? scadaDeviceMap.get(v as string) : undefined;
-          return a ? `${a.deviceCode} - ${a.deviceName}` : record.scadaCode || '—';
+          return a ? `${a.deviceCode} - ${a.deviceName}` : (record.scadaCode ? String(record.scadaCode) : '—');
         },
       },
       {
@@ -1068,7 +1051,7 @@ export default function ScadaSystemAssetList() {
         type: TableColumnType.Text,
         width: 200,
         allowSort: true,
-        render: (v) => v || '—',
+        render: (v) => (v ? String(v) : '—'),
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
