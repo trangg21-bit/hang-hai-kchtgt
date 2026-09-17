@@ -372,7 +372,7 @@ public class BuoyStationService {
             // "Tọa độ GIS" + "Loại đối tượng GIS", kèm approvedBy = user thật.
             if (wasApproved) {
                 String newWkt = coordinates.trim();
-                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("BuoyStation", entity.getId(), "Tọa độ GIS",
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),

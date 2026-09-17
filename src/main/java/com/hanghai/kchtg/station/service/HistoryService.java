@@ -221,7 +221,7 @@ public class HistoryService {
             }).toList();
         }
 
-        Map<UUID, String> userNames = resolveUserNames(rows.stream()
+        Map<UUID, User> userMap = resolveUsers(rows.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet()));
@@ -236,9 +236,11 @@ public class HistoryService {
             entry.setChangedField(h.getChangedField());
             entry.setPreviousValue(h.getPreviousValue());
             entry.setNewValue(h.getNewValue());
+            User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
             entry.setChangedBy(h.getApprovedBy() == null
                     ? "Hệ thống"
-                    : userNames.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()));
+                    : resolveUserDisplayName(u, h.getApprovedBy()));
+            entry.setOrgUnitName(resolveUserOrgUnitName(u));
             entry.setChangedAt(h.getApprovedDate());
             return entry;
         }).toList();
@@ -284,7 +286,7 @@ public class HistoryService {
         return StationHistoryActionType.UPDATE;
     }
 
-    private Map<UUID, String> resolveUserNames(Collection<UUID> userIds) {
+    private Map<UUID, User> resolveUsers(Collection<UUID> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -292,13 +294,28 @@ public class HistoryService {
         if (ids.isEmpty()) {
             return Collections.emptyMap();
         }
-        Map<UUID, String> names = new HashMap<>();
+        Map<UUID, User> users = new HashMap<>();
         for (User u : userRepository.findAllByIdInWithOrgUnit(ids)) {
-            String label = (u.getFullName() != null && !u.getFullName().trim().isEmpty())
-                    ? u.getFullName()
-                    : u.getUsername();
-            names.put(u.getId(), label);
+            users.put(u.getId(), u);
         }
-        return names;
+        return users;
+    }
+
+    private String resolveUserDisplayName(User u, UUID fallbackId) {
+        if (u == null) return fallbackId != null ? fallbackId.toString() : "Hệ thống";
+        return (u.getFullName() != null && !u.getFullName().trim().isEmpty())
+                ? u.getFullName()
+                : u.getUsername();
+    }
+
+    private String resolveUserOrgUnitName(User u) {
+        if (u == null) return null;
+        if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
+            return u.getOrgUnit().getName();
+        }
+        if (u.getDepartment() != null && !u.getDepartment().isBlank()) {
+            return u.getDepartment();
+        }
+        return null;
     }
 }

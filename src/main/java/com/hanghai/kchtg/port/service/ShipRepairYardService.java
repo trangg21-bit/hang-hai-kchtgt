@@ -214,7 +214,7 @@ public class ShipRepairYardService {
             UUID actorId = currentActorId();
             if (coordinates != null && !coordinates.trim().isEmpty()) {
                 String newWkt = coordinates.trim();
-                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 GisGeometryType geomType = request.getGeometryType() != null
                         ? request.getGeometryType() : GisGeometryType.POINT;
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;

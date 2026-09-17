@@ -721,6 +721,7 @@ public class CoastalStationHaiphongService {
                     r.setPreviousValue(h.getPreviousValue());
                     r.setNewValue(h.getNewValue());
                     r.setChangedBy(h.getChangedBy());
+                    r.setOrgUnitName(h.getOrgUnitName());
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })

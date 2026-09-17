@@ -600,20 +600,19 @@ export default function VtsSystemList() {
       ),
     },
     {
-      key: 'address',
+      key: 'provinceId',
       label: 'Địa điểm (Tỉnh/Thành phố)',
-      dataIndex: 'address',
+      dataIndex: 'provinceId',
       width: 260,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      sortOrder: sortOrderFor('address'),
-      render: (val: string, record: VtsSystemResponse) => {
-        const provinceName = record.provinceId ? getProvinceNameById(record.provinceId) : '';
-        const fullAddress = val && provinceName ? `${val}, ${provinceName}` : (val || provinceName || '—');
+      sortOrder: sortOrderFor('provinceId'),
+      render: (_: unknown, record: VtsSystemResponse) => {
+        const provinceName = record.provinceId ? getProvinceNameById(record.provinceId) : '—';
         return (
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullAddress}>
-            {fullAddress}
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={provinceName}>
+            {provinceName}
           </div>
         );
       },

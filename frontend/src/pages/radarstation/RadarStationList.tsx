@@ -2326,7 +2326,7 @@ export default function RadarStationList() {
   const detailHandlingRows: DetailRow[] = detailRecord
     ? [
         {
-          label: 'Trạng thái phê duyệt',
+          label: 'Trạng thái',
           value: (() => {
             if (isRecordDeleted(detailRecord)) {
               return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
@@ -2335,6 +2335,7 @@ export default function RadarStationList() {
             const s = RADAR_STATION_STATUS_STYLE_MAP[st] || (st ? { color: textTertiary, label: st } : null);
             return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null;
           })(),
+          fullWidth: true,
         },
         ...(isRecordDeleted(detailRecord)
           ? [
@@ -2343,6 +2344,7 @@ export default function RadarStationList() {
             ]
           : []),
         { label: 'Cán bộ cập nhật', value: detailRecord.updatedByName || detailRecord.createdByName || null, bold: true },
+        { label: 'Ngày cập nhật', value: safeText(formatDate(detailRecord.updatedAt || (detailRecord as any).updated_at || detailRecord.createdAt)) },
         { label: 'Cán bộ gửi phê duyệt', value: detailRecord.submittedByName || null, bold: true },
         { label: 'Ngày gửi phê duyệt', value: safeText(formatDate(detailRecord.submittedForApprovalAt)) },
         { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approverLevel1Name || null, bold: true },

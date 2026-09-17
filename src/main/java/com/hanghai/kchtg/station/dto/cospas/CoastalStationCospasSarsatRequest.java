@@ -39,7 +39,7 @@ public class CoastalStationCospasSarsatRequest {
 
     @Size(max = 255)
     private String frequency;
-    @Size(max = 4000)
+    @Size(max = 2000, message = "Vùng phủ sóng không được vượt quá 2000 ký tự")
     private String coverageArea;
     @Size(max = 255)
     private String beaconProtocol;

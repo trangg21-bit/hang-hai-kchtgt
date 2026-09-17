@@ -18,7 +18,29 @@ public final class WktCoordinateUtils {
     }
 
     public static boolean coordinatesEqual(String first, String second) {
-        return Objects.equals(normalize(first), normalize(second));
+        return Objects.equals(normalizeCoordinatePositions(first), normalizeCoordinatePositions(second));
+    }
+
+    /**
+     * The geometry type is tracked separately. For coordinate audit entries we
+     * compare only the ordered positions, so LINESTRING and MULTIPOINT created
+     * from the same editor points do not produce a false coordinate change.
+     */
+    private static String normalizeCoordinatePositions(String coordinates) {
+        if (coordinates == null || coordinates.isBlank()) {
+            return null;
+        }
+
+        String withoutSrid = coordinates.trim().replaceFirst("(?i)^SRID=\\d+\\s*;", "");
+        Matcher matcher = WKT_NUMBER.matcher(withoutSrid);
+        StringBuilder normalized = new StringBuilder();
+        while (matcher.find()) {
+            if (normalized.length() > 0) {
+                normalized.append(',');
+            }
+            normalized.append(new BigDecimal(matcher.group()).stripTrailingZeros().toPlainString());
+        }
+        return normalized.length() > 0 ? normalized.toString() : normalize(coordinates);
     }
 
     static String normalize(String coordinates) {

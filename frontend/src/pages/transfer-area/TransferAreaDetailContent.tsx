@@ -767,7 +767,7 @@ export default function TransferAreaDetailContent({
                         {(() => {
                           const isDeleted = Boolean(r.deletedAt || r.deletedBy);
                           return (
-                            <div className="chk-detail-row">
+                            <div className="chk-detail-row chk-detail-row--full">
                               <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                               <span className="chk-detail-value">
                                 {isDeleted ? (
@@ -784,12 +784,16 @@ export default function TransferAreaDetailContent({
                           );
                         })()}
                         <div className="chk-detail-row">
-                          <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                          <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                           <span className="chk-detail-value">
                             {userMap.get(r.updatedBy || '') || r.updatedBy ? (
                               <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy}</span>
                             ) : ''}
                           </span>
+                        </div>
+                        <div className="chk-detail-row">
+                          <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                          <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>

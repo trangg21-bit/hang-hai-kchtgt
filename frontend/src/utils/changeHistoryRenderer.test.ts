@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { countHistoryUpdates, buildHistoryUpdateSessions, type RawHistoryRecord } from './changeHistoryRenderer';
+import {
+  areEquivalentCoordinatePositions,
+  countHistoryUpdates,
+  buildHistoryUpdateSessions,
+  type RawHistoryRecord,
+} from './changeHistoryRenderer';
 
 describe('changeHistoryRenderer - countHistoryUpdates', () => {
   it('returns 0 for empty or null records', () => {
@@ -143,5 +148,22 @@ describe('changeHistoryRenderer - countHistoryUpdates', () => {
     expect(sessions.length).toBe(1);
     expect(sessions[0].validRows.length).toBe(2);
     expect(sessions[0].validRows.map((r) => r.field).sort()).toEqual(['orgUnitId', 'usingOrgUnitId'].sort());
+  });
+
+  it('does not render a GIS change when only its WKT wrapper differs', () => {
+    const oldCoordinates = 'LINESTRING(106.1498888889 15.5913055556,108.0175833333 14.67925)';
+    const newCoordinates = 'MULTIPOINT((106.1498888889 15.5913055556),(108.0175833333 14.67925))';
+
+    expect(areEquivalentCoordinatePositions(oldCoordinates, newCoordinates)).toBe(true);
+    expect(buildHistoryUpdateSessions({
+      records: [{
+        id: 'coordinates-only',
+        changedField: 'Tọa độ GIS',
+        oldValue: oldCoordinates,
+        newValue: newCoordinates,
+        changedBy: 'user1',
+        changedAt: '2026-09-17T15:11:31Z',
+      }],
+    })).toHaveLength(0);
   });
 });

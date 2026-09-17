@@ -2458,8 +2458,9 @@ const ScadaListPage = () => {
                           {(() => {
                             let colIndex = 0;
                             return ([
-                              { label: 'Trạng thái phê duyệt', value: renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy)) },
+                              { label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy)), fullWidth: true },
                               { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName || null}</span> },
+                              { label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : null) },
                               { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName || null}</span> },
                               { label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : null },
                               { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel1Name || null}</span> },

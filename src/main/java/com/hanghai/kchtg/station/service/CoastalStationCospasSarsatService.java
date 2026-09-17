@@ -212,9 +212,9 @@ public class CoastalStationCospasSarsatService {
         if (request.getProvinceId() == null) {
             throw new IllegalArgumentException("Tỉnh/Thành phố không được để trống");
         }
-        if (request.getConditionStatus() == null) {
-            throw new IllegalArgumentException("Tình trạng không được để trống");
-        }
+        ConditionStatus effectiveConditionStatus = request.getConditionStatus() != null
+                ? request.getConditionStatus()
+                : ConditionStatus.NOT_YET_OPERATIONAL;
         if (request.getLocationAddress() == null || request.getLocationAddress().isBlank()) {
             throw new IllegalArgumentException("Địa điểm chi tiết không được để trống");
         }
@@ -224,7 +224,7 @@ public class CoastalStationCospasSarsatService {
         entity.setName(effectiveName);
         entity.setOrgUnitId(effectiveOrgUnitId);
         entity.setProvinceId(request.getProvinceId());
-        entity.setConditionStatus(request.getConditionStatus());
+        entity.setConditionStatus(effectiveConditionStatus);
         entity.setOperatingOrgId(request.getOperatingOrgId());
         entity.setOwningOrgId(request.getOwningOrgId());
         entity.setSymbolId(request.getSymbolId());
@@ -501,6 +501,7 @@ public class CoastalStationCospasSarsatService {
         approvalService.assertDeletable(entity);
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
 
         historyService.recordHistory(
@@ -638,6 +639,7 @@ public class CoastalStationCospasSarsatService {
                     r.setNewValue(h.getNewValue());
                     r.setDescription(h.getPreviousValue() != null && h.getNewValue() != null ? null : h.getNewValue());
                     r.setChangedBy(h.getChangedBy());
+                    r.setOrgUnitName(h.getOrgUnitName());
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })

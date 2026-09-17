@@ -715,57 +715,63 @@ export default function NavigationChannelDetailContent({
                   </div>
                   {approvalOpen && (
                     <div className="chk-detail-grid">
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                        <span className="chk-detail-value">
+                          {r.approvalStatus ? <ApprovalStatusBadge status={r.approvalStatus} /> : ''}
+                        </span>
+                      </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
                           {actorName(r.updatedBy)}
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày cập nhật</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
                         <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ gửi phê duyệt</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                         <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
                           {actorName(r.submittedBy)}
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày gửi phê duyệt</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
                         <span className="chk-detail-value">{fmtDateTime(r.submittedAt)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ duyệt cấp Cảng vụ</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
                           {actorName(r.level1ApprovedBy)}
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày duyệt cấp Cảng vụ</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">{fmtDateTime(r.level1ApprovedAt)}</span>
                       </div>
                       <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label">Nội dung duyệt cấp Cảng vụ</span>
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">{r.level1ApprovalContent || ''}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ duyệt cấp Cục</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                         <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
                           {actorName(r.level2ApprovedBy)}
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày duyệt cấp Cục</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">{fmtDateTime(r.level2ApprovedAt)}</span>
                       </div>
                       <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label">Nội dung duyệt cấp Cục</span>
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">{r.level2ApprovalContent || ''}</span>
                       </div>
                       {r.rejectionReason && (
                         <div className="chk-detail-row chk-detail-row--full">
-                          <span className="chk-detail-label" style={{ color: statusCritical }}>
+                          <span className="chk-detail-label sec-col1-label" style={{ color: statusCritical }}>
                             Lý do từ chối
                           </span>
                           <span className="chk-detail-value" style={{ color: statusCritical }}>

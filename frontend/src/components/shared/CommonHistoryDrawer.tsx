@@ -55,6 +55,10 @@ import {
   parseAttachmentValues,
   normalizeAttachmentName,
 } from '../../utils/historyAttachmentDedup';
+import {
+  isServicesProvidedHistoryField,
+  getServicesProvidedHistoryDelta,
+} from '../../utils/serviceHistoryDelta';
 
 export interface HistoryChangeItem {
   field: string;
@@ -1190,6 +1194,9 @@ export function parseHistoryEntryChanges(item: CommonHistoryEntry): HistoryChang
       return allKeys.flatMap((k) => {
         const ov = prevMap[k] !== undefined ? prevMap[k] : '';
         const nv = newMap[k] !== undefined ? newMap[k] : '';
+        if (isServicesProvidedHistoryField(k)) {
+          return getServicesProvidedHistoryDelta(k, ov, nv);
+        }
         if (isZoneField(k)) {
           return parseZoneChanges(k, ov, nv);
         }
@@ -1206,6 +1213,9 @@ export function parseHistoryEntryChanges(item: CommonHistoryEntry): HistoryChang
   }
 
   const fieldName = item.changedField.trim();
+  if (isServicesProvidedHistoryField(fieldName)) {
+    return getServicesProvidedHistoryDelta(fieldName, prevRaw, newRaw);
+  }
   if (isZoneField(fieldName)) {
     return parseZoneChanges(fieldName, prevRaw, newRaw);
   }
@@ -1804,7 +1814,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               const actionMeta = resolveAction(primaryAction);
               const isCreate = primaryAction.toUpperCase().includes('CREATE') || primaryAction.toUpperCase().includes('ADD');
               const rawUnit = group.unitName;
-              const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Cục Hàng hải Việt Nam';
+              const unitName = rawUnit && rawUnit !== '—' ? rawUnit : '';
 
               const validChanges = deduplicateAttachmentHistoryChanges(groupChanges).filter((change) => {
                 const ov = resolveFieldValue(change.field, change.oldValue);
@@ -1861,7 +1871,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                           Người cập nhật: {group.actor || ''}
                         </Typography.Text>
                         <Typography.Text style={historyMetaRowStyle}>
-                          Đơn vị: {unitName}
+                          Đơn vị: {unitName || '—'}
                         </Typography.Text>
                       </div>
                     </div>

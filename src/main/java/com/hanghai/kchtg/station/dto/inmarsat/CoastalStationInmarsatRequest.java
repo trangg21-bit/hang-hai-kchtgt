@@ -3,6 +3,7 @@ package com.hanghai.kchtg.station.dto.inmarsat;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,6 +26,7 @@ import java.util.UUID;
 public class CoastalStationInmarsatRequest {
 
     private UUID orgUnitId;
+    private UUID unitId;
     private UUID operatingOrgId;
 
     private String code;
@@ -40,7 +42,10 @@ public class CoastalStationInmarsatRequest {
     private ConditionStatus conditionStatus;
 
     // --- Thông số đặc thù Inmarsat ---
+    @Size(max = 2000, message = "Vùng phủ sóng không được vượt quá 2000 ký tự")
     private String coverageZone;
+
+    @Size(max = 2000, message = "Vùng phủ sóng không được vượt quá 2000 ký tự")
     private String coverageArea;
     private String services;
     private String frequency;

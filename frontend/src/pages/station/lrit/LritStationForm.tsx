@@ -31,7 +31,7 @@ import type {
   UpdateLritStationRequest,
 } from '../../../types/lritStation';
 import { LRIT_SERVICE_OPTIONS } from '../../../types/lritStation';
-import { ApprovalStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../../types/vtsSystem';
+import { CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
@@ -733,19 +733,6 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
 
       if (isCreateMode) {
         savedRecord = await lritStationService.create(payload, actionParam);
-        if (action === 'submit' && savedRecord?.id) {
-          if (savedRecord.approvalStatus !== ApprovalStatus.PENDING_APPROVAL && savedRecord.approvalStatus !== ApprovalStatus.APPROVED_LEVEL1) {
-            await lritStationService.submit(savedRecord.id).catch(() => {});
-          }
-        } else if (action === 'approve' && savedRecord?.id) {
-          if (savedRecord.approvalStatus !== ApprovalStatus.APPROVED) {
-            if (savedRecord.approvalStatus === ApprovalStatus.DRAFT || savedRecord.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || savedRecord.approvalStatus === ApprovalStatus.REJECTED_LEVEL2) {
-              await lritStationService.submit(savedRecord.id).catch(() => {});
-            }
-            await lritStationService.approveC1(savedRecord.id, 'Cấp Cục phê duyệt trực tiếp').catch(() => {});
-            await lritStationService.approveC2(savedRecord.id, 'Phê duyệt trực tiếp khi tạo mới').catch(() => {});
-          }
-        }
         toast.success(action === 'submit' ? 'Lưu và gửi phê duyệt thành công' : (action === 'approve' ? 'Lưu và phê duyệt thành công' : 'Lưu tạm thành công'));
 
         if (savedRecord?.id && pendingFiles.length > 0) {
@@ -763,19 +750,8 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         savedRecord = await lritStationService.update(record.id, updatePayload, actionParam);
 
         if (action === 'submit') {
-          if (savedRecord?.approvalStatus !== ApprovalStatus.PENDING_APPROVAL && savedRecord?.approvalStatus !== ApprovalStatus.APPROVED_LEVEL1) {
-            await lritStationService.submit(record.id).catch(() => {});
-          }
           toast.success('Cập nhật và gửi phê duyệt thành công');
         } else if (action === 'approve') {
-          const isAlreadyApproved = savedRecord?.approvalStatus === ApprovalStatus.APPROVED || (savedRecord?.approvalStatus as string) === 'APPROVED_LEVEL2';
-          if (!isAlreadyApproved) {
-            if (savedRecord?.approvalStatus === ApprovalStatus.DRAFT || savedRecord?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || savedRecord?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2) {
-              await lritStationService.submit(record.id).catch(() => {});
-            }
-            await lritStationService.approveC1(record.id, 'Cấp Cục phê duyệt trực tiếp').catch(() => {});
-            await lritStationService.approveC2(record.id, 'Phê duyệt trực tiếp khi chỉnh sửa').catch(() => {});
-          }
           toast.success('Cập nhật và phê duyệt thành công');
         } else {
           toast.success('Cập nhật Đài thông tin LRIT thành công');

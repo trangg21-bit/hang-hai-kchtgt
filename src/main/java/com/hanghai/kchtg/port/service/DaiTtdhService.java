@@ -506,7 +506,7 @@ public class DaiTtdhService {
         }
 
         String newWkt = coordinates.trim();
-        if (oldWkt == null || !newWkt.equals(oldWkt.trim())) {
+        if (oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt)) {
             changeHistoryService.insertChangeRecord("DAI_TTDH", saved.getId(), "Tọa độ GIS",
                     (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
                     newWkt, actorId);

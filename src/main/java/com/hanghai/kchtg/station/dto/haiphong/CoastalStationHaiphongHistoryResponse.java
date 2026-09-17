@@ -24,6 +24,7 @@ public class CoastalStationHaiphongHistoryResponse {
     private String reason;
     private String approvalLevel;
     private String changedBy;
+    private String orgUnitName;
     private LocalDateTime changedAt;
 }
 

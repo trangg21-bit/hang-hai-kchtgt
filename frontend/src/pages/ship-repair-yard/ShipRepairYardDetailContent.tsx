@@ -350,7 +350,7 @@ export default function ShipRepairYardDetailContent({
                             approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục')
                           );
                         return (
-                          <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
+                          <div className={`chk-detail-row chk-detail-row--full ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
                               {isDeleted ? (
@@ -367,33 +367,33 @@ export default function ShipRepairYardDetailContent({
                         );
                       })()}
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
                           <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.updatedBy, (r as any).updatedByName, userMap, r.createdBy, (r as any).createdByName)}</span>
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày cập nhật</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
                         <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ gửi phê duyệt</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                         <span className="chk-detail-value">
                           <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.submittedForApprovalBy, (r as any).submittedForApprovalByName, userMap)}</span>
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày gửi phê duyệt</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
                         <span className="chk-detail-value">{fmtDateTime(r.submittedForApprovalAt)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ duyệt Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ duyệt Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">
                           <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.portAuthorityApprovedBy, (r as any).portAuthorityApprovedByName, userMap)}</span>
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày duyệt Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày duyệt Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">{fmtDateTime(r.portAuthorityApprovedAt)}</span>
                       </div>
                       <div className="chk-detail-row chk-detail-row--full">

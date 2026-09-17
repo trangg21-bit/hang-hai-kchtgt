@@ -553,6 +553,9 @@ export default function CospasSarsatStationList() {
       dataIndex: 'orgUnitName',
       width: 240,
       ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('orgUnitName'),
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const id = record.orgUnitId || record.unitId;
         const org = organizations.find((o) => String(o.id) === String(id));
@@ -570,6 +573,9 @@ export default function CospasSarsatStationList() {
       dataIndex: 'operatingOrgName',
       width: 200,
       ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('operatingOrgName'),
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const opName = getOperatingOrgName(record.operatingOrgId, val || record.operatingOrgName);
         return (
@@ -580,21 +586,19 @@ export default function CospasSarsatStationList() {
       },
     },
     {
-      key: 'address',
+      key: 'provinceId',
       label: 'Địa điểm (Tỉnh/Thành phố)',
-      dataIndex: 'locationAddress',
+      dataIndex: 'provinceId',
       width: 260,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      sortOrder: sortOrderFor('locationAddress'),
-      render: (val: string, record: CoastalStationCospasSarsatResponse) => {
-        const provinceName = record.provinceId ? getProvinceNameById(record.provinceId) : (record.provinceName || '');
-        const addr = val || record.address || '';
-        const fullAddress = addr && provinceName ? `${addr}, ${provinceName}` : (addr || provinceName || '—');
+      sortOrder: sortOrderFor('provinceId'),
+      render: (_: unknown, record: CoastalStationCospasSarsatResponse) => {
+        const provinceName = record.provinceName || (record.provinceId ? getProvinceNameById(record.provinceId) : '') || '—';
         return (
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullAddress}>
-            {fullAddress}
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={provinceName}>
+            {provinceName}
           </div>
         );
       },
@@ -643,6 +647,9 @@ export default function CospasSarsatStationList() {
       dataIndex: 'updatedByName',
       width: 220,
       ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedByName'),
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const name = val || record.updatedByName || record.updatedBy || record.createdByName || '—';
         const date = record.updatedAt || record.createdAt;

@@ -657,20 +657,19 @@ export default function VtsOperationCenterList() {
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
     },
     {
-      key: 'detailedLocation',
+      key: 'provinceId',
       label: 'Địa điểm (Tỉnh/TP)',
-      dataIndex: 'detailedLocation',
+      dataIndex: 'provinceId',
       width: 260,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      sortOrder: sortOrderFor('detailedLocation'),
-      render: (val: string, record: VtsOperationCenterListItem) => {
-        const provinceName = record.provinceName || (record.provinceId ? getProvinceNameById(record.provinceId) : '');
-        const fullAddress = val && provinceName ? `${val}, ${provinceName}` : (val || provinceName || '—');
+      sortOrder: sortOrderFor('provinceId'),
+      render: (_: unknown, record: VtsOperationCenterListItem) => {
+        const provinceName = record.provinceName || (record.provinceId ? getProvinceNameById(record.provinceId) : '') || '—';
         return (
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fullAddress}>
-            {fullAddress}
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={provinceName}>
+            {provinceName}
           </div>
         );
       },
