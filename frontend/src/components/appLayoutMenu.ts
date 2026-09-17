@@ -66,7 +66,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/ship-repair-facility': ['shiprepairfacility:read', 'shiprepair:read', 'shiprepairyard:read'],
   '/radar-station': ['radarstation:read', 'tramradar:read'],
   '/vts-system': ['vts:read', 'vtssystem:read'],
-  '/vts-operation-center': ['vtsoperationcenter:read', 'vts:read', 'vtssystem:read'],
+  '/vts-operation-center': 'vtsoperationcenter:read',
   '/ais-system': 'aissystem:read',
   '/cctv': 'cctv:read',
   '/scada': 'scada:read',

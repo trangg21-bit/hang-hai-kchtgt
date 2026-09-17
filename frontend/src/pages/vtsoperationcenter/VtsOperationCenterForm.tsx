@@ -261,11 +261,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
-  const kchtPerms = useKchtPermissions('vtsoperationcenter', {
-    extraCreatePerms: ['vts:create'],
-    extraUpdatePerms: ['vts:update'],
-    extraApproveL2Perms: ['vts:approvec2'],
-  });
+  const kchtPerms = useKchtPermissions('vtsoperationcenter');
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -606,7 +602,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     let list = portOptions;
     if (effectiveOrgUnitId) {
       const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
-      list = list.filter((p) => !p.orgUnitId || allowedIds.has(String(p.orgUnitId)) || p.id === record?.portId);
+      list = list.filter((p) => p.id === record?.portId || (p.orgUnitId && allowedIds.has(String(p.orgUnitId))));
     }
     if (record?.portId && !list.some((p) => p.id === record.portId)) {
       list = [{ id: record.portId, portName: record.portName || record.portId, portCode: (record as any).portCode }, ...list];
@@ -618,7 +614,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     let list = vtsSystemOptions;
     if (effectiveOrgUnitId) {
       const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
-      list = list.filter((v) => !v.orgUnitId || allowedIds.has(String(v.orgUnitId)) || v.id === record?.vtsSystemId);
+      list = list.filter((v) => v.id === record?.vtsSystemId || (v.orgUnitId && allowedIds.has(String(v.orgUnitId))));
     }
     if (record?.vtsSystemId && !list.some((v) => v.id === record.vtsSystemId)) {
       list = [{ id: record.vtsSystemId, name: record.vtsSystemName || record.vtsSystemId, code: (record as any).vtsSystemCode }, ...list];
@@ -776,11 +772,6 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           record={record as any}
           loading={isSubmitting}
           activeAction={actionType}
-          options={{
-            extraCreatePerms: ['vts:create'],
-            extraUpdatePerms: ['vts:update'],
-            extraApproveL2Perms: ['vts:approvec2'],
-          }}
           onSubmit={(action) => {
             actionTypeRef.current = action;
             setActionType(action);

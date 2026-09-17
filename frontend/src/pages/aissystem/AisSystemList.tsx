@@ -387,13 +387,13 @@ export function AisSystemList() {
   const filteredOpCenters = useMemo(() => {
     if (!filterValues.orgUnitId) return opCenters;
     const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
-    return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId));
+    return opCenters.filter((c) => c.orgUnitId && allowedIds.has(String(c.orgUnitId)));
   }, [opCenters, filterValues.orgUnitId, orgUnitOptions]);
 
   const filteredRadarStations = useMemo(() => {
     if (!filterValues.orgUnitId) return radarStations;
     const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
-    return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId));
+    return radarStations.filter((r) => r.orgUnitId && allowedIds.has(String(r.orgUnitId)));
   }, [radarStations, filterValues.orgUnitId, orgUnitOptions]);
 
   const combinedLocationOptions = useMemo(() => [

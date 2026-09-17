@@ -384,8 +384,12 @@ public class UserGroupService {
             List<String> unknownCodes = requested.stream()
                     .filter(code -> !knownCodes.contains(code))
                     .toList();
-            throw new IllegalArgumentException("Danh sách quyền chứa mã không tồn tại: "
-                    + String.join(", ", unknownCodes));
+            log.warn("Bỏ qua các mã quyền không tồn tại trong CSDL cho nhóm {}: {}", groupId, unknownCodes);
+            if (knownCodes.isEmpty()) {
+                throw new IllegalArgumentException("Danh sách quyền chứa mã không tồn tại: "
+                        + String.join(", ", unknownCodes));
+            }
+            requested = requested.stream().filter(knownCodes::contains).toList();
         }
 
         group.setPermissions(new ArrayList<>(requested));

@@ -34,44 +34,15 @@ export function isMinistryLevelUser(
   user: User | null | undefined,
   organizations?: readonly OrgUnitTreeOption[]
 ): boolean {
-  if (!user) return true; // Chưa đăng nhập hoặc fallback an toàn -> không giới hạn
+  if (!user?.orgUnitId) return false;
 
-  // 1. Tài khoản quản trị toàn hệ thống (SUPER_ADMIN, ADMIN, hoặc có wildcard permission '*')
-  const role = (user.role || (user as any).roleName || '').toUpperCase();
-  const perms = user.permissions || [];
-  if (
-    role === 'SUPER_ADMIN' ||
-    role === 'ADMIN' ||
-    role.includes('ADMIN') ||
-    perms.includes('*')
-  ) {
+  const orgId = String(user.orgUnitId);
+  if (orgId === MINISTRY_ROOT_ID || user.orgUnitCode === MINISTRY_ROOT_CODE) {
     return true;
   }
 
-  // 2. Tài khoản ở đơn vị cao nhất (Bộ GTVT / đơn vị gốc level 0)
-  if (user.orgUnitId) {
-    const orgIdStr = String(user.orgUnitId);
-    if (orgIdStr === MINISTRY_ROOT_ID || user.orgUnitCode === MINISTRY_ROOT_CODE) {
-      return true;
-    }
-    if (organizations && organizations.length > 0) {
-      const org = organizations.find((o) => String(o.id) === orgIdStr);
-      if (org) {
-        const code = (org.code || '').toUpperCase();
-        const name = (org.name || '').toLowerCase();
-        if (
-          code === MINISTRY_ROOT_CODE ||
-          name.includes('bộ giao thông') ||
-          (!org.parentId && (org as any).level === 0)
-        ) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  return false;
+  const assignedOrg = organizations?.find((org) => String(org.id) === orgId);
+  return assignedOrg?.code === MINISTRY_ROOT_CODE;
 }
 
 /**
@@ -179,9 +150,10 @@ export interface UseOrgUnitFilterOptions {
 export function useOrgUnitFilter(options?: UseOrgUnitFilterOptions) {
   const currentUser = useAuthStore((s) => s.user);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [orgUnitId, setOrgUnitIdState] = useState<string | undefined>(options?.initialValue);
+  const [defaultOrgUnitId, setDefaultOrgUnitId] = useState<string | undefined>(undefined);
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const initializedRef = useRef(false);
 
@@ -192,7 +164,6 @@ export function useOrgUnitFilter(options?: UseOrgUnitFilterOptions) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     organizationService.getAll()
       .then((data) => {
         if (cancelled) return;
@@ -202,6 +173,7 @@ export function useOrgUnitFilter(options?: UseOrgUnitFilterOptions) {
         if (!initializedRef.current || (defaultOrgUnitRef.current === undefined && defId !== undefined)) {
           initializedRef.current = true;
           defaultOrgUnitRef.current = defId;
+          setDefaultOrgUnitId(defId);
           const autoDefault = options?.autoDefault !== false;
           if (options?.initialValue === undefined && autoDefault && defId !== undefined) {
             setOrgUnitIdState(defId);
@@ -216,6 +188,7 @@ export function useOrgUnitFilter(options?: UseOrgUnitFilterOptions) {
           initializedRef.current = true;
           const defId = resolveDefaultOrgUnitId(currentUser, []);
           defaultOrgUnitRef.current = defId;
+          setDefaultOrgUnitId(defId);
           options?.onDefaultResolved?.(defId);
           setIsReady(true);
         }
@@ -254,8 +227,7 @@ export function useOrgUnitFilter(options?: UseOrgUnitFilterOptions) {
   return {
     orgUnitId,
     setOrgUnitId,
-    defaultOrgUnitId: defaultOrgUnitRef.current,
-    defaultOrgUnitRef,
+    defaultOrgUnitId,
     organizations,
     loading,
     isReady,
@@ -265,4 +237,3 @@ export function useOrgUnitFilter(options?: UseOrgUnitFilterOptions) {
     currentUser,
   };
 }
-

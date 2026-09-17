@@ -917,7 +917,7 @@ export default function StormShelterListPage() {
           placeholder="Tất cả"
           allowClear
           value={orgUnit}
-          onChange={(v) => { setOrgUnit(v); setPage(1); }}
+          onChange={(v) => { setOrgUnit(v); setFilterPortId(undefined); setFilterBuoyStationId(undefined); setPage(1); }}
         />
       </div>
       <div style={{ marginBottom: 12 }}>

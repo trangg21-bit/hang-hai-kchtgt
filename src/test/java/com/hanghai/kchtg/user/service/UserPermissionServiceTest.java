@@ -365,4 +365,41 @@ class UserPermissionServiceTest {
         verify(userRepository, never()).save(any());
         verify(permissionCacheService, never()).invalidateCache(any());
     }
+
+    @Test
+    void replaceDirectPermissions_ignoresUnknownPermissions_andSavesValidOnes() {
+        UUID callerId = UUID.randomUUID();
+        User superAdmin = new User();
+        superAdmin.setId(callerId);
+        superAdmin.setUsername("superadmin");
+        var auth = new UsernamePasswordAuthenticationToken(superAdmin, "n/a", List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        user.setPermissionVersion(1);
+
+        Permission validPermission = new Permission();
+        validPermission.setCode("vts:delete");
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(permissionRepository.findByCodeIn(any())).thenReturn(List.of(validPermission));
+        when(overrideRepository.findActiveByUserId(userId)).thenReturn(List.of());
+        when(overrideRepository.findByUserIdAndPermissionCode(userId, "vts:delete"))
+                .thenReturn(Optional.empty());
+        when(overrideRepository.save(any(UserPermissionOverride.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.allScope());
+
+        new UserPermissionService(userRepository, permissionRepository, overrideRepository, permissionCacheService,
+                orgUnitScopeService)
+                .replaceDirectPermissions(userId, List.of("vts:delete", "vtsasset:delete", "vtssystem:delete"));
+
+        ArgumentCaptor<UserPermissionOverride> captor = ArgumentCaptor.forClass(UserPermissionOverride.class);
+        verify(overrideRepository).save(captor.capture());
+        assertThat(captor.getValue().getPermissionCode()).isEqualTo("vts:delete");
+        verify(permissionCacheService).invalidateCache(userId);
+    }
 }

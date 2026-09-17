@@ -32,7 +32,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
-import { OrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -638,9 +638,15 @@ export default function DikeRevetmentList() {
 
   const filteredSeaports = useMemo(() => {
     if (!createOrgUnitId) return seaports;
-    const filtered = seaports.filter((p: any) => !p.orgUnitId || p.orgUnitId === createOrgUnitId);
-    return filtered.length > 0 ? filtered : seaports;
-  }, [seaports, createOrgUnitId]);
+    const allowedOrgIds = resolveOrgSubtreeIds(organizations, String(createOrgUnitId));
+    return seaports.filter((p: any) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)));
+  }, [seaports, organizations, createOrgUnitId]);
+
+  const filteredFilterSeaports = useMemo(() => {
+    if (!filterUnitId) return seaports;
+    const allowedOrgIds = resolveOrgSubtreeIds(organizations, String(filterUnitId));
+    return seaports.filter((p: any) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)));
+  }, [seaports, organizations, filterUnitId]);
   // Chống race khi đóng/mở drawer nhanh trong lúc getById nạp chi tiết (chuẩn /vts-operation-center)
   const editOpenSeqRef = useRef(0);
   const gisCoordSnapshotRef = useRef<{ coords: any[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined, geometryType: undefined });
@@ -2247,7 +2253,7 @@ export default function DikeRevetmentList() {
           allLabel="Tất cả"
           treeDefaultExpandAll={false}
           value={filterUnitId}
-          onChange={(val) => { setFilterUnitId(val); setPage(1); }}
+          onChange={(val) => { setFilterUnitId(val); setFilterCangBienId(undefined); setPage(1); }}
           allowClear
           style={{ ...selectStyle, width: '100%' }}
         />
@@ -2284,7 +2290,7 @@ export default function DikeRevetmentList() {
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
             <Select
               placeholder="Tất cả cảng biển"
-              options={seaports.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }))}
+              options={filteredFilterSeaports.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }))}
               value={filterSeaportId}
               onChange={(val) => { setFilterCangBienId(val); setPage(1); }}
               allowClear

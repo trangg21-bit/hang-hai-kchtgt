@@ -46,20 +46,23 @@ public class CoastalStationInmarsatController {
      * Các cột được phép sắp xếp. Thuộc tính đến từ client nên phải qua danh sách
      * trắng: tên lạ sẽ làm truy vấn ném lỗi 500.
      *
-     * Cột tên hiển thị trỏ vào alias của LEFT JOIN trong
-     * {@code CoastalStationInmarsatRepository.searchPaged}; các cột có cả trường
-     * mới lẫn trường cũ (name/stationName, code/deviceCode, orgUnitId/unitId)
-     * sắp bằng COALESCE cho khớp đúng chữ hiển thị trên bảng.
+     * Các cột hiển thị tên đơn vị/cán bộ trỏ vào alias LEFT JOIN có trong
+     * {@code CoastalStationInmarsatRepository.searchPaged}. Các tên cũ
+     * {@code stationName}/{@code deviceCode} chỉ là alias DTO nên được quy về
+     * property JPA thật trước khi tạo ORDER BY.
      */
     /** Trần số bản ghi mỗi trang cho endpoint danh sách. */
     private static final int MAX_PAGE_SIZE = 200;
 
     private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
-            Map.entry("name", "COALESCE(t.name, t.stationName)"),
-            Map.entry("stationName", "COALESCE(t.name, t.stationName)"),
-            Map.entry("code", "COALESCE(t.code, t.deviceCode)"),
-            Map.entry("deviceCode", "COALESCE(t.code, t.deviceCode)"),
-            Map.entry("orgUnitName", "COALESCE(o.name, ou.name)"),
+            // `stationName` and `deviceCode` are DTO compatibility aliases, not
+            // persistent JPA properties.  Referencing them in ORDER BY makes
+            // Hibernate fail only after the user clicks the table sorter.
+            Map.entry("name", "t.name"),
+            Map.entry("stationName", "t.name"),
+            Map.entry("code", "t.code"),
+            Map.entry("deviceCode", "t.code"),
+            Map.entry("orgUnitName", "o.name"),
             Map.entry("orgUnitId", "t.orgUnitId"),
             Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
             Map.entry("operatingOrgId", "t.operatingOrgId"),

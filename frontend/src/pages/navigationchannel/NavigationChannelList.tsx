@@ -9,7 +9,7 @@ import { userService } from '../../services/userService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import type { NavigationChannelResponse, ListParams, ApprovalStatus } from '../../types/navigationChannel';
@@ -403,8 +403,14 @@ export default function NavigationChannelList() {
 
   // ── Dropdown data ───────────────────────────────────────────────────
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string }[]>([]);
+  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>([]);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
+
+  const filteredSeaportOptions = useMemo(() => {
+    if (!filterOrgUnitId) return seaportOptions;
+    const allowedOrgIds = resolveOrgSubtreeIds(organizations, filterOrgUnitId);
+    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+  }, [seaportOptions, organizations, filterOrgUnitId]);
 
   // ── Modal (create / edit / detail) ──────────────────────────────────
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1009,7 +1015,7 @@ export default function NavigationChannelList() {
           placeholder="Tất cả"
           allowClear
           value={filterOrgUnitId}
-          onChange={(v) => { setFilterOrgUnitId(v || undefined); setPage(1); }}
+          onChange={(v) => { setFilterOrgUnitId(v || undefined); setFilterSeaportId(undefined); setPage(1); }}
           style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
         />
       </div>
@@ -1047,7 +1053,7 @@ export default function NavigationChannelList() {
               optionFilterProp="label"
               value={filterSeaportId}
               onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
-              options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+              options={filteredSeaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
             />
           </div>

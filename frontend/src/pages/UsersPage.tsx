@@ -97,7 +97,13 @@ export default function UsersPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   const [permissionUser, setPermissionUser] = useState<User | null>(null);
-  const { tree: rawPermissionTree, allKeys: allPermissionKeys, isLoading: permissionCatalogLoading } = usePermissions();
+  const {
+    tree: rawPermissionTree,
+    allKeys: allPermissionKeys,
+    isLoading: permissionCatalogLoading,
+    apiPermissions,
+    validCodesSet,
+  } = usePermissions();
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
   const [appliedPermissionSearch, setAppliedPermissionSearch] = useState('');
   const [permissionLoading, setPermissionLoading] = useState(false);
@@ -351,7 +357,11 @@ export default function UsersPage() {
     if (!permissionUser) return;
     setPermissionSaving(true);
     try {
-      const keysToSave = selectedPermissionKeys.filter((k) => k !== '*');
+      const validCodes = validCodesSet || new Set(apiPermissions.map((p) => p.key.toLowerCase()));
+      const keysToSave = selectedPermissionKeys.filter((k) => {
+        if (k === '*' || k.startsWith('group_')) return false;
+        return validCodes.size === 0 || validCodes.has(k.toLowerCase());
+      });
       await userService.replaceDirectPermissions(permissionUser.id, keysToSave);
       toast.success('Đã cập nhật quyền trực tiếp cho người dùng');
       setPermissionUser(null);
@@ -366,7 +376,7 @@ export default function UsersPage() {
     } finally {
       setPermissionSaving(false);
     }
-  }, [permissionUser, selectedPermissionKeys, refetch]);
+  }, [permissionUser, selectedPermissionKeys, refetch, apiPermissions, validCodesSet]);
 
   const indexedPermissionTree = useMemo(() => {
     const attachMeta = (nodes: typeof rawPermissionTree): any[] => nodes.map((node) => ({
@@ -865,8 +875,12 @@ export default function UsersPage() {
                       checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
                       onCheck={(checked) => {
                         const keys = Array.isArray(checked) ? checked : checked.checked;
-                        const nextMerged = mergePermissionKeys(selectedPermissionKeys, keys.map(String), permissionTreeData)
-                          .filter((key) => !key.startsWith('group_'));
+                        const nextMerged = mergePermissionKeys(
+                          selectedPermissionKeys,
+                          keys.map(String),
+                          permissionTreeData,
+                          validCodesSet,
+                        ).filter((key) => !key.startsWith('group_'));
                         setSelectedPermissionKeys(nextMerged.filter((k) => k !== '*'));
                       }}
                     />

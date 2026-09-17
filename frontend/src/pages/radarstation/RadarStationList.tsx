@@ -52,7 +52,7 @@ import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
+import { OrgUnitTreeSelect, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -909,9 +909,15 @@ export default function RadarStationList() {
 
   // ── Dropdown data (đơn vị / cảng biển / VTS / cán bộ) ────────────
   const [orgOptions, setOrgOptions] = useState<OrgUnitTreeOption[]>([]);
-  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string }[]>([]);
+  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>([]);
   const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
+
+  const filteredSeaportOptions = useMemo(() => {
+    if (!filterOrgUnitId) return seaportOptions;
+    const allowedOrgIds = resolveOrgSubtreeIds(orgOptions, filterOrgUnitId);
+    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+  }, [seaportOptions, orgOptions, filterOrgUnitId]);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
@@ -928,9 +934,15 @@ export default function RadarStationList() {
   const [detailHandlingOpen, setDetailHandlingOpen] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [createForm] = Form.useForm();
+  const createFormOrgUnitId = Form.useWatch('orgUnitId', createForm);
   const watchedGeometryType = Form.useWatch('geometryType', createForm);
   const [geometryTypeState, setGeometryTypeState] = useState<string>('');
   const effectiveGeom = watchedGeometryType || geometryTypeState;
+  const filteredFormSeaportOptions = useMemo(() => {
+    if (!createFormOrgUnitId) return seaportOptions;
+    const allowedOrgIds = resolveOrgSubtreeIds(orgOptions, createFormOrgUnitId);
+    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+  }, [createFormOrgUnitId, orgOptions, seaportOptions]);
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [gisFormModalOpen, setGisFormModalOpen] = useState(false);
   const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
@@ -2110,7 +2122,7 @@ export default function RadarStationList() {
           treeDefaultExpandAll={false}
           showSearch
           value={filterOrgUnitId}
-          onChange={(v) => { setFilterOrgUnitId(v || undefined); setPage(1); }}
+          onChange={(v) => { setFilterOrgUnitId(v || undefined); setFilterSeaportId(undefined); setPage(1); }}
           style={{ ...selectStyle, width: '100%' }}
         />
       </div>
@@ -2119,7 +2131,7 @@ export default function RadarStationList() {
         <Select placeholder="Tất cả cảng biển" allowClear value={filterSeaportId}
           onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
           showSearch optionFilterProp="label"
-          options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+          options={filteredSeaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
           style={{ ...selectStyle, width: '100%' }} />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
@@ -3582,6 +3594,14 @@ export default function RadarStationList() {
                                 allowClear
                                 showSearch
                                 style={selectStyle}
+                                onChange={(orgUnitId) => {
+                                  const seaportId = createForm.getFieldValue('seaportId');
+                                  const allowedOrgIds = orgUnitId ? resolveOrgSubtreeIds(orgOptions, orgUnitId) : new Set<string>();
+                                  const isValidSeaport = seaportOptions.some((port) =>
+                                    port.id === seaportId && !!port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)),
+                                  );
+                                  if (seaportId && !isValidSeaport) createForm.setFieldValue('seaportId', undefined);
+                                }}
                               />
                             </Form.Item>
                           </Col>
@@ -3592,7 +3612,7 @@ export default function RadarStationList() {
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+                                options={filteredFormSeaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
                                 style={selectStyle}
                               />
                             </Form.Item>

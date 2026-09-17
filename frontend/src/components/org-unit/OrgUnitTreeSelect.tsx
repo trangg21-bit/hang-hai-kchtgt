@@ -4,31 +4,15 @@ import type { TreeSelectProps } from 'antd';
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { useThemeToken } from '../../context/ThemeTokenContext';
 import { organizationService } from '../../services/organizationService';
+import { useAuthStore } from '../../store/authStore';
+import { isMinistryLevelUser } from './useUserDefaultOrgUnit';
 
 import {
   type OrgUnitTreeOption,
   type OrgUnitTreeNode,
   normalizeSearchText,
-  resolveOrgLevel2Name,
-  resolveOrgTailPath,
-  resolveOrgFullPath,
-  resolveOrgSubtreeIds,
-  getRootOrgUnits,
-  findRootOrgUnitId,
   buildOrgUnitTreeData,
 } from './orgUnitHelpers';
-
-export {
-  normalizeSearchText,
-  resolveOrgLevel2Name,
-  resolveOrgTailPath,
-  resolveOrgFullPath,
-  resolveOrgSubtreeIds,
-  getRootOrgUnits,
-  findRootOrgUnitId,
-  buildOrgUnitTreeData,
-};
-export type { OrgUnitTreeOption, OrgUnitTreeNode };
 
 export interface OrgUnitTreeSelectProps
   extends Omit<TreeSelectProps, 'treeData' | 'variant'> {
@@ -37,7 +21,7 @@ export interface OrgUnitTreeSelectProps
   variant?: 'filter' | 'form';
   /** Hiển thị đường dẫn đầy đủ (cấp cao nhất → cấp được chọn) trên thanh select. */
   showPath?: boolean;
-  /** Hiển thị item đầu tiên "Tất cả" (value = '__all__') cùng cấp với cấp ngoài cùng — dùng cho bộ lọc. */
+  /** Hiển thị item đầu tiên “Tất cả” (value = '__all__') cho dropdown filter danh sách. */
   allLabel?: string;
   /** Tên hiển thị dự phòng khi giá trị đã chọn chưa nằm trong cây danh mục (vd: đơn vị Bộ GTVT của tài khoản admin) */
   currentOrgName?: string;
@@ -85,8 +69,7 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const defaultExpandAll = treeDefaultExpandAll !== undefined ? treeDefaultExpandAll : false;
   const baseDropdownStyle = isForm ? formTreeSelectDropdownStyle : filterTreeSelectDropdownStyle;
   const baseControlStyle = isForm ? formTreeSelectStyle : filterTreeSelectStyle;
-
-  const effectiveAllLabel = isForm ? undefined : (allLabel ?? 'Tất cả');
+  const currentUser = useAuthStore((state) => state.user);
 
   // Tự động nạp danh mục đơn vị qua cache nếu không được truyền từ props
   const [internalOrgs, setInternalOrgs] = useState<OrgUnitTreeOption[]>([]);
@@ -117,6 +100,12 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     }
     return internalOrgs;
   }, [propOrganizations, internalOrgs]);
+
+  // Form không bao giờ có “Tất cả”. Với filter danh sách, chỉ tài khoản thuộc
+  // đơn vị gốc G17 (đang ẩn khỏi cây) mới có thể chọn phạm vi toàn bộ dữ liệu.
+  const effectiveAllLabel = !isForm && allLabel && isMinistryLevelUser(currentUser, effectiveOrganizations)
+    ? allLabel
+    : undefined;
 
   const treeData = useMemo(() => {
     const list = Array.isArray(effectiveOrganizations) ? effectiveOrganizations : [];
@@ -185,10 +174,10 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     }
     const raw = restProps.value;
     if (raw === undefined || raw === null || raw === '' || raw === '__all__') {
-      return '__all__';
+      return effectiveAllLabel ? '__all__' : undefined;
     }
     return String(raw);
-  }, [isForm, restProps.value]);
+  }, [isForm, restProps.value, effectiveAllLabel]);
 
   const handleChange = useCallback<NonNullable<TreeSelectProps['onChange']>>((val, labelList, extra) => {
     const normalizedVal = (val === '__all__' || val === '') ? undefined : val;
@@ -201,7 +190,9 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
       value={internalValue}
       onChange={handleChange}
       virtual={false}
-      placeholder={defaultPlaceholder}
+      placeholder={!isForm && !effectiveAllLabel && (placeholder === undefined || placeholder === 'Tất cả')
+        ? 'Chọn đơn vị quản lý'
+        : defaultPlaceholder}
       allowClear={isForm ? defaultAllowClear : (defaultAllowClear && internalValue !== '__all__')}
       treeData={treeData}
       showSearch={showSearch}
@@ -241,11 +232,11 @@ export default OrgUnitTreeSelect;
 
 /** Component Dropdown đơn vị chuẩn hóa dành riêng cho Thanh Lọc Sidebar / Header */
 export function FilterOrgUnitTreeSelect(props: Omit<OrgUnitTreeSelectProps, 'variant'>) {
-  return <OrgUnitTreeSelect variant="filter" {...props} />;
+  const { allLabel = 'Tất cả', ...filterProps } = props;
+  return <OrgUnitTreeSelect variant="filter" allLabel={allLabel} {...filterProps} />;
 }
 
 /** Component Dropdown đơn vị chuẩn hóa dành riêng cho Form Thêm mới / Chỉnh sửa (Drawer / Modal) */
 export function FormOrgUnitTreeSelect(props: Omit<OrgUnitTreeSelectProps, 'variant'>) {
   return <OrgUnitTreeSelect variant="form" {...props} />;
 }
-

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Modal,
@@ -43,7 +43,7 @@ import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
+import { OrgUnitTreeSelect, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -166,9 +166,15 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
 
   // Dữ liệu dropdown
   const [orgOptions, setOrgOptions] = useState<OrgUnitTreeOption[]>([]);
-  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string }[]>([]);
+  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>([]);
   const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
+  const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const filteredSeaportOptions = useMemo(() => {
+    if (!selectedOrgUnitId) return seaportOptions;
+    const allowedOrgIds = resolveOrgSubtreeIds(orgOptions, selectedOrgUnitId);
+    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+  }, [orgOptions, seaportOptions, selectedOrgUnitId]);
 
   useEffect(() => {
     (async () => {
@@ -766,6 +772,14 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               allowClear
               showSearch
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              onChange={(orgUnitId) => {
+                const seaportId = form.getFieldValue('seaportId');
+                const allowedOrgIds = orgUnitId ? resolveOrgSubtreeIds(orgOptions, orgUnitId) : new Set<string>();
+                const isValidSeaport = seaportOptions.some((port) =>
+                  port.id === seaportId && !!port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)),
+                );
+                if (seaportId && !isValidSeaport) form.setFieldValue('seaportId', undefined);
+              }}
             />
           </Form.Item>
         </Col>
@@ -776,7 +790,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               allowClear
               showSearch
               optionFilterProp="label"
-              options={seaportOptions.map((port) => ({
+              options={filteredSeaportOptions.map((port) => ({
                 value: port.id,
                 label: port.portCode ? `${port.portCode} - ${port.portName || ''}` : port.portName || port.id,
               }))}

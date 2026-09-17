@@ -134,7 +134,7 @@ export default function GroupList() {
   const [form] = Form.useForm();
   const [addMemberForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const { tree: rawPermissionTree } = usePermissions();
+  const { tree: rawPermissionTree, apiPermissions, validCodesSet } = usePermissions();
   const [permissionGroup, setPermissionGroup] = useState<Group | null>(null);
   const [selectedPermissionKeys, setSelectedPermissionKeys] = useState<string[]>([]);
   const [appliedPermissionSearch, setAppliedPermissionSearch] = useState('');
@@ -369,11 +369,15 @@ export default function GroupList() {
   const handlePermissionSave = useCallback(async () => {
     if (!permissionGroup) return; setPermissionSaving(true);
     try {
-      const selected = selectedPermissionKeys.filter((key) => !key.startsWith('group_') && !NON_INHERITABLE_GROUP_PERMISSIONS.has(key));
+      const validCodes = validCodesSet || new Set(apiPermissions.map((p) => p.key.toLowerCase()));
+      const selected = selectedPermissionKeys.filter((key) => {
+        if (key.startsWith('group_') || NON_INHERITABLE_GROUP_PERMISSIONS.has(key)) return false;
+        return validCodes.size === 0 || validCodes.has(key.toLowerCase());
+      });
       await groupService.updatePermissions(permissionGroup.id, selected);
       toast.success('Đã cập nhật phân quyền'); setPermissionGroup(null); fetchGroups();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Cập nhật phân quyền thất bại'); } finally { setPermissionSaving(false); }
-  }, [permissionGroup, selectedPermissionKeys, fetchGroups]);
+  }, [permissionGroup, selectedPermissionKeys, fetchGroups, apiPermissions, validCodesSet]);
 
   const assignablePermissionTree = useMemo(() => {
     const sanitize = (nodes: typeof rawPermissionTree): typeof rawPermissionTree => nodes.flatMap((node) => {
@@ -624,7 +628,7 @@ export default function GroupList() {
         </Drawer>
 
         <Drawer {...drawerProps} size="50%" open={!!permissionGroup} onClose={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} title={<span style={drawerTitleStyle}>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>} extra={<Button type="text" onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={outlineButtonStyle}>Đóng</Button><Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button></div>}>
-          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={(e) => setSelectedPermissionKeys(e.target.checked ? allGroupPermissionKeys : [])}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c) => { const ks = Array.isArray(c) ? c : (c as any).checked; setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, ks.map(String), permissionTreeData)); }} /></div></div>)}</div></Spin>
+          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={(e) => setSelectedPermissionKeys(e.target.checked ? allGroupPermissionKeys : [])}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c) => { const ks = Array.isArray(c) ? c : (c as any).checked; setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, ks.map(String), permissionTreeData, validCodesSet)); }} /></div></div>)}</div></Spin>
         </Drawer>
 
         <Drawer {...drawerProps} size="50%" open={modalOpen} onClose={() => setModalOpen(false)} title={<span style={drawerTitleStyle}>{editingGroup ? 'Sửa thông tin nhóm' : 'Thêm mới nhóm'}</span>} extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button><Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button></div>}>

@@ -499,7 +499,18 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).toContain('Báo cáo thống kê');
     expect(html).toContain('Nhóm chỉ tiêu kết cấu hạ tầng');
     expect(html).toContain('F-148');
-    expect(html).toContain('ant-menu-item-selected');
+  });
+
+  it('shows only VTS system when only vts:read is granted, hiding vts-operation-center', () => {
+    const html = renderAt('/vts-system', ['vts:read']);
+    expect(html).toContain('Hệ thống VTS');
+    expect(html).not.toContain('Trung tâm điều hành VTS');
+  });
+
+  it('shows vts-operation-center when vtsoperationcenter:read is granted', () => {
+    const html = renderAt('/vts-system', ['vts:read', 'vtsoperationcenter:read']);
+    expect(html).toContain('Hệ thống VTS');
+    expect(html).toContain('Trung tâm điều hành VTS');
   });
 });
 

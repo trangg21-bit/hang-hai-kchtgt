@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getNextSortOrder } from './DataTable';
+import { getNextSortOrder } from './sortUtils';
 
 describe('DataTable sorting 3-state cycle', () => {
   it('cycles from undefined to asc (Lần 1: Sắp xếp tăng dần)', () => {

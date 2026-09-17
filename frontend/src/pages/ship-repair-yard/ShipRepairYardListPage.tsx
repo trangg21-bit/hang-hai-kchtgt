@@ -653,7 +653,7 @@ export default function ShipRepairYardList() {
           placeholder="Tất cả"
           allowClear
           value={managingUnitId}
-          onChange={(v) => { setManagingUnitId(v); setPage(1); }}
+          onChange={(v) => { setManagingUnitId(v); setFilterPortId(undefined); setFilterPierId(undefined); setPage(1); }}
         />
       </div>
 

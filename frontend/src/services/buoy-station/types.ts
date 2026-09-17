@@ -145,6 +145,7 @@ export interface ChangeHistory {
   changedBy?: string;
   changedAt?: string;
   createdAt?: string;
+  [key: string]: unknown;
 }
 
 /** Body of GET /v1/buoy-station/{id}/history. */

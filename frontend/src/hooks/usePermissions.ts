@@ -46,14 +46,22 @@ export function getVisiblePermissionKeys(
 /**
  * Mở rộng tập mã quyền bao gồm cả mã gốc và các mã tương đương (canonical + alias).
  * Bỏ qua các nút nhóm cấp trên (bắt đầu bằng "group_").
+ * Nếu validKeys được truyền vào, chỉ giữ lại các mã quyền thực sự tồn tại trong CSDL.
  */
-function expandPermissionAliases(keys: Iterable<string>): Set<string> {
+function expandPermissionAliases(keys: Iterable<string>, validKeys?: Set<string>): Set<string> {
   const expanded = new Set<string>();
   for (const key of keys) {
     const k = String(key);
     if (k.startsWith('group_')) continue;
-    expanded.add(k);
-    getEquivalentPermissionKeys(k).forEach((eq) => expanded.add(eq));
+    if (!validKeys || validKeys.has(k.toLowerCase())) {
+      expanded.add(k);
+    }
+    const eqKeys = getEquivalentPermissionKeys(k);
+    for (const eq of eqKeys) {
+      if (!validKeys || validKeys.has(eq.toLowerCase())) {
+        expanded.add(eq);
+      }
+    }
   }
   return expanded;
 }
@@ -68,17 +76,18 @@ export function mergePermissionKeys(
   currentKeys: readonly string[],
   nextVisibleKeys: readonly string[],
   nodes: readonly MenuTreeNode[],
+  validKeys?: Set<string>,
 ): string[] {
   // 1. Tập quyền (kèm alias) thuộc phạm vi cây hiển thị hiện tại
-  const visibleEquivKeys = expandPermissionAliases(getPermissionTreeKeys(nodes));
+  const visibleEquivKeys = expandPermissionAliases(getPermissionTreeKeys(nodes), validKeys);
 
   // 2. Giữ lại các quyền nằm ngoài phạm vi cây lọc hiện tại
   const remainingKeys = currentKeys.filter(
     (key) => !visibleEquivKeys.has(normalizePermissionKey(String(key))),
   );
 
-  // 3. Mở rộng các quyền được tích chọn (đồng bộ cả canonical lẫn alias)
-  const nextExpandedKeys = expandPermissionAliases(nextVisibleKeys);
+  // 3. Mở rộng các quyền được tích chọn (đồng bộ cả canonical lẫn alias có tồn tại trong CSDL)
+  const nextExpandedKeys = expandPermissionAliases(nextVisibleKeys, validKeys);
 
   return [...new Set([...remainingKeys, ...nextExpandedKeys])];
 }
@@ -406,9 +415,14 @@ export function usePermissions(options?: { enabled?: boolean }) {
       }));
   }, [perms]);
 
-  const allKeys = useMemo(
-    () => [...expandPermissionAliases(perms.map((p) => p.key))],
+  const validCodesSet = useMemo(
+    () => new Set(perms.map((p) => p.key.toLowerCase())),
     [perms],
+  );
+
+  const allKeys = useMemo(
+    () => [...expandPermissionAliases(perms.map((p) => p.key), validCodesSet)],
+    [perms, validCodesSet],
   );
 
   return {
@@ -416,6 +430,7 @@ export function usePermissions(options?: { enabled?: boolean }) {
     allKeys,
     allGroupKeys: [],
     apiPermissions: perms,
+    validCodesSet,
     isLoading: apiQuery.isLoading,
     isError: apiQuery.isError,
     error: apiQuery.error,
