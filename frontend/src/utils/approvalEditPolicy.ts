@@ -25,6 +25,8 @@
  * CẤM tự viết lại điều kiện này ở từng màn hình.
  */
 
+import { usePermissionStore } from '../store/permissionStore';
+
 /** Các mã trạng thái legacy còn sót trong dữ liệu cũ, ánh xạ về 7 trạng thái chuẩn. */
 const STATUS_ALIASES: Record<string, string> = {
   // Lưu tạm
@@ -72,8 +74,6 @@ export function isEditableByOwner(status?: string | null): boolean {
   const st = normalizeApprovalStatus(status);
   return st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2';
 }
-
-import { usePermissionStore } from '../store/permissionStore';
 
 export interface ApprovalEditPolicyOptions {
   /** Hàm kiểm tra quyền của màn hình, thường là `usePermissionStore.hasPermission`. */
