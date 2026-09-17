@@ -7,6 +7,7 @@ import type { MenuProps } from 'antd';
 import { layout } from '../../theme';
 import { useThemeToken, THEME_SCOPE_CLASS, type ThemeToken } from '../../context/ThemeTokenContext';
 import EmptyState from '../EmptyState';
+import { getNextSortOrder } from './sortUtils';
 
 const ACTION_COLUMN_WIDTH = 60;
 
@@ -143,12 +144,6 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
     </Dropdown>
   );
 };
-
-export function getNextSortOrder(currentOrder?: 'ascend' | 'descend' | null): 'asc' | 'desc' | null {
-  if (currentOrder === 'ascend') return 'desc';
-  if (currentOrder === 'descend') return null;
-  return 'asc';
-}
 
 const DataTable: React.FC<DataTableProps> = ({
   columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, resetScrollKey, ...rest
@@ -343,7 +338,9 @@ const DataTable: React.FC<DataTableProps> = ({
         ? widthlessStretchColumnWidth
         : (col.key === explicitStretchColumn?.key ? explicitStretchColumnWidth : col.width),
       sorter: sorterFn,
-      sortDirections: ['ascend', 'descend'],
+      // Keep the server-side sort cycle consistent with getNextSortOrder:
+      // ascending -> descending -> no sort (the list's default ordering).
+      sortDirections: ['ascend', 'descend', null],
       ...(tableSortIcon ? { sortIcon: tableSortIcon } : null),
       showSorterTooltip: false,
       align: col.align,

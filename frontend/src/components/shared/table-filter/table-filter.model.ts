@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { OrgUnitTreeOption } from '../../org-unit/OrgUnitTreeSelect';
+import type { OrgUnitTreeOption } from '../../org-unit/orgUnitHelpers';
 
 /** Loại trường dữ liệu lọc */
 export type FilterFieldType =

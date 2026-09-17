@@ -944,7 +944,8 @@ export default function VtsSystemForm({
                                 onChange={(val) => {
                                   form.setFieldValue('orgUnitId', val);
                                   const curPort = form.getFieldValue('portId');
-                                  if (curPort && !rawPorts.some((p) => p.id === curPort && String(p.orgUnitId) === String(val))) {
+                                  const allowedOrgIds = resolveOrgSubtreeIds(organizations, String(val));
+                                  if (curPort && !rawPorts.some((p) => p.id === curPort && p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)))) {
                                     form.setFieldValue('portId', undefined);
                                   }
                                 }}

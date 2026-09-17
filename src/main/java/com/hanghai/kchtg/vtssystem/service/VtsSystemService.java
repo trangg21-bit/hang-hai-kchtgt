@@ -1018,8 +1018,11 @@ public class VtsSystemService {
         if (scope.enabled() && scope.orgUnitIds().isEmpty()) {
             return Page.empty(pageable);
         }
+        // `scope.orgUnitIds()` already is the selected unit plus its descendants,
+        // intersected with the caller's data scope. Passing `orgUnitId` again
+        // would turn the tree filter back into an exact-unit filter.
         Page<VtsSystemListProjection> rawPage = repository.searchList(
-                scope.enabled(), scope.orgUnitIds(), orgUnitId, portId, provinceId, keywordLike, systemNameLike,
+                scope.enabled(), scope.orgUnitIds(), null, portId, provinceId, keywordLike, systemNameLike,
                 codeLike,
                 conditionStatus, approvalStatus, fromDate, toDate, updatedFrom, updatedTo, pageable);
 
@@ -1730,12 +1733,12 @@ public class VtsSystemService {
             return List.of();
         }
         if (year == null) {
-            pageResult = repository.search(scope.enabled(), scope.orgUnitIds(), orgUnitId,
+            pageResult = repository.search(scope.enabled(), scope.orgUnitIds(), null,
                     keywordLike, conditionStatus, approvalStatus, pageable);
         } else {
             LocalDate fromDate = LocalDate.of(year, 1, 1);
             LocalDate toDate = LocalDate.of(year + 1, 1, 1);
-            pageResult = repository.searchByDateRange(scope.enabled(), scope.orgUnitIds(), orgUnitId,
+            pageResult = repository.searchByDateRange(scope.enabled(), scope.orgUnitIds(), null,
                     keywordLike, conditionStatus, approvalStatus, fromDate, toDate, pageable);
         }
         return pageResult.getContent().stream()
@@ -2249,7 +2252,7 @@ public class VtsSystemService {
     @Transactional(readOnly = true)
     public java.util.Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword,
             ConditionStatus conditionStatus) {
-        return countByApprovalStatus(resolveDataScopeForFilter(orgUnitId), orgUnitId, null, null, keyword, null, null,
+        return countByApprovalStatus(resolveDataScopeForFilter(orgUnitId), null, null, null, keyword, null, null,
                 conditionStatus, null, null, null, null);
     }
 

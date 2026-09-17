@@ -169,7 +169,7 @@ public class CoastalStationHaiphongService {
         String kw = toKeywordLike(keyword);
 
         Page<CoastalStationHaiphong> page = repository.searchPaged(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, operatingOrgId, provinceId,
+                scopeEnabled, scopeOrgUnitIds, null, kw, operatingOrgId, provinceId,
                 parseConditionStatus(conditionStatus), approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
 
         return page.map(this::buildResponse);
@@ -196,7 +196,7 @@ public class CoastalStationHaiphongService {
         String kw = toKeywordLike(keyword);
 
         List<Object[]> rawCounts = repository.countByApprovalStatus(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, kw, parseConditionStatus(conditionStatus),
+                scopeEnabled, scopeOrgUnitIds, null, kw, parseConditionStatus(conditionStatus),
                 operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo);
 
         Map<ApprovalStatus, Long> countsByStatus = new EnumMap<>(ApprovalStatus.class);
@@ -253,7 +253,7 @@ public class CoastalStationHaiphongService {
     public List<CoastalStationHaiphongResponse> findApprovedOptions(UUID orgUnitId) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         List<CoastalStationHaiphong> list = repository.findApprovedOptions(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId);
+                !scope.unrestricted(), scope.orgUnitIds(), null);
         return list.stream().map(this::buildResponse).toList();
     }
 

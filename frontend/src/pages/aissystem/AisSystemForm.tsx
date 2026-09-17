@@ -561,13 +561,13 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const filteredOpCenters = useMemo(() => {
     if (!effectiveOrgUnitId) return opCenters;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
-    return opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId) || c.id === record?.vtsOperationCenterId);
+    return opCenters.filter((c) => c.id === record?.vtsOperationCenterId || (c.orgUnitId && allowedIds.has(String(c.orgUnitId))));
   }, [opCenters, effectiveOrgUnitId, orgUnits, record?.vtsOperationCenterId]);
 
   const filteredRadarStations = useMemo(() => {
     if (!effectiveOrgUnitId) return radarStations;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
-    return radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId) || r.id === record?.radarStationId);
+    return radarStations.filter((r) => r.id === record?.radarStationId || (r.orgUnitId && allowedIds.has(String(r.orgUnitId))));
   }, [radarStations, effectiveOrgUnitId, orgUnits, record?.radarStationId]);
 
   const combinedLocationOptions = useMemo(() => [

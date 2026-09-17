@@ -12,12 +12,14 @@ import com.hanghai.kchtg.user.repository.UserPermissionOverrideRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -26,6 +28,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -108,10 +111,15 @@ public class UserPermissionService {
                     .map(permission -> permission.getCode().toLowerCase(Locale.ROOT))
                     .collect(Collectors.toSet());
             if (known.size() != requested.size()) {
-                throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại");
+                Set<String> unknown = new HashSet<>(requested);
+                unknown.removeAll(known);
+                log.warn("Bỏ qua các mã quyền không tồn tại trong CSDL khi validate: {}", unknown);
+                if (known.isEmpty()) {
+                    throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại: " + unknown);
+                }
             }
             if (targetUser != null) {
-                assertCanGrantPermission(targetUser, requested);
+                assertCanGrantPermission(targetUser, known);
             }
         }
     }
@@ -139,7 +147,13 @@ public class UserPermissionService {
                     .map(permission -> permission.getCode().toLowerCase(Locale.ROOT))
                     .collect(Collectors.toSet());
             if (known.size() != requested.size()) {
-                throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại");
+                Set<String> unknown = new HashSet<>(requested);
+                unknown.removeAll(known);
+                log.warn("Bỏ qua các mã quyền không tồn tại trong CSDL cho người dùng {}: {}", userId, unknown);
+                if (known.isEmpty()) {
+                    throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại: " + unknown);
+                }
+                requested.retainAll(known);
             }
             assertCanGrantPermission(user, requested);
         }
@@ -221,7 +235,13 @@ public class UserPermissionService {
                     .map(permission -> permission.getCode().toLowerCase(Locale.ROOT))
                     .collect(Collectors.toSet());
             if (known.size() != requested.size()) {
-                throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại");
+                Set<String> unknown = new HashSet<>(requested);
+                unknown.removeAll(known);
+                log.warn("Bỏ qua các mã quyền không tồn tại trong CSDL (system) cho người dùng {}: {}", userId, unknown);
+                if (known.isEmpty()) {
+                    throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại: " + unknown);
+                }
+                requested.retainAll(known);
             }
         }
 

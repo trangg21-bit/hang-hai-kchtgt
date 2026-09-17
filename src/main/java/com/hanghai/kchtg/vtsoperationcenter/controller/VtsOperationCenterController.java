@@ -193,7 +193,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thành công", data));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:update', 'vts:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<VtsOperationCenterResponse>> update(
             @PathVariable UUID id,
@@ -279,7 +279,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử thành công", history));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:create', 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:create', 'vts:update', 'vts:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:create', 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<VtsSystemAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
@@ -297,7 +297,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách tệp đính kèm thành công", list));
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2', 'vts:update', 'vts:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:update', 'vtsoperationcenter:approvec2')")
     @DeleteMapping("/{id}/attachments/{attId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,

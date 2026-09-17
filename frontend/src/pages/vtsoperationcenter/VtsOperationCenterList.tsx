@@ -3,9 +3,7 @@ import { Input, DatePicker, Select } from 'antd';
 import { vtsOperationCenterService, type VtsOperationCenterListParams } from '../../services/vtsOperationCenterService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import type { VtsOperationCenterListItem, VtsOperationCenterResponse } from '../../types/vtsOperationCenter';
-import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/vtsSystem';
-import { useAuthStore, type AuthState } from '../../store/authStore';
-import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
+import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
@@ -17,19 +15,18 @@ import { useKchtPermissions } from '../../hooks/useKchtPermissions';
 import { useKchtRowActions } from '../../hooks/useKchtRowActions';
 import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
-  actionPrimary, textSecondary,
+  textSecondary,
   fontWeightBold,
-  spaceSm, spaceMd, spaceFormField,
+  spaceSm, spaceMd,
   statusOperational, statusCritical, statusAttention,
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  textAreaStyle, colors, radiusPill,
+  colors, radiusPill,
   getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
-import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -169,14 +166,10 @@ export default function VtsOperationCenterList() {
   const isMapLinkedView = isIframeModal && (linkedAction === "edit" || linkedAction === "detail");
   const handledLinkedRecordRef = useRef<string | null>(null);
 
-  const currentUser = useAuthStore((s: AuthState) => s.user);
-  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const kchtPerms = useKchtPermissions('vtsoperationcenter', {
-    extraCreatePerms: ['vts:create'],
-    extraUpdatePerms: ['vts:update'],
-    extraApproveL1Perms: ['vts:approvec1'],
-    extraApproveL2Perms: ['vts:approvec2'],
-  });
+  // Trung tâm điều hành VTS là tài nguyên độc lập với Hệ thống VTS.
+  // Không dùng quyền `vts:*` làm fallback, nếu không người chỉ được cấp
+  // quyền ở màn Hệ thống VTS vẫn thấy/thực hiện thao tác ghi tại màn này.
+  const kchtPerms = useKchtPermissions('vtsoperationcenter');
 
   const customVtsTokens = useMemo(() => ({
     ...themeTokenChk,
@@ -315,13 +308,13 @@ export default function VtsOperationCenterList() {
   const filteredPortOptions = useMemo(() => {
     if (!filterValues.orgUnitId) return portOptions;
     const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId as string);
-    return portOptions.filter((p) => !p.orgUnitId || allowedIds.has(p.orgUnitId));
+    return portOptions.filter((p) => p.orgUnitId && allowedIds.has(String(p.orgUnitId)));
   }, [portOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   const filteredVtsSystemOptions = useMemo(() => {
     if (!filterValues.orgUnitId) return vtsSystemOptions;
     const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId as string);
-    return vtsSystemOptions.filter((v) => !v.orgUnitId || allowedIds.has(v.orgUnitId));
+    return vtsSystemOptions.filter((v) => v.orgUnitId && allowedIds.has(String(v.orgUnitId)));
   }, [vtsSystemOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   const fetchData = useCallback(async () => {
@@ -864,12 +857,6 @@ export default function VtsOperationCenterList() {
   const { rowActions } = useKchtRowActions<VtsOperationCenterListItem>({
     resource: 'vtsoperationcenter',
     approvalLevels: 2,
-    permissionOptions: {
-      extraCreatePerms: ['vts:create'],
-      extraUpdatePerms: ['vts:update'],
-      extraApproveL1Perms: ['vts:approvec1'],
-      extraApproveL2Perms: ['vts:approvec2'],
-    },
     handlers: {
       onDetail: (record) => {
         setEditingId(record.id);
@@ -1112,7 +1099,7 @@ export default function VtsOperationCenterList() {
         <CommonHistoryDrawer
           open={historyModalOpen}
           onClose={() => setHistoryModalOpen(false)}
-          entityName={selectedRecord?.name || (selectedRecord as any)?.code || 'Trung tâm điều hành VTS'}
+          entityName={selectedRecord?.name || selectedRecord?.code || 'Trung tâm điều hành VTS'}
           records={historyRecords}
           loading={loadingHistory}
           serverFiltered

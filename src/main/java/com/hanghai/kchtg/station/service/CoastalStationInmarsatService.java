@@ -183,7 +183,7 @@ public class CoastalStationInmarsatService {
         Page<CoastalStationInmarsat> page = repository.searchPaged(
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
-                orgUnitId,
+                null,
                 toKeywordLike(keyword),
                 toKeywordLike(name),
                 toKeywordLike(code),
@@ -220,7 +220,7 @@ public class CoastalStationInmarsatService {
         List<Object[]> rows = repository.countByApprovalStatus(
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
-                orgUnitId,
+                null,
                 toKeywordLike(keyword),
                 toKeywordLike(name),
                 toKeywordLike(code),
@@ -759,7 +759,7 @@ public class CoastalStationInmarsatService {
     public List<CoastalStationInmarsatOptionResponse> getOptions(UUID orgUnitId) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         List<CoastalStationInmarsat> list = repository.findApprovedOptions(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId);
+                !scope.unrestricted(), scope.orgUnitIds(), null);
         return list.stream()
                 .map(e -> CoastalStationInmarsatOptionResponse.builder()
                         .id(e.getId())

@@ -879,7 +879,7 @@ export default function BuoyBerthList() {
           placeholder="Tất cả"
           allowClear
           value={managingUnitId}
-          onChange={(v) => { setManagingUnitId(v); setPage(1); }}
+          onChange={(v) => { setManagingUnitId(v); setFilterPortId(undefined); setPage(1); }}
         />
       </div>
 

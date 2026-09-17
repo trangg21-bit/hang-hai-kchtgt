@@ -35,7 +35,7 @@ import {
   controlHeight,
 } from '../../../tokens';
 import { getRangePickerProps, getSidebarDatePickerProps } from '../../../themetokenchk';
-import OrgUnitTreeSelect from '../../org-unit/OrgUnitTreeSelect';
+import { FilterOrgUnitTreeSelect } from '../../org-unit';
 import { resolveDefaultOrgUnitId } from '../../org-unit/useUserDefaultOrgUnit';
 import { useAuthStore } from '../../../store/authStore';
 import { FilterTableLayoutContext } from '../../list-view/FilterTableLayout';
@@ -402,8 +402,7 @@ function TableFilterInternal<T extends Record<string, unknown> = Record<string, 
 
       case 'treeSelect':
         return (
-          <OrgUnitTreeSelect
-            variant="filter"
+          <FilterOrgUnitTreeSelect
             organizations={filter.organizations}
             value={(value as string) || undefined}
             onChange={(val) => {

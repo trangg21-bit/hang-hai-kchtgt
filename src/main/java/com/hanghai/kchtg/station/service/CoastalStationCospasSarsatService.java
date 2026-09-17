@@ -113,7 +113,7 @@ public class CoastalStationCospasSarsatService {
         Page<CoastalStationCospasSarsat> page = repository.search(
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
-                orgUnitId,
+                null,
                 operatingOrgId,
                 provinceId,
                 conditionStatus,
@@ -149,7 +149,7 @@ public class CoastalStationCospasSarsatService {
         List<Object[]> rows = repository.countByApprovalStatus(
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
-                orgUnitId,
+                null,
                 operatingOrgId,
                 provinceId,
                 conditionStatus,

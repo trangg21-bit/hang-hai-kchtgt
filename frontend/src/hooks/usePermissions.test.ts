@@ -93,6 +93,17 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(merged).toContain('user:read');
       expect(merged).toContain('system:out_of_scope');
     });
+
+    it('should only expand aliases that exist in validKeys', () => {
+      const currentKeys: string[] = [];
+      const nextVisibleKeys = ['dryport:read'];
+      // validKeys only contains dryport:read, not dryportasset:read
+      const validKeys = new Set(['dryport:read', 'user:read']);
+      const merged = mergePermissionKeys(currentKeys, nextVisibleKeys, sampleTree, validKeys);
+
+      expect(merged).toContain('dryport:read');
+      expect(merged).not.toContain('dryportasset:read');
+    });
   });
 
   describe('usePermissions dynamic tree building', () => {

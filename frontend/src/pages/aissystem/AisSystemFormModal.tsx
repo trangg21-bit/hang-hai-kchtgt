@@ -256,13 +256,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const filteredOpCenters = useMemo(() => {
     if (!formOrgUnitId) return opCenters;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
-    const filtered = opCenters.filter((c) => !c.orgUnitId || allowedIds.has(c.orgUnitId)); return filtered.length > 0 ? filtered : opCenters;
+    return opCenters.filter((c) => c.orgUnitId && allowedIds.has(String(c.orgUnitId)));
   }, [opCenters, formOrgUnitId, orgUnits]);
 
   const filteredRadarStations = useMemo(() => {
     if (!formOrgUnitId) return radarStations;
     const allowedIds = resolveOrgSubtreeIds(orgUnits, formOrgUnitId);
-    const filtered = radarStations.filter((r) => !r.orgUnitId || allowedIds.has(r.orgUnitId)); return filtered.length > 0 ? filtered : radarStations;
+    return radarStations.filter((r) => r.orgUnitId && allowedIds.has(String(r.orgUnitId)));
   }, [radarStations, formOrgUnitId, orgUnits]);
 
   const combinedLocationOptions = useMemo(() => [
@@ -628,8 +628,8 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                     form.setFieldValue('orgUnitId', val);
                     const curLoc = form.getFieldValue('locationId');
                     const allowedIds = resolveOrgSubtreeIds(orgUnits, val);
-                    const inOpCenters = opCenters.some((c) => c.id === curLoc && (!c.orgUnitId || allowedIds.has(c.orgUnitId)));
-                    const inRadars = radarStations.some((r) => r.id === curLoc && (!r.orgUnitId || allowedIds.has(r.orgUnitId)));
+                    const inOpCenters = opCenters.some((c) => c.id === curLoc && c.orgUnitId && allowedIds.has(String(c.orgUnitId)));
+                    const inRadars = radarStations.some((r) => r.id === curLoc && r.orgUnitId && allowedIds.has(String(r.orgUnitId)));
                     if (curLoc && !inOpCenters && !inRadars) {
                       form.setFieldValue('locationId', undefined);
                     }

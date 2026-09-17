@@ -103,7 +103,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
 import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, countStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, countStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -657,7 +657,7 @@ export default function BuoyStationListPage() {
 
   const renderHistoryTimeline = (records: ChangeHistory[]) => {
     return renderStandardHistoryCards({
-      records,
+      records: records as unknown as RawHistoryRecord[],
       fieldLabels: STATION_FIELD_LABEL_OVERRIDES,
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
@@ -691,7 +691,7 @@ export default function BuoyStationListPage() {
 
   const historyUpdateCount = useMemo(() => {
     return countStandardHistoryCards({
-      records: filteredHistory,
+      records: filteredHistory as unknown as RawHistoryRecord[],
       fieldLabels: STATION_FIELD_LABEL_OVERRIDES,
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {

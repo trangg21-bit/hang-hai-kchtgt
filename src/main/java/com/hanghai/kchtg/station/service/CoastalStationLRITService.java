@@ -179,7 +179,7 @@ public class CoastalStationLRITService {
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
         Page<CoastalStationLRIT> page = repository.searchPaged(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, toKeywordLike(keyword), toKeywordLike(name), toKeywordLike(code),
+                scopeEnabled, scopeOrgUnitIds, null, toKeywordLike(keyword), toKeywordLike(name), toKeywordLike(code),
                 operatingOrgId, provinceId,
                 conditionStatus, approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
 
@@ -228,7 +228,7 @@ public class CoastalStationLRITService {
         List<UUID> scopeOrgUnitIds = scope.orgUnitIds();
 
         List<Object[]> rawCounts = repository.countByApprovalStatus(
-                scopeEnabled, scopeOrgUnitIds, orgUnitId, toKeywordLike(keyword), toKeywordLike(name), toKeywordLike(code),
+                scopeEnabled, scopeOrgUnitIds, null, toKeywordLike(keyword), toKeywordLike(name), toKeywordLike(code),
                 conditionStatus, provinceId, updatedFrom, updatedTo);
 
         Map<ApprovalStatus, Long> countsByStatus = new EnumMap<>(ApprovalStatus.class);
@@ -287,7 +287,7 @@ public class CoastalStationLRITService {
     public List<CoastalStationLRITResponse> findApprovedOptions(UUID orgUnitId) {
         Scope scope = resolveEffectiveScope(orgUnitId);
         List<CoastalStationLRIT> list = repository.findApprovedOptions(
-                !scope.unrestricted(), scope.orgUnitIds(), orgUnitId);
+                !scope.unrestricted(), scope.orgUnitIds(), null);
         return buildResponses(list);
     }
 

@@ -40,7 +40,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { usePermissionStore } from '../../store/permissionStore';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { OrgUnitTreeSelect, resolveOrgSubtreeIds } from '../../components/org-unit';
 import type {
   NavigationChannelResponse,
   CreateNavigationChannelRequest,
@@ -517,7 +517,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string }[]>([]);
+  const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>([]);
   const [symbolOptions, setSymbolOptions] = useState<{ value: string; label: string }[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
@@ -531,6 +531,12 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const [filePage, setFilePage] = useState(1);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
+  const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const filteredSeaportOptions = useMemo(() => {
+    if (!selectedOrgUnitId) return seaportOptions;
+    const allowedOrgIds = resolveOrgSubtreeIds(organizations, selectedOrgUnitId);
+    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+  }, [organizations, seaportOptions, selectedOrgUnitId]);
   const [gisModalOpenDetail, setGisModalOpenDetail] = useState(false);
 
   // WKT cho GIS view-mode (chi tiết)
@@ -1580,7 +1586,21 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                         style={formFieldStyle}
                         rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                       >
-                        <OrgUnitTreeSelect organizations={organizations} placeholder="Chọn đơn vị quản lý..." showPath treeDefaultExpandAll={false} style={selectStyle} />
+                        <OrgUnitTreeSelect
+                          organizations={organizations}
+                          placeholder="Chọn đơn vị quản lý..."
+                          showPath
+                          treeDefaultExpandAll={false}
+                          style={selectStyle}
+                          onChange={(orgUnitId) => {
+                            const seaportId = form.getFieldValue('seaportId');
+                            const allowedOrgIds = orgUnitId ? resolveOrgSubtreeIds(organizations, orgUnitId) : new Set<string>();
+                            const isValidSeaport = seaportOptions.some((port) =>
+                              port.id === seaportId && !!port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)),
+                            );
+                            if (seaportId && !isValidSeaport) form.setFieldValue('seaportId', undefined);
+                          }}
+                        />
                       </Form.Item>
                     </Col>
                     <Col span={12}>
@@ -1590,7 +1610,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                           allowClear
                           showSearch
                           optionFilterProp="label"
-                          options={seaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+                          options={filteredSeaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
                           style={selectStyle}
                         />
                       </Form.Item>

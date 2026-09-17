@@ -27,7 +27,7 @@ import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 
@@ -293,8 +293,9 @@ export default function VtsSystemList() {
 
   const filteredPortOptions = useMemo(() => {
     if (!filterValues.orgUnitId) return portOptions;
-    return portOptions.filter((p) => !p.orgUnitId || p.orgUnitId === filterValues.orgUnitId);
-  }, [portOptions, filterValues.orgUnitId]);
+    const allowedOrgIds = resolveOrgSubtreeIds(orgUnitOptions, String(filterValues.orgUnitId));
+    return portOptions.filter((p) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)));
+  }, [portOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   const fetchData = useCallback(async () => {
     const requestId = ++listRequestId.current;

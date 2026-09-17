@@ -815,7 +815,7 @@ export default function PierListPage() {
           allLabel="Tất cả"
           treeDefaultExpandAll={false}
           value={orgUnit}
-          onChange={(v) => { setOrgUnit(v); setPage(1); }}
+          onChange={(v) => { setOrgUnit(v); setFilterPortId(undefined); setFilterBerthId(undefined); setPage(1); }}
         />
       </div>
       <div style={{ marginBottom: 12 }}>
