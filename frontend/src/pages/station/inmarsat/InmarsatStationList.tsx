@@ -299,8 +299,8 @@ export default function InmarsatStationList() {
   const userUnitType = currentUser?.unitType || '';
   const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
-  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
+  const canApproveL1 = (hasPerm('inmarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
+  const canApproveL2 = (hasPerm('inmarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -796,7 +796,7 @@ export default function InmarsatStationList() {
 
     if (canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
-      resource: 'coastalstationinmarsat',
+      resource: 'inmarsat',
       extraUpdatePerms: ['specialstation:update', 'data:update'],
       extraApprovePerms: ['specialstation:approvec2'],
     })) {
@@ -813,7 +813,7 @@ export default function InmarsatStationList() {
       });
     }
 
-    if (hasPerm('coastalstationinmarsat:history') || hasPerm('specialstation:history') || hasPerm('data:read')) {
+    if (hasPerm('inmarsat:history') || hasPerm('specialstation:history') || hasPerm('data:read')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',
@@ -822,7 +822,7 @@ export default function InmarsatStationList() {
       });
     }
 
-    if ((hasPerm('coastalstationinmarsat:update') || hasPerm('specialstation:update') || hasPerm('data:update')) &&
+    if ((hasPerm('inmarsat:update') || hasPerm('specialstation:update') || hasPerm('data:update')) &&
       (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
       actions.push({
         key: 'submit',
@@ -878,7 +878,7 @@ export default function InmarsatStationList() {
 
     if (canDeleteApprovalRecord(record.approvalStatus, {
       hasPerm,
-      resource: 'coastalstationinmarsat',
+      resource: 'inmarsat',
       extraDeletePerms: ['specialstation:delete', 'data:delete'],
     })) {
       actions.push({
@@ -903,7 +903,7 @@ export default function InmarsatStationList() {
             { label: 'Đài thông tin vệ tinh Inmarsat' },
           ]}
           actions={
-            (hasPerm('coastalstationinmarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create'))
+            (hasPerm('inmarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create'))
               ? [{
                 key: 'create',
                 label: 'Thêm mới',

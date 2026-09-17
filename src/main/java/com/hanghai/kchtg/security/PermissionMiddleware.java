@@ -323,7 +323,7 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("cospas-sarsat", "coastalstationcospassarsat"),
             entry("cospas", "coastalstationcospassarsat"),
             entry("lrit", "coastalstationlrit"),
-            entry("inmarsat", "coastalstationinmarsat"),
+            entry("inmarsat", "inmarsat"),
             entry("haiphong", "coastalstationhaiphong"),
             entry("hanoi", "coastalstationhaiphong"),
             entry("coastal", "coastalstation"),

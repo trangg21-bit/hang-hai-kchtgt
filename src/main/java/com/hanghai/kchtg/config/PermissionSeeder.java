@@ -734,14 +734,15 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "specialstation", "approvec1", "Phê duyệt C1 trạm chuyên dùng", "Phê duyệt cấp 1 trạm chuyên dùng");
                 seedPermission(definitions, "specialstation", "approvec2", "Phê duyệt C2 trạm chuyên dùng", "Phê duyệt cấp 2 trạm chuyên dùng");
 
-                // 10.3 Đài thông tin vệ tinh Inmarsat (Coastal Station Inmarsat - M-004)
-                seedPermission(definitions, "coastalstationinmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "history", "Lịch sử phê duyệt đài Inmarsat", "Xem lịch sử thay đổi và phê duyệt đài Inmarsat");
+                // 10.3 Đài thông tin vệ tinh Inmarsat (M-004)
+                // Dùng đúng mã xuất hiện trong cây phân quyền; không tạo mã coastalstationinmarsat:* song song.
+                seedPermission(definitions, "inmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
+                seedPermission(definitions, "inmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
+                seedPermission(definitions, "inmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
+                seedPermission(definitions, "inmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
+                seedPermission(definitions, "inmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
+                seedPermission(definitions, "inmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
+                seedPermission(definitions, "inmarsat", "history", "Lịch sử phê duyệt đài Inmarsat", "Xem lịch sử thay đổi và phê duyệt đài Inmarsat");
 
                 // 10.4 Đài Cospas-Sarsat (Coastal Station Cospas-Sarsat - M-004)
                 seedPermission(definitions, "coastalstationcospassarsat", "read", "Xem đài Cospas-Sarsat",
