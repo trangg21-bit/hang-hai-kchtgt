@@ -203,13 +203,13 @@ export const PERMISSIONS = {
 
   /** Đài thông tin vệ tinh Inmarsat (M-004) */
   COASTAL_STATION_INMARSAT: {
-    READ: 'coastalstationinmarsat:read',
-    CREATE: 'coastalstationinmarsat:create',
-    UPDATE: 'coastalstationinmarsat:update',
-    DELETE: 'coastalstationinmarsat:delete',
-    APPROVE_C1: 'coastalstationinmarsat:approvec1',
-    APPROVE_C2: 'coastalstationinmarsat:approvec2',
-    HISTORY: 'coastalstationinmarsat:history',
+    READ: 'inmarsat:read',
+    CREATE: 'inmarsat:create',
+    UPDATE: 'inmarsat:update',
+    DELETE: 'inmarsat:delete',
+    APPROVE_C1: 'inmarsat:approvec1',
+    APPROVE_C2: 'inmarsat:approvec2',
+    HISTORY: 'inmarsat:history',
   },
 
   /** Đài TTXLTT Hà Nội / Hải Phòng (M-004) */

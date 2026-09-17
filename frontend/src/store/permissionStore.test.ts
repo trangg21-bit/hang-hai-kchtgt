@@ -155,7 +155,7 @@ describe('permissionStore Unit Tests', () => {
 
     const store = usePermissionStore.getState();
     expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
-    expect(store.hasPermission('coastalstationinmarsat:read')).toBe(true);
+    expect(store.hasPermission('inmarsat:read')).toBe(true);
     expect(store.hasPermission('coastalstationhaiphong:read')).toBe(true);
     expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(true);
   });
@@ -200,4 +200,3 @@ describe('permissionStore Unit Tests', () => {
     expect(store.hasPermission('berth:delete')).toBe(false);
   });
 });
-
