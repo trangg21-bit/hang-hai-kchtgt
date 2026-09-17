@@ -22,11 +22,14 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -233,6 +236,21 @@ class CoastalStationHaiphongControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/stations/haiphong — includes status counts in the list response")
+    void searchIncludesStatusCounts() throws Exception {
+        when(service.searchPaged(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+        when(service.countByApprovalStatus(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(Map.of("DRAFT", 1L));
+
+        mockMvc.perform(get(BASE).param("includeCounts", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.statusCounts.DRAFT").value(1));
+    }
+
+    @Test
     @DisplayName("GET /api/v1/stations/haiphong/list — returns 200 with list")
     void testGetAll() throws Exception {
         CoastalStationHaiphong entity = makeEntity(UUID.randomUUID());
@@ -359,4 +377,3 @@ class CoastalStationHaiphongControllerTest {
                 .andExpect(status().isOk());
     }
 }
-

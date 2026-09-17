@@ -14,6 +14,7 @@ import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.service.CoastalStationLRITService;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
@@ -23,11 +24,14 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -225,6 +229,21 @@ class CoastalStationLRITControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/stations/lrit — includes status counts in the list response")
+    void searchIncludesStatusCounts() throws Exception {
+        when(service.searchPaged(
+                any(), any(), any(), any(), any(), any(), nullable(ConditionStatus.class), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+        when(service.countByApprovalStatus(any(), any(), any(), any(), nullable(ConditionStatus.class), any(), any(), any()))
+                .thenReturn(Map.of("DRAFT", 1L));
+
+        mockMvc.perform(get(BASE).param("includeCounts", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.statusCounts.DRAFT").value(1));
+    }
+
+    @Test
     @DisplayName("GET /api/v1/stations/lrit/list — returns 200 with list")
     void testGetAll() throws Exception {
         CoastalStationLRIT entity = makeEntity(UUID.randomUUID());
@@ -365,4 +384,3 @@ class CoastalStationLRITControllerTest {
                 .andExpect(status().isBadRequest());
     }
 }
-

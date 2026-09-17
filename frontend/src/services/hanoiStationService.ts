@@ -19,7 +19,7 @@ export type {
 
 const BASE_PATH = '/v1/stations/haiphong';
 
-function buildSearchParams(params: Record<string, string | number | undefined>) {
+function buildSearchParams(params: Record<string, string | number | boolean | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '') sp.set(k, String(v));
@@ -53,26 +53,22 @@ export const hanoiStationService = {
       size: params?.size || 20,
       sortBy: params?.sortBy,
       sortDir: params?.sortDir,
-      sort: params?.sortBy ? `${params.sortBy},${params.sortDir || 'asc'}` : (params as any)?.sort,
+      sort: params?.sortBy ? `${params.sortBy},${params.sortDir || 'asc'}` : params?.sort,
+      includeCounts: params?.includeCounts,
     });
     // Số trên tab chỉ đổi khi bộ lọc đổi — lật trang hay đổi tab mà vẫn gọi
     // /counts là nhân đôi số request cho cùng một kết quả.
-    const wantCounts = params?.includeCounts !== false;
-    const [res, countsRes] = await Promise.all([
-      api.get(`${BASE_PATH}?${sp}`),
-      wantCounts ? api.get(`${BASE_PATH}/counts?${sp}`) : Promise.resolve(null),
-    ]);
+    const res = await api.get(`${BASE_PATH}?${sp}`);
     const data = res.data?.data || res.data || {};
     const items = data.content || (Array.isArray(data) ? data : []);
     const total = data.totalElements ?? items.length;
-    const counts = countsRes ? (countsRes.data?.data || countsRes.data || {}) : undefined;
 
     return {
       items,
       total,
       page: (data.number ?? 0) + 1,
       size: data.size ?? (params?.size || 20),
-      statusCounts: counts,
+      statusCounts: data.statusCounts || {},
     };
   },
 
@@ -109,31 +105,31 @@ export const hanoiStationService = {
 
   async submit(id: string): Promise<HanoiStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/submit`);
-    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<HanoiStationItem>(res.data?.data || res.data) || {}) as HanoiStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
   async approveC1(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
     const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, { content: content || 'Đã phê duyệt' });
-    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<HanoiStationItem>(res.data?.data || res.data) || {}) as HanoiStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
   async approveC2(id: string, statusOrContent?: string, maybeContent?: string): Promise<HanoiStationItem & { message?: string }> {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
     const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, { content: content || 'Đã phê duyệt' });
-    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<HanoiStationItem>(res.data?.data || res.data) || {}) as HanoiStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
   async reject(id: string, reason: string): Promise<HanoiStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/reject`, { reason });
-    const item = toSingle<HanoiStationItem>(res.data?.data || res.data) || ({} as HanoiStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<HanoiStationItem>(res.data?.data || res.data) || {}) as HanoiStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
@@ -176,17 +172,17 @@ export const hanoiStationService = {
     return toArray<HistoryEntry>(res.data?.data || res.data);
   },
 
-  async getAttachments(id: string): Promise<any[]> {
+  async getAttachments(id: string): Promise<unknown[]> {
     try {
       const res = await api.get(`${BASE_PATH}/${id}/attachments`);
       const data = res.data?.data || res.data;
-      return toArray<any>(data);
+      return toArray<unknown>(data);
     } catch {
       return [];
     }
   },
 
-  async uploadAttachment(id: string, file: File): Promise<any> {
+  async uploadAttachment(id: string, file: File): Promise<unknown> {
     const formData = new FormData();
     formData.append('files', file);
     const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {

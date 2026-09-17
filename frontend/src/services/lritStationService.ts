@@ -21,7 +21,7 @@ export type {
 
 const BASE_PATH = '/v1/stations/lrit';
 
-function buildSearchParams(params: Record<string, string | number | undefined>) {
+function buildSearchParams(params: Record<string, string | number | boolean | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '') sp.set(k, String(v));
@@ -57,33 +57,20 @@ export const lritStationService = {
       size: params?.size || 20,
       sortBy: params?.sortBy,
       sortDir: params?.sortDir,
-      sort: params?.sortBy ? `${params.sortBy},${params.sortDir || 'asc'}` : (params as any)?.sort,
+      sort: params?.sortBy ? `${params.sortBy},${params.sortDir || 'asc'}` : params?.sort,
+      includeCounts: params?.includeCounts,
     });
-    const countsSp = buildSearchParams({
-      keyword: params?.keyword,
-      name: params?.name,
-      code: params?.code,
-      orgUnitId: params?.orgUnitId,
-      provinceId: params?.provinceId,
-      conditionStatus: params?.conditionStatus,
-      updatedFrom: params?.updatedFrom,
-      updatedTo: params?.updatedTo,
-    });
-    const [res, countsRes] = await Promise.all([
-      api.get(`${BASE_PATH}?${sp}`),
-      params?.includeCounts === false ? Promise.resolve(null) : api.get(`${BASE_PATH}/counts?${countsSp}`),
-    ]);
+    const res = await api.get(`${BASE_PATH}?${sp}`);
     const data = res.data?.data || res.data || {};
     const items = data.content || (Array.isArray(data) ? data : []);
     const total = data.totalElements ?? items.length;
-    const counts = countsRes ? (countsRes.data?.data || countsRes.data || {}) : {};
 
     return {
       items: toArray<LritStationListResponse>(items),
       total,
       page: (data.number ?? 0) + 1,
       size: data.size ?? (params?.size || 20),
-      statusCounts: counts,
+      statusCounts: data.statusCounts || {},
     };
   },
 
@@ -122,8 +109,8 @@ export const lritStationService = {
 
   async submit(id: string): Promise<LritStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/submit`);
-    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<LritStationItem>(res.data?.data || res.data) || {}) as LritStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
@@ -131,8 +118,8 @@ export const lritStationService = {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
     const body = content ? { content } : {};
     const res = await api.post(`${BASE_PATH}/${id}/approve-c1`, body);
-    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<LritStationItem>(res.data?.data || res.data) || {}) as LritStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
@@ -140,15 +127,15 @@ export const lritStationService = {
     const content = maybeContent !== undefined ? maybeContent : statusOrContent;
     const body = content ? { content } : {};
     const res = await api.post(`${BASE_PATH}/${id}/approve-c2`, body);
-    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<LritStationItem>(res.data?.data || res.data) || {}) as LritStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
   async reject(id: string, reason: string): Promise<LritStationItem & { message?: string }> {
     const res = await api.post(`${BASE_PATH}/${id}/reject`, { reason });
-    const item = toSingle<LritStationItem>(res.data?.data || res.data) || ({} as LritStationItem);
-    if (res.data?.message) (item as any).message = res.data.message;
+    const item = (toSingle<LritStationItem>(res.data?.data || res.data) || {}) as LritStationItem & { message?: string };
+    if (res.data?.message) item.message = res.data.message;
     return item;
   },
 
@@ -196,17 +183,17 @@ export const lritStationService = {
     return toArray<HistoryEntry>(res.data?.data || res.data);
   },
 
-  async getAttachments(id: string): Promise<any[]> {
+  async getAttachments(id: string): Promise<unknown[]> {
     try {
       const res = await api.get(`${BASE_PATH}/${id}/attachments`);
       const data = res.data?.data || res.data;
-      return toArray<any>(data);
+      return toArray<unknown>(data);
     } catch {
       return [];
     }
   },
 
-  async uploadAttachment(id: string, file: File): Promise<any> {
+  async uploadAttachment(id: string, file: File): Promise<unknown> {
     const formData = new FormData();
     formData.append('files', file);
     const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {

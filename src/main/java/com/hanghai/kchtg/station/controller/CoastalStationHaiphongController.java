@@ -22,6 +22,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -121,7 +122,7 @@ public class CoastalStationHaiphongController {
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài TTXLTT")
     @PreAuthorize("@auth.checkAny(authentication, 'coastalstationhaiphong:read', 'specialstation:read', 'data:read')")
-    public ResponseEntity<Page<CoastalStationHaiphongResponse>> search(
+    public ResponseEntity<Map<String, Object>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) UUID operatingOrgId,
@@ -134,6 +135,7 @@ public class CoastalStationHaiphongController {
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDir,
+            @RequestParam(defaultValue = "true") boolean includeCounts,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         // Chặn trần số bản ghi mỗi trang: "size" đến từ client, không giới hạn thì
@@ -145,7 +147,19 @@ public class CoastalStationHaiphongController {
         Page<CoastalStationHaiphongResponse> results = service.searchPaged(
                 orgUnitId, keyword, operatingOrgId, provinceId, conditionStatus, approvalStatus,
                 updatedBy, updatedFrom, updatedTo, sanitizedPageable);
-        return ResponseEntity.ok(results);
+        Map<String, Long> statusCounts = includeCounts
+                ? service.countByApprovalStatus(
+                        orgUnitId, keyword, conditionStatus, operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo)
+                : Map.of();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("content", results.getContent());
+        data.put("totalElements", results.getTotalElements());
+        data.put("totalPages", results.getTotalPages());
+        data.put("number", results.getNumber());
+        data.put("size", results.getSize());
+        data.put("statusCounts", statusCounts);
+        return ResponseEntity.ok(data);
     }
 
     @GetMapping("/counts")
