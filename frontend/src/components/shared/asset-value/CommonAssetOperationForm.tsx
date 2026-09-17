@@ -11,13 +11,17 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../dynamic-form-sidebar';
-import { createAssetAdjustmentOperationSection } from './assetValueFormFields';
+import {
+  createAssetAdjustmentFooterActions,
+  createAssetAdjustmentOperationSection,
+} from './assetValueFormFields';
 
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
   INCREASE_REASON_OPTIONS,
   DECREASE_REASON_OPTIONS,
 } from '../../../constants/assetDropdown';
+
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -69,9 +73,10 @@ export interface CommonAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<CommonOperationValues>;
   saving: boolean;
+  saveAction?: string;
   drawerClassName?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: 'PENDING_APPROVAL' | 'APPROVED') => Promise<void> | void;
 }
 
 export function CommonAssetOperationForm({
@@ -81,6 +86,7 @@ export function CommonAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   drawerClassName = 'berth-drawer-scope',
   onClose,
   onSubmit,
@@ -264,24 +270,14 @@ export function CommonAssetOperationForm({
   }, [operationMode, sections]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'default',
-        onClick: onClose,
-      },
-      {
-        key: 'save',
-        label: 'Lưu thông tin',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => {
-          void onSubmit();
-        },
-      },
-    ];
-  }, [onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onSubmit,
+      onClose,
+    });
+  }, [operationMode, saving, saveAction, onSubmit, onClose]);
 
   if (!open || !operationMode || !selected) {
     return null;

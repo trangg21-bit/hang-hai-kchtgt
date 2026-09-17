@@ -12,6 +12,7 @@ export interface AssetPermissions {
   canDecrease: boolean;
   canApproveC1: boolean;
   canApproveC2: boolean;
+  canReject: boolean;
   userPermissions: string[];
 }
 
@@ -137,6 +138,18 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
       )
     );
 
+    const canReject = Boolean(
+      canManage ||
+      canApproveC1 ||
+      canApproveC2 ||
+      checkAny((res) =>
+        Boolean(
+          hasExplicitPerm?.(`${res}:reject`) ||
+          hasExplicitPerm?.(`${res}asset:reject`)
+        )
+      )
+    );
+
     return {
       canCreate,
       canRead,
@@ -148,6 +161,7 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
       canDecrease,
       canApproveC1,
       canApproveC2,
+      canReject,
       userPermissions: userPermissions || [],
     };
   }, [resourceKey, hasPerm, userPermissions]);

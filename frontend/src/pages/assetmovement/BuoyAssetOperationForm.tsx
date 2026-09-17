@@ -12,6 +12,9 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -55,8 +58,9 @@ export interface BuoyAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
 }
 
 export function BuoyAssetOperationForm({
@@ -66,6 +70,7 @@ export function BuoyAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: BuoyAssetOperationFormProps) {
@@ -119,6 +124,7 @@ export function BuoyAssetOperationForm({
             label: 'Số lượng',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 5,
             placeholder: '0',
             required: true,
             rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -133,6 +139,7 @@ export function BuoyAssetOperationForm({
             label: 'Tổng số tiền thu được (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
             required: true,
             rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
@@ -142,6 +149,7 @@ export function BuoyAssetOperationForm({
             label: 'Chi phí có liên quan (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
           },
           {
@@ -149,6 +157,7 @@ export function BuoyAssetOperationForm({
             label: 'Nộp NSNN (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
           },
           {
@@ -156,6 +165,7 @@ export function BuoyAssetOperationForm({
             label: 'Số tiền được thực hiện dự án (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
           },
           {
@@ -273,6 +283,7 @@ export function BuoyAssetOperationForm({
           name: 'originalValue',
           label: isIncrease ? 'Giá trị tăng thêm (VNĐ)' : 'Giá trị giảm bớt (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
           min: 0,
           required: true,
           placeholder: '0',
@@ -282,6 +293,7 @@ export function BuoyAssetOperationForm({
           name: 'depreciationRate',
           label: 'Tỷ lệ hao mòn/Khấu hao (%)',
           type: FormFieldType.Number,
+          maxLength: 5,
           min: 0,
           max: 100,
           placeholder: '0',
@@ -319,6 +331,7 @@ export function BuoyAssetOperationForm({
           name: 'depreciationMonths',
           label: 'Số tháng tính khấu hao',
           type: FormFieldType.Number,
+          maxLength: 5,
           min: 0,
           placeholder: '0',
         },
@@ -331,6 +344,7 @@ export function BuoyAssetOperationForm({
           name: 'accumulatedDepreciation',
           label: 'Khấu hao lũy kế (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
           min: 0,
           required: true,
           rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
@@ -369,22 +383,15 @@ export function BuoyAssetOperationForm({
   }, [operationMode, selected, organizations]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label: 'Lưu thay đổi',
-        variant: 'primary',
-        loading: saving,
-        onClick: onSubmit,
-      },
-    ];
-  }, [saving, onClose, onSubmit]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu thay đổi',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar

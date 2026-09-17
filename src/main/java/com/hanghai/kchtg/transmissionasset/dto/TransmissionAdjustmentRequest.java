@@ -1,11 +1,13 @@
 package com.hanghai.kchtg.transmissionasset.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TransmissionAdjustmentRequest {
     private String adjustmentType; // TANG, GIAM
     private String decisionNumber;
@@ -15,8 +17,10 @@ public class TransmissionAdjustmentRequest {
     private String notes;
     private BigDecimal originalValueBefore;
     private BigDecimal originalValueAfter;
+    private BigDecimal originalValue;
     private BigDecimal remainingValueBefore;
     private BigDecimal remainingValueAfter;
+    private BigDecimal remainingValue;
     private LocalDate declarationDate;
     private BigDecimal depreciationRate;
     private String assignmentDecisionNumber;
@@ -26,4 +30,6 @@ public class TransmissionAdjustmentRequest {
     private BigDecimal accumulatedDepreciation;
     private BigDecimal monthlyDepreciation;
     private String disposalMethod;
+    private String status;
+    private String targetAction;
 }

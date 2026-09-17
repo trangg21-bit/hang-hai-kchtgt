@@ -145,6 +145,8 @@ export interface TransmissionAssetAdjustment extends Record<string, unknown> {
   departmentApprovedByName?: string;
   departmentApprovedAt?: string;
   departmentApprovalContent?: string;
+  originalValue?: number;
+  targetAction?: string;
   status: string;
   createdAt?: string;
   updatedAt?: string;

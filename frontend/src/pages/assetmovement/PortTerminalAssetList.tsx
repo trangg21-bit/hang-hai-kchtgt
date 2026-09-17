@@ -1,114 +1,114 @@
 import {
-    CheckOutlined,
-    CloseOutlined,
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
-    SearchOutlined,
-    SendOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
 import { Button, DatePicker, Form, Input, Space } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
+import toast from "../../components/ToastNotification";
 import { useAssetPermissions } from "../../hooks/useAssetPermissions";
-import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from "../../utils/approvalEditPolicy";
+import { isAssetRecordEditable } from "../../utils/approvalEditPolicy";
 import { countStandardHistoryCards, renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, type RawHistoryRecord } from "../../utils/changeHistoryRenderer";
 import { formatHistoryNumber } from "../../utils/numFmt";
-import { ASSET_CONDITION_OPTIONS } from "../../constants/assetDropdown";
-import toast from "../../components/ToastNotification";
 import { KchtApprovalModals } from "../../components/kcht/KchtApprovalModals";
 import {
-    CommonStatusTabs,
-    CommonTable,
-    FilterTableLayout,
-    ScreenHeader,
-    TableColumnType,
-    TableFilter,
-    type FilterOption,
-    type ScreenHeaderAction,
-    type TableOption,
+  CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
+  TableColumnType,
+  TableFilter,
+  type FilterOption,
+  type ScreenHeaderAction,
+  type TableOption,
 } from "../../components/list-view";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import { triggerBlobDownload } from "../../components/shared/infrastructureAttachmentUtils";
+import { ASSET_CONDITION_OPTIONS } from "../../constants/assetDropdown";
 import {
-    ThemeTokenProvider,
-    type ThemeToken,
+  ThemeTokenProvider,
+  type ThemeToken,
 } from "../../context/ThemeTokenContext";
 import api from "../../services/api";
 import {
-    approveInfraAssetC1,
-    approveInfraAssetC2,
-    createAssetDecrease,
-    createAssetIncrease,
-    createInfrastructureAsset,
-    createKhaiThac,
-    deleteInfraAssetAttachment,
-    deleteInfrastructureAsset,
-    fetchAssetDecreaseList,
-    fetchAssetIncreaseList,
-    fetchInfraAssetAttachments,
-    fetchInfraAssetHistory,
-    fetchInfrastructureAssets,
-    fetchKhaiThacList,
-    rejectInfraAssetC1,
-    rejectInfraAssetC2,
-    submitInfraAssetApproval,
-    updateInfrastructureAsset,
-    uploadInfraAssetAttachments,
+  approveInfraAssetC1,
+  approveInfraAssetC2,
+  createAssetDecrease,
+  createAssetIncrease,
+  createInfrastructureAsset,
+  createKhaiThac,
+  deleteInfraAssetAttachment,
+  deleteInfrastructureAsset,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchInfraAssetAttachments,
+  fetchInfraAssetHistory,
+  fetchInfrastructureAssets,
+  fetchKhaiThacList,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
+  updateInfrastructureAsset,
+  uploadInfraAssetAttachments,
 } from "../../services/assetmovement/api";
 import type {
-    AssetDecreaseResponse,
-    AssetExploitationResponse,
-    AssetIncreaseResponse,
-    AssetValueAdjustmentDetails,
-    PortTerminalAsset,
-    PortTerminalAssetFilters,
-    PortTerminalAssetPayload,
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+  PortTerminalAsset,
+  PortTerminalAssetFilters,
+  PortTerminalAssetPayload,
 } from "../../services/assetmovement/types";
 import { beaconStationCRUD } from "../../services/beaconService";
 import { dikeRevetmentCRUD } from "../../services/dikeRevetmentService";
 import {
-    organizationService,
-    type Organization,
+  organizationService,
+  type Organization,
 } from "../../services/organizationService";
 import { anchorageCRUD, berthCRUD } from "../../services/portService";
 import { useAuthStore } from "../../store/authStore";
 import * as themeTokenChk from "../../themetokenchk";
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from "../../themetokenchk";
 
 import PortTerminalAssetDetailContent from "./PortTerminalAssetDetailContent";
 import PortTerminalAssetForm, {
-    type FormValues,
+  type FormValues,
 } from "./PortTerminalAssetForm";
 import PortTerminalAssetOperationForm, {
-    type OperationMode,
-    type OperationValues,
+  type OperationMode,
+  type OperationValues,
 } from "./PortTerminalAssetOperationForm";
 import {
-    PORT_TERMINAL_ASSET_SCREEN,
-    type InfrastructureAssetScreenConfig,
-    type InfrastructureReferenceOption,
+  PORT_TERMINAL_ASSET_SCREEN,
+  type InfrastructureAssetScreenConfig,
+  type InfrastructureReferenceOption,
 } from "./infrastructureAssetScreen";
 
 const STATUS_COUNT_KEYS = [
@@ -888,7 +888,7 @@ function PortTerminalAssetList({
           depreciation: values.relatedCosts || 0,
           description: values.notes || "",
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline:

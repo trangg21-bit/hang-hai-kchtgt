@@ -434,10 +434,13 @@ export default function DaiTtdhAssetList() {
     [operationForm]
   );
 
-  const saveOperation = useCallback(async () => {
+  const saveOperation = useCallback(async (targetAction?: any) => {
     if (!selected || !operationMode) return;
     try {
       setSaving(true);
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       if (operationMode === 'exploit') {
         await createDaiTtdhExploitation(selected.id, {
@@ -936,6 +939,7 @@ export default function DaiTtdhAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

@@ -337,14 +337,14 @@ describe('Module 5: Tài sản cầu cảng (docs/checklists/CHECKLIST-TAI-SAN-C
     // Kiểm tra hiển thị thông tin Khai thác
     expect(html).toContain('Hợp đồng cho thuê cầu cảng làm hàng');
     expect(html).toContain('31/12/2026');
-    expect(html).toContain('1,500,000,000 VNĐ');
-    expect(html).toContain('150,000,000 VNĐ');
-    expect(html).toContain('300,000,000 VNĐ');
+    expect(html).toContain('1.500.000.000 VNĐ');
+    expect(html).toContain('150.000.000 VNĐ');
+    expect(html).toContain('300.000.000 VNĐ');
 
     // Kiểm tra hiển thị thông tin Thay đổi nguyên giá
     expect(html).toContain('170/QĐ-TANG-CC');
     expect(html).toContain('01/09/2026');
-    expect(html).toContain('+12,000,000,000 VNĐ');
+    expect(html).toContain('+12.000.000.000 VNĐ');
     expect(html).toContain('Đầu tư bổ sung');
   });
 

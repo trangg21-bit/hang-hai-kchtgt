@@ -1,27 +1,28 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { VtsSystemAsset } from '../../services/vtsasset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useMemo } from 'react';
 import {
-  DynamicFormSidebar,
-  FormFieldType,
-  type FormTabConfig,
-  type FormSidebarAction,
-} from '../../components/shared/dynamic-form-sidebar';
-import {
+  createAssetAdjustmentFooterActions,
   createAssetAdjustmentOperationSection,
   handleAssetAdjustmentValuesChange,
 } from '../../components/shared/asset-value';
+import type { FormSectionConfig } from '../../components/shared/dynamic-form-sidebar';
+import {
+  DynamicFormSidebar,
+  FormFieldType,
+  type FormSidebarAction,
+  type FormTabConfig,
+} from '../../components/shared/dynamic-form-sidebar';
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
   DECREASE_REASON_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
-import type { FormSectionConfig } from '../../components/shared/dynamic-form-sidebar';
+import type { Organization } from '../../services/organizationService';
+import type { VtsSystemAsset } from '../../services/vtsasset/types';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -61,8 +62,9 @@ export interface VtsSystemAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
 }
 
 export default function VtsSystemAssetOperationForm({
@@ -72,6 +74,7 @@ export default function VtsSystemAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: VtsSystemAssetOperationFormProps) {
@@ -126,6 +129,7 @@ export default function VtsSystemAssetOperationForm({
               label: 'Số lượng',
               type: FormFieldType.Number,
               min: 1,
+              maxLength: 5,
               required: true,
               rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
               formatter: fmtInputNumber,
@@ -144,6 +148,7 @@ export default function VtsSystemAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               required: true,
               rules: [{ required: true, message: 'Vui lòng nhập tổng số tiền thu được' }],
               formatter: fmtInputNumber,
@@ -154,6 +159,7 @@ export default function VtsSystemAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -162,6 +168,7 @@ export default function VtsSystemAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -170,6 +177,7 @@ export default function VtsSystemAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               colSpan: 24,
@@ -259,22 +267,15 @@ export default function VtsSystemAssetOperationForm({
   }, [sections]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'save',
-        label: 'Xác nhận lưu',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Xác nhận lưu',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar

@@ -28,14 +28,9 @@ import {
   spaceFormField,
 } from "../../../themetokenchk";
 import { formatDotNumber, parseDotNumber } from "../../../utils/numFmt";
-import { NumberInputWithCount } from "../NumberInputWithCount";
 import { resolveOrgSubtreeIds } from "../../org-unit";
-import { DynamicOrgUnitTreeSelect } from "./DynamicOrgUnitTreeSelect";
-import {
-  useDynamicFormOrgSync,
-  resolveEffectiveTabs,
-} from "./useDynamicFormOrgSync";
 import { AppDrawer } from "../AppDrawer";
+import { NumberInputWithCount } from "../NumberInputWithCount";
 import {
   type DynamicCascadingHelper,
   type DynamicFormSidebarProps,
@@ -45,6 +40,11 @@ import {
   type FormTabConfig,
   FormFieldType,
 } from "./dynamic-form-sidebar.model";
+import { DynamicOrgUnitTreeSelect } from "./DynamicOrgUnitTreeSelect";
+import {
+  resolveEffectiveTabs,
+  useDynamicFormOrgSync,
+} from "./useDynamicFormOrgSync";
 
 const sectionBoxStyle: React.CSSProperties = {
   background: "#ffffff",
@@ -131,22 +131,17 @@ function renderFormField<T extends Record<string, unknown>>(
       const numberPlaceholder =
         field.placeholder ?? (labelText ? `Nhập ${labelText}` : '0');
       // Có maxLength => dùng ô số kèm hậu tố đếm chữ số; không có => giữ InputNumber mặc định.
-      // NumberInputWithCount không hỗ trợ `parser` (nó tự xử lý chuỗi số bằng stringMode),
-      // nên field Number vừa có maxLength vừa có parser là cấu hình xung đột -> báo lỗi rõ ràng
-      // thay vì âm thầm nuốt parser rồi đổi kiểu giá trị.
-      if (field.maxLength != null && field.parser) {
-        throw new Error(
-          `FormFieldConfig "${String(field.name)}": không thể dùng đồng thời "maxLength" và "parser" cho kiểu number. ` +
-            'NumberInputWithCount tự chuẩn hoá chuỗi số; hãy bỏ "parser" hoặc bỏ "maxLength".'
-        );
-      }
+      const resolvedFormatter = field.formatter || formatDotNumber;
+      const resolvedParser = (field.parser || parseDotNumber) as (displayValue: string | undefined) => string | number;
+
       controlNode =
         field.maxLength != null ? (
           <NumberInputWithCount
             maxLength={field.maxLength}
             min={field.min}
             max={field.max}
-            formatter={field.formatter || formatDotNumber}
+            formatter={resolvedFormatter}
+            parser={resolvedParser}
             placeholder={numberPlaceholder}
             disabled={field.disabled}
             readOnly={field.readOnly}
@@ -156,8 +151,8 @@ function renderFormField<T extends Record<string, unknown>>(
           <InputNumber
             min={field.min}
             max={field.max}
-            formatter={field.formatter || formatDotNumber}
-            parser={(field.parser || parseDotNumber) as (displayValue: string | undefined) => string | number}
+            formatter={resolvedFormatter}
+            parser={resolvedParser}
             placeholder={numberPlaceholder}
             disabled={field.disabled}
             readOnly={field.readOnly}
@@ -522,7 +517,7 @@ export function DynamicFormSidebar<
       <Tabs
         defaultActiveKey={effectiveTabs[0]?.key}
         tabBarStyle={drawerTabBarStyle}
-        destroyInactiveTabPane={false}
+        destroyOnHidden={false}
         items={effectiveTabs.map((tab: FormTabConfig<T>) => ({
           key: tab.key,
           forceRender: true,

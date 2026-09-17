@@ -1,17 +1,18 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { LritAsset } from '../../services/assetmovement/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useMemo } from 'react';
+import { createAssetAdjustmentFooterActions } from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
+import type { LritAsset } from '../../services/assetmovement/types';
+import type { Organization } from '../../services/organizationService';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -43,9 +44,9 @@ export interface OperationValues {
 
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DECREASE_REASON_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
 
 export interface LritAssetOperationFormProps {
@@ -55,9 +56,10 @@ export interface LritAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   drawerClassName?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: 'PENDING_APPROVAL' | 'APPROVED') => Promise<void> | void;
 }
 
 export function LritAssetOperationForm({
@@ -67,6 +69,7 @@ export function LritAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   drawerClassName = 'berth-drawer-scope',
   onClose,
   onSubmit,
@@ -122,6 +125,7 @@ export function LritAssetOperationForm({
               type: FormFieldType.Number,
               required: true,
               min: 0,
+              maxLength: 5,
               formatter: fmtInputNumber,
               placeholder: '0',
               rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -140,6 +144,7 @@ export function LritAssetOperationForm({
               type: FormFieldType.Number,
               required: true,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
@@ -149,6 +154,7 @@ export function LritAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -157,6 +163,7 @@ export function LritAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -165,6 +172,7 @@ export function LritAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               colSpan: 24,
@@ -242,6 +250,7 @@ export function LritAssetOperationForm({
             name: 'originalValue',
             label: 'Nguyên giá sau điều chỉnh (VNĐ)',
             type: FormFieldType.Number,
+            maxLength: 20,
             required: true,
             min: 0,
             formatter: fmtInputNumber,
@@ -277,6 +286,7 @@ export function LritAssetOperationForm({
             name: 'depreciationRate',
             label: 'Tỷ lệ hao mòn/Khấu hao (%)',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             max: 100,
             placeholder: '0',
@@ -297,6 +307,7 @@ export function LritAssetOperationForm({
             name: 'depreciationMonths',
             label: 'Số tháng tính khấu hao',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             placeholder: '0',
           },
@@ -310,6 +321,7 @@ export function LritAssetOperationForm({
             name: 'accumulatedDepreciation',
             label: 'Khấu hao lũy kế',
             type: FormFieldType.Number,
+            maxLength: 20,
             required: true,
             min: 0,
             formatter: fmtInputNumber,
@@ -366,21 +378,15 @@ export function LritAssetOperationForm({
     ];
   }, [sections, operationMode]);
 
-  const footerActions = useMemo<FormSidebarAction[]>(() => [
-    {
-      key: 'cancel',
-      label: 'Hủy',
-      variant: 'outline',
-      onClick: onClose,
-    },
-    {
-      key: 'submit',
-      label: 'Lưu thông tin',
-      variant: 'primary',
-      loading: saving,
-      onClick: onSubmit,
-    },
-  ], [onClose, onSubmit, saving]);
+  const footerActions = useMemo<FormSidebarAction[]>(() => {
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onSubmit,
+      onClose,
+    });
+  }, [operationMode, saving, saveAction, onSubmit, onClose]);
 
   if (!operationMode || !selected) return null;
 

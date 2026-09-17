@@ -31,10 +31,10 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
-import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
 import {
   createInmarsatAdjustment,
@@ -412,7 +412,7 @@ export default function InmarsatAssetList() {
       operationForm.resetFields();
       if (mode === 'exploit') {
         operationForm.setFieldsValue({
-          assetCategory: [record.assetCode, record.assetName].filter(Boolean).join(' - '),  
+          assetCategory: [record.assetCode, record.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: record.quantityUnit || 'Bộ',
           quantity: record.quantity || 1,
           totalRevenue: 0,
@@ -437,10 +437,13 @@ export default function InmarsatAssetList() {
     [operationForm]
   );
 
-  const saveOperation = useCallback(async () => {
+  const saveOperation = useCallback(async (targetAction?: any) => {
     if (!selected || !operationMode) return;
     try {
       setSaving(true);
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       if (operationMode === 'exploit') {
         await createInmarsatExploitation(selected.id, {
@@ -939,6 +942,7 @@ export default function InmarsatAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

@@ -1,38 +1,38 @@
-import { useMemo } from 'react';
-import type { FormInstance } from 'antd';
-import type { Dayjs } from 'dayjs';
 import {
   BankOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type {
-  StationAsset,
-  StationAssetPayload,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
-} from '../../services/assetmovement/types';
-import type { StationTypeConfig } from './stationConfigs';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
-import { fmtInputNumber } from '../../utils/numFmt';
+import type { FormInstance } from 'antd';
+import type { Dayjs } from 'dayjs';
+import { useMemo } from 'react';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import {
   DynamicFormSidebar,
   FormFieldType,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
 import {
   ASSET_CONDITION_OPTIONS,
-  USAGE_STATUS_OPTIONS,
   ASSET_GROUP_OPTIONS,
   ASSET_ORIGIN_OPTIONS,
   ASSET_QUANTITY_UNIT_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
 } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  StationAsset,
+  StationAssetPayload,
+} from '../../services/assetmovement/types';
+import type { Organization } from '../../services/organizationService';
+import { fmtInputNumber } from '../../utils/numFmt';
+import type { StationTypeConfig } from './stationConfigs';
 
 export type StationFormValues = Omit<
   StationAssetPayload,
@@ -237,6 +237,7 @@ export default function StationAssetForm({
                 type: FormFieldType.Number,
                 required: true,
                 min: 0,
+                maxLength: 5,
                 formatter: fmtInputNumber,
                 placeholder: '0',
                 colSpan: 6,
@@ -297,6 +298,7 @@ export default function StationAssetForm({
                 label: 'Diện tích đất, sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -304,6 +306,7 @@ export default function StationAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -363,6 +366,7 @@ export default function StationAssetForm({
                 label: 'Nguyên giá (VNĐ)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -371,6 +375,7 @@ export default function StationAssetForm({
                 type: FormFieldType.Number,
                 min: 0,
                 max: 100,
+                maxLength: 5,
                 placeholder: '0',
               },
               {
@@ -413,6 +418,7 @@ export default function StationAssetForm({
                 label: 'Số tháng tính khấu hao',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 placeholder: '0',
               },
               {
@@ -426,6 +432,7 @@ export default function StationAssetForm({
                 label: 'Khấu hao lũy kế',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {

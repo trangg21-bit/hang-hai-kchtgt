@@ -1,12 +1,12 @@
 import {
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
 } from '@ant-design/icons';
 import { Form } from 'antd';
 import type { Dayjs } from 'dayjs';

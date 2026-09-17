@@ -14,13 +14,13 @@ import {
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from "../../components/shared/InfrastructureAttachmentTab";
+import { MARITIME_ASSET_TYPE_OPTIONS } from "../../constants/assetType";
 import type {
   PortTerminalAsset,
   PortTerminalAssetPayload,
 } from "../../services/assetmovement/types";
 import type { Organization } from "../../services/organizationService";
 import { fmtInputNumber } from "../../utils/numFmt";
-import { MARITIME_ASSET_TYPE_OPTIONS } from "../../constants/assetType";
 import {
   PORT_TERMINAL_ASSET_SCREEN,
   type InfrastructureAssetScreenConfig,
@@ -168,7 +168,7 @@ export default function PortTerminalAssetForm({
                 label: "Mã tài sản",
                 type: FormFieldType.Text,
                 disabled: true,
-                placeholder: "Hệ thống tự sinh",
+                placeholder: "Hệ thống tự sinh (TSKCHT_BC-000011)",
               },
               {
                 name: "assetName",
@@ -236,6 +236,7 @@ export default function PortTerminalAssetForm({
                 label: "Số lượng",
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 required: true,
                 formatter: fmtInputNumber,
                 placeholder: "0",
@@ -298,6 +299,7 @@ export default function PortTerminalAssetForm({
                 label: "Diện tích đất, sàn sử dụng (m²)",
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: "0",
               },
               {
@@ -305,6 +307,7 @@ export default function PortTerminalAssetForm({
                 label: "Diện tích sàn sử dụng (m²)",
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: "0",
               },
               {
@@ -364,6 +367,7 @@ export default function PortTerminalAssetForm({
                 label: "Nguyên giá (VNĐ)",
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: "0",
               },
               {
@@ -372,6 +376,7 @@ export default function PortTerminalAssetForm({
                 type: FormFieldType.Number,
                 min: 0,
                 max: 100,
+                maxLength: 5,
                 placeholder: "0",
               },
               {
@@ -414,6 +419,7 @@ export default function PortTerminalAssetForm({
                 label: "Số tháng tính khấu hao",
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 placeholder: "0",
               },
               {
@@ -428,6 +434,7 @@ export default function PortTerminalAssetForm({
                 type: FormFieldType.Number,
                 required: true,
                 min: 0,
+                maxLength: 20,
                 placeholder: "0",
                 rules: [{ required: true, message: "Khấu hao lũy kế là bắt buộc" }],
               },

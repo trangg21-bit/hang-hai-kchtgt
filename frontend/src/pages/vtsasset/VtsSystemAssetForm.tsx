@@ -1,22 +1,22 @@
-import { useMemo, useCallback } from 'react';
+import { BankOutlined, ProfileOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { BankOutlined, SlidersOutlined, ProfileOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { VtsSystemAsset, VtsSystemAssetPayload } from '../../services/vtsasset/types';
-import type { VtsSystemOption } from '../../services/vtsasset/api';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useCallback, useMemo } from 'react';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import {
   DynamicFormSidebar,
   FormFieldType,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type { Organization } from '../../services/organizationService';
+import type { VtsSystemOption } from '../../services/vtsasset/api';
+import type { VtsSystemAsset, VtsSystemAssetPayload } from '../../services/vtsasset/types';
 import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type FormValues = Omit<
   VtsSystemAssetPayload,
@@ -238,6 +238,7 @@ export default function VtsSystemAssetForm({
                 label: 'Số lượng',
                 type: FormFieldType.Number,
                 min: 1,
+                maxLength: 5,
                 required: true,
                 rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
                 formatter: fmtInputNumber,
@@ -300,6 +301,7 @@ export default function VtsSystemAssetForm({
                 label: 'Diện tích (đất, sàn sử dụng: m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -307,6 +309,7 @@ export default function VtsSystemAssetForm({
                 label: 'Diện tích (sàn sử dụng: m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
             ],
@@ -349,6 +352,7 @@ export default function VtsSystemAssetForm({
                 label: 'Nguyên giá (VNĐ)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -357,6 +361,7 @@ export default function VtsSystemAssetForm({
                 type: FormFieldType.Number,
                 min: 0,
                 max: 100,
+                maxLength: 5,
                 placeholder: '0',
               },
               {
@@ -396,6 +401,7 @@ export default function VtsSystemAssetForm({
                 label: 'Số tháng tính khấu hao',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 placeholder: 'Nhập số tháng',
               },
               {
@@ -409,6 +415,7 @@ export default function VtsSystemAssetForm({
                 label: 'Khấu hao lũy kế (VNĐ)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {

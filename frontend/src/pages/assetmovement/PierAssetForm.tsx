@@ -1,26 +1,26 @@
-import { useMemo } from 'react';
-import type { FormInstance } from 'antd';
-import type { Dayjs } from 'dayjs';
 import {
   BankOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { Pier } from '../../types/port';
+import type { FormInstance } from 'antd';
+import type { Dayjs } from 'dayjs';
+import { useMemo } from 'react';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type {
   PierAsset,
   PierAssetPayload,
 } from '../../services/assetmovement/types';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
+import type { Organization } from '../../services/organizationService';
+import type { Pier } from '../../types/port';
 
 import {
   DynamicFormSidebar,
   FormFieldType,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
 
 export type FormValues = Omit<
@@ -231,6 +231,7 @@ export default function PierAssetForm({
                 label: 'Số lượng',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 required: true,
                 rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
                 placeholder: 'Nhập số lượng',
@@ -289,6 +290,7 @@ export default function PierAssetForm({
                 label: 'Diện tích (đất, sàn sử dụng: m2)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích đất',
               },
               {
@@ -296,6 +298,7 @@ export default function PierAssetForm({
                 label: 'Diện tích (sàn sử dụng: m2)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích sàn',
               },
               {
@@ -345,6 +348,7 @@ export default function PierAssetForm({
                 label: 'Nguyên giá (nguồn ngân sách, nguồn khác)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: 'Nhập nguyên giá',
               },
               {
@@ -353,6 +357,7 @@ export default function PierAssetForm({
                 type: FormFieldType.Number,
                 min: 0,
                 max: 100,
+                maxLength: 5,
                 placeholder: 'Nhập tỷ lệ (%)',
               },
               {
@@ -360,6 +365,7 @@ export default function PierAssetForm({
                 label: 'Giá trị còn lại',
                 type: FormFieldType.Number,
                 disabled: true,
+                maxLength: 20,
                 placeholder: 'Hệ thống tự tính',
               },
               {
@@ -388,6 +394,7 @@ export default function PierAssetForm({
                 label: 'Số tháng tính khấu hao',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 placeholder: 'Nhập số tháng',
               },
               {
@@ -401,12 +408,14 @@ export default function PierAssetForm({
                 label: 'Khấu hao lũy kế',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: 'Nhập khấu hao lũy kế',
               },
               {
                 name: 'monthlyDepreciation',
                 label: 'Khấu hao tháng',
                 type: FormFieldType.Number,
+                maxLength: 20,
                 placeholder: 'Nhập khấu hao tháng',
               },
               {

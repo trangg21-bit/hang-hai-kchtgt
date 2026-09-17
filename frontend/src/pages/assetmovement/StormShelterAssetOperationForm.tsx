@@ -1,17 +1,20 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { StormShelterAsset } from '../../services/assetmovement/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
+import type { StormShelterAsset } from '../../services/assetmovement/types';
+import type { Organization } from '../../services/organizationService';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -44,8 +47,8 @@ export interface OperationValues {
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
   DECREASE_REASON_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
 
 export interface StormShelterAssetOperationFormProps {
@@ -55,8 +58,9 @@ export interface StormShelterAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (targetAction?: any) => void | Promise<void>;
 }
 
 export function StormShelterAssetOperationForm({
@@ -66,6 +70,7 @@ export function StormShelterAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: StormShelterAssetOperationFormProps) {
@@ -123,6 +128,7 @@ export function StormShelterAssetOperationForm({
             label: 'Số lượng',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 5,
             required: true,
             formatter: fmtInputNumber,
             placeholder: '0',
@@ -142,6 +148,7 @@ export function StormShelterAssetOperationForm({
             label: 'Tổng số tiền thu được (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             required: true,
             formatter: fmtInputNumber,
             placeholder: '0',
@@ -152,6 +159,7 @@ export function StormShelterAssetOperationForm({
             label: 'Chi phí có liên quan (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             formatter: fmtInputNumber,
             placeholder: '0',
           },
@@ -160,6 +168,7 @@ export function StormShelterAssetOperationForm({
             label: 'Nộp NSNN (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             formatter: fmtInputNumber,
             placeholder: '0',
           },
@@ -168,6 +177,7 @@ export function StormShelterAssetOperationForm({
             label: 'Số tiền được thực hiện dự án (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             formatter: fmtInputNumber,
             placeholder: '0',
           },
@@ -257,6 +267,7 @@ export function StormShelterAssetOperationForm({
           name: 'originalValue',
           label: `Số tiền ${labelPrefix} nguyên giá (VNĐ)`,
           type: FormFieldType.Number,
+          maxLength: 20,
           min: 0,
           required: true,
           formatter: fmtInputNumber,
@@ -267,6 +278,7 @@ export function StormShelterAssetOperationForm({
           name: 'accumulatedDepreciation',
           label: 'Khấu hao lũy kế (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
           min: 0,
           required: true,
           formatter: fmtInputNumber,
@@ -321,27 +333,20 @@ export function StormShelterAssetOperationForm({
     ];
   }, [operationMode, organizations, selected, currentOriginal, currentRemaining]);
 
-  const actions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'default',
-        onClick: onClose,
+  const footerActions = useMemo<FormSidebarAction[]>(() => {
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit: (targetAction) => {
+        form.validateFields().then(() => {
+          onSubmit(targetAction);
+        });
       },
-      {
-        key: 'submit',
-        label: 'Lưu thay đổi',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => {
-          form.validateFields().then(() => {
-            onSubmit();
-          });
-        },
-      },
-    ];
-  }, [saving, onClose, onSubmit, form]);
+      exploitSubmitLabel: 'Lưu thay đổi',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit, form]);
 
   return (
     <DynamicFormSidebar<OperationValues>
@@ -349,8 +354,7 @@ export function StormShelterAssetOperationForm({
       title={operationTitle}
       form={form}
       tabs={operationTabs}
-      footerActions={actions}
-      actions={actions}
+      footerActions={footerActions}
       onClose={onClose}
     />
   );

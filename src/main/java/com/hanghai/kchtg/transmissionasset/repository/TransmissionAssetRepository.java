@@ -11,4 +11,7 @@ import java.util.UUID;
 @Repository
 public interface TransmissionAssetRepository extends JpaRepository<TransmissionAsset, UUID>, JpaSpecificationExecutor<TransmissionAsset> {
     Optional<TransmissionAsset> findByAssetCode(String assetCode);
+
+    @org.springframework.data.jpa.repository.Query("SELECT a.assetCode FROM TransmissionAsset a WHERE a.assetCode LIKE CONCAT(:prefix, '%')")
+    java.util.List<String> findAssetCodesStartingWith(@org.springframework.data.repository.query.Param("prefix") String prefix);
 }

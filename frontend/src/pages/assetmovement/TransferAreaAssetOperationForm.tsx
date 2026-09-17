@@ -1,17 +1,20 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { TransferAreaAsset } from '../../services/assetmovement/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
+import type { TransferAreaAsset } from '../../services/assetmovement/types';
+import type { Organization } from '../../services/organizationService';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -44,8 +47,8 @@ export interface OperationValues {
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
   DECREASE_REASON_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
 
 export interface TransferAreaAssetOperationFormProps {
@@ -55,8 +58,9 @@ export interface TransferAreaAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (targetAction?: any) => void | Promise<void>;
 }
 
 export function TransferAreaAssetOperationForm({
@@ -66,6 +70,7 @@ export function TransferAreaAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: TransferAreaAssetOperationFormProps) {
@@ -109,6 +114,7 @@ export function TransferAreaAssetOperationForm({
               label: 'Số lượng',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 5,
               required: true,
               formatter: fmtInputNumber,
               placeholder: '0',
@@ -127,6 +133,7 @@ export function TransferAreaAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               required: true,
               formatter: fmtInputNumber,
               placeholder: '0',
@@ -137,6 +144,7 @@ export function TransferAreaAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -145,6 +153,7 @@ export function TransferAreaAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -153,6 +162,7 @@ export function TransferAreaAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               colSpan: 24,
@@ -231,6 +241,7 @@ export function TransferAreaAssetOperationForm({
             name: 'originalValue',
             label: `Nguyên giá sau khi ${actionLabel} (VNĐ)`,
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             formatter: fmtInputNumber,
@@ -247,6 +258,7 @@ export function TransferAreaAssetOperationForm({
             name: 'depreciationRate',
             label: 'Tỷ lệ hao mòn/Khấu hao (%)',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             max: 100,
             formatter: fmtInputNumber,
@@ -268,6 +280,7 @@ export function TransferAreaAssetOperationForm({
             name: 'depreciationMonths',
             label: 'Số tháng tính khấu hao',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             placeholder: '0',
           },
@@ -281,6 +294,7 @@ export function TransferAreaAssetOperationForm({
             name: 'accumulatedDepreciation',
             label: 'Khấu hao lũy kế (VNĐ)',
             type: FormFieldType.Number,
+            maxLength: 20,
             required: true,
             min: 0,
             formatter: fmtInputNumber,
@@ -343,22 +357,15 @@ export function TransferAreaAssetOperationForm({
   }, [operationMode, sections]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label: 'Lưu nghiệp vụ',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [onClose, saving, onSubmit]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu nghiệp vụ',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   const title =
     operationMode === 'exploit'

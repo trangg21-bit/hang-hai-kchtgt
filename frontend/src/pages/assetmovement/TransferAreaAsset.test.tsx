@@ -336,14 +336,14 @@ describe('Module 2: Tài sản khu chuyển tải (docs/checklists/CHECKLIST-TAI
     // Kiểm tra hiển thị thông tin Khai thác
     expect(html).toContain('Hợp đồng khai thác vùng nước chuyển tải');
     expect(html).toContain('31/12/2026');
-    expect(html).toContain('950,000,000 VNĐ');
-    expect(html).toContain('95,000,000 VNĐ');
-    expect(html).toContain('200,000,000 VNĐ');
+    expect(html).toContain('950.000.000 VNĐ');
+    expect(html).toContain('95.000.000 VNĐ');
+    expect(html).toContain('200.000.000 VNĐ');
 
     // Kiểm tra hiển thị thông tin Thay đổi nguyên giá
     expect(html).toContain('150/QĐ-TANG-KCT');
     expect(html).toContain('01/09/2026');
-    expect(html).toContain('+7,000,000,000 VNĐ');
+    expect(html).toContain('+7.000.000.000 VNĐ');
     expect(html).toContain('Đầu tư bổ sung');
   });
 

@@ -1,28 +1,28 @@
-import { useMemo } from 'react';
-import type { FormInstance } from 'antd';
-import type { Dayjs } from 'dayjs';
 import {
+  AppstoreOutlined,
   BankOutlined,
   SlidersOutlined,
-  AppstoreOutlined,
 } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { TransferArea } from '../../types/port';
-import type {
-  TransferAreaAsset,
-  TransferAreaAssetPayload,
-} from '../../services/assetmovement/types';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
-import { fmtInputNumber } from '../../utils/numFmt';
+import type { FormInstance } from 'antd';
+import type { Dayjs } from 'dayjs';
+import { useMemo } from 'react';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import {
   DynamicFormSidebar,
   FormFieldType,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type {
+  TransferAreaAsset,
+  TransferAreaAssetPayload,
+} from '../../services/assetmovement/types';
+import type { Organization } from '../../services/organizationService';
+import type { TransferArea } from '../../types/port';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type FormValues = Omit<
   TransferAreaAssetPayload,
@@ -230,6 +230,7 @@ export default function TransferAreaAssetForm({
                 label: 'Số lượng',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 required: true,
                 formatter: fmtInputNumber,
                 placeholder: '0',
@@ -277,8 +278,8 @@ export default function TransferAreaAssetForm({
               },
               { name: 'constructionYear', label: 'Năm xây dựng', type: FormFieldType.Year, placeholder: 'Chọn năm' },
               { name: 'useDate', label: 'Ngày sử dụng tài sản', type: FormFieldType.Date, placeholder: 'Chọn ngày' },
-              { name: 'landArea', label: 'Diện tích (đất, sàn sử dụng: m2)', type: FormFieldType.Number, min: 0, placeholder: '0' },
-              { name: 'floorArea', label: 'Diện tích (sàn sử dụng: m2)', type: FormFieldType.Number, min: 0, placeholder: '0' },
+              { name: 'landArea', label: 'Diện tích (đất, sàn sử dụng: m2)', type: FormFieldType.Number, min: 0, maxLength: 20, placeholder: '0' },
+              { name: 'floorArea', label: 'Diện tích (sàn sử dụng: m2)', type: FormFieldType.Number, min: 0, maxLength: 20, placeholder: '0' },
               {
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
@@ -317,8 +318,8 @@ export default function TransferAreaAssetForm({
             icon: <SlidersOutlined />,
             fields: [
               { name: 'declarationDate', label: 'Ngày kê khai tài sản', type: FormFieldType.Date, placeholder: 'Chọn ngày kê khai' },
-              { name: 'originalValue', label: 'Nguyên giá (nguồn ngân sách, nguồn khác)', type: FormFieldType.Number, min: 0, placeholder: '0' },
-              { name: 'depreciationRate', label: 'Tỷ lệ hao mòn/Khấu hao (%)', type: FormFieldType.Number, min: 0, max: 100, placeholder: '0' },
+              { name: 'originalValue', label: 'Nguyên giá (nguồn ngân sách, nguồn khác)', type: FormFieldType.Number, min: 0, maxLength: 20, placeholder: '0' },
+              { name: 'depreciationRate', label: 'Tỷ lệ hao mòn/Khấu hao (%)', type: FormFieldType.Number, min: 0, max: 100, maxLength: 5, placeholder: '0' },
               {
                 name: 'remainingValue',
                 label: 'Giá trị còn lại',
@@ -332,9 +333,9 @@ export default function TransferAreaAssetForm({
               { name: 'valueUnit', label: 'Đơn vị tính giá trị', type: FormFieldType.Readonly, initialValue: 'VNĐ', valueFormatter: () => 'VNĐ' },
               { name: 'assignmentDecisionNumber', label: 'Số quyết định giao (bao gồm cả tăng vốn)', type: FormFieldType.Text, maxLength: 200, placeholder: 'Nhập số quyết định' },
               { name: 'depreciationStartDate', label: 'Ngày tính khấu hao', type: FormFieldType.Date, placeholder: 'Chọn ngày tính' },
-              { name: 'depreciationMonths', label: 'Số tháng tính khấu hao', type: FormFieldType.Number, min: 0, placeholder: '0' },
+              { name: 'depreciationMonths', label: 'Số tháng tính khấu hao', type: FormFieldType.Number, min: 0, maxLength: 5, placeholder: '0' },
               { name: 'depreciationEndDate', label: 'Ngày hết khấu hao', type: FormFieldType.Date, placeholder: 'Chọn ngày hết' },
-              { name: 'accumulatedDepreciation', label: 'Khấu hao lũy kế', type: FormFieldType.Number, min: 0, placeholder: '0' },
+              { name: 'accumulatedDepreciation', label: 'Khấu hao lũy kế', type: FormFieldType.Number, min: 0, maxLength: 20, placeholder: '0' },
               {
                 name: 'monthlyDepreciation',
                 label: 'Khấu hao tháng',

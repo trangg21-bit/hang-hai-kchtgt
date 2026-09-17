@@ -46,6 +46,7 @@ import {
   cellSubtitleStyle,
   tableSortIcon,
 } from "../../../themetokenchk";
+import { formatAssetCode } from "../../../utils/assetCode";
 import { DEFAULT_STATUS_MAP } from "./status-map.constants";
 
 const ACTION_COLUMN_WIDTH = 60;
@@ -622,6 +623,13 @@ function CommonTableInternal<T extends Record<string, unknown>>(
                       : "DD/MM/YYYY"),
                 );
               }
+            } else if (
+              secondaryText &&
+              (col.subField === "assetCode" ||
+                /^TS-[A-Z0-9]+-/i.test(secondaryText) ||
+                /^TSKCHT_[A-Z0-9]+-/i.test(secondaryText))
+            ) {
+              formattedSub = formatAssetCode(secondaryText);
             }
 
             return (

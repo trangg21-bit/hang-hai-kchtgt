@@ -221,6 +221,7 @@ export default function BuoyBerthAssetForm({
                 label: 'Số lượng',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 formatter: fmtInputNumber,
                 placeholder: '0',
                 required: true,
@@ -283,6 +284,7 @@ export default function BuoyBerthAssetForm({
                 label: 'Diện tích (đất, sàn sử dụng: m2)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -290,6 +292,7 @@ export default function BuoyBerthAssetForm({
                 label: 'Diện tích (sàn sử dụng: m2)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -349,6 +352,7 @@ export default function BuoyBerthAssetForm({
                 label: 'Nguyên giá (nguồn ngân sách, nguồn khác)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -357,6 +361,7 @@ export default function BuoyBerthAssetForm({
                 type: FormFieldType.Number,
                 min: 0,
                 max: 100,
+                maxLength: 5,
                 placeholder: '0',
               },
               {
@@ -399,6 +404,7 @@ export default function BuoyBerthAssetForm({
                 label: 'Số tháng tính khấu hao',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 placeholder: '0',
               },
               {
@@ -412,6 +418,7 @@ export default function BuoyBerthAssetForm({
                 label: 'Khấu hao lũy kế',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {

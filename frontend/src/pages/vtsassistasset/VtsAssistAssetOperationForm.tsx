@@ -1,19 +1,20 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { VtsAssistAsset } from '../../services/vtsAssistAsset/types';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+  createAssetAdjustmentOperationSection,
+  handleAssetAdjustmentValuesChange,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
-import {
-  createAssetAdjustmentOperationSection,
-  handleAssetAdjustmentValuesChange,
-} from '../../components/shared/asset-value';
+import type { Organization } from '../../services/organizationService';
+import type { VtsAssistAsset } from '../../services/vtsAssistAsset/types';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -69,8 +70,9 @@ export interface VtsAssistAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
 }
 
 export default function VtsAssistAssetOperationForm({
@@ -80,6 +82,7 @@ export default function VtsAssistAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: VtsAssistAssetOperationFormProps) {
@@ -135,6 +138,7 @@ export default function VtsAssistAssetOperationForm({
               type: FormFieldType.Number,
               required: true,
               min: 1,
+              maxLength: 5,
               formatter: fmtInputNumber,
               placeholder: '0',
               rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -153,6 +157,7 @@ export default function VtsAssistAssetOperationForm({
               type: FormFieldType.Number,
               required: true,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
@@ -162,6 +167,7 @@ export default function VtsAssistAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -170,6 +176,7 @@ export default function VtsAssistAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -178,6 +185,7 @@ export default function VtsAssistAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -251,27 +259,14 @@ export default function VtsAssistAssetOperationForm({
   }, [operationMode, selected, organizations]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label:
-          operationMode === 'exploit'
-            ? 'Lưu khai thác'
-            : operationMode === 'increase'
-              ? 'Lưu tăng nguyên giá'
-              : 'Lưu giảm nguyên giá',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [operationMode, onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onSubmit,
+      onClose,
+    });
+  }, [operationMode, saving, saveAction, onSubmit, onClose]);
 
   if (!open || !operationMode || !selected) return null;
 

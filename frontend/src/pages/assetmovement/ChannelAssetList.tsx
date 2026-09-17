@@ -690,9 +690,12 @@ export default function ChannelAssetList() {
     }
   }, [deleteTarget, loadData]);
 
-  const submitOperation = useCallback(async () => {
+  const submitOperation = useCallback(async (targetAction?: any) => {
     if (!selected || !operationMode) return;
     try {
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       setSaving(true);
       if (operationMode === 'exploit') {
@@ -1291,6 +1294,7 @@ export default function ChannelAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

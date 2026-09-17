@@ -52,7 +52,9 @@ import com.hanghai.kchtg.vtsassist.repository.VtsAssistRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -303,16 +305,52 @@ public class TransmissionAssetService {
         TransmissionAssetAdjustment entity = new TransmissionAssetAdjustment();
         BeanUtils.copyProperties(request, entity);
         entity.setAssetId(assetId);
-        entity.setStatus("CHO_PHE_DUYET");
-        entity.setSubmittedBy(SecurityUtils.getCurrentUserId());
-        entity.setSubmittedAt(Instant.now());
 
-        // Update asset values if adjustment is approved or tracked
-        if (request.getOriginalValueAfter() != null) {
-            asset.setOriginalValue(request.getOriginalValueAfter());
+        String action = request.getTargetAction() != null && !request.getTargetAction().isBlank()
+                ? request.getTargetAction().trim().toUpperCase(Locale.ROOT)
+                : (request.getStatus() != null && !request.getStatus().isBlank()
+                    ? request.getStatus().trim().toUpperCase(Locale.ROOT)
+                    : "PENDING_APPROVAL");
+
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        Instant now = Instant.now();
+
+        if ("APPROVED".equals(action) || "DA_PHE_DUYET".equals(action)) {
+            entity.setStatus("APPROVED");
+            entity.setDepartmentApprovedBy(currentUserId);
+            entity.setDepartmentApprovedAt(now);
+            entity.setDepartmentApprovalContent("Đã phê duyệt biến động nguyên giá");
+            entity.setSubmittedBy(currentUserId);
+            entity.setSubmittedAt(now);
+
+            asset.setApprovalStatus(ApprovalStatus.APPROVED);
+            asset.setDepartmentApprovedBy(currentUserId);
+            asset.setDepartmentApprovedAt(now);
+            asset.setDepartmentApprovalContent("Đã phê duyệt biến động nguyên giá");
+        } else {
+            // "Lưu và gửi phê duyệt" -> Chờ phê duyệt cấp Cục
+            entity.setStatus("APPROVED_LEVEL1");
+            entity.setSubmittedBy(currentUserId);
+            entity.setSubmittedAt(now);
+
+            asset.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+            asset.setSubmittedBy(currentUserId);
+            asset.setSubmittedAt(now);
         }
-        if (request.getRemainingValueAfter() != null) {
-            asset.setRemainingValue(request.getRemainingValueAfter());
+
+        BigDecimal afterVal = request.getOriginalValueAfter() != null
+                ? request.getOriginalValueAfter()
+                : request.getOriginalValue();
+        if (afterVal != null) {
+            entity.setOriginalValueAfter(afterVal);
+            asset.setOriginalValue(afterVal);
+        }
+        BigDecimal remAfter = request.getRemainingValueAfter() != null
+                ? request.getRemainingValueAfter()
+                : request.getRemainingValue();
+        if (remAfter != null) {
+            entity.setRemainingValueAfter(remAfter);
+            asset.setRemainingValue(remAfter);
         }
         repository.save(asset);
 
@@ -328,18 +366,38 @@ public class TransmissionAssetService {
         if (requestedCode != null && !requestedCode.isBlank() && repository.findByAssetCode(requestedCode.trim()).isEmpty()) {
             return requestedCode.trim();
         }
-        String prefix = "TS-TD-";
+        String prefix = "TSKCHT_TD-";
         if (assetType != null) {
             if (assetType.toLowerCase(Locale.ROOT).contains("vhf")) {
-                prefix = "TS-VHF-";
+                prefix = "TSKCHT_VHF-";
             } else if (assetType.toLowerCase(Locale.ROOT).contains("vts")) {
-                prefix = "TS-VTS-";
+                prefix = "TSKCHT_VTS-";
             }
         }
-        String code;
-        do {
-            code = prefix + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
-        } while (repository.findByAssetCode(code).isPresent());
+        int sequence = 0;
+        try {
+            List<String> codes = repository.findAssetCodesStartingWith(prefix);
+            for (String existing : codes) {
+                if (existing != null && existing.startsWith(prefix)) {
+                    String suffix = existing.substring(prefix.length());
+                    try {
+                        int num = Integer.parseInt(suffix);
+                        if (num > sequence) {
+                            sequence = num;
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Lỗi khi tìm max sequence tài sản truyền dẫn cho {}, fallback count: {}", prefix, e.getMessage());
+            sequence = (int) repository.count();
+        }
+        sequence++;
+        String code = String.format("%s%06d", prefix, sequence);
+        while (repository.findByAssetCode(code).isPresent()) {
+            sequence++;
+            code = String.format("%s%06d", prefix, sequence);
+        }
         return code;
     }
 

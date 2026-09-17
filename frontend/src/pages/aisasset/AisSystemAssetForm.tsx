@@ -1,28 +1,28 @@
-import { useCallback, useMemo } from 'react';
-import { Form, InputNumber } from 'antd';
+import { BankOutlined, ProfileOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
+import { Form, InputNumber } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { BankOutlined, SlidersOutlined, ProfileOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { AisSystemAsset, AisSystemAssetPayload } from '../../services/aisasset/types';
-import type { AisSystemOption } from '../../services/aisasset/api';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
-import { fmtInputNumber } from '../../utils/numFmt';
-import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
+import { useCallback, useMemo } from 'react';
+import {
+  DynamicFormSidebar,
+  FormFieldType,
+  type FormSidebarAction,
+  type FormTabConfig,
+} from '../../components/shared/dynamic-form-sidebar';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type { AisSystemOption } from '../../services/aisasset/api';
+import type { AisSystemAsset, AisSystemAssetPayload } from '../../services/aisasset/types';
+import type { Organization } from '../../services/organizationService';
 import {
   colors,
   fontWeightBold,
   radiusPill,
 } from '../../themetokenchk';
-import {
-  DynamicFormSidebar,
-  FormFieldType,
-  type FormTabConfig,
-  type FormSidebarAction,
-} from '../../components/shared/dynamic-form-sidebar';
+import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type FormValues = Omit<
   AisSystemAssetPayload,
@@ -258,6 +258,7 @@ export default function AisSystemAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
+                maxLength: 5,
                 min: 1,
                 required: true,
                 rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
@@ -328,6 +329,7 @@ export default function AisSystemAssetForm({
                 name: 'landArea',
                 label: 'Diện tích (đất, sàn sử dụng: m²)',
                 type: FormFieldType.Number,
+                maxLength: 20,
                 min: 0,
                 formatter: fmtInputNumber,
                 placeholder: '0',
@@ -337,6 +339,7 @@ export default function AisSystemAssetForm({
                 name: 'floorArea',
                 label: 'Diện tích (sàn sử dụng: m²)',
                 type: FormFieldType.Number,
+                maxLength: 20,
                 min: 0,
                 formatter: fmtInputNumber,
                 placeholder: '0',
@@ -391,6 +394,7 @@ export default function AisSystemAssetForm({
                 name: 'originalValue',
                 label: 'Nguyên giá (VNĐ)',
                 type: FormFieldType.Number,
+                maxLength: 20,
                 min: 0,
                 formatter: fmtInputNumber,
                 placeholder: '0',
@@ -400,6 +404,7 @@ export default function AisSystemAssetForm({
                 name: 'depreciationRate',
                 label: 'Tỷ lệ hao mòn/Khấu hao (%)',
                 type: FormFieldType.Number,
+                maxLength: 5,
                 min: 0,
                 max: 100,
                 placeholder: '0',
@@ -441,6 +446,7 @@ export default function AisSystemAssetForm({
                 name: 'depreciationMonths',
                 label: 'Số tháng tính khấu hao',
                 type: FormFieldType.Number,
+                maxLength: 5,
                 min: 0,
                 placeholder: 'Nhập số tháng',
                 colSpan: 12,
@@ -456,6 +462,7 @@ export default function AisSystemAssetForm({
                 name: 'accumulatedDepreciation',
                 label: 'Khấu hao lũy kế (VNĐ)',
                 type: FormFieldType.Number,
+                maxLength: 20,
                 min: 0,
                 formatter: fmtInputNumber,
                 placeholder: '0',

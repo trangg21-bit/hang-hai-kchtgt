@@ -23,6 +23,7 @@ import {
 } from '../../themetokenchk';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
+import { formatAssetCode } from '../../utils/assetCode';
 
 // === Constants ================================================================
 
@@ -293,7 +294,7 @@ export default function TransmissionAssetHistory({
           <Space size={spaceSm} style={{ alignItems: 'center' }}>
             <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
             <span style={drawerTitleStyle}>
-              {'Lịch sử thay đổi — '}{target?.assetName || target?.assetCode || ''}
+              {'Lịch sử thay đổi — '}{target?.assetName || formatAssetCode(target?.assetCode) || ''}
             </span>
             <span
               style={{

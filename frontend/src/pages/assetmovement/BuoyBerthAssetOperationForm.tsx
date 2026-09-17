@@ -12,6 +12,9 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -55,8 +58,9 @@ export interface BuoyBerthAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
 }
 
 export function BuoyBerthAssetOperationForm({
@@ -66,6 +70,7 @@ export function BuoyBerthAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: BuoyBerthAssetOperationFormProps) {
@@ -120,6 +125,7 @@ export function BuoyBerthAssetOperationForm({
               label: 'Số lượng',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 5,
               required: true,
               rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               formatter: fmtInputNumber,
@@ -138,6 +144,7 @@ export function BuoyBerthAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               required: true,
               rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
               formatter: fmtInputNumber,
@@ -148,6 +155,7 @@ export function BuoyBerthAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -156,6 +164,7 @@ export function BuoyBerthAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -164,6 +173,7 @@ export function BuoyBerthAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               colSpan: 24,
@@ -262,6 +272,7 @@ export function BuoyBerthAssetOperationForm({
             name: 'originalValue',
             label: `Nguyên giá sau khi ${actionLabel} (VNĐ)`,
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             formatter: fmtInputNumber,
@@ -272,6 +283,7 @@ export function BuoyBerthAssetOperationForm({
             name: 'depreciationRate',
             label: 'Tỷ lệ hao mòn/Khấu hao (%)',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             max: 100,
             placeholder: '0',
@@ -313,6 +325,7 @@ export function BuoyBerthAssetOperationForm({
             name: 'depreciationMonths',
             label: 'Số tháng tính khấu hao',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             placeholder: '0',
           },
@@ -326,6 +339,7 @@ export function BuoyBerthAssetOperationForm({
             name: 'accumulatedDepreciation',
             label: 'Khấu hao lũy kế (VNĐ)',
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
@@ -371,22 +385,15 @@ export function BuoyBerthAssetOperationForm({
   }, [sections]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label: 'Xác nhận thực hiện',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Xác nhận thực hiện',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar<OperationValues>

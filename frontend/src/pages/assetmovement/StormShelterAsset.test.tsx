@@ -339,14 +339,14 @@ describe('Module 3: Tài sản khu tránh trú bão (docs/checklists/CHECKLIST-T
     // Kiểm tra hiển thị thông tin Khai thác
     expect(html).toContain('Hợp đồng neo buộc mùa bão lũ');
     expect(html).toContain('31/12/2026');
-    expect(html).toContain('600,000,000 VNĐ');
-    expect(html).toContain('60,000,000 VNĐ');
-    expect(html).toContain('120,000,000 VNĐ');
+    expect(html).toContain('600.000.000 VNĐ');
+    expect(html).toContain('60.000.000 VNĐ');
+    expect(html).toContain('120.000.000 VNĐ');
 
     // Kiểm tra hiển thị thông tin Thay đổi nguyên giá
     expect(html).toContain('160/QĐ-TANG-TB');
     expect(html).toContain('01/09/2026');
-    expect(html).toContain('+6,000,000,000');
+    expect(html).toContain('+6.000.000.000');
     expect(html).toContain('Đầu tư bổ sung');
   });
 

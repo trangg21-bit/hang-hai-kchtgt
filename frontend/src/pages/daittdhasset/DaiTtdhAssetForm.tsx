@@ -1,23 +1,23 @@
-import { useMemo } from 'react';
+import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
+import { useMemo } from 'react';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import { createAssetDepreciationFormSection } from '../../components/shared/asset-value/assetValueFormFields';
+import {
+  DynamicFormSidebar,
+  FormFieldType,
+  type FormSidebarAction,
+  type FormTabConfig,
+} from '../../components/shared/dynamic-form-sidebar';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type {
   DaiTtdhAsset,
   DaiTtdhAssetPayload,
 } from '../../services/daiTtdhAsset/types';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  DynamicFormSidebar,
-  FormFieldType,
-  type FormTabConfig,
-  type FormSidebarAction,
-} from '../../components/shared/dynamic-form-sidebar';
-import { createAssetDepreciationFormSection } from '../../components/shared/asset-value/assetValueFormFields';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type { Organization } from '../../services/organizationService';
 
 export type FormValues = Omit<
   DaiTtdhAssetPayload,
@@ -37,10 +37,10 @@ export type FormValues = Omit<
 
 import {
   ASSET_CONDITION_OPTIONS,
-  USAGE_STATUS_OPTIONS,
   ASSET_GROUP_OPTIONS,
   ASSET_ORIGIN_OPTIONS,
   ASSET_QUANTITY_UNIT_OPTIONS,
+  USAGE_STATUS_OPTIONS,
 } from '../../constants/assetDropdown';
 import { fmtInputNumber } from '../../utils/numFmt';
 
@@ -219,6 +219,7 @@ export default function DaiTtdhAssetForm({
                 type: FormFieldType.Number,
                 required: true,
                 min: 1,
+                maxLength: 5,
                 formatter: fmtInputNumber,
                 placeholder: '0',
                 rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -271,6 +272,7 @@ export default function DaiTtdhAssetForm({
                 label: 'Diện tích đất (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0.00',
               },
               {
@@ -278,6 +280,7 @@ export default function DaiTtdhAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0.00',
               },
               {

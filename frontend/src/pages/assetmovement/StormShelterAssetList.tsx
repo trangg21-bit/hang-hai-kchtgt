@@ -16,6 +16,7 @@ import { Button, DatePicker, Form, Input, Space } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
   CommonStatusTabs,
   CommonTable,
@@ -27,17 +28,16 @@ import {
   type ScreenHeaderAction,
   type TableOption,
 } from '../../components/list-view';
-import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import toast from '../../components/ToastNotification';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
@@ -62,6 +62,7 @@ import {
   uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
@@ -74,7 +75,6 @@ import type {
 import { organizationService, type Organization } from '../../services/organizationService';
 import { stormShelterCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
-import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
   actionPrimary,
@@ -668,9 +668,12 @@ export default function StormShelterAssetList() {
     }
   }, [operationForm]);
 
-  const saveOperation = async () => {
+  const saveOperation = async (targetAction?: any) => {
     if (!selected || !operationMode) return;
     try {
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       const origVal = values.originalValue;
       if (operationMode !== 'exploit' && origVal == null) {
@@ -717,7 +720,7 @@ export default function StormShelterAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
@@ -1266,6 +1269,7 @@ export default function StormShelterAssetList() {
             organizations={organizations}
             form={operationForm}
             saving={saving}
+            saveAction={saveAction}
             onClose={() => setOperationMode(undefined)}
             onSubmit={saveOperation}
           />

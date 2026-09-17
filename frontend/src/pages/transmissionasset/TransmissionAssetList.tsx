@@ -31,8 +31,8 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
-import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchTransmissionOptions } from '../../services/transmission/api';
@@ -61,6 +61,11 @@ import type {
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { formatAssetCode } from '../../utils/assetCode';
+import {
+  calculateAssetAdjustmentValues,
+  validateAdjustmentOriginalValue,
+} from '../../utils/assetValueCalculation';
 import TransmissionAssetDetailContent from './TransmissionAssetDetailContent';
 import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
 import TransmissionAssetHistory, { useTransmissionHistory } from './TransmissionAssetHistory';
@@ -453,19 +458,20 @@ export default function TransmissionAssetList() {
     }
   };
 
-  const saveOperation = async () => {
+  const saveOperation = async (targetAction: 'PENDING_APPROVAL' | 'APPROVED' = 'PENDING_APPROVAL') => {
     if (!selected || !operationMode) return;
     try {
       const values = await operationForm.validateFields();
       setSaving(true);
+      setSaveAction(targetAction);
 
       if (operationMode === 'exploit') {
-        setSaving(true);
         await createTransmissionExploitation(selected.id, {
           ...values,
-          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
+          assetCategory: [formatAssetCode(selected.assetCode), selected.assetName].filter(Boolean).join(' - '),
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
         });
+        toast.success('Đã lưu thông tin khai thác tài sản.');
       } else {
         const origVal = (values.originalValueAfter ?? values.originalValue) as number | undefined;
         const valCheck = validateAdjustmentOriginalValue(
@@ -478,7 +484,6 @@ export default function TransmissionAssetList() {
           return;
         }
 
-        setSaving(true);
         const calc = calculateAssetAdjustmentValues({
           originalValueAfter: origVal,
           depreciationRate: values.depreciationRate,
@@ -489,25 +494,47 @@ export default function TransmissionAssetList() {
         });
 
         await createTransmissionAdjustment(selected.id, {
-          ...values,
+          decisionNumber: values.decisionNumber,
+          decisionDate: values.decisionDate?.format('YYYY-MM-DD') as any,
+          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD') as any,
+          adjustmentReason: values.adjustmentReason,
+          notes: values.notes,
           originalValue: origVal,
           originalValueAfter: origVal,
           originalValueBefore: selected.originalValue,
           remainingValueBefore: selected.remainingValue,
           remainingValueAfter: calc.remainingValueAfter,
+          declarationDate: values.declarationDate?.format('YYYY-MM-DD') as any,
+          depreciationRate:
+            values.depreciationRate != null
+              ? Number(values.depreciationRate)
+              : undefined,
+          assignmentDecisionNumber: values.assignmentDecisionNumber,
+          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD') as any,
+          depreciationMonths:
+            values.depreciationMonths != null
+              ? Number(values.depreciationMonths)
+              : undefined,
+          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD') as any,
           accumulatedDepreciation:
-            calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+            calc.accumulatedDepreciation ??
+            (values.accumulatedDepreciation != null
+              ? Number(values.accumulatedDepreciation)
+              : 0),
           monthlyDepreciation: calc.monthlyDepreciation,
+          disposalMethod: values.disposalMethod,
           adjustmentType: operationMode === 'increase' ? 'INCREASE' : 'DECREASE',
-          decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
-          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
-          declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
-          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
-          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
+          targetAction,
+          status: targetAction === 'APPROVED' ? 'APPROVED' : 'APPROVED_LEVEL1',
         });
+
+        toast.success(
+          targetAction === 'APPROVED'
+            ? 'Đã lưu và phê duyệt biến động nguyên giá.'
+            : 'Đã lưu và gửi phê duyệt biến động nguyên giá.'
+        );
       }
 
-      toast.success('Đã lưu thông tin biến động.');
       setOperationMode(undefined);
       operationForm.resetFields();
       await loadData();
@@ -610,6 +637,7 @@ export default function TransmissionAssetList() {
           dataIndex: 'assetName',
           type: TableColumnType.TwoLine,
           subField: 'assetCode',
+          subValueRef: (r) => formatAssetCode(r.assetCode),
           width: 230,
           fixed: 'left',
           allowSort: true,
@@ -993,6 +1021,7 @@ export default function TransmissionAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();
@@ -1007,7 +1036,7 @@ export default function TransmissionAssetList() {
           loading={saving}
           itemType="tài sản HT truyền dẫn"
           itemName={deleteTarget?.assetName}
-          itemCode={deleteTarget?.assetCode}
+          itemCode={formatAssetCode(deleteTarget?.assetCode)}
           onConfirm={() => {
             if (!deleteTarget) return;
             setSaving(true);

@@ -226,6 +226,7 @@ export default function VhfAssetForm({
                 type: FormFieldType.Number,
                 required: true,
                 min: 1,
+                maxLength: 5,
                 formatter: fmtInputNumber,
                 placeholder: '0',
                 rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -284,7 +285,7 @@ export default function VhfAssetForm({
                 label: 'Diện tích đất (m²)',
                 type: FormFieldType.Number,
                 min: 0,
-                maxLength: 15,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích đất',
               },
               {
@@ -292,7 +293,7 @@ export default function VhfAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
-                maxLength: 15,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích sàn',
               },
               {

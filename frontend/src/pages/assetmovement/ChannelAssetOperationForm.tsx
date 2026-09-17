@@ -11,6 +11,9 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -54,8 +57,9 @@ export interface ChannelAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (targetAction?: any) => void | Promise<void>;
 }
 
 export default function ChannelAssetOperationForm({
@@ -65,6 +69,7 @@ export default function ChannelAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: ChannelAssetOperationFormProps) {
@@ -106,6 +111,7 @@ export default function ChannelAssetOperationForm({
             type: FormFieldType.Number,
             required: true,
             min: 0,
+            maxLength: 5,
             placeholder: '0',
             rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
           },
@@ -120,6 +126,7 @@ export default function ChannelAssetOperationForm({
             label: 'Tổng số tiền thu được (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
             required: true,
             rules: [{ required: true, message: 'Số tiền thu được là bắt buộc' }],
@@ -129,6 +136,7 @@ export default function ChannelAssetOperationForm({
             label: 'Chi phí có liên quan (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
           },
           {
@@ -136,6 +144,7 @@ export default function ChannelAssetOperationForm({
             label: 'Nộp NSNN (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
           },
           {
@@ -143,6 +152,7 @@ export default function ChannelAssetOperationForm({
             label: 'Số tiền được thực hiện dự án (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            maxLength: 20,
             placeholder: '0',
           },
           {
@@ -197,6 +207,7 @@ export default function ChannelAssetOperationForm({
           name: 'originalValue',
           label: isIncrease ? 'Giá trị tăng thêm (VNĐ)' : 'Giá trị giảm bớt (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
           min: 0,
           placeholder: '0',
           required: true,
@@ -233,6 +244,7 @@ export default function ChannelAssetOperationForm({
           name: 'depreciationRate',
           label: 'Tỷ lệ hao mòn/Khấu hao (%)',
           type: FormFieldType.Number,
+          maxLength: 5,
           min: 0,
           max: 100,
           placeholder: '0.00',
@@ -241,6 +253,7 @@ export default function ChannelAssetOperationForm({
           name: 'accumulatedDepreciation',
           label: 'Khấu hao lũy kế (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
           required: true,
           min: 0,
           placeholder: '0',
@@ -265,6 +278,7 @@ export default function ChannelAssetOperationForm({
           name: 'depreciationMonths',
           label: 'Số tháng tính khấu hao',
           type: FormFieldType.Number,
+          maxLength: 5,
           min: 0,
           placeholder: '0',
         },
@@ -287,22 +301,15 @@ export default function ChannelAssetOperationForm({
   }, [isExploit, isIncrease, organizations]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Đóng',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label: isExploit ? 'Lưu khai thác' : isIncrease ? 'Lưu yêu cầu tăng' : 'Lưu yêu cầu giảm',
-        variant: isExploit ? 'primary' : isIncrease ? 'success' : 'primary',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [isExploit, isIncrease, onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu khai thác',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar

@@ -52,6 +52,7 @@ import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 
+@lombok.extern.slf4j.Slf4j
 @Service
 @Transactional(readOnly = true)
 public class InfraAssetService {
@@ -659,29 +660,49 @@ public class InfraAssetService {
             throw new IllegalArgumentException("Loại tài sản không được để trống khi sinh mã");
         }
         String prefix = switch (assetType) {
-            case PORT_TERMINAL -> "TS-BC-";
-            case LRIT_STATION -> "TS-LRIT-";
-            case TTDH_STATION -> "TS-TTDH-";
-            case INMARSAT_STATION -> "TS-INMARSAT-";
-            case COSPAS_SARSAT_STATION -> "TS-COSPAS-";
-            case TTXLTT_STATION -> "TS-TTXLTT-";
-            case DRY_PORT -> "TS-CC-";
-            case TRANSFER_AREA -> "TS-KCT-";
-            case STORM_SHELTER -> "TS-TB-";
-            case BUOY_BERTH -> "TS-BP-";
-            case PIER -> "TS-CC-";
-            case BUOY -> "TS-PT-";
-            case ANCHORAGE -> "TS-ND-";
-            case LIGHTHOUSE -> "TS-DB-";
-            case NAVIGATION_CHANNEL -> "TS-LHH-";
-            case DIKE_REVETMENT -> "TS-DK-";
-            case RADAR_STATION -> "TS-RD-";
-            case AUXILIARY_EQUIPMENT -> "TS-TBPT-";
+            case PORT_TERMINAL -> "TSKCHT_BC-";
+            case LRIT_STATION -> "TSKCHT_LRIT-";
+            case TTDH_STATION -> "TSKCHT_TTDH-";
+            case INMARSAT_STATION -> "TSKCHT_INMARSAT-";
+            case COSPAS_SARSAT_STATION -> "TSKCHT_COSPAS-";
+            case TTXLTT_STATION -> "TSKCHT_TTXLTT-";
+            case DRY_PORT -> "TSKCHT_CC-";
+            case TRANSFER_AREA -> "TSKCHT_KCT-";
+            case STORM_SHELTER -> "TSKCHT_TB-";
+            case BUOY_BERTH -> "TSKCHT_BP-";
+            case PIER -> "TSKCHT_CC-";
+            case BUOY -> "TSKCHT_PT-";
+            case ANCHORAGE -> "TSKCHT_ND-";
+            case LIGHTHOUSE -> "TSKCHT_DB-";
+            case NAVIGATION_CHANNEL -> "TSKCHT_LHH-";
+            case DIKE_REVETMENT -> "TSKCHT_DK-";
+            case RADAR_STATION -> "TSKCHT_RD-";
+            case AUXILIARY_EQUIPMENT -> "TSKCHT_TBPT-";
         };
-        String code;
-        do {
-            code = prefix + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
-        } while (repository.findByAssetCode(code).isPresent());
+        int sequence = 0;
+        try {
+            List<String> codes = repository.findAssetCodesStartingWith(prefix);
+            for (String existing : codes) {
+                if (existing != null && existing.startsWith(prefix)) {
+                    String suffix = existing.substring(prefix.length());
+                    try {
+                        int num = Integer.parseInt(suffix);
+                        if (num > sequence) {
+                            sequence = num;
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Lỗi khi tìm max sequence cho {}, fallback count: {}", prefix, e.getMessage());
+            sequence = (int) repository.count();
+        }
+        sequence++;
+        String code = String.format("%s%06d", prefix, sequence);
+        while (repository.findByAssetCode(code).isPresent()) {
+            sequence++;
+            code = String.format("%s%06d", prefix, sequence);
+        }
         return code;
     }
 

@@ -138,11 +138,11 @@ describe('RadarStation Number Input Rules (Chuẩn Chiều cao tháp radar lấy
     });
 
     it('fmtNum loại bỏ đuôi .00 thừa trong chế độ xem chi tiết', () => {
-      expect(fmtNum('1100.00')).toBe('1,100');
-      expect(fmtNum('1100')).toBe('1,100');
-      expect(fmtNum(1100)).toBe('1,100');
-      expect(fmtNum('1100.50')).toBe('1,100.5');
-      expect(fmtNum('1100.25')).toBe('1,100.25');
+      expect(fmtNum('1100.00')).toBe('1.100');
+      expect(fmtNum('1100')).toBe('1.100');
+      expect(fmtNum(1100)).toBe('1.100');
+      expect(fmtNum('1100.50')).toBe('1.100,5');
+      expect(fmtNum('1100.25')).toBe('1.100,25');
     });
   });
 });
