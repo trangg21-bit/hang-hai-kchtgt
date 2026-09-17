@@ -89,6 +89,8 @@ import {
   saveAttachmentFile,
 } from '../../utils/attachmentStorage';
 import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
+import AisSystemAssetDetailContent from './AisSystemAssetDetailContent';
 import AisSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,

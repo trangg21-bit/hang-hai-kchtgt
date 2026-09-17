@@ -88,7 +88,7 @@ import {
   textTertiary,
 } from '../../themetokenchk';
 import type { TransferArea } from '../../types/port';
-import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import TransferAreaAssetDetailContent from './TransferAreaAssetDetailContent';
