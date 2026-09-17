@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -12,10 +12,16 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
-export interface OperationValues {
+export interface OperationValues extends Record<string, unknown> {
   operatorOrgUnitId?: string;
   unitOfMeasure?: string;
   quantity?: number;
@@ -39,16 +45,6 @@ export interface OperationValues {
   accumulatedDepreciation?: number;
   disposalMethod?: string;
 }
-
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'Hệ thống', 'm²', 'm'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
 
 export interface RadarStationAssetOperationFormProps {
   open: boolean;
@@ -104,23 +100,28 @@ export default function RadarStationAssetOperationForm({
               name: 'assetCategory' as keyof OperationValues,
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
-              initialValue: selected.assetName,
-              valueFormatter: () => selected.assetName || '—',
+              initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
+              valueFormatter: () =>
+                [selected.assetCode, selected.assetName].filter(Boolean).join(' - ') || '—',
             },
             {
               name: 'unitOfMeasure',
               label: 'Đơn vị tính',
               type: FormFieldType.Select,
               placeholder: 'Chọn đơn vị tính',
-              options: UNITS.map((value) => ({ value, label: value })),
+              required: true,
+              rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính' }],
+              options: ASSET_QUANTITY_UNIT_OPTIONS,
             },
             {
               name: 'quantity',
               label: 'Số lượng',
               type: FormFieldType.Number,
-              min: 0,
+              min: 1,
+              required: true,
+              rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
               formatter: fmtInputNumber,
-              placeholder: '0',
+              placeholder: '1',
             },
             {
               name: 'exploitationDeadline',
@@ -135,6 +136,8 @@ export default function RadarStationAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              required: true,
+              rules: [{ required: true, message: 'Vui lòng nhập tổng số tiền thu được' }],
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -178,6 +181,7 @@ export default function RadarStationAssetOperationForm({
 
     const isIncrease = operationMode === 'increase';
     const actionLabel = isIncrease ? 'tăng' : 'giảm';
+    const reasonOptions = isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS;
 
     return [
       {
@@ -215,7 +219,7 @@ export default function RadarStationAssetOperationForm({
             type: FormFieldType.Select,
             required: true,
             placeholder: 'Chọn lý do',
-            options: ADJUSTMENT_REASONS.map((value) => ({ value, label: value })),
+            options: reasonOptions,
             rules: [{ required: true, message: `Lý do ${actionLabel} nguyên giá là bắt buộc` }],
           },
           {
@@ -283,7 +287,7 @@ export default function RadarStationAssetOperationForm({
             label: `Giá trị còn lại sau khi ${actionLabel} (VNĐ)`,
             type: FormFieldType.Readonly,
             dependencies: ['originalValue', 'accumulatedDepreciation'],
-            valueFormatter: (formInstance) => {
+            valueFormatter: (formInstance: FormInstance) => {
               const orig = Number(formInstance.getFieldValue('originalValue')) || 0;
               const acc =
                 Number(formInstance.getFieldValue('accumulatedDepreciation')) ||
@@ -343,6 +347,8 @@ export default function RadarStationAssetOperationForm({
             label: 'Khấu hao lũy kế (VNĐ)',
             type: FormFieldType.Number,
             min: 0,
+            required: true,
+            rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
             formatter: fmtInputNumber,
             placeholder: '0',
           },
@@ -351,7 +357,7 @@ export default function RadarStationAssetOperationForm({
             label: 'Khấu hao tháng (VNĐ)',
             type: FormFieldType.Readonly,
             dependencies: ['originalValue', 'depreciationMonths'],
-            valueFormatter: (formInstance) => {
+            valueFormatter: (formInstance: FormInstance) => {
               const orig = Number(formInstance.getFieldValue('originalValue')) || 0;
               const months = Number(formInstance.getFieldValue('depreciationMonths')) || 0;
               if (!orig || !months) return '0';
@@ -362,11 +368,10 @@ export default function RadarStationAssetOperationForm({
             name: 'disposalMethod',
             label: 'Hình thức xử lý tài sản',
             type: FormFieldType.Select,
+            required: true,
+            rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
             placeholder: 'Chọn hình thức xử lý',
-            options: ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'].map((value) => ({
-              value,
-              label: value,
-            })),
+            options: DISPOSAL_METHOD_OPTIONS,
           },
         ],
       },

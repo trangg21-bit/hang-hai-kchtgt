@@ -16,6 +16,8 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import { createAssetDepreciationFormSection } from '../../components/shared/asset-value/assetValueFormFields';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 
 export type FormValues = Omit<
   InmarsatAssetPayload,
@@ -33,23 +35,13 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Thiết bị thông tin vệ tinh Inmarsat',
-  'Thiết bị thu phát Inmarsat',
-  'Máy móc, thiết bị phụ trợ',
-  'Hệ thống nguồn & ăng-ten',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Chiếc', 'Máy'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface InmarsatAssetFormProps {
   open: boolean;
@@ -138,9 +130,9 @@ export default function InmarsatAssetForm({
               {
                 name: 'assetType',
                 label: 'Loại tài sản',
-                type: FormFieldType.Text,
-                disabled: true,
-                placeholder: 'Tài sản đài Inmarsat',
+                type: FormFieldType.Select,
+                placeholder: 'Chọn loại tài sản',
+                options: MARITIME_ASSET_TYPE_OPTIONS,
               },
               {
                 name: 'assetCode',
@@ -153,6 +145,7 @@ export default function InmarsatAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 255,
                 required: true,
                 rules: [{ required: true, message: 'Vui lòng nhập tên tài sản' }],
                 placeholder: 'Nhập tên tài sản',
@@ -162,48 +155,51 @@ export default function InmarsatAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã vạch/barcode',
               },
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_CONDITIONS.map((c) => ({ value: c, label: c })),
+                options: ASSET_CONDITION_OPTIONS,
                 placeholder: 'Chọn tình trạng',
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: FormFieldType.Select,
-                options: USAGE_STATUSES.map((s) => ({ value: s, label: s })),
-                placeholder: 'Chọn hiện trạng sử dụng',
+                options: USAGE_STATUS_OPTIONS,
+                placeholder: 'Chọn hiện trạng',
               },
               {
                 name: 'assetGroup',
                 label: 'Nhóm tài sản',
                 type: FormFieldType.Select,
-                options: ASSET_GROUPS.map((g) => ({ value: g, label: g })),
+                options: ASSET_GROUP_OPTIONS,
                 placeholder: 'Chọn nhóm tài sản',
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
                 name: 'origin',
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
-                options: ORIGINS.map((o) => ({ value: o, label: o })),
-                placeholder: 'Chọn nguồn gốc tài sản',
+                options: ASSET_ORIGIN_OPTIONS,
+                placeholder: 'Chọn nguồn gốc',
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
-                type: FormFieldType.TextArea,
-                placeholder: 'Nhập địa chỉ đặt tài sản / đài vệ tinh Inmarsat',
                 colSpan: 24,
+                type: FormFieldType.TextArea,
+                maxLength: 2000,
+                placeholder: 'Nhập địa chỉ đặt tài sản / đài vệ tinh Inmarsat',
               },
             ],
           },
@@ -216,38 +212,46 @@ export default function InmarsatAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
-                min: 0,
-                initialValue: 1,
+                min: 1,
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
+                placeholder: 'Nhập số lượng',
               },
               {
                 name: 'quantityUnit',
-                label: 'Đơn vị tính số lượng',
+                label: 'Đơn vị tính',
                 type: FormFieldType.Select,
-                initialValue: 'Bộ',
-                options: UNITS.map((u) => ({ value: u, label: u })),
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính' }],
+                placeholder: 'Chọn đơn vị tính',
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model thiết bị',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập số serial',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ (quốc gia)',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -280,6 +284,7 @@ export default function InmarsatAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 placeholder: 'Nhập vị trí lắp đặt tài sản',
                 colSpan: 24,
               },
@@ -301,6 +306,13 @@ export default function InmarsatAssetForm({
             />
           </div>
         ),
+      },
+      {
+        key: 'details',
+        label: 'Thông tin chi tiết',
+        sections: [
+          createAssetDepreciationFormSection<FormValues>(),
+        ],
       },
     ];
   }, [

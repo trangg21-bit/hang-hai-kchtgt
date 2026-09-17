@@ -47,6 +47,28 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
             @org.springframework.data.repository.query.Param("keyword") String keyword,
             @org.springframework.data.repository.query.Param("approvalStatus") ApprovalStatus approvalStatus,
             Pageable pageable);
+
+    @Query("SELECT l FROM NavigationChannel l WHERE " +
+            "((:approvalStatus IS NULL AND l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (l.deletedAt IS NOT NULL OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            "  OR (l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
+            "      l.approvalStatus = :approvalStatus " +
+            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  )) " +
+            ") AND " +
+            "(:#{#orgUnitIds == null || #orgUnitIds.isEmpty()} = true OR l.orgUnitId IN :orgUnitIds) AND " +
+            "(:seaportId IS NULL OR l.seaportId = :seaportId) AND " +
+            "(:provinceId IS NULL OR l.provinceId = :provinceId) AND " +
+            "(:conditionStatus IS NULL OR l.conditionStatus = :conditionStatus) AND " +
+            "(:keyword IS NULL OR LOWER(l.channelName) LIKE :keyword)")
+    Page<NavigationChannel> searchDocumentsByOrgUnitIds(
+            @org.springframework.data.repository.query.Param("orgUnitIds") java.util.Collection<UUID> orgUnitIds,
+            @org.springframework.data.repository.query.Param("seaportId") UUID seaportId,
+            @org.springframework.data.repository.query.Param("provinceId") Integer provinceId,
+            @org.springframework.data.repository.query.Param("conditionStatus") ConditionStatus conditionStatus,
+            @org.springframework.data.repository.query.Param("keyword") String keyword,
+            @org.springframework.data.repository.query.Param("approvalStatus") ApprovalStatus approvalStatus,
+            Pageable pageable);
     @Query("SELECT l FROM NavigationChannel l WHERE " +
             "l.deletedAt IS NULL AND " +
             "(:orgUnitId IS NULL OR l.orgUnitId = :orgUnitId) AND " +

@@ -7,6 +7,7 @@ import {
   getMapHitGeometryBounds,
   geometryCoordinatesToRows,
   isVietnamMapCoordinate,
+  isValidMapCoordinate,
   normalizeLineCoordinates,
   normalizePolygonCoordinates,
   parseWktToCoordinates,
@@ -70,6 +71,69 @@ describe('gisGeometry', () => {
     );
   });
 
+  it('handles various polygon input formats in geometryCoordinatesToRows', () => {
+    // 2D array of coordinate pairs
+    const from2D = geometryCoordinatesToRows('Polygon', [
+      [107.1, 16.1],
+      [107.2, 16.2],
+      [107.3, 16.3],
+      [107.1, 16.1],
+    ]);
+    expect(from2D).toEqual([
+      { lng: 107.1, lat: 16.1 },
+      { lng: 107.2, lat: 16.2 },
+      { lng: 107.3, lat: 16.3 },
+    ]);
+
+    // Array of { lat, lng } objects (from Leaflet layer)
+    const fromObjects = geometryCoordinatesToRows('Polygon', [
+      { lat: 16.1, lng: 107.1 },
+      { lat: 16.2, lng: 107.2 },
+      { lat: 16.3, lng: 107.3 },
+      { lat: 16.1, lng: 107.1 },
+    ]);
+    expect(fromObjects).toEqual([
+      { lng: 107.1, lat: 16.1 },
+      { lng: 107.2, lat: 16.2 },
+      { lng: 107.3, lat: 16.3 },
+    ]);
+
+    // WKT string
+    const fromWkt = geometryCoordinatesToRows('Polygon', 'POLYGON((107.1 16.1, 107.2 16.2, 107.3 16.3, 107.1 16.1))');
+    expect(fromWkt).toEqual([
+      { lng: 107.1, lat: 16.1 },
+      { lng: 107.2, lat: 16.2 },
+      { lng: 107.3, lat: 16.3 },
+    ]);
+
+    // GeoJSON Feature
+    const fromGeoJson = geometryCoordinatesToRows('Polygon', {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[[107.1, 16.1], [107.2, 16.2], [107.3, 16.3], [107.1, 16.1]]],
+      },
+    });
+    expect(fromGeoJson).toEqual([
+      { lng: 107.1, lat: 16.1 },
+      { lng: 107.2, lat: 16.2 },
+      { lng: 107.3, lat: 16.3 },
+    ]);
+
+    // Auto-detect and fix swapped lat/lng ([lat, lng])
+    const fromSwapped = geometryCoordinatesToRows('Polygon', [
+      [16.1, 107.1],
+      [16.2, 107.2],
+      [16.3, 107.3],
+      [16.1, 107.1],
+    ]);
+    expect(fromSwapped).toEqual([
+      { lng: 107.1, lat: 16.1 },
+      { lng: 107.2, lat: 16.2 },
+      { lng: 107.3, lat: 16.3 },
+    ]);
+  });
+
   it('resolves marker position and focus extent from WKT', () => {
     expect(resolveMapGeometryLocation('POINT(106.7 20.8)')).toEqual({
       center: [106.7, 20.8],
@@ -93,6 +157,19 @@ describe('gisGeometry', () => {
       { type: 'Polygon', coordinates: polygon! },
       isVietnamMapCoordinate,
     )).toBe(false);
+  });
+
+  it('accepts global coordinates with isValidMapCoordinate', () => {
+    const parsed = parseWktToCoords(
+      'POLYGON ((104.67773333333334 16.205444444444442, 104.43603611111112 15.761858333333333, 4.085 1.0341666666666667, 104.67773333333334 16.205444444444442))',
+    );
+    const polygon = normalizePolygonCoordinates(parsed);
+
+    expect(polygon).not.toBeNull();
+    expect(everyMapHitGeometryCoordinate(
+      { type: 'Polygon', coordinates: polygon! },
+      isValidMapCoordinate,
+    )).toBe(true);
   });
 
   it('falls back to separate longitude and latitude for legacy records', () => {

@@ -114,6 +114,7 @@ public class DikeRevetmentController {
             @RequestParam(required = false) DikeRevetmentType dikeRevetmentType,
             @RequestParam(required = false) String conditionStatus,
             @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) Boolean isDeleted,
             @RequestParam(required = false) UUID updatedBy,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
@@ -129,7 +130,7 @@ public class DikeRevetmentController {
             PageRequest pageable = PageRequest.of(page, size, sort);
             Page<DikeRevetmentResponse> responses = service.searchPaged(
                     orgUnitId, keyword, dikeRevetmentName, seaportId, dikeRevetmentType, conditionStatus,
-                    approvalStatus, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
+                    approvalStatus, isDeleted, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
                     code, location, commissioningYear, pageable);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm đê kè thành công", responses));
         } catch (Exception e) {

@@ -1,50 +1,50 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
-  BankOutlined,
-  SlidersOutlined,
   AuditOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
+  BankOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  RocketOutlined,
+  SlidersOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type {
-  PortTerminalAsset,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetDecreaseResponse,
-  AssetValueAdjustmentDetails,
-} from "../../services/assetmovement/types";
-import {
-  PORT_TERMINAL_ASSET_SCREEN,
-  type InfrastructureAssetScreenConfig,
-  type InfrastructureReferenceOption,
-} from "./infrastructureAssetScreen";
-import { fmtNum } from "../../utils/numFmt";
-import toast from "../../components/ToastNotification";
-import api from "../../services/api";
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-  triggerBlobDownload,
-  resolveMimeType,
-} from "../../components/shared/InfrastructureAttachmentTab";
-import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
-import {
-  colors,
-  actionPrimary,
-  textTertiary,
-  fontSizeMd,
-  fontWeightBold,
-  statusOperational,
-  statusAttention,
-  statusCritical,
-  statusDraft,
-} from "../../themetokenchk";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DynamicViewSidebar,
   ViewFieldType,
   type ViewTabConfig,
 } from "../../components/shared/dynamic-view-sidebar";
+import InfrastructureAttachmentTab, {
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from "../../components/shared/InfrastructureAttachmentTab";
+import toast from "../../components/ToastNotification";
+import api from "../../services/api";
+import { fetchInfraAssetAttachments } from "../../services/assetmovement/api";
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+  PortTerminalAsset,
+} from "../../services/assetmovement/types";
+import {
+  actionPrimary,
+  colors,
+  fontSizeMd,
+  fontWeightBold,
+  statusAttention,
+  statusCritical,
+  statusDraft,
+  statusOperational,
+  textTertiary,
+} from "../../themetokenchk";
+import { fmtNum } from "../../utils/numFmt";
+import {
+  PORT_TERMINAL_ASSET_SCREEN,
+  type InfrastructureAssetScreenConfig,
+  type InfrastructureReferenceOption,
+} from "./infrastructureAssetScreen";
 
 export interface PortTerminalAssetDetailContentProps {
   open: boolean;
@@ -110,18 +110,28 @@ const sectionTitleStyle: React.CSSProperties = {
 
 const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: "Lưu tạm" },
+  NHAP: { color: statusDraft, label: "Lưu tạm" },
   PENDING_APPROVAL: {
-    color: statusAttention,
-    label: "Chờ Cảng vụ duyệt",
+    color: actionPrimary,
+    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
   },
-  APPROVED_LEVEL1: { color: "#0284C7", label: "Chờ Cục duyệt" },
-  APPROVED: { color: statusOperational, label: "Đã duyệt" },
+  CHO_PHE_DUYET: {
+    color: actionPrimary,
+    label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
+  },
+  APPROVED_LEVEL1: { color: statusAttention, label: "Chờ phê duyệt cấp Cục" },
+  APPROVED: { color: statusOperational, label: "Đã phê duyệt" },
+  DA_PHE_DUYET: { color: statusOperational, label: "Đã phê duyệt" },
+  DA_DUYET: { color: statusOperational, label: "Đã phê duyệt" },
   REJECTED_LEVEL1: {
     color: statusCritical,
-    label: "Cảng vụ từ chối",
+    label: "Từ chối cấp Cảng vụ/Chi cục",
   },
-  REJECTED_LEVEL2: { color: statusCritical, label: "Cục từ chối" },
+  REJECTED_LEVEL2: { color: statusCritical, label: "Từ chối cấp Cục" },
   REJECTED: { color: statusCritical, label: "Từ chối" },
+  TU_CHOI: { color: statusCritical, label: "Từ chối" },
+  ARCHIVED: { color: statusCritical, label: "Đã xóa" },
+  DA_XOA: { color: statusCritical, label: "Đã xóa" },
 };
 
 const fmtDateTime = (v?: string | null): string =>
@@ -411,11 +421,9 @@ export default function PortTerminalAssetDetailContent({
                 label: "Tình trạng tài sản",
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === "Tốt"
+                  val === ""
                     ? statusOperational
-                    : val === "Không sử dụng được"
-                      ? statusCritical
-                      : statusAttention,
+                    : statusCritical,
               },
               {
                 name: "usageStatus",
@@ -582,10 +590,20 @@ export default function PortTerminalAssetDetailContent({
             defaultCollapsed: false,
             fields: [
               {
-                label: "Trạng thái",
+                label: "Trạng thái phê duyệt",
                 type: ViewFieldType.Badge,
+                colSpan: 24,
                 value: () => approvalInfo.label,
                 badgeColor: () => approvalInfo.color,
+              },
+              {
+                name: "updatedByName",
+                label: "Cán bộ cập nhật",
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || "")}
+                  </span>
+                ),
               },
               {
                 name: "updatedAt",
@@ -593,8 +611,8 @@ export default function PortTerminalAssetDetailContent({
                 type: ViewFieldType.DateTime,
               },
               {
-                name: "updatedByName",
-                label: "Cán bộ cập nhật",
+                name: "submittedByName",
+                label: "Cán bộ gửi phê duyệt",
                 render: (val) => (
                   <span style={{ fontWeight: fontWeightBold }}>
                     {String(val || "")}
@@ -607,36 +625,46 @@ export default function PortTerminalAssetDetailContent({
                 type: ViewFieldType.DateTime,
               },
               {
-                name: "submittedByName",
-                label: "Người gửi phê duyệt",
+                name: "portAuthorityApprovedByName",
+                label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || rec?.approvedLevel1ByName || "")}
+                  </span>
+                ),
               },
               {
-                name: "approvedLevel1At",
-                label: "Ngày duyệt cấp 1",
+                name: "portAuthorityApprovedAt",
+                label: "Ngày phê duyệt cấp Cảng vụ/Chi cục",
                 type: ViewFieldType.DateTime,
+                value: (rec) => rec?.portAuthorityApprovedAt || rec?.approvedLevel1At,
               },
               {
-                name: "approvedLevel1ByName",
-                label: "Người duyệt cấp 1",
-              },
-              {
-                name: "approvalContentLevel1",
-                label: "Nội dung phê duyệt cấp 1",
+                name: "portAuthorityApprovalContent",
+                label: "Nội dung phê duyệt cấp Cảng vụ/Chi cục",
                 colSpan: 24,
+                value: (rec) => rec?.portAuthorityApprovalContent || rec?.approvalContentLevel1,
               },
               {
-                name: "approvedLevel2At",
-                label: "Ngày duyệt cấp 2",
+                name: "departmentApprovedByName",
+                label: "Cán bộ phê duyệt cấp Cục",
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || rec?.approvedLevel2ByName || "")}
+                  </span>
+                ),
+              },
+              {
+                name: "departmentApprovedAt",
+                label: "Ngày phê duyệt cấp Cục",
                 type: ViewFieldType.DateTime,
+                value: (rec) => rec?.departmentApprovedAt || rec?.approvedLevel2At,
               },
               {
-                name: "approvedLevel2ByName",
-                label: "Người duyệt cấp 2",
-              },
-              {
-                name: "approvalContentLevel2",
-                label: "Nội dung phê duyệt cấp 2",
+                name: "departmentApprovalContent",
+                label: "Nội dung phê duyệt cấp Cục",
                 colSpan: 24,
+                value: (rec) => rec?.departmentApprovalContent || rec?.approvalContentLevel2,
               },
               {
                 name: "rejectionReason",
@@ -716,7 +744,9 @@ export default function PortTerminalAssetDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Danh mục tài sản</span>
                       <span className="chk-detail-value">
-                        {row.assetCategory || "—"}
+                        {(!row.assetCategory || (r && row.assetCategory === r.assetName))
+                          ? ([r?.assetCode, r?.assetName].filter(Boolean).join(' - ') || row.assetCategory || "—")
+                          : row.assetCategory}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -788,7 +818,7 @@ export default function PortTerminalAssetDetailContent({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Ghi chú</span>
                       <span className="chk-detail-value">
-                        {row.description || ""}
+                        {row.description || row.notes || "—"}
                       </span>
                     </div>
                   </div>
@@ -956,87 +986,6 @@ export default function PortTerminalAssetDetailContent({
             )}
           </div>
         ),
-      },
-      {
-        key: "tracking",
-        label: "Xử lý & theo dõi",
-        sections: [
-          {
-            key: "approval_info",
-            title: "Xử lý & theo dõi",
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                label: "Trạng thái",
-                type: ViewFieldType.Badge,
-                value: () => approvalInfo.label,
-                badgeColor: () => approvalInfo.color,
-              },
-              {
-                name: "updatedAt",
-                label: "Ngày cập nhật",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "updatedByName",
-                label: "Cán bộ cập nhật",
-                render: (val) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {String(val || "—")}
-                  </span>
-                ),
-              },
-              {
-                name: "submittedAt",
-                label: "Ngày gửi phê duyệt",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "submittedByName",
-                label: "Cán bộ gửi phê duyệt",
-              },
-              {
-                name: "portAuthorityApprovedAt",
-                label: "Ngày phê duyệt cấp Cảng vụ/Chi cục",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "portAuthorityApprovedByName",
-                label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
-              },
-              {
-                name: "portAuthorityApprovalContent",
-                label: "Nội dung phê duyệt cấp Cảng vụ/Chi cục",
-                colSpan: 24,
-              },
-              {
-                name: "departmentApprovedAt",
-                label: "Ngày phê duyệt cấp Cục",
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: "departmentApprovedByName",
-                label: "Cán bộ phê duyệt cấp Cục",
-              },
-              {
-                name: "departmentApprovalContent",
-                label: "Nội dung phê duyệt cấp Cục",
-                colSpan: 24,
-              },
-              {
-                name: "rejectionReason",
-                label: "Lý do từ chối",
-                colSpan: 24,
-                hidden: (rec) => !rec.rejectionReason,
-                render: (val) => (
-                  <span style={{ color: statusCritical, fontWeight: 500 }}>
-                    {String(val)}
-                  </span>
-                ),
-              },
-            ],
-          },
-        ],
       },
     ];
   }, [

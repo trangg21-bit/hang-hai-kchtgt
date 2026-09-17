@@ -147,6 +147,55 @@ public class VhfService {
       saved = vhfRepository.save(saved);
     }
 
+    // Xử lý action khi tạo mới (Lưu tạm vs Gửi duyệt vs Lưu và phê duyệt)
+    String action = request.getAction();
+    if (action == null && request.getApprovalStatus() != null) {
+      if ("APPROVED".equalsIgnoreCase(request.getApprovalStatus())) action = "approve";
+      else if ("PENDING_APPROVAL".equalsIgnoreCase(request.getApprovalStatus())) action = "submit";
+      else if ("DRAFT".equalsIgnoreCase(request.getApprovalStatus())) action = "draft";
+    }
+    UUID currentUserId = SecurityUtils.getCurrentUserId();
+    if ("approve".equalsIgnoreCase(action)) {
+      approvalService.requireApproveC2Permission(currentUserId, "vhf:approvec2");
+    }
+    if (action == null || action.isBlank() || "draft".equalsIgnoreCase(action)) {
+      saved.setApprovalStatus(ApprovalStatus.DRAFT);
+      saved.setSubmittedDate(null);
+      saved.setSubmittedBy(null);
+      saved.setApproverLevel1(null);
+      saved.setApprovedDateLevel1(null);
+      saved.setLevel1ApprovalContent(null);
+      saved.setApprovalContentLevel1(null);
+      saved.setApproverLevel2(null);
+      saved.setApprovedDateLevel2(null);
+      saved.setLevel2ApprovalContent(null);
+      saved.setApprovalContentLevel2(null);
+      saved = vhfRepository.save(saved);
+    } else if ("submit".equalsIgnoreCase(action)) {
+      // "Lưu và gửi phê duyệt" khi tạo mới — đi qua approvalService.submit() để áp dụng
+      // Rule 14 (người gửi cấp Cục → thẳng "Chờ Cục duyệt"; cấp dưới → "Chờ Cảng vụ / Chi cục duyệt")
+      approvalService.submit(saved, InfrastructureType.VHF, currentUserId);
+      saved.setSubmittedDate(LocalDateTime.now());
+      saved.setSubmittedBy(currentUserId);
+      saved = vhfRepository.save(saved);
+    } else if ("approve".equalsIgnoreCase(action)) {
+      // "Lưu và phê duyệt" khi tạo mới: thiết lập trạng thái Đã duyệt và cán bộ phê duyệt,
+      // KHÔNG ghi nhận lịch sử thay đổi (tạo mới không có biến động dữ liệu cũ -> mới).
+      LocalDateTime now = LocalDateTime.now();
+      saved.setApprovalStatus(ApprovalStatus.APPROVED);
+      saved.setSubmittedDate(now);
+      saved.setSubmittedBy(currentUserId);
+      saved.setApproverLevel1(currentUserId);
+      saved.setApprovedDateLevel1(now);
+      saved.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+      saved.setApprovalContentLevel1("Cấp Cục phê duyệt trực tiếp");
+      saved.setApproverLevel2(currentUserId);
+      saved.setApprovedDateLevel2(now);
+      saved.setLevel2ApprovalContent("Lưu và phê duyệt");
+      saved.setApprovalContentLevel2("Lưu và phê duyệt");
+      saved = vhfRepository.save(saved);
+    }
+
     log.info("Created VHF system: id={}, deviceCode={}", saved.getId(), saved.getDeviceCode());
     return toResponse(saved);
   }
@@ -193,12 +242,15 @@ public class VhfService {
         ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
         : List.of();
 
-    Boolean isDeleted = null;
+    Boolean isDeleted = Boolean.FALSE;
     ApprovalStatus apprStatus = null;
     if (approvalStatus != null && !approvalStatus.isBlank()) {
       String upper = approvalStatus.trim().toUpperCase();
       if ("DELETED".equals(upper) || "ARCHIVED".equals(upper) || "DA_XOA".equals(upper)) {
         isDeleted = Boolean.TRUE;
+      } else if ("ALL".equals(upper) || "TAT_CA".equals(upper)) {
+        isDeleted = Boolean.FALSE;
+        apprStatus = null;
       } else {
         isDeleted = Boolean.FALSE;
         apprStatus = parseApprovalStatus(approvalStatus);
@@ -328,6 +380,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
     boolean approvedEdit = false;
     if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
+        approvalService.requireApproveC2Permission(currentUserId, "vhf:approvec2");
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovalContentLevel2("Lưu và phê duyệt");
         entity.setApprovedDateLevel2(LocalDateTime.now());
@@ -558,7 +611,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
           if (rs.isPresent()) return rs.get().getStationName();
         }
         if (jdbcTemplate != null) {
-          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
           List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);
@@ -901,7 +954,9 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
     List<Attachment> saved = new ArrayList<>();
     java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
     Vhf entity = vhfRepository.findById(entityId).orElse(null);
-    boolean wasApproved = entity != null
+    boolean isNewlyCreated = entity != null && entity.getCreatedAt() != null
+        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
+    boolean wasApproved = !isNewlyCreated && entity != null
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     for (MultipartFile file : files) {

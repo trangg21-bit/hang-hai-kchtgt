@@ -1,57 +1,44 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
+
 import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
   DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
   HistoryOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
-  borderDefault,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  actionPrimary,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  textTertiary,
-} from '../../themetokenchk';
-import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { isAssetRecordEditable, normalizeApprovalStatus, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import api from '../../services/api';
-import {
-  organizationService,
-  type Organization,
-} from '../../services/organizationService';
+import { organizationService, type Organization } from '../../services/organizationService';
 import {
   createAisSystemAsset,
   deleteAisSystemAsset,
@@ -80,13 +67,28 @@ import type {
   AssetIncreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { useAuthStore } from '../../store/authStore';
+import * as themeTokenChk from '../../themetokenchk';
 import {
-  saveAttachmentFile,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
+import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
+  saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import { useAuthStore } from '../../store/authStore';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
 import AisSystemAssetDetailContent from './AisSystemAssetDetailContent';
 import AisSystemAssetOperationForm, {
@@ -95,19 +97,6 @@ import AisSystemAssetOperationForm, {
 } from './AisSystemAssetOperationForm';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const AIS_ASSET_TYPES = [
-  'Hệ thống AIS',
-  'Trạm bờ AIS',
-  'Thiết bị thu phát AIS (Transponder)',
-  'Anten AIS',
-  'Máy chủ xử lý dữ liệu AIS',
-  'Phần mềm khai thác AIS',
-  'Hệ thống phụ trợ',
-  'Khác',
-];
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -202,7 +191,7 @@ const AIS_HISTORY_FIELD_ORDER = [
   'attachments',
 ];
 
-const BREADCRUMB_ITEMS: BreadcrumbItem[] = [
+const BREADCRUMB_ITEMS = [
   { label: 'Trang chủ', path: '/' },
   { label: 'Quản lý tài sản KCHT hàng hải' },
   { label: 'Tài sản hệ thống AIS' },
@@ -217,6 +206,7 @@ const isValidationError = (cause: unknown) =>
   Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function AisSystemAssetList() {
+  const perms = useAssetPermissions(['aissystem', 'aisasset']);
   const currentUser = useAuthStore((s) => s.user);
   const [data, setData] = useState<AisSystemAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -243,7 +233,7 @@ export default function AisSystemAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<AisSystemAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -259,7 +249,7 @@ export default function AisSystemAssetList() {
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -326,7 +316,7 @@ export default function AisSystemAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -362,7 +352,7 @@ export default function AisSystemAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderAisHistoryTimeline = (filtered: any[]) => {
+  const renderAisHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -395,7 +385,7 @@ export default function AisSystemAssetList() {
       resolveUnitName: (rec) => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -458,20 +448,14 @@ export default function AisSystemAssetList() {
     setDrawerMode('create');
     setAttachments([]);
     form.resetFields();
-    form.setFieldsValue({
-      valueUnit: 'VNĐ',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      assetGroup: 'Máy móc, thiết bị',
-      assetType: 'Hệ thống AIS',
-      origin: 'Mua sắm',
-    });
   }, [form]);
 
   const openEdit = useCallback(
     (record: AisSystemAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.resetFields();
@@ -690,7 +674,7 @@ export default function AisSystemAssetList() {
       const s = val.trim();
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
     }
-    const parsed = dayjs(val as any);
+    const parsed = dayjs(val as string | number | Date);
     return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
   };
 
@@ -712,7 +696,7 @@ export default function AisSystemAssetList() {
           attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
       };
 
-      const cleanPayload: Record<string, any> = { ...payload };
+      const cleanPayload: Record<string, unknown> = { ...payload };
       const excludeKeys = [
         'id',
         'parentOrgUnitName',
@@ -741,7 +725,7 @@ export default function AisSystemAssetList() {
       });
 
       if (drawerMode === 'create') {
-        await createAisSystemAsset(cleanPayload as any);
+        await createAisSystemAsset(cleanPayload as unknown as AisSystemAssetPayload);
         toast.success(
           status === 'DRAFT'
             ? 'Đã lưu tạm tài sản hệ thống AIS'
@@ -750,7 +734,7 @@ export default function AisSystemAssetList() {
             : 'Đã tạo và phê duyệt tài sản hệ thống AIS'
         );
       } else if (selected) {
-        await updateAisSystemAsset(selected.id, cleanPayload as any);
+        await updateAisSystemAsset(selected.id, cleanPayload as unknown as AisSystemAssetPayload);
         toast.success('Đã cập nhật tài sản hệ thống AIS thành công');
       }
 
@@ -805,7 +789,7 @@ export default function AisSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -871,6 +855,7 @@ export default function AisSystemAssetList() {
             assetName: selected.assetName,
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             reason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
@@ -899,53 +884,26 @@ export default function AisSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'aisSystemId',
-      label: 'Mã hệ thống AIS',
-      type: 'select',
-      placeholder: 'Chọn hệ thống AIS',
-      options: aisSystems.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      })),
-    },
-    {
       key: 'assetType',
       label: 'Loại tài sản',
       type: 'select',
       placeholder: 'Chọn loại tài sản',
-      options: AIS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+      options: MARITIME_ASSET_TYPE_OPTIONS,
+      isAdvanced: true,
     },
     {
       key: 'assetCode',
       label: 'Mã tài sản',
       type: 'text',
       placeholder: 'Tìm theo mã tài sản',
-    },
-    {
-      key: 'assetName',
-      label: 'Tên tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo tên tài sản',
-    },
-    {
-      key: 'assetCondition',
-      label: 'Tình trạng tài sản',
-      type: 'select',
-      placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+      isAdvanced: true,
     },
     {
       key: 'updatedRange',
       label: 'Khoảng ngày cập nhật',
       type: 'dateRange',
       placeholder: ['Từ ngày', 'Đến ngày'],
+      isAdvanced: true,
     },
   ], [organizations, aisSystems]);
 
@@ -996,7 +954,7 @@ export default function AisSystemAssetList() {
         type: TableColumnType.Text,
         width: 180,
         allowSort: true,
-        render: (v) => v || '—',
+        render: (v) => (v ? String(v) : '—'),
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -1070,71 +1028,89 @@ export default function AisSystemAssetList() {
         sortField: 'departmentApprovedAt',
       },
     ],
-    actions: (record: AisSystemAsset) => [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => void openDetail(record),
-      },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('exploit');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            unitOfMeasure: record.quantityUnit,
-            quantity: record.quantity,
-          });
-        },
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('increase');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('decrease');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'history',
-        label: 'Lịch sử thay đổi',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => setDeleteTarget(record),
-      },
-    ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, aisSystemMap]);
+    actions: (record: AisSystemAsset) => {
+      const actions: any[] = [];
+      if (perms.canRead) {
+        actions.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+      if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+        actions.push({
+          key: 'edit',
+          label: 'Sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+      if (perms.canExploit) {
+        actions.push({
+          key: 'exploit',
+          label: 'Khai thác tài sản',
+          icon: <RocketOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('exploit');
+            operationForm.resetFields();
+            operationForm.setFieldsValue({
+              unitOfMeasure: record.quantityUnit,
+              quantity: record.quantity,
+            });
+          },
+        });
+      }
+      if (perms.canIncrease) {
+        actions.push({
+          key: 'increase',
+          label: 'Tăng nguyên giá',
+          icon: <PlusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('increase');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canDecrease) {
+        actions.push({
+          key: 'decrease',
+          label: 'Giảm nguyên giá',
+          icon: <MinusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('decrease');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canHistory) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử thay đổi',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+      const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+      if (isDraft && perms.canDelete) {
+        actions.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+      return actions;
+    },
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, aisSystemMap, perms]);
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1142,9 +1118,8 @@ export default function AisSystemAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({
@@ -1191,7 +1166,6 @@ export default function AisSystemAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

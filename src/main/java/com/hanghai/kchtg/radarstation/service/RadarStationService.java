@@ -112,16 +112,27 @@ public class RadarStationService {
     public RadarStationResponse create(RadarStationCreateRequest request, UUID createdBy) {
         validateAllowedOrgUnit(request.getOrgUnitId());
 
-        String action = request.getAction() != null ? request.getAction().trim().toLowerCase() : "draft";
-        if (!"draft".equals(action) && !"submit".equals(action)) {
-            throw new IllegalArgumentException("Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft' hoặc 'submit'");
+        String action = request.getAction() != null ? request.getAction().trim().toLowerCase() : null;
+        if (action == null && request.getApprovalStatus() != null) {
+            if ("APPROVED".equalsIgnoreCase(request.getApprovalStatus())) action = "approve";
+            else if ("PENDING_APPROVAL".equalsIgnoreCase(request.getApprovalStatus())) action = "submit";
+            else if ("DRAFT".equalsIgnoreCase(request.getApprovalStatus())) action = "draft";
+        }
+        if (action == null) {
+            action = "draft";
+        }
+        if (!"draft".equals(action) && !"submit".equals(action) && !"approve".equals(action)) {
+            throw new IllegalArgumentException("Action không hợp lệ: " + action + ". Chỉ chấp nhận 'draft', 'submit' hoặc 'approve'");
+        }
+        if ("approve".equals(action)) {
+            approvalService.requireApproveC2Permission(createdBy, "radarstation:approvec2");
         }
 
         String code = generateCode();
-        // Tạo mới luôn khởi tạo Lưu tạm (DRAFT); nhánh action=submit được áp qua
+        // Tạo mới: nhánh action=approve khởi tạo APPROVED ngay từ đầu, nhánh submit áp qua
         // approvalService.submit() cuối phương thức — Rule 14: người cấp Cục gửi vào thẳng
         // APPROVED_LEVEL1 ('Chờ Cục duyệt'), cấp Cảng vụ/Chi cục vào PENDING_APPROVAL.
-        ApprovalStatus initialStatus = ApprovalStatus.DRAFT;
+        ApprovalStatus initialStatus = "approve".equals(action) ? ApprovalStatus.APPROVED : ApprovalStatus.DRAFT;
 
         RadarStation entity = RadarStation.builder()
                 .code(code)
@@ -176,6 +187,20 @@ public class RadarStationService {
             // 'Lưu và gửi phê duyệt' khi tạo mới: đi qua đúng luồng submit chuẩn (Rule 14),
             // ghi submittedAt/submittedBy + set trạng thái theo cấp đơn vị người gửi.
             approvalService.submit(saved, InfrastructureType.RADAR_STATION, createdBy);
+            saved = repository.save(saved);
+        } else if ("approve".equals(action)) {
+            // "Lưu và phê duyệt" khi tạo mới: thiết lập trạng thái Đã duyệt và cán bộ phê duyệt,
+            // KHÔNG ghi nhận lịch sử thay đổi (tạo mới không có biến động dữ liệu cũ -> mới).
+            LocalDateTime now = LocalDateTime.now();
+            saved.setApprovalStatus(ApprovalStatus.APPROVED);
+            saved.setSubmittedAt(now);
+            saved.setSubmittedBy(createdBy);
+            saved.setApproverLevel1(createdBy);
+            saved.setApprovedDateLevel1(now);
+            saved.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+            saved.setApproverLevel2(createdBy);
+            saved.setApprovedDateLevel2(now);
+            saved.setLevel2ApprovalContent("Lưu và phê duyệt");
             saved = repository.save(saved);
         }
 
@@ -262,6 +287,7 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
         }
 
         if (wasApproved) {
+            approvalService.requireApproveC2Permission(updatedBy, "radarstation:approvec2");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 
@@ -607,7 +633,26 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                     paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
         }
 
-        Set<UUID> userIds = historyList.stream()
+        List<InfrastructureHistory> filteredList = historyList.stream()
+                .filter(h -> {
+                    if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
+                        return false;
+                    }
+                    String field = h.getChangedField();
+                    if (field != null) {
+                        String norm = field.trim().toLowerCase();
+                        if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+                            return false;
+                        }
+                    }
+                    if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        Set<UUID> userIds = filteredList.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -615,7 +660,7 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                 userRepository.findAllByIdInWithOrgUnit(userIds).stream()
                         .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
-        return historyList.stream().map(h -> {
+        return filteredList.stream().map(h -> {
             User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
             // list-screen-ui-standard §3: chỉ Họ và tên (hoặc tên đăng nhập);
             // không để lộ email hay UUID ra giao diện.
@@ -636,6 +681,11 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
             if (orgUnitName == null) {
                 orgUnitName = "Cục Hàng hải Việt Nam";
             }
+            String prevDisp = formatDisplayValue(h.getChangedField(), h.getPreviousValue());
+            String newDisp = formatDisplayValue(h.getChangedField(), h.getNewValue());
+            if (h.getStatus() == InfrastructureHistoryStatus.UPDATED && EntityUpdateUtils.areEqual(prevDisp, newDisp)) {
+                return null;
+            }
             return HistoryEntry.builder()
                     .id(h.getId())
                     .approvalLevel(h.getApprovalLevel())
@@ -644,10 +694,10 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                     .orgUnitName(orgUnitName)
                     .approvedDate(h.getApprovedDate())
                     .changedField(h.getChangedField())
-                    .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
-                    .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
+                    .previousValue(prevDisp)
+                    .newValue(newDisp)
                     .build();
-        }).toList();
+        }).filter(Objects::nonNull).toList();
     }
 
     private LocalDateTime parseFromDate(String value) {
@@ -730,7 +780,7 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
         if ("vtsOperationCenterId".equals(field) || "Trung tâm điều hành VTS".equals(field)) {
             try {
                 UUID cid = UUID.fromString(rawValue);
-                List<String> names = jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, cid);
+                List<String> names = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, cid);
                 if (!names.isEmpty() && names.get(0) != null) {
                     return names.get(0);
                 }
@@ -824,8 +874,10 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
-        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        boolean isNewlyCreated = entity.getCreatedAt() != null
+                && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
+        boolean wasApproved = !isNewlyCreated && (entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2);
 
         long existingCount = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.RADAR_STATION).size();
         if (existingCount + files.size() > 10) {
@@ -983,8 +1035,7 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                 .vtsSystemName(entity.getVtsSystemId() != null ?
                         vtsSystemRepository.findById(entity.getVtsSystemId()).map(VtsSystem::getSystemName).orElse("") : "")
                 .vtsOperationCenterId(entity.getVtsOperationCenterId())
-                .vtsOperationCenterName(entity.getVtsOperationCenterId() != null ?
-                        vtsSystemRepository.findById(entity.getVtsOperationCenterId()).map(VtsSystem::getSystemName).orElse("") : "")
+                .vtsOperationCenterName(resolveVtsOperationCenterName(entity.getVtsOperationCenterId()))
                 .operatingUnitId(entity.getOperatingUnitId())
                 .operatingUnitName(orgUnitCacheService.getName(entity.getOperatingUnitId()))
                 .provinceId(entity.getProvinceId())
@@ -1039,6 +1090,18 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
             });
         }
         return builder.build();
+    }
+
+    private String resolveVtsOperationCenterName(UUID id) {
+        if (id == null) return "";
+        try {
+            List<String> names = jdbcTemplate.queryForList(
+                    "SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL",
+                    String.class, id);
+            return (names != null && !names.isEmpty() && names.get(0) != null) ? names.get(0) : "";
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private static String trimToNull(String value) {

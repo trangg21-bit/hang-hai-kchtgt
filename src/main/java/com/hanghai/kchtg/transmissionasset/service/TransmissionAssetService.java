@@ -103,9 +103,11 @@ public class TransmissionAssetService {
             if (assetName != null && !assetName.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetName")), "%" + assetName.trim().toLowerCase(Locale.ROOT) + "%"));
             }
-            if (parentOrgUnitId != null) predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            if (orgUnitId != null) predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            if (usingOrgUnitId != null) predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
+            if (orgUnitCacheService != null) {
+                orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "parentOrgUnitId", parentOrgUnitId);
+                orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "orgUnitId", orgUnitId);
+                orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "usingOrgUnitId", usingOrgUnitId);
+            }
             if (transmissionId != null) predicates.add(cb.equal(root.get("transmissionId"), transmissionId));
             if (assetCondition != null && !assetCondition.isBlank()) predicates.add(cb.equal(root.get("assetCondition"), assetCondition));
             if (assetType != null && !assetType.isBlank()) predicates.add(cb.equal(root.get("assetType"), assetType.trim()));
@@ -137,6 +139,18 @@ public class TransmissionAssetService {
     @Transactional
     public TransmissionAssetResponse update(UUID id, TransmissionAssetRequest request) {
         TransmissionAsset entity = requireAsset(id);
+        ApprovalStatus previousStatus = entity.getApprovalStatus();
+        if (entity.getDeletedAt() != null
+                || previousStatus == ApprovalStatus.ARCHIVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL1
+                || previousStatus == ApprovalStatus.PENDING_APPROVAL
+                || previousStatus == ApprovalStatus.PROPOSED) {
+            String label = previousStatus != null ? previousStatus.getLabel() : "Đã xóa";
+            throw new IllegalStateException("Hồ sơ ở trạng thái " + label + " không được phép chỉnh sửa");
+        }
+        boolean wasApproved = previousStatus == ApprovalStatus.APPROVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL2;
+
         TransmissionAsset oldEntity = new TransmissionAsset();
         BeanUtils.copyProperties(entity, oldEntity);
 
@@ -146,8 +160,10 @@ public class TransmissionAssetService {
         calculateValues(entity);
         TransmissionAsset saved = repository.save(entity);
 
-        String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
-        changeTrackingService.recordChanges("TRANSMISSION", id.toString(), actorId, oldEntity, saved);
+        if (wasApproved) {
+            String actorId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
+            changeTrackingService.recordChanges("TRANSMISSION", id.toString(), actorId, oldEntity, saved);
+        }
 
         return toResponse(saved);
     }
@@ -168,7 +184,10 @@ public class TransmissionAssetService {
 
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> getHistory(UUID id) {
-        requireAsset(id);
+        TransmissionAsset entity = requireAsset(id);
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return java.util.Map.of("changeHistory", java.util.Collections.emptyList());
+        }
         String entityId = id.toString();
         String entityType = "TransmissionAsset";
 
@@ -236,16 +255,36 @@ public class TransmissionAssetService {
 
     // --- Exploitations (Tab 4) ---
     public List<TransmissionAssetExploitation> getExploitations(UUID assetId) {
-        requireAsset(assetId);
-        return exploitationRepository.findByAssetIdOrderByCreatedAtDesc(assetId);
+        TransmissionAsset asset = requireAsset(assetId);
+        String defaultCategory = buildAssetCategory(asset);
+        List<TransmissionAssetExploitation> list = exploitationRepository.findByAssetIdOrderByCreatedAtDesc(assetId);
+        list.forEach(e -> {
+            if (e.getAssetCategory() == null || e.getAssetCategory().isBlank()) {
+                e.setAssetCategory(defaultCategory);
+            }
+        });
+        return list;
+    }
+
+    private String buildAssetCategory(TransmissionAsset asset) {
+        String code = asset.getAssetCode();
+        String name = asset.getAssetName();
+        if (code != null && name != null) return code + " - " + name;
+        if (code != null) return code;
+        if (name != null) return name;
+        return "";
     }
 
     @Transactional
     public TransmissionAssetExploitation addExploitation(UUID assetId, TransmissionExploitationRequest request) {
-        requireAsset(assetId);
+        TransmissionAsset asset = requireAsset(assetId);
         TransmissionAssetExploitation entity = new TransmissionAssetExploitation();
         BeanUtils.copyProperties(request, entity);
         entity.setAssetId(assetId);
+        // Always ensure assetCategory is populated
+        if (entity.getAssetCategory() == null || entity.getAssetCategory().isBlank()) {
+            entity.setAssetCategory(buildAssetCategory(asset));
+        }
         return exploitationRepository.save(entity);
     }
 

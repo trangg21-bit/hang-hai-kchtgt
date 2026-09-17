@@ -8,7 +8,7 @@ import type {
   VtsAssistAssetAdjustment,
 } from './types';
 
-const BASE_URL = '/v1/asset/transmission-assets';
+const BASE_URL = '/v1/asset/vts-assist-assets';
 
 export async function fetchVtsAssistAssets(params: VtsAssistAssetFilters): Promise<PageResponse<VtsAssistAsset>> {
   const sp = new URLSearchParams();

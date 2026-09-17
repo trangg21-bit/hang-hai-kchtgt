@@ -22,6 +22,7 @@ import toast from '../../components/ToastNotification';
 import { radarStationCRUD, radarStationApproval, radarStationAttachment } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import api from '../../services/api';
 import type {
   RadarStationResponse,
   CreateRadarStationRequest,
@@ -167,6 +168,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [orgOptions, setOrgOptions] = useState<OrgUnitTreeOption[]>([]);
   const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string }[]>([]);
   const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -193,6 +195,19 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         );
       } catch (err) {
         console.error('Không tải được danh sách hệ thống VTS', err);
+      }
+      try {
+        const opRes = await api.get('/common/options/vts-operation-centers');
+        const opCenters = opRes.data?.data || opRes.data || [];
+        setVtsOperationCenterOptions(
+          (Array.isArray(opCenters) ? opCenters : []).map((item: any) => ({
+            id: item.id,
+            code: item.code,
+            name: item.name,
+          })),
+        );
+      } catch (err) {
+        console.error('Không tải được danh sách trung tâm điều hành VTS', err);
       }
     })();
   }, []);
@@ -320,7 +335,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
 
       setIsSubmitting(true);
       if (isCreateMode) {
-        const created = await radarStationCRUD.create(payload);
+        const createPayload: CreateRadarStationRequest = {
+          ...payload,
+          action: submitMode === 'approve' ? 'approve' : submitMode === 'submit' ? 'submit' : 'draft',
+          approvalStatus: submitMode === 'approve' ? 'APPROVED' : submitMode === 'submit' ? 'PENDING_APPROVAL' : 'DRAFT',
+        };
+        const created = await radarStationCRUD.create(createPayload);
         const savedId = created.id || null;
         const newFiles = uploadedFiles.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
         if (savedId && newFiles.length > 0) {
@@ -333,16 +353,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         if (savedId && window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[savedId] = created;
         }
-        if (submitMode !== 'save' && savedId) {
-          const submitted = await radarStationApproval.submitForApproval(savedId);
-          if (submitMode === 'approve' && (submitted.status === 'APPROVED_LEVEL1' || submitted.approvalStatus === 'APPROVED_LEVEL1')) {
-            await radarStationApproval.approveLevel2(savedId);
-            toast.success('Đã phê duyệt');
-          } else if (submitMode === 'approve') {
-            toast.info('Đã tạo mới và gửi phê duyệt — hồ sơ đang chờ Cảng vụ/Chi cục duyệt');
-          } else {
-            toast.success('Đã tạo mới và gửi phê duyệt trạm radar');
-          }
+        if (submitMode === 'submit' && savedId) {
+          toast.success('Đã tạo mới và gửi phê duyệt trạm radar');
+        } else if (submitMode === 'approve' && savedId) {
+          toast.success('Đã phê duyệt');
         } else {
           toast.success('Đã tạo mới trạm radar');
         }
@@ -539,6 +553,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     return vts ? (vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vtsId) : vtsId;
   };
 
+  const vtsOpCenterLabelById = (ocId?: string): string => {
+    if (!ocId) return '—';
+    const oc = vtsOperationCenterOptions.find((o) => o.id === ocId);
+    return oc ? (oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || ocId) : ocId;
+  };
+
   const title = isDetailMode ? 'Chi tiết trạm radar' : isEditMode ? 'Chỉnh sửa trạm radar' : 'Tạo trạm radar mới';
 
   // Trạng thái hiện tại của bản ghi (khớp RadarStationList: status || approvalStatus)
@@ -558,7 +578,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           <Descriptions.Item label="Cảng biển">{record.seaportName || seaportLabelById(record.seaportId)}</Descriptions.Item>
           <Descriptions.Item label="Hệ thống VTS">{record.vtsSystemName || vtsLabelById(record.vtsSystemId)}</Descriptions.Item>
           <Descriptions.Item label="Trung tâm điều hành VTS">
-            {record.vtsOperationCenterName || vtsLabelById(record.vtsOperationCenterId)}
+            {record.vtsOperationCenterName || vtsOpCenterLabelById(record.vtsOperationCenterId)}
           </Descriptions.Item>
           <Descriptions.Item label="Đơn vị khai thác">{orgNameById(record.operatingUnitId)}</Descriptions.Item>
           <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
@@ -790,9 +810,9 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               allowClear
               showSearch
               optionFilterProp="label"
-              options={vtsOptions.map((vts) => ({
-                value: vts.id,
-                label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id,
+              options={vtsOperationCenterOptions.map((oc) => ({
+                value: oc.id,
+                label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id,
               }))}
               style={selectStyle}
             />

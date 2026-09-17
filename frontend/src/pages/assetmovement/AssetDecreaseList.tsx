@@ -13,6 +13,7 @@ import {
   Select,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import {
   PlusOutlined,
   EditOutlined,
@@ -35,6 +36,7 @@ import { colors } from '../../theme';
 import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function AssetDecreaseList() {
+  const perms = useAssetPermissions(['assetdecrease']);
   const [dataSource, setDataSource] = useState<AssetDecreaseResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -225,51 +227,60 @@ export default function AssetDecreaseList() {
       key: 'action',
       render: (_: any, record: AssetDecreaseResponse) => {
         const isPending = !record.status || record.status === 'CHO_PHE_DUYET' || record.status === 'PENDING';
+        const canApprove = perms.canApproveC1 || perms.canApproveC2 || perms.canUpdate;
         return (
           <Space size="middle">
             {isPending && (
               <>
-                <Tooltip title="Phê duyệt">
-                  <Popconfirm
-                    title="Bạn có chắc chắn muốn phê duyệt yêu cầu này?"
-                    onConfirm={() => handleApprove(record.id)}
-                    okText="Đồng ý"
-                    cancelText="Hủy"
-                  >
+                {canApprove && (
+                  <Tooltip title="Phê duyệt">
+                    <Popconfirm
+                      title="Bạn có chắc chắn muốn phê duyệt yêu cầu này?"
+                      onConfirm={() => handleApprove(record.id)}
+                      okText="Đồng ý"
+                      cancelText="Hủy"
+                    >
+                      <Button
+                        type="text"
+                        style={{ color: '#52c41a' }}
+                        icon={<CheckOutlined />}
+                      />
+                    </Popconfirm>
+                  </Tooltip>
+                )}
+                {canApprove && (
+                  <Tooltip title="Từ chối">
                     <Button
                       type="text"
-                      style={{ color: '#52c41a' }}
-                      icon={<CheckOutlined />}
+                      danger
+                      icon={<CloseOutlined />}
+                      onClick={() => handleOpenRejectModal(record.id)}
                     />
-                  </Popconfirm>
-                </Tooltip>
-                <Tooltip title="Từ chối">
-                  <Button
-                    type="text"
-                    danger
-                    icon={<CloseOutlined />}
-                    onClick={() => handleOpenRejectModal(record.id)}
-                  />
-                </Tooltip>
-                <Tooltip title="Chỉnh sửa">
-                  <Button
-                    type="text"
-                    icon={<EditOutlined />}
-                    onClick={() => handleOpenModal(record)}
-                  />
-                </Tooltip>
+                  </Tooltip>
+                )}
+                {perms.canUpdate && (
+                  <Tooltip title="Chỉnh sửa">
+                    <Button
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={() => handleOpenModal(record)}
+                    />
+                  </Tooltip>
+                )}
               </>
             )}
-            <Popconfirm
-              title="Bạn có chắc chắn muốn xóa yêu cầu này?"
-              onConfirm={() => handleDelete(record.id)}
-              okText="Có"
-              cancelText="Không"
-            >
-              <Tooltip title="Xóa">
-                <Button type="text" danger icon={<DeleteOutlined />} />
-              </Tooltip>
-            </Popconfirm>
+            {perms.canDelete && (
+              <Popconfirm
+                title="Bạn có chắc chắn muốn xóa yêu cầu này?"
+                onConfirm={() => handleDelete(record.id)}
+                okText="Có"
+                cancelText="Không"
+              >
+                <Tooltip title="Xóa">
+                  <Button type="text" danger icon={<DeleteOutlined />} />
+                </Tooltip>
+              </Popconfirm>
+            )}
           </Space>
         );
       },
@@ -282,13 +293,15 @@ export default function AssetDecreaseList() {
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-          >
-            Tạo yêu cầu
-          </Button>
+          {perms.canCreate && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => handleOpenModal()}
+            >
+              Tạo yêu cầu
+            </Button>
+          )}
         </Space>
       }
     >

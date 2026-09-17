@@ -632,7 +632,7 @@ export default function PierListPage() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const r = await pierCRUD.search({
         orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
@@ -653,7 +653,7 @@ export default function PierListPage() {
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
-    } catch (ex: unknown) { setIsError(true); setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách cầu cảng')); }
+    } catch { setIsError(true); }
     finally { setIsLoading(false); }
   }, [orgUnit, pierNameInput, pierCodeInput, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus,
     filterWaterwayId, filterConstructionGrade, filterStructureType, filterOperationalFunction, filterUpdatedFrom, filterUpdatedTo,
@@ -1121,16 +1121,17 @@ export default function PierListPage() {
           align-items: center !important;
           scrollbar-width: thin !important;
           scrollbar-color: #cbd5e1 #f8fafc !important;
-          padding: 2px 16px 6px 16px !important;
-          gap: 20px !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
         }
         .pier-page-wrapper div:has(> button[aria-pressed]) > button {
           white-space: nowrap !important;
           flex-shrink: 0 !important;
           cursor: pointer !important;
+          padding: 4px 2px !important;
         }
         .pier-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-          height: 6px !important;
+          height: 4px !important;
           display: block !important;
         }
         .pier-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {

@@ -42,6 +42,8 @@ import InfrastructureAttachmentTab from '../../components/shared/InfrastructureA
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import toast, { message } from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
+import { isAttachmentField } from '../../utils/historyAttachmentDedup';
 import * as themeTokenChk from '../../themetokenchk';
 import {
   DRAWER_WIDTH,
@@ -158,8 +160,9 @@ const FIELD_LABELS: Record<string, string> = {
   geometryType: 'Loại đối tượng',
   mapSymbolId: 'Biểu tượng bản đồ',
   note: 'Ghi chú',
-  approvalStatus: 'Trạng thái phê duyệt',
-  rejectionReason: 'Lý do từ chối',
+  'Tài liệu đính kèm': 'Tài liệu đính kèm',
+  'File đính kèm': 'Tài liệu đính kèm',
+  attachments: 'Tài liệu đính kèm',
 };
 
 const DIKE_REVETMENT_HISTORY_FIELD_ORDER = [
@@ -182,8 +185,7 @@ const DIKE_REVETMENT_HISTORY_FIELD_ORDER = [
   'geometryType',
   'mapSymbolId',
   'note',
-  'approvalStatus',
-  'rejectionReason',
+  'Tài liệu đính kèm',
 ];
 
 const historyFieldName = (fn: string): string => FIELD_LABELS[fn] || fn;
@@ -902,12 +904,16 @@ export default function DikeRevetmentList() {
         dikeRevetmentType: filterType,
         conditionStatus: filterStatusVal,
         approvalStatus: TAB_QUERY_MAP[activeTab],
+        isDeleted: activeTab === 'ARCHIVED' ? true : (activeTab === '' ? false : undefined),
         orgUnitId: filterUnitId && filterUnitId !== '__all__' ? filterUnitId : undefined,
         commissioningYear: filterCommissioningYear,
         updatedFrom: filterUpdatedRange?.[0] ? filterUpdatedRange[0].format('YYYY-MM-DD') : undefined,
         updatedTo: filterUpdatedRange?.[1] ? filterUpdatedRange[1].format('YYYY-MM-DD') : undefined,
       });
-      setDataSource(res.items);
+      const items = activeTab === ''
+        ? (res.items || []).filter((item) => !isDikeRevetmentDeleted(item))
+        : (res.items || []);
+      setDataSource(items);
       setTotal(res.total);
     } catch {
       setIsError(true);
@@ -937,7 +943,13 @@ export default function DikeRevetmentList() {
     };
     const results = await Promise.allSettled(
       STATUS_TAB_LIST.map((tab) =>
-        dikeRevetmentCRUD.search({ page: 0, size: 1, approvalStatus: TAB_QUERY_MAP[tab.key], ...filterScope })
+        dikeRevetmentCRUD.search({
+          page: 0,
+          size: 1,
+          approvalStatus: TAB_QUERY_MAP[tab.key],
+          isDeleted: tab.key === 'ARCHIVED' ? true : (tab.key === '' ? false : undefined),
+          ...filterScope,
+        })
       ),
     );
     const counts: Record<string, number> = {};
@@ -948,7 +960,7 @@ export default function DikeRevetmentList() {
         counts[tab.key] = 0;
       }
     });
-    const sumChildCounts = STATUS_TAB_LIST.filter((t) => t.key !== '').reduce((acc, t) => acc + (counts[t.key] || 0), 0);
+    const sumChildCounts = STATUS_TAB_LIST.filter((t) => t.key !== '' && t.key !== 'ARCHIVED').reduce((acc, t) => acc + (counts[t.key] || 0), 0);
     if (sumChildCounts > 0 && (!counts[''] || counts[''] < sumChildCounts)) {
       counts[''] = sumChildCounts;
     }
@@ -1522,6 +1534,18 @@ export default function DikeRevetmentList() {
     if (sv.startsWith('POINT') || sv.startsWith('LINESTRING') || sv.startsWith('POLYGON') || sv.startsWith('MULTIPOINT')) {
       return renderCoordinatesDisplay(str);
     }
+    if (isAttachmentField(field) && str && str !== 'Chưa có' && str !== '(trống)' && str !== '—') {
+      const files = str.split(',').map((s) => s.trim()).filter(Boolean);
+      if (files.length > 1) {
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: '20px', width: '100%' }}>
+            {files.map((file, idx) => (
+              <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, wordBreak: 'break-all' }}>{file}</div>
+            ))}
+          </div>
+        );
+      }
+    }
     if (str.includes(',') && str.length > 25) {
       const items = str.split(',').map((s) => s.trim()).filter(Boolean);
       if (items.length > 1) {
@@ -1547,7 +1571,13 @@ export default function DikeRevetmentList() {
       return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
     }
 
-    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || String(item?.changedField || '').includes('đính kèm')) {
+    // Nếu có trường dữ liệu thông thường thay đổi, ưu tiên hiển thị [Cập nhật]
+    const hasFieldUpdate = changes.some((c: any) => !isAttachmentField(c.field));
+    if (hasFieldUpdate) {
+      return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+    }
+
+    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len')) {
       return { label: 'Tải lên tệp', color: actionPrimary, bg: `${actionPrimary}18` };
     }
 
@@ -1696,11 +1726,38 @@ export default function DikeRevetmentList() {
       }
     }
 
+    const isBlank = (v: any): boolean => {
+      if (v == null) return true;
+      const s = String(v).trim().toLowerCase();
+      return (
+        s === '' ||
+        s === '—' ||
+        s === '-' ||
+        s === '–' ||
+        s === 'null' ||
+        s === '(null)' ||
+        s === '(trống)' ||
+        s === 'chưa có' ||
+        s === 'undefined'
+      );
+    };
+
     const isMeaningful = (field: string, rawOld: any, rawNew: any): boolean => {
+      const f = (field || '').trim();
+      const fLower = f.toLowerCase();
+      if (
+        DEFAULT_IGNORED_FIELDS.has(f) ||
+        DEFAULT_IGNORED_FIELDS.has(fLower) ||
+        fLower === 'approvalstatus' ||
+        fLower === 'trạng thái phê duyệt' ||
+        fLower === 'trang thai phe duyet'
+      ) {
+        return false;
+      }
+      if (isBlank(rawOld) && isBlank(rawNew)) return false;
       const ov = rawOld != null ? String(rawOld).trim() : '';
       const nv = rawNew != null ? String(rawNew).trim() : '';
-      if (ov === '' && nv === '') return false;
-      if (ov !== '' && nv !== '' && ov === nv) return false;
+      if (ov !== '' && nv !== '' && ov.toLowerCase() === nv.toLowerCase()) return false;
       // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 5555.0000 vs 5555)
       if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
         return false;
@@ -1715,10 +1772,53 @@ export default function DikeRevetmentList() {
     };
 
     return rawGroups.map((g) => {
-      const changes = g.items
-        .map((item) => ({ field: historyField(item) || '', oldValue: historyOldValue(item), newValue: historyNewValue(item) }))
-        .filter((c: any) => c.field !== '' || (c.oldValue != null && c.oldValue !== '') || (c.newValue != null && c.newValue !== ''))
-        .filter((c: any) => isMeaningful(c.field, c.oldValue, c.newValue));
+      const attachmentItems = g.items.filter((item: any) => isAttachmentField(historyField(item)));
+      const nonAttachmentChanges = g.items
+        .filter((item: any) => !isAttachmentField(historyField(item)))
+        .flatMap((item: any) => {
+          const fn = historyField(item);
+          if (!fn) return [];
+          const ov = historyOldValue(item);
+          const nv = historyNewValue(item);
+          if (!isMeaningful(fn, ov, nv)) return [];
+          return [{ field: fn, oldValue: ov, newValue: nv }];
+        });
+
+      let attachmentChange: { field: string; oldValue: string | null; newValue: string | null } | null = null;
+      if (attachmentItems.length > 0) {
+        const addedFiles: string[] = [];
+        const deletedFiles: string[] = [];
+        for (const it of attachmentItems) {
+          const ov = historyOldValue(it);
+          const nv = historyNewValue(it);
+          const st = String(it.status || '').toUpperCase();
+          if (st === 'ATTACHMENT_UPLOADED' || (isBlank(ov) && !isBlank(nv))) {
+            if (nv && !isBlank(nv) && !addedFiles.includes(nv.trim())) {
+              addedFiles.push(nv.trim());
+            }
+          } else if (st === 'ATTACHMENT_DELETED' || (!isBlank(ov) && isBlank(nv))) {
+            if (ov && !isBlank(ov) && !deletedFiles.includes(ov.trim())) {
+              deletedFiles.push(ov.trim());
+            }
+          } else if (nv && ov && nv !== ov) {
+            if (!addedFiles.includes(nv.trim())) addedFiles.push(nv.trim());
+            if (!deletedFiles.includes(ov.trim())) deletedFiles.push(ov.trim());
+          }
+        }
+        if (addedFiles.length > 0 || deletedFiles.length > 0) {
+          attachmentChange = {
+            field: 'Tài liệu đính kèm',
+            oldValue: deletedFiles.length > 0 ? deletedFiles.join(', ') : 'Chưa có',
+            newValue: addedFiles.length > 0 ? addedFiles.join(', ') : 'Chưa có',
+          };
+        }
+      }
+
+      const changes = [
+        ...nonAttachmentChanges,
+        ...(attachmentChange ? [attachmentChange] : []),
+      ];
+
       if (changes.length === 0) return null;
       const orderedChanges = [...changes].sort((a: any, b: any) => {
         const ia = DIKE_REVETMENT_HISTORY_FIELD_ORDER.indexOf(a.field);
@@ -2423,15 +2523,16 @@ export default function DikeRevetmentList() {
         <ApprovalStatusBadge status={detailRecord.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} />
       ),
     },
-    { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || detailRecord.updatedBy || null}</span> },
-    { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || null}</span> },
-    { label: 'Ngày gửi phê duyệt', value: detailRecord.submittedAt ? formatDate(detailRecord.submittedAt) : null },
-    { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel1 || null}</span> },
-    { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvedDateLevel1 ? formatDate(detailRecord.approvedDateLevel1) : null },
-    { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvalContentLevel1 || null, fullWidth: true },
-    { label: 'Cán bộ phê duyệt cấp Cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel2 || null}</span> },
-    { label: 'Ngày phê duyệt cấp Cục', value: detailRecord.approvedDateLevel2 ? formatDate(detailRecord.approvedDateLevel2) : null },
-    { label: 'Nội dung phê duyệt cấp Cục', value: detailRecord.approvalContentLevel2 || null, fullWidth: true },
+    { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || detailRecord.updatedBy || '—'}</span> },
+    { label: 'Ngày cập nhật', value: (detailRecord.updatedAt || (detailRecord as any).updatedDate) ? formatDate(detailRecord.updatedAt || (detailRecord as any).updatedDate) : '—' },
+    { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || '—'}</span> },
+    { label: 'Ngày gửi phê duyệt', value: detailRecord.submittedAt ? formatDate(detailRecord.submittedAt) : '—' },
+    { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel1 || '—'}</span> },
+    { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvedDateLevel1 ? formatDate(detailRecord.approvedDateLevel1) : '—' },
+    { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvalContentLevel1 || '—', fullWidth: true },
+    { label: 'Cán bộ phê duyệt cấp Cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel2 || '—'}</span> },
+    { label: 'Ngày phê duyệt cấp Cục', value: detailRecord.approvedDateLevel2 ? formatDate(detailRecord.approvedDateLevel2) : '—' },
+    { label: 'Nội dung phê duyệt cấp Cục', value: detailRecord.approvalContentLevel2 || '—', fullWidth: true },
     ...(detailRecord.rejectionReason && (detailRecord.approvalStatus === 'REJECTED_LEVEL1' || detailRecord.approvalStatus === 'REJECTED_LEVEL2')
       ? [{ label: 'Lý do từ chối', value: detailRecord.rejectionReason, fullWidth: true } as DetailRow]
       : []),
@@ -2815,18 +2916,17 @@ export default function DikeRevetmentList() {
           flex-wrap: nowrap !important;
           overflow-x: auto !important;
           overflow-y: hidden !important;
-          justify-content: center !important;
           justify-content: safe center !important;
           align-items: center !important;
           scrollbar-width: thin !important;
           scrollbar-color: #cbd5e1 #f8fafc !important;
           scroll-behavior: smooth !important;
           -webkit-overflow-scrolling: touch !important;
-          padding: 2px 16px 6px 16px !important;
-          gap: 20px !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
         }
         .dike-revetment-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-          height: 6px !important;
+          height: 4px !important;
           display: block !important;
         }
         .dike-revetment-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
@@ -2837,6 +2937,7 @@ export default function DikeRevetmentList() {
           white-space: nowrap !important;
           flex-shrink: 0 !important;
           cursor: pointer !important;
+          padding: 4px 2px !important;
         }
 
       `}</style>
@@ -2864,7 +2965,7 @@ export default function DikeRevetmentList() {
       >
         <DataTable
           columns={columns}
-          dataSource={dataSource}
+          dataSource={activeTab === '' ? dataSource.filter((r) => !isDikeRevetmentDeleted(r)) : dataSource}
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 'max-content' }}

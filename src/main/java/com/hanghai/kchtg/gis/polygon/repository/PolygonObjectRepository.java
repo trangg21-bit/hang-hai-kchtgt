@@ -24,7 +24,17 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
 
     List<PolygonObject> findByObjectType(ObjectType objectType);
 
+    List<PolygonObject> findByRefIdIsNull();
+
     List<PolygonObject> findByStatus(Status status);
+
+    List<PolygonObject> findByStatusAndRefIdIsNull(Status status);
+
+    @Query("SELECT p FROM PolygonObject p WHERE (:status IS NULL OR p.status = :status) AND (p.refType IS NULL OR p.refType = 0)")
+    List<PolygonObject> findManualByStatus(@Param("status") Status status);
+
+    @Query("SELECT p FROM PolygonObject p WHERE (p.refType IS NULL OR p.refType = 0)")
+    List<PolygonObject> findManualAll();
 
     Page<PolygonObject> findByStatus(Status status, Pageable pageable);
 
@@ -35,7 +45,7 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
     List<PolygonObject> findByCodeContainingIgnoreCase(String code);
 
     @Query(value = "SELECT * FROM gis_spatial_objects p WHERE " +
-            "p.geometry_type = 3 AND p.deleted_at IS NULL AND p.ref_id IS NULL AND " +
+            "p.geometry_type = 3 AND p.deleted_at IS NULL AND (p.ref_type IS NULL OR p.ref_type = 0) AND " +
             "(cast(:name as text) IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', cast(:name as text), '%'))) AND " +
             "(cast(:code as text) IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', cast(:code as text), '%'))) AND " +
             "(cast(:objectType as integer) IS NULL OR p.object_type = cast(:objectType as integer)) AND " +

@@ -183,8 +183,13 @@ public class VtsAssistService {
     UUID orgUnitId = request.getOrgUnitId();
     validateAllowedOrgUnit(orgUnitId);
 
+    String action = request.getAction();
+    if ("approve".equalsIgnoreCase(action)) {
+      approvalService.requireApproveC2Permission(currentUserId, "vtsassist:approvec2");
+    }
+
     // Build entity
-    ApprovalStatus targetApprovalStatus = resolveCreateApprovalStatus(request.getAction());
+    ApprovalStatus targetApprovalStatus = resolveCreateApprovalStatus(action);
     VtsAssist entity = VtsAssist.builder()
       .deviceCode(deviceCode)
       .deviceName(request.getDeviceName())
@@ -230,7 +235,6 @@ public class VtsAssistService {
       saved = vtsAssistRepository.save(saved);
     }
 
-    String action = request.getAction();
     if ("submit".equalsIgnoreCase(action)) {
       // "Lưu và gửi phê duyệt" khi tạo mới — đi qua approvalService.submit() để áp dụng
       // Rule 14 (người gửi cấp Cục → thẳng "Chờ Cục duyệt"; cấp dưới → "Chờ Cảng vụ / Chi cục duyệt")
@@ -242,10 +246,20 @@ public class VtsAssistService {
       saved.setApprovalContentLevel2(null);
       saved = vtsAssistRepository.save(saved);
     } else if ("approve".equalsIgnoreCase(action)) {
-      // "Lưu và phê duyệt" khi tạo mới (T12) — ghi nhận người duyệt, ngày duyệt
-      // và bản ghi lịch sử thay vì chỉ set trạng thái APPROVED.
-      approvalService.recordSaveAndApprove(saved, InfrastructureType.VTS_ASSIST,
-          "Tạo mới và phê duyệt", currentUserId);
+      // "Lưu và phê duyệt" khi tạo mới: thiết lập trạng thái Đã duyệt và cán bộ phê duyệt,
+      // KHÔNG ghi nhận lịch sử thay đổi (tạo mới không có biến động dữ liệu cũ -> mới).
+      LocalDateTime now = LocalDateTime.now();
+      saved.setApprovalStatus(ApprovalStatus.APPROVED);
+      saved.setSubmittedDate(now);
+      saved.setSubmittedBy(currentUserId);
+      saved.setApproverLevel1(currentUserId);
+      saved.setApprovedDateLevel1(now);
+      saved.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+      saved.setApprovalContentLevel1("Cấp Cục phê duyệt trực tiếp");
+      saved.setApproverLevel2(currentUserId);
+      saved.setApprovedDateLevel2(now);
+      saved.setLevel2ApprovalContent("Lưu và phê duyệt");
+      saved.setApprovalContentLevel2("Lưu và phê duyệt");
       saved = vtsAssistRepository.save(saved);
     }
 
@@ -308,14 +322,14 @@ public class VtsAssistService {
     Sort sort = buildSort(sortBy, sortOrder);
     Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(size, 100), sort);
 
-    // Filter "Đơn vị quản lý": lọc theo đúng đơn vị được chọn (chuẩn như /radar-station)
+    // Filter "Đơn vị quản lý": mở rộng cây đơn vị con (chuẩn như /vhf)
     boolean filterEnabled = orgUnitId != null;
     Collection<UUID> filterOrgUnitIds = filterEnabled
-        ? List.of(orgUnitId)
+        ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
         : List.of();
 
     OperationalStatus opStatus = parseOperationalStatus(operationalStatus);
-    Boolean isDeleted = null;
+    Boolean isDeleted = Boolean.FALSE;
     ApprovalStatus apprStatus = null;
     if (approvalStatus != null && !approvalStatus.isBlank()) {
       String upper = approvalStatus.trim().toUpperCase();
@@ -455,6 +469,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
       // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
       // người duyệt/ngày duyệt/lịch sử; ngoài ra phải duyệt lại.
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
+        approvalService.requireApproveC2Permission(currentUserId, "vtsassist:approvec2");
         approvalService.recordSaveAndApprove(entity, InfrastructureType.VTS_ASSIST,
             "Cập nhật hồ sơ đã duyệt", currentUserId);
         approvedEdit = true;
@@ -661,7 +676,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
           if (rs.isPresent()) return rs.get().getStationName();
         }
         if (jdbcTemplate != null) {
-          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
           List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);

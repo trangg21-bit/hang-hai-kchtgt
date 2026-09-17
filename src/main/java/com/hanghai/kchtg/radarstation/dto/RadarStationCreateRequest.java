@@ -77,6 +77,11 @@ public class RadarStationCreateRequest {
     private String coordinates;
     private String mapIcon;
 
-    /** Hành động lưu: "draft" (Lưu tạm) hoặc "submit" (Lưu và gửi phê duyệt). Mặc định "draft". */
+    /** Hành động lưu: "draft" (Lưu tạm), "submit" (Lưu và gửi phê duyệt), hoặc "approve" (Lưu và phê duyệt). Mặc định "draft". */
     private String action;
+
+    /**
+     * Trạng thái phê duyệt (fallback tương thích với payload frontend): 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED'.
+     */
+    private String approvalStatus;
 }

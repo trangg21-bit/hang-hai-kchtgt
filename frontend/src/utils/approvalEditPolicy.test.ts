@@ -6,6 +6,7 @@ import {
   isApprovedRecord,
   isEditableByOwner,
   isAwaitingApproval,
+  isAssetRecordEditable,
 } from './approvalEditPolicy';
 
 describe('approvalEditPolicy', () => {
@@ -45,6 +46,8 @@ describe('approvalEditPolicy', () => {
 
     it('returns true for DRAFT when user has resource:manage', () => {
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'vts:manage', resource: 'vts' })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'data' })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'admin:manage', resource: 'vts' })).toBe(true);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts' })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts', extraDeletePerms: ['data:delete'] })).toBe(true);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'infraasset:manage', resource: 'vts' })).toBe(false);
@@ -106,4 +109,67 @@ describe('approvalEditPolicy', () => {
       expect(isAwaitingApproval('DRAFT')).toBe(false);
     });
   });
+
+  describe('isAssetRecordEditable', () => {
+    it('returns false for Archived / Deleted records', () => {
+      expect(isAssetRecordEditable('ARCHIVED')).toBe(false);
+      expect(isAssetRecordEditable('DELETED')).toBe(false);
+      expect(isAssetRecordEditable('Đã xóa')).toBe(false);
+      expect(isAssetRecordEditable('DA_XOA')).toBe(false);
+      expect(isAssetRecordEditable(7)).toBe(false);
+      expect(isAssetRecordEditable('7')).toBe(false);
+    });
+
+    it('returns false for Level 2 pending approval (Chờ phê duyệt cấp Cục)', () => {
+      expect(isAssetRecordEditable('APPROVED_LEVEL1')).toBe(false);
+      expect(isAssetRecordEditable('APPROVED_L1')).toBe(false);
+      expect(isAssetRecordEditable('PENDING_APPROVAL_LEVEL2')).toBe(false);
+      expect(isAssetRecordEditable('CHO_PD_CAP_CUC')).toBe(false);
+      expect(isAssetRecordEditable('Chờ phê duyệt cấp Cục')).toBe(false);
+      expect(isAssetRecordEditable('Chờ Cục duyệt')).toBe(false);
+      expect(isAssetRecordEditable(3)).toBe(false);
+      expect(isAssetRecordEditable('3')).toBe(false);
+    });
+
+    it('returns false for Level 1 pending approval (Chờ phê duyệt cấp Cảng vụ/Chi cục)', () => {
+      expect(isAssetRecordEditable('PENDING_APPROVAL')).toBe(false);
+      expect(isAssetRecordEditable('PENDING_APPROVAL_LEVEL1')).toBe(false);
+      expect(isAssetRecordEditable('PROPOSED')).toBe(false);
+      expect(isAssetRecordEditable('PENDING')).toBe(false);
+      expect(isAssetRecordEditable('CHO_PHE_DUYET')).toBe(false);
+      expect(isAssetRecordEditable('Chờ phê duyệt cấp Cảng vụ/Chi cục')).toBe(false);
+      expect(isAssetRecordEditable('Chờ Cảng vụ duyệt')).toBe(false);
+      expect(isAssetRecordEditable('Chờ phê duyệt cấp Chi cục')).toBe(false);
+      expect(isAssetRecordEditable(1)).toBe(false);
+      expect(isAssetRecordEditable(2)).toBe(false);
+    });
+
+    it('returns true for all other statuses (Lưu tạm, Đã duyệt, Bị trả về/Từ chối)', () => {
+      // DRAFT
+      expect(isAssetRecordEditable('DRAFT')).toBe(true);
+      expect(isAssetRecordEditable('Lưu tạm')).toBe(true);
+      expect(isAssetRecordEditable(0)).toBe(true);
+      expect(isAssetRecordEditable('0')).toBe(true);
+
+      // APPROVED
+      expect(isAssetRecordEditable('APPROVED')).toBe(true);
+      expect(isAssetRecordEditable('APPROVED_LEVEL2')).toBe(true);
+      expect(isAssetRecordEditable('Đã phê duyệt')).toBe(true);
+      expect(isAssetRecordEditable(5)).toBe(true);
+      expect(isAssetRecordEditable(4)).toBe(true);
+
+      // REJECTED
+      expect(isAssetRecordEditable('REJECTED_LEVEL1')).toBe(true);
+      expect(isAssetRecordEditable('REJECTED_LEVEL2')).toBe(true);
+      expect(isAssetRecordEditable('REJECTED')).toBe(true);
+      expect(isAssetRecordEditable('Từ chối')).toBe(true);
+      expect(isAssetRecordEditable(8)).toBe(true);
+      expect(isAssetRecordEditable(9)).toBe(true);
+
+      // null / undefined default to true
+      expect(isAssetRecordEditable(null)).toBe(true);
+      expect(isAssetRecordEditable(undefined)).toBe(true);
+    });
+  });
 });
+

@@ -1,17 +1,21 @@
 import {
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
-    SearchOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
   CommonStatusTabs,
   CommonTable,
@@ -19,9 +23,9 @@ import {
   ScreenHeader,
   TableColumnType,
   TableFilter,
-  type ScreenHeaderAction,
   type FilterOption,
-  type TableOption,
+  type ScreenHeaderAction,
+  type TableOption
 } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
@@ -35,52 +39,59 @@ import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
-    createAssetDecrease,
-    createAssetIncrease,
-    createKhaiThac,
-    createStationAsset,
-    deleteInfraAssetAttachment,
-    deleteStationAsset,
-    fetchAssetDecreaseList,
-    fetchAssetIncreaseList,
-    fetchInfraAssetAttachments,
-    fetchKhaiThacList,
-    fetchStationAssets,
-    updateStationAsset,
-    uploadInfraAssetAttachments,
+  approveInfraAssetC1,
+  approveInfraAssetC2,
+  createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  createStationAsset,
+  deleteInfraAssetAttachment,
+  deleteStationAsset,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchInfraAssetAttachments,
+  fetchKhaiThacList,
+  fetchStationAssets,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
+  updateStationAsset,
+  uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 import type {
-    AssetDecreaseResponse,
-    AssetExploitationResponse,
-    AssetIncreaseResponse,
-    StationAsset,
-    StationAssetFilters,
-    StationAssetPayload,
-    AssetValueAdjustmentDetails,
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+  StationAsset,
+  StationAssetFilters,
+  StationAssetPayload,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import type { GenericStationOption } from '../../services/stationOptionsService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
-import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 import LritAssetOperationForm, {
-    type OperationMode,
-    type OperationValues,
+  type OperationMode,
+  type OperationValues,
 } from './LritAssetOperationForm';
 import StationAssetDetailContent from './StationAssetDetailContent';
 import StationAssetForm, { type StationFormValues } from './StationAssetForm';
@@ -232,9 +243,9 @@ const HISTORY_FIELD_ORDER = [
   'rejectionReason',
 ];
 
-type DrawerMode = 'create' | 'edit' | 'detail';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+type DrawerMode = 'create' | 'edit' | 'detail';
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -261,6 +272,11 @@ export interface StationAssetListProps {
 }
 
 export default function StationAssetList({ config, fetchStationOptions }: StationAssetListProps) {
+  const perms = useAssetPermissions(
+    Array.isArray(config.resource)
+      ? config.resource
+      : [config.resource || 'coastalstation', 'specialstation']
+  );
   const [data, setData] = useState<StationAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [stations, setStations] = useState<GenericStationOption[]>([]);
@@ -287,11 +303,12 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<StationAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
+
 
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
   const stationMap = useMemo(
@@ -341,6 +358,87 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
     void loadData();
   }, [loadData]);
 
+  // ── Approval state & handlers ──────────────────────────────────────
+  const [approvingRecord, setApprovingRecord] = useState<StationAsset | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [rejectingRecord, setRejectingRecord] = useState<StationAsset | null>(null);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const handleOpenApproveModal = useCallback((record: StationAsset, level: 'c1' | 'c2') => {
+    setApprovingRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const handleApproveConfirm = useCallback(async (content: string) => {
+    if (!approvingRecord) return;
+    setApproveLoading(true);
+    try {
+      if (approveLevel === 'c1') {
+        await approveInfraAssetC1(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await approveInfraAssetC2(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Phê duyệt thất bại'));
+    } finally {
+      setApproveLoading(false);
+    }
+  }, [approvingRecord, approveLevel, loadData]);
+
+  const handleOpenRejectModal = useCallback((record: StationAsset, level: 'c1' | 'c2') => {
+    setRejectingRecord(record);
+    setRejectLevel(level);
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleRejectConfirm = useCallback(async (reason: string) => {
+    if (!rejectingRecord) return;
+    setRejectLoading(true);
+    try {
+      if (rejectLevel === 'c1') {
+        await rejectInfraAssetC1(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await rejectInfraAssetC2(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cục');
+      }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Từ chối phê duyệt thất bại'));
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectLevel, loadData]);
+
+  const handleSubmitApproval = useCallback(async (record: StationAsset) => {
+    try {
+      await submitInfraAssetApproval(record.id);
+      const isReSubmit =
+        record.approvalStatus === 'REJECTED_LEVEL1' ||
+        record.approvalStatus === 'REJECTED_LEVEL2' ||
+        (record as any).status === 'REJECTED_LEVEL1' ||
+        (record as any).status === 'REJECTED_LEVEL2' ||
+        record.approvalStatus === 'REJECTED';
+      toast.success(isReSubmit ? 'Đã gửi lại phê duyệt' : 'Đã gửi Cảng vụ phê duyệt');
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Gửi phê duyệt thất bại'));
+    }
+  }, [loadData]);
+
   const handleOpenCreate = useCallback(() => {
     form.resetFields();
     setSelected(undefined);
@@ -352,6 +450,10 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   }, [form]);
 
   const handleOpenEdit = useCallback(async (record: StationAsset) => {
+    if (!isAssetRecordEditable(record.approvalStatus)) {
+      toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+      return;
+    }
     setSelected(record);
     setAttachments(
       record.attachmentName
@@ -439,7 +541,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   }, []);
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       const strVal = String(val).trim();
       if (!strVal || strVal === '-') return '';
@@ -513,16 +615,19 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         const statusMap: Record<string, string> = {
           DRAFT: 'Lưu tạm',
           NHAP: 'Lưu tạm',
-          PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-          CHO_PHE_DUYET: 'Chờ Cảng vụ duyệt',
-          APPROVED_LEVEL1: 'Chờ Cục duyệt',
-          APPROVED: 'Đã duyệt',
-          DA_PHE_DUYET: 'Đã duyệt',
-          REJECTED_LEVEL1: 'Cảng vụ từ chối',
-          REJECTED_LEVEL2: 'Cục từ chối',
+          PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+          CHO_PHE_DUYET: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+          APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+          CHO_DUYET_CAP_2: 'Chờ phê duyệt cấp Cục',
+          APPROVED: 'Đã phê duyệt',
+          DA_PHE_DUYET: 'Đã phê duyệt',
+          DA_DUYET: 'Đã phê duyệt',
+          REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+          REJECTED_LEVEL2: 'Từ chối cấp Cục',
           REJECTED: 'Từ chối',
           TU_CHOI: 'Từ chối',
-          ARCHIVED: 'Đã lưu trữ',
+          ARCHIVED: 'Đã xóa',
+          DA_XOA: 'Đã xóa',
         };
         return statusMap[strVal] || strVal;
       }
@@ -590,9 +695,9 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
     [config.stationFieldName, config.type],
   );
 
-  const renderStationHistoryTimeline = (records: any[]) => {
+  const renderStationHistoryTimeline = (records: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
-    const filtered = (records || []).filter((r: any) => {
+    const filtered = (records || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -736,7 +841,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
       const stationIdValue = (merged as unknown as Record<string, unknown>)[config.stationFieldName] as string | undefined || merged.stationId;
       const payload: StationAssetPayload = {
         ...merged,
-        assetType: config.type,
+        assetType: merged.assetType || config.type,
         types: config.types,
         stationId: stationIdValue,
         [config.stationFieldName]: stationIdValue,
@@ -870,6 +975,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           assetId: selected.id,
           assetName: selected.assetName,
           operatorOrgUnitId: values.operatorOrgUnitId || undefined,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationYear: deadlineDate && deadlineDate.isValid() ? deadlineDate.year() : dayjs().year(),
           doanhThu: values.totalRevenue || 0,
           depreciation: values.relatedCosts || 0,
@@ -972,37 +1078,6 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         placeholder: 'Chọn đơn vị...',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị...',
-      },
-      {
-        key: config.stationFieldName,
-        label: config.stationLabel,
-        type: 'select',
-        placeholder: config.stationPlaceholder,
-        options: stations.map((s) => ({
-          value: s.id,
-          label: s.code ? `${s.code} - ${s.name}` : s.name,
-        })),
-      },
-      {
-        key: 'assetType',
-        label: 'Loại tài sản',
-        type: 'select',
-        disabled: true,
-        defaultValue: config.type,
-        options: [{ value: config.type, label: config.title }],
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -1013,15 +1088,51 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
+      },
+      {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị...',
+        isAdvanced: true,
+      },
+      {
+        key: config.stationFieldName,
+        label: config.stationLabel,
+        type: 'select',
+        placeholder: config.stationPlaceholder,
+        options: stations.map((s) => ({
+          value: s.id,
+          label: s.code ? `${s.code} - ${s.name}` : s.name,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        disabled: true,
+        defaultValue: config.type,
+        options: [{ value: config.type, label: config.title }],
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
       },
       {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ],
-    [config.stationFieldName, config.stationLabel, config.stationPlaceholder, config.title, config.type, organizations, stations],
+    [config.stationFieldName, config.stationLabel, config.stationPlaceholder, organizations, stations],
   );
 
   const handleFilterApply = useCallback(() => {
@@ -1097,6 +1208,10 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           type: TableColumnType.Status,
           width: 190,
           allowSort: true,
+          statusMapping: {
+            'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
+            'Hỏng không sử dụng': { label: 'Hỏng không sử dụng', color: themeTokenChk.statusCritical },
+          },
         },
         {
           title: 'HIỆN TRẠNG SỬ DỤNG',
@@ -1104,6 +1219,15 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           type: TableColumnType.Status,
           width: 190,
           allowSort: true,
+          statusMapping: {
+            'Quản lý nhà nước': { label: 'Quản lý nhà nước', color: themeTokenChk.statusOperational },
+            'Hoạt động sự nghiệp: Không kinh doanh': { label: 'Hoạt động sự nghiệp: Không kinh doanh', color: themeTokenChk.statusOperational },
+            'Hoạt động sự nghiệp: Kinh doanh': { label: 'Hoạt động sự nghiệp: Kinh doanh', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Cho thuê': { label: 'Hoạt động sự nghiệp: Cho thuê', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Liên doanh, liên kết': { label: 'Hoạt động sự nghiệp: Liên doanh, liên kết', color: themeTokenChk.statusAttention },
+            'Hoạt động sự nghiệp: Sử dụng hỗn hợp': { label: 'Hoạt động sự nghiệp: Sử dụng hỗn hợp', color: themeTokenChk.statusAttention },
+            'Sử dụng khác': { label: 'Sử dụng khác', color: themeTokenChk.statusAttention },
+          },
         },
         {
           title: 'NHÓM TÀI SẢN',
@@ -1164,95 +1288,187 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         },
       ],
       actions: (record: StationAsset) => {
-        const isDraft = record.approvalStatus === 'DRAFT' || !record.approvalStatus;
-        const isArchived = record.approvalStatus === 'ARCHIVED';
+        const st = normalizeApprovalStatus(record.approvalStatus || (record as any).status) || '';
+        const isDraft = st === 'DRAFT' || !st;
+        const isArchived = st === 'ARCHIVED';
 
         if (isArchived) {
-          return [
-            {
+          const archivedActions: any[] = [];
+          if (perms.canRead) {
+            archivedActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void handleOpenDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            archivedActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return archivedActions;
         }
 
-        const actionList: any[] = [
-          {
+        const actionsList: any[] = [];
+        if (perms.canRead) {
+          actionsList.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void handleOpenDetail(record),
-          },
-          {
+          });
+        }
+
+        if (perms.canUpdate && isAssetRecordEditable(st)) {
+          actionsList.push({
             key: 'edit',
             label: 'Chỉnh sửa',
             icon: <EditOutlined />,
             onClick: () => handleOpenEdit(record),
-          },
-          {
+          });
+        }
+
+        if (perms.canUpdate) {
+          if (st === 'DRAFT') {
+            actionsList.push({
+              key: 'submit',
+              label: 'Gửi Cảng vụ phê duyệt',
+              icon: <SendOutlined />,
+              onClick: () => void handleSubmitApproval(record),
+            });
+          } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+            actionsList.push({
+              key: 'submit',
+              label: 'Gửi lại phê duyệt',
+              icon: <SendOutlined />,
+              onClick: () => void handleSubmitApproval(record),
+            });
+          }
+        }
+
+        if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
+          if (perms.canApproveC1) {
+            actionsList.push({
+              key: 'approveC1',
+              label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+              icon: <CheckOutlined />,
+              onClick: () => handleOpenApproveModal(record, 'c1'),
+            });
+          }
+          if (perms.canReject || perms.canApproveC1) {
+            actionsList.push({
+              key: 'rejectC1',
+              label: 'Từ chối cấp Cảng vụ/Chi cục',
+              icon: <CloseOutlined />,
+              danger: true,
+              onClick: () => handleOpenRejectModal(record, 'c1'),
+            });
+          }
+        }
+
+        if (st === 'APPROVED_LEVEL1') {
+          if (perms.canApproveC2) {
+            actionsList.push({
+              key: 'approveC2',
+              label: 'Phê duyệt cấp Cục',
+              icon: <CheckOutlined />,
+              onClick: () => handleOpenApproveModal(record, 'c2'),
+            });
+          }
+          if (perms.canReject || perms.canApproveC2) {
+            actionsList.push({
+              key: 'rejectC2',
+              label: 'Từ chối cấp Cục',
+              icon: <CloseOutlined />,
+              danger: true,
+              onClick: () => handleOpenRejectModal(record, 'c2'),
+            });
+          }
+        }
+
+        if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+          if (perms.canExploit) {
+            actionsList.push({
+              key: 'exploit',
+              label: 'Khai thác tài sản',
+              icon: <RocketOutlined />,
+              onClick: () => {
+                setSelected(record);
+                setOperationMode('exploit');
+                operationForm.resetFields();
+              },
+            });
+          }
+          if (perms.canIncrease) {
+            actionsList.push({
+              key: 'increase',
+              label: 'Tăng nguyên giá',
+              icon: <PlusCircleOutlined />,
+              onClick: () => {
+                setSelected(record);
+                setOperationMode('increase');
+                operationForm.resetFields();
+              },
+            });
+          }
+          if (perms.canDecrease) {
+            actionsList.push({
+              key: 'decrease',
+              label: 'Giảm nguyên giá',
+              icon: <MinusCircleOutlined />,
+              onClick: () => {
+                setSelected(record);
+                setOperationMode('decrease');
+                operationForm.resetFields();
+              },
+            });
+          }
+        }
+
+        if (perms.canHistory) {
+          actionsList.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
-            key: 'exploit',
-            label: 'Khai thác tài sản',
-            icon: <RocketOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('exploit');
-              operationForm.resetFields();
-            },
-          },
-          {
-            key: 'increase',
-            label: 'Tăng nguyên giá',
-            icon: <PlusCircleOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('increase');
-              operationForm.resetFields();
-            },
-          },
-          {
-            key: 'decrease',
-            label: 'Giảm nguyên giá',
-            icon: <MinusCircleOutlined />,
-            onClick: () => {
-              setSelected(record);
-              setOperationMode('decrease');
-              operationForm.resetFields();
-            },
-          },
-        ];
+          });
+        }
 
-        // Nút xóa chỉ hiển thị với bản ghi có trạng thái lưu tạm (DRAFT)
-        if (isDraft) {
-          actionList.push({
+        if (isDraft && perms.canDelete) {
+          actionsList.push({
             key: 'delete',
             label: 'Xóa',
             icon: <DeleteOutlined />,
-            danger: true,
             onClick: () => setDeleteTarget(record),
           });
         }
 
-        return actionList;
+        return actionsList;
       },
     }),
-    [config.stationFieldName, config.stationLabel, config.title, handleOpenDetail, handleOpenEdit, openHistory, operationForm, orgName, stationMap],
+    [
+      config.stationFieldName,
+      config.stationLabel,
+      config.title,
+      handleOpenDetail,
+      handleOpenEdit,
+      openHistory,
+      operationForm,
+      handleOpenApproveModal,
+      handleOpenRejectModal,
+      handleSubmitApproval,
+      orgName,
+      stationMap,
+      perms,
+    ],
   );
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1260,9 +1476,8 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         variant: 'primary',
         onClick: handleOpenCreate,
       },
-    ],
-    [handleOpenCreate],
-  );
+    ];
+  }, [handleOpenCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({
@@ -1315,18 +1530,17 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
             overflow-y: hidden !important;
-            justify-content: center !important;
             justify-content: safe center !important;
             align-items: center !important;
             scrollbar-width: thin !important;
             scrollbar-color: #cbd5e1 #f8fafc !important;
             scroll-behavior: smooth !important;
             -webkit-overflow-scrolling: touch !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
           }
           .station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
+            height: 4px !important;
             display: block !important;
           }
           .station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
@@ -1362,7 +1576,6 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
@@ -1517,7 +1730,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           config={config}
           onClose={() => setDrawerMode(undefined)}
           orgName={orgName}
-          stationMap={stationMap}
+          stationMap={stationMap as any}
           exploitationRows={exploitationRows}
           increaseRows={increaseRows}
           decreaseRows={decreaseRows}
@@ -1644,6 +1857,26 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           itemName={deleteTarget?.assetName}
           itemCode={deleteTarget?.assetCode}
           onConfirm={handleDelete}
+        />
+
+        {/* ── Approval Modals 2 cấp ──────────────────────────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          approveLoading={approveLoading}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveCancel={() => {
+            setApproveModalOpen(false);
+            setApprovingRecord(null);
+          }}
+          rejectOpen={rejectModalOpen}
+          rejectLevel={rejectLevel}
+          rejectLoading={rejectLoading}
+          onRejectConfirm={handleRejectConfirm}
+          onRejectCancel={() => {
+            setRejectModalOpen(false);
+            setRejectingRecord(null);
+          }}
         />
       </div>
     </ThemeTokenProvider>

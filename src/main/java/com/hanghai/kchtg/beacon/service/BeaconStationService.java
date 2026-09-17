@@ -76,6 +76,10 @@ public class BeaconStationService {
 
     public List<BeaconStationResponse> findAll() {
         return beaconStationRepo.findAll().stream()
+                .filter(b -> b.getDeletedAt() == null && b.getDeletedBy() == null
+                        && !"DELETED".equalsIgnoreCase(b.getStatus())
+                        && !"ARCHIVED".equalsIgnoreCase(b.getStatus())
+                        && b.getApprovalStatus() != ApprovalStatus.ARCHIVED)
                 .map(this::toResponse)
                 .toList();
     }
@@ -108,6 +112,7 @@ public class BeaconStationService {
             Integer operationalStatus, Double stationArea, String approvalStatus, UUID updatedBy,
             String commissionedFrom, String commissionedTo,
             String updatedFrom, String updatedTo) {
+        status = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
         boolean includeAll = unitId == null;
         List<UUID> orgUnitIds = unitId != null
                 ? orgUnitScopeService.resolveSubtreeIds(unitId)
@@ -142,6 +147,7 @@ public class BeaconStationService {
             String commissionedFrom, String commissionedTo,
             String updatedFrom, String updatedTo,
             org.springframework.data.domain.Pageable pageable) {
+        status = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
         boolean includeAll = unitId == null;
         List<UUID> orgUnitIds = unitId != null
                 ? orgUnitScopeService.resolveSubtreeIds(unitId)
@@ -190,6 +196,7 @@ public class BeaconStationService {
         entry.setApprovedBy(userName);
         entry.setOrgUnitName(orgUnitName);
         entry.setApprovedDate(h.getApprovedDate());
+        entry.setReason(h.getReason());
         entry.setChangedField(h.getChangedField());
         entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
         entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
@@ -225,7 +232,26 @@ public class BeaconStationService {
                             : org.springframework.data.domain.Pageable.unpaged());
         }
 
-        Set<UUID> userIds = list.stream()
+        List<InfrastructureHistory> filteredList = list.stream()
+                .filter(h -> {
+                    if (h.getStatus() == com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.CREATED) {
+                        return false;
+                    }
+                    String field = h.getChangedField();
+                    if (field != null) {
+                        String norm = field.trim().toLowerCase();
+                        if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+                            return false;
+                        }
+                    }
+                    if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+        Set<UUID> userIds = filteredList.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
@@ -233,7 +259,9 @@ public class BeaconStationService {
                 userRepository.findAllByIdInWithOrgUnit(userIds).stream()
                         .collect(java.util.stream.Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
-        return list.stream().map(h -> toHistoryEntry(h, userMap)).collect(java.util.stream.Collectors.toList());
+        return filteredList.stream()
+                .map(h -> toHistoryEntry(h, userMap))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private static String normalizeHistoryKeyword(String keyword) {
@@ -346,10 +374,9 @@ public class BeaconStationService {
 
         // Chuẩn phê duyệt M-1006 mục 5 (Ca sử dụng 8): màn Lịch sử chỉ hiển thị các
         // thay đổi của hồ sơ ĐÃ DUYỆT (ghi bản cũ khi sửa hồ sơ đã duyệt) và các mốc duyệt —
-        // KHÔNG ghi khi tạo mới rồi chỉ chọn "Lưu tạm" (DRAFT).
-        // Ở create: chỉ ghi khi hồ sơ được tạo và đi thẳng vào luồng phê duyệt
-        // ("Lưu và gửi phê duyệt" / "Lưu và phê duyệt").
-        if ("submit".equals(request.getAction()) || "approved".equals(request.getAction())) {
+        // KHÔNG ghi khi tạo mới rồi chỉ chọn "Lưu tạm" (DRAFT) hoặc "Lưu và phê duyệt" (APPROVED).
+        // Tạo mới không có biến động dữ liệu cũ -> mới.
+        if ("submit".equals(request.getAction())) {
             logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
         }
         notificationService.sendApprovalNotification(entity);
@@ -621,6 +648,7 @@ public class BeaconStationService {
         }
 
         entity.setStatus("DELETED");
+        entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         entity.softDelete(SecurityUtils.getCurrentUserId());
         beaconStationRepo.save(entity);
 
@@ -863,10 +891,14 @@ public class BeaconStationService {
             }
         }
 
-        String status = entity.getStatus();
-        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
-            status = "DELETED";
-        }
+        boolean isDeleted = entity.getDeletedAt() != null || entity.getDeletedBy() != null
+                || "DELETED".equalsIgnoreCase(entity.getStatus())
+                || "ARCHIVED".equalsIgnoreCase(entity.getStatus())
+                || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED;
+
+        String status = isDeleted ? "DELETED" : entity.getStatus();
+        String approvalStatusStr = isDeleted ? ApprovalStatus.ARCHIVED.name()
+                : (entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : ApprovalStatus.DRAFT.name());
 
         return BeaconStationResponse.builder()
                 .id(entity.getId())
@@ -887,7 +919,7 @@ public class BeaconStationService {
                 .status(status)
                 .deletedAt(entity.getDeletedAt())
                 .deletedBy(entity.getDeletedBy())
-                .approvalStatus(entity.getApprovalStatus().name())
+                .approvalStatus(approvalStatusStr)
                 .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
@@ -1027,10 +1059,15 @@ public class BeaconStationService {
             saved.add(attachmentRepository.save(attachment));
         }
         // Ghi nhật ký "Tài liệu đính kèm" (chuẩn /vts-operation-center) — chỉ khi bản ghi ĐÃ DUYỆT
+        // Guard: Thêm mới không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát thời điểm hiện tại).
         BeaconStation station = beaconStationRepo.findById(entityId).orElse(null);
-        if (station != null && (isApprovedStatus(station.getStatus())
-                || station.getApprovalStatus() == ApprovalStatus.APPROVED
-                || station.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+        boolean isNewlyCreated = station != null && (station.getCreatedAt() == null
+                || Math.abs(java.time.Duration.between(station.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30);
+        boolean wasApproved = !isNewlyCreated && station != null
+                && (isApprovedStatus(station.getStatus())
+                        || station.getApprovalStatus() == ApprovalStatus.APPROVED
+                        || station.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2);
+        if (wasApproved) {
             String uploadedNames = files.stream()
                     .map(f -> f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown")
                     .collect(java.util.stream.Collectors.joining("; "));
@@ -1039,7 +1076,7 @@ public class BeaconStationService {
                         .refId(entityId)
                         .refType(InfrastructureType.LIGHTHOUSE)
                         .approvalLevel(ApprovalLevel.LEVEL_0)
-                        .status(InfrastructureHistoryStatus.UPDATED)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
                         .changedField("Tài liệu đính kèm")

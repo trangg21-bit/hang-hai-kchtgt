@@ -1,5 +1,4 @@
-import React, { useMemo } from 'react';
-import { Form, InputNumber, Select } from 'antd';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import {
@@ -14,24 +13,25 @@ import type {
   AssetIncreaseResponse,
   AssetDecreaseResponse,
 } from '../../services/assetmovement/types';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  colors,
-  fontWeightBold,
-  fontSizeMd,
-  radiusPill,
-  spaceSm,
-  spaceFormField,
-} from '../../themetokenchk';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  ASSET_CONDITION_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export type DryPortFormValues = Omit<
   DryPortAssetPayload,
@@ -49,24 +49,8 @@ export type DryPortFormValues = Omit<
   depreciationStartDate?: Dayjs;
   depreciationEndDate?: Dayjs;
   attachmentName?: string;
+  [key: string]: unknown;
 };
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'm²', 'm'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
 
 export interface DryPortAssetFormProps {
   open: boolean;
@@ -172,11 +156,9 @@ export default function DryPortAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'DRY_PORT',
-                disabled: true,
-                options: [
-                  { value: 'DRY_PORT', label: 'Tài sản cảng cạn' },
-                ],
+                placeholder: 'Chọn loại tài sản',
+                allowClear: true,
+                options: MARITIME_ASSET_TYPE_OPTIONS,
               },
               {
                 name: 'assetCode',
@@ -189,6 +171,7 @@ export default function DryPortAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 placeholder: 'Nhập tên tài sản',
                 required: true,
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -197,6 +180,7 @@ export default function DryPortAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã barcode',
               },
               {
@@ -205,7 +189,7 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn tình trạng',
                 required: true,
-                options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+                options: ASSET_CONDITION_OPTIONS,
                 rules: [
                   { required: true, message: 'Tình trạng tài sản là bắt buộc' },
                 ],
@@ -216,7 +200,7 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Select,
                 placeholder: 'Chọn hiện trạng',
                 required: true,
-                options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
+                options: USAGE_STATUS_OPTIONS,
                 rules: [
                   { required: true, message: 'Hiện trạng sử dụng là bắt buộc' },
                 ],
@@ -227,12 +211,13 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+                options: ASSET_GROUP_OPTIONS,
               },
               {
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
               },
               {
@@ -241,96 +226,55 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn nguồn gốc',
-                options: ORIGINS.map((v) => ({ value: v, label: v })),
+                options: ASSET_ORIGIN_OPTIONS,
               },
               {
-                name: 'quantityGroup',
-                label: '',
-                type: FormFieldType.Custom,
-                colSpan: 12,
-                customContent: () => (
-                  <div style={{ display: 'flex', gap: spaceSm }}>
-                    <div style={{ flex: 1 }}>
-                      <Form.Item
-                        name="quantity"
-                        label={
-                          <span
-                            style={{
-                              color: colors.sidebarBg,
-                              fontWeight: fontWeightBold,
-                              fontSize: fontSizeMd,
-                            }}
-                          >
-                            Số lượng
-                          </span>
-                        }
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <InputNumber
-                          min={0}
-                          formatter={fmtInputNumber}
-                          placeholder="0"
-                          style={{
-                            borderRadius: radiusPill,
-                            height: 40,
-                            width: '100%',
-                          }}
-                        />
-                      </Form.Item>
-                    </div>
-                    <div style={{ width: 140 }}>
-                      <Form.Item
-                        name="quantityUnit"
-                        label={
-                          <span
-                            style={{
-                              color: colors.sidebarBg,
-                              fontWeight: fontWeightBold,
-                              fontSize: fontSizeMd,
-                            }}
-                          >
-                            Đơn vị tính
-                          </span>
-                        }
-                        style={{ marginBottom: spaceFormField }}
-                      >
-                        <Select
-                          allowClear
-                          placeholder="Đơn vị"
-                          options={UNITS.map((v) => ({ value: v, label: v }))}
-                          style={{
-                            borderRadius: radiusPill,
-                            height: 40,
-                            width: '100%',
-                          }}
-                        />
-                      </Form.Item>
-                    </div>
-                  </div>
-                ),
+                name: 'quantity',
+                label: 'Số lượng',
+                type: FormFieldType.Number,
+                required: true,
+                min: 0,
+                formatter: fmtInputNumber,
+                placeholder: '0',
+                colSpan: 6,
+                rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
+              },
+              {
+                name: 'quantityUnit',
+                label: 'Đơn vị tính',
+                type: FormFieldType.Select,
+                required: true,
+                placeholder: 'Chọn đơn vị tính',
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
+                colSpan: 6,
+                rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model',
               },
               {
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập serial',
               },
               {
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ',
               },
               {
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
               },
               {
@@ -363,6 +307,7 @@ export default function DryPortAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 rows: 2,
                 placeholder: 'Nhập vị trí tài sản',
@@ -371,6 +316,7 @@ export default function DryPortAssetForm({
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.TextArea,
+                maxLength: 2000,
                 colSpan: 24,
                 rows: 2,
                 placeholder: 'Nhập địa chỉ tài sản',
@@ -450,6 +396,7 @@ export default function DryPortAssetForm({
                 name: 'assignmentDecisionNumber',
                 label: 'Số quyết định giao (bao gồm cả tăng vốn)',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập số quyết định',
               },
               {
@@ -499,7 +446,7 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Select,
                 allowClear: true,
                 placeholder: 'Chọn hình thức xử lý',
-                options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+                options: DISPOSAL_METHOD_OPTIONS,
               },
             ],
           },

@@ -54,7 +54,7 @@ public class CctvSystemAssetController {
     private final CctvService cctvService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'cctv:create', 'cctv:manage')")
     public ResponseEntity<ApiResponse<CctvSystemAssetResponse>> create(
             @RequestBody CctvSystemAssetRequest request) {
         CctvSystemAssetResponse response = service.create(request);
@@ -62,7 +62,7 @@ public class CctvSystemAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'cctv:read', 'data:read')")
     public ResponseEntity<ApiResponse<CctvSystemAssetResponse>> getById(
             @PathVariable UUID id) {
         CctvSystemAssetResponse response = service.getById(id);
@@ -70,7 +70,7 @@ public class CctvSystemAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'cctv:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<CctvSystemAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -96,7 +96,7 @@ public class CctvSystemAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'cctv:update', 'cctv:manage')")
     public ResponseEntity<ApiResponse<CctvSystemAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody CctvSystemAssetRequest request) {
@@ -105,7 +105,7 @@ public class CctvSystemAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'cctv:delete', 'cctv:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
@@ -113,13 +113,13 @@ public class CctvSystemAssetController {
     }
 
     @GetMapping("/cctv-options")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'cctv:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<CctvOptionResponse>>> getCctvOptions() {
         return ResponseEntity.ok(ApiResponse.success(cctvService.getOptions()));
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'cctv:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

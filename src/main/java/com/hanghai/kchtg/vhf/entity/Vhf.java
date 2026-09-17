@@ -177,4 +177,9 @@ public class Vhf extends BaseEntity implements ApprovableEntity {
     public void setSubmittedAt(LocalDateTime submittedAt) {
         this.submittedDate = submittedAt;
     }
+
+    @Override
+    public LocalDateTime getSubmittedAt() {
+        return this.submittedDate;
+    }
 }

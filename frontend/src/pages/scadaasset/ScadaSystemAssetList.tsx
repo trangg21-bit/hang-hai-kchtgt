@@ -1,53 +1,55 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
+
 import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
   DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
   HistoryOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
-  borderDefault,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  actionPrimary,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  textTertiary,
-} from '../../themetokenchk';
-import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import {
+  createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchKhaiThacList,
+} from '../../services/assetmovement/api';
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+} from '../../services/assetmovement/types';
 import {
   organizationService,
   type Organization,
@@ -66,49 +68,37 @@ import type {
   ScadaSystemAssetFilters,
   ScadaSystemAssetPayload,
 } from '../../services/scadaasset/types';
+import { useAuthStore } from '../../store/authStore';
+import * as themeTokenChk from '../../themetokenchk';
 import {
-  createAssetDecrease,
-  createAssetIncrease,
-  createKhaiThac,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchKhaiThacList,
-} from '../../services/assetmovement/api';
-import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetValueAdjustmentDetails,
-} from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import {
-  saveAttachmentFile,
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
+  saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import { useAuthStore } from '../../store/authStore';
-import ScadaSystemAssetForm, { type FormValues } from './ScadaSystemAssetForm';
 import ScadaSystemAssetDetailContent from './ScadaSystemAssetDetailContent';
+import ScadaSystemAssetForm, { type FormValues } from './ScadaSystemAssetForm';
 import ScadaSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './ScadaSystemAssetOperationForm';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const SCADA_ASSET_TYPES = [
-  'Thiết bị đầu cuối thu thập dữ liệu (RTU)',
-  'Bộ điều khiển logic lập trình (PLC)',
-  'Máy chủ điều khiển & máy chủ dữ liệu SCADA',
-  'Trạm giao diện người - máy (HMI / Workstation)',
-  'Hệ thống truyền thông mạng SCADA (Switch / Router / Modem)',
-  'Cảm biến & Bộ đo lường thu thập số liệu',
-  'Tủ điều khiển SCADA & Nguồn dự phòng UPS',
-  'Hệ thống phụ trợ SCADA',
-  'Khác',
-];
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -205,7 +195,7 @@ const SCADA_HISTORY_FIELD_ORDER = [
   'attachments',
 ];
 
-const BREADCRUMB_ITEMS: BreadcrumbItem[] = [
+const BREADCRUMB_ITEMS = [
   { label: 'Trang chủ', path: '/' },
   { label: 'Quản lý tài sản KCHT hàng hải' },
   { label: 'Tài sản HT SCADA' },
@@ -220,6 +210,7 @@ const isValidationError = (cause: unknown) =>
   Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function ScadaSystemAssetList() {
+  const perms = useAssetPermissions(['scada', 'scadaasset']);
   const currentUser = useAuthStore((s) => s.user);
   const [data, setData] = useState<ScadaSystemAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -246,7 +237,7 @@ export default function ScadaSystemAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<ScadaSystemAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -268,7 +259,7 @@ export default function ScadaSystemAssetList() {
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -335,7 +326,7 @@ export default function ScadaSystemAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -371,7 +362,7 @@ export default function ScadaSystemAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderScadaHistoryTimeline = (filtered: any[]) => {
+  const renderScadaHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -469,19 +460,16 @@ export default function ScadaSystemAssetList() {
     form.resetFields();
     form.setFieldsValue({
       valueUnit: 'VNĐ',
-      quantity: 1,
-      quantityUnit: 'Hệ thống',
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      assetGroup: 'Máy móc, thiết bị',
-      assetType: 'Thiết bị đầu cuối thu thập dữ liệu (RTU)',
-      origin: 'Mua sắm',
       attachmentName: undefined,
     });
   }, [form]);
 
   const openEdit = useCallback(
     async (record: ScadaSystemAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.resetFields();
@@ -772,7 +760,7 @@ export default function ScadaSystemAssetList() {
             attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
         };
 
-        const cleanPayload: Record<string, any> = { ...payload };
+        const cleanPayload: Record<string, unknown> = { ...(payload as unknown as Record<string, unknown>) };
         const excludeKeys = [
           'id',
           'parentOrgUnitName',
@@ -801,7 +789,7 @@ export default function ScadaSystemAssetList() {
         });
 
         if (drawerMode === 'create' || !selected?.id) {
-          await createScadaSystemAsset(cleanPayload as any);
+          await createScadaSystemAsset(cleanPayload as unknown as ScadaSystemAssetPayload);
           toast.success(
             status === 'DRAFT'
               ? 'Đã lưu tạm tài sản HT SCADA'
@@ -810,7 +798,7 @@ export default function ScadaSystemAssetList() {
               : 'Đã tạo và phê duyệt tài sản HT SCADA'
           );
         } else if (selected) {
-          await updateScadaSystemAsset(selected.id, cleanPayload as any);
+          await updateScadaSystemAsset(selected.id, cleanPayload as unknown as ScadaSystemAssetPayload);
           toast.success('Đã cập nhật tài sản HT SCADA thành công');
         }
 
@@ -867,7 +855,7 @@ export default function ScadaSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -934,6 +922,7 @@ export default function ScadaSystemAssetList() {
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
             reason: values.adjustmentReason || 'Thanh lý một phần',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
           });
@@ -961,36 +950,7 @@ export default function ScadaSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'scadaId',
-      label: 'Mã thiết bị SCADA',
-      type: 'select',
-      placeholder: 'Chọn thiết bị SCADA',
-      options: scadaDevices.map((item) => ({
-        value: item.id,
-        label: `${item.deviceCode} - ${item.deviceName}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: SCADA_ASSET_TYPES.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
+
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -1001,13 +961,48 @@ export default function ScadaSystemAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+      options: ASSET_CONDITION_OPTIONS,
+    },
+    {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
+    },
+    {
+      key: 'scadaId',
+      label: 'Mã thiết bị SCADA',
+      type: 'select',
+      placeholder: 'Chọn thiết bị SCADA',
+      options: scadaDevices.map((item) => ({
+        value: item.id,
+        label: `${item.deviceCode} - ${item.deviceName}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: MARITIME_ASSET_TYPE_OPTIONS,
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
     },
     {
       key: 'updatedRange',
       label: 'Khoảng ngày cập nhật',
       type: 'dateRange',
       placeholder: ['Từ ngày', 'Đến ngày'],
+      isAdvanced: true,
     },
   ], [organizations, scadaDevices]);
 
@@ -1049,7 +1044,7 @@ export default function ScadaSystemAssetList() {
         allowSort: true,
         render: (v, record) => {
           const a = v ? scadaDeviceMap.get(v as string) : undefined;
-          return a ? `${a.deviceCode} - ${a.deviceName}` : record.scadaCode || '—';
+          return a ? `${a.deviceCode} - ${a.deviceName}` : (record.scadaCode ? String(record.scadaCode) : '—');
         },
       },
       {
@@ -1058,7 +1053,7 @@ export default function ScadaSystemAssetList() {
         type: TableColumnType.Text,
         width: 200,
         allowSort: true,
-        render: (v) => v || '—',
+        render: (v) => (v ? String(v) : '—'),
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -1132,71 +1127,89 @@ export default function ScadaSystemAssetList() {
         sortField: 'departmentApprovedAt',
       },
     ],
-    actions: (record: ScadaSystemAsset) => [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => void openDetail(record),
-      },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('exploit');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            unitOfMeasure: record.quantityUnit,
-            quantity: record.quantity,
-          });
-        },
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('increase');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('decrease');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'history',
-        label: 'Lịch sử thay đổi',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => setDeleteTarget(record),
-      },
-    ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, scadaDeviceMap]);
+    actions: (record: ScadaSystemAsset) => {
+      const actions: any[] = [];
+      if (perms.canRead) {
+        actions.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+      if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+        actions.push({
+          key: 'edit',
+          label: 'Sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+      if (perms.canExploit) {
+        actions.push({
+          key: 'exploit',
+          label: 'Khai thác tài sản',
+          icon: <RocketOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('exploit');
+            operationForm.resetFields();
+            operationForm.setFieldsValue({
+              unitOfMeasure: record.quantityUnit,
+              quantity: record.quantity,
+            });
+          },
+        });
+      }
+      if (perms.canIncrease) {
+        actions.push({
+          key: 'increase',
+          label: 'Tăng nguyên giá',
+          icon: <PlusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('increase');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canDecrease) {
+        actions.push({
+          key: 'decrease',
+          label: 'Giảm nguyên giá',
+          icon: <MinusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('decrease');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canHistory) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử thay đổi',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+      const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+      if (isDraft && perms.canDelete) {
+        actions.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+      return actions;
+    },
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, scadaDeviceMap, perms]);
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1204,9 +1217,8 @@ export default function ScadaSystemAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({
@@ -1262,7 +1274,6 @@ export default function ScadaSystemAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

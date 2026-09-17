@@ -169,7 +169,7 @@ describe('Module 3: Tài sản khu tránh trú bão (docs/checklists/CHECKLIST-T
         orgUnitId: 'org-4',
         role: 'ADMIN',
         status: 'authenticated',
-        permissions: ['infraasset:manage'],
+        permissions: ['infraasset:manage', 'stormshelter:manage', 'stormshelterasset:manage'],
       },
       isAuthenticated: true,
       token: 'admin-jwt-token',
@@ -244,9 +244,10 @@ describe('Module 3: Tài sản khu tránh trú bão (docs/checklists/CHECKLIST-T
     expect(html).toContain('Tài sản khu tránh, trú bão');
     expect(html).toContain('Thêm mới');
     expect(html).toContain('Tìm kiếm');
-    expect(html).toContain('Mã khu tránh, trú bão');
+    expect(html).toContain('Tên tài sản');
+    expect(html).toContain('Mở rộng bộ lọc nâng cao');
     expect(html).toContain('Tất cả');
-    expect(html).toContain('Đã duyệt');
+    expect(html).toContain('Đã phê duyệt');
     expect(html).toContain('TÊN/MÃ TÀI SẢN');
     expect(html).toContain('MÃ KHU TRÁNH, TRÚ BÃO');
     expect(html).toContain('LOẠI TÀI SẢN');
@@ -331,7 +332,7 @@ describe('Module 3: Tài sản khu tránh trú bão (docs/checklists/CHECKLIST-T
     expect(html).toContain('Thông tin chi tiết');
     expect(html).toContain('Khai thác tài sản (1)');
     expect(html).toContain('Lịch sử thay đổi nguyên giá (1)');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
+    expect(html).toContain('Thông tin phê duyệt');
     expect(html).toContain('TB-DN-01');
     expect(html).toContain('TS-TB-001');
 

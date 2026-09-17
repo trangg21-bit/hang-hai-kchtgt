@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
@@ -37,17 +37,15 @@ export interface OperationValues {
   depreciationEndDate?: Dayjs;
   accumulatedDepreciation?: number;
   disposalMethod?: string;
+  [key: string]: unknown;
 }
 
-const UNITS = ['Tuyến', 'Hệ thống', 'Bộ', 'Cái', 'Chiếc', 'm', 'km', 'm²'];
-const ADJUSTMENT_REASONS = [
-  'Đầu tư bổ sung',
-  'Đánh giá lại',
-  'Nâng cấp',
-  'Hao mòn',
-  'Thanh lý một phần',
-  'Khác',
-];
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface ChannelAssetOperationFormProps {
   open: boolean;
@@ -97,15 +95,19 @@ export default function ChannelAssetOperationForm({
             name: 'unitOfMeasure',
             label: 'Đơn vị tính',
             type: FormFieldType.Select,
+            required: true,
             placeholder: 'Chọn đơn vị tính',
-            options: UNITS.map((u) => ({ value: u, label: u })),
+            options: ASSET_QUANTITY_UNIT_OPTIONS,
+            rules: [{ required: true, message: 'Đơn vị tính là bắt buộc' }],
           },
           {
             name: 'quantity',
             label: 'Số lượng',
             type: FormFieldType.Number,
+            required: true,
             min: 0,
             placeholder: '0',
+            rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
           },
           {
             name: 'exploitationDeadline',
@@ -187,7 +189,7 @@ export default function ChannelAssetOperationForm({
           label: isIncrease ? 'Lý do tăng nguyên giá' : 'Lý do giảm nguyên giá',
           type: FormFieldType.Select,
           placeholder: 'Chọn lý do',
-          options: ADJUSTMENT_REASONS.map((r) => ({ value: r, label: r })),
+          options: isIncrease ? INCREASE_REASON_OPTIONS : DECREASE_REASON_OPTIONS,
           required: true,
           rules: [{ required: true, message: 'Lý do điều chỉnh là bắt buộc' }],
         },
@@ -239,8 +241,19 @@ export default function ChannelAssetOperationForm({
           name: 'accumulatedDepreciation',
           label: 'Khấu hao lũy kế (VNĐ)',
           type: FormFieldType.Number,
+          required: true,
           min: 0,
           placeholder: '0',
+          rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
+        },
+        {
+          name: 'disposalMethod',
+          label: 'Hình thức xử lý tài sản',
+          type: FormFieldType.Select,
+          required: true,
+          placeholder: 'Chọn hình thức xử lý',
+          options: DISPOSAL_METHOD_OPTIONS,
+          rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
         },
         {
           name: 'depreciationStartDate',

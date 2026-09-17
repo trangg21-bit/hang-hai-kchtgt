@@ -71,6 +71,7 @@ export interface ScadaSystemAsset {
   updatedBy?: string;
   updatedByName?: string;
   updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export type ScadaSystemAssetPayload = Omit<
@@ -95,6 +96,7 @@ export interface ScadaSystemAssetFilters {
   updatedRange?: unknown;
   sortBy?: string;
   sortDir?: 'ASC' | 'DESC';
+  [key: string]: unknown;
 }
 
 export interface ScadaDeviceOption {

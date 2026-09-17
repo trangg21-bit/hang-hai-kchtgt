@@ -111,11 +111,11 @@ const CospasSarsatGlobalStyles = React.memo(() => (
       scrollbar-color: #cbd5e1 #f8fafc !important;
       scroll-behavior: smooth !important;
       -webkit-overflow-scrolling: touch !important;
-      padding: 2px 16px 6px 16px !important;
-      gap: 20px !important;
+      padding: 2px 8px 4px 8px !important;
+      gap: clamp(6px, 1vw, 14px) !important;
     }
     .cospas-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-      height: 6px !important;
+      height: 4px !important;
       display: block !important;
     }
     .cospas-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
@@ -133,6 +133,7 @@ const CospasSarsatGlobalStyles = React.memo(() => (
       white-space: nowrap !important;
       flex-shrink: 0 !important;
       cursor: pointer !important;
+      padding: 4px 2px !important;
     }
 
     /* ── Responsive ScreenHeader co dãn đẹp khi zoom ── */

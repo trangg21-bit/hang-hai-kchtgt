@@ -227,6 +227,17 @@ const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> 
   DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 
+const BEACON_HISTORY_FIELD_ORDER = [
+  'unitId', 'unitName', 'code', 'name', 'type', 'seaportId', 'operator',
+  'provinceId', 'region', 'location', 'detailedLocation', 'operationalStatus',
+  'towerHeight', 'lightHeight', 'lightRange', 'geographicRange',
+  'towerColor', 'shape', 'structure', 'primaryLightModel', 'backupLightModel',
+  'powerSupply', 'stationArea', 'area', 'staffCount',
+  'commissionedDate', 'lastRepairDate', 'identifyingFeature',
+  'geometryType', 'coordinates', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+  'rejectionReason', 'note', 'Tài liệu đính kèm',
+];
+
 // Tình trạng hoạt động — semantic tokens (integer enum khớp backend OperationalStatus)
 const OPERATIONAL_STATUS_OPTIONS = [
   { value: 0, label: 'Chưa khai thác/vận hành' },
@@ -336,7 +347,6 @@ export default function BeaconStationList() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // ── Organizations (form unit selector) ──────────────────────────
@@ -520,6 +530,10 @@ export default function BeaconStationList() {
         const tabKey = STATUS_TAB_LIST[idx]?.key || '';
         counts[tabKey] = result.status === 'fulfilled' ? result.value.total : 0;
       });
+      const sumChildCounts = STATUS_TAB_LIST
+        .filter((t) => t.key !== '' && t.key !== 'ARCHIVED')
+        .reduce((acc, t) => acc + (counts[t.key] || 0), 0);
+      counts[''] = sumChildCounts;
       setTabCounts(counts);
     } catch { /* silent */ }
   }, [
@@ -543,7 +557,6 @@ export default function BeaconStationList() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
-    setError(null);
     try {
       const res = await beaconStationCRUD.search({
         name: filterName.trim() || undefined,
@@ -564,11 +577,23 @@ export default function BeaconStationList() {
         page,
         pageSize,
       });
-      setDataSource(res.data);
+      let data = res.data;
+      if (activeTab === '') {
+        data = data.filter((item) => {
+          const isDel = Boolean(
+            item.deletedAt ||
+            item.deletedBy ||
+            item.status === 'ARCHIVED' ||
+            item.status === 'DELETED' ||
+            item.approvalStatus === 'ARCHIVED'
+          );
+          return !isDel;
+        });
+      }
+      setDataSource(data);
       setTotal(res.total);
-    } catch (err: unknown) {
+    } catch {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách đèn biển'));
     } finally {
       setIsLoading(false);
     }
@@ -778,7 +803,13 @@ export default function BeaconStationList() {
   // ── Row actions (popup chuẩn themetokenchk — thứ tự: Xem chi tiết, Chỉnh sửa, Lịch sử,
   //  rồi nhóm Phê duyệt/Từ chối, cuối cùng Xóa) ──
   const rowActions = useCallback((record: BeaconStation) => {
-    const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.status === 'ARCHIVED' || record.status === 'DELETED');
+    const isDeleted = Boolean(
+      record.deletedAt ||
+      record.deletedBy ||
+      record.status === 'ARCHIVED' ||
+      record.status === 'DELETED' ||
+      record.approvalStatus === 'ARCHIVED'
+    );
     if (isDeleted) {
       const actions: any[] = [];
       if (hasPerm('beaconstation:read') || hasPerm('beaconstation:view')) {
@@ -910,7 +941,13 @@ export default function BeaconStationList() {
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
       render: (status: string, record: BeaconStation) => {
-        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'ARCHIVED' || status === 'DELETED');
+        const isDeleted = Boolean(
+          record.deletedAt ||
+          record.deletedBy ||
+          status === 'ARCHIVED' ||
+          status === 'DELETED' ||
+          record.approvalStatus === 'ARCHIVED'
+        );
         const displayStatus = isDeleted ? 'ARCHIVED' : status;
         const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
@@ -1025,10 +1062,22 @@ export default function BeaconStationList() {
     },
   ], [page, pageSize, openDetailDrawer, seaports, userOptions, hasPerm]);
 
-  const tableData = useMemo(
-    () => dataSource.map((item, idx) => ({ ...item, _rowIndex: (page - 1) * pageSize + idx + 1 })),
-    [dataSource, page, pageSize],
-  );
+  const tableData = useMemo(() => {
+    let rows = dataSource;
+    if (activeTab === '') {
+      rows = rows.filter((item) => {
+        const isDel = Boolean(
+          item.deletedAt ||
+          item.deletedBy ||
+          item.status === 'ARCHIVED' ||
+          item.status === 'DELETED' ||
+          item.approvalStatus === 'ARCHIVED'
+        );
+        return !isDel;
+      });
+    }
+    return rows.map((item, idx) => ({ ...item, _rowIndex: (page - 1) * pageSize + idx + 1 }));
+  }, [dataSource, page, pageSize, activeTab]);
 
   // ── Filter panel content (markup div tay chuẩn /berth) ──
   const filterContent = (
@@ -1145,16 +1194,27 @@ export default function BeaconStationList() {
   );
 
   // ── Status tabs config (FilterTableLayout renders StatusTabs itself) ──
-  const statusTabs = useMemo(() =>
-    STATUS_TAB_LIST.map((tab) => ({
-      key: tab.key,
-      label: tab.label,
-      count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? 0),
-      color: tab.color,
-      active: activeTab === tab.key,
-    })),
-    [tabCounts, activeTab, total],
-  );
+  const statusTabs = useMemo(() => {
+    const allChildSum = STATUS_TAB_LIST
+      .filter((t) => t.key !== '' && t.key !== 'ARCHIVED')
+      .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
+
+    return STATUS_TAB_LIST.map((tab) => {
+      let count = tabCounts[tab.key] ?? 0;
+      if (tab.key === '') {
+        count = allChildSum;
+      } else if (tab.key === activeTab) {
+        count = total;
+      }
+      return {
+        key: tab.key,
+        label: tab.label,
+        count,
+        color: tab.color,
+        active: activeTab === tab.key,
+      };
+    });
+  }, [tabCounts, activeTab, total]);
 
   // ── Detail rows (57 trường theo checklist QL Đèn biển và nhà trạm) ──
   // Cấu trúc 6 tab: Thông tin chung (+ toggle 'Thông tin phê duyệt') | Thông tin kỹ thuật đèn biển
@@ -1294,6 +1354,7 @@ export default function BeaconStationList() {
     ? [
         {
           label: 'Trạng thái phê duyệt',
+          span: true,
           value: (() => {
             const isDel = Boolean(detailRecord.deletedAt || detailRecord.deletedBy || detailRecord.status === 'ARCHIVED' || detailRecord.status === 'DELETED');
             if (isDel) {
@@ -1304,6 +1365,7 @@ export default function BeaconStationList() {
           })(),
         },
         { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || null}</span> },
+        { label: 'Ngày cập nhật', value: formatDate(detailRecord.updatedAt) },
         { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || null}</span> },
         { label: 'Ngày gửi phê duyệt', value: formatDate(detailRecord.submittedAt) },
         { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approverLevel1Name || null}</span> },
@@ -1631,8 +1693,24 @@ export default function BeaconStationList() {
   //  + tìm kiếm + lọc Từ/Đến ngày + load-more khi cuộn ──
   const HISTORY_PAGE_SIZE = 20;
 
+  const isAttachmentField = (field?: string): boolean => {
+    if (!field) return false;
+    const f = field.toLowerCase().trim();
+    return f === 'attachments' || f === 'tài liệu đính kèm' || f === 'tai lieu dinh kem' || f === 'tệp đính kèm' || f === 'tep dinh kem';
+  };
+
+  const splitAttachmentNames = (raw?: string | null): string[] => {
+    if (!raw) return [];
+    const s = String(raw).trim();
+    if (!s || s === '—' || s === '-' || s === 'null' || s === '(null)' || s === 'Chưa có') return [];
+    return s
+      .split(/[\n\r;,]+/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+  };
+
   const BEACON_HISTORY_FIELD_LABELS: Record<string, string> = {
-    code: 'Mã đèn biển', name: 'Tên đèn biển', type: 'Cấp trạm đèn', unitId: 'Đơn vị quản lý',
+    unitId: 'Đơn vị quản lý', code: 'Mã đèn biển', name: 'Tên đèn biển', type: 'Loại đèn biển',
     unitName: 'Đơn vị quản lý', latitude: 'Vĩ độ', longitude: 'Kinh độ', lightRange: 'Tầm hiệu lực ánh sáng',
     towerColor: 'Màu sắc bên ngoài của tháp đèn', location: 'Địa điểm đặt trạm đèn', shape: 'Hình dáng',
     structure: 'Kết cấu', towerHeight: 'Chiều cao tháp đèn', lightHeight: 'Chiều cao tâm sáng',
@@ -1648,17 +1726,6 @@ export default function BeaconStationList() {
     attachments: 'Tài liệu đính kèm',
   };
 
-  const BEACON_HISTORY_FIELD_ORDER = [
-    'unitId', 'unitName', 'code', 'name', 'type', 'seaportId', 'operator',
-    'provinceId', 'region', 'location', 'detailedLocation', 'operationalStatus',
-    'towerHeight', 'lightHeight', 'lightRange', 'geographicRange',
-    'towerColor', 'shape', 'structure', 'primaryLightModel', 'backupLightModel',
-    'powerSupply', 'stationArea', 'area', 'staffCount',
-    'commissionedDate', 'lastRepairDate', 'identifyingFeature',
-    'geometryType', 'coordinates', 'mapSymbolId', 'coordinateSystem', 'displayRule',
-    'approvalStatus', 'rejectionReason', 'note',
-  ];
-
   const historyTimestamp = (item: any): string => item.approvedDate || item.changedAt || item.createdAt || '';
   const historyActorName = (item: any): string => item.changedByName || item.actor || item.changedBy || '—';
 
@@ -1672,6 +1739,19 @@ export default function BeaconStationList() {
 
     if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
       return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+    }
+
+    // Nếu có trường dữ liệu thông thường thay đổi, ưu tiên hiển thị [Cập nhật]
+    const hasFieldUpdate = (changes || []).some((c: any) => !isAttachmentField(c.field));
+    if (hasFieldUpdate) {
+      return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+    }
+
+    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len')) {
+      return { label: 'Tải lên tệp', color: '#0284C7', bg: '#0284C718' };
+    }
+    if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
+      return { label: 'Xóa tệp', color: statusAttention, bg: `${statusAttention}18` };
     }
 
     if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
@@ -1787,7 +1867,8 @@ export default function BeaconStationList() {
       'deletedAt', 'deletedBy', 'approvedBy', 'approvedDate', 'approvalLevel', 'submittedBy', 'submittedAt',
       'approverLevel1', 'approverLevel1Name', 'approverLevel2', 'approverLevel2Name',
       'approvedDateLevel1', 'approvedDateLevel2', 'approvalContentLevel1', 'approvalContentLevel2',
-      'status', 'submittedByName']);
+      'status', 'submittedByName',
+      'approvalStatus', 'approval_status', 'Trạng thái phê duyệt', 'trang thai phe duyet', 'Trạng thái']);
     const oldMap = parseJson(raw?.previousValue);
     const newMap = parseJson(raw?.newValue);
     const changes: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
@@ -1893,13 +1974,44 @@ export default function BeaconStationList() {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
   };
 
-  const isMeaningfulChange = useCallback((rawOld: any, rawNew: any): boolean => {
+  const isMeaningfulChange = useCallback((field: string, rawOld: any, rawNew: any): boolean => {
+    const normF = (field || '').trim().toLowerCase();
+    if (
+      normF === 'approvalstatus' ||
+      normF === 'trạng thái phê duyệt' ||
+      normF === 'trang thai phe duyet' ||
+      normF === 'trạng thái' ||
+      normF === 'status'
+    ) {
+      return false;
+    }
+    const isBlank = (v: any): boolean => {
+      if (v == null) return true;
+      const s = String(v).trim().toLowerCase();
+      return (
+        s === '' ||
+        s === '—' ||
+        s === '-' ||
+        s === '–' ||
+        s === 'null' ||
+        s === '(null)' ||
+        s === '(trống)' ||
+        s === 'chưa có' ||
+        s === 'undefined'
+      );
+    };
+    if (isBlank(rawOld) && isBlank(rawNew)) return false;
     const ov = rawOld != null ? String(rawOld).trim() : '';
     const nv = rawNew != null ? String(rawNew).trim() : '';
-    if (ov === '' && nv === '') return false;
-    if (ov !== '' && nv !== '' && ov === nv) return false;
+    if (ov !== '' && nv !== '' && ov.toLowerCase() === nv.toLowerCase()) return false;
     // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25)
     if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
+      return false;
+    }
+    // Bỏ qua nếu sau khi format hiển thị giống nhau
+    const ovFmt = !isNaN(Number(ov)) ? fmtNum(ov) : ov;
+    const nvFmt = !isNaN(Number(nv)) ? fmtNum(nv) : nv;
+    if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
       return false;
     }
     return true;
@@ -1926,10 +2038,37 @@ export default function BeaconStationList() {
         const allChanges = g.items.flatMap((item) => (item.changes && item.changes.length > 0 ? item.changes : []));
         const changes = allChanges
           .filter((c: any) => c.field !== '' || (c.oldValue != null && c.oldValue !== '') || (c.newValue != null && c.newValue !== ''))
-          .filter((c: any) => isMeaningfulChange(c.oldValue, c.newValue));
+          .filter((c: any) => isMeaningfulChange(c.field, c.oldValue, c.newValue));
         if (changes.length === 0) return null;
 
-        const orderedChanges = [...changes].sort((a: any, b: any) => {
+        // Gom nhóm các thay đổi đính kèm trong cùng một phiên thành 1 dòng duy nhất
+        const attachmentChanges = changes.filter((c: any) => isAttachmentField(c.field));
+        const nonAttachmentChanges = changes.filter((c: any) => !isAttachmentField(c.field));
+        const finalChanges: any[] = [...nonAttachmentChanges];
+        if (attachmentChanges.length > 0) {
+          const allNewFiles: string[] = [];
+          const allOldFiles: string[] = [];
+          attachmentChanges.forEach((ac: any) => {
+            splitAttachmentNames(ac.newValue).forEach((fn) => {
+              if (!allNewFiles.includes(fn)) allNewFiles.push(fn);
+            });
+            splitAttachmentNames(ac.oldValue).forEach((fn) => {
+              if (!allOldFiles.includes(fn)) allOldFiles.push(fn);
+            });
+          });
+          const mergedOld = allOldFiles.length > 0 ? allOldFiles.join('; ') : 'Chưa có';
+          const mergedNew = allNewFiles.length > 0 ? allNewFiles.join('; ') : '—';
+          if (isMeaningfulChange('Tài liệu đính kèm', mergedOld, mergedNew)) {
+            finalChanges.push({
+              field: 'Tài liệu đính kèm',
+              oldValue: mergedOld,
+              newValue: mergedNew,
+            });
+          }
+        }
+        if (finalChanges.length === 0) return null;
+
+        const orderedChanges = [...finalChanges].sort((a: any, b: any) => {
           const ia = BEACON_HISTORY_FIELD_ORDER.indexOf(a.field);
           const ib = BEACON_HISTORY_FIELD_ORDER.indexOf(b.field);
           return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
@@ -1938,7 +2077,7 @@ export default function BeaconStationList() {
 
         return {
           ...g,
-          changes,
+          changes: finalChanges,
           orderedChanges,
         };
       })
@@ -1972,7 +2111,18 @@ export default function BeaconStationList() {
       const isGeom = key === 'geometrytype' || key === 'loai doi tuong gis';
       const isSymbol = key === 'mapsymbolid' || key === 'symbolid' || key.includes('bieu tuong');
       if (empty) {
-        return <span style={{ color: textTertiary }}>{(gisKey || isGeom || isSymbol) ? 'Chưa có' : '—'}</span>;
+        return <span style={{ color: textTertiary }}>{(gisKey || isGeom || isSymbol || isAttachmentField(field)) ? 'Chưa có' : '—'}</span>;
+      }
+      if (isAttachmentField(field)) {
+        const list = splitAttachmentNames(String(raw));
+        if (list.length === 0) return <span style={{ color: textTertiary }}>Chưa có</span>;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {list.map((fn, idx) => (
+              <span key={idx} style={{ wordBreak: 'break-all' }}>{fn}</span>
+            ))}
+          </div>
+        );
       }
       if (gisKey) return renderHistoryCoordinates(String(raw));
       if (isGeom) {
@@ -2132,18 +2282,17 @@ export default function BeaconStationList() {
           flex-wrap: nowrap !important;
           overflow-x: auto !important;
           overflow-y: hidden !important;
-          justify-content: center !important;
           justify-content: safe center !important;
           align-items: center !important;
           scrollbar-width: thin !important;
           scrollbar-color: #cbd5e1 #f8fafc !important;
           scroll-behavior: smooth !important;
           -webkit-overflow-scrolling: touch !important;
-          padding: 2px 16px 6px 16px !important;
-          gap: 20px !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
         }
         .beacon-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-          height: 6px !important;
+          height: 4px !important;
           display: block !important;
         }
         .beacon-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
@@ -2161,6 +2310,7 @@ export default function BeaconStationList() {
           white-space: nowrap !important;
           flex-shrink: 0 !important;
           cursor: pointer !important;
+          padding: 4px 2px !important;
         }
       `}</style>
 

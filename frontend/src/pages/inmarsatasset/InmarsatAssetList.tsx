@@ -31,6 +31,9 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
@@ -45,7 +48,7 @@ import {
   fetchInmarsatExploitations,
   fetchInmarsatStationOptions,
   updateInmarsatAsset,
-  uploadInmarsatAssetAttachments,
+  uploadInmarsatAssetAttachments
 } from '../../services/inmarsatAsset/api';
 import type {
   InmarsatAsset,
@@ -57,7 +60,11 @@ import type {
 import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import {
+  calculateAssetAdjustmentValues,
+  validateAdjustmentOriginalValue,
+} from '../../utils/assetValueCalculation';
 import InmarsatAssetDetailContent from './InmarsatAssetDetailContent';
 import InmarsatAssetForm, { type FormValues } from './InmarsatAssetForm';
 import InmarsatAssetHistory, { useInmarsatHistory } from './InmarsatAssetHistory';
@@ -78,8 +85,6 @@ const STATUS_COUNT_KEYS = [
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
   return error.response?.data?.message || fallback;
@@ -88,6 +93,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function InmarsatAssetList() {
+  const perms = useAssetPermissions(['coastalstationinmarsat', 'specialstation', 'coastalstation', 'inmarsatasset']);
   const [data, setData] = useState<InmarsatAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [inmarsatStations, setInmarsatStations] = useState<Array<{ id: string; code: string; name: string }>>([]);
@@ -187,17 +193,15 @@ export default function InmarsatAssetList() {
     setSelected(undefined);
     setAttachments([]);
     form.resetFields();
-    form.setFieldsValue({
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-    });
     setDrawerMode('create');
   }, [form]);
 
   const openEdit = useCallback(
     (record: InmarsatAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       fetchInmarsatAssetAttachments(record.id)
@@ -352,7 +356,7 @@ export default function InmarsatAssetList() {
         const values = await form.validateFields();
         const payload: InmarsatAssetPayload = {
           ...values,
-          assetType: 'Tài sản đài Inmarsat',
+          assetType: values.assetType || 'Hệ thống thông tin giao thông, thông tin liên lạc và hệ thống điện, nước trong khu vực bến cảng',
           constructionYear: values.constructionYear ? values.constructionYear.year() : undefined,
           useDate: values.useDate ? values.useDate.format('YYYY-MM-DD') : undefined,
           declarationDate: values.declarationDate ? values.declarationDate.format('YYYY-MM-DD') : undefined,
@@ -408,7 +412,7 @@ export default function InmarsatAssetList() {
       operationForm.resetFields();
       if (mode === 'exploit') {
         operationForm.setFieldsValue({
-          assetCategory: record.assetName,
+          assetCategory: [record.assetCode, record.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: record.quantityUnit || 'Bộ',
           quantity: record.quantity || 1,
           totalRevenue: 0,
@@ -421,9 +425,9 @@ export default function InmarsatAssetList() {
         const remaining = record.remainingValue || 0;
         operationForm.setFieldsValue({
           originalValueBefore: original,
-          originalValueAfter: original,
+          originalValue: original,
           remainingValueBefore: remaining,
-          remainingValueAfter: remaining,
+          remainingValue: remaining,
           depreciationRate: record.depreciationRate || 0,
           depreciationMonths: record.depreciationMonths || 0,
           accumulatedDepreciation: record.accumulatedDepreciation || 0,
@@ -441,14 +445,40 @@ export default function InmarsatAssetList() {
       if (operationMode === 'exploit') {
         await createInmarsatExploitation(selected.id, {
           ...values,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationDeadline: values.exploitationDeadline
             ? values.exploitationDeadline.format('YYYY-MM-DD')
             : undefined,
         });
         toast.success('Thêm thông tin khai thác tài sản đài Inmarsat thành công.');
       } else {
+        const origVal = values.originalValue;
+        const valCheck = validateAdjustmentOriginalValue(
+          operationMode,
+          origVal,
+          selected.originalValue
+        );
+        if (!valCheck.isValid) {
+          toast.error(valCheck.message || 'Nguyên giá sau điều chỉnh không hợp lệ.');
+          return;
+        }
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
         await createInmarsatAdjustment(selected.id, {
           ...values,
+          originalValueBefore: selected.originalValue,
+          originalValueAfter: origVal,
+          remainingValueBefore: selected.remainingValue,
+          remainingValueAfter: calc.remainingValueAfter,
+          accumulatedDepreciation:
+            calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
           adjustmentType: operationMode === 'increase' ? 'INCREASE' : 'DECREASE',
           decisionDate: values.decisionDate ? values.decisionDate.format('YYYY-MM-DD') : undefined,
           adjustmentDate: values.adjustmentDate ? values.adjustmentDate.format('YYYY-MM-DD') : undefined,
@@ -508,11 +538,32 @@ export default function InmarsatAssetList() {
         placeholder: 'Chọn đơn vị quản lý',
       },
       {
+        key: 'assetName',
+        label: 'Tên hoặc mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm kiếm theo tên / mã tài sản',
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: MARITIME_ASSET_TYPE_OPTIONS,
+      },
+      {
+        key: 'assetCondition',
+        label: 'Tình trạng tài sản',
+        type: 'select',
+        options: ASSET_CONDITION_OPTIONS,
+        placeholder: 'Chọn tình trạng',
+      },
+      {
         key: 'usingOrgUnitId',
         label: 'Đơn vị sử dụng',
         type: 'treeSelect',
         organizations,
         placeholder: 'Chọn đơn vị sử dụng',
+        isAdvanced: true,
       },
       {
         key: 'stationId',
@@ -521,25 +572,14 @@ export default function InmarsatAssetList() {
         options: inmarsatStations.map((d) => ({ value: d.id, label: `${d.code} - ${d.name}` })),
         placeholder: 'Chọn đài Inmarsat',
         showSearch: true,
-      },
-      {
-        key: 'assetCondition',
-        label: 'Tình trạng tài sản',
-        type: 'select',
-        options: ASSET_CONDITIONS.map((c) => ({ value: c, label: c })),
-        placeholder: 'Chọn tình trạng',
-      },
-      {
-        key: 'assetName',
-        label: 'Tên hoặc mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm kiếm theo tên / mã tài sản',
+        isAdvanced: true,
       },
       {
         key: 'updatedRange',
         label: 'Khoảng ngày cập nhật',
         type: 'dateRange',
         format: 'DD/MM/YYYY',
+        isAdvanced: true,
       },
     ],
     [organizations, inmarsatStations]
@@ -596,7 +636,7 @@ export default function InmarsatAssetList() {
           type: TableColumnType.Text,
           width: 180,
           allowSort: true,
-          render: (v) => (v as string) || 'Tài sản đài Inmarsat',
+          render: (v) => (v ? String(v) : ''),
         },
         {
           title: 'TÌNH TRẠNG TÀI SẢN',
@@ -690,63 +730,78 @@ export default function InmarsatAssetList() {
           Boolean((record as { deletedAt?: string | null }).deletedAt);
 
         if (isArchived) {
-          return [
-            {
+          const arcActions: TableActionOption<InmarsatAsset>[] = [];
+          if (perms.canRead) {
+            arcActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void openDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            arcActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return arcActions;
         }
 
-        const rowActions: TableActionOption<InmarsatAsset>[] = [
-          {
+        const rowActions: TableActionOption<InmarsatAsset>[] = [];
+        if (perms.canRead) {
+          rowActions.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
-          },
-          {
+          });
+        }
+        if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+          rowActions.push({
             key: 'edit',
             label: 'Chỉnh sửa',
             icon: <EditOutlined />,
             onClick: () => openEdit(record),
-          },
-          {
+          });
+        }
+        if (perms.canHistory) {
+          rowActions.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
+          });
+        }
+        if (perms.canExploit) {
+          rowActions.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
             onClick: () => openOperation(record, 'exploit'),
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          rowActions.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
             onClick: () => openOperation(record, 'increase'),
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          rowActions.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
             onClick: () => openOperation(record, 'decrease'),
-          },
-        ];
+          });
+        }
 
         const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
-        if (isDraft) {
+        if (isDraft && perms.canDelete) {
           rowActions.push({
             key: 'delete',
             label: 'Xóa',
@@ -759,11 +814,12 @@ export default function InmarsatAssetList() {
         return rowActions;
       },
     }),
-    [inmarsatMap, openDetail, openEdit, openHistory, openOperation, orgName]
+    [inmarsatMap, openDetail, openEdit, openHistory, openOperation, orgName, perms]
   );
 
-  const headerActions = useMemo<ScreenHeaderAction[]>(
-    () => [
+  const headerActions = useMemo<ScreenHeaderAction[]>(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -771,9 +827,8 @@ export default function InmarsatAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={customTokens as unknown as import('../../context/ThemeTokenContext').ThemeToken}>
@@ -790,7 +845,6 @@ export default function InmarsatAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

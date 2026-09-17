@@ -481,7 +481,7 @@ export default function ShipRepairYardList() {
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const res = await shipRepairYardCRUD.search({
         orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
@@ -498,9 +498,8 @@ export default function ShipRepairYardList() {
         pageSize,
       });
       setDataSource(res.data); setTotal(res.total);
-    } catch (err: unknown) {
+    } catch {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách cơ sở sửa chữa, đóng tàu'));
     } finally { setIsLoading(false); }
   }, [managingUnitId, filterName, filterCode, filterPortId, filterPierId,
     filterProvince, filterOperationalStatus,
@@ -1111,18 +1110,40 @@ export default function ShipRepairYardList() {
         }
 
         .ship-repair-yard-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
           justify-content: center !important;
+          justify-content: safe center !important;
+          align-items: center !important;
           overflow-x: auto !important;
-          max-width: 100% !important;
-          padding-bottom: 2px !important;
+          overflow-y: hidden !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
           scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
         }
         .ship-repair-yard-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-          height: 4px;
+          height: 4px !important;
+          display: block !important;
+        }
+        .ship-repair-yard-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 999px !important;
         }
         .ship-repair-yard-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 4px;
+          background: #cbd5e1 !important;
+          border-radius: 999px !important;
+        }
+        .ship-repair-yard-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8 !important;
+        }
+        .ship-repair-yard-page-wrapper div:has(> button[aria-pressed]) > button {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          cursor: pointer !important;
+          padding: 4px 2px !important;
         }
       `}</style>
       <ScreenHeader

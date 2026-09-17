@@ -74,7 +74,8 @@ import {
   GEOMETRY_POINT_COUNT,
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
-import { deduplicateAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
+import { deduplicateAttachmentHistoryChanges, isAttachmentField } from '../../utils/historyAttachmentDedup';
+import { DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
 import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import {
   statusOperational,
@@ -423,7 +424,7 @@ const HISTORY_FIELD_ORDER = [
   'Đơn vị tính', 'Số lượng', 'Tình trạng',
   'Chiều cao tháp', 'Chiều cao tháp radar (m)', 'Tầm phủ radar', 'Tầm hiệu lực radar',
   'Ghi chú', 'Loại đối tượng GIS', 'Biểu tượng', 'Tọa độ', 'Tọa độ GIS', 'Tọa độ GPS',
-  'Tài liệu đính kèm', 'Trạng thái phê duyệt', 'Lý do từ chối',
+  'Tài liệu đính kèm', 'Lý do từ chối',
 ];
 
 function historyFieldName(fn: string): string {
@@ -576,9 +577,26 @@ function normalizedHistoryFields(value: string): string[] {
 }
 
 function isMeaningfulChange(field: string, rawOld: any, rawNew: any): boolean {
-  void field;
-  const ov = rawOld != null ? String(rawOld).trim() : '';
-  const nv = rawNew != null ? String(rawNew).trim() : '';
+  const f = (field || '').trim();
+  const fLower = f.toLowerCase();
+  if (
+    DEFAULT_IGNORED_FIELDS.has(f) ||
+    DEFAULT_IGNORED_FIELDS.has(fLower) ||
+    fLower === 'approvalstatus' ||
+    fLower === 'trạng thái phê duyệt' ||
+    fLower === 'trang thai phe duyet' ||
+    fLower === 'trạng thái'
+  ) {
+    return false;
+  }
+  const normalize = (v: any) => {
+    if (v == null) return '';
+    const s = String(v).trim();
+    if (s === '(null)' || s === 'null' || s === 'Chưa có') return '';
+    return s;
+  };
+  const ov = normalize(rawOld);
+  const nv = normalize(rawNew);
   if (ov === '' && nv === '') return false;
   if (ov !== '' && nv !== '' && ov === nv) return false;
   // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25 hoặc 5,555 vs 5555)
@@ -691,9 +709,10 @@ function parseListDelta(oldVal: string | null, newVal: string | null) {
   return { removed, added, modifiedPairs };
 }
 
-function resolveHistoryActionMeta(item: HistoryEntry): { label: string; color: string; bg: string } {
+function resolveHistoryActionMeta(item: HistoryEntry, changes?: any[]): { label: string; color: string; bg: string } {
   const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
   const rawReason = String(item?.reason ?? '').toLowerCase();
+  const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
   const rawLevel = String(item?.approvalLevel ?? item?.level ?? '').toUpperCase();
   let label: string;
   let color: string;
@@ -701,6 +720,17 @@ function resolveHistoryActionMeta(item: HistoryEntry): { label: string; color: s
     label = 'Thêm mới';
     color = statusOperational;
   } else {
+    // Nếu có trường dữ liệu thông thường thay đổi, ưu tiên hiển thị [Cập nhật]
+    const hasFieldUpdate = changes && changes.some((c: any) => !isAttachmentField(c.field));
+    if (hasFieldUpdate) {
+      return { label: 'Cập nhật', color: '#1a3f83', bg: '#1a3f8318' };
+    }
+    if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
+      return { label: 'Tải lên tệp', color: statusInfo, bg: `${statusInfo}18` };
+    }
+    if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xoa tai lieu') || rawReason.includes('xóa tệp')) {
+      return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
+    }
     const isLevel1 = rawStatus.includes('LEVEL1') || rawStatus.includes('_L1') || rawLevel.includes('LEVEL1') || rawLevel === 'C1' || rawLevel === 'LEVEL_1' || rawLevel === '1';
     const isLevel2 = rawStatus.includes('LEVEL2') || rawStatus.includes('_L2') || rawLevel.includes('LEVEL2') || rawLevel === 'C2' || rawLevel === 'LEVEL_2' || rawLevel === '2';
     if (rawStatus === 'REJECTED_LEVEL1' || rawStatus === 'REJECTED_L1' || (rawStatus === 'REJECTED' && isLevel1)
@@ -725,7 +755,7 @@ function resolveHistoryActionMeta(item: HistoryEntry): { label: string; color: s
       label = 'Xóa mềm';
       color = statusCritical;
     } else {
-      label = 'Chỉnh sửa';
+      label = 'Cập nhật';
       color = actionPrimary;
     }
   }
@@ -881,6 +911,7 @@ export default function RadarStationList() {
   const [orgOptions, setOrgOptions] = useState<OrgUnitTreeOption[]>([]);
   const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string }[]>([]);
   const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
@@ -1107,7 +1138,7 @@ export default function RadarStationList() {
 
       const reasons = g.items.map((i) => i.reason || i.note).filter(Boolean);
 
-      if (validChanges.length === 0 && reasons.length === 0) {
+      if (validChanges.length === 0) {
         return null;
       }
 
@@ -1226,6 +1257,19 @@ export default function RadarStationList() {
         );
       } catch (err) {
         console.error('Không tải được danh sách hệ thống VTS', err);
+      }
+      try {
+        const opRes = await api.get('/common/options/vts-operation-centers');
+        const opCenters = opRes.data?.data || opRes.data || [];
+        setVtsOperationCenterOptions(
+          (Array.isArray(opCenters) ? opCenters : []).map((item: any) => ({
+            id: item.id,
+            code: item.code,
+            name: item.name,
+          })),
+        );
+      } catch (err) {
+        console.error('Không tải được danh sách trung tâm điều hành VTS', err);
       }
       try {
         const resp = await userService.list({ pageSize: 1000 });
@@ -1763,6 +1807,8 @@ export default function RadarStationList() {
         geometryType: geom,
         coordinates: coordinates || undefined,
         mapIcon: currentMapIcon || undefined,
+        action: mode === 'approve' ? 'approve' : mode === 'submit' ? 'submit' : 'draft',
+        approvalStatus: mode === 'approve' ? 'APPROVED' : mode === 'submit' ? 'PENDING_APPROVAL' : 'DRAFT',
       };
       let savedId: string | null = null;
       if (editingRecord) {
@@ -1797,16 +1843,8 @@ export default function RadarStationList() {
           }
         }
         if (mode === 'submit' && savedId) {
-          await radarStationApproval.submitForApproval(savedId);
           toast.success('Đã tạo mới và gửi phê duyệt trạm radar');
         } else if (mode === 'approve' && savedId) {
-          const sent = await radarStationApproval.submitForApproval(savedId);
-          if (sent?.status === 'APPROVED_LEVEL1' || sent?.approvalStatus === 'APPROVED_LEVEL1') {
-            await radarStationApproval.approveLevel2(savedId);
-          } else {
-            await radarStationApproval.approveLevel1(savedId);
-            await radarStationApproval.approveLevel2(savedId);
-          }
           toast.success('Đã tạo mới và phê duyệt trạm radar');
         } else {
           toast.success('Đã lưu tạm trạm radar');
@@ -1902,6 +1940,12 @@ export default function RadarStationList() {
     const vts = vtsOptions.find((v) => v.id === vtsId);
     return vts ? (vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || '') : '';
   }, [vtsOptions]);
+
+  const vtsOpCenterLabelById = useCallback((ocId?: string): string => {
+    if (!ocId) return '';
+    const oc = vtsOperationCenterOptions.find((o) => o.id === ocId);
+    return oc ? (oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || '') : '';
+  }, [vtsOperationCenterOptions]);
 
   // ── Table columns ───────────────────────────────────────────────
   const columns: any[] = useMemo(() => [
@@ -2109,7 +2153,7 @@ export default function RadarStationList() {
             <Select placeholder="Tất cả" allowClear value={filterVtsOperationCenterId}
               onChange={(v) => { setFilterVtsOperationCenterId(v); setPage(1); }}
               showSearch optionFilterProp="label"
-              options={vtsOptions.map((vts) => ({ value: vts.id, label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id }))}
+              options={vtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
               style={{ ...selectStyle, width: '100%' }} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -2198,7 +2242,7 @@ export default function RadarStationList() {
         { label: 'Đơn vị quản lý', value: detailRecord.orgUnitName || safeText(orgNameById(detailRecord.orgUnitId)), bold: true },
         { label: 'Thuộc cảng biển', value: detailRecord.seaportName || safeText(seaportLabelById(detailRecord.seaportId)) },
         { label: 'Hệ thống VTS', value: detailRecord.vtsSystemName || safeText(vtsLabelById(detailRecord.vtsSystemId)) },
-        { label: 'Trung tâm điều hành VTS', value: detailRecord.vtsOperationCenterName || safeText(vtsLabelById(detailRecord.vtsOperationCenterId)) },
+        { label: 'Trung tâm điều hành VTS', value: detailRecord.vtsOperationCenterName || safeText(vtsOpCenterLabelById(detailRecord.vtsOperationCenterId)) },
         { label: 'Đơn vị khai thác', value: safeText(orgNameById(detailRecord.operatingUnitId)) },
       ]
     : [];
@@ -2884,7 +2928,8 @@ export default function RadarStationList() {
     if (!isUuid) return displayValue;
     if (key === 'orgunitid' || key === 'don vi quan ly' || key === 'operatingunitid' || key === 'don vi khai thac') return orgNameById(displayValue.trim());
     if (key === 'seaportid' || key === 'thuoc cang bien') return seaportLabelById(displayValue.trim());
-    if (key === 'vtssystemid' || key === 'he thong vts' || key === 'vtsoperationcenterid' || key === 'trung tam dieu hanh vts') return vtsLabelById(displayValue.trim());
+    if (key === 'vtssystemid' || key === 'he thong vts') return vtsLabelById(displayValue.trim());
+    if (key === 'vtsoperationcenterid' || key === 'trung tam dieu hanh vts') return vtsOpCenterLabelById(displayValue.trim()) || vtsLabelById(displayValue.trim());
     return displayValue;
   };
 
@@ -2999,7 +3044,7 @@ export default function RadarStationList() {
           }
           return historyFieldValue(fn, raw);
         };
-        const actionMeta = resolveHistoryActionMeta(g.items[0]);
+        const actionMeta = resolveHistoryActionMeta(g.items[0], changes);
         return (
           <div
             key={gi}
@@ -3321,18 +3366,17 @@ export default function RadarStationList() {
           flex-wrap: nowrap !important;
           overflow-x: auto !important;
           overflow-y: hidden !important;
-          justify-content: center !important;
           justify-content: safe center !important;
           align-items: center !important;
           scrollbar-width: thin !important;
           scrollbar-color: #cbd5e1 #f8fafc !important;
           scroll-behavior: smooth !important;
           -webkit-overflow-scrolling: touch !important;
-          padding: 2px 16px 6px 16px !important;
-          gap: 20px !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
         }
         .radar-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-          height: 6px !important;
+          height: 4px !important;
           display: block !important;
         }
         .radar-station-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
@@ -3350,6 +3394,7 @@ export default function RadarStationList() {
           white-space: nowrap !important;
           flex-shrink: 0 !important;
           cursor: pointer !important;
+          padding: 4px 2px !important;
         }
       `}</style>
 
@@ -3574,7 +3619,7 @@ export default function RadarStationList() {
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                options={vtsOptions.map((vts) => ({ value: vts.id, label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id }))}
+                                options={vtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
                                 style={selectStyle}
                               />
                             </Form.Item>

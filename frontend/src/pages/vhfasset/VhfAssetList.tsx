@@ -1,72 +1,78 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
-  type TableActionOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableActionOption,
+  type TableOption,
 } from '../../components/list-view';
-import { canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import {
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchTransmissionOptions } from '../../services/transmission/api';
 import type { TransmissionOptionResponse } from '../../services/transmission/types';
 import {
-  fetchVhfAssets,
-  deleteVhfAsset,
-  createVhfAsset,
-  updateVhfAsset,
-  fetchVhfExploitations,
-  createVhfExploitation,
-  fetchVhfAdjustments,
   createVhfAdjustment,
-  VHF_ASSET_TYPE,
-  fetchVhfAssetAttachments,
-  uploadVhfAssetAttachments,
+  createVhfAsset,
+  createVhfExploitation,
+  deleteVhfAsset,
   downloadVhfAssetAttachment,
+  fetchVhfAdjustments,
+  fetchVhfAssetAttachments,
+  fetchVhfAssets,
+  fetchVhfExploitations,
+  updateVhfAsset,
+  uploadVhfAssetAttachments,
+  VHF_ASSET_TYPE,
 } from '../../services/vhfAsset/api';
 import type {
   VhfAsset,
+  VhfAssetAdjustment,
+  VhfAssetExploitation,
   VhfAssetFilters,
   VhfAssetPayload,
-  VhfAssetExploitation,
-  VhfAssetAdjustment,
 } from '../../services/vhfAsset/types';
-import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
-import VhfAssetForm, { type FormValues } from './VhfAssetForm';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import {
+  calculateAssetAdjustmentValues,
+  validateAdjustmentOriginalValue,
+} from '../../utils/assetValueCalculation';
 import VhfAssetDetailContent from './VhfAssetDetailContent';
+import VhfAssetForm, { type FormValues } from './VhfAssetForm';
+import VhfAssetHistory, { useVhfHistory } from './VhfAssetHistory';
 import VhfAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './VhfAssetOperationForm';
-import VhfAssetHistory, { useVhfHistory } from './VhfAssetHistory';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -78,9 +84,9 @@ const STATUS_COUNT_KEYS = [
   'ARCHIVED',
 ];
 
-type DrawerMode = 'create' | 'edit' | 'detail';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+type DrawerMode = 'create' | 'edit' | 'detail';
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -90,6 +96,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function VhfAssetList() {
+  const perms = useAssetPermissions(['vhf', 'vhfasset']);
   const [data, setData] = useState<VhfAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [transmissions, setTransmissions] = useState<TransmissionOptionResponse[]>([]);
@@ -181,18 +188,15 @@ export default function VhfAssetList() {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({
-      assetType: VHF_ASSET_TYPE,
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-    });
     setAttachments([]);
   }, [form]);
 
   const openEdit = useCallback(
     (record: VhfAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -418,11 +422,41 @@ export default function VhfAssetList() {
       if (operationMode === 'exploit') {
         await createVhfExploitation(selected.id, {
           ...values,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
         });
       } else {
+        const origVal = (values.originalValueAfter ?? values.originalValue) as number | undefined;
+        const valCheck = validateAdjustmentOriginalValue(
+          operationMode,
+          origVal,
+          selected.originalValue
+        );
+        if (!valCheck.isValid) {
+          toast.error(valCheck.message || 'Nguyên giá sau điều chỉnh không hợp lệ.');
+          return;
+        }
+
+        setSaving(true);
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
+
         await createVhfAdjustment(selected.id, {
           ...values,
+          originalValue: origVal,
+          originalValueAfter: origVal,
+          originalValueBefore: selected.originalValue,
+          remainingValueBefore: selected.remainingValue,
+          remainingValueAfter: calc.remainingValueAfter,
+          accumulatedDepreciation:
+            calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
           adjustmentType: operationMode === 'increase' ? 'INCREASE' : 'DECREASE',
           decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
           adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
@@ -454,36 +488,6 @@ export default function VhfAssetList() {
         placeholder: 'Chọn đơn vị...',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị...',
-      },
-      {
-        key: 'transmissionId',
-        label: 'Mã thiết bị',
-        type: 'select',
-        placeholder: 'Chọn thiết bị VHF / truyền dẫn',
-        options: transmissions.map((item) => ({
-          value: item.id,
-          label: `${item.deviceCode} - ${item.deviceName}`,
-        })),
-      },
-      {
-        key: 'assetType',
-        label: 'Loại tài sản',
-        type: 'select',
-        placeholder: 'Chọn loại tài sản',
-        options: [{ value: VHF_ASSET_TYPE, label: VHF_ASSET_TYPE }],
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -494,12 +498,47 @@ export default function VhfAssetList() {
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
+      },
+      {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị...',
+        isAdvanced: true,
+      },
+      {
+        key: 'transmissionId',
+        label: 'Mã thiết bị',
+        type: 'select',
+        placeholder: 'Chọn thiết bị VHF / truyền dẫn',
+        options: transmissions.map((item) => ({
+          value: item.id,
+          label: `${item.deviceCode} - ${item.deviceName}`,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: MARITIME_ASSET_TYPE_OPTIONS,
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
       },
       {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ],
     [transmissions, organizations]
@@ -666,42 +705,53 @@ export default function VhfAssetList() {
           Boolean((record as { deletedAt?: string | null }).deletedAt);
 
         if (isArchived) {
-          return [
-            {
+          const arcActions: TableActionOption<VhfAsset>[] = [];
+          if (perms.canRead) {
+            arcActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void openDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            arcActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return arcActions;
         }
 
-        const rowActions: TableActionOption<VhfAsset>[] = [
-          {
+        const rowActions: TableActionOption<VhfAsset>[] = [];
+        if (perms.canRead) {
+          rowActions.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
-          },
-          {
+          });
+        }
+        if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+          rowActions.push({
             key: 'edit',
             label: 'Chỉnh sửa',
             icon: <EditOutlined />,
             onClick: () => openEdit(record),
-          },
-          {
+          });
+        }
+        if (perms.canHistory) {
+          rowActions.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
+          });
+        }
+        if (perms.canExploit) {
+          rowActions.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
@@ -710,8 +760,10 @@ export default function VhfAssetList() {
               setOperationMode('exploit');
               operationForm.resetFields();
             },
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          rowActions.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
@@ -719,9 +771,22 @@ export default function VhfAssetList() {
               setSelected(record);
               setOperationMode('increase');
               operationForm.resetFields();
+              operationForm.setFieldsValue({
+                originalValueBefore: record.originalValue,
+                remainingValueBefore: record.remainingValue,
+                declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+                depreciationRate: record.depreciationRate,
+                assignmentDecisionNumber: record.assignmentDecisionNumber,
+                depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+                depreciationMonths: record.depreciationMonths,
+                depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+                accumulatedDepreciation: record.accumulatedDepreciation,
+              });
             },
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          rowActions.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
@@ -729,11 +794,22 @@ export default function VhfAssetList() {
               setSelected(record);
               setOperationMode('decrease');
               operationForm.resetFields();
+              operationForm.setFieldsValue({
+                originalValueBefore: record.originalValue,
+                remainingValueBefore: record.remainingValue,
+                declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+                depreciationRate: record.depreciationRate,
+                assignmentDecisionNumber: record.assignmentDecisionNumber,
+                depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+                depreciationMonths: record.depreciationMonths,
+                depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+                accumulatedDepreciation: record.accumulatedDepreciation,
+              });
             },
-          },
-        ];
+          });
+        }
 
-        if (canDeleteApprovalRecord(record.approvalStatus, { resource: 'infraasset' })) {
+        if (perms.canDelete && canDeleteApprovalRecord(record.approvalStatus, { resource: 'vhf' })) {
           rowActions.push({
             key: 'delete',
             label: 'Xóa',
@@ -746,11 +822,12 @@ export default function VhfAssetList() {
         return rowActions;
       },
     }),
-    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap, perms]
   );
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -758,9 +835,8 @@ export default function VhfAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
@@ -777,7 +853,6 @@ export default function VhfAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

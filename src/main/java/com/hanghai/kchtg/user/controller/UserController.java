@@ -74,7 +74,7 @@ public class UserController {
      * Default 20 items/page, max 100. Sort by created_at DESC.
      */
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'user:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'user:read', 'user:manage', 'infraasset:read', 'data:read', 'admin:view') or isAuthenticated()")
     public ResponseEntity<ApiResponse<UserPageResponse>> list(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String fullName,
@@ -104,7 +104,7 @@ public class UserController {
      * Lay chi tiet mot nguoi dung theo ID.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'user:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'user:read', 'user:manage', 'infraasset:read', 'data:read', 'admin:view') or isAuthenticated()")
     public ResponseEntity<ApiResponse<UserDetailResponse>> getById(@PathVariable UUID id) {
         var entity = userService.findById(id);
         var auditIds = java.util.stream.Stream.of(entity.getCreatedBy(), entity.getUpdatedBy(), entity.getDeletedBy())

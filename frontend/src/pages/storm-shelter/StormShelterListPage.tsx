@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
@@ -347,8 +348,15 @@ function histVal(
 
 
 export default function StormShelterListPage() {
+  const [searchParams] = useSearchParams();
+  const linkedAction = searchParams.get('action');
+  const linkedRecordId = searchParams.get('id');
+  const isEmbeddedAction = window.self !== window.top
+    && (linkedAction === 'detail' || linkedAction === 'edit')
+    && !!linkedRecordId;
+
   const authUser = useAuthStore((s) => s.user);
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const userPermissions = authUser?.permissions || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
@@ -373,7 +381,6 @@ export default function StormShelterListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
   const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
@@ -568,7 +575,7 @@ export default function StormShelterListPage() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const r = await stormShelterCRUD.search({
         orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
@@ -586,8 +593,8 @@ export default function StormShelterListPage() {
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
-    } catch (ex: unknown) {
-      setIsError(true); setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách khu tránh, trú bão'));
+    } catch {
+      setIsError(true);
     } finally {
       setIsLoading(false);
     }
@@ -597,7 +604,7 @@ export default function StormShelterListPage() {
     filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize,
   ]);
 
-  useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
+  useEffect(() => { if (initialLoadDone && !isEmbeddedAction) void fetchData(); }, [fetchData, initialLoadDone, isEmbeddedAction]);
   useEffect(() => { void fetchCounts(orgUnit); }, [orgUnit, fetchCounts]);
 
   const handleFilterApply = useCallback(() => {
@@ -636,10 +643,53 @@ export default function StormShelterListPage() {
     } catch {}
   }, []);
 
+  const notifyEmbeddedActionClosed = useCallback(() => {
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+    }
+  }, []);
+
+  const closeFormDrawer = useCallback(() => {
+    setCreateDrawerVisible(false);
+    createForm.resetFields();
+    setEditStormShelterId(undefined);
+    setEditBaseStatus(undefined);
+    notifyEmbeddedActionClosed();
+  }, [createForm, notifyEmbeddedActionClosed]);
+
   const closeDetailDrawer = useCallback(() => {
     setDetailDrawerVisible(false);
     setDetailRecord(null);
-  }, []);
+    notifyEmbeddedActionClosed();
+  }, [notifyEmbeddedActionClosed]);
+
+  // ── Embedded GIS action handler (?action=detail|edit&id=...) ──────
+  useEffect(() => {
+    if (!linkedRecordId || (linkedAction !== 'detail' && linkedAction !== 'edit')) return;
+    let cancelled = false;
+
+    stormShelterCRUD.findById(linkedRecordId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        if (linkedAction === 'detail') {
+          void openDetailDrawer(record);
+        } else {
+          setEditStormShelterId(linkedRecordId);
+          setEditBaseStatus(record.approvalStatus);
+          setCreateDrawerVisible(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          toast.error(error instanceof Error ? error.message : 'Không tải được chi tiết khu tránh, trú bão');
+          notifyEmbeddedActionClosed();
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [linkedAction, linkedRecordId, openDetailDrawer, notifyEmbeddedActionClosed]);
 
   const dd2dms = (dd: number) => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -1268,16 +1318,17 @@ export default function StormShelterListPage() {
             align-items: center !important;
             scrollbar-width: thin !important;
             scrollbar-color: #cbd5e1 #f8fafc !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
           }
           .storm-shelter-page-wrapper div:has(> button[aria-pressed]) > button {
             white-space: nowrap !important;
             flex-shrink: 0 !important;
             cursor: pointer !important;
+            padding: 4px 2px !important;
           }
           .storm-shelter-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
+            height: 4px !important;
             display: block !important;
           }
           .storm-shelter-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
@@ -1384,7 +1435,7 @@ export default function StormShelterListPage() {
           destroyOnHidden
           onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
           afterOpenChange={(open) => { if (!open) { setEditStormShelterId(undefined); setEditBaseStatus(undefined); } }}
-          extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); }} style={drawerCloseBtnStyle}>✕</Button>}
+          extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           footer={<div style={drawerFooterStyle}>{(() => {
             const st = !editStormShelterId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
             if (st === 'APPROVED') {
@@ -1424,8 +1475,7 @@ export default function StormShelterListPage() {
               form={createForm}
               id={editStormShelterId}
               onFinish={() => {
-                setCreateDrawerVisible(false);
-                createForm.resetFields();
+                closeFormDrawer();
                 setSortField('updatedAt');
                 setSortOrder('descend');
                 setPage(1);

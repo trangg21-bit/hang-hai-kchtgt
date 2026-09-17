@@ -1,91 +1,106 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Input, Space } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
-  DeleteOutlined,
-  EditOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
-  PlusOutlined,
-  RocketOutlined,
-  SearchOutlined,
+    CheckOutlined,
+    CloseOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    EyeOutlined,
+    HistoryOutlined,
+    MinusCircleOutlined,
+    PlusCircleOutlined,
+    PlusOutlined,
+    RocketOutlined,
+    SearchOutlined,
+    SendOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableActionOption,
+  type TableOption,
 } from '../../components/list-view';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { formatHistoryNumber } from '../../utils/numFmt';
-import toast from '../../components/ToastNotification';
-import { organizationService, type Organization } from '../../services/organizationService';
-import { fetchAllBuoys } from '../../services/buoy/api';
-import { fetchBuoyStationList } from '../../services/buoy-station/api';
-import type { Buoy } from '../../types/buoy';
-import type { BuoyStationResponse } from '../../services/buoy-station/types';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-  createKhaiThac,
-  createAssetDecrease,
-  createAssetIncrease,
-  createBuoyAsset,
-  deleteBuoyAsset,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchKhaiThacList,
-  fetchBuoyAssets,
-  updateBuoyAsset,
-  uploadInfraAssetAttachments,
-  fetchInfraAssetAttachments,
-  deleteInfraAssetAttachment,
-  fetchInfraAssetHistory,
-} from '../../services/assetmovement/api';
-import api from '../../services/api';
-import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  BuoyAsset,
-  BuoyAssetFilters,
-  BuoyAssetPayload,
-} from '../../services/assetmovement/types';
-import {
-  type InfrastructureAttachmentItem,
-  triggerBlobDownload,
+    triggerBlobDownload,
+    type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import { calculateAssetAdjustmentValues } from '../../utils/assetValueCalculation';
+import type { AssetValueAdjustmentDetails } from '../../services/assetmovement/types';
+import api from '../../services/api';
+import {
+    approveInfraAssetC1,
+    approveInfraAssetC2,
+    createAssetDecrease,
+    createAssetIncrease,
+    createBuoyAsset,
+    createKhaiThac,
+    deleteBuoyAsset,
+    deleteInfraAssetAttachment,
+    fetchAssetDecreaseList,
+    fetchAssetIncreaseList,
+    fetchBuoyAssets,
+    fetchInfraAssetAttachments,
+    fetchInfraAssetHistory,
+    fetchKhaiThacList,
+    rejectInfraAssetC1,
+    rejectInfraAssetC2,
+    submitInfraAssetApproval,
+    updateBuoyAsset,
+    uploadInfraAssetAttachments,
+} from '../../services/assetmovement/api';
+import type {
+    AssetDecreaseResponse,
+    AssetExploitationResponse,
+    AssetIncreaseResponse,
+    BuoyAsset,
+    BuoyAssetFilters,
+    BuoyAssetPayload,
+} from '../../services/assetmovement/types';
+import { fetchBuoyStationList } from '../../services/buoy-station/api';
+import type { BuoyStationResponse } from '../../services/buoy-station/types';
+import { fetchAllBuoys } from '../../services/buoy/api';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  actionPrimary,
-  borderDefault,
-  colors,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  fontWeightBold,
-  radiusPill,
-  spaceMd,
-  spaceSm,
-  spaceXl,
-  textTertiary,
+    actionPrimary,
+    borderDefault,
+    colors,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd,
+    fontWeightBold,
+    radiusPill,
+    spaceMd,
+    spaceSm,
+    spaceXl,
+    textTertiary,
 } from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import BuoyAssetForm, { type BuoyFormValues } from './BuoyAssetForm';
+import type { Buoy } from '../../types/buoy';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { countHistoryUpdates, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import BuoyAssetDetailContent from './BuoyAssetDetailContent';
+import BuoyAssetForm, { type BuoyFormValues } from './BuoyAssetForm';
 import BuoyAssetOperationForm, {
-  type OperationMode,
-  type OperationValues,
+    type OperationMode,
+    type OperationValues,
 } from './BuoyAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -98,9 +113,9 @@ const STATUS_COUNT_KEYS = [
   'ARCHIVED',
 ];
 
-type DrawerMode = 'create' | 'edit' | 'detail';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+type DrawerMode = 'create' | 'edit' | 'detail';
 
 const BUOY_ASSET_FIELD_LABELS: Record<string, string> = {
   parentOrgUnitId: 'Cơ quan quản lý cấp trên',
@@ -153,6 +168,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function BuoyAssetList() {
+  const perms = useAssetPermissions(['buoy', 'buoystation', 'buoyasset']);
   const [data, setData] = useState<BuoyAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [buoys, setBuoys] = useState<Buoy[]>([]);
@@ -178,6 +194,10 @@ export default function BuoyAssetList() {
   const [operationForm] = Form.useForm<OperationValues>();
   const currentUser = useAuthStore((s) => s.user);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+
+  const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
+  const buoyMap = useMemo(() => new Map(buoys.map((item) => [item.id, item])), [buoys]);
+  const stationMap = useMemo(() => new Map(buoyStations.map((item) => [item.id, item])), [buoyStations]);
 
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -229,13 +249,36 @@ export default function BuoyAssetList() {
   }, [historyRecords, historySearch, historyFrom, historyTo]);
 
   const historyFieldCount = useMemo(
-    () => filteredHistoryRecords.length,
-    [filteredHistoryRecords]
+    () => countHistoryUpdates(filteredHistoryRecords, {
+      fieldLabels: BUOY_ASSET_FIELD_LABELS,
+      formatValue: (fn, raw) => {
+        if (isBlankOrDash(raw)) return '';
+        const normKey = (fn || '').toLowerCase();
+        if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
+          return orgName.get(raw!) || raw;
+        }
+        if (fn === 'buoyId') {
+          const item = buoys.find((x) => x.id === raw);
+          return item ? `${item.code} - ${item.name}` : raw;
+        }
+        if (fn === 'buoyStationId') {
+          const item = buoyStations.find((x) => x.id === raw);
+          return item ? `${item.code} - ${item.name}` : raw;
+        }
+        if (
+          fn === 'originalValue' ||
+          fn === 'remainingValue' ||
+          fn === 'accumulatedDepreciation' ||
+          fn === 'monthlyDepreciation' ||
+          fn === 'value'
+        ) {
+          return formatHistoryNumber(raw);
+        }
+        return undefined;
+      },
+    }),
+    [filteredHistoryRecords, orgName, buoys, buoyStations]
   );
-
-  const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
-  const buoyMap = useMemo(() => new Map(buoys.map((item) => [item.id, item])), [buoys]);
-  const stationMap = useMemo(() => new Map(buoyStations.map((item) => [item.id, item])), [buoyStations]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -267,28 +310,120 @@ export default function BuoyAssetList() {
   }, [loadData]);
 
   useEffect(() => {
-    void Promise.all([
+    void Promise.allSettled([
       organizationService.getAll(),
       fetchAllBuoys(),
       fetchBuoyStationList({}),
-    ])
-      .then(([orgs, buoyList, stationPage]) => {
-        setOrganizations(orgs);
-        setBuoys(buoyList || []);
-        setBuoyStations(stationPage.content || []);
-      })
-      .catch(() => toast.error('Không thể tải danh mục đơn vị, phao tiêu hoặc nhà trạm.'));
+    ]).then(([orgsRes, buoyRes, stationRes]) => {
+      if (orgsRes.status === 'fulfilled') {
+        setOrganizations(orgsRes.value);
+      }
+      if (buoyRes.status === 'fulfilled') {
+        setBuoys(buoyRes.value || []);
+      }
+      if (stationRes.status === 'fulfilled') {
+        setBuoyStations(stationRes.value.content || []);
+      }
+      if (orgsRes.status === 'rejected' || buoyRes.status === 'rejected' || stationRes.status === 'rejected') {
+        toast.error('Không thể tải danh mục đơn vị, phao tiêu hoặc nhà trạm.');
+      }
+    });
   }, []);
+
+  // ── Approval state & handlers ──────────────────────────────────────
+  const [approvingRecord, setApprovingRecord] = useState<BuoyAsset | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [rejectingRecord, setRejectingRecord] = useState<BuoyAsset | null>(null);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const handleOpenApproveModal = useCallback((record: BuoyAsset, level: 'c1' | 'c2') => {
+    setApprovingRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const handleApproveConfirm = useCallback(async (content: string) => {
+    if (!approvingRecord) return;
+    setApproveLoading(true);
+    try {
+      if (approveLevel === 'c1') {
+        await approveInfraAssetC1(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await approveInfraAssetC2(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Phê duyệt thất bại'));
+    } finally {
+      setApproveLoading(false);
+    }
+  }, [approvingRecord, approveLevel, loadData]);
+
+  const handleOpenRejectModal = useCallback((record: BuoyAsset, level: 'c1' | 'c2') => {
+    setRejectingRecord(record);
+    setRejectLevel(level);
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleRejectConfirm = useCallback(async (reason: string) => {
+    if (!rejectingRecord) return;
+    setRejectLoading(true);
+    try {
+      if (rejectLevel === 'c1') {
+        await rejectInfraAssetC1(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await rejectInfraAssetC2(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cục');
+      }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Từ chối phê duyệt thất bại'));
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectLevel, loadData]);
+
+  const handleSubmitApproval = useCallback(async (record: BuoyAsset) => {
+    try {
+      await submitInfraAssetApproval(record.id);
+      const isReSubmit =
+        record.approvalStatus === 'REJECTED_LEVEL1' ||
+        record.approvalStatus === 'REJECTED_LEVEL2' ||
+        (record as any).status === 'REJECTED_LEVEL1' ||
+        (record as any).status === 'REJECTED_LEVEL2' ||
+        record.approvalStatus === 'REJECTED';
+      toast.success(isReSubmit ? 'Đã gửi lại phê duyệt' : 'Đã gửi Cảng vụ phê duyệt');
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Gửi phê duyệt thất bại'));
+    }
+  }, [loadData]);
 
   const openCreate = useCallback(() => {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({ assetType: 'BUOY', status: 'MANAGED' });
+    form.setFieldsValue({ status: 'MANAGED' });
     setAttachments([]);
   }, [form]);
 
   const openEdit = useCallback((record: BuoyAsset) => {
+    if (!isAssetRecordEditable(record.approvalStatus)) {
+      toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+      return;
+    }
     setSelected(record);
     setDrawerMode('edit');
     const refId = record.buoyId
@@ -422,7 +557,7 @@ export default function BuoyAssetList() {
             cleanPath = `/${cleanPath}`;
           }
           const res = await api.get(cleanPath, { responseType: 'blob' });
-          const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+          const contentType = String(res.headers?.['content-type'] || 'application/octet-stream');
           const blob = new Blob([res.data], { type: contentType });
           triggerBlobDownload(blob, fileName || 'tai-lieu');
           toast.success(`Đã tải xuống tệp: ${fileName}`);
@@ -512,7 +647,7 @@ export default function BuoyAssetList() {
         buoyStationId,
         assetCode: selected?.assetCode || values.assetCode || '',
         assetName: values.assetName || '',
-        assetType: 'BUOY',
+        assetType: values.assetType || 'BUOY',
         constructionYear: values.constructionYear ? Number(values.constructionYear.format('YYYY')) : undefined,
         useDate: values.useDate ? values.useDate.format('YYYY-MM-DD') : undefined,
         declarationDate: values.declarationDate ? values.declarationDate.format('YYYY-MM-DD') : undefined,
@@ -589,6 +724,7 @@ export default function BuoyAssetList() {
           depreciation: 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
@@ -599,55 +735,75 @@ export default function BuoyAssetList() {
         });
         toast.success('Thêm mới bản ghi khai thác tài sản thành công.');
       } else if (operationMode === 'increase') {
-        const diff = Number(values.originalValue) || 0;
+        const origVal = values.originalValue;
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
+        const adjustmentDetails: AssetValueAdjustmentDetails = {
+          ...values,
+          decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
+          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
+          declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
+          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
+          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
+          adjustmentNotes: values.notes,
+          valueUnit: 'VNĐ',
+          originalValueBefore: selected.originalValue,
+          originalValueAfter: origVal,
+          remainingValueBefore: selected.remainingValue,
+          remainingValueAfter: calc.remainingValueAfter,
+          accumulatedDepreciation: calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
+        };
         await createAssetIncrease({
           assetId: selected.id,
           assetName: selected.assetName,
-          tangValue: diff,
-          lyDo: values.adjustmentReason || '',
-          notes: values.notes,
-          decisionNumber: values.decisionNumber,
-          decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
-          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
-          originalValueBefore: selected.originalValue || 0,
-          originalValueAfter: (selected.originalValue || 0) + diff,
-          remainingValueBefore: selected.remainingValue || 0,
-          remainingValueAfter: (selected.remainingValue || 0) + diff,
-          declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
-          depreciationRate: values.depreciationRate,
-          valueUnit: 'VNĐ',
-          assignmentDecisionNumber: values.assignmentDecisionNumber,
-          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
-          depreciationMonths: values.depreciationMonths,
-          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
-          adjustmentAccumulatedDepreciation: values.accumulatedDepreciation,
-          disposalMethod: values.disposalMethod,
+          quantity: 1,
+          unitOfMeasure: 'VNĐ',
+          increaseCode: values.decisionNumber || '',
+          reason: values.notes || '',
+          adjustmentDetails,
         });
         toast.success('Yêu cầu tăng nguyên giá tài sản đã được tạo.');
       } else {
-        const diff = Number(values.originalValue) || 0;
+        const origVal = values.originalValue;
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origVal,
+          depreciationRate: values.depreciationRate,
+          depreciationStartDate: values.depreciationStartDate,
+          depreciationEndDate: values.depreciationEndDate,
+          accumulatedDepreciationManual: values.accumulatedDepreciation,
+          depreciationMonths: values.depreciationMonths,
+        });
+        const adjustmentDetails: AssetValueAdjustmentDetails = {
+          ...values,
+          decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
+          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
+          declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
+          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
+          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
+          adjustmentNotes: values.notes,
+          valueUnit: 'VNĐ',
+          originalValueBefore: selected.originalValue,
+          originalValueAfter: origVal,
+          remainingValueBefore: selected.remainingValue,
+          remainingValueAfter: calc.remainingValueAfter,
+          accumulatedDepreciation: calc.accumulatedDepreciation ?? values.accumulatedDepreciation,
+          monthlyDepreciation: calc.monthlyDepreciation,
+        };
         await createAssetDecrease({
           assetId: selected.id,
           assetName: selected.assetName,
-          giamValue: diff,
-          lyDo: values.adjustmentReason || '',
-          notes: values.notes,
-          decisionNumber: values.decisionNumber,
-          decisionDate: values.decisionDate?.format('YYYY-MM-DD'),
-          adjustmentDate: values.adjustmentDate?.format('YYYY-MM-DD'),
-          originalValueBefore: selected.originalValue || 0,
-          originalValueAfter: Math.max(0, (selected.originalValue || 0) - diff),
-          remainingValueBefore: selected.remainingValue || 0,
-          remainingValueAfter: Math.max(0, (selected.remainingValue || 0) - diff),
-          declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
-          depreciationRate: values.depreciationRate,
-          valueUnit: 'VNĐ',
-          assignmentDecisionNumber: values.assignmentDecisionNumber,
-          depreciationStartDate: values.depreciationStartDate?.format('YYYY-MM-DD'),
-          depreciationMonths: values.depreciationMonths,
-          depreciationEndDate: values.depreciationEndDate?.format('YYYY-MM-DD'),
-          adjustmentAccumulatedDepreciation: values.accumulatedDepreciation,
-          disposalMethod: values.disposalMethod,
+          quantity: 1,
+          unitOfMeasure: 'VNĐ',
+          decreaseReason: values.adjustmentReason || '',
+          reason: values.notes || '',
+          adjustmentDetails,
         });
         toast.success('Yêu cầu giảm nguyên giá tài sản đã được tạo.');
       }
@@ -712,28 +868,6 @@ export default function BuoyAssetList() {
         organizations,
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-      },
-      {
-        key: 'refId',
-        label: 'Mã nhà trạm, phao tiêu',
-        type: 'select',
-        placeholder: 'Chọn nhà trạm / phao tiêu',
-        options: [
-          ...stationOpts,
-          ...buoyOpts,
-        ],
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -744,12 +878,46 @@ export default function BuoyAssetList() {
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((val) => ({ value: val, label: val })),
+        options: ASSET_CONDITION_OPTIONS,
+      },
+      {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        isAdvanced: true,
+      },
+      {
+        key: 'refId',
+        label: 'Mã nhà trạm, phao tiêu',
+        type: 'select',
+        placeholder: 'Chọn nhà trạm / phao tiêu',
+        options: [
+          ...stationOpts,
+          ...buoyOpts,
+        ],
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: MARITIME_ASSET_TYPE_OPTIONS,
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
       },
       {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ];
   }, [organizations, buoyStations, buoys]);
@@ -816,9 +984,8 @@ export default function BuoyAssetList() {
         width: 190,
         allowSort: true,
         statusMapping: {
-          'Tốt': { label: 'Tốt', color: themeTokenChk.statusOperational },
-          'Hư hỏng cần sửa chữa': { label: 'Hư hỏng cần sửa chữa', color: themeTokenChk.statusAttention },
-          'Không sử dụng được': { label: 'Không sử dụng được', color: themeTokenChk.statusCritical },
+          'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
+          'Hỏng không sử dụng': { label: 'Hỏng không sử dụng', color: themeTokenChk.statusCritical },
         },
       },
       {
@@ -828,10 +995,13 @@ export default function BuoyAssetList() {
         width: 190,
         allowSort: true,
         statusMapping: {
-          'Đang sử dụng': { label: 'Đang sử dụng', color: themeTokenChk.statusOperational },
-          'Đang bảo trì/sửa chữa': { label: 'Đang bảo trì/sửa chữa', color: themeTokenChk.statusAttention },
-          'Tạm dừng sử dụng': { label: 'Tạm dừng sử dụng', color: themeTokenChk.statusCritical },
-          'Chưa sử dụng': { label: 'Chưa sử dụng', color: themeTokenChk.statusDraft },
+          'Quản lý nhà nước': { label: 'Quản lý nhà nước', color: themeTokenChk.statusOperational },
+          'Hoạt động sự nghiệp: Không kinh doanh': { label: 'Hoạt động sự nghiệp: Không kinh doanh', color: themeTokenChk.statusOperational },
+          'Hoạt động sự nghiệp: Kinh doanh': { label: 'Hoạt động sự nghiệp: Kinh doanh', color: themeTokenChk.statusAttention },
+          'Hoạt động sự nghiệp: Cho thuê': { label: 'Hoạt động sự nghiệp: Cho thuê', color: themeTokenChk.statusAttention },
+          'Hoạt động sự nghiệp: Liên doanh, liên kết': { label: 'Hoạt động sự nghiệp: Liên doanh, liên kết', color: themeTokenChk.statusAttention },
+          'Hoạt động sự nghiệp: Sử dụng hỗn hợp': { label: 'Hoạt động sự nghiệp: Sử dụng hỗn hợp', color: themeTokenChk.statusAttention },
+          'Sử dụng khác': { label: 'Sử dụng khác', color: themeTokenChk.statusAttention },
         },
       },
       {
@@ -930,62 +1100,161 @@ export default function BuoyAssetList() {
         allowSort: true,
       },
     ],
-    actions: [
-      {
-        key: 'view',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: (record) => void openDetail(record),
-      },
-      {
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: <EditOutlined />,
-        onClick: (record) => openEdit(record),
-      },
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: (record) => openOperation(record, 'exploit'),
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: (record) => openOperation(record, 'increase'),
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: (record) => openOperation(record, 'decrease'),
-      },
-      {
-        key: 'history',
-        label: 'Lịch sử',
-        icon: <HistoryOutlined />,
-        onClick: (record) => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: (record) => setDeleteTarget(record),
-      },
-    ],
-  }), [buoyMap, stationMap, openDetail, openEdit, openHistory, openOperation, orgName]);
+    actions: (record: BuoyAsset) => {
+      const st = record.approvalStatus || (record as any).status || '';
+      const actionsList: any[] = [];
 
-  const headerActions = useMemo<ScreenHeaderAction[]>(() => [
-    {
-      key: 'create',
-      label: 'Thêm mới',
-      icon: <PlusOutlined />,
-      variant: 'primary',
-      onClick: openCreate,
+      if (perms.canRead) {
+        actionsList.push({
+          key: 'view',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+
+      if (perms.canUpdate && isAssetRecordEditable(st)) {
+        actionsList.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+
+      if (perms.canUpdate) {
+        if (st === 'DRAFT') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi Cảng vụ phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi lại phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        }
+      }
+
+      if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
+        if (perms.canApproveC1) {
+          actionsList.push({
+            key: 'approveC1',
+            label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c1'),
+          });
+        }
+        if (perms.canReject || perms.canApproveC1) {
+          actionsList.push({
+            key: 'rejectC1',
+            label: 'Từ chối cấp Cảng vụ/Chi cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c1'),
+          });
+        }
+      }
+
+      if (st === 'APPROVED_LEVEL1') {
+        if (perms.canApproveC2) {
+          actionsList.push({
+            key: 'approveC2',
+            label: 'Phê duyệt cấp Cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c2'),
+          });
+        }
+        if (perms.canReject || perms.canApproveC2) {
+          actionsList.push({
+            key: 'rejectC2',
+            label: 'Từ chối cấp Cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c2'),
+          });
+        }
+      }
+
+      if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+        if (perms.canExploit) {
+          actionsList.push({
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => openOperation(record, 'exploit'),
+          });
+        }
+        if (perms.canIncrease) {
+          actionsList.push({
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => openOperation(record, 'increase'),
+          });
+        }
+        if (perms.canDecrease) {
+          actionsList.push({
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => openOperation(record, 'decrease'),
+          });
+        }
+      }
+
+      if (perms.canHistory) {
+        actionsList.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+
+      const isDraft = normalizeApprovalStatus(st) === 'DRAFT' || st === 'DRAFT';
+      if (isDraft && perms.canDelete) {
+        actionsList.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+
+      return actionsList;
     },
-  ], [openCreate]);
+  }), [
+    buoyMap,
+    stationMap,
+    openDetail,
+    openEdit,
+    openHistory,
+    openOperation,
+    handleOpenApproveModal,
+    handleOpenRejectModal,
+    handleSubmitApproval,
+    orgName,
+    perms,
+  ]);
+
+  const headerActions = useMemo<ScreenHeaderAction[]>(() => {
+    if (!perms.canCreate) return [];
+    return [
+      {
+        key: 'create',
+        label: 'Thêm mới',
+        icon: <PlusOutlined />,
+        variant: 'primary',
+        onClick: openCreate,
+      },
+    ];
+  }, [openCreate, perms.canCreate]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
@@ -999,10 +1268,9 @@ export default function BuoyAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
-              activeKey={filters.approvalStatus || 'all'}
+              activeKey={(filters.approvalStatus as string) || 'all'}
               counts={statusCounts}
               onChange={(_key, status) => {
                 setPage(1);
@@ -1187,7 +1455,7 @@ export default function BuoyAssetList() {
                   }
                   if (fn === 'buoyStationId') {
                     const item = stationMap.get(raw!);
-                    return item ? `${item.stationCode || item.code} - ${item.stationName || item.name}` : raw;
+                    return item ? `${item.code} - ${item.name}` : raw;
                   }
                   if (
                     fn === 'originalValue' ||
@@ -1216,9 +1484,30 @@ export default function BuoyAssetList() {
         <DeleteConfirmModal
           open={Boolean(deleteTarget)}
           title="Xác nhận xóa tài sản phao, tiêu"
-          content={`Bạn có chắc chắn muốn xóa tài sản "${deleteTarget?.assetName || deleteTarget?.assetCode}" không? Hành động này không thể hoàn tác.`}
+          itemName={deleteTarget?.assetName}
+          itemCode={deleteTarget?.assetCode}
           onConfirm={confirmDelete}
           onCancel={() => setDeleteTarget(undefined)}
+        />
+
+        {/* ── Approval Modals 2 cấp ──────────────────────────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          approveLoading={approveLoading}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveCancel={() => {
+            setApproveModalOpen(false);
+            setApprovingRecord(null);
+          }}
+          rejectOpen={rejectModalOpen}
+          rejectLevel={rejectLevel}
+          rejectLoading={rejectLoading}
+          onRejectConfirm={handleRejectConfirm}
+          onRejectCancel={() => {
+            setRejectModalOpen(false);
+            setRejectingRecord(null);
+          }}
         />
       </div>
     </ThemeTokenProvider>

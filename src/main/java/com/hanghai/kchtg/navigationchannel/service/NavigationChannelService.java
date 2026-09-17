@@ -187,8 +187,14 @@ public class NavigationChannelService {
             }
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || approvalStatus != null) {
-            results = repo.searchDocuments(orgUnitId, null, null, null, keyword, approvalStatus,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
+            java.util.Collection<UUID> orgUnitIds = orgUnitId != null
+                    ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
+                    : null;
+            results = orgUnitIds != null
+                    ? repo.searchDocumentsByOrgUnitIds(orgUnitIds, null, null, null, keyword, approvalStatus,
+                            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
+                    : repo.searchDocuments(null, null, null, null, keyword, approvalStatus,
+                            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
             results = repo.findByDeletedAtIsNull(
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));

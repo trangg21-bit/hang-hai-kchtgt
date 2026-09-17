@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BankOutlined,
   SlidersOutlined,
@@ -17,16 +17,14 @@ import type {
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
-  actionPrimary,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
   statusAttention,
   statusCritical,
-  statusDraft,
-  radiusPill,
 } from '../../themetokenchk';
 import {
   DynamicViewSidebar,
@@ -37,7 +35,6 @@ import {
   CommonTable,
   TableColumnType,
   type TableOption,
-  APPROVAL_MAP,
   renderApprovalStatusBadge,
 } from '../../components/shared/common-table';
 import {
@@ -45,8 +42,6 @@ import {
   getAttachmentPreviewUrl,
   downloadAttachmentFile,
 } from '../../utils/attachmentStorage';
-
-export { renderApprovalStatusBadge };
 
 export interface ScadaSystemAssetDetailContentProps {
   open: boolean;
@@ -64,6 +59,11 @@ const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
 const fmtDate = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY') : '—';
+const fmtNum = (v?: number | string | null): string => {
+  if (v == null || v === '') return '—';
+  const n = Number(v);
+  return isNaN(n) ? String(v) : n.toLocaleString('vi-VN');
+};
 
 export default function ScadaSystemAssetDetailContent({
   open,
@@ -197,6 +197,19 @@ export default function ScadaSystemAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
+              return (
+                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -250,6 +263,8 @@ export default function ScadaSystemAssetDetailContent({
           dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -276,6 +291,7 @@ export default function ScadaSystemAssetDetailContent({
     remainingValueAfter?: number;
     notes?: string;
     status?: string;
+    [key: string]: unknown;
   }
 
   const combinedAdjustments = useMemo<AdjustmentRowItem[]>(() => {
@@ -535,13 +551,22 @@ export default function ScadaSystemAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) => {
+                  if (val === AssetCondition.DANG_SU_DUNG) return statusOperational;
+                  if (val === AssetCondition.HONG_KHONG_SU_DUNG) return statusCritical;
+                  return statusAttention;
+                },
                 colSpan: 12,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                type: ViewFieldType.Text,
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === UsageStatus.QUAN_LY_NHA_NUOC || val === UsageStatus.HDSN_KHONG_KINH_DOANH
+                    ? statusOperational
+                    : statusAttention,
                 colSpan: 12,
               },
               {
@@ -649,6 +674,106 @@ export default function ScadaSystemAssetDetailContent({
               },
             ],
           },
+          {
+            key: 'approval_info',
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined />,
+            collapsible: true,
+            defaultCollapsed: false,
+            fields: [
+              {
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Badge,
+                colSpan: 24,
+                render: (_v, r) => renderApprovalStatusBadge(r?.approvalStatus as string),
+              },
+              {
+                name: 'updatedByName',
+                label: 'Cán bộ cập nhật',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'updatedAt',
+                label: 'Ngày cập nhật',
+                type: ViewFieldType.DateTime,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'submittedByName',
+                label: 'Cán bộ gửi phê duyệt',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'submittedAt',
+                label: 'Ngày gửi phê duyệt',
+                type: ViewFieldType.DateTime,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'portAuthorityApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                render: (val, r) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (r as any)?.approvedLevel1ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'portAuthorityApprovedAt',
+                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                type: ViewFieldType.DateTime,
+                value: (r) => r?.portAuthorityApprovedAt || (r as any)?.approvedLevel1At,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'portAuthorityApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                colSpan: 24,
+                value: (r) => r?.portAuthorityApprovalContent || (r as any)?.approvalContentLevel1,
+              },
+              {
+                name: 'departmentApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cục',
+                render: (val, r) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (r as any)?.approvedLevel2ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'departmentApprovedAt',
+                label: 'Ngày phê duyệt cấp Cục',
+                type: ViewFieldType.DateTime,
+                value: (r) => r?.departmentApprovedAt || (r as any)?.approvedLevel2At,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'departmentApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cục',
+                colSpan: 24,
+                value: (r) => r?.departmentApprovalContent || (r as any)?.approvalContentLevel2,
+              },
+              {
+                name: 'rejectionReason',
+                label: 'Lý do từ chối',
+                colSpan: 24,
+                hidden: (r) => !(r as any)?.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
+              },
+            ],
+          },
         ],
       },
       {
@@ -659,8 +784,6 @@ export default function ScadaSystemAssetDetailContent({
         customContent: () => (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
-              refType="SCADA_SYSTEM_ASSET"
-              refId={selectedRecord.id}
               attachments={detailAttachments}
               readonly
               onDownload={handleDownloadAttachment}
@@ -794,132 +917,18 @@ export default function ScadaSystemAssetDetailContent({
           </div>
         ),
       },
-      {
-        key: 'approval',
-        label: 'Xử lý & theo dõi',
-        icon: <AuditOutlined />,
-        sections: [
-          {
-            key: 'status_info',
-            title: 'Trạng thái & Thông tin cập nhật',
-            fields: [
-              {
-                name: 'approvalStatus',
-                label: 'Trạng thái phê duyệt',
-                type: ViewFieldType.Custom,
-                colSpan: 24,
-                render: (v) => renderApprovalStatusBadge(v as string),
-              },
-              {
-                name: 'status',
-                label: 'Tình trạng vận hành',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-                render: (v) => (v === 'MANAGED' ? 'Đang quản lý' : (v as string) || '—'),
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-              },
-              {
-                name: 'updatedAt',
-                label: 'Ngày cập nhật',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-            ],
-          },
-          {
-            key: 'submission_info',
-            title: 'Thông tin gửi phê duyệt',
-            fields: [
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-              },
-              {
-                name: 'submittedAt',
-                label: 'Ngày gửi phê duyệt',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-            ],
-          },
-          {
-            key: 'port_approval',
-            title: 'Phê duyệt cấp Cảng vụ/Chi cục',
-            fields: [
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-              },
-              {
-                name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-              },
-            ],
-          },
-          {
-            key: 'department_approval',
-            title: 'Phê duyệt cấp Cục',
-            fields: [
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-              },
-              {
-                name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-              },
-              {
-                name: 'rejectionReason',
-                label: 'Lý do từ chối (nếu có)',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-              },
-            ],
-          },
-        ],
-      },
     ];
   }, [
     selectedRecord,
     orgName,
     scadaDeviceMap,
     exploitationRows,
-    increaseRows,
-    decreaseRows,
     detailAttachments,
     handleDownloadAttachment,
     handleLoadReadonlyPreviewImage,
+    exploitationTableOption,
+    adjustmentTableOption,
+    combinedAdjustments,
   ]);
 
   return (

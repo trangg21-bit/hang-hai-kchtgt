@@ -12,7 +12,6 @@ import {
   CommonTable,
   TableColumnType,
   type TableOption,
-  APPROVAL_MAP,
   renderApprovalStatusBadge,
 } from '../../components/shared/common-table';
 import {
@@ -29,15 +28,13 @@ import type {
   AssetIncreaseResponse,
 } from '../../services/assetmovement/types';
 import type { VtsSystemAsset } from '../../services/vtsasset/types';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
-  actionPrimary,
   fontWeightBold,
   fontWeightMedium,
-  radiusPill,
   statusAttention,
   statusCritical,
-  statusDraft,
   statusOperational,
 } from '../../themetokenchk';
 import {
@@ -45,6 +42,7 @@ import {
   getAttachmentPreviewUrl,
   getOrGenerateAttachmentBlob,
 } from '../../utils/attachmentStorage';
+import { fmtNum } from '../../utils/numFmt';
 
 export { renderApprovalStatusBadge };
 
@@ -61,8 +59,6 @@ export interface VtsSystemAssetDetailContentProps {
 
 const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
-const fmtDate = (v?: string | null): string =>
-  v ? dayjs(v).format('DD/MM/YYYY') : '—';
 
 export default function VtsSystemAssetDetailContent({
   open,
@@ -165,6 +161,19 @@ export default function VtsSystemAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (r && raw === r.assetName)) {
+              return (
+                [r?.assetCode, r?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -218,6 +227,8 @@ export default function VtsSystemAssetDetailContent({
           dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -230,7 +241,7 @@ export default function VtsSystemAssetDetailContent({
     [orgName]
   );
 
-  interface AdjustmentRowItem {
+  interface AdjustmentRowItem extends Record<string, unknown> {
     id: string;
     adjustmentType: 'TANG' | 'GIAM';
     code?: string;
@@ -486,9 +497,9 @@ export default function VtsSystemAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Tốt'
+                  val === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : val === 'Không sử dụng được'
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
                       ? statusCritical
                       : statusAttention,
               },
@@ -497,11 +508,10 @@ export default function VtsSystemAssetDetailContent({
                 label: 'Hiện trạng sử dụng',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Đang sử dụng'
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
                     ? statusOperational
-                    : val === 'Tạm dừng sử dụng'
-                      ? statusCritical
-                      : statusDraft,
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',
@@ -577,6 +587,106 @@ export default function VtsSystemAssetDetailContent({
                 name: 'floorArea',
                 label: 'Diện tích (sàn sử dụng: m²)',
                 type: ViewFieldType.Number,
+              },
+            ],
+          },
+          {
+            key: 'approval_info',
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined />,
+            collapsible: true,
+            defaultCollapsed: false,
+            fields: [
+              {
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Badge,
+                colSpan: 24,
+                render: (_v, rec) => renderApprovalStatusBadge(rec?.approvalStatus as string),
+              },
+              {
+                name: 'updatedByName',
+                label: 'Cán bộ cập nhật',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'updatedAt',
+                label: 'Ngày cập nhật',
+                type: ViewFieldType.DateTime,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'submittedByName',
+                label: 'Cán bộ gửi phê duyệt',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'submittedAt',
+                label: 'Ngày gửi phê duyệt',
+                type: ViewFieldType.DateTime,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'portAuthorityApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel1ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'portAuthorityApprovedAt',
+                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.portAuthorityApprovedAt || (rec as any)?.approvedLevel1At,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'portAuthorityApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                colSpan: 24,
+                value: (rec) => rec?.portAuthorityApprovalContent || (rec as any)?.approvalContentLevel1,
+              },
+              {
+                name: 'departmentApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel2ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'departmentApprovedAt',
+                label: 'Ngày phê duyệt cấp Cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.departmentApprovedAt || (rec as any)?.approvedLevel2At,
+                render: (v) => fmtDateTime(v as string),
+              },
+              {
+                name: 'departmentApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cục',
+                colSpan: 24,
+                value: (rec) => rec?.departmentApprovalContent || (rec as any)?.approvalContentLevel2,
+              },
+              {
+                name: 'rejectionReason',
+                label: 'Lý do từ chối',
+                colSpan: 24,
+                hidden: (rec) => !(rec as any)?.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
               },
             ],
           },
@@ -702,125 +812,6 @@ export default function VtsSystemAssetDetailContent({
             />
           </div>
         ),
-      },
-      {
-        key: 'approval',
-        label: 'Xử lý & theo dõi',
-        icon: <AuditOutlined />,
-        sections: [
-          {
-            key: 'status_info',
-            title: 'Trạng thái & Thông tin cập nhật',
-            fields: [
-              {
-                name: 'approvalStatus',
-                label: 'Trạng thái phê duyệt',
-                type: ViewFieldType.Custom,
-                colSpan: 24,
-                render: (v) => renderApprovalStatusBadge(v as string),
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-                render: (val) => (
-                  <span style={{ fontWeight: fontWeightBold }}>
-                    {String(val || '—')}
-                  </span>
-                ),
-              },
-              {
-                name: 'updatedAt',
-                label: 'Ngày cập nhật',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-            ],
-          },
-          {
-            key: 'submission_info',
-            title: 'Thông tin gửi phê duyệt',
-            fields: [
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-              },
-              {
-                name: 'submittedAt',
-                label: 'Ngày gửi phê duyệt',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-            ],
-          },
-          {
-            key: 'port_approval',
-            title: 'Phê duyệt cấp Cảng vụ/Chi cục',
-            fields: [
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-              },
-              {
-                name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-              },
-            ],
-          },
-          {
-            key: 'department_approval',
-            title: 'Phê duyệt cấp Cục',
-            fields: [
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 12,
-              },
-              {
-                name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt',
-                type: ViewFieldType.Date,
-                colSpan: 12,
-                render: (v) => fmtDateTime(v as string),
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-              },
-              {
-                name: 'rejectionReason',
-                label: 'Lý do từ chối (nếu có)',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-                hidden: (rec) => !rec.rejectionReason,
-                render: (val) => (
-                  <span style={{ color: statusCritical, fontWeight: 500 }}>
-                    {String(val)}
-                  </span>
-                ),
-              },
-            ],
-          },
-        ],
       },
     ];
   }, [

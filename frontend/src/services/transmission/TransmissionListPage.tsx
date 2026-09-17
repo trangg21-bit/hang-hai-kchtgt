@@ -366,15 +366,14 @@ const TransmissionListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) (không bao gồm Đã xóa)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || 0)
+        (counts.REJECTED_LEVEL2 || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -950,6 +949,9 @@ const TransmissionListPage = () => {
     displayRule: 'Quy tắc hiển thị',
     'Lý do từ chối': 'Lý do từ chối',
     'Trạng thái': 'Hành động',
+    'Tài liệu đính kèm': 'Tài liệu đính kèm',
+    'File đính kèm': 'Tài liệu đính kèm',
+    attachments: 'Tài liệu đính kèm',
   };
 
   function historyFieldName(fn: string): string {
@@ -1063,9 +1065,9 @@ const TransmissionListPage = () => {
     'deviceName', 'deviceCode', 'manufacturer', 'model', 'quantity',
     'orgUnitId', 'operatingUnitId', 'provinceName', 'detailedLocation',
     'attachedInfrastructureType', 'attachedInfrastructureId', 'unitOfMeasure',
-    'yearOfUse', 'operationalStatus', 'approvalStatus', 'specifications',
+    'yearOfUse', 'operationalStatus', 'specifications',
     'maintenanceInformation', 'note', 'objectType', 'mapSymbolId',
-    'coordinateSystem', 'displayRule', 'Lý do từ chối', 'Trạng thái',
+    'coordinateSystem', 'displayRule', 'Lý do từ chối', 'Tài liệu đính kèm',
   ];
 
   const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
@@ -1076,6 +1078,12 @@ const TransmissionListPage = () => {
 
     if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
       return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
+    }
+
+    // Nếu có trường dữ liệu thông thường thay đổi, ưu tiên hiển thị [Cập nhật]
+    const hasFieldUpdate = changes.some((c: any) => !isAttachmentField(c.field));
+    if (hasFieldUpdate) {
+      return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
     }
 
     if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len')) {
@@ -1140,14 +1148,39 @@ const TransmissionListPage = () => {
   };
 
   const isMeaningfulChange = (
-    _field: string,
+    field: string,
     rawOld: string | null | undefined,
     rawNew: string | null | undefined,
   ): boolean => {
+    const normF = (field || '').trim().toLowerCase();
+    if (
+      normF === 'approvalstatus' ||
+      normF === 'trạng thái phê duyệt' ||
+      normF === 'trang thai phe duyet' ||
+      normF === 'trạng thái' ||
+      normF === 'status'
+    ) {
+      return false;
+    }
+    const isBlank = (v: string | null | undefined): boolean => {
+      if (v == null) return true;
+      const s = String(v).trim().toLowerCase();
+      return (
+        s === '' ||
+        s === '—' ||
+        s === '-' ||
+        s === '–' ||
+        s === 'null' ||
+        s === '(null)' ||
+        s === '(trống)' ||
+        s === 'chưa có' ||
+        s === 'undefined'
+      );
+    };
+    if (isBlank(rawOld) && isBlank(rawNew)) return false;
     const ov = rawOld != null ? String(rawOld).trim() : '';
     const nv = rawNew != null ? String(rawNew).trim() : '';
-    if (ov === '' && nv === '') return false;
-    if (ov !== '' && nv !== '' && ov === nv) return false;
+    if (ov !== '' && nv !== '' && ov.toLowerCase() === nv.toLowerCase()) return false;
     // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 5555.0000 vs 5555, 1.00 vs 1)
     if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
       return false;
@@ -1210,16 +1243,68 @@ const TransmissionListPage = () => {
     }
 
     return groups.map((g) => {
-      const changes = deduplicateAttachmentHistoryChanges(
-        g.items.flatMap((item: any) => {
+      const isBlank = (v: string | null | undefined): boolean => {
+        if (v == null) return true;
+        const s = String(v).trim().toLowerCase();
+        return (
+          s === '' ||
+          s === '—' ||
+          s === '-' ||
+          s === '–' ||
+          s === 'null' ||
+          s === '(null)' ||
+          s === '(trống)' ||
+          s === 'chưa có' ||
+          s === 'undefined'
+        );
+      };
+
+      const attachmentItems = g.items.filter((item: any) => isAttachmentField(historyField(item)));
+      const nonAttachmentChanges = g.items
+        .filter((item: any) => !isAttachmentField(historyField(item)))
+        .flatMap((item: any) => {
           const fn = historyField(item);
           if (!fn) return [];
           const ov = historyOldValue(item);
           const nv = historyNewValue(item);
           if (!isMeaningfulChange(fn, ov, nv)) return [];
           return [{ field: fn, oldValue: ov, newValue: nv }];
-        })
-      );
+        });
+
+      let attachmentChange: { field: string; oldValue: string | null; newValue: string | null } | null = null;
+      if (attachmentItems.length > 0) {
+        const addedFiles: string[] = [];
+        const deletedFiles: string[] = [];
+        for (const it of attachmentItems) {
+          const ov = historyOldValue(it);
+          const nv = historyNewValue(it);
+          const st = String(it.status || '').toUpperCase();
+          if (st === 'ATTACHMENT_UPLOADED' || (isBlank(ov) && !isBlank(nv))) {
+            if (nv && !isBlank(nv) && !addedFiles.includes(nv.trim())) {
+              addedFiles.push(nv.trim());
+            }
+          } else if (st === 'ATTACHMENT_DELETED' || (!isBlank(ov) && isBlank(nv))) {
+            if (ov && !isBlank(ov) && !deletedFiles.includes(ov.trim())) {
+              deletedFiles.push(ov.trim());
+            }
+          } else if (nv && ov && nv !== ov) {
+            if (!addedFiles.includes(nv.trim())) addedFiles.push(nv.trim());
+            if (!deletedFiles.includes(ov.trim())) deletedFiles.push(ov.trim());
+          }
+        }
+        if (addedFiles.length > 0 || deletedFiles.length > 0) {
+          attachmentChange = {
+            field: 'Tài liệu đính kèm',
+            oldValue: deletedFiles.length > 0 ? deletedFiles.join(', ') : 'Chưa có',
+            newValue: addedFiles.length > 0 ? addedFiles.join(', ') : 'Chưa có',
+          };
+        }
+      }
+
+      const changes = [
+        ...nonAttachmentChanges,
+        ...(attachmentChange ? [attachmentChange] : []),
+      ];
 
       const orderedChanges = [...changes]
         .sort((a: any, b: any) => {
@@ -1233,7 +1318,7 @@ const TransmissionListPage = () => {
 
       const reasons = g.items.map((i: any) => i.reason || i.note).filter(Boolean);
 
-      if (orderedChanges.length === 0 && reasons.length === 0) {
+      if (orderedChanges.length === 0) {
         return null;
       }
 
@@ -1374,6 +1459,20 @@ const TransmissionListPage = () => {
                               {name}
                             </span>
                           );
+                        }
+                        if (isAttachmentField(fn) && rawVal && rawVal !== 'Chưa có' && rawVal !== '(trống)' && rawVal !== '—') {
+                          const files = rawVal.split(',').map((s) => s.trim()).filter(Boolean);
+                          if (files.length > 1) {
+                            return (
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                                {files.map((file, idx) => (
+                                  <span key={idx} style={{ wordBreak: 'break-all' }}>
+                                    {file}
+                                  </span>
+                                ))}
+                              </span>
+                            );
+                          }
                         }
                         return null;
                       };
@@ -1864,21 +1963,27 @@ const TransmissionListPage = () => {
           flex-wrap: nowrap !important;
           overflow-x: auto !important;
           overflow-y: hidden !important;
+          justify-content: center !important;
           justify-content: safe center !important;
           align-items: center !important;
-          gap: 20px !important;
-          padding: 2px 16px 6px 16px !important;
-          gap: 20px !important;
           scrollbar-width: thin !important;
           scrollbar-color: #cbd5e1 #f8fafc !important;
           scroll-behavior: smooth !important;
           -webkit-overflow-scrolling: touch !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
         }
-        .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar { height: 6px !important; display: block !important; }
+        .transmission-page-wrapper div:has(> button[aria-pressed]) > button {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          cursor: pointer !important;
+          flex: 0 0 auto;
+          padding: 4px 2px !important;
+        }
+        .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar { height: 4px !important; display: block !important; }
         .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track { background: #f1f5f9 !important; border-radius: 999px !important; }
         .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb { background: #cbd5e1 !important; border-radius: 999px !important; }
         .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
-        .transmission-page-wrapper div:has(> button[aria-pressed]) > button { white-space: nowrap !important; flex-shrink: 0 !important; cursor: pointer !important; flex: 0 0 auto; }
 
         /* ── Cỡ chữ 13.5px chuẩn: bảng + popup/drawer con (port đầy đủ từ /cctv ≡ /berth) ── */
         /* ── Breadcrumb title (màn /transmission): "Trang chủ" 14px, "Quản lý hệ thống truyền dẫn" 16px —

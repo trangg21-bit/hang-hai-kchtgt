@@ -2,6 +2,11 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { permissionService } from '../services/permissionService';
 import type { MenuTreeNode } from '../types/permission';
+import {
+  canonicalResource,
+  getEquivalentPermissionKeys,
+  normalizePermissionKey,
+} from '../store/permissionStore';
 
 /**
  * Ant Design Tree warns when checkedKeys contains nodes that are not present
@@ -25,24 +30,59 @@ export function getVisiblePermissionKeys(
   nodes: readonly MenuTreeNode[],
 ): string[] {
   const visibleKeys = getPermissionTreeKeys(nodes);
-  return checkedKeys.filter((key) => visibleKeys.has(String(key)));
+  const checkedSet = new Set(checkedKeys.map((k) => normalizePermissionKey(String(k))));
+  const result: string[] = [];
+
+  for (const vKey of visibleKeys) {
+    if (vKey.startsWith('group_')) continue;
+    const eqKeys = getEquivalentPermissionKeys(vKey);
+    if (eqKeys.some((k) => checkedSet.has(k))) {
+      result.push(vKey);
+    }
+  }
+  return result;
+}
+
+/**
+ * Mở rộng tập mã quyền bao gồm cả mã gốc và các mã tương đương (canonical + alias).
+ * Bỏ qua các nút nhóm cấp trên (bắt đầu bằng "group_").
+ */
+function expandPermissionAliases(keys: Iterable<string>): Set<string> {
+  const expanded = new Set<string>();
+  for (const key of keys) {
+    const k = String(key);
+    if (k.startsWith('group_')) continue;
+    expanded.add(k);
+    getEquivalentPermissionKeys(k).forEach((eq) => expanded.add(eq));
+  }
+  return expanded;
 }
 
 /**
  * Merge a Tree change made on a filtered tree into the complete selection.
  * Permissions outside the filtered tree must not be lost when a user checks
  * or unchecks a visible permission.
+ * Automatically synchronizes equivalent permission aliases (e.g. dryport:read <-> dryportasset:read).
  */
 export function mergePermissionKeys(
   currentKeys: readonly string[],
   nextVisibleKeys: readonly string[],
   nodes: readonly MenuTreeNode[],
 ): string[] {
-  const visibleKeys = getPermissionTreeKeys(nodes);
-  const merged = new Set(currentKeys.filter((key) => !visibleKeys.has(String(key))));
-  nextVisibleKeys.forEach((key) => merged.add(String(key)));
-  return [...merged];
+  // 1. Tập quyền (kèm alias) thuộc phạm vi cây hiển thị hiện tại
+  const visibleEquivKeys = expandPermissionAliases(getPermissionTreeKeys(nodes));
+
+  // 2. Giữ lại các quyền nằm ngoài phạm vi cây lọc hiện tại
+  const remainingKeys = currentKeys.filter(
+    (key) => !visibleEquivKeys.has(normalizePermissionKey(String(key))),
+  );
+
+  // 3. Mở rộng các quyền được tích chọn (đồng bộ cả canonical lẫn alias)
+  const nextExpandedKeys = expandPermissionAliases(nextVisibleKeys);
+
+  return [...new Set([...remainingKeys, ...nextExpandedKeys])];
 }
+
 
 const RESOURCE_LABELS: Record<string, string> = {
   user: 'Quản lý tài khoản người dùng',
@@ -71,7 +111,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   anchorage: 'Quản lý Khu neo đậu',
   anchoragearea: 'Quản lý Khu neo đậu',
   transferarea: 'Quản lý Khu chuyển tải',
-  stormshelter: 'Quản lý Khu tránh trú bão',
+  stormshelter: 'Quản lý Khu tránh, trú bão',
   dryport: 'Quản lý Cảng cạn',
   waterzone: 'Quản lý Vùng nước hàng hải',
   waterarea: 'Quản lý Vùng nước cảng biển',
@@ -89,18 +129,23 @@ const RESOURCE_LABELS: Record<string, string> = {
   vtsassist: 'Quản lý Hệ thống phụ trợ VTS',
   aissystem: 'Quản lý Hệ thống trạm bờ AIS',
   station: 'Quản lý Nhà trạm hàng hải',
-  beaconstation: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển',
+  beaconstation: 'Quản lý Đèn biển và nhà trạm gắn liền đèn biển',
   buoystation: 'Quản lý Nhà trạm phao tiêu',
-  buoy: 'Quản lý Phao tiêu báo hiệu',
+  buoy: 'Quản lý Phao tiêu và nhà trạm',
   lighthousestation: 'Quản lý Đèn biển',
+  lighthouse: 'Quản lý Đèn biển và nhà trạm gắn liền đèn biển',
   daittdh: 'Quản lý Đài TTDH',
   vhf: 'Quản lý Hệ thống thông tin liên lạc VHF',
   coastalstation: 'Quản lý Đài duyên hải',
   specialstation: 'Quản lý Đài chuyên dùng / Vệ tinh',
   coastalstationinmarsat: 'Quản lý Đài thông tin vệ tinh Inmarsat',
+  inmarsat: 'Quản lý Đài thông tin vệ tinh Inmarsat',
   coastalstationcospassarsat: 'Quản lý Đài Cospas-Sarsat',
+  cospassarsat: 'Quản lý Đài Cospas-Sarsat',
   coastalstationhaiphong: 'Quản lý Đài TTXLTT Hà Nội / Hải Phòng',
+  ttxltt: 'Quản lý Đài TTXLTT Hà Nội / Hải Phòng',
   coastalstationlrit: 'Quản lý Đài LRIT',
+  lrit: 'Quản lý Đài LRIT',
   movementrequest: 'Quản lý Yêu cầu điều chuyển tài sản',
   inventoryplan: 'Quản lý Kế hoạch kiểm kê tài sản',
   inventoryreport: 'Quản lý Báo cáo kiểm kê tài sản',
@@ -148,9 +193,6 @@ const HIDDEN_PERMISSIONS = new Set([
 
 function isHiddenPermission(key: string): boolean {
   if (HIDDEN_PERMISSIONS.has(key)) return true;
-  const lowerKey = key.toLowerCase();
-  // Tạm thời ẩn các quyền thuộc hệ thống thông tin liên lạc VHF do chưa hoàn thiện
-  if (lowerKey === 'vhf' || lowerKey.startsWith('vhf:')) return true;
   if (key.endsWith(':read:restricted') || key.endsWith(':read:confidential')) return true;
   if (key.endsWith(':restricted') || key.endsWith(':confidential')) return true;
   return false;
@@ -227,6 +269,7 @@ const RESOURCE_ORDER: string[] = [
   'aissystem',
   'radarstation',
   'station',
+  'lighthouse',
   'beaconstation',
   'beaconlight',
   'buoystation',
@@ -236,9 +279,13 @@ const RESOURCE_ORDER: string[] = [
   'vhf',
   'coastalstation',
   'specialstation',
+  'inmarsat',
   'coastalstationinmarsat',
+  'cospassarsat',
   'coastalstationcospassarsat',
+  'ttxltt',
   'coastalstationhaiphong',
+  'lrit',
   'coastalstationlrit',
   'shiprepair',
   'shiprepairfacility',
@@ -281,7 +328,7 @@ function getResourceOrder(res: string): number {
 
 /**
  * Hook usePermissions: Build dynamic permission tree directly from GET /api/permissions
- * Eliminates legacy menu-tree API calls and legacy menu codes.
+ * Gộp chuẩn hóa hiển thị các nhóm tài nguyên và deduplicate các hành động tương đương.
  */
 export function usePermissions(options?: { enabled?: boolean }) {
   const apiQuery = useQuery({
@@ -293,44 +340,63 @@ export function usePermissions(options?: { enabled?: boolean }) {
 
   const rawPerms = apiQuery.data || [];
   const perms = useMemo(
-    () =>
-      rawPerms.filter((p) => {
-        const res = (p.resource || p.key.split(':')[0] || '').toLowerCase();
-        if (res === 'vhf') return false;
-        return !isHiddenPermission(p.key);
-      }),
+    () => rawPerms.filter((p) => !isHiddenPermission(p.key)),
     [rawPerms],
   );
-  
-  // Group standard permissions by resource with memoization
+
+  // Group standard permissions by canonical resource with deduplication across equivalent action nodes
   const tree: MenuTreeNode[] = useMemo(() => {
     if (!perms.length) return [];
-    const groups: Record<string, MenuTreeNode[]> = {};
+    const groups: Record<string, Map<string, MenuTreeNode>> = {};
+
     perms.forEach((p) => {
-      let res = (p.resource || p.key.split(':')[0] || 'other').toLowerCase();
-      if (res === 'groupmember') {
-        res = 'group';
+      const rawRes = (p.resource || p.key.split(':')[0] || 'other').toLowerCase();
+      const canonicalRes = canonicalResource(rawRes);
+      const action = (p.key.split(':').slice(1).join(':') || p.action || '').toLowerCase();
+      const canonicalKey = action ? `${canonicalRes}:${action}` : canonicalRes;
+
+      if (!groups[canonicalRes]) {
+        groups[canonicalRes] = new Map<string, MenuTreeNode>();
       }
-      if (!groups[res]) groups[res] = [];
-      groups[res].push({
-        key: p.key,
-        code: p.key,
-        title: `${p.name} (${p.key})`,
-        children: [],
-      });
+      const actionMap = groups[canonicalRes];
+
+      const existingNode = actionMap.get(action);
+      if (!existingNode) {
+        let displayTitle = p.name ? `${p.name} (${canonicalKey})` : canonicalKey;
+        const parenIdx = displayTitle.indexOf(' (');
+        const baseName = parenIdx > 0 ? displayTitle.substring(0, parenIdx) : (p.name || canonicalKey);
+        displayTitle = `${baseName} (${canonicalKey})`;
+
+        actionMap.set(action, {
+          key: canonicalKey,
+          code: canonicalKey,
+          title: displayTitle,
+          children: [],
+        });
+      } else {
+        // Ưu tiên tiêu đề rõ ràng từ resource canonical (ví dụ: dryport:read thay vì dryportasset:read)
+        if (rawRes === canonicalRes && p.name) {
+          const parenIdx = p.name.indexOf(' (');
+          const baseName = parenIdx > 0 ? p.name.substring(0, parenIdx) : p.name;
+          existingNode.title = `${baseName} (${canonicalKey})`;
+        }
+      }
     });
 
     // Sort children in each group: Xem -> Thêm -> Sửa -> Xóa -> Khóa -> Phê duyệt -> Lịch sử -> ...
-    Object.values(groups).forEach((items) => {
+    const sortedGroups: Record<string, MenuTreeNode[]> = {};
+    Object.entries(groups).forEach(([res, actionMap]) => {
+      const items = Array.from(actionMap.values());
       items.sort((a, b) => {
         const orderA = getActionOrder(String(a.key));
         const orderB = getActionOrder(String(b.key));
         if (orderA !== orderB) return orderA - orderB;
         return String(a.title).localeCompare(String(b.title), 'vi');
       });
+      sortedGroups[res] = items;
     });
 
-    return Object.entries(groups)
+    return Object.entries(sortedGroups)
       .sort(([resA], [resB]) => getResourceOrder(resA) - getResourceOrder(resB))
       .map(([res, children]) => ({
         key: `group_${res}`,
@@ -340,7 +406,10 @@ export function usePermissions(options?: { enabled?: boolean }) {
       }));
   }, [perms]);
 
-  const allKeys = useMemo(() => perms.map((p) => p.key), [perms]);
+  const allKeys = useMemo(
+    () => [...expandPermissionAliases(perms.map((p) => p.key))],
+    [perms],
+  );
 
   return {
     tree,

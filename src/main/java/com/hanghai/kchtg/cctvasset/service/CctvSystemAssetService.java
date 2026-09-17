@@ -1,30 +1,5 @@
 package com.hanghai.kchtg.cctvasset.service;
 
-import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
-import com.hanghai.kchtg.cctv.repository.CctvRepository;
-import com.hanghai.kchtg.cctvasset.dto.CctvSystemAssetRequest;
-import com.hanghai.kchtg.cctvasset.dto.CctvSystemAssetResponse;
-import com.hanghai.kchtg.cctvasset.entity.CctvSystemAsset;
-import com.hanghai.kchtg.cctvasset.repository.CctvSystemAssetRepository;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.criteria.Predicate;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -40,6 +15,34 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
+import com.hanghai.kchtg.cctv.repository.CctvRepository;
+import com.hanghai.kchtg.cctvasset.dto.CctvSystemAssetRequest;
+import com.hanghai.kchtg.cctvasset.dto.CctvSystemAssetResponse;
+import com.hanghai.kchtg.cctvasset.entity.CctvSystemAsset;
+import com.hanghai.kchtg.cctvasset.repository.CctvSystemAssetRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -52,6 +55,7 @@ public class CctvSystemAssetService {
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     @Transactional
     public CctvSystemAssetResponse create(CctvSystemAssetRequest request) {
@@ -86,15 +90,9 @@ public class CctvSystemAssetService {
             if (assetName != null && !assetName.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("assetName")), "%" + assetName.toLowerCase(Locale.ROOT) + "%"));
             }
-            if (parentOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("parentOrgUnitId"), parentOrgUnitId));
-            }
-            if (orgUnitId != null) {
-                predicates.add(cb.equal(root.get("orgUnitId"), orgUnitId));
-            }
-            if (usingOrgUnitId != null) {
-                predicates.add(cb.equal(root.get("usingOrgUnitId"), usingOrgUnitId));
-            }
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "parentOrgUnitId", parentOrgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "orgUnitId", orgUnitId);
+            orgUnitCacheService.applySubtreePredicate(root, cb, predicates, "usingOrgUnitId", usingOrgUnitId);
             if (cctvId != null) {
                 predicates.add(cb.equal(root.get("cctvId"), cctvId));
             }
@@ -129,10 +127,17 @@ public class CctvSystemAssetService {
     @Transactional
     public CctvSystemAssetResponse update(UUID id, CctvSystemAssetRequest request) {
         CctvSystemAsset entity = requireAsset(id);
-
+        ApprovalStatus previousStatus = entity.getApprovalStatus();
+        if (entity.getDeletedAt() != null
+                || previousStatus == ApprovalStatus.ARCHIVED
+                || previousStatus == ApprovalStatus.APPROVED_LEVEL1
+                || previousStatus == ApprovalStatus.PENDING_APPROVAL
+                || previousStatus == ApprovalStatus.PROPOSED) {
+            String label = previousStatus != null ? previousStatus.getLabel() : "Đã xóa";
+            throw new IllegalStateException("Hồ sơ ở trạng thái " + label + " không được phép chỉnh sửa");
+        }
         CctvSystemAsset snapshot = new CctvSystemAsset();
         BeanUtils.copyProperties(entity, snapshot);
-
         copyEditableFields(request, entity);
         calculateValues(entity);
         CctvSystemAsset saved = repository.save(entity);

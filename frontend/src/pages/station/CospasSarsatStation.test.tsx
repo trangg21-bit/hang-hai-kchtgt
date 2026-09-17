@@ -1,17 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { useAuthStore } from '../../store/authStore';
-import { usePermissionStore } from '../../store/permissionStore';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OrgUnitTreeSelect from '../../components/org-unit/OrgUnitTreeSelect';
 import { resolveDefaultOrgUnitId, resolveDefaultFormOrgUnitId } from '../../components/org-unit/useUserDefaultOrgUnit';
-import CospasSarsatStationList from './cospas-sarsat/CospasSarsatStationList';
+import type { CoastalStationCospasSarsatResponse } from '../../services/station/types';
+import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import CospasSarsatStationDetailContent from './cospas-sarsat/CospasSarsatStationDetailContent';
 import CospasSarsatStationForm, {
   resolveCospasGeometryType,
   resolveFormProvinceId,
 } from './cospas-sarsat/CospasSarsatStationForm';
-import CospasSarsatStationDetailContent from './cospas-sarsat/CospasSarsatStationDetailContent';
-import type { CoastalStationCospasSarsatResponse } from '../../services/station/types';
+import CospasSarsatStationList from './cospas-sarsat/CospasSarsatStationList';
 
 vi.mock('antd', async (importOriginal) => {
   const actual = await importOriginal<typeof import('antd')>();
@@ -134,6 +134,30 @@ vi.mock('../../services/categoryService', () => ({
   },
 }));
 
+beforeEach(() => {
+  const testUser = {
+    id: 'u-admin',
+    username: 'admin',
+    fullName: 'Quản trị viên',
+    orgUnitId: 'org-hp',
+    orgUnitName: 'Cảng vụ Hàng hải Hải Phòng',
+    roles: ['ADMIN'],
+    permissions: [
+      'coastalstationcospassarsat:read',
+      'coastalstationcospassarsat:create',
+      'coastalstationcospassarsat:update',
+      'coastalstationcospassarsat:delete',
+      'coastalstationcospassarsat:approvec1',
+      'coastalstationcospassarsat:approvec2',
+    ],
+  };
+  useAuthStore.setState({
+    user: testUser as any,
+    isAuthenticated: true,
+  });
+  usePermissionStore.getState().setPermissions(testUser.permissions);
+});
+
 describe('OrgUnitTreeSelect & useUserDefaultOrgUnit', () => {
   it('resolveDefaultOrgUnitId should return user orgUnitId when valid', () => {
     const defaultId = resolveDefaultOrgUnitId({
@@ -196,30 +220,6 @@ describe('OrgUnitTreeSelect & useUserDefaultOrgUnit', () => {
 });
 
 describe('CospasSarsatStationList', () => {
-  beforeEach(() => {
-    const testUser = {
-      id: 'u-admin',
-      username: 'admin',
-      fullName: 'Quản trị viên',
-      orgUnitId: 'org-hp',
-      orgUnitName: 'Cảng vụ Hàng hải Hải Phòng',
-      roles: ['ADMIN'],
-      permissions: [
-        'coastalstationcospassarsat:read',
-        'coastalstationcospassarsat:create',
-        'coastalstationcospassarsat:update',
-        'coastalstationcospassarsat:delete',
-        'coastalstationcospassarsat:approvec1',
-        'coastalstationcospassarsat:approvec2',
-      ],
-    };
-    useAuthStore.setState({
-      user: testUser as any,
-      isAuthenticated: true,
-    });
-    usePermissionStore.getState().setPermissions(testUser.permissions);
-  });
-
   it('renders CospasSarsatStationList with standard and advanced filter controls', () => {
     const html = renderToStaticMarkup(<CospasSarsatStationList />);
     expect(html).toContain('Tài sản KCHTGT');
@@ -483,13 +483,15 @@ describe('CospasSarsatStationForm & DetailContent', () => {
 
       // Nút 1: Lưu tạm (outline / bo tròn 999px)
       expect(html).toContain('border-radius:999px');
-      expect(html).toContain('ant-btn-variant-outlined');
+      expect(html).toContain('Lưu tạm');
 
       // Nút 2: Lưu và gửi phê duyệt (primary)
-      expect(html).toContain('ant-btn-variant-solid');
+      expect(html).toContain('ant-btn-primary');
+      expect(html).toContain('Lưu và gửi phê duyệt');
 
       // Nút 3: Lưu và phê duyệt (xanh lá statusOperational #1BAF7A)
       expect(html).toContain('#1BAF7A');
+      expect(html).toContain('Lưu và phê duyệt');
     });
 
     it('renders Tab Thông tin vị trí with VTS standards (controls, buttons, table)', () => {

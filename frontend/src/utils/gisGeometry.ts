@@ -46,6 +46,15 @@ export const VIETNAM_MAP_BOUNDS = {
   maxLatitude: 26,
 } as const;
 
+export const isValidMapCoordinate = ([longitude, latitude]: LngLat): boolean => (
+  Number.isFinite(longitude)
+  && Number.isFinite(latitude)
+  && longitude >= -180
+  && longitude <= 180
+  && latitude >= -90
+  && latitude <= 90
+);
+
 export const isVietnamMapCoordinate = ([longitude, latitude]: LngLat): boolean => (
   longitude >= VIETNAM_MAP_BOUNDS.minLongitude
   && longitude <= VIETNAM_MAP_BOUNDS.maxLongitude
@@ -61,36 +70,111 @@ interface GeoJsonGeometryLike {
   features?: unknown;
 }
 
-const isLngLat = (value: unknown): value is LngLat => {
-  if (!Array.isArray(value) || value.length < 2) return false;
-  const longitude = Number(value[0]);
-  const latitude = Number(value[1]);
-  return Number.isFinite(longitude)
-    && Number.isFinite(latitude)
-    && longitude >= -180
-    && longitude <= 180
-    && latitude >= -90
-    && latitude <= 90;
-};
+export function normalizePointCoordinates(value: unknown): LngLat | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (/^POINT\s*\(/i.test(trimmed)) {
+      const match = trimmed.match(/^POINT\s*\(([^)]+)\)\s*$/i);
+      return match ? parseCoordinatePair(match[1]) : null;
+    }
+    const parts = trimmed.split(/[\s,]+/);
+    if (parts.length >= 2) {
+      return normalizePointCoordinates([Number(parts[0]), Number(parts[1])]);
+    }
+    return null;
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    const latRaw = obj.lat ?? obj.latitude ?? obj.y;
+    const lngRaw = obj.lng ?? obj.lon ?? obj.longitude ?? obj.x;
+    if (latRaw !== undefined && lngRaw !== undefined) {
+      const lat = Number(latRaw);
+      const lng = Number(lngRaw);
+      if (Number.isFinite(lng) && Number.isFinite(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90) {
+        return [lng, lat];
+      }
+    }
+    if (obj.coordinates) return normalizePointCoordinates(obj.coordinates);
+    if (obj.geometry && typeof obj.geometry === 'object') {
+      return normalizePointCoordinates((obj.geometry as Record<string, unknown>).coordinates);
+    }
+    return null;
+  }
+  if (Array.isArray(value) && value.length >= 2) {
+    let val0 = Number(value[0]);
+    let val1 = Number(value[1]);
+    if (!Number.isFinite(val0) || !Number.isFinite(val1)) return null;
 
-export const normalizePointCoordinates = (value: unknown): LngLat | null => {
-  if (!isLngLat(value)) return null;
-  return [Number(value[0]), Number(value[1])];
-};
+    // Detect and swap [lat, lng] when val1 is out of latitude range [-90, 90] but within longitude range
+    if ((val1 > 90 || val1 < -90) && val1 >= -180 && val1 <= 180 && val0 >= -90 && val0 <= 90) {
+      const temp = val0;
+      val0 = val1;
+      val1 = temp;
+    }
 
-export const normalizeLineCoordinates = (value: unknown): LngLat[] | null => {
+    if (val0 >= -180 && val0 <= 180 && val1 >= -90 && val1 <= 90) {
+      return [val0, val1];
+    }
+  }
+  return null;
+}
+
+export function normalizeLineCoordinates(value: unknown): LngLat[] | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const coords = parseWktToCoords(value);
+    if (Array.isArray(coords) && coords.length >= 2 && Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+      return coords as LngLat[];
+    }
+    return null;
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    if (obj.coordinates) return normalizeLineCoordinates(obj.coordinates);
+    if (obj.geometry && typeof obj.geometry === 'object') {
+      return normalizeLineCoordinates((obj.geometry as Record<string, unknown>).coordinates);
+    }
+    return null;
+  }
   if (!Array.isArray(value) || value.length < 2) return null;
   const coordinates = value.map(normalizePointCoordinates);
   if (coordinates.some((coordinate) => coordinate === null)) return null;
   return coordinates as LngLat[];
-};
+}
 
-export const normalizePolygonCoordinates = (value: unknown): LngLat[][] | null => {
+export function normalizePolygonCoordinates(value: unknown): LngLat[][] | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const coords = parseWktToCoords(value);
+    if (Array.isArray(coords) && coords.length > 0 && Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
+      return coords as LngLat[][];
+    }
+    if (Array.isArray(coords) && coords.length >= 3 && Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+      return [coords as LngLat[]];
+    }
+    return null;
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const obj = value as Record<string, unknown>;
+    if (obj.coordinates) return normalizePolygonCoordinates(obj.coordinates);
+    if (obj.geometry && typeof obj.geometry === 'object') {
+      return normalizePolygonCoordinates((obj.geometry as Record<string, unknown>).coordinates);
+    }
+    return null;
+  }
   if (!Array.isArray(value) || value.length === 0) return null;
+
+  // If value is a 2D array / list of vertices representing a single ring
+  const singleRing = normalizeLineCoordinates(value);
+  if (singleRing && singleRing.length >= 3) {
+    return [singleRing];
+  }
+
   const rings = value.map((ring) => normalizeLineCoordinates(ring));
   if (rings.some((ring) => ring === null || ring.length < 3)) return null;
   return rings as LngLat[][];
-};
+}
 
 const parseCoordinatePair = (value: string): LngLat | null => {
   const parts = value.trim().split(/\s+/);
@@ -99,7 +183,7 @@ const parseCoordinatePair = (value: string): LngLat | null => {
 };
 
 /** Chuyển WKT điểm/đường/vùng sang tọa độ GeoJSON và loại bỏ hình học không hợp lệ. */
-export const parseWktToCoords = (value: string): LngLat | LngLat[] | LngLat[][] | null => {
+export function parseWktToCoords(value: string): LngLat | LngLat[] | LngLat[][] | null {
   const wkt = String(value || '')
     .trim()
     .replace(/^SRID=\d+\s*;/i, '')
@@ -140,7 +224,7 @@ export const parseWktToCoords = (value: string): LngLat | LngLat[] | LngLat[][] 
   }
 
   return null;
-};
+}
 
 /**
  * Convert GeoJSON, including multi-geometries and collections, to the simple
@@ -389,14 +473,37 @@ export const geometryCoordinatesToRows = (
   geometryType: EditableGeometryType,
   value: unknown,
 ): EditableCoordinateRow[] => {
+  if (!value) return [];
+
   if (geometryType === 'Point') {
     const coordinate = normalizePointCoordinates(value);
     return coordinate ? [{ lng: coordinate[0], lat: coordinate[1] }] : [];
   }
+
+  // Handle direct array of coordinate objects
+  if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0])) {
+    const rows: EditableCoordinateRow[] = [];
+    for (const item of value) {
+      const pt = normalizePointCoordinates(item);
+      if (pt) rows.push({ lng: pt[0], lat: pt[1] });
+    }
+    if (rows.length > 0) {
+      if (geometryType === 'Polygon' && rows.length > 1) {
+        const first = rows[0];
+        const last = rows[rows.length - 1];
+        if (first.lng === last.lng && first.lat === last.lat) {
+          rows.pop();
+        }
+      }
+      return rows;
+    }
+  }
+
   if (geometryType === 'LineString') {
     const coordinates = normalizeLineCoordinates(value);
     return coordinates?.map(([lng, lat]) => ({ lng, lat })) || [];
   }
+
   const rings = normalizePolygonCoordinates(value);
   if (!rings?.[0]) return [];
   const vertices = [...rings[0]];
@@ -591,7 +698,9 @@ export const parseWktToCoordinates = (wkt?: string): { latitude: number; longitu
           }
         }
       }
-    } catch {}
+    } catch {
+      // ignore invalid JSON format in WKT parser fallback
+    }
   }
 
   const coordinates = flattenGeometryCoordinates(parseWktToCoords(normalizedWkt))

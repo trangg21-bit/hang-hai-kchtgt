@@ -17,6 +17,7 @@ import type {
 } from '../../services/assetmovement/types';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
@@ -94,6 +95,8 @@ const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  DA_XOA: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const fmtDateTime = (v?: string | null): string =>
@@ -216,9 +219,9 @@ export default function StormShelterAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (val) =>
-                  val === 'Tốt'
+                  val === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : val === 'Không sử dụng được'
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
                       ? statusCritical
                       : statusAttention,
               },
@@ -298,6 +301,103 @@ export default function StormShelterAssetDetailContent({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 colSpan: 24,
+              },
+            ],
+          },
+          {
+            key: 'approval_info',
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined />,
+            collapsible: true,
+            defaultCollapsed: false,
+            fields: [
+              {
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Badge,
+                colSpan: 24,
+                value: () => approvalInfo.label,
+                badgeColor: () => approvalInfo.color,
+              },
+              {
+                name: 'updatedByName',
+                label: 'Cán bộ cập nhật',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'updatedAt',
+                label: 'Ngày cập nhật',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'submittedByName',
+                label: 'Cán bộ gửi phê duyệt',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'submittedAt',
+                label: 'Ngày gửi phê duyệt',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'portAuthorityApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel1ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'portAuthorityApprovedAt',
+                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.portAuthorityApprovedAt || (rec as any)?.approvedLevel1At,
+              },
+              {
+                name: 'portAuthorityApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                colSpan: 24,
+                value: (rec) => rec?.portAuthorityApprovalContent || (rec as any)?.approvalContentLevel1,
+              },
+              {
+                name: 'departmentApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel2ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'departmentApprovedAt',
+                label: 'Ngày phê duyệt cấp Cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.departmentApprovedAt || (rec as any)?.approvedLevel2At,
+              },
+              {
+                name: 'departmentApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cục',
+                colSpan: 24,
+                value: (rec) => rec?.departmentApprovalContent || (rec as any)?.approvalContentLevel2,
+              },
+              {
+                name: 'rejectionReason',
+                label: 'Lý do từ chối',
+                colSpan: 24,
+                hidden: (rec) => !(rec as any)?.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
               },
             ],
           },
@@ -454,7 +554,9 @@ export default function StormShelterAssetDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label">Danh mục tài sản</span>
                       <span className="chk-detail-value">
-                        {row.assetCategory || '—'}
+                        {(!row.assetCategory || (r && row.assetCategory === r.assetName))
+                          ? ([r?.assetCode, r?.assetName].filter(Boolean).join(' - ') || row.assetCategory || '—')
+                          : row.assetCategory}
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -516,7 +618,7 @@ export default function StormShelterAssetDetailContent({
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label">Ghi chú</span>
                       <span className="chk-detail-value">
-                        {row.description || '—'}
+                        {row.description || row.notes || '—'}
                       </span>
                     </div>
                   </div>
@@ -564,7 +666,7 @@ export default function StormShelterAssetDetailContent({
                   <div key={row.id} style={sectionBoxStyle}>
                     <div style={sectionHeaderStyle}>
                       <div style={sectionTitleStyle}>
-                        {row.icon}
+                        <SlidersOutlined style={{ color: row.changeType === 'Tăng nguyên giá' ? statusOperational : statusCritical }} />
                         <span>
                           {row.changeType} — Lần {index + 1} ({fmtDateTime(row.updatedAt || row.createdAt)})
                         </span>
@@ -677,87 +779,6 @@ export default function StormShelterAssetDetailContent({
             )}
           </div>
         ),
-      },
-      {
-        key: 'tracking',
-        label: 'Xử lý & theo dõi',
-        sections: [
-          {
-            key: 'audit_info',
-            title: 'Xử lý & theo dõi',
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                label: 'Trạng thái',
-                render: () => (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '4px 12px',
-                      borderRadius: 999,
-                      background: `${approvalInfo.color}15`,
-                      border: `1px solid ${approvalInfo.color}40`,
-                      color: approvalInfo.color,
-                      fontWeight: 600,
-                      fontSize: 13,
-                    }}
-                  >
-                    <CheckCircleOutlined />
-                    {approvalInfo.label}
-                  </span>
-                ),
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-              },
-              {
-                name: 'updatedAt',
-                label: 'Ngày cập nhật',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-              },
-              {
-                name: 'submittedAt',
-                label: 'Ngày gửi phê duyệt',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
-              },
-              {
-                name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt',
-                colSpan: 24,
-              },
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
-              },
-              {
-                name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt cấp Cục',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt',
-                colSpan: 24,
-              },
-            ],
-          },
-        ],
       },
     ];
   }, [

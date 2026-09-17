@@ -444,10 +444,9 @@ export interface PierAssetFilters {
   updatedRange?: unknown;
 }
 
-export interface BuoyAsset extends Omit<PortTerminalAsset, "assetType"> {
+export interface BuoyAsset extends PortTerminalAsset {
   buoyId?: string;
   buoyStationId?: string;
-  assetType: "BUOY";
 }
 
 export type BuoyAssetPayload = Omit<
@@ -684,7 +683,7 @@ export interface ChannelAsset {
   navigationChannelId?: string;
   assetCode: string;
   assetName: string;
-  assetType: "NAVIGATION_CHANNEL";
+  assetType: 'NAVIGATION_CHANNEL' | (string & {});
   barcode?: string;
   assetCondition?: string;
   usageStatus?: string;
@@ -733,6 +732,7 @@ export interface ChannelAsset {
   updatedByName?: string;
   createdAt?: string;
   updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export type ChannelAssetPayload = Omit<

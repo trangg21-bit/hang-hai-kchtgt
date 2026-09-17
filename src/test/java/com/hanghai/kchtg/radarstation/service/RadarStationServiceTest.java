@@ -144,6 +144,23 @@ class RadarStationServiceTest {
     }
 
     @Test
+    void testCreate_withApproveAction() {
+        createRequest.setAction("approve");
+        RadarStation saved = RadarStation.builder()
+                .id(TEST_ID).stationName("Tram ABC").location("Hà Nội")
+                .approvalStatus(ApprovalStatus.APPROVED)
+                .createdBy(UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
+
+        when(repository.save(any())).thenReturn(saved);
+
+        RadarStationResponse response = service.create(createRequest,
+                UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertNotNull(response);
+        assertEquals(ApprovalStatus.APPROVED, response.getApprovalStatus());
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
     void testGetById() {
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         RadarStationResponse response = service.getById(TEST_ID);
@@ -504,7 +521,7 @@ class RadarStationServiceTest {
             assertThat(service.formatDisplayValue("vtsSystemId", mockVtsSysId.toString())).isEqualTo("Hệ thống VTS Hải Phòng");
 
             UUID mockVtsCenterId = UUID.randomUUID();
-            when(jdbcTemplate.queryForList("SELECT name FROM vts_operation_centers WHERE id = ? AND deleted_at IS NULL", String.class, mockVtsCenterId))
+            when(jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, mockVtsCenterId))
                     .thenReturn(List.of("Trung tâm điều hành VTS Đồ Sơn"));
             assertThat(service.formatDisplayValue("vtsOperationCenterId", mockVtsCenterId.toString())).isEqualTo("Trung tâm điều hành VTS Đồ Sơn");
 
@@ -549,6 +566,7 @@ class RadarStationServiceTest {
         @DisplayName("Uploading attachments on approved entity should record history")
         void uploadAttachments_onApprovedEntity_shouldRecordHistory() {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setCreatedAt(LocalDateTime.now().minusMinutes(5));
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
             org.springframework.mock.web.MockMultipartFile file =
                     new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
@@ -562,6 +580,81 @@ class RadarStationServiceTest {
             service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
 
             verify(historyRepository, times(1)).save(any());
+        }
+
+        @Test
+        @DisplayName("Uploading attachments on newly created approved entity within 30s should NOT record history")
+        void uploadAttachments_onNewlyCreatedApprovedEntity_shouldNotRecordHistory() {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setCreatedAt(LocalDateTime.now().minusSeconds(5));
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            org.springframework.mock.web.MockMultipartFile file =
+                    new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+
+            when(attachmentRepository.save(any())).thenAnswer(inv -> {
+                InfrastructureAttachment att = inv.getArgument(0);
+                att.setId(UUID.randomUUID());
+                return att;
+            });
+
+            service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
+
+            verify(historyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("getHistory should filter out approvalStatus and identical values")
+        void getHistory_shouldFilterOutApprovalStatusAndIdenticalValues() {
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+            InfrastructureHistory approvalHistory = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .approvalLevel(ApprovalLevel.LEVEL_1)
+                    .status(InfrastructureHistoryStatus.APPROVED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(LocalDateTime.of(2026, 6, 15, 14, 30))
+                    .changedField("Trạng thái phê duyệt")
+                    .previousValue("Đã duyệt")
+                    .newValue("Đã duyệt")
+                    .build();
+
+            InfrastructureHistory identicalHistory = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(LocalDateTime.of(2026, 6, 15, 14, 35))
+                    .changedField("Tên trạm radar")
+                    .previousValue("Trạm ABC")
+                    .newValue("Trạm ABC")
+                    .build();
+
+            InfrastructureHistory validHistory = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(LocalDateTime.of(2026, 6, 15, 14, 40))
+                    .changedField("Tên trạm radar")
+                    .previousValue("Trạm cũ")
+                    .newValue("Trạm mới")
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))
+                    .thenReturn(List.of(approvalHistory, identicalHistory, validHistory));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("Tên trạm radar");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("Trạm cũ");
+            assertThat(result.get(0).getNewValue()).isEqualTo("Trạm mới");
         }
 
         @Test

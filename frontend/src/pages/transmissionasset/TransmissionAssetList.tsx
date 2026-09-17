@@ -31,7 +31,7 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -60,11 +60,7 @@ import type {
 } from '../../services/transmissionAsset/types';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
-import {
-  calculateAssetAdjustmentValues,
-  validateAdjustmentOriginalValue,
-} from '../../utils/assetValueCalculation';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import TransmissionAssetDetailContent from './TransmissionAssetDetailContent';
 import TransmissionAssetForm, { type FormValues } from './TransmissionAssetForm';
 import TransmissionAssetHistory, { useTransmissionHistory } from './TransmissionAssetHistory';
@@ -85,7 +81,9 @@ const STATUS_COUNT_KEYS = [
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+
+
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -95,6 +93,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function TransmissionAssetList() {
+  const perms = useAssetPermissions(['transmission', 'transmissionasset']);
   const [data, setData] = useState<TransmissionAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [transmissions, setTransmissions] = useState<TransmissionOptionResponse[]>([]);
@@ -187,16 +186,17 @@ export default function TransmissionAssetList() {
     setDrawerMode('create');
     form.resetFields();
     form.setFieldsValue({
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
       quantity: 1,
-      quantityUnit: 'Bộ',
     });
     setAttachments([]);
   }, [form]);
 
   const openEdit = useCallback(
     (record: TransmissionAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -463,6 +463,7 @@ export default function TransmissionAssetList() {
         setSaving(true);
         await createTransmissionExploitation(selected.id, {
           ...values,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
         });
       } else {
@@ -528,36 +529,6 @@ export default function TransmissionAssetList() {
         placeholder: 'Chọn đơn vị...',
       },
       {
-        key: 'usingOrgUnitId',
-        label: 'Đơn vị sử dụng',
-        type: 'treeSelect',
-        organizations,
-        placeholder: 'Chọn đơn vị...',
-      },
-      {
-        key: 'transmissionId',
-        label: 'Mã thiết bị',
-        type: 'select',
-        placeholder: 'Chọn thiết bị truyền dẫn',
-        options: transmissions.map((item) => ({
-          value: item.id,
-          label: `${item.deviceCode} - ${item.deviceName}`,
-        })),
-      },
-      {
-        key: 'assetType',
-        label: 'Loại tài sản',
-        type: 'select',
-        placeholder: 'Chọn loại tài sản',
-        options: MARITIME_ASSET_TYPE_OPTIONS,
-      },
-      {
-        key: 'assetCode',
-        label: 'Mã tài sản',
-        type: 'text',
-        placeholder: 'Tìm theo mã tài sản',
-      },
-      {
         key: 'assetName',
         label: 'Tên tài sản',
         type: 'text',
@@ -568,12 +539,47 @@ export default function TransmissionAssetList() {
         label: 'Tình trạng tài sản',
         type: 'select',
         placeholder: 'Chọn tình trạng',
-        options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+        options: ASSET_CONDITION_OPTIONS,
+      },
+      {
+        key: 'usingOrgUnitId',
+        label: 'Đơn vị sử dụng',
+        type: 'treeSelect',
+        organizations,
+        placeholder: 'Chọn đơn vị...',
+        isAdvanced: true,
+      },
+      {
+        key: 'transmissionId',
+        label: 'Mã thiết bị',
+        type: 'select',
+        placeholder: 'Chọn thiết bị truyền dẫn',
+        options: transmissions.map((item) => ({
+          value: item.id,
+          label: `${item.deviceCode} - ${item.deviceName}`,
+        })),
+        isAdvanced: true,
+      },
+      {
+        key: 'assetType',
+        label: 'Loại tài sản',
+        type: 'select',
+        placeholder: 'Chọn loại tài sản',
+        options: [{ value: 'Tài sản HT truyền dẫn', label: 'Tài sản HT truyền dẫn' }],
+        isAdvanced: true,
+      },
+      {
+        key: 'assetCode',
+        label: 'Mã tài sản',
+        type: 'text',
+        placeholder: 'Tìm theo mã tài sản',
+        isAdvanced: true,
       },
       {
         key: 'updatedRange',
         label: 'Ngày cập nhật',
         type: 'dateRange',
+        isAdvanced: true,
       },
     ],
     [transmissions, organizations]
@@ -740,42 +746,53 @@ export default function TransmissionAssetList() {
           Boolean((record as { deletedAt?: string | null }).deletedAt);
 
         if (isArchived) {
-          return [
-            {
+          const arcActions: TableActionOption<TransmissionAsset>[] = [];
+          if (perms.canRead) {
+            arcActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void openDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            arcActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return arcActions;
         }
 
-        const rowActions: TableActionOption<TransmissionAsset>[] = [
-          {
+        const rowActions: TableActionOption<TransmissionAsset>[] = [];
+        if (perms.canRead) {
+          rowActions.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
-          },
-          {
+          });
+        }
+        if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+          rowActions.push({
             key: 'edit',
             label: 'Chỉnh sửa',
             icon: <EditOutlined />,
             onClick: () => openEdit(record),
-          },
-          {
+          });
+        }
+        if (perms.canHistory) {
+          rowActions.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
+          });
+        }
+        if (perms.canExploit) {
+          rowActions.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
@@ -784,8 +801,10 @@ export default function TransmissionAssetList() {
               setOperationMode('exploit');
               operationForm.resetFields();
             },
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          rowActions.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
@@ -803,10 +822,13 @@ export default function TransmissionAssetList() {
                 depreciationMonths: record.depreciationMonths,
                 depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
                 accumulatedDepreciation: record.accumulatedDepreciation,
+                disposalMethod: record.disposalMethod,
               });
             },
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          rowActions.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
@@ -824,13 +846,14 @@ export default function TransmissionAssetList() {
                 depreciationMonths: record.depreciationMonths,
                 depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
                 accumulatedDepreciation: record.accumulatedDepreciation,
+                disposalMethod: record.disposalMethod,
               });
             },
-          },
-        ];
+          });
+        }
 
         const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
-        if (isDraft) {
+        if (isDraft && perms.canDelete) {
           rowActions.push({
             key: 'delete',
             label: 'Xóa',
@@ -843,11 +866,12 @@ export default function TransmissionAssetList() {
         return rowActions;
       },
     }),
-    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap, perms]
   );
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -855,9 +879,8 @@ export default function TransmissionAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>
@@ -874,7 +897,6 @@ export default function TransmissionAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

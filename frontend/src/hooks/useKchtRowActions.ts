@@ -105,9 +105,16 @@ export function useKchtRowActions<T extends KchtRecordLike = KchtRecordLike>({
 
       // 4. Gửi phê duyệt (Submit) - chỉ DRAFT hoặc REJECTED
       if (handlers.onSubmit && perms.canSubmit(record)) {
+        const rawStatus = (record?.approvalStatus ?? (record as any)?.status ?? '') as string;
+        const normalized = String(rawStatus).toUpperCase().trim();
+        const isResubmit = ['REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'REJECTED', 'TU_CHOI', 'TỪ CHỐI'].some((k) =>
+          normalized.includes(k)
+        );
         actions.push({
-          key: 'submit',
-          label: customLabels.submit || 'Gửi phê duyệt',
+          key: isResubmit ? 'resubmit' : 'submit',
+          label: isResubmit
+            ? (customLabels.submit || 'Gửi lại phê duyệt')
+            : (customLabels.submit || 'Gửi Cảng vụ phê duyệt'),
           icon: icons.submit,
           onClick: () => handlers.onSubmit!(record),
         });

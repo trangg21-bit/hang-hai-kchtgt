@@ -1,7 +1,3 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -13,45 +9,40 @@ import {
   RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import toast from '../../components/ToastNotification';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import api from '../../services/api';
+import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import toast from '../../components/ToastNotification';
-import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
-import { organizationService, type Organization } from '../../services/organizationService';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
-  fetchRadarStationAssets,
-  createRadarStationAsset,
-  updateRadarStationAsset,
-  deleteRadarStationAsset,
-  fetchRadarStationOptions,
-  type RadarStationOption,
-} from '../../services/radarasset/api';
-import type {
-  RadarStationAsset,
-  RadarStationAssetFilters,
-  RadarStationAssetPayload,
-} from '../../services/radarasset/types';
-import {
-  fetchKhaiThacList,
-  fetchAssetIncreaseList,
-  fetchAssetDecreaseList,
-  createKhaiThac,
-  createAssetIncrease,
   createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchKhaiThacList,
 } from '../../services/assetmovement/api';
 import type {
   AssetDecreaseResponse,
@@ -59,30 +50,43 @@ import type {
   AssetIncreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { organizationService, type Organization } from '../../services/organizationService';
 import {
-  saveAttachmentFile,
-  downloadAttachmentFile,
-  getAttachmentPreviewUrl,
-} from '../../utils/attachmentStorage';
+  createRadarStationAsset,
+  deleteRadarStationAsset,
+  fetchRadarStationAssets,
+  fetchRadarStationOptions,
+  updateRadarStationAsset,
+  type RadarStationOption,
+} from '../../services/radarasset/api';
+import type {
+  RadarStationAsset,
+  RadarStationAssetFilters,
+  RadarStationAssetPayload,
+} from '../../services/radarasset/types';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
+  actionPrimary,
   borderDefault,
+  colors,
   drawerTitleStyle,
   fontSizeLg,
   fontSizeMd,
-  actionPrimary,
+  fontWeightBold,
   radiusPill,
-  spaceSm,
   spaceMd,
+  spaceSm,
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import RadarStationAssetForm, { type FormValues } from './RadarStationAssetForm';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import {
+  downloadAttachmentFile,
+  getAttachmentPreviewUrl,
+  saveAttachmentFile,
+} from '../../utils/attachmentStorage';
 import RadarStationAssetDetailContent from './RadarStationAssetDetailContent';
+import RadarStationAssetForm, { type FormValues } from './RadarStationAssetForm';
 import RadarStationAssetOperationForm, {
   type OperationMode,
   type OperationValues,
@@ -183,16 +187,6 @@ const RADAR_HISTORY_FIELD_ORDER = [
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const RADAR_ASSET_TYPES = [
-  'Trạm radar',
-  'Anten radar',
-  'Máy phát/thu radar',
-  'Màn hình hiển thị radar',
-  'Hệ thống phụ trợ',
-  'Khác',
-];
-
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
   return error.response?.data?.message || fallback;
@@ -202,6 +196,7 @@ const isValidationError = (cause: unknown) =>
   Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function RadarStationAssetList() {
+  const perms = useAssetPermissions(['radarstation', 'tramradar', 'radarasset']);
   const [data, setData] = useState<RadarStationAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [radarStations, setRadarStations] = useState<RadarStationOption[]>([]);
@@ -227,7 +222,7 @@ export default function RadarStationAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<RadarStationAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -243,7 +238,7 @@ export default function RadarStationAssetList() {
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -310,7 +305,7 @@ export default function RadarStationAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -346,7 +341,7 @@ export default function RadarStationAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderRadarHistoryTimeline = (filtered: any[]) => {
+  const renderRadarHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -379,7 +374,7 @@ export default function RadarStationAssetList() {
       resolveUnitName: (rec) => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -453,6 +448,10 @@ export default function RadarStationAssetList() {
 
   const openEdit = useCallback(
     (record: RadarStationAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.setFieldsValue({
@@ -509,9 +508,9 @@ export default function RadarStationAssetList() {
         fetchAssetIncreaseList({ assetId: record.id }),
         fetchAssetDecreaseList({ assetId: record.id }),
       ]);
-      setExploitationRows(exp.items || []);
-      setIncreaseRows(inc.items || []);
-      setDecreaseRows(dec.items || []);
+      setExploitationRows(exp.content || []);
+      setIncreaseRows(inc.content || []);
+      setDecreaseRows(dec.content || []);
     } catch {
       setExploitationRows([]);
       setIncreaseRows([]);
@@ -576,7 +575,7 @@ export default function RadarStationAssetList() {
       const s = val.trim();
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
     }
-    const parsed = dayjs(val as any);
+    const parsed = dayjs(val as string | number | Date);
     return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
   };
 
@@ -597,7 +596,7 @@ export default function RadarStationAssetList() {
         attachmentName: attachments.length > 0 ? attachments[0].fileName : undefined,
       };
 
-      const cleanPayload: Record<string, any> = { ...payload };
+      const cleanPayload: Record<string, unknown> = { ...payload };
       const excludeKeys = [
         'id',
         'parentOrgUnitName',
@@ -626,10 +625,10 @@ export default function RadarStationAssetList() {
       });
 
       if (drawerMode === 'create') {
-        await createRadarStationAsset(cleanPayload as any);
+        await createRadarStationAsset(cleanPayload as unknown as RadarStationAssetPayload);
         toast.success('Đã tạo tài sản trạm radar thành công.');
       } else if (drawerMode === 'edit' && selected) {
-        await updateRadarStationAsset(selected.id, cleanPayload as any);
+        await updateRadarStationAsset(selected.id, cleanPayload as unknown as RadarStationAssetPayload);
         toast.success('Đã cập nhật tài sản trạm radar thành công.');
       }
 
@@ -668,7 +667,7 @@ export default function RadarStationAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -734,6 +733,7 @@ export default function RadarStationAssetList() {
             assetName: selected.assetName,
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             reason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
@@ -762,36 +762,6 @@ export default function RadarStationAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'radarStationId',
-      label: 'Mã trạm radar',
-      type: 'select',
-      placeholder: 'Chọn trạm radar',
-      options: radarStations.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: RADAR_ASSET_TYPES.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -802,12 +772,47 @@ export default function RadarStationAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+      options: ASSET_CONDITION_OPTIONS,
+    },
+    {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
+    },
+    {
+      key: 'radarStationId',
+      label: 'Mã trạm radar',
+      type: 'select',
+      placeholder: 'Chọn trạm radar',
+      options: radarStations.map((item) => ({
+        value: item.id,
+        label: `${item.code} - ${item.name}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: MARITIME_ASSET_TYPE_OPTIONS,
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
     },
     {
       key: 'updatedRange',
       label: 'Ngày cập nhật',
       type: 'dateRange',
+      isAdvanced: true,
     },
   ], [organizations, radarStations]);
 
@@ -874,7 +879,7 @@ export default function RadarStationAssetList() {
         type: TableColumnType.Text,
         width: 160,
         allowSort: true,
-        render: (v) => v || '—',
+        render: (v) => (v ? String(v) : '—'),
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -948,71 +953,89 @@ export default function RadarStationAssetList() {
         sortField: 'departmentApprovedAt',
       },
     ],
-    actions: (record: RadarStationAsset) => [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => void openDetail(record),
-      },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('exploit');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            unitOfMeasure: record.quantityUnit,
-            quantity: record.quantity,
-          });
-        },
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('increase');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('decrease');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'history',
-        label: 'Lịch sử thay đổi',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => setDeleteTarget(record),
-      },
-    ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, radarStationMap]);
+    actions: (record: RadarStationAsset) => {
+      const actions: any[] = [];
+      if (perms.canRead) {
+        actions.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+      if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+        actions.push({
+          key: 'edit',
+          label: 'Sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+      if (perms.canExploit) {
+        actions.push({
+          key: 'exploit',
+          label: 'Khai thác tài sản',
+          icon: <RocketOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('exploit');
+            operationForm.resetFields();
+            operationForm.setFieldsValue({
+              unitOfMeasure: record.quantityUnit,
+              quantity: record.quantity,
+            });
+          },
+        });
+      }
+      if (perms.canIncrease) {
+        actions.push({
+          key: 'increase',
+          label: 'Tăng nguyên giá',
+          icon: <PlusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('increase');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canDecrease) {
+        actions.push({
+          key: 'decrease',
+          label: 'Giảm nguyên giá',
+          icon: <MinusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('decrease');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canHistory) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử thay đổi',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+      const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+      if (isDraft && perms.canDelete) {
+        actions.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+      return actions;
+    },
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, radarStationMap, perms]);
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1020,9 +1043,8 @@ export default function RadarStationAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({
@@ -1072,7 +1094,6 @@ export default function RadarStationAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

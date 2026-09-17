@@ -106,8 +106,10 @@ export function useKchtPermissions(
   const hasApprovePerm = useMemo(() => {
     if (isAdmin) return true;
     if (
+      hasPerm(`${resource}:approve`) ||
       hasPerm(`${resource}:approvec1`) ||
       hasPerm(`${resource}:approvec2`) ||
+      hasPerm('data:approve') ||
       hasPerm('data:approvec1') ||
       hasPerm('data:approvec2')
     ) return true;
@@ -117,7 +119,9 @@ export function useKchtPermissions(
   const hasApproveL1Perm = useMemo(() => {
     if (isAdmin) return true;
     if (
+      hasPerm(`${resource}:approve`) ||
       hasPerm(`${resource}:approvec1`) ||
+      hasPerm('data:approve') ||
       hasPerm('data:approvec1') ||
       extraApproveL1Perms.some((p) => hasPerm(p))
     ) {

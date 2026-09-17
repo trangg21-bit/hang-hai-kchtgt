@@ -7,27 +7,191 @@ const EMPTY_PERMISSIONS: string[] = [];
 
 export interface PermissionState {
   permissions: string[];
-  hasPermission: (key: string) => boolean;
+  hasPermission: (key: string, options?: { explicitOnly?: boolean }) => boolean;
+  hasExplicitPermission: (key: string) => boolean;
   hasAnyPermission: (keys: string[]) => boolean;
   hasAllPermissions: (keys: string[]) => boolean;
   setPermissions: (permissions: string[]) => void;
 }
 
-const RESOURCE_CANONICAL_MAP: Record<string, string> = {
+export const RESOURCE_CANONICAL_MAP: Record<string, string> = {
+  // Maritime infrastructure assets
+  berthasset: 'berth',
+  transferareaasset: 'transferarea',
+  stormshelterasset: 'stormshelter',
+  buoyberthasset: 'buoyberth',
+  pierasset: 'pier',
+  anchorageasset: 'anchorage',
+  anchoragearea: 'anchorage',
+  lighthouseasset: 'lighthouse',
+  beaconstation: 'lighthouse',
+  beaconlight: 'lighthouse',
+  lighthousestation: 'lighthouse',
+  dikerevetmentasset: 'dikerevetment',
+  buoyasset: 'buoy',
+  buoystation: 'buoy',
+  channelasset: 'navigationchannel',
+  channel: 'navigationchannel',
+  dryportasset: 'dryport',
+  lritasset: 'lrit',
+  coastalstationlrit: 'lrit',
+  cospassarsatasset: 'cospassarsat',
+  coastalstationcospassarsat: 'cospassarsat',
+  ttxlttasset: 'ttxltt',
+  coastalstationhaiphong: 'ttxltt',
+  vtsasset: 'vts',
   vtssystem: 'vts',
+  radarasset: 'radarstation',
   tramradar: 'radarstation',
-  beaconlight: 'beaconstation',
+  aisasset: 'aissystem',
+  cctvasset: 'cctv',
+  scadaasset: 'scada',
+  transmissionasset: 'transmission',
+  vtsassistasset: 'vtsassist',
+  vhfasset: 'vhf',
+  daittdhasset: 'daittdh',
+  inmarsatasset: 'inmarsat',
+  coastalstationinmarsat: 'inmarsat',
+
+  // System & shared resources
   interconnect: 'connection',
   groupmember: 'group',
   shiprepair: 'shiprepairfacility',
   shiprepairyard: 'shiprepairfacility',
 };
 
+export const EQUIVALENT_RESOURCES_MAP: Record<string, string[]> = {
+  berth: ['berth', 'berthasset'],
+  berthasset: ['berth', 'berthasset'],
+  transferarea: ['transferarea', 'transferareaasset'],
+  transferareaasset: ['transferarea', 'transferareaasset'],
+  stormshelter: ['stormshelter', 'stormshelterasset'],
+  stormshelterasset: ['stormshelter', 'stormshelterasset'],
+  buoyberth: ['buoyberth', 'buoyberthasset'],
+  buoyberthasset: ['buoyberth', 'buoyberthasset'],
+  pier: ['pier', 'pierasset'],
+  pierasset: ['pier', 'pierasset'],
+  anchorage: ['anchorage', 'anchorageasset', 'anchoragearea'],
+  anchorageasset: ['anchorage', 'anchorageasset', 'anchoragearea'],
+  anchoragearea: ['anchorage', 'anchorageasset', 'anchoragearea'],
+  lighthouse: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
+  lighthouseasset: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
+  beaconstation: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
+  beaconlight: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
+  lighthousestation: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
+  dikerevetment: ['dikerevetment', 'dikerevetmentasset'],
+  dikerevetmentasset: ['dikerevetment', 'dikerevetmentasset'],
+  buoy: ['buoy', 'buoyasset', 'buoystation'],
+  buoyasset: ['buoy', 'buoyasset', 'buoystation'],
+  buoystation: ['buoy', 'buoyasset', 'buoystation'],
+  navigationchannel: ['navigationchannel', 'channel', 'channelasset'],
+  channel: ['navigationchannel', 'channel', 'channelasset'],
+  channelasset: ['navigationchannel', 'channel', 'channelasset'],
+  dryport: ['dryport', 'dryportasset'],
+  dryportasset: ['dryport', 'dryportasset'],
+  lrit: ['lrit', 'lritasset', 'coastalstationlrit'],
+  lritasset: ['lrit', 'lritasset', 'coastalstationlrit'],
+  coastalstationlrit: ['lrit', 'lritasset', 'coastalstationlrit'],
+  cospassarsat: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
+  cospassarsatasset: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
+  coastalstationcospassarsat: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
+  ttxltt: ['ttxltt', 'ttxlttasset', 'coastalstationhaiphong'],
+  ttxlttasset: ['ttxltt', 'ttxlttasset', 'coastalstationhaiphong'],
+  coastalstationhaiphong: ['ttxltt', 'ttxlttasset', 'coastalstationhaiphong'],
+  vts: ['vts', 'vtsasset', 'vtssystem'],
+  vtsasset: ['vts', 'vtsasset', 'vtssystem'],
+  vtssystem: ['vts', 'vtsasset', 'vtssystem'],
+  radarstation: ['radarstation', 'radarasset', 'tramradar'],
+  radarasset: ['radarstation', 'radarasset', 'tramradar'],
+  tramradar: ['radarstation', 'radarasset', 'tramradar'],
+  aissystem: ['aissystem', 'aisasset'],
+  aisasset: ['aissystem', 'aisasset'],
+  cctv: ['cctv', 'cctvasset'],
+  cctvasset: ['cctv', 'cctvasset'],
+  scada: ['scada', 'scadaasset'],
+  scadaasset: ['scada', 'scadaasset'],
+  transmission: ['transmission', 'transmissionasset'],
+  transmissionasset: ['transmission', 'transmissionasset'],
+  vtsassist: ['vtsassist', 'vtsassistasset'],
+  vtsassistasset: ['vtsassist', 'vtsassistasset'],
+  vhf: ['vhf', 'vhfasset'],
+  vhfasset: ['vhf', 'vhfasset'],
+  daittdh: ['daittdh', 'daittdhasset'],
+  daittdhasset: ['daittdh', 'daittdhasset'],
+  inmarsat: ['inmarsat', 'inmarsatasset', 'coastalstationinmarsat'],
+  inmarsatasset: ['inmarsat', 'inmarsatasset', 'coastalstationinmarsat'],
+  coastalstationinmarsat: ['inmarsat', 'inmarsatasset', 'coastalstationinmarsat'],
+  group: ['group', 'groupmember'],
+  groupmember: ['group', 'groupmember'],
+  connection: ['connection', 'interconnect'],
+  interconnect: ['connection', 'interconnect'],
+  shiprepairfacility: ['shiprepairfacility', 'shiprepair', 'shiprepairyard'],
+  shiprepair: ['shiprepairfacility', 'shiprepair', 'shiprepairyard'],
+  shiprepairyard: ['shiprepairfacility', 'shiprepair', 'shiprepairyard'],
+  port: ['port', 'seaport'],
+  seaport: ['port', 'seaport'],
+};
+
+export function getEquivalentPermissionKeys(key: string): string[] {
+  const normalized = normalizePermissionKey(key);
+  if (!normalized) return [];
+  const [res, ...rest] = normalized.split(':');
+  const action = rest.join(':');
+  if (!res) return [normalized];
+
+  const canonical = canonicalResource(res);
+  const eqResources = EQUIVALENT_RESOURCES_MAP[res] || EQUIVALENT_RESOURCES_MAP[canonical] || [res];
+
+  const keys = new Set<string>();
+  keys.add(normalized);
+  if (canonical && action) {
+    keys.add(`${canonical}:${action}`);
+  }
+  for (const eqRes of eqResources) {
+    if (action) {
+      keys.add(`${eqRes}:${action}`);
+    } else {
+      keys.add(eqRes);
+    }
+  }
+  return [...keys];
+}
+
 const RESOURCE_PARENT_DOMAINS: Record<string, string[]> = {
-  coastalstationlrit: ['specialstation', 'coastalstation', 'station', 'data'],
-  coastalstationinmarsat: ['specialstation', 'coastalstation', 'station', 'data'],
-  coastalstationhaiphong: ['specialstation', 'coastalstation', 'station', 'data'],
-  coastalstationcospassarsat: ['specialstation', 'coastalstation', 'station', 'data'],
+  vtsasset: ['vts', 'vtssystem'],
+  radarasset: ['radarstation', 'tramradar'],
+  aisasset: ['aissystem'],
+  cctvasset: ['cctv'],
+  scadaasset: ['scada'],
+  transmissionasset: ['transmission'],
+  vtsassistasset: ['vtsassist'],
+  vhfasset: ['vhf'],
+  daittdhasset: ['daittdh', 'coastalstation'],
+  coastalstationasset: ['coastalstation', 'specialstation', 'station'],
+  berthasset: ['berth'],
+  transferareaasset: ['transferarea'],
+  stormshelterasset: ['stormshelter'],
+  buoyberthasset: ['buoyberth'],
+  pierasset: ['pier'],
+  anchorageasset: ['anchorage'],
+  lighthouseasset: ['lighthouse', 'beaconstation'],
+  dikerevetmentasset: ['dikerevetment'],
+  buoyasset: ['buoy'],
+  channelasset: ['navigationchannel', 'channel'],
+  dryportasset: ['dryport'],
+  lritasset: ['lrit', 'coastalstationlrit', 'specialstation', 'coastalstation', 'station'],
+  lrit: ['specialstation', 'coastalstation', 'station'],
+  cospassarsatasset: ['cospassarsat', 'coastalstationcospassarsat', 'specialstation', 'coastalstation', 'station'],
+  cospassarsat: ['specialstation', 'coastalstation', 'station'],
+  ttxlttasset: ['ttxltt', 'coastalstationhaiphong', 'specialstation', 'coastalstation', 'station'],
+  ttxltt: ['specialstation', 'coastalstation', 'station'],
+  inmarsatasset: ['inmarsat', 'coastalstationinmarsat', 'specialstation', 'coastalstation', 'station'],
+  inmarsat: ['specialstation', 'coastalstation', 'station'],
+  daittdh: ['coastalstation'],
+  coastalstationlrit: ['specialstation', 'coastalstation', 'station'],
+  coastalstationinmarsat: ['specialstation', 'coastalstation', 'station'],
+  coastalstationhaiphong: ['specialstation', 'coastalstation', 'station'],
+  coastalstationcospassarsat: ['specialstation', 'coastalstation', 'station'],
   portplanning: ['document'],
   planningadjustment: ['document'],
   operationplan: ['document'],
@@ -44,8 +208,8 @@ export function isResourceCoveredBy(candidateResource: string, targetResource: s
   const canonicalCandidate = canonicalResource(candidateResource);
   const canonicalTarget = canonicalResource(targetResource);
   if (canonicalCandidate === canonicalTarget) return true;
-  const parents = RESOURCE_PARENT_DOMAINS[canonicalTarget];
-  return parents ? parents.includes(canonicalCandidate) : false;
+  const parents = RESOURCE_PARENT_DOMAINS[canonicalTarget] || RESOURCE_PARENT_DOMAINS[targetResource];
+  return parents ? (parents.includes(canonicalCandidate) || parents.includes(candidateResource)) : false;
 }
 
 /**
@@ -91,18 +255,28 @@ export function normalizePermissionKey(key: string): string {
  * quyền group được Backend đưa vào JWT/profile. Không coi admin:manage là
  * toàn quyền; chỉ * mới được wildcard bypass.
  */
-export function hasPermissionFromList(grantedPermissions: string[] | undefined, key: string): boolean {
+export function hasPermissionFromList(
+  grantedPermissions: string[] | undefined,
+  key: string,
+  options?: { explicitOnly?: boolean },
+): boolean {
   const normalizedKey = normalizePermissionKey(key);
   if (!normalizedKey) return false;
 
   const source: object = grantedPermissions ?? EMPTY_PERMISSIONS;
   let permissions = permissionSetCache.get(source);
   if (!permissions) {
-    permissions = new Set(
-      (grantedPermissions || [])
-        .map((permission) => normalizePermissionKey(permission.trim()))
-        .filter(Boolean),
-    );
+    permissions = new Set<string>();
+    for (const rawPermission of (grantedPermissions || [])) {
+      const trimmed = rawPermission?.trim();
+      if (!trimmed) continue;
+      const normalized = normalizePermissionKey(trimmed);
+      if (!normalized) continue;
+      permissions.add(normalized);
+      for (const eqKey of getEquivalentPermissionKeys(normalized)) {
+        permissions.add(eqKey);
+      }
+    }
     permissionSetCache.set(source, permissions);
   }
 
@@ -121,7 +295,7 @@ export function hasPermissionFromList(grantedPermissions: string[] | undefined, 
   }
 
   // Parent domain match
-  const parents = RESOURCE_PARENT_DOMAINS[resource];
+  const parents = RESOURCE_PARENT_DOMAINS[resource] || RESOURCE_PARENT_DOMAINS[rawResource];
   if (parents) {
     for (const parent of parents) {
       if (permissions.has(`${parent}:${action}`) || permissions.has(`${parent}:manage`) || permissions.has(`${parent}:*`)) {
@@ -130,8 +304,20 @@ export function hasPermissionFromList(grantedPermissions: string[] | undefined, 
     }
   }
 
-  // Implicit Read: Có bất kỳ quyền thao tác nào trên resource (hoặc domain bao trùm) thì mặc định có quyền xem
-  if (action === 'read' || action === 'view' || action === 'search') {
+  // Alias match for read / view / search when explicit read/view is granted
+  if (action === 'view' || action === 'search') {
+    if (permissions.has(`${rawResource}:read`) || permissions.has(`${resource}:read`)) {
+      return true;
+    }
+  }
+  if (action === 'read') {
+    if (permissions.has(`${rawResource}:view`) || permissions.has(`${resource}:view`)) {
+      return true;
+    }
+  }
+
+  // Implicit Read: Chỉ áp dụng cho xem menu/trang/tuyến đường khi không yêu cầu explicitOnly
+  if (!options?.explicitOnly && (action === 'read' || action === 'view' || action === 'search')) {
     for (const p of permissions) {
       const pRes = p.split(':', 2)[0];
       if (isResourceCoveredBy(pRes, resource)) {
@@ -160,10 +346,16 @@ const initialPermissions = useAuthStore.getState().user?.permissions || [];
 export const usePermissionStore = create<PermissionState>((set, get) => ({
   permissions: initialPermissions,
 
-  hasPermission: (key: string) => {
+  hasPermission: (key: string, options?: { explicitOnly?: boolean }) => {
     const storePerms = get().permissions;
     const authPerms = useAuthStore.getState().user?.permissions;
-    return hasPermissionFromList(storePerms.length > 0 ? storePerms : authPerms, key);
+    return hasPermissionFromList(storePerms.length > 0 ? storePerms : authPerms, key, options);
+  },
+
+  hasExplicitPermission: (key: string) => {
+    const storePerms = get().permissions;
+    const authPerms = useAuthStore.getState().user?.permissions;
+    return hasPermissionFromList(storePerms.length > 0 ? storePerms : authPerms, key, { explicitOnly: true });
   },
 
   hasAnyPermission: (keys: string[]) => {
@@ -178,10 +370,12 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
 }));
 
 // Automatically sync permissionStore whenever authStore user/permissions change (login, logout, token renewal)
-useAuthStore.subscribe((state) => {
-  const currentPerms = state.user?.permissions || [];
-  const existingPerms = usePermissionStore.getState().permissions;
-  if (currentPerms !== existingPerms) {
-    usePermissionStore.setState({ permissions: currentPerms });
-  }
-});
+if (typeof useAuthStore?.subscribe === 'function') {
+  useAuthStore.subscribe((state) => {
+    const currentPerms = state?.user?.permissions || [];
+    const existingPerms = usePermissionStore.getState().permissions;
+    if (currentPerms !== existingPerms) {
+      usePermissionStore.setState({ permissions: currentPerms });
+    }
+  });
+}

@@ -93,7 +93,7 @@ import { usePermissionStore } from "../../store/permissionStore";
 import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
 import { isGisHistoryField } from "../../utils/historyGisFormat";
 import { canEditApprovalRecord } from "../../utils/approvalEditPolicy";
 import api from "../api";
@@ -479,12 +479,17 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
     return raw || null;
   };
 
-  const resolveHistoryActionMeta = (item: any): { label: string; color: string; bg: string } => {
+  const resolveHistoryActionMeta = (item: any, changes?: any[]): { label: string; color: string; bg: string } => {
     const rawStatus = String(item?.status ?? item?.action ?? '').toUpperCase();
     const rawReason = String(item?.reason ?? '').toLowerCase();
     const rawField = String(item?.changedField ?? item?.fieldName ?? '').toLowerCase();
     if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
       return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}15` };
+    }
+    // Nếu có trường dữ liệu thông thường thay đổi, ưu tiên hiển thị [Cập nhật]
+    const hasFieldUpdate = changes && changes.some((c: any) => !isAttachmentField(c.field));
+    if (hasFieldUpdate) {
+      return { label: 'Cập nhật', color: '#1a3f83', bg: '#1a3f8315' };
     }
     if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || (rawField.includes('đính kèm') && rawReason.includes('tải'))) {
       return { label: 'Tải lên tệp', color: statusInfo, bg: `${statusInfo}15` };
@@ -523,7 +528,18 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
   };
 
   const isMeaningfulChange = (field: string, rawOld: any, rawNew: any): boolean => {
-    void field;
+    const f = (field || '').trim();
+    const fLower = f.toLowerCase();
+    if (
+      DEFAULT_IGNORED_FIELDS.has(f) ||
+      DEFAULT_IGNORED_FIELDS.has(fLower) ||
+      fLower === 'approvalstatus' ||
+      fLower === 'trạng thái phê duyệt' ||
+      fLower === 'trang thai phe duyet' ||
+      fLower === 'trạng thái'
+    ) {
+      return false;
+    }
     const normalize = (v: any) => {
       if (v == null) return '';
       const s = String(v).trim();
@@ -570,7 +586,6 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
     'unitOfMeasure', 'Đơn vị tính',
     'yearOfUse', 'Năm đưa vào sử dụng',
     'operationalStatus', 'Trạng thái hoạt động', 'Tình trạng',
-    'approvalStatus', 'Trạng thái phê duyệt', 'Trạng thái',
     'specifications', 'Thông số kỹ thuật',
     'maintenanceInformation', 'Thông tin bảo trì',
     'note', 'Ghi chú',
@@ -1051,15 +1066,14 @@ const VhfListPage = () => {
       counts.DELETED = counts.ARCHIVED || 0;
       setTabCounts(counts);
 
-      // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
+      // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
       setTotalAll(
         (counts.DRAFT || 0) +
           (counts.PENDING_APPROVAL || 0) +
           (counts.APPROVED_LEVEL1 || 0) +
           (counts.APPROVED || 0) +
           (counts.REJECTED_LEVEL1 || 0) +
-          (counts.REJECTED_LEVEL2 || 0) +
-          (counts.ARCHIVED || 0)
+          (counts.REJECTED_LEVEL2 || 0)
       );
     } catch {
       // ignore
@@ -1308,12 +1322,7 @@ const validHistoryGroups = useMemo(() => {
 
       const reasons = g.items.map((i: any) => i.reason || i.note).filter(Boolean);
 
-      // Nếu là hành động cập nhật mà không có trường nào thực sự thay đổi -> loại bỏ card rỗng
-      if (isUpdate && orderedChanges.length === 0) {
-        return null;
-      }
-
-      if (orderedChanges.length === 0 && reasons.length === 0) {
+      if (orderedChanges.length === 0) {
         return null;
       }
 
@@ -1365,7 +1374,7 @@ const validHistoryGroups = useMemo(() => {
             'Cục Hàng hải Việt Nam';
           const orderedChanges = g.orderedChanges;
 
-          const actionMeta = resolveHistoryActionMeta(rec0);
+          const actionMeta = resolveHistoryActionMeta(rec0, orderedChanges);
           const isCreate = actionMeta.label === 'Thêm mới';
           const actorResolved = g.actor && userMap.has(g.actor) ? userMap.get(g.actor)! : g.actor;
 
@@ -2332,7 +2341,7 @@ const validHistoryGroups = useMemo(() => {
             <DataTable
               fill
               columns={columns}
-              dataSource={data}
+              dataSource={!filterValues.approvalStatus ? data.filter((r) => !isVhfDeleted(r)) : data}
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 'max-content' }}

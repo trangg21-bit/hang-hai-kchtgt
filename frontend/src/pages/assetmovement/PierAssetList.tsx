@@ -1,89 +1,103 @@
 import {
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
-    SearchOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    CommonStatusTabs,
-    CommonTable,
-    FilterTableLayout,
-    ScreenHeader,
-    TableColumnType,
-    TableFilter,
-    type FilterOption,
-    type ScreenHeaderAction,
-    type TableOption,
+  CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
+  TableColumnType,
+  TableFilter,
+  type FilterOption,
+  type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import AppDrawer from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import {
-    type InfrastructureAttachmentItem,
+  type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
-    createAssetDecrease,
-    createAssetIncrease,
-    createKhaiThac,
-    createPierAsset,
-    deleteInfraAssetAttachment,
-    deletePierAsset,
-    fetchAssetDecreaseList,
-    fetchAssetIncreaseList,
-    fetchInfraAssetAttachments,
-    fetchInfraAssetHistory,
-    fetchKhaiThacList,
-    fetchPierAssets,
-    updatePierAsset,
-    uploadInfraAssetAttachments,
+  approveInfraAssetC1,
+  approveInfraAssetC2,
+  createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  createPierAsset,
+  deleteInfraAssetAttachment,
+  deletePierAsset,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchInfraAssetAttachments,
+  fetchInfraAssetHistory,
+  fetchKhaiThacList,
+  fetchPierAssets,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
+  updatePierAsset,
+  uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
+
 import type {
-    AssetDecreaseResponse,
-    AssetExploitationResponse,
-    AssetIncreaseResponse,
-    AssetValueAdjustmentDetails,
-    PierAsset,
-    PierAssetFilters,
-    PierAssetPayload,
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+  PierAsset,
+  PierAssetFilters,
+  PierAssetPayload,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { pierCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
 import type { Pier } from '../../types/port';
-import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import PierAssetDetailContent from './PierAssetDetailContent';
 import PierAssetForm, { type FormValues } from './PierAssetForm';
 import PierAssetOperationForm, {
-    type OperationMode,
-    type OperationValues,
+  type OperationMode,
+  type OperationValues,
 } from './PierAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -93,11 +107,10 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const PIER_ASSET_FIELD_LABELS: Record<string, string> = {
   parentOrgUnitId: 'Cơ quan quản lý cấp trên',
@@ -142,6 +155,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function PierAssetList() {
+  const perms = useAssetPermissions(['pier', 'pierasset']);
   const [data, setData] = useState<PierAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [piers, setPiers] = useState<Pier[]>([]);
@@ -173,7 +187,7 @@ export default function PierAssetList() {
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<PierAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -288,11 +302,92 @@ export default function PierAssetList() {
       .catch(() => toast.error('Không thể tải danh mục đơn vị hoặc cầu cảng.'));
   }, []);
 
+  // ── Approval state & handlers ──────────────────────────────────────
+  const [approvingRecord, setApprovingRecord] = useState<PierAsset | null>(null);
+  const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveLoading, setApproveLoading] = useState(false);
+
+  const [rejectingRecord, setRejectingRecord] = useState<PierAsset | null>(null);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const handleOpenApproveModal = useCallback((record: PierAsset, level: 'c1' | 'c2') => {
+    setApprovingRecord(record);
+    setApproveLevel(level);
+    setApproveModalOpen(true);
+  }, []);
+
+  const handleApproveConfirm = useCallback(async (content: string) => {
+    if (!approvingRecord) return;
+    setApproveLoading(true);
+    try {
+      if (approveLevel === 'c1') {
+        await approveInfraAssetC1(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await approveInfraAssetC2(approvingRecord.id, content);
+        toast.success('Đã phê duyệt cấp Cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Phê duyệt thất bại'));
+    } finally {
+      setApproveLoading(false);
+    }
+  }, [approvingRecord, approveLevel, loadData]);
+
+  const handleOpenRejectModal = useCallback((record: PierAsset, level: 'c1' | 'c2') => {
+    setRejectingRecord(record);
+    setRejectLevel(level);
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleRejectConfirm = useCallback(async (reason: string) => {
+    if (!rejectingRecord) return;
+    setRejectLoading(true);
+    try {
+      if (rejectLevel === 'c1') {
+        await rejectInfraAssetC1(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      } else {
+        await rejectInfraAssetC2(rejectingRecord.id, reason);
+        toast.success('Đã từ chối phê duyệt cấp Cục');
+      }
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Từ chối phê duyệt thất bại'));
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectLevel, loadData]);
+
+  const handleSubmitApproval = useCallback(async (record: PierAsset) => {
+    try {
+      await submitInfraAssetApproval(record.id);
+      const isReSubmit =
+        record.approvalStatus === 'REJECTED_LEVEL1' ||
+        record.approvalStatus === 'REJECTED_LEVEL2' ||
+        (record as any).status === 'REJECTED_LEVEL1' ||
+        (record as any).status === 'REJECTED_LEVEL2' ||
+        record.approvalStatus === 'REJECTED';
+      toast.success(isReSubmit ? 'Đã gửi lại phê duyệt' : 'Đã gửi Cảng vụ phê duyệt');
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Gửi phê duyệt thất bại'));
+    }
+  }, [loadData]);
+
   const openCreate = useCallback(() => {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({ assetType: 'PIER', status: 'MANAGED' });
+    form.setFieldsValue({ status: 'MANAGED' });
     setAttachments([]);
     setExploitationRows([]);
     setIncreaseRows([]);
@@ -300,6 +395,10 @@ export default function PierAssetList() {
   }, [form]);
 
   const openEdit = useCallback(async (record: PierAsset) => {
+    if (!isAssetRecordEditable(record.approvalStatus)) {
+      toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+      return;
+    }
     setSelected(record);
     setDrawerMode('edit');
     form.resetFields();
@@ -415,7 +514,7 @@ export default function PierAssetList() {
           cleanPath = `/${cleanPath}`;
         }
         const res = await api.get(cleanPath, { responseType: 'blob' });
-        const contentType = res.headers?.['content-type'] || 'application/octet-stream';
+        const contentType = String(res.headers?.['content-type'] || 'application/octet-stream');
         const blob = new Blob([res.data], { type: contentType });
         triggerBlobDownload(blob, fileName || 'tai-lieu');
         toast.success(`Đã tải xuống tệp: ${fileName}`);
@@ -463,7 +562,7 @@ export default function PierAssetList() {
 
       const payload: PierAssetPayload = {
         ...values,
-        assetType: 'PIER',
+        assetType: values.assetType || 'PIER',
         constructionYear: values.constructionYear ? Number(values.constructionYear.format('YYYY')) : undefined,
         useDate: values.useDate?.format('YYYY-MM-DD'),
         declarationDate: values.declarationDate?.format('YYYY-MM-DD'),
@@ -507,6 +606,31 @@ export default function PierAssetList() {
       setSaving(false);
     }
   };
+
+  const openOperation = useCallback((mode: OperationMode, record: PierAsset) => {
+    setSelected(record);
+    setOperationMode(mode);
+    operationForm.resetFields();
+    if (mode === 'exploit') {
+      operationForm.setFieldsValue({
+        operatorOrgUnitId: record.orgUnitId,
+        unitOfMeasure: record.quantityUnit,
+        quantity: record.quantity,
+      });
+    } else {
+      operationForm.setFieldsValue({
+        originalValue: record.originalValue,
+        declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
+        depreciationRate: record.depreciationRate,
+        assignmentDecisionNumber: record.assignmentDecisionNumber,
+        depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
+        depreciationMonths: record.depreciationMonths,
+        depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+        accumulatedDepreciation: record.accumulatedDepreciation,
+        disposalMethod: record.disposalMethod,
+      });
+    }
+  }, [operationForm]);
 
   const saveOperation = async () => {
     if (!selected || !operationMode) return;
@@ -557,7 +681,7 @@ export default function PierAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline?.format('YYYY-MM-DD'),
@@ -607,11 +731,25 @@ export default function PierAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
+      key: 'assetName',
+      label: 'Tên tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo tên tài sản',
+    },
+    {
+      key: 'assetCondition',
+      label: 'Tình trạng tài sản',
+      type: 'select',
+      placeholder: 'Chọn tình trạng',
+      options: ASSET_CONDITION_OPTIONS,
+    },
+    {
       key: 'usingOrgUnitId',
       label: 'Đơn vị sử dụng',
       type: 'treeSelect',
       organizations,
       placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
     },
     {
       key: 'pierId',
@@ -622,30 +760,28 @@ export default function PierAssetList() {
         value: item.id,
         label: `${item.pierCode} - ${item.pierName}`,
       })),
+      isAdvanced: true,
     },
     {
-      key: 'assetCondition',
-      label: 'Tình trạng tài sản',
+      key: 'assetType',
+      label: 'Loại tài sản',
       type: 'select',
-      placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((value) => ({ value, label: value })),
+      placeholder: 'Chọn loại tài sản',
+      options: MARITIME_ASSET_TYPE_OPTIONS,
+      isAdvanced: true,
     },
     {
       key: 'assetCode',
       label: 'Mã tài sản',
       type: 'text',
       placeholder: 'Tìm theo mã tài sản',
-    },
-    {
-      key: 'assetName',
-      label: 'Tên tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo tên tài sản',
+      isAdvanced: true,
     },
     {
       key: 'updatedRange',
       label: 'Ngày cập nhật',
       type: 'dateRange',
+      isAdvanced: true,
     },
   ], [piers, organizations]);
 
@@ -797,22 +933,154 @@ export default function PierAssetList() {
         allowSort: true,
       },
     ],
-    actions: (record: PierAsset) => [
-      { key: 'detail', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => void openDetail(record) },
-      { key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => openEdit(record) },
-      { key: 'exploit', label: 'Khai thác tài sản', icon: <RocketOutlined />, onClick: () => { setSelected(record); setOperationMode('exploit'); operationForm.resetFields(); } },
-      { key: 'increase', label: 'Tăng nguyên giá', icon: <PlusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('increase'); operationForm.resetFields(); } },
-      { key: 'decrease', label: 'Giảm nguyên giá', icon: <MinusCircleOutlined />, onClick: () => { setSelected(record); setOperationMode('decrease'); operationForm.resetFields(); } },
-      { key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => void openHistory(record) },
-      ...(record.approvalStatus === 'DRAFT' || (record as any).status === 'DRAFT'
-        ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]
-        : []),
-    ],
-  }), [pierMap, openDetail, openEdit, openHistory, operationForm, orgName]);
+    actions: (record: PierAsset) => {
+      const st = record.approvalStatus || (record as any).status || '';
+      const actionsList: any[] = [];
 
-  const headerActions: ScreenHeaderAction[] = useMemo(() => [
-    { key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreate },
-  ], [openCreate]);
+      if (perms.canRead) {
+        actionsList.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+
+      if (perms.canUpdate && isAssetRecordEditable(st)) {
+        actionsList.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+
+      if (perms.canUpdate) {
+        if (st === 'DRAFT') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi Cảng vụ phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi lại phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        }
+      }
+
+      if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
+        if (perms.canApproveC1) {
+          actionsList.push({
+            key: 'approveC1',
+            label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c1'),
+          });
+        }
+        if (perms.canReject || perms.canApproveC1) {
+          actionsList.push({
+            key: 'rejectC1',
+            label: 'Từ chối cấp Cảng vụ/Chi cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c1'),
+          });
+        }
+      }
+
+      if (st === 'APPROVED_LEVEL1') {
+        if (perms.canApproveC2) {
+          actionsList.push({
+            key: 'approveC2',
+            label: 'Phê duyệt cấp Cục',
+            icon: <CheckOutlined />,
+            onClick: () => handleOpenApproveModal(record, 'c2'),
+          });
+        }
+        if (perms.canReject || perms.canApproveC2) {
+          actionsList.push({
+            key: 'rejectC2',
+            label: 'Từ chối cấp Cục',
+            icon: <CloseOutlined />,
+            danger: true,
+            onClick: () => handleOpenRejectModal(record, 'c2'),
+          });
+        }
+      }
+
+      if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+        if (perms.canExploit) {
+          actionsList.push({
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => openOperation('exploit', record),
+          });
+        }
+        if (perms.canIncrease) {
+          actionsList.push({
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => openOperation('increase', record),
+          });
+        }
+        if (perms.canDecrease) {
+          actionsList.push({
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => openOperation('decrease', record),
+          });
+        }
+      }
+
+      if (perms.canHistory) {
+        actionsList.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+
+      if (st === 'DRAFT' && perms.canDelete) {
+        actionsList.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+
+      return actionsList;
+    },
+  }), [
+    pierMap,
+    openDetail,
+    openEdit,
+    openHistory,
+    openOperation,
+    operationForm,
+    handleOpenApproveModal,
+    handleOpenRejectModal,
+    handleSubmitApproval,
+    orgName,
+    perms,
+  ]);
+
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
+      { key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreate },
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(() => ({
     ...themeTokenChk,
@@ -831,7 +1099,6 @@ export default function PierAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}
@@ -887,10 +1154,6 @@ export default function PierAssetList() {
           organizations={organizations}
           piers={piers}
           attachments={attachments}
-          exploitationRows={exploitationRows}
-          increaseRows={increaseRows}
-          decreaseRows={decreaseRows}
-          orgName={(id) => orgName.get(id || '') || ''}
           saving={saving}
           saveAction={saveAction}
           onClose={() => setDrawerMode(undefined)}
@@ -946,6 +1209,26 @@ export default function PierAssetList() {
             } finally {
               setSaving(false);
             }
+          }}
+        />
+
+        {/* ── Approval Modals 2 cấp ──────────────────────────────── */}
+        <KchtApprovalModals
+          approveOpen={approveModalOpen}
+          approveLevel={approveLevel}
+          approveLoading={approveLoading}
+          onApproveConfirm={handleApproveConfirm}
+          onApproveCancel={() => {
+            setApproveModalOpen(false);
+            setApprovingRecord(null);
+          }}
+          rejectOpen={rejectModalOpen}
+          rejectLevel={rejectLevel}
+          rejectLoading={rejectLoading}
+          onRejectConfirm={handleRejectConfirm}
+          onRejectCancel={() => {
+            setRejectModalOpen(false);
+            setRejectingRecord(null);
           }}
         />
 

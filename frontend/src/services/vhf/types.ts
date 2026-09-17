@@ -86,6 +86,7 @@ export interface CreateVhfRequest {
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
   coordinates?: string | null;
   approvalStatus?: string | null;
+  action?: string;
 }
 
 // ── UpdateVhfRequest (matches UpdateVhfRequest.java) ────────────────

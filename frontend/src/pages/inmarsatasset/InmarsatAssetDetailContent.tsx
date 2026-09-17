@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
 import {
   BankOutlined,
-  DeploymentUnitOutlined,
-  SlidersOutlined,
   AuditOutlined,
   PlusCircleOutlined,
   MinusCircleOutlined,
+  DeploymentUnitOutlined,
+  SlidersOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 import type {
   InmarsatAsset,
   InmarsatAssetExploitation,
@@ -15,11 +14,13 @@ import type {
 } from '../../services/inmarsatAsset/types';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   fontWeightBold,
   fontWeightMedium,
   statusOperational,
+  statusAttention,
   statusCritical,
   textTertiary,
 } from '../../themetokenchk';
@@ -94,7 +95,19 @@ export default function InmarsatAssetDetailContent({
           dataIndex: 'assetCategory',
           type: TableColumnType.Text,
           width: 200,
-          render: (v) => (v as string) ?? '',
+          render: (v) => {
+            const raw = (v as string) ?? '';
+            if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
+              return (
+                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                  .filter(Boolean)
+                  .join(' - ') ||
+                raw ||
+                '—'
+              );
+            }
+            return raw;
+          },
         },
         {
           title: 'Đơn vị tính',
@@ -145,9 +158,11 @@ export default function InmarsatAssetDetailContent({
         },
         {
           title: 'Ghi chú',
-          dataIndex: 'notes',
+          dataIndex: 'description',
           type: TableColumnType.Description,
           width: 200,
+          render: (v, record) =>
+            ((v as string) || (record.notes as string) || '—'),
         },
         {
           title: 'Ngày cập nhật',
@@ -373,44 +388,23 @@ export default function InmarsatAssetDetailContent({
               {
                 name: 'assetCondition',
                 label: 'Tình trạng tài sản',
-                render: (val) =>
-                  val ? (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: fontWeightMedium,
-                        background: '#ecfdf5',
-                        color: '#059669',
-                        border: '1px solid #a7f3d0',
-                      }}
-                    >
-                      {String(val)}
-                    </span>
-                  ) : '',
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === AssetCondition.DANG_SU_DUNG
+                    ? statusOperational
+                    : val === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
-                render: (val) =>
-                  val ? (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: 12,
-                        fontSize: 12,
-                        fontWeight: fontWeightMedium,
-                        background: '#eff6ff',
-                        color: '#2563eb',
-                        border: '1px solid #bfdbfe',
-                      }}
-                    >
-                      {String(val)}
-                    </span>
-                  ) : '',
+                type: ViewFieldType.Badge,
+                badgeColor: (val) =>
+                  val === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  val === UsageStatus.HDSN_KHONG_KINH_DOANH
+                    ? statusOperational
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',
@@ -492,6 +486,103 @@ export default function InmarsatAssetDetailContent({
               },
             ],
           },
+          {
+            key: 'approval_info',
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined />,
+            collapsible: true,
+            defaultCollapsed: false,
+            fields: [
+              {
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Badge,
+                colSpan: 24,
+                value: () => approvalInfo.label,
+                badgeColor: () => approvalInfo.color,
+              },
+              {
+                name: 'updatedByName',
+                label: 'Cán bộ cập nhật',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'updatedAt',
+                label: 'Ngày cập nhật',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'submittedByName',
+                label: 'Cán bộ gửi phê duyệt',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'submittedAt',
+                label: 'Ngày gửi phê duyệt',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'portAuthorityApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel1ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'portAuthorityApprovedAt',
+                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.portAuthorityApprovedAt || (rec as any)?.approvedLevel1At,
+              },
+              {
+                name: 'portAuthorityApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                colSpan: 24,
+                value: (rec) => rec?.portAuthorityApprovalContent || (rec as any)?.approvalContentLevel1,
+              },
+              {
+                name: 'departmentApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cục',
+                render: (val, rec) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (rec as any)?.approvedLevel2ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'departmentApprovedAt',
+                label: 'Ngày phê duyệt cấp Cục',
+                type: ViewFieldType.DateTime,
+                value: (rec) => rec?.departmentApprovedAt || (rec as any)?.approvedLevel2At,
+              },
+              {
+                name: 'departmentApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cục',
+                colSpan: 24,
+                value: (rec) => rec?.departmentApprovalContent || (rec as any)?.approvalContentLevel2,
+              },
+              {
+                name: 'rejectionReason',
+                label: 'Lý do từ chối',
+                colSpan: 24,
+                hidden: (rec) => !(rec as any)?.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
+              },
+            ],
+          },
         ],
       },
       {
@@ -538,109 +629,6 @@ export default function InmarsatAssetDetailContent({
             />
           </div>
         ),
-      },
-      {
-        key: 'approval',
-        label: 'Thông tin phê duyệt',
-        sections: [
-          {
-            key: 'approval_status_section',
-            title: 'Trạng thái & Quyết định phê duyệt',
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                label: 'Trạng thái phê duyệt',
-                colSpan: 24,
-                render: () => (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '3px 12px',
-                      borderRadius: 999,
-                      fontWeight: fontWeightBold,
-                      fontSize: 13,
-                      color: approvalInfo.color,
-                      backgroundColor: `${approvalInfo.color}15`,
-                      border: `1px solid ${approvalInfo.color}40`,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: '50%',
-                        backgroundColor: approvalInfo.color,
-                      }}
-                    />
-                    {approvalInfo.label}
-                  </span>
-                ),
-              },
-              {
-                label: 'Cán bộ gửi phê duyệt',
-                value: (rec) => rec.submittedByName || '',
-              },
-              {
-                label: 'Ngày gửi phê duyệt',
-                value: (rec) =>
-                  rec.submittedAt
-                    ? dayjs(rec.submittedAt).format('DD/MM/YYYY HH:mm')
-                    : '',
-              },
-              {
-                label: 'Cán bộ phê duyệt Cảng vụ/Chi cục',
-                value: (rec) => rec.portAuthorityApprovedByName || '',
-              },
-              {
-                label: 'Ngày Cảng vụ/Chi cục duyệt',
-                value: (rec) =>
-                  rec.portAuthorityApprovedAt
-                    ? dayjs(rec.portAuthorityApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '',
-              },
-              {
-                label: 'Nội dung Cảng vụ duyệt',
-                value: (rec) => rec.portAuthorityApprovalContent || '',
-                colSpan: 24,
-              },
-              {
-                label: 'Cán bộ phê duyệt Cục',
-                value: (rec) => rec.departmentApprovedByName || '',
-              },
-              {
-                label: 'Ngày Cục duyệt',
-                value: (rec) =>
-                  rec.departmentApprovedAt
-                    ? dayjs(rec.departmentApprovedAt).format('DD/MM/YYYY HH:mm')
-                    : '',
-              },
-              {
-                label: 'Nội dung Cục duyệt',
-                value: (rec) => rec.departmentApprovalContent || '',
-                colSpan: 24,
-              },
-              {
-                label: 'Lý do từ chối (nếu có)',
-                value: (rec) => rec.rejectionReason || '',
-                colSpan: 24,
-              },
-              {
-                label: 'Cán bộ cập nhật cuối',
-                value: (rec) => rec.updatedByName || '',
-              },
-              {
-                label: 'Ngày cập nhật cuối',
-                value: (rec) =>
-                  rec.updatedAt
-                    ? dayjs(rec.updatedAt).format('DD/MM/YYYY HH:mm')
-                    : '',
-              },
-            ],
-          },
-        ],
       },
     ];
   }, [

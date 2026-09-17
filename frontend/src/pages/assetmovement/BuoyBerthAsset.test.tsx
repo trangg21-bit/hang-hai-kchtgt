@@ -169,7 +169,7 @@ describe('Module 4: Tài sản bến phao (docs/checklists/CHECKLIST-TAI-SAN-BEN
         orgUnitId: 'org-5',
         role: 'ADMIN',
         status: 'authenticated',
-        permissions: ['infraasset:manage'],
+        permissions: ['infraasset:manage', 'buoyberth:manage', 'buoyberthasset:manage'],
       },
       isAuthenticated: true,
       token: 'admin-jwt-token',
@@ -243,9 +243,10 @@ describe('Module 4: Tài sản bến phao (docs/checklists/CHECKLIST-TAI-SAN-BEN
     expect(html).toContain('Quản lý tài sản KCHT hàng hải');
     expect(html).toContain('Tài sản bến phao');
     expect(html).toContain('Thêm mới');
-    expect(html).toContain('Mã bến phao');
+    expect(html).toContain('Tên tài sản');
+    expect(html).toContain('Mở rộng bộ lọc nâng cao');
     expect(html).toContain('Tất cả');
-    expect(html).toContain('Đã duyệt');
+    expect(html).toContain('Đã phê duyệt');
     expect(html).toContain('TÊN/MÃ TÀI SẢN');
     expect(html).toContain('MÃ BẾN PHAO');
     expect(html).toContain('LOẠI TÀI SẢN');
@@ -329,7 +330,7 @@ describe('Module 4: Tài sản bến phao (docs/checklists/CHECKLIST-TAI-SAN-BEN
     expect(html).toContain('Thông tin chi tiết');
     expect(html).toContain('Khai thác tài sản (1)');
     expect(html).toContain('Lịch sử thay đổi nguyên giá (1)');
-    expect(html).toMatch(/Xử lý.*theo dõi/);
+    expect(html).toContain('Thông tin phê duyệt');
     expect(html).toContain('BP-VT-01');
     expect(html).toContain('TS-BP-001');
 

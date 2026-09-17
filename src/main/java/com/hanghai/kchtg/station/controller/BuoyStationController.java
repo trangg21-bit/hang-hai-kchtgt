@@ -37,13 +37,13 @@ public class BuoyStationController {
         private final UserRepository userRepository;
 
         @GetMapping
-        @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'data:read')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:read', 'buoyasset:manage', 'buoyasset:read', 'buoy:manage', 'buoy:read', 'data:read')")
         public ResponseEntity<ApiResponse<List<BuoyStationResponse>>> findAll() {
                 return ResponseEntity.ok(ApiResponse.success(service.findAll()));
         }
 
         @GetMapping("/generate-code")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:create') or @auth.check(authentication, 'data:create')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:create', 'buoyasset:manage', 'buoyasset:create', 'buoy:manage', 'buoy:create', 'data:create')")
         public ResponseEntity<ApiResponse<Map<String, String>>> generateCode(
                         @RequestParam(required = false) UUID portId) {
                 String code = service.generateCode(portId);
@@ -52,13 +52,13 @@ public class BuoyStationController {
         }
 
         @GetMapping("/{id}")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'data:read')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:read', 'buoyasset:manage', 'buoyasset:read', 'buoy:manage', 'buoy:read', 'data:read')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> findById(@PathVariable UUID id) {
                 return ResponseEntity.ok(ApiResponse.success(service.findById(id)));
         }
 
         @GetMapping("/search")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'data:read')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:read', 'buoyasset:manage', 'buoyasset:read', 'buoy:manage', 'buoy:read', 'data:read')")
         public ResponseEntity<ApiResponse<List<BuoyStationResponse>>> search(
                         @RequestParam(required = false) String name,
                         @RequestParam(required = false) String code,
@@ -73,7 +73,7 @@ public class BuoyStationController {
         }
 
         @PostMapping
-        @PreAuthorize("@auth.check(authentication, 'buoystation:create') or @auth.check(authentication, 'data:create')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:create', 'buoyasset:manage', 'buoyasset:create', 'buoy:manage', 'buoy:create', 'data:create')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> create(
                         @Valid @RequestBody CreateBuoyStationRequest request) {
                 BuoyStationResponse response = service.create(request);
@@ -82,7 +82,7 @@ public class BuoyStationController {
         }
 
         @PutMapping("/{id}")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:update') or @auth.check(authentication, 'data:update')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:update', 'buoyasset:manage', 'buoyasset:update', 'buoy:manage', 'buoy:update', 'data:update')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> update(
                         @PathVariable UUID id,
                         @Valid @RequestBody UpdateBuoyStationRequest request) {
@@ -92,7 +92,7 @@ public class BuoyStationController {
         }
 
         @DeleteMapping("/{id}")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:delete') or @auth.check(authentication, 'data:delete')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:delete', 'buoyasset:manage', 'buoyasset:delete', 'buoy:manage', 'buoy:delete', 'data:delete')")
         public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
                 service.delete(id);
                 return ResponseEntity.ok(
@@ -100,7 +100,7 @@ public class BuoyStationController {
         }
 
         @PostMapping("/{id}/submit-approval")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:create') or @auth.check(authentication, 'buoystation:update') or @auth.check(authentication, 'data:create') or @auth.check(authentication, 'data:update')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:create', 'buoystation:update', 'buoyasset:manage', 'buoyasset:create', 'buoyasset:update', 'buoy:manage', 'buoy:create', 'buoy:update', 'data:create', 'data:update')")
         public ResponseEntity<ApiResponse<Void>> submitForApproval(@PathVariable UUID id) {
                 service.submitForApproval(id);
                 return ResponseEntity.ok(
@@ -108,7 +108,7 @@ public class BuoyStationController {
         }
 
         @PostMapping("/{id}/approve-l1")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:approvec1') or @auth.check(authentication, 'buoystation:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:approvec1', 'buoystation:approvel1', 'buoyasset:manage', 'buoyasset:approvec1', 'buoyasset:approvel1', 'buoy:manage', 'buoy:approvec1', 'buoy:approvel1', 'data:approvec1', 'data:approvel1')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL1(
                         @PathVariable UUID id,
                         @RequestParam UUID approverId,
@@ -119,7 +119,7 @@ public class BuoyStationController {
         }
 
         @PostMapping("/{id}/approve-l2")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:approvec2') or @auth.check(authentication, 'buoystation:approvel2') or @auth.check(authentication, 'data:approvec2') or @auth.check(authentication, 'data:approvel2')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:approvec2', 'buoystation:approvel2', 'buoyasset:manage', 'buoyasset:approvec2', 'buoyasset:approvel2', 'buoy:manage', 'buoy:approvec2', 'buoy:approvel2', 'data:approvec2', 'data:approvel2')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL2(
                         @PathVariable UUID id,
                         @RequestParam UUID approverId,
@@ -130,7 +130,7 @@ public class BuoyStationController {
         }
 
         @PostMapping("/{id}/reject")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:approvec1') or @auth.check(authentication, 'buoystation:approvec2') or @auth.check(authentication, 'buoystation:approvel1') or @auth.check(authentication, 'buoystation:approvel2') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel2')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:approvec1', 'buoystation:approvec2', 'buoystation:approvel1', 'buoystation:approvel2', 'buoyasset:manage', 'buoyasset:approvec1', 'buoyasset:approvec2', 'buoyasset:approvel1', 'buoyasset:approvel2', 'buoy:manage', 'buoy:approvec1', 'buoy:approvec2', 'data:approvec1', 'data:approvel2')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> reject(
                         @PathVariable UUID id,
                         @RequestParam String rejectReason,
@@ -141,7 +141,7 @@ public class BuoyStationController {
         }
 
         @GetMapping("/{id}/history")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'buoystation:history') or @auth.check(authentication, 'data:read')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:read', 'buoystation:history', 'buoyasset:manage', 'buoyasset:read', 'buoyasset:history', 'buoy:manage', 'buoy:read', 'buoy:history', 'data:read')")
         public ResponseEntity<ApiResponse<Map<String, Object>>> getHistory(@PathVariable UUID id) {
                 String entityId = id.toString();
                 String currentApprovalStatus = phaoRepo.findById(id)
@@ -202,7 +202,7 @@ public class BuoyStationController {
         }
 
         @GetMapping("/history/all")
-        @PreAuthorize("@auth.check(authentication, 'buoystation:read') or @auth.check(authentication, 'buoystation:history') or @auth.check(authentication, 'data:read')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:read', 'buoystation:history', 'buoyasset:manage', 'buoyasset:read', 'buoyasset:history', 'buoy:manage', 'buoy:read', 'buoy:history', 'data:read')")
         public ResponseEntity<ApiResponse<Map<String, Object>>> getAllHistory() {
                 List<InfrastructureHistory> list = historyRepository
                                 .findByRefTypeOrderByApprovedDateDesc(InfrastructureType.BUOY_STATION);

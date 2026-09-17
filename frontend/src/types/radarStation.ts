@@ -134,7 +134,8 @@ export interface CreateRadarStationRequest {
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
   mapIcon?: string;
-  action?: 'draft' | 'submit';
+  action?: 'draft' | 'submit' | 'approve';
+  approvalStatus?: RadarStationStatus;
 }
 
 export interface UpdateRadarStationRequest extends Partial<CreateRadarStationRequest> {}

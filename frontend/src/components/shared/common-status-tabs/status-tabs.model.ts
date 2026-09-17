@@ -1,6 +1,6 @@
 import type React from 'react';
 
-/** Khóa trạng thái phê duyệt chuẩn 6 tab */
+/** Khóa trạng thái phê duyệt chuẩn 8 tab */
 export type ApprovalStatusKey =
   | 'all'
   | 'DRAFT'
@@ -8,6 +8,8 @@ export type ApprovalStatusKey =
   | 'APPROVED_LEVEL1'
   | 'APPROVED'
   | 'REJECTED_LEVEL1'
+  | 'REJECTED_LEVEL2'
+  | 'ARCHIVED'
   | string;
 
 /** Cấu hình từng tab trạng thái */
@@ -38,7 +40,7 @@ export interface CommonStatusTabsProps {
   dataSource?: readonly Record<string, unknown>[];
   /** Tên trường trạng thái trong dataSource để tự động đếm (mặc định 'approvalStatus') */
   statusField?: string;
-  /** Danh sách cấu hình tab tùy biến (nếu muốn thay thế 6 tab mặc định) */
+  /** Danh sách cấu hình tab tùy biến (nếu muốn thay thế 8 tab mặc định) */
   customTabs?: CommonStatusTabItem[];
   /** Tự động ẩn tab nếu số lượng = 0 (mặc định false) */
   hideZeroCount?: boolean;
@@ -49,14 +51,15 @@ export interface CommonStatusTabsProps {
 }
 
 /**
- * Danh sách 6 tab trạng thái phê duyệt chuẩn hệ thống Hàng hải KCHTGT
- * Màu sắc chuẩn theo quy chuẩn AGENTS.md:
+ * Danh sách 8 tab trạng thái phê duyệt chuẩn hệ thống Hàng hải KCHTGT (chuẩn Quản lý khu neo đậu)
  * 1. Tất cả (#0E6FD6)
  * 2. Lưu tạm (#93A3B3)
- * 3. Chờ Cảng vụ duyệt (#EDA100)
- * 4. Chờ Cục duyệt (#0284C7)
- * 5. Đã duyệt (#1BAF7A)
- * 6. Từ chối (#E34948)
+ * 3. Chờ phê duyệt cấp Cảng vụ/Chi cục (#204E9C)
+ * 4. Chờ phê duyệt cấp Cục (#EDA100)
+ * 5. Đã phê duyệt (#1BAF7A)
+ * 6. Từ chối cấp Cảng vụ/Chi cục (#E34948)
+ * 7. Từ chối cấp Cục (#E34948)
+ * 8. Đã xóa (#E34948)
  */
 export const STANDARD_APPROVAL_TABS: readonly Omit<CommonStatusTabItem, 'count' | 'active'>[] = [
   {
@@ -73,27 +76,33 @@ export const STANDARD_APPROVAL_TABS: readonly Omit<CommonStatusTabItem, 'count' 
   },
   {
     key: 'PENDING_APPROVAL',
-    label: 'Chờ Cảng vụ duyệt',
-    color: '#EDA100',
+    label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+    color: '#204E9C',
     queryStatus: 'PENDING_APPROVAL',
   },
   {
     key: 'APPROVED_LEVEL1',
-    label: 'Chờ Cục duyệt',
-    color: '#0284C7',
+    label: 'Chờ phê duyệt cấp Cục',
+    color: '#EDA100',
     queryStatus: 'APPROVED_LEVEL1',
   },
   {
     key: 'APPROVED',
-    label: 'Đã duyệt',
+    label: 'Đã phê duyệt',
     color: '#1BAF7A',
     queryStatus: 'APPROVED',
   },
   {
     key: 'REJECTED_LEVEL1',
-    label: 'Từ chối',
+    label: 'Từ chối cấp Cảng vụ/Chi cục',
     color: '#E34948',
     queryStatus: 'REJECTED_LEVEL1',
+  },
+  {
+    key: 'REJECTED_LEVEL2',
+    label: 'Từ chối cấp Cục',
+    color: '#E34948',
+    queryStatus: 'REJECTED_LEVEL2',
   },
   {
     key: 'ARCHIVED',

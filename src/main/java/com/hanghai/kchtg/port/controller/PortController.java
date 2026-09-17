@@ -75,7 +75,7 @@ public class PortController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'port:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'port:manage', 'port:read', 'infraasset:manage', 'infraasset:read', 'data:read', 'stormshelterasset:manage', 'stormshelterasset:read', 'stormshelter:manage', 'stormshelter:read', 'berthasset:manage', 'berthasset:read', 'berth:manage', 'berth:read', 'pierasset:manage', 'pierasset:read', 'pier:manage', 'pier:read', 'anchorageasset:manage', 'anchorageasset:read', 'anchorage:manage', 'anchorage:read', 'buoyberthasset:manage', 'buoyberthasset:read', 'buoyberth:manage', 'buoyberth:read', 'transferareaasset:manage', 'transferareaasset:read', 'transferarea:manage', 'transferarea:read', 'dryportasset:manage', 'dryportasset:read', 'dryport:manage', 'dryport:read')")
     public ResponseEntity<ApiResponse<PortResponse>> getById(@PathVariable UUID id) {
         log.info("Getting Port by id={}", id);
         PortResponse response = portService.getById(id);
@@ -84,7 +84,7 @@ public class PortController {
 
     @GetMapping
     @DataScope
-    @PreAuthorize("@auth.check(authentication, 'port:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'port:manage', 'port:read', 'infraasset:manage', 'infraasset:read', 'data:read', 'stormshelterasset:manage', 'stormshelterasset:read', 'stormshelter:manage', 'stormshelter:read', 'berthasset:manage', 'berthasset:read', 'berth:manage', 'berth:read', 'pierasset:manage', 'pierasset:read', 'pier:manage', 'pier:read', 'anchorageasset:manage', 'anchorageasset:read', 'anchorage:manage', 'anchorage:read', 'buoyberthasset:manage', 'buoyberthasset:read', 'buoyberth:manage', 'buoyberth:read', 'transferareaasset:manage', 'transferareaasset:read', 'transferarea:manage', 'transferarea:read', 'dryportasset:manage', 'dryportasset:read', 'dryport:manage', 'dryport:read')")
     public ResponseEntity<ApiResponse<Page<PortResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,

@@ -76,7 +76,12 @@ export function fmtInputNumber(
 ): string {
   if (info?.userTyping) return v === null || v === undefined ? '' : String(v);
   if (v === null || v === undefined || v === '') return '';
-  return formatDotNumber(v);
+  let s = String(v).trim();
+  if (s === '') return '';
+  if (s.includes('.')) {
+    s = s.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1');
+  }
+  return s;
 }
 
 /**

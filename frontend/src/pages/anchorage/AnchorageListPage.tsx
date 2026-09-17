@@ -671,7 +671,7 @@ export default function AnchorageListPage() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const r = await anchorageCRUD.search({
         orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
@@ -689,8 +689,8 @@ export default function AnchorageListPage() {
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
-    } catch (ex: unknown) {
-      setIsError(true); setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách khu neo đậu'));
+    } catch {
+      setIsError(true);
     } finally {
       setIsLoading(false);
     }
@@ -1277,16 +1277,17 @@ export default function AnchorageListPage() {
             align-items: center !important;
             scrollbar-width: thin !important;
             scrollbar-color: #cbd5e1 #f8fafc !important;
-            padding: 2px 16px 6px 16px !important;
-            gap: 20px !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
           }
           .anchorage-page-wrapper div:has(> button[aria-pressed]) > button {
             white-space: nowrap !important;
             flex-shrink: 0 !important;
             cursor: pointer !important;
+            padding: 4px 2px !important;
           }
           .anchorage-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
-            height: 6px !important;
+            height: 4px !important;
             display: block !important;
           }
           .anchorage-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Form, InputNumber } from 'antd';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -6,6 +6,7 @@ import { BankOutlined, SlidersOutlined, ProfileOutlined } from '@ant-design/icon
 import type { Organization } from '../../services/organizationService';
 import type { AisSystemAsset, AisSystemAssetPayload } from '../../services/aisasset/types';
 import type { AisSystemOption } from '../../services/aisasset/api';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
 import InfrastructureAttachmentTab, {
@@ -39,33 +40,14 @@ export type FormValues = Omit<
   attachmentName?: string;
 };
 
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
-const USAGE_STATUSES = ['Đang sử dụng', 'Chưa sử dụng', 'Tạm dừng sử dụng'];
-const ASSET_GROUPS = [
-  'Nhà, công trình xây dựng',
-  'Máy móc, thiết bị',
-  'Phương tiện vận tải',
-  'Tài sản khác',
-];
-const ORIGINS = [
-  'Mua sắm',
-  'Đầu tư xây dựng',
-  'Được giao',
-  'Điều chuyển',
-  'Khác',
-];
-const AIS_ASSET_TYPES = [
-  'Hệ thống AIS',
-  'Trạm bờ AIS',
-  'Thiết bị thu phát AIS (Transponder)',
-  'Anten AIS',
-  'Máy chủ xử lý dữ liệu AIS',
-  'Phần mềm khai thác AIS',
-  'Hệ thống phụ trợ',
-  'Khác',
-];
-const UNITS = ['Cái', 'Bộ', 'Chiếc', 'Hệ thống', 'm²', 'm'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
+import {
+  ASSET_CONDITION_OPTIONS,
+  ASSET_GROUP_OPTIONS,
+  ASSET_ORIGIN_OPTIONS,
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
+} from '../../constants/assetDropdown';
 
 export interface AisSystemAssetFormProps {
   open: boolean;
@@ -181,7 +163,8 @@ export default function AisSystemAssetForm({
                 type: FormFieldType.Select,
                 required: true,
                 placeholder: 'Chọn loại tài sản',
-                options: AIS_ASSET_TYPES.map((v) => ({ value: v, label: v })),
+                allowClear: true,
+                options: MARITIME_ASSET_TYPE_OPTIONS,
                 rules: [{ required: true, message: 'Loại tài sản là bắt buộc' }],
                 colSpan: 12,
               },
@@ -197,6 +180,7 @@ export default function AisSystemAssetForm({
                 name: 'assetName',
                 label: 'Tên tài sản',
                 type: FormFieldType.Text,
+                maxLength: 255,
                 required: true,
                 placeholder: 'Nhập tên tài sản...',
                 rules: [{ required: true, message: 'Tên tài sản là bắt buộc' }],
@@ -206,6 +190,7 @@ export default function AisSystemAssetForm({
                 name: 'barcode',
                 label: 'Barcode',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập mã barcode',
                 colSpan: 12,
               },
@@ -215,7 +200,7 @@ export default function AisSystemAssetForm({
                 type: FormFieldType.Select,
                 required: true,
                 placeholder: 'Chọn tình trạng',
-                options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+                options: ASSET_CONDITION_OPTIONS,
                 rules: [{ required: true, message: 'Tình trạng tài sản là bắt buộc' }],
                 colSpan: 12,
               },
@@ -225,7 +210,7 @@ export default function AisSystemAssetForm({
                 type: FormFieldType.Select,
                 required: true,
                 placeholder: 'Chọn hiện trạng',
-                options: USAGE_STATUSES.map((v) => ({ value: v, label: v })),
+                options: USAGE_STATUS_OPTIONS,
                 rules: [{ required: true, message: 'Hiện trạng sử dụng là bắt buộc' }],
                 colSpan: 12,
               },
@@ -235,7 +220,7 @@ export default function AisSystemAssetForm({
                 type: FormFieldType.Select,
                 required: true,
                 placeholder: 'Chọn nhóm tài sản',
-                options: ASSET_GROUPS.map((v) => ({ value: v, label: v })),
+                options: ASSET_GROUP_OPTIONS,
                 rules: [{ required: true, message: 'Nhóm tài sản là bắt buộc' }],
                 colSpan: 12,
               },
@@ -243,6 +228,7 @@ export default function AisSystemAssetForm({
                 name: 'assetSubgroup',
                 label: 'Phân nhóm tài sản',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập phân nhóm tài sản',
                 colSpan: 12,
               },
@@ -251,13 +237,14 @@ export default function AisSystemAssetForm({
                 label: 'Nguồn gốc',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn nguồn gốc',
-                options: ORIGINS.map((v) => ({ value: v, label: v })),
+                options: ASSET_ORIGIN_OPTIONS,
                 colSpan: 12,
               },
               {
                 name: 'address',
                 label: 'Địa chỉ',
                 type: FormFieldType.Text,
+                maxLength: 2000,
                 placeholder: 'Nhập địa chỉ tài sản',
                 colSpan: 24,
               },
@@ -271,23 +258,28 @@ export default function AisSystemAssetForm({
                 name: 'quantity',
                 label: 'Số lượng',
                 type: FormFieldType.Number,
-                min: 0,
+                min: 1,
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
                 formatter: fmtInputNumber,
                 placeholder: '1',
                 colSpan: 12,
               },
               {
                 name: 'quantityUnit',
-                label: 'Đơn vị tính số lượng',
+                label: 'Đơn vị tính',
                 type: FormFieldType.Select,
+                required: true,
+                rules: [{ required: true, message: 'Vui lòng chọn đơn vị tính' }],
                 placeholder: 'Chọn đơn vị tính',
-                options: UNITS.map((v) => ({ value: v, label: v })),
+                options: ASSET_QUANTITY_UNIT_OPTIONS,
                 colSpan: 12,
               },
               {
                 name: 'model',
                 label: 'Model',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập model',
                 colSpan: 12,
               },
@@ -295,6 +287,7 @@ export default function AisSystemAssetForm({
                 name: 'serialNumber',
                 label: 'Serial',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập serial',
                 colSpan: 12,
               },
@@ -302,6 +295,7 @@ export default function AisSystemAssetForm({
                 name: 'countryOfOrigin',
                 label: 'Xuất xứ',
                 type: FormFieldType.Text,
+                maxLength: 100,
                 placeholder: 'Nhập xuất xứ',
                 colSpan: 12,
               },
@@ -309,6 +303,7 @@ export default function AisSystemAssetForm({
                 name: 'manufacturer',
                 label: 'Hãng sản xuất',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập hãng sản xuất',
                 colSpan: 12,
               },
@@ -351,6 +346,7 @@ export default function AisSystemAssetForm({
                 name: 'assetLocation',
                 label: 'Vị trí tài sản',
                 type: FormFieldType.Text,
+                maxLength: 2000,
                 placeholder: 'Nhập vị trí tài sản',
                 colSpan: 24,
               },
@@ -365,8 +361,6 @@ export default function AisSystemAssetForm({
         customContent: (
           <div style={{ padding: '8px 0' }}>
             <InfrastructureAttachmentTab
-              refType="AIS_SYSTEM_ASSET"
-              refId={selected?.id || 'new'}
               attachments={attachments}
               readonly={false}
               onUpload={onUploadAttachment}
@@ -432,6 +426,7 @@ export default function AisSystemAssetForm({
                 name: 'assignmentDecisionNumber',
                 label: 'Số quyết định giao (bao gồm cả tăng vốn)',
                 type: FormFieldType.Text,
+                maxLength: 200,
                 placeholder: 'Nhập số quyết định giao',
                 colSpan: 12,
               },
@@ -500,7 +495,7 @@ export default function AisSystemAssetForm({
                 label: 'Hình thức xử lý tài sản',
                 type: FormFieldType.Select,
                 placeholder: 'Chọn hình thức',
-                options: DISPOSAL_METHODS.map((v) => ({ value: v, label: v })),
+                options: DISPOSAL_METHOD_OPTIONS,
                 colSpan: 12,
               },
             ],
@@ -512,7 +507,6 @@ export default function AisSystemAssetForm({
     organizations,
     aisSystems,
     attachments,
-    selected?.id,
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,

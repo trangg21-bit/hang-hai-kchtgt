@@ -1,57 +1,56 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { DatePicker, Form, Input, Button, Space } from 'antd';
+
 import {
-  PlusOutlined,
-  EyeOutlined,
-  EditOutlined,
   DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
   HistoryOutlined,
-  RocketOutlined,
-  PlusCircleOutlined,
   MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from '../../components/ToastNotification';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { fmtInputNumber } from '../../utils/numFmt';
 
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import * as themeTokenChk from '../../themetokenchk';
 import {
-  fontWeightBold,
-  colors,
-  borderDefault,
-  drawerTitleStyle,
-  fontSizeLg,
-  fontSizeMd,
-  actionPrimary,
-  radiusPill,
-  spaceSm,
-  spaceMd,
-  spaceXl,
-  textTertiary,
-} from '../../themetokenchk';
-import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
-  organizationService,
-  type Organization,
-} from '../../services/organizationService';
+  createAssetDecrease,
+  createAssetIncrease,
+  createKhaiThac,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchKhaiThacList,
+} from '../../services/assetmovement/api';
+import type {
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  AssetValueAdjustmentDetails,
+} from '../../services/assetmovement/types';
 import {
   createCctvSystemAsset,
   deleteCctvSystemAsset,
@@ -67,48 +66,39 @@ import type {
   CctvSystemAssetPayload,
 } from '../../services/cctvasset/types';
 import {
-  createAssetDecrease,
-  createAssetIncrease,
-  createKhaiThac,
-  fetchAssetDecreaseList,
-  fetchAssetIncreaseList,
-  fetchKhaiThacList,
-} from '../../services/assetmovement/api';
-import type {
-  AssetDecreaseResponse,
-  AssetExploitationResponse,
-  AssetIncreaseResponse,
-  AssetValueAdjustmentDetails,
-} from '../../services/assetmovement/types';
-import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+  organizationService,
+  type Organization,
+} from '../../services/organizationService';
+import { useAuthStore } from '../../store/authStore';
+import * as themeTokenChk from '../../themetokenchk';
 import {
-  saveAttachmentFile,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
+import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
+  saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import { useAuthStore } from '../../store/authStore';
-import CctvSystemAssetForm, { type FormValues } from './CctvSystemAssetForm';
 import CctvSystemAssetDetailContent from './CctvSystemAssetDetailContent';
+import CctvSystemAssetForm, { type FormValues } from './CctvSystemAssetForm';
 import CctvSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './CctvSystemAssetOperationForm';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
-
-const CCTV_ASSET_TYPES = [
-  'Hệ thống CCTV',
-  'Camera giám sát (CCTV)',
-  'Đầu ghi hình (NVR/DVR)',
-  'Màn hình hiển thị',
-  'Máy chủ lưu trữ video',
-  'Hạ tầng truyền dẫn/mạng',
-  'Phần mềm giám sát CCTV',
-  'Thiết bị phụ trợ',
-  'Khác',
-];
-
-const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -205,7 +195,7 @@ const CCTV_HISTORY_FIELD_ORDER = [
   'attachments',
 ];
 
-const BREADCRUMB_ITEMS: BreadcrumbItem[] = [
+const BREADCRUMB_ITEMS = [
   { label: 'Trang chủ', path: '/' },
   { label: 'Quản lý tài sản KCHT hàng hải' },
   { label: 'Tài sản HT CCTV' },
@@ -220,6 +210,7 @@ const isValidationError = (cause: unknown) =>
   Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function CctvSystemAssetList() {
+  const perms = useAssetPermissions(['cctv', 'cctvasset']);
   const currentUser = useAuthStore((s) => s.user);
   const [data, setData] = useState<CctvSystemAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -246,7 +237,7 @@ export default function CctvSystemAssetList() {
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<CctvSystemAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
@@ -257,12 +248,12 @@ export default function CctvSystemAssetList() {
     [organizations]
   );
   const cctvDeviceMap = useMemo(
-    () => new Map(cctvDevices.map((item) => [item.id, { code: item.code, name: item.name }])),
+    () => new Map(cctvDevices.map((item) => [item.id, { deviceCode: item.deviceCode, deviceName: item.deviceName }])),
     [cctvDevices]
   );
 
   const formatHistoryValue = useCallback(
-    (field: string, val: any) => {
+    (field: string, val: unknown) => {
       if (val == null || val === '') return '';
       if (
         ['originalValue', 'remainingValue', 'accumulatedDepreciation', 'monthlyDepreciation'].includes(
@@ -285,7 +276,7 @@ export default function CctvSystemAssetList() {
       }
       if (field === 'cctvId' || field === 'cctvDeviceId') {
         const dev = cctvDeviceMap.get(String(val));
-        return dev ? (dev.code ? `${dev.code} - ${dev.name}` : dev.name) : String(val);
+        return dev ? (dev.deviceCode ? `${dev.deviceCode} - ${dev.deviceName}` : dev.deviceName) : String(val);
       }
       if (field === 'constructionYear') {
         const str = String(val).trim();
@@ -329,7 +320,7 @@ export default function CctvSystemAssetList() {
 
   const filteredHistoryRecords = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
-    return (historyRecords || []).filter((r: any) => {
+    return (historyRecords || []).filter((r: RawHistoryRecord) => {
       if (q) {
         const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
@@ -365,7 +356,7 @@ export default function CctvSystemAssetList() {
 
   const historyFieldCount = filteredHistoryRecords.length;
 
-  const renderCctvHistoryTimeline = (filtered: any[]) => {
+  const renderCctvHistoryTimeline = (filtered: RawHistoryRecord[]) => {
     const q = historySearch.toLowerCase().trim();
     return renderStandardHistoryCards({
       records: filtered,
@@ -398,7 +389,7 @@ export default function CctvSystemAssetList() {
       resolveUnitName: (rec) => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -463,18 +454,15 @@ export default function CctvSystemAssetList() {
     form.resetFields();
     form.setFieldsValue({
       valueUnit: 'VNĐ',
-      quantity: 1,
-      quantityUnit: 'Bộ',
-      assetCondition: 'Tốt',
-      usageStatus: 'Đang sử dụng',
-      assetGroup: 'Máy móc, thiết bị',
-      assetType: 'Hệ thống CCTV',
-      origin: 'Mua sắm',
     });
   }, [form]);
 
   const openEdit = useCallback(
     (record: CctvSystemAsset) => {
+      if (!isAssetRecordEditable(record.approvalStatus)) {
+        toast.warning('Hồ sơ đang ở trạng thái không được phép chỉnh sửa.');
+        return;
+      }
       setSelected(record);
       setDrawerMode('edit');
       form.resetFields();
@@ -693,7 +681,7 @@ export default function CctvSystemAssetList() {
       const s = val.trim();
       if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
     }
-    const parsed = dayjs(val as any);
+    const parsed = dayjs(val as string | number | Date);
     return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
   };
 
@@ -715,7 +703,7 @@ export default function CctvSystemAssetList() {
           attachments.length > 0 ? attachments.map((a) => a.fileName).join(', ') : undefined,
       };
 
-      const cleanPayload: Record<string, any> = { ...payload };
+      const cleanPayload: Record<string, unknown> = { ...payload };
       const excludeKeys = [
         'id',
         'parentOrgUnitName',
@@ -744,7 +732,7 @@ export default function CctvSystemAssetList() {
       });
 
       if (drawerMode === 'create') {
-        await createCctvSystemAsset(cleanPayload as any);
+        await createCctvSystemAsset(cleanPayload as unknown as CctvSystemAssetPayload);
         toast.success(
           status === 'DRAFT'
             ? 'Đã lưu tạm tài sản HT CCTV'
@@ -753,7 +741,7 @@ export default function CctvSystemAssetList() {
             : 'Đã tạo và phê duyệt tài sản HT CCTV'
         );
       } else if (selected) {
-        await updateCctvSystemAsset(selected.id, cleanPayload as any);
+        await updateCctvSystemAsset(selected.id, cleanPayload as unknown as CctvSystemAssetPayload);
         toast.success('Đã cập nhật tài sản HT CCTV thành công');
       }
 
@@ -808,7 +796,7 @@ export default function CctvSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: selected.assetName,
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -874,6 +862,7 @@ export default function CctvSystemAssetList() {
             assetName: selected.assetName,
             quantity: selected.quantity || 1,
             unitOfMeasure: selected.quantityUnit || 'Hệ thống',
+            decreaseReason: values.adjustmentReason || 'Thanh lý một phần',
             reason: values.adjustmentReason || 'Thanh lý một phần',
             decreaseCode: `YC-GIAM-${Date.now().toString().slice(-6)}`,
             adjustmentDetails,
@@ -902,36 +891,6 @@ export default function CctvSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
-      key: 'usingOrgUnitId',
-      label: 'Đơn vị sử dụng',
-      type: 'treeSelect',
-      organizations,
-      placeholder: 'Chọn đơn vị...',
-    },
-    {
-      key: 'cctvId',
-      label: 'Mã thiết bị CCTV',
-      type: 'select',
-      placeholder: 'Chọn thiết bị CCTV',
-      options: cctvDevices.map((item) => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-      })),
-    },
-    {
-      key: 'assetType',
-      label: 'Loại tài sản',
-      type: 'select',
-      placeholder: 'Chọn loại tài sản',
-      options: CCTV_ASSET_TYPES.map((v) => ({ value: v, label: v })),
-    },
-    {
-      key: 'assetCode',
-      label: 'Mã tài sản',
-      type: 'text',
-      placeholder: 'Tìm theo mã tài sản',
-    },
-    {
       key: 'assetName',
       label: 'Tên tài sản',
       type: 'text',
@@ -942,13 +901,48 @@ export default function CctvSystemAssetList() {
       label: 'Tình trạng tài sản',
       type: 'select',
       placeholder: 'Chọn tình trạng',
-      options: ASSET_CONDITIONS.map((v) => ({ value: v, label: v })),
+      options: ASSET_CONDITION_OPTIONS,
+    },
+    {
+      key: 'usingOrgUnitId',
+      label: 'Đơn vị sử dụng',
+      type: 'treeSelect',
+      organizations,
+      placeholder: 'Chọn đơn vị...',
+      isAdvanced: true,
+    },
+    {
+      key: 'cctvId',
+      label: 'Mã thiết bị CCTV',
+      type: 'select',
+      placeholder: 'Chọn thiết bị CCTV',
+      options: cctvDevices.map((item) => ({
+        value: item.id,
+        label: `${item.deviceCode} - ${item.deviceName}`,
+      })),
+      isAdvanced: true,
+    },
+    {
+      key: 'assetType',
+      label: 'Loại tài sản',
+      type: 'select',
+      placeholder: 'Chọn loại tài sản',
+      options: MARITIME_ASSET_TYPE_OPTIONS,
+      isAdvanced: true,
+    },
+    {
+      key: 'assetCode',
+      label: 'Mã tài sản',
+      type: 'text',
+      placeholder: 'Tìm theo mã tài sản',
+      isAdvanced: true,
     },
     {
       key: 'updatedRange',
       label: 'Khoảng ngày cập nhật',
       type: 'dateRange',
       placeholder: ['Từ ngày', 'Đến ngày'],
+      isAdvanced: true,
     },
   ], [organizations, cctvDevices]);
 
@@ -990,7 +984,7 @@ export default function CctvSystemAssetList() {
         allowSort: true,
         render: (v, record) => {
           const a = v ? cctvDeviceMap.get(v as string) : undefined;
-          return a ? `${a.code} - ${a.name}` : record.cctvDeviceCode || '—';
+          return a ? `${a.deviceCode} - ${a.deviceName}` : (record.cctvDeviceCode ? String(record.cctvDeviceCode) : '—');
         },
       },
       {
@@ -999,7 +993,7 @@ export default function CctvSystemAssetList() {
         type: TableColumnType.Text,
         width: 180,
         allowSort: true,
-        render: (v) => v || '—',
+        render: (v) => (v ? String(v) : '—'),
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
@@ -1073,71 +1067,89 @@ export default function CctvSystemAssetList() {
         sortField: 'departmentApprovedAt',
       },
     ],
-    actions: (record: CctvSystemAsset) => [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => void openDetail(record),
-      },
-      {
-        key: 'edit',
-        label: 'Sửa',
-        icon: <EditOutlined />,
-        onClick: () => openEdit(record),
-      },
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('exploit');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            unitOfMeasure: record.quantityUnit,
-            quantity: record.quantity,
-          });
-        },
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('increase');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('decrease');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'history',
-        label: 'Lịch sử thay đổi',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => setDeleteTarget(record),
-      },
-    ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap]);
+    actions: (record: CctvSystemAsset) => {
+      const actions: any[] = [];
+      if (perms.canRead) {
+        actions.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+      if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+        actions.push({
+          key: 'edit',
+          label: 'Sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+      if (perms.canExploit) {
+        actions.push({
+          key: 'exploit',
+          label: 'Khai thác tài sản',
+          icon: <RocketOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('exploit');
+            operationForm.resetFields();
+            operationForm.setFieldsValue({
+              unitOfMeasure: record.quantityUnit,
+              quantity: record.quantity,
+            });
+          },
+        });
+      }
+      if (perms.canIncrease) {
+        actions.push({
+          key: 'increase',
+          label: 'Tăng nguyên giá',
+          icon: <PlusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('increase');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canDecrease) {
+        actions.push({
+          key: 'decrease',
+          label: 'Giảm nguyên giá',
+          icon: <MinusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('decrease');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canHistory) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử thay đổi',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+      const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+      if (isDraft && perms.canDelete) {
+        actions.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+      return actions;
+    },
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap, perms]);
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1145,9 +1157,8 @@ export default function CctvSystemAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({
@@ -1194,7 +1205,6 @@ export default function CctvSystemAssetList() {
         />
 
         <FilterTableLayout
-          hideFilterToggle
           statusTabsNode={
             <CommonStatusTabs
               activeKey={filters.approvalStatus || 'all'}

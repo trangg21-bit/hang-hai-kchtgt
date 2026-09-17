@@ -21,6 +21,7 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   actionPrimary,
@@ -81,24 +82,27 @@ const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
   NHAP: { color: statusDraft, label: 'Lưu tạm' },
   PENDING_APPROVAL: {
-    color: statusAttention,
+    color: actionPrimary,
     label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
   },
   CHO_PHE_DUYET: {
-    color: statusAttention,
+    color: actionPrimary,
     label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
   },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL2: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
+  DA_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: {
     color: statusCritical,
     label: 'Từ chối cấp Cảng vụ/Chi cục',
   },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   REJECTED: { color: statusCritical, label: 'Từ chối' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối' },
+  ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  DA_XOA: { color: statusCritical, label: 'Đã xóa' },
 };
 
 export default function BuoyAssetDetailContent({
@@ -258,22 +262,21 @@ export default function BuoyAssetDetailContent({
                 label: 'Tình trạng tài sản',
                 type: ViewFieldType.Badge,
                 badgeColor: (v) =>
-                  v === 'Tốt'
+                  v === AssetCondition.DANG_SU_DUNG
                     ? statusOperational
-                    : v === 'Hư hỏng cần sửa chữa'
-                      ? statusAttention
-                      : statusCritical,
+                    : v === AssetCondition.HONG_KHONG_SU_DUNG
+                      ? statusCritical
+                      : statusAttention,
               },
               {
                 name: 'usageStatus',
                 label: 'Hiện trạng sử dụng',
                 type: ViewFieldType.Badge,
                 badgeColor: (v) =>
-                  v === 'Đang sử dụng'
+                  v === UsageStatus.QUAN_LY_NHA_NUOC ||
+                  v === UsageStatus.HDSN_KHONG_KINH_DOANH
                     ? statusOperational
-                    : v === 'Đang bảo trì/sửa chữa'
-                      ? statusAttention
-                      : statusDraft,
+                    : statusAttention,
               },
               {
                 name: 'assetGroup',
@@ -308,7 +311,7 @@ export default function BuoyAssetDetailContent({
                 label: 'Số lượng',
                 render: (_v, r) =>
                   r.quantity != null
-                    ? `${fmtNum(r.quantity)} ${r.quantityUnit || ''}`.trim()
+                    ? `${fmtNum(Number(r.quantity))} ${r.quantityUnit || ''}`.trim()
                     : '—',
               },
               {
@@ -356,6 +359,124 @@ export default function BuoyAssetDetailContent({
                 label: 'Vị trí tài sản',
                 type: ViewFieldType.Text,
                 colSpan: 24,
+              },
+            ],
+          },
+          {
+            key: 'approval_info',
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined />,
+            collapsible: true,
+            defaultCollapsed: false,
+            fields: [
+              {
+                label: 'Trạng thái phê duyệt',
+                type: ViewFieldType.Badge,
+                colSpan: 24,
+                render: (_v, r) => {
+                  const s = String(r?.approvalStatus || 'DRAFT');
+                  const cfg = APPROVAL_MAP[s] || {
+                    color: statusDraft,
+                    label: s,
+                  };
+                  return (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '2px 10px',
+                        borderRadius: 999,
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        color: cfg.color,
+                        background: `${cfg.color}15`,
+                        border: `1px solid ${cfg.color}40`,
+                      }}
+                    >
+                      {cfg.label}
+                    </span>
+                  );
+                },
+              },
+              {
+                name: 'updatedByName',
+                label: 'Cán bộ cập nhật',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'updatedAt',
+                label: 'Ngày cập nhật',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'submittedByName',
+                label: 'Cán bộ gửi phê duyệt',
+                render: (val) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'submittedAt',
+                label: 'Ngày gửi phê duyệt',
+                type: ViewFieldType.DateTime,
+              },
+              {
+                name: 'portAuthorityApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                render: (val, r) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (r as any)?.approvedLevel1ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'portAuthorityApprovedAt',
+                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                type: ViewFieldType.DateTime,
+                value: (r) => r?.portAuthorityApprovedAt || (r as any)?.approvedLevel1At,
+              },
+              {
+                name: 'portAuthorityApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                colSpan: 24,
+                value: (r) => r?.portAuthorityApprovalContent || (r as any)?.approvalContentLevel1,
+              },
+              {
+                name: 'departmentApprovedByName',
+                label: 'Cán bộ phê duyệt cấp Cục',
+                render: (val, r) => (
+                  <span style={{ fontWeight: fontWeightBold }}>
+                    {String(val || (r as any)?.approvedLevel2ByName || '—')}
+                  </span>
+                ),
+              },
+              {
+                name: 'departmentApprovedAt',
+                label: 'Ngày phê duyệt cấp Cục',
+                type: ViewFieldType.DateTime,
+                value: (r) => r?.departmentApprovedAt || (r as any)?.approvedLevel2At,
+              },
+              {
+                name: 'departmentApprovalContent',
+                label: 'Nội dung phê duyệt cấp Cục',
+                colSpan: 24,
+                value: (r) => r?.departmentApprovalContent || (r as any)?.approvalContentLevel2,
+              },
+              {
+                name: 'rejectionReason',
+                label: 'Lý do từ chối',
+                colSpan: 24,
+                hidden: (r) => !(r as any)?.rejectionReason,
+                render: (val) => (
+                  <span style={{ color: statusCritical, fontWeight: 500 }}>
+                    {String(val)}
+                  </span>
+                ),
               },
             ],
           },
@@ -614,6 +735,17 @@ export default function BuoyAssetDetailContent({
             >
               {allRows.map((item, idx) => {
                 const isInc = item.changeType === 'INCREASE';
+                const details = item.adjustmentDetails;
+                const decisionNumber = details?.decisionNumber || ('increaseCode' in item ? (item as any).increaseCode : ('decreaseCode' in item ? (item as any).decreaseCode : ''));
+                const decisionDate = details?.decisionDate || (item as any).decisionDate;
+                const adjustmentDate = details?.adjustmentDate || (item as any).adjustmentDate;
+                const adjustmentReason = details?.adjustmentReason || (item as any).adjustmentReason || (item as any).reason;
+                const originalValueBefore = details?.originalValueBefore ?? (item as any).originalValueBefore ?? 0;
+                const originalValueAfter = details?.originalValueAfter ?? (item as any).originalValueAfter ?? 0;
+                const remainingValueBefore = details?.remainingValueBefore ?? (item as any).remainingValueBefore;
+                const remainingValueAfter = details?.remainingValueAfter ?? (item as any).remainingValueAfter;
+                const adjustmentNotes = details?.notes || (item as any).adjustmentNotes;
+
                 return (
                   <div key={item.id || idx} style={sectionBoxStyle}>
                     <div style={sectionHeaderStyle}>
@@ -630,8 +762,8 @@ export default function BuoyAssetDetailContent({
                         </span>
                       </div>
                       <span style={{ fontSize: 12, color: textTertiary }}>
-                        {item.adjustmentDate
-                          ? dayjs(item.adjustmentDate).format('DD/MM/YYYY')
+                        {adjustmentDate
+                          ? dayjs(adjustmentDate).format('DD/MM/YYYY')
                           : item.createdAt
                             ? dayjs(item.createdAt).format('DD/MM/YYYY')
                             : '—'}
@@ -650,7 +782,7 @@ export default function BuoyAssetDetailContent({
                           Số quyết định:{' '}
                         </span>
                         <span style={{ fontWeight: fontWeightBold }}>
-                          {item.decisionNumber || '—'}
+                          {decisionNumber || '—'}
                         </span>
                       </div>
                       <div>
@@ -658,8 +790,8 @@ export default function BuoyAssetDetailContent({
                           Ngày ra quyết định:{' '}
                         </span>
                         <span>
-                          {item.decisionDate
-                            ? dayjs(item.decisionDate).format('DD/MM/YYYY')
+                          {decisionDate
+                            ? dayjs(decisionDate).format('DD/MM/YYYY')
                             : '—'}
                         </span>
                       </div>
@@ -667,7 +799,7 @@ export default function BuoyAssetDetailContent({
                         <span style={{ color: textTertiary }}>
                           Lý do điều chỉnh:{' '}
                         </span>
-                        <span>{item.adjustmentReason || '—'}</span>
+                        <span>{adjustmentReason || '—'}</span>
                       </div>
                       <div>
                         <span style={{ color: textTertiary }}>
@@ -682,8 +814,8 @@ export default function BuoyAssetDetailContent({
                           {isInc ? '+' : '-'}
                           {fmtNum(
                             Math.abs(
-                              (item.originalValueAfter || 0) -
-                                (item.originalValueBefore || 0),
+                              (originalValueAfter || 0) -
+                                (originalValueBefore || 0),
                             ),
                           )}{' '}
                           VNĐ
@@ -694,8 +826,8 @@ export default function BuoyAssetDetailContent({
                           Nguyên giá trước:{' '}
                         </span>
                         <span>
-                          {item.originalValueBefore != null
-                            ? fmtNum(item.originalValueBefore) + ' VNĐ'
+                          {originalValueBefore != null
+                            ? fmtNum(originalValueBefore) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
@@ -704,8 +836,8 @@ export default function BuoyAssetDetailContent({
                           Nguyên giá sau:{' '}
                         </span>
                         <span style={{ fontWeight: fontWeightBold }}>
-                          {item.originalValueAfter != null
-                            ? fmtNum(item.originalValueAfter) + ' VNĐ'
+                          {originalValueAfter != null
+                            ? fmtNum(originalValueAfter) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
@@ -714,8 +846,8 @@ export default function BuoyAssetDetailContent({
                           Giá trị còn lại trước:{' '}
                         </span>
                         <span>
-                          {item.remainingValueBefore != null
-                            ? fmtNum(item.remainingValueBefore) + ' VNĐ'
+                          {remainingValueBefore != null
+                            ? fmtNum(remainingValueBefore) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
@@ -724,14 +856,14 @@ export default function BuoyAssetDetailContent({
                           Giá trị còn lại sau:{' '}
                         </span>
                         <span style={{ fontWeight: fontWeightBold }}>
-                          {item.remainingValueAfter != null
-                            ? fmtNum(item.remainingValueAfter) + ' VNĐ'
+                          {remainingValueAfter != null
+                            ? fmtNum(remainingValueAfter) + ' VNĐ'
                             : '—'}
                         </span>
                       </div>
                       <div style={{ gridColumn: 'span 2' }}>
                         <span style={{ color: textTertiary }}>Ghi chú: </span>
-                        <span>{item.adjustmentNotes || '—'}</span>
+                        <span>{adjustmentNotes || '—'}</span>
                       </div>
                     </div>
                   </div>
@@ -740,98 +872,6 @@ export default function BuoyAssetDetailContent({
             </div>
           );
         },
-      },
-      {
-        key: 'tracking',
-        label: 'Xử lý & theo dõi',
-        sections: [
-          {
-            key: 'tracking_info',
-            title: 'Lịch sử xử lý & theo dõi',
-            icon: <AuditOutlined />,
-            fields: [
-              {
-                name: 'approvalStatus',
-                label: 'Trạng thái',
-                render: (v) => {
-                  const s = String(v || 'DRAFT');
-                  const cfg = APPROVAL_MAP[s] || {
-                    color: statusDraft,
-                    label: s,
-                  };
-                  return (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 10px',
-                        borderRadius: 999,
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        color: cfg.color,
-                        background: `${cfg.color}15`,
-                        border: `1px solid ${cfg.color}40`,
-                      }}
-                    >
-                      {cfg.label}
-                    </span>
-                  );
-                },
-              },
-              {
-                name: 'updatedByName',
-                label: 'Cán bộ cập nhật',
-                type: ViewFieldType.Text,
-              },
-              {
-                name: 'updatedAt',
-                label: 'Ngày cập nhật',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'submittedByName',
-                label: 'Cán bộ gửi phê duyệt',
-                type: ViewFieldType.Text,
-              },
-              {
-                name: 'submittedAt',
-                label: 'Ngày gửi phê duyệt',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'portAuthorityApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
-                type: ViewFieldType.Text,
-              },
-              {
-                name: 'portAuthorityApprovedAt',
-                label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'portAuthorityApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-              },
-              {
-                name: 'departmentApprovedByName',
-                label: 'Cán bộ phê duyệt cấp Cục',
-                type: ViewFieldType.Text,
-              },
-              {
-                name: 'departmentApprovedAt',
-                label: 'Ngày phê duyệt cấp Cục',
-                type: ViewFieldType.DateTime,
-              },
-              {
-                name: 'departmentApprovalContent',
-                label: 'Nội dung phê duyệt cấp Cục',
-                type: ViewFieldType.Text,
-                colSpan: 24,
-              },
-            ],
-          },
-        ],
       },
     ];
   }, [

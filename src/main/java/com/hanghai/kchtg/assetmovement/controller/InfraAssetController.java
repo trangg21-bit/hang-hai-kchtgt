@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -53,7 +54,7 @@ public class InfraAssetController {
     /**
      * Whitelist các field DB thực sự có trong bảng infra_assets.
      */
-    private static final Set<String> SORTABLE_DB_FIELDS = Set.of(
+    public static final Set<String> SORTABLE_DB_FIELDS = Set.of(
             "id", "createdAt", "updatedAt", "createdBy", "updatedBy",
             "assetCode", "assetName", "assetType", "types",
             "parentOrgUnitId", "orgUnitId", "usingOrgUnitId",
@@ -82,7 +83,7 @@ public class InfraAssetController {
     }
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'berth:create')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> create(
             @RequestBody InfraAssetRequest request) {
         InfraAssetResponse response = infraAssetService.create(request);
@@ -90,7 +91,7 @@ public class InfraAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'berth:read', 'data:read')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> getById(
             @PathVariable UUID id) {
         InfraAssetResponse response = infraAssetService.getById(id);
@@ -98,7 +99,7 @@ public class InfraAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'berth:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<InfraAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -145,7 +146,7 @@ public class InfraAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'berth:update')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody InfraAssetRequest request) {
@@ -154,15 +155,64 @@ public class InfraAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'berth:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         infraAssetService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đã được xóa", null));
     }
 
-    @GetMapping("/{id}/history")
+    // ── Approval endpoints ────────────────────────────────────────────────
+
+    @PostMapping("/{id}/submit")
     @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> submit(@PathVariable UUID id) {
+        InfraAssetResponse response = infraAssetService.submit(id);
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/approve-c1", "/{id}/approve-l1", "/{id}/approve/c1"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> approveC1(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String content = body != null ? body.getOrDefault("content", body.get("reason")) : null;
+        InfraAssetResponse response = infraAssetService.approveC1(id, content);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cảng vụ/Chi cục thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/reject-c1", "/{id}/reject-l1", "/{id}/reject/c1"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> rejectC1(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", body.get("content")) : null;
+        InfraAssetResponse response = infraAssetService.rejectC1(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối cấp Cảng vụ/Chi cục thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/approve-c2", "/{id}/approve-l2", "/{id}/approve/c2"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> approveC2(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String content = body != null ? body.getOrDefault("content", body.get("reason")) : null;
+        InfraAssetResponse response = infraAssetService.approveC2(id, content);
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
+    }
+
+    @PostMapping(value = {"/{id}/reject-c2", "/{id}/reject-l2", "/{id}/reject/c2"})
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    public ResponseEntity<ApiResponse<InfraAssetResponse>> rejectC2(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.getOrDefault("reason", body.get("content")) : null;
+        InfraAssetResponse response = infraAssetService.rejectC2(id, reason);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối cấp Cục thành công", response));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'berth:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = infraAssetService.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));
@@ -171,7 +221,7 @@ public class InfraAssetController {
     // ── Attachment endpoints ─────────────────────────────────────────────
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'infraasset:create', 'berth:update')")
     public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files) {
@@ -185,7 +235,7 @@ public class InfraAssetController {
     }
 
     @GetMapping("/{id}/attachments")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'berth:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> listAttachments(
             @PathVariable UUID id) {
         List<InfraAssetAttachmentResponse> result = infraAssetService.listAttachments(id);
@@ -193,7 +243,7 @@ public class InfraAssetController {
     }
 
     @DeleteMapping("/{id}/attachments/{attId}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'berth:update')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {
@@ -203,7 +253,7 @@ public class InfraAssetController {
     }
 
     @GetMapping("/{id}/attachments/{attId}/download")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'berth:read', 'data:read')")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {

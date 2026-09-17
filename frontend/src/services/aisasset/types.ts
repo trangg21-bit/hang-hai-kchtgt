@@ -71,6 +71,7 @@ export interface AisSystemAsset {
   updatedBy?: string;
   updatedByName?: string;
   updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export type AisSystemAssetPayload = Omit<
@@ -95,4 +96,5 @@ export interface AisSystemAssetFilters {
   updatedRange?: unknown;
   sortBy?: string;
   sortDir?: 'ASC' | 'DESC';
+  [key: string]: unknown;
 }

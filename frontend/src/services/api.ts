@@ -156,6 +156,11 @@ api.interceptors.response.use(
     const isGenerateCodeRequest = error.config?.url?.includes('/generate-code');
     const isAttachmentListRequest = error.config?.url?.includes('/attachments') && (error.config?.method?.toLowerCase() === 'get' || !error.config?.method);
 
+    const isSilentRequest =
+      Boolean((error.config as any)?.silent) ||
+      error.config?.headers?.['X-Silent-Error'] === 'true' ||
+      error.config?.headers?.['x-silent-error'] === 'true';
+
     // API danh mục nền (dropdown form): 403 do thiếu quyền module nền là trạng thái chấp nhận được
     // (dropdown rỗng) — không spam toast lỗi mỗi lần mở màn cho user chỉ có quyền module KCHT.
     const isSilentForbiddenPath =
@@ -197,12 +202,12 @@ api.interceptors.response.use(
           window.location.href = '/login';
         }
       } else {
-        if (!isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest && !isSilentForbiddenPath && !isGenerateCodeRequest && !isAttachmentListRequest) {
+        if (!isSilentRequest && !isAuthRequest && !isDocumentEntityRequest && !isHistoryRequest && !isSilentForbiddenPath && !isGenerateCodeRequest && !isAttachmentListRequest) {
           showUniqueError(friendlyMsg);
         }
       }
     } else {
-      if (!isAuthRequest && !isStationBuoysRequest && !isGenerateCodeRequest && !isAttachmentListRequest && !isHistoryRequest) {
+      if (!isSilentRequest && !isAuthRequest && !isStationBuoysRequest && !isGenerateCodeRequest && !isAttachmentListRequest && !isHistoryRequest) {
         showUniqueError(friendlyMsg);
       }
     }
