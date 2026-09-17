@@ -208,148 +208,148 @@ export default function App() {
                 <Route path="/gis/permits" element={<PermissionGuard permission="data:read"><S63PermitsPage /></PermissionGuard>} />
 
                 {/* Connections — Liên thông & tích hợp dữ liệu */}
-                <Route path="/connections" element={<PermissionGuard permission="connection:read"><ConnectionList /></PermissionGuard>} />
-                <Route path="/connections/create" element={<PermissionGuard permission="connection:manage"><ConnectionForm /></PermissionGuard>} />
-                <Route path="/connections/:id/edit" element={<PermissionGuard permission="connection:manage"><ConnectionForm /></PermissionGuard>} />
-                <Route path="/connections/:id/health" element={<PermissionGuard permission="connection:read"><ConnectionHealth /></PermissionGuard>} />
+                <Route path="/connections" element={<PermissionGuard permission={['connection:read', 'interconnect:read', 'data:read']}><ConnectionList /></PermissionGuard>} />
+                <Route path="/connections/create" element={<PermissionGuard permission={['connection:manage', 'interconnect:manage', 'admin:manage']}><ConnectionForm /></PermissionGuard>} />
+                <Route path="/connections/:id/edit" element={<PermissionGuard permission={['connection:manage', 'interconnect:manage', 'admin:manage']}><ConnectionForm /></PermissionGuard>} />
+                <Route path="/connections/:id/health" element={<PermissionGuard permission={['connection:read', 'interconnect:read', 'data:read']}><ConnectionHealth /></PermissionGuard>} />
 
                 {/* F-004: Quản lý kết nối liên thông chia sẻ dữ liệu */}
-                <Route path="/interconnect" element={<PermissionGuard permission="connection:read"><InterconnectPage /></PermissionGuard>} />
+                <Route path="/interconnect" element={<PermissionGuard permission={['connection:read', 'interconnect:read', 'data:read']}><InterconnectPage /></PermissionGuard>} />
 
                 {/* Reports & Statistics */}
                 <Route path="/reports" element={<Navigate to="/reports/F-141" replace />} />
-                <Route path="/reports/:code" element={<PermissionGuard permission="report:read"><ReportViewer /></PermissionGuard>} />
-                <Route path="/reports/F-142/create" element={<PermissionGuard permission="report:create"><Bcc157Form /></PermissionGuard>} />
+                <Route path="/reports/:code" element={<PermissionGuard permission={['report:read', 'data:read']}><ReportViewer /></PermissionGuard>} />
+                <Route path="/reports/F-142/create" element={<PermissionGuard permission={['report:create', 'report:manage']}><Bcc157Form /></PermissionGuard>} />
 
                 {/* Beacon Stations & Buoys — Báo hiệu hàng hải */}
-                <Route path="/beacon-stations" element={<PermissionGuard permission="beaconstation:read"><BeaconStationList /></PermissionGuard>} />
-                <Route path="/beacon-stations/create" element={<PermissionGuard permission="beaconstation:create"><BeaconStationForm /></PermissionGuard>} />
-                <Route path="/beacon-stations/:id" element={<PermissionGuard permission="beaconstation:read"><BeaconStationForm /></PermissionGuard>} />
-                <Route path="/buoys" element={<PermissionGuard permission="buoy:read"><BuoyListPage /></PermissionGuard>} />
+                <Route path="/beacon-stations" element={<PermissionGuard permission={['beaconstation:read', 'beaconlight:read', 'lighthouse:read', 'data:read']}><BeaconStationList /></PermissionGuard>} />
+                <Route path="/beacon-stations/create" element={<PermissionGuard permission={['beaconstation:create', 'beaconstation:manage']}><BeaconStationForm /></PermissionGuard>} />
+                <Route path="/beacon-stations/:id" element={<PermissionGuard permission={['beaconstation:read', 'beaconlight:read', 'lighthouse:read', 'data:read']}><BeaconStationForm /></PermissionGuard>} />
+                <Route path="/buoys" element={<PermissionGuard permission={['buoy:read', 'buoystation:read', 'beaconstation:read', 'data:read']}><BuoyListPage /></PermissionGuard>} />
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
-                <Route path="/port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
-                <Route path="/port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
-                <Route path="/port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
+                <Route path="/port" element={<PermissionGuard permission={['port:read', 'berth:read', 'infraasset:read', 'data:read']}><PortList /></PermissionGuard>} />
+                <Route path="/port/:id/approve" element={<PermissionGuard permission={['port:approve', 'port:manage']}><PortApprovePage /></PermissionGuard>} />
+                <Route path="/port/:id/delete" element={<PermissionGuard permission={['port:delete', 'port:manage']}><PortDeleteConfirm /></PermissionGuard>} />
 
-                <Route path="/cctv" element={<PermissionGuard permission="cctv:read"><CctvListPage /></PermissionGuard>} />
-                <Route path="/scada" element={<PermissionGuard permission="scada:read"><ScadaListPage /></PermissionGuard>} />
-                <Route path="/transmission" element={<PermissionGuard permission="transmission:read"><TransmissionListPage /></PermissionGuard>} />
-                <Route path="/vts-assist" element={<PermissionGuard permission="vtsassist:read"><VtsAssistListPage /></PermissionGuard>} />
-                <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthList /></PermissionGuard>} />
+                <Route path="/cctv" element={<PermissionGuard permission={['cctv:read', 'cctvasset:read', 'vts:read', 'infraasset:read', 'data:read']}><CctvListPage /></PermissionGuard>} />
+                <Route path="/scada" element={<PermissionGuard permission={['scada:read', 'scadaasset:read', 'vts:read', 'infraasset:read', 'data:read']}><ScadaListPage /></PermissionGuard>} />
+                <Route path="/transmission" element={<PermissionGuard permission={['transmission:read', 'transmissionasset:read', 'vts:read', 'infraasset:read', 'data:read']}><TransmissionListPage /></PermissionGuard>} />
+                <Route path="/vts-assist" element={<PermissionGuard permission={['vtsassist:read', 'vtsassistasset:read', 'vts:read', 'infraasset:read', 'data:read']}><VtsAssistListPage /></PermissionGuard>} />
+                <Route path="/berth" element={<PermissionGuard permission={['berth:read', 'port:read', 'infraasset:read', 'data:read']}><BerthList /></PermissionGuard>} />
 
-                <Route path="/anchorage" element={<PermissionGuard permission="anchorage:read"><AnchorageList /></PermissionGuard>} />
+                <Route path="/anchorage" element={<PermissionGuard permission={['anchorage:read', 'port:read', 'infraasset:read', 'data:read']}><AnchorageList /></PermissionGuard>} />
 
-                <Route path="/transfer-area" element={<PermissionGuard permission="transferarea:read"><TransferAreaList /></PermissionGuard>} />
+                <Route path="/transfer-area" element={<PermissionGuard permission={['transferarea:read', 'port:read', 'infraasset:read', 'data:read']}><TransferAreaList /></PermissionGuard>} />
 
-                <Route path="/storm-shelter" element={<PermissionGuard permission="stormshelter:read"><StormShelterList /></PermissionGuard>} />
+                <Route path="/storm-shelter" element={<PermissionGuard permission={['stormshelter:read', 'port:read', 'infraasset:read', 'data:read']}><StormShelterList /></PermissionGuard>} />
 
-                <Route path="/buoy-berth" element={<PermissionGuard permission="buoyberth:read"><BuoyBerthList /></PermissionGuard>} />
+                <Route path="/buoy-berth" element={<PermissionGuard permission={['buoyberth:read', 'port:read', 'navigationchannel:read', 'infraasset:read', 'data:read']}><BuoyBerthList /></PermissionGuard>} />
 
-                <Route path="/dai-ttdh" element={<PermissionGuard permission="daittdh:read"><DaiTtdhList /></PermissionGuard>} />
-                <Route path="/vhf" element={<PermissionGuard permission="vhf:read"><VhfListPage /></PermissionGuard>} />
+                <Route path="/dai-ttdh" element={<PermissionGuard permission={['daittdh:read', 'coastalstation:read', 'specialstation:read', 'infraasset:read', 'data:read']}><DaiTtdhList /></PermissionGuard>} />
+                <Route path="/vhf" element={<PermissionGuard permission={['vhf:read', 'vhfasset:read', 'navigationchannel:read', 'infraasset:read', 'data:read']}><VhfListPage /></PermissionGuard>} />
 
-                <Route path="/ship-repair-yard" element={<PermissionGuard permission="shiprepairyard:read"><ShipRepairYardList /></PermissionGuard>} />
+                <Route path="/ship-repair-yard" element={<PermissionGuard permission={['shiprepairyard:read', 'shiprepairfacility:read', 'shiprepair:read', 'port:read', 'data:read']}><ShipRepairYardList /></PermissionGuard>} />
 
-                <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/pier" element={<PermissionGuard permission={['pier:read', 'berth:read', 'port:read', 'infraasset:read', 'data:read']}><PierListPage /></PermissionGuard>} />
 
-                <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
+                <Route path="/dry-port" element={<PermissionGuard permission={['dryport:read', 'port:read', 'infraasset:read', 'data:read']}><DryPortListPage /></PermissionGuard>} />
 
-                <Route path="/water-zone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
+                <Route path="/water-zone" element={<PermissionGuard permission={['waterzone:read', 'port:read', 'navigationchannel:read', 'data:read']}><WaterZoneListPage /></PermissionGuard>} />
 
-                <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="document:create"><DocumentUploadPage /></PermissionGuard>} />
+                <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission={['document:create', 'document:manage']}><DocumentUploadPage /></PermissionGuard>} />
 
                 {/* M-003: Khu nước & VTS — Quản lý tàu bè */}
 
                 {/* Luồng hàng hải */}
-                <Route path="/navigation-channel" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
-                <Route path="/navigation-channel/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
-                <Route path="/navigation-channel/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/navigation-channel" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelList /></PermissionGuard>} />
+                <Route path="/navigation-channel/create" element={<PermissionGuard permission={['navigationchannel:create', 'navigationchannel:manage']}><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/navigation-channel/:id" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelForm /></PermissionGuard>} />
                 {/* Alias tiếng Việt — E2E + sidebar dùng /luong-hang-hai */}
-                <Route path="/luong-hang-hai" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/luong-hang-hai" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelList /></PermissionGuard>} />
+                <Route path="/luong-hang-hai/create" element={<PermissionGuard permission={['navigationchannel:create', 'navigationchannel:manage']}><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelForm /></PermissionGuard>} />
 
                 {/* Luồng hàng hải CHK (M-027) */}
-                <Route path="/navigation-channel-chk" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkList /></PermissionGuard>} />
-                <Route path="/navigation-channel-chk/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelChkForm /></PermissionGuard>} />
-                <Route path="/navigation-channel-chk/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkForm /></PermissionGuard>} />
+                <Route path="/navigation-channel-chk" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelChkList /></PermissionGuard>} />
+                <Route path="/navigation-channel-chk/create" element={<PermissionGuard permission={['navigationchannel:create', 'navigationchannel:manage']}><NavigationChannelChkForm /></PermissionGuard>} />
+                <Route path="/navigation-channel-chk/:id" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelChkForm /></PermissionGuard>} />
                 {/* Alias tiếng Việt — E2E */}
-                <Route path="/luong-hang-hai-chk" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkList /></PermissionGuard>} />
-                <Route path="/luong-hang-hai-chk/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelChkForm /></PermissionGuard>} />
-                <Route path="/luong-hang-hai-chk/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelChkForm /></PermissionGuard>} />
+                <Route path="/luong-hang-hai-chk" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelChkList /></PermissionGuard>} />
+                <Route path="/luong-hang-hai-chk/create" element={<PermissionGuard permission={['navigationchannel:create', 'navigationchannel:manage']}><NavigationChannelChkForm /></PermissionGuard>} />
+                <Route path="/luong-hang-hai-chk/:id" element={<PermissionGuard permission={['navigationchannel:read', 'channel:read', 'infraasset:read', 'data:read']}><NavigationChannelChkForm /></PermissionGuard>} />
 
                 {/* Đê/kè */}
-                <Route path="/dike-revetment" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentList /></PermissionGuard>} />
-                <Route path="/dike-revetment/create" element={<PermissionGuard permission="dikerevetment:create"><DikeRevetmentForm /></PermissionGuard>} />
-                <Route path="/dike-revetment/:id" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentForm /></PermissionGuard>} />
+                <Route path="/dike-revetment" element={<PermissionGuard permission={['dikerevetment:read', 'infraasset:read', 'data:read']}><DikeRevetmentList /></PermissionGuard>} />
+                <Route path="/dike-revetment/create" element={<PermissionGuard permission={['dikerevetment:create', 'dikerevetment:manage']}><DikeRevetmentForm /></PermissionGuard>} />
+                <Route path="/dike-revetment/:id" element={<PermissionGuard permission={['dikerevetment:read', 'infraasset:read', 'data:read']}><DikeRevetmentForm /></PermissionGuard>} />
 
                 {/* Cơ sở sửa chữa/đóng tàu */}
-                <Route path="/ship-repair-facility" element={<PermissionGuard permission="shiprepair:read"><ShipRepairFacilityList /></PermissionGuard>} />
-                <Route path="/ship-repair-facility/create" element={<PermissionGuard permission="shiprepair:create"><ShipRepairFacilityForm /></PermissionGuard>} />
-                <Route path="/ship-repair-facility/:id" element={<PermissionGuard permission="shiprepair:read"><ShipRepairFacilityForm /></PermissionGuard>} />
+                <Route path="/ship-repair-facility" element={<PermissionGuard permission={['shiprepairfacility:read', 'shiprepair:read', 'shiprepairyard:read', 'port:read', 'data:read']}><ShipRepairFacilityList /></PermissionGuard>} />
+                <Route path="/ship-repair-facility/create" element={<PermissionGuard permission={['shiprepairfacility:create', 'shiprepair:create', 'shiprepair:manage']}><ShipRepairFacilityForm /></PermissionGuard>} />
+                <Route path="/ship-repair-facility/:id" element={<PermissionGuard permission={['shiprepairfacility:read', 'shiprepair:read', 'shiprepairyard:read', 'port:read', 'data:read']}><ShipRepairFacilityForm /></PermissionGuard>} />
 
                 {/* Trạm radar */}
-                <Route path="/radar-station" element={<PermissionGuard permission="radarstation:read"><RadarStationList /></PermissionGuard>} />
-                <Route path="/radar-station/create" element={<PermissionGuard permission="radarstation:create"><RadarStationForm /></PermissionGuard>} />
-                <Route path="/radar-station/:id" element={<PermissionGuard permission="radarstation:read"><RadarStationForm /></PermissionGuard>} />
+                <Route path="/radar-station" element={<PermissionGuard permission={['radarstation:read', 'tramradar:read', 'radarasset:read', 'vts:read', 'infraasset:read', 'data:read']}><RadarStationList /></PermissionGuard>} />
+                <Route path="/radar-station/create" element={<PermissionGuard permission={['radarstation:create', 'radarstation:manage']}><RadarStationForm /></PermissionGuard>} />
+                <Route path="/radar-station/:id" element={<PermissionGuard permission={['radarstation:read', 'tramradar:read', 'radarasset:read', 'vts:read', 'infraasset:read', 'data:read']}><RadarStationForm /></PermissionGuard>} />
 
                 {/* Hệ thống VTS */}
-                <Route path="/vts-system" element={<PermissionGuard permission={['vts:read', 'vtssystem:read']}><VtsSystemList /></PermissionGuard>} />
+                <Route path="/vts-system" element={<PermissionGuard permission={['vts:read', 'vtssystem:read', 'vtsasset:read', 'infraasset:read', 'data:read']}><VtsSystemList /></PermissionGuard>} />
 
                 {/* Trung tâm điều hành VTS */}
-                <Route path="/vts-operation-center" element={<PermissionGuard permission="vtsoperationcenter:read"><VtsOperationCenterList /></PermissionGuard>} />
+                <Route path="/vts-operation-center" element={<PermissionGuard permission={['vtsoperationcenter:read', 'vts:read', 'vtssystem:read', 'infraasset:read', 'data:read']}><VtsOperationCenterList /></PermissionGuard>} />
 
                 {/* Hệ thống trạm bờ AIS */}
-                <Route path="/ais-system" element={<PermissionGuard permission="aissystem:read"><AisSystemList /></PermissionGuard>} />
+                <Route path="/ais-system" element={<PermissionGuard permission={['aissystem:read', 'aisasset:read', 'vts:read', 'infraasset:read', 'data:read']}><AisSystemList /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
-                <Route path="/asset/berth" element={<PermissionGuard permission="infraasset:manage"><PortTerminalAssetList /></PermissionGuard>} />
-                <Route path="/asset/transmission" element={<PermissionGuard permission="infraasset:manage"><TransmissionAssetList /></PermissionGuard>} />
-                <Route path="/asset/vts-assist" element={<PermissionGuard permission="infraasset:manage"><VtsAssistAssetList /></PermissionGuard>} />
-                <Route path="/asset/vhf" element={<PermissionGuard permission="infraasset:manage"><VhfAssetList /></PermissionGuard>} />
-                <Route path="/asset/dai-ttdh" element={<PermissionGuard permission="infraasset:manage"><DaiTtdhAssetList /></PermissionGuard>} />
-                <Route path="/asset/inmarsat" element={<PermissionGuard permission="infraasset:manage"><InmarsatAssetList /></PermissionGuard>} />
-                <Route path="/asset/cang-can" element={<PermissionGuard permission="infraasset:manage"><DryPortAssetList /></PermissionGuard>} />
-                <Route path="/asset/dry-port" element={<PermissionGuard permission="infraasset:manage"><DryPortAssetList /></PermissionGuard>} />
-                <Route path="/asset/ttdh" element={<PermissionGuard permission="infraasset:manage"><TtdhAssetList /></PermissionGuard>} />
-                <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission="infraasset:manage"><CospasSarsatAssetList /></PermissionGuard>} />
-                <Route path="/asset/lrit" element={<PermissionGuard permission="infraasset:manage"><LritAssetList /></PermissionGuard>} />
-                <Route path="/asset/ttxltt" element={<PermissionGuard permission="infraasset:manage"><TtxlttAssetList /></PermissionGuard>} />
-                <Route path="/asset/vts-system" element={<PermissionGuard permission="infraasset:manage"><VtsSystemAssetList /></PermissionGuard>} />
-                <Route path="/asset/radar-station" element={<PermissionGuard permission="infraasset:manage"><RadarStationAssetList /></PermissionGuard>} />
-                <Route path="/asset/ais-system" element={<PermissionGuard permission="infraasset:manage"><AisSystemAssetList /></PermissionGuard>} />
-                <Route path="/asset/cctv-system" element={<PermissionGuard permission="infraasset:manage"><CctvSystemAssetList /></PermissionGuard>} />
-                <Route path="/asset/scada-system" element={<PermissionGuard permission="infraasset:manage"><ScadaSystemAssetList /></PermissionGuard>} />
-                <Route path="/asset/transfer-area" element={<PermissionGuard permission="infraasset:manage"><TransferAreaAssetList /></PermissionGuard>} />
-                <Route path="/asset/storm-shelter" element={<PermissionGuard permission="infraasset:manage"><StormShelterAssetList /></PermissionGuard>} />
-                <Route path="/asset/buoy-berth" element={<PermissionGuard permission="infraasset:manage"><BuoyBerthAssetList /></PermissionGuard>} />
-                <Route path="/asset/pier" element={<PermissionGuard permission="infraasset:manage"><PierAssetList /></PermissionGuard>} />
-                <Route path="/asset/anchorage" element={<PermissionGuard permission="infraasset:manage"><AnchorageAssetList /></PermissionGuard>} />
-                <Route path="/asset/lighthouse" element={<PermissionGuard permission="infraasset:manage"><LighthouseAssetList /></PermissionGuard>} />
-                <Route path="/asset/dike-revetment" element={<PermissionGuard permission="infraasset:manage"><DikeRevetmentAssetList /></PermissionGuard>} />
-                <Route path="/asset/buoy" element={<PermissionGuard permission="infraasset:manage"><BuoyAssetList /></PermissionGuard>} />
-                <Route path="/asset/buoy-station" element={<PermissionGuard permission="infraasset:manage"><BuoyAssetList /></PermissionGuard>} />
-                <Route path="/asset/channel" element={<PermissionGuard permission="infraasset:manage"><ChannelAssetList /></PermissionGuard>} />
-                <Route path="/asset/navigation-channel" element={<PermissionGuard permission="infraasset:manage"><ChannelAssetList /></PermissionGuard>} />
-                <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />
-                <Route path="/asset/decrease" element={<PermissionGuard permission="assetdecrease:manage"><AssetDecreaseList /></PermissionGuard>} />
-                <Route path="/asset/inventory" element={<PermissionGuard permission="inventoryasset:manage"><InventoryList /></PermissionGuard>} />
-                <Route path="/asset/exploitation" element={<PermissionGuard permission="assetexploitation:manage"><AssetExploitationList /></PermissionGuard>} />
+                <Route path="/asset/berth" element={<PermissionGuard permission={['berthasset:manage', 'berthasset:read', 'berth:read', 'berth:manage']}><PortTerminalAssetList /></PermissionGuard>} />
+                <Route path="/asset/transmission" element={<PermissionGuard permission={['transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'transmission:manage']}><TransmissionAssetList /></PermissionGuard>} />
+                <Route path="/asset/vts-assist" element={<PermissionGuard permission={['vtsassistasset:manage', 'vtsassistasset:read', 'vtsassist:read', 'vtsassist:manage']}><VtsAssistAssetList /></PermissionGuard>} />
+                <Route path="/asset/vhf" element={<PermissionGuard permission={['vhfasset:manage', 'vhfasset:read', 'vhf:read', 'vhf:manage']}><VhfAssetList /></PermissionGuard>} />
+                <Route path="/asset/dai-ttdh" element={<PermissionGuard permission={['daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'daittdh:manage']}><DaiTtdhAssetList /></PermissionGuard>} />
+                <Route path="/asset/inmarsat" element={<PermissionGuard permission={['inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'inmarsat:manage', 'coastalstationinmarsat:read']}><InmarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/cang-can" element={<PermissionGuard permission={['dryportasset:manage', 'dryportasset:read', 'dryport:read', 'dryport:manage']}><DryPortAssetList /></PermissionGuard>} />
+                <Route path="/asset/dry-port" element={<PermissionGuard permission={['dryportasset:manage', 'dryportasset:read', 'dryport:read', 'dryport:manage']}><DryPortAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttdh" element={<PermissionGuard permission={['daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'daittdh:manage']}><TtdhAssetList /></PermissionGuard>} />
+                <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission={['cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'cospassarsat:manage', 'coastalstationcospassarsat:read']}><CospasSarsatAssetList /></PermissionGuard>} />
+                <Route path="/asset/lrit" element={<PermissionGuard permission={['lritasset:manage', 'lritasset:read', 'lrit:read', 'lrit:manage', 'coastalstationlrit:read']}><LritAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'ttxltt:manage', 'coastalstationhaiphong:read']}><TtxlttAssetList /></PermissionGuard>} />
+                <Route path="/asset/vts-system" element={<PermissionGuard permission={['vtsasset:manage', 'vtsasset:read', 'vts:read', 'vtssystem:read']}><VtsSystemAssetList /></PermissionGuard>} />
+                <Route path="/asset/radar-station" element={<PermissionGuard permission={['radarasset:manage', 'radarasset:read', 'radarstation:read', 'tramradar:read']}><RadarStationAssetList /></PermissionGuard>} />
+                <Route path="/asset/ais-system" element={<PermissionGuard permission={['aisasset:manage', 'aisasset:read', 'aissystem:read']}><AisSystemAssetList /></PermissionGuard>} />
+                <Route path="/asset/cctv-system" element={<PermissionGuard permission={['cctvasset:manage', 'cctvasset:read', 'cctv:read']}><CctvSystemAssetList /></PermissionGuard>} />
+                <Route path="/asset/scada-system" element={<PermissionGuard permission={['scadaasset:manage', 'scadaasset:read', 'scada:read']}><ScadaSystemAssetList /></PermissionGuard>} />
+                <Route path="/asset/transfer-area" element={<PermissionGuard permission={['transferareaasset:manage', 'transferareaasset:read', 'transferarea:read', 'transferarea:manage']}><TransferAreaAssetList /></PermissionGuard>} />
+                <Route path="/asset/storm-shelter" element={<PermissionGuard permission={['stormshelterasset:manage', 'stormshelterasset:read', 'stormshelter:read', 'stormshelter:manage']}><StormShelterAssetList /></PermissionGuard>} />
+                <Route path="/asset/buoy-berth" element={<PermissionGuard permission={['buoyberthasset:manage', 'buoyberthasset:read', 'buoyberth:read', 'buoyberth:manage']}><BuoyBerthAssetList /></PermissionGuard>} />
+                <Route path="/asset/pier" element={<PermissionGuard permission={['pierasset:manage', 'pierasset:read', 'pier:read', 'pier:manage']}><PierAssetList /></PermissionGuard>} />
+                <Route path="/asset/anchorage" element={<PermissionGuard permission={['anchorageasset:manage', 'anchorageasset:read', 'anchorage:read', 'anchorage:manage']}><AnchorageAssetList /></PermissionGuard>} />
+                <Route path="/asset/lighthouse" element={<PermissionGuard permission={['lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:read', 'lighthouse:manage', 'beaconstation:read']}><LighthouseAssetList /></PermissionGuard>} />
+                <Route path="/asset/dike-revetment" element={<PermissionGuard permission={['dikerevetmentasset:manage', 'dikerevetmentasset:read', 'dikerevetment:read', 'dikerevetment:manage']}><DikeRevetmentAssetList /></PermissionGuard>} />
+                <Route path="/asset/buoy" element={<PermissionGuard permission={['buoyasset:manage', 'buoyasset:read', 'buoy:read', 'buoy:manage', 'buoystation:read']}><BuoyAssetList /></PermissionGuard>} />
+                <Route path="/asset/buoy-station" element={<PermissionGuard permission={['buoyasset:manage', 'buoyasset:read', 'buoy:read', 'buoystation:read']}><BuoyAssetList /></PermissionGuard>} />
+                <Route path="/asset/channel" element={<PermissionGuard permission={['channelasset:manage', 'channelasset:read', 'channel:read', 'channel:manage', 'navigationchannel:read']}><ChannelAssetList /></PermissionGuard>} />
+                <Route path="/asset/navigation-channel" element={<PermissionGuard permission={['channelasset:manage', 'channelasset:read', 'channel:read', 'channel:manage', 'navigationchannel:read']}><ChannelAssetList /></PermissionGuard>} />
+                <Route path="/asset/increase" element={<PermissionGuard permission={['assetincrease:manage', 'assetincrease:read']}><AssetIncreaseList /></PermissionGuard>} />
+                <Route path="/asset/decrease" element={<PermissionGuard permission={['assetdecrease:manage', 'assetdecrease:read']}><AssetDecreaseList /></PermissionGuard>} />
+                <Route path="/asset/inventory" element={<PermissionGuard permission={['inventoryasset:manage', 'inventoryasset:read', 'inventoryplan:read', 'inventoryreport:read']}><InventoryList /></PermissionGuard>} />
+                <Route path="/asset/exploitation" element={<PermissionGuard permission={['assetexploitation:manage', 'assetexploitation:read']}><AssetExploitationList /></PermissionGuard>} />
 
                 {/* M-006: Văn bản pháp lý */}
-                <Route path="/documents/legal" element={<PermissionGuard permission="document:read"><LegalDocumentList /></PermissionGuard>} />
-                <Route path="/documents/incidents" element={<PermissionGuard permission="document:read"><IncidentList /></PermissionGuard>} />
-                <Route path="/documents/port-planning" element={<PermissionGuard permission="document:read"><PortPlanningList /></PermissionGuard>} />
-                <Route path="/documents/operation" element={<PermissionGuard permission="document:read"><OperationList /></PermissionGuard>} />
-                <Route path="/documents/maintenance" element={<PermissionGuard permission="document:read"><MaintenanceList /></PermissionGuard>} />
+                <Route path="/documents/legal" element={<PermissionGuard permission={['document:read', 'data:read']}><LegalDocumentList /></PermissionGuard>} />
+                <Route path="/documents/incidents" element={<PermissionGuard permission={['document:read', 'data:read']}><IncidentList /></PermissionGuard>} />
+                <Route path="/documents/port-planning" element={<PermissionGuard permission={['document:read', 'portplanning:read', 'data:read']}><PortPlanningList /></PermissionGuard>} />
+                <Route path="/documents/operation" element={<PermissionGuard permission={['document:read', 'operationplan:read', 'data:read']}><OperationList /></PermissionGuard>} />
+                <Route path="/documents/maintenance" element={<PermissionGuard permission={['document:read', 'maintenanceplan:read', 'data:read']}><MaintenanceList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
-                <Route path="/buoy-station" element={<PermissionGuard permission="buoystation:read"><BuoyStationListPage /></PermissionGuard>} />
+                <Route path="/buoy-station" element={<PermissionGuard permission={['buoystation:read', 'buoy:read', 'beaconstation:read', 'data:read']}><BuoyStationListPage /></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
-                <Route path="/station/coastal" element={<PermissionGuard permission="coastalstation:read"><CoastalStationList /></PermissionGuard>} />
+                <Route path="/station/coastal" element={<PermissionGuard permission={['coastalstation:read', 'specialstation:read', 'station:read', 'data:read']}><CoastalStationList /></PermissionGuard>} />
                 <Route path="/station/inmarsat" element={<PermissionGuard permission={['specialstation:read', 'coastalstationinmarsat:read', 'coastalstation:read', 'data:read']}><InmarsatStationList /></PermissionGuard>} />
                 <Route path="/station/cospas-sarsat" element={<PermissionGuard permission={['specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatStationList /></PermissionGuard>} />
                 <Route path="/station/lrit" element={<PermissionGuard permission={['specialstation:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritStationList /></PermissionGuard>} />

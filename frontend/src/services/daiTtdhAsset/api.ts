@@ -1,17 +1,5 @@
 import api from '../api';
 import { triggerBlobDownload } from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  fetchCoastalStationAssets,
-  fetchCoastalStationAsset,
-  createCoastalStationAsset,
-  updateCoastalStationAsset,
-  deleteCoastalStationAsset,
-  fetchCoastalStationExploitations,
-  createCoastalStationExploitation,
-  fetchCoastalStationAdjustments,
-  createCoastalStationAdjustment,
-  fetchCoastalStationAssetHistory,
-} from '../coastalStationAsset/api';
 import type {
   PageResponse,
   DaiTtdhAsset,
@@ -23,76 +11,104 @@ import type {
   DaiTtdhAssetAdjustmentPayload,
 } from './types';
 
+const BASE_URL = '/v1/asset/dai-ttdh-assets';
 export const DAI_TTDH_ASSET_TYPE = 'Tài sản đài TTDH';
 
 export async function fetchDaiTtdhAssets(
   params: DaiTtdhAssetFilters
 ): Promise<PageResponse<DaiTtdhAsset>> {
-  return fetchCoastalStationAssets({
-    ...params,
-    assetType: DAI_TTDH_ASSET_TYPE,
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') sp.set(key, String(value));
   });
+  const res = await api.get(`${BASE_URL}?${sp}`);
+  return res.data.data;
+}
+
+export async function fetchDaiTtdhAssetCounts(
+  params: DaiTtdhAssetFilters
+): Promise<Record<string, number>> {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '' && key !== 'page' && key !== 'size' && key !== 'approvalStatus') {
+      sp.set(key, String(value));
+    }
+  });
+  try {
+    const res = await api.get(`${BASE_URL}/counts?${sp}`);
+    return res.data.data ?? {};
+  } catch {
+    return {};
+  }
 }
 
 export async function fetchDaiTtdhAsset(id: string): Promise<DaiTtdhAsset> {
-  return fetchCoastalStationAsset(id);
+  const res = await api.get(`${BASE_URL}/${id}`);
+  return res.data.data;
 }
 
 export async function createDaiTtdhAsset(
   payload: DaiTtdhAssetPayload
 ): Promise<DaiTtdhAsset> {
-  return createCoastalStationAsset({
+  const res = await api.post(BASE_URL, {
     ...payload,
     assetType: payload.assetType || DAI_TTDH_ASSET_TYPE,
   });
+  return res.data.data;
 }
 
 export async function updateDaiTtdhAsset(
   id: string,
   payload: DaiTtdhAssetPayload
 ): Promise<DaiTtdhAsset> {
-  return updateCoastalStationAsset(id, {
+  const res = await api.put(`${BASE_URL}/${id}`, {
     ...payload,
     assetType: payload.assetType || DAI_TTDH_ASSET_TYPE,
   });
+  return res.data.data;
 }
 
 export async function deleteDaiTtdhAsset(id: string): Promise<void> {
-  return deleteCoastalStationAsset(id);
+  await api.delete(`${BASE_URL}/${id}`);
 }
 
 export async function fetchDaiTtdhAssetHistory(
   id: string
 ): Promise<{ changeHistory?: Record<string, unknown>[] } | Record<string, unknown>[]> {
-  return fetchCoastalStationAssetHistory(id);
+  const res = await api.get(`${BASE_URL}/${id}/history`);
+  return res.data?.data;
 }
-
 
 export async function fetchDaiTtdhExploitations(
   assetId: string
 ): Promise<DaiTtdhAssetExploitation[]> {
-  return fetchCoastalStationExploitations(assetId);
+  const res = await api.get(`${BASE_URL}/${assetId}/exploitations`);
+  return res.data.data;
 }
 
 export async function createDaiTtdhExploitation(
   assetId: string,
   payload: DaiTtdhAssetExploitationPayload
 ): Promise<DaiTtdhAssetExploitation> {
-  return createCoastalStationExploitation(assetId, payload);
+  const res = await api.post(`${BASE_URL}/${assetId}/exploitations`, payload);
+  return res.data.data;
 }
 
 export async function fetchDaiTtdhAdjustments(
   assetId: string,
   type?: string
 ): Promise<DaiTtdhAssetAdjustment[]> {
-  return fetchCoastalStationAdjustments(assetId, type);
+  const sp = type ? `?type=${type}` : '';
+  const res = await api.get(`${BASE_URL}/${assetId}/adjustments${sp}`);
+  return res.data.data;
 }
 
 export async function createDaiTtdhAdjustment(
   assetId: string,
   payload: DaiTtdhAssetAdjustmentPayload
 ): Promise<DaiTtdhAssetAdjustment> {
-  return createCoastalStationAdjustment(assetId, payload);
+  const res = await api.post(`${BASE_URL}/${assetId}/adjustments`, payload);
+  return res.data.data;
 }
 
 export async function fetchDaiTtdhOptions(): Promise<Array<{ id: string; code: string; name: string }>> {
@@ -131,7 +147,6 @@ export async function fetchDaiTtdhOptions(): Promise<Array<{ id: string; code: s
   }
 }
 
-
 export interface DaiTtdhAssetAttachmentResponse {
   id: string;
   entityType: string;
@@ -149,7 +164,7 @@ export async function fetchDaiTtdhAssetAttachments(
   assetId: string
 ): Promise<DaiTtdhAssetAttachmentResponse[]> {
   try {
-    const res = await api.get(`/v1/dai-ttdh/${assetId}/attachments`);
+    const res = await api.get(`${BASE_URL}/${assetId}/attachments`);
     return res.data.data ?? [];
   } catch {
     return [];
@@ -162,7 +177,7 @@ export async function uploadDaiTtdhAssetAttachments(
 ): Promise<DaiTtdhAssetAttachmentResponse[]> {
   const formData = new FormData();
   files.forEach((file) => formData.append('files', file));
-  const res = await api.post(`/v1/dai-ttdh/${assetId}/attachments`, formData, {
+  const res = await api.post(`${BASE_URL}/${assetId}/attachments`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return res.data.data ?? [];
@@ -172,7 +187,7 @@ export async function deleteDaiTtdhAssetAttachment(
   assetId: string,
   attId: string
 ): Promise<void> {
-  await api.delete(`/v1/dai-ttdh/${assetId}/attachments/${attId}`);
+  await api.delete(`${BASE_URL}/${assetId}/attachments/${attId}`);
 }
 
 export async function downloadDaiTtdhAssetAttachment(
@@ -180,7 +195,7 @@ export async function downloadDaiTtdhAssetAttachment(
   attId: string,
   fileName: string
 ): Promise<void> {
-  const res = await api.get(`/v1/dai-ttdh/${assetId}/attachments/${attId}/download`, {
+  const res = await api.get(`${BASE_URL}/${assetId}/attachments/${attId}/download`, {
     responseType: 'blob',
   });
   const serverContentType = res.headers?.['content-type']

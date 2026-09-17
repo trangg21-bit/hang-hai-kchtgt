@@ -169,7 +169,7 @@ describe('Module 4: Tài sản bến phao (docs/checklists/CHECKLIST-TAI-SAN-BEN
         orgUnitId: 'org-5',
         role: 'ADMIN',
         status: 'authenticated',
-        permissions: ['infraasset:manage'],
+        permissions: ['infraasset:manage', 'buoyberth:manage', 'buoyberthasset:manage'],
       },
       isAuthenticated: true,
       token: 'admin-jwt-token',

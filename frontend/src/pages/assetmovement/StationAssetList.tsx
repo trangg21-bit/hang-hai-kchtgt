@@ -70,6 +70,7 @@ import type {
 import { organizationService, type Organization } from '../../services/organizationService';
 import type { GenericStationOption } from '../../services/stationOptionsService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
   actionPrimary,
@@ -271,6 +272,11 @@ export interface StationAssetListProps {
 }
 
 export default function StationAssetList({ config, fetchStationOptions }: StationAssetListProps) {
+  const perms = useAssetPermissions(
+    Array.isArray(config.resource)
+      ? config.resource
+      : [config.resource || 'coastalstation', 'specialstation']
+  );
   const [data, setData] = useState<StationAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [stations, setStations] = useState<GenericStationOption[]>([]);
@@ -1282,36 +1288,42 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         },
       ],
       actions: (record: StationAsset) => {
-        const st = normalizeApprovalStatus(record.approvalStatus || (record as any).status);
+        const st = normalizeApprovalStatus(record.approvalStatus || (record as any).status) || '';
+        const isDraft = st === 'DRAFT' || !st;
         const isArchived = st === 'ARCHIVED';
 
         if (isArchived) {
-          return [
-            {
+          const archivedActions: any[] = [];
+          if (perms.canRead) {
+            archivedActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void handleOpenDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            archivedActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return archivedActions;
         }
 
-        const actionsList: any[] = [
-          {
+        const actionsList: any[] = [];
+        if (perms.canRead) {
+          actionsList.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void handleOpenDetail(record),
-          },
-        ];
+          });
+        }
 
-        if (isAssetRecordEditable(st)) {
+        if (perms.canUpdate && isAssetRecordEditable(st)) {
           actionsList.push({
             key: 'edit',
             label: 'Chỉnh sửa',
@@ -1320,61 +1332,67 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           });
         }
 
-        if (st === 'DRAFT') {
-          actionsList.push({
-            key: 'submit',
-            label: 'Gửi Cảng vụ phê duyệt',
-            icon: <SendOutlined />,
-            onClick: () => void handleSubmitApproval(record),
-          });
-        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
-          actionsList.push({
-            key: 'submit',
-            label: 'Gửi lại phê duyệt',
-            icon: <SendOutlined />,
-            onClick: () => void handleSubmitApproval(record),
-          });
+        if (perms.canUpdate) {
+          if (st === 'DRAFT') {
+            actionsList.push({
+              key: 'submit',
+              label: 'Gửi Cảng vụ phê duyệt',
+              icon: <SendOutlined />,
+              onClick: () => void handleSubmitApproval(record),
+            });
+          } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+            actionsList.push({
+              key: 'submit',
+              label: 'Gửi lại phê duyệt',
+              icon: <SendOutlined />,
+              onClick: () => void handleSubmitApproval(record),
+            });
+          }
         }
 
         if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
-          actionsList.push(
-            {
+          if (perms.canApproveC1) {
+            actionsList.push({
               key: 'approveC1',
               label: 'Phê duyệt cấp Cảng vụ/Chi cục',
               icon: <CheckOutlined />,
               onClick: () => handleOpenApproveModal(record, 'c1'),
-            },
-            {
+            });
+          }
+          if (perms.canReject || perms.canApproveC1) {
+            actionsList.push({
               key: 'rejectC1',
               label: 'Từ chối cấp Cảng vụ/Chi cục',
               icon: <CloseOutlined />,
               danger: true,
               onClick: () => handleOpenRejectModal(record, 'c1'),
-            }
-          );
+            });
+          }
         }
 
         if (st === 'APPROVED_LEVEL1') {
-          actionsList.push(
-            {
+          if (perms.canApproveC2) {
+            actionsList.push({
               key: 'approveC2',
               label: 'Phê duyệt cấp Cục',
               icon: <CheckOutlined />,
               onClick: () => handleOpenApproveModal(record, 'c2'),
-            },
-            {
+            });
+          }
+          if (perms.canReject || perms.canApproveC2) {
+            actionsList.push({
               key: 'rejectC2',
               label: 'Từ chối cấp Cục',
               icon: <CloseOutlined />,
               danger: true,
               onClick: () => handleOpenRejectModal(record, 'c2'),
-            }
-          );
+            });
+          }
         }
 
         if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-          actionsList.push(
-            {
+          if (perms.canExploit) {
+            actionsList.push({
               key: 'exploit',
               label: 'Khai thác tài sản',
               icon: <RocketOutlined />,
@@ -1383,8 +1401,10 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
                 setOperationMode('exploit');
                 operationForm.resetFields();
               },
-            },
-            {
+            });
+          }
+          if (perms.canIncrease) {
+            actionsList.push({
               key: 'increase',
               label: 'Tăng nguyên giá',
               icon: <PlusCircleOutlined />,
@@ -1393,8 +1413,10 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
                 setOperationMode('increase');
                 operationForm.resetFields();
               },
-            },
-            {
+            });
+          }
+          if (perms.canDecrease) {
+            actionsList.push({
               key: 'decrease',
               label: 'Giảm nguyên giá',
               icon: <MinusCircleOutlined />,
@@ -1403,18 +1425,20 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
                 setOperationMode('decrease');
                 operationForm.resetFields();
               },
-            }
-          );
+            });
+          }
         }
 
-        actionsList.push({
-          key: 'history',
-          label: 'Lịch sử',
-          icon: <HistoryOutlined />,
-          onClick: () => void openHistory(record),
-        });
+        if (perms.canHistory) {
+          actionsList.push({
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
+          });
+        }
 
-        if (st === 'DRAFT') {
+        if (isDraft && perms.canDelete) {
           actionsList.push({
             key: 'delete',
             label: 'Xóa',
@@ -1439,10 +1463,12 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
       handleSubmitApproval,
       orgName,
       stationMap,
+      perms,
     ],
   );
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1450,9 +1476,8 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         variant: 'primary',
         onClick: handleOpenCreate,
       },
-    ],
-    [handleOpenCreate],
-  );
+    ];
+  }, [handleOpenCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({

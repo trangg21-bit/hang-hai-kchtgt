@@ -31,6 +31,7 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -92,6 +93,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function TransmissionAssetList() {
+  const perms = useAssetPermissions(['transmission', 'transmissionasset']);
   const [data, setData] = useState<TransmissionAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [transmissions, setTransmissions] = useState<TransmissionOptionResponse[]>([]);
@@ -744,46 +746,53 @@ export default function TransmissionAssetList() {
           Boolean((record as { deletedAt?: string | null }).deletedAt);
 
         if (isArchived) {
-          return [
-            {
+          const arcActions: TableActionOption<TransmissionAsset>[] = [];
+          if (perms.canRead) {
+            arcActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void openDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            arcActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return arcActions;
         }
 
-        const rowActions: TableActionOption<TransmissionAsset>[] = [
-          {
+        const rowActions: TableActionOption<TransmissionAsset>[] = [];
+        if (perms.canRead) {
+          rowActions.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
-          },
-          ...(isAssetRecordEditable(record.approvalStatus)
-            ? [
-                {
-                  key: 'edit',
-                  label: 'Chỉnh sửa',
-                  icon: <EditOutlined />,
-                  onClick: () => openEdit(record),
-                },
-              ]
-            : []),
-          {
+          });
+        }
+        if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+          rowActions.push({
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
+          });
+        }
+        if (perms.canHistory) {
+          rowActions.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
+          });
+        }
+        if (perms.canExploit) {
+          rowActions.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
@@ -792,8 +801,10 @@ export default function TransmissionAssetList() {
               setOperationMode('exploit');
               operationForm.resetFields();
             },
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          rowActions.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
@@ -814,8 +825,10 @@ export default function TransmissionAssetList() {
                 disposalMethod: record.disposalMethod,
               });
             },
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          rowActions.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
@@ -836,11 +849,11 @@ export default function TransmissionAssetList() {
                 disposalMethod: record.disposalMethod,
               });
             },
-          },
-        ];
+          });
+        }
 
         const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
-        if (isDraft) {
+        if (isDraft && perms.canDelete) {
           rowActions.push({
             key: 'delete',
             label: 'Xóa',
@@ -853,11 +866,12 @@ export default function TransmissionAssetList() {
         return rowActions;
       },
     }),
-    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, transmissionMap, perms]
   );
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -865,9 +879,8 @@ export default function TransmissionAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>

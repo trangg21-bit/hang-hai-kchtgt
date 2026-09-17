@@ -168,9 +168,36 @@ describe('permissionStore Unit Tests', () => {
     const store = usePermissionStore.getState();
     expect(store.hasPermission('vts:create')).toBe(true);
     expect(store.hasPermission('vts:read')).toBe(true);
+    expect(store.hasExplicitPermission('vts:read')).toBe(false);
+    expect(store.hasExplicitPermission('vts:create')).toBe(true);
     expect(store.hasPermission('vtsoperationcenter:read')).toBe(false);
     expect(store.hasPermission('vtsoperationcenter:create')).toBe(false);
     expect(store.hasPermission('vhf:read')).toBe(false);
     expect(store.hasPermission('vhf:create')).toBe(false);
   });
+
+  it('should symmetrically resolve equivalent asset permissions (dryport <-> dryportasset)', () => {
+    useAuthStore.setState({
+      user: { id: '5', username: 'dryportAssetUser', permissions: ['dryportasset:read', 'berth:create'] } as any,
+    });
+
+    const store = usePermissionStore.getState();
+    // dryportasset:read grants dryport:read
+    expect(store.hasPermission('dryport:read')).toBe(true);
+    expect(store.hasExplicitPermission('dryport:read')).toBe(true);
+    expect(store.hasPermission('dryportasset:read')).toBe(true);
+    expect(store.hasExplicitPermission('dryportasset:read')).toBe(true);
+
+    // berth:create grants berthasset:create
+    expect(store.hasPermission('berthasset:create')).toBe(true);
+    expect(store.hasExplicitPermission('berthasset:create')).toBe(true);
+    expect(store.hasPermission('berth:create')).toBe(true);
+    expect(store.hasExplicitPermission('berth:create')).toBe(true);
+
+    // Unrelated actions remain false
+    expect(store.hasPermission('dryport:delete')).toBe(false);
+    expect(store.hasExplicitPermission('dryport:delete')).toBe(false);
+    expect(store.hasPermission('berth:delete')).toBe(false);
+  });
 });
+

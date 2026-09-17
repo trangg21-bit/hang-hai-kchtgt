@@ -32,6 +32,7 @@ import {
   type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -81,8 +82,8 @@ import {
   fontSizeMd, fontWeightBold, radiusPill, spaceMd, spaceSm, spaceXl,
   textTertiary
 } from '../../themetokenchk';
+import { isAssetRecordEditable, normalizeApprovalStatus, canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
-import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import VtsSystemAssetDetailContent from './VtsSystemAssetDetailContent';
 import VtsSystemAssetForm, { type FormValues } from './VtsSystemAssetForm';
 import VtsSystemAssetOperationForm, {
@@ -216,6 +217,7 @@ export default function VtsSystemAssetList() {
   const [form] = Form.useForm<FormValues>();
   const [operationForm] = Form.useForm<OperationValues>();
   const currentUser = useAuthStore((s) => s.user);
+  const perms = useAssetPermissions(['vts', 'vtssystem', 'vtsasset']);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<VtsSystemAsset | null>(null);
@@ -903,8 +905,19 @@ export default function VtsSystemAssetList() {
     setPage(1);
   }, []);
 
+  const hasAnyRowAction = Boolean(
+    perms.canRead ||
+    perms.canUpdate ||
+    perms.canExploit ||
+    perms.canIncrease ||
+    perms.canDecrease ||
+    perms.canHistory ||
+    perms.canDelete
+  );
+
   const tableOptions = useMemo<TableOption<VtsSystemAsset>>(() => ({
     dataKey: 'id',
+    hideActionColumn: !hasAnyRowAction,
     mainColumns: [
       {
         title: 'TÊN/MÃ TÀI SẢN',
@@ -914,7 +927,7 @@ export default function VtsSystemAssetList() {
         width: 240,
         fixed: 'left',
         allowSort: true,
-        onClick: (record) => void openDetail(record),
+        onClick: perms.canRead ? (record) => void openDetail(record) : undefined,
       },
       {
         title: 'ĐƠN VỊ QUẢN LÝ',
@@ -1024,85 +1037,116 @@ export default function VtsSystemAssetList() {
         sortField: 'departmentApprovedAt',
       },
     ],
-    actions: (record: VtsSystemAsset) => [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => void openDetail(record),
-      },
-      ...(isAssetRecordEditable(record.approvalStatus)
-        ? [
-            {
-              key: 'edit',
-              label: 'Chỉnh sửa',
-              icon: <EditOutlined />,
-              onClick: () => openEdit(record),
-            },
-          ]
-        : []),
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('exploit');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('increase');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            originalValueBefore: record.originalValue,
-            originalValue: record.originalValue,
-            remainingValueBefore: record.remainingValue,
-            remainingValue: record.remainingValue,
-            depreciationRate: record.depreciationRate,
-          });
-        },
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('decrease');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            originalValueBefore: record.originalValue,
-            originalValue: record.originalValue,
-            remainingValueBefore: record.remainingValue,
-            remainingValue: record.remainingValue,
-            depreciationRate: record.depreciationRate,
-          });
-        },
-      },
-      {
-        key: 'history',
-        label: 'Lịch sử thay đổi',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => setDeleteTarget(record),
-      },
-    ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, vtsSystemMap]);
+    actions: (record: VtsSystemAsset) => {
+      const actions: any[] = [];
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+      // 1. Xem chi tiết
+      if (perms.canRead) {
+        actions.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+
+      // 2. Chỉnh sửa
+      if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+        actions.push({
+          key: 'edit',
+          label: 'Chỉnh sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+
+      // 3. Khai thác tài sản
+      if (perms.canExploit) {
+        actions.push({
+          key: 'exploit',
+          label: 'Khai thác tài sản',
+          icon: <RocketOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('exploit');
+            operationForm.resetFields();
+          },
+        });
+      }
+
+      // 4. Tăng nguyên giá
+      if (perms.canIncrease) {
+        actions.push({
+          key: 'increase',
+          label: 'Tăng nguyên giá',
+          icon: <PlusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('increase');
+            operationForm.resetFields();
+            operationForm.setFieldsValue({
+              originalValueBefore: record.originalValue,
+              originalValue: record.originalValue,
+              remainingValueBefore: record.remainingValue,
+              remainingValue: record.remainingValue,
+              depreciationRate: record.depreciationRate,
+            });
+          },
+        });
+      }
+
+      // 5. Giảm nguyên giá
+      if (perms.canDecrease) {
+        actions.push({
+          key: 'decrease',
+          label: 'Giảm nguyên giá',
+          icon: <MinusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('decrease');
+            operationForm.resetFields();
+            operationForm.setFieldsValue({
+              originalValueBefore: record.originalValue,
+              originalValue: record.originalValue,
+              remainingValueBefore: record.remainingValue,
+              remainingValue: record.remainingValue,
+              depreciationRate: record.depreciationRate,
+            });
+          },
+        });
+      }
+
+      // 6. Lịch sử thay đổi
+      if (perms.canHistory) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử thay đổi',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+
+      // 7. Xóa
+      const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+      if (isDraft && perms.canDelete) {
+        actions.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+
+      return actions;
+    },
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, vtsSystemMap, perms]);
+
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) {
+      return [];
+    }
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1110,9 +1154,8 @@ export default function VtsSystemAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate]);
 
   const customTokens = useMemo(
     () => ({

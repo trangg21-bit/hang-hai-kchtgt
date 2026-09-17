@@ -25,6 +25,7 @@ import {
     type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import {
     resolveMimeType,
     triggerBlobDownload,
@@ -93,6 +94,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function DaiTtdhAssetList() {
+  const perms = useAssetPermissions(['daittdh', 'daittdhasset', 'coastalstation']);
   const [data, setData] = useState<DaiTtdhAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [daiTtdhs, setDaiTtdhs] = useState<Array<{ id: string; code: string; name: string }>>([]);
@@ -725,67 +727,78 @@ export default function DaiTtdhAssetList() {
           Boolean((record as { deletedAt?: string | null }).deletedAt);
 
         if (isArchived) {
-          return [
-            {
+          const arcActions: TableActionOption<DaiTtdhAsset>[] = [];
+          if (perms.canRead) {
+            arcActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void openDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            arcActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return arcActions;
         }
 
-        const rowActions: TableActionOption<DaiTtdhAsset>[] = [
-          {
+        const rowActions: TableActionOption<DaiTtdhAsset>[] = [];
+        if (perms.canRead) {
+          rowActions.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
-          },
-          ...(isAssetRecordEditable(record.approvalStatus)
-            ? [
-                {
-                  key: 'edit',
-                  label: 'Chỉnh sửa',
-                  icon: <EditOutlined />,
-                  onClick: () => openEdit(record),
-                },
-              ]
-            : []),
-          {
+          });
+        }
+        if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+          rowActions.push({
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
+          });
+        }
+        if (perms.canHistory) {
+          rowActions.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
+          });
+        }
+        if (perms.canExploit) {
+          rowActions.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
             onClick: () => openOperation(record, 'exploit'),
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          rowActions.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
             onClick: () => openOperation(record, 'increase'),
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          rowActions.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
             onClick: () => openOperation(record, 'decrease'),
-          },
-        ];
+          });
+        }
 
         const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
-        if (isDraft) {
+        if (isDraft && perms.canDelete) {
           rowActions.push({
             key: 'delete',
             label: 'Xóa',
@@ -798,11 +811,12 @@ export default function DaiTtdhAssetList() {
         return rowActions;
       },
     }),
-    [daiTtdhMap, openDetail, openEdit, openHistory, openOperation, orgName]
+    [daiTtdhMap, openDetail, openEdit, openHistory, openOperation, orgName, perms]
   );
 
-  const headerActions = useMemo<ScreenHeaderAction[]>(
-    () => [
+  const headerActions = useMemo<ScreenHeaderAction[]>(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -810,9 +824,8 @@ export default function DaiTtdhAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>

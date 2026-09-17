@@ -169,7 +169,7 @@ describe('Module 3: Tài sản khu tránh trú bão (docs/checklists/CHECKLIST-T
         orgUnitId: 'org-4',
         role: 'ADMIN',
         status: 'authenticated',
-        permissions: ['infraasset:manage'],
+        permissions: ['infraasset:manage', 'stormshelter:manage', 'stormshelterasset:manage'],
       },
       isAuthenticated: true,
       token: 'admin-jwt-token',

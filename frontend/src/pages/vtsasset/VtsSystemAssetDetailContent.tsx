@@ -42,6 +42,7 @@ import {
   getAttachmentPreviewUrl,
   getOrGenerateAttachmentBlob,
 } from '../../utils/attachmentStorage';
+import { fmtNum } from '../../utils/numFmt';
 
 export { renderApprovalStatusBadge };
 

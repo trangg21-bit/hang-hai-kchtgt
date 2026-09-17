@@ -52,7 +52,7 @@ public class VtsSystemAssetController {
     private final VtsSystemAssetService service;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'vts:create', 'vts:manage')")
     public ResponseEntity<ApiResponse<VtsSystemAssetResponse>> create(
             @RequestBody VtsSystemAssetRequest request) {
         VtsSystemAssetResponse response = service.create(request);
@@ -60,7 +60,7 @@ public class VtsSystemAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'vts:read', 'vtssystem:read', 'data:read')")
     public ResponseEntity<ApiResponse<VtsSystemAssetResponse>> getById(
             @PathVariable UUID id) {
         VtsSystemAssetResponse response = service.getById(id);
@@ -68,7 +68,7 @@ public class VtsSystemAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'vts:read', 'vtssystem:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<VtsSystemAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -93,7 +93,7 @@ public class VtsSystemAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'vts:update', 'vts:manage')")
     public ResponseEntity<ApiResponse<VtsSystemAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody VtsSystemAssetRequest request) {
@@ -102,7 +102,7 @@ public class VtsSystemAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'vts:delete', 'vts:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
@@ -110,7 +110,7 @@ public class VtsSystemAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'vts:read', 'vtssystem:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

@@ -54,7 +54,7 @@ public class ScadaSystemAssetController {
     private final ScadaService scadaService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'scada:create', 'scada:manage')")
     public ResponseEntity<ApiResponse<ScadaSystemAssetResponse>> create(
             @RequestBody ScadaSystemAssetRequest request) {
         ScadaSystemAssetResponse response = service.create(request);
@@ -62,7 +62,7 @@ public class ScadaSystemAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'scada:read', 'data:read')")
     public ResponseEntity<ApiResponse<ScadaSystemAssetResponse>> getById(
             @PathVariable UUID id) {
         ScadaSystemAssetResponse response = service.getById(id);
@@ -70,7 +70,7 @@ public class ScadaSystemAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'scada:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<ScadaSystemAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -96,7 +96,7 @@ public class ScadaSystemAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'scada:update', 'scada:manage')")
     public ResponseEntity<ApiResponse<ScadaSystemAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody ScadaSystemAssetRequest request) {
@@ -105,7 +105,7 @@ public class ScadaSystemAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'scada:delete', 'scada:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
@@ -113,13 +113,13 @@ public class ScadaSystemAssetController {
     }
 
     @GetMapping("/scada-options")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'scada:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<ScadaOptionResponse>>> getScadaOptions() {
         return ResponseEntity.ok(ApiResponse.success(scadaService.getOptions()));
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'scada:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

@@ -46,6 +46,8 @@ describe('approvalEditPolicy', () => {
 
     it('returns true for DRAFT when user has resource:manage', () => {
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'vts:manage', resource: 'vts' })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'data' })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'admin:manage', resource: 'vts' })).toBe(true);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts' })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts', extraDeletePerms: ['data:delete'] })).toBe(true);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'infraasset:manage', resource: 'vts' })).toBe(false);

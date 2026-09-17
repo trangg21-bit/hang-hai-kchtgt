@@ -52,7 +52,7 @@ public class TransmissionAssetController {
     private final TransmissionAssetService service;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:create', 'transmission:create', 'transmission:manage')")
     public ResponseEntity<ApiResponse<TransmissionAssetResponse>> create(
             @RequestBody TransmissionAssetRequest request) {
         TransmissionAssetResponse response = service.create(request);
@@ -60,7 +60,7 @@ public class TransmissionAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'data:read')")
     public ResponseEntity<ApiResponse<TransmissionAssetResponse>> getById(
             @PathVariable UUID id) {
         TransmissionAssetResponse response = service.getById(id);
@@ -68,7 +68,7 @@ public class TransmissionAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage') or @auth.check(authentication, 'transmission:history') or @auth.check(authentication, 'transmission:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:history', 'transmission:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản HT truyền dẫn thành công", service.getHistory(id)));
     }
@@ -97,7 +97,7 @@ public class TransmissionAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<TransmissionAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -122,7 +122,7 @@ public class TransmissionAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:update', 'transmission:update', 'transmission:manage')")
     public ResponseEntity<ApiResponse<TransmissionAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody TransmissionAssetRequest request) {
@@ -131,7 +131,7 @@ public class TransmissionAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:delete', 'transmission:delete', 'transmission:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
@@ -139,14 +139,14 @@ public class TransmissionAssetController {
     }
 
     @GetMapping("/{id}/exploitations")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<TransmissionAssetExploitation>>> getExploitations(
             @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getExploitations(id)));
     }
 
     @PostMapping("/{id}/exploitations")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:update', 'transmission:update', 'transmission:manage')")
     public ResponseEntity<ApiResponse<TransmissionAssetExploitation>> addExploitation(
             @PathVariable UUID id,
             @RequestBody TransmissionExploitationRequest request) {
@@ -154,7 +154,7 @@ public class TransmissionAssetController {
     }
 
     @GetMapping("/{id}/adjustments")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<TransmissionAssetAdjustment>>> getAdjustments(
             @PathVariable UUID id,
             @RequestParam(required = false) String type) {
@@ -162,7 +162,7 @@ public class TransmissionAssetController {
     }
 
     @PostMapping("/{id}/adjustments")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:update', 'transmission:update', 'transmission:manage')")
     public ResponseEntity<ApiResponse<TransmissionAssetAdjustment>> addAdjustment(
             @PathVariable UUID id,
             @RequestBody TransmissionAdjustmentRequest request) {
@@ -172,7 +172,7 @@ public class TransmissionAssetController {
     // ── Attachment endpoints ─────────────────────────────────────────────
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:update', 'transmissionasset:create', 'transmission:update')")
     public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files) {
@@ -186,7 +186,7 @@ public class TransmissionAssetController {
     }
 
     @GetMapping("/{id}/attachments")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> listAttachments(
             @PathVariable UUID id) {
         List<InfraAssetAttachmentResponse> result = service.listAttachments(id);
@@ -194,7 +194,7 @@ public class TransmissionAssetController {
     }
 
     @DeleteMapping("/{id}/attachments/{attId}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:update', 'transmission:update')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {
@@ -204,7 +204,7 @@ public class TransmissionAssetController {
     }
 
     @GetMapping("/{id}/attachments/{attId}/download")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'data:read')")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {

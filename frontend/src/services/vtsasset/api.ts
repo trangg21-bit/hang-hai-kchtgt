@@ -52,11 +52,10 @@ export async function deleteVtsSystemAsset(id: string): Promise<void> {
 export async function fetchVtsSystemOptions(orgUnitId?: string): Promise<VtsSystemOption[]> {
   const sp = new URLSearchParams();
   if (orgUnitId) sp.set('orgUnitId', orgUnitId);
-  sp.set('size', '200');
   try {
-    const res = await api.get(`/v1/vts-systems?${sp.toString()}`);
+    const res = await api.get(`/v1/vts-systems/options${sp.toString() ? `?${sp.toString()}` : ''}`);
     const items: Array<{ id: string; code: string; systemName?: string; name?: string }> =
-      res.data?.data?.items || res.data?.data?.content || [];
+      res.data?.data || [];
     return items.map((item) => ({
       id: item.id,
       code: item.code,

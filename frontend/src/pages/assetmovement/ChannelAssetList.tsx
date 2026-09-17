@@ -71,6 +71,7 @@ import type {
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -87,7 +88,7 @@ import {
     textTertiary,
 } from '../../themetokenchk';
 import type { NavigationChannelResponse } from '../../types/navigationChannel';
-import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { countHistoryUpdates, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import ChannelAssetDetailContent from './ChannelAssetDetailContent';
@@ -161,6 +162,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function ChannelAssetList() {
+  const perms = useAssetPermissions(['navigationchannel', 'channel', 'channelasset']);
   const [data, setData] = useState<ChannelAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [channels, setChannels] = useState<NavigationChannelResponse[]>([]);
@@ -1034,16 +1036,18 @@ export default function ChannelAssetList() {
     ],
     actions: (record: ChannelAsset) => {
       const st = record.approvalStatus || (record as any).status || '';
-      const actionsList: any[] = [
-        {
+      const actionsList: any[] = [];
+
+      if (perms.canRead) {
+        actionsList.push({
           key: 'detail',
           label: 'Xem chi tiết',
           icon: <EyeOutlined />,
           onClick: () => void openDetail(record),
-        },
-      ];
+        });
+      }
 
-      if (isAssetRecordEditable(st)) {
+      if (perms.canUpdate && isAssetRecordEditable(st)) {
         actionsList.push({
           key: 'edit',
           label: 'Chỉnh sửa',
@@ -1052,89 +1056,102 @@ export default function ChannelAssetList() {
         });
       }
 
-      if (st === 'DRAFT') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi Cảng vụ phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
-      } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi lại phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
+      if (perms.canUpdate) {
+        if (st === 'DRAFT') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi Cảng vụ phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi lại phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        }
       }
 
       if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
-        actionsList.push(
-          {
+        if (perms.canApproveC1) {
+          actionsList.push({
             key: 'approveC1',
             label: 'Phê duyệt cấp Cảng vụ/Chi cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c1'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC1) {
+          actionsList.push({
             key: 'rejectC1',
             label: 'Từ chối cấp Cảng vụ/Chi cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c1'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED_LEVEL1') {
-        actionsList.push(
-          {
+        if (perms.canApproveC2) {
+          actionsList.push({
             key: 'approveC2',
             label: 'Phê duyệt cấp Cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c2'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC2) {
+          actionsList.push({
             key: 'rejectC2',
             label: 'Từ chối cấp Cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c2'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-        actionsList.push(
-          {
+        if (perms.canExploit) {
+          actionsList.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
             onClick: () => openOperation(record, 'exploit'),
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          actionsList.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
             onClick: () => openOperation(record, 'increase'),
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          actionsList.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
             onClick: () => openOperation(record, 'decrease'),
-          }
-        );
+          });
+        }
       }
 
-      actionsList.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      });
+      if (perms.canHistory) {
+        actionsList.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
 
-      if (st === 'DRAFT') {
+      const isDraft = normalizeApprovalStatus(st) === 'DRAFT' || st === 'DRAFT';
+      if (isDraft && perms.canDelete) {
         actionsList.push({
           key: 'delete',
           label: 'Xóa',
@@ -1156,17 +1173,26 @@ export default function ChannelAssetList() {
     handleOpenRejectModal,
     handleSubmitApproval,
     orgName,
+    perms,
   ]);
 
-  const headerActions = useMemo<ScreenHeaderAction[]>(() => [
-    {
-      key: 'create',
-      label: 'Thêm mới',
-      icon: <PlusOutlined />,
-      variant: 'primary',
-      onClick: openCreate,
-    },
-  ], [openCreate]);
+  const headerActions = useMemo<ScreenHeaderAction[]>(() => {
+    if (!perms.canCreate) return [];
+    return [
+      {
+        key: 'create',
+        label: 'Thêm mới',
+        icon: <PlusOutlined />,
+        variant: 'primary',
+        onClick: openCreate,
+      },
+    ];
+  }, [openCreate, perms.canCreate]);
+        variant: 'primary',
+        onClick: openCreate,
+      },
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>

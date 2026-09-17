@@ -321,4 +321,103 @@ class EffectivePermissionServiceTest {
         assertTrue(service.checkPermission(userId, "vts:read"));
         assertFalse(service.checkPermission(userId, "vts:delete"));
     }
+
+    @Test
+    @DisplayName("BuoyStation: buoyasset and buoy permissions grant buoystation access")
+    void buoyStationEquivalenceAndParentDomains() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("buoyasset:read"));
+
+        assertTrue(service.checkPermission(userId, "buoystation:read"));
+        assertTrue(service.checkPermission(userId, "buoy:read"));
+        assertFalse(service.checkPermission(userId, "buoystation:delete"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("buoyasset:manage"));
+        assertTrue(service.checkPermission(userId, "buoystation:read"));
+        assertTrue(service.checkPermission(userId, "buoystation:create"));
+        assertTrue(service.checkPermission(userId, "buoystation:delete"));
+    }
+
+    @Test
+    @DisplayName("BeaconStation: lighthouseasset and lighthouse permissions grant beaconstation access")
+    void beaconStationEquivalenceAndParentDomains() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("lighthouseasset:read"));
+
+        assertTrue(service.checkPermission(userId, "beaconstation:read"));
+        assertTrue(service.checkPermission(userId, "lighthouse:read"));
+        assertTrue(service.checkPermission(userId, "beaconlight:read"));
+        assertFalse(service.checkPermission(userId, "beaconstation:delete"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("lighthouseasset:manage"));
+        assertTrue(service.checkPermission(userId, "beaconstation:read"));
+        assertTrue(service.checkPermission(userId, "beaconstation:create"));
+        assertTrue(service.checkPermission(userId, "beaconstation:update"));
+        assertTrue(service.checkPermission(userId, "beaconstation:delete"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("beaconstation:manage"));
+        assertTrue(service.checkPermission(userId, "lighthouseasset:read"));
+        assertTrue(service.checkPermission(userId, "lighthouse:read"));
+    }
+
+    @Test
+    @DisplayName("Port: stormshelterasset, berthasset, and infraasset permissions grant port read access")
+    void portEquivalenceAndParentDomains() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("stormshelterasset:read"));
+
+        assertTrue(service.checkPermission(userId, "port:read"));
+        assertTrue(service.checkPermission(userId, "seaport:read"));
+        assertFalse(service.checkPermission(userId, "port:delete"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("stormshelterasset:manage"));
+        assertTrue(service.checkPermission(userId, "port:read"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("berthasset:read"));
+        assertTrue(service.checkPermission(userId, "port:read"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("infraasset:manage"));
+        assertTrue(service.checkPermission(userId, "port:read"));
+        assertTrue(service.checkPermission(userId, "port:create"));
+    }
+
+    @Test
+    @DisplayName("CoastalStation: ttxlttasset, lritasset, inmarsatasset, cospassarsatasset grant access to coastal station endpoints")
+    void coastalStationEquivalenceAndParentDomains() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("ttxlttasset:read"));
+
+        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:read"));
+        assertTrue(service.checkPermission(userId, "ttxltt:read"));
+        assertFalse(service.checkPermission(userId, "coastalstationhaiphong:delete"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("ttxlttasset:manage"));
+        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:read"));
+        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:create"));
+        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:update"));
+        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:delete"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("coastalstationhaiphong:manage"));
+        assertTrue(service.checkPermission(userId, "ttxlttasset:read"));
+        assertTrue(service.checkPermission(userId, "ttxltt:read"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("lritasset:read"));
+        assertTrue(service.checkPermission(userId, "coastalstationlrit:read"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("inmarsatasset:read"));
+        assertTrue(service.checkPermission(userId, "coastalstationinmarsat:read"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("cospassarsatasset:read"));
+        assertTrue(service.checkPermission(userId, "coastalstationcospassarsat:read"));
+    }
+
+    @Test
+    @DisplayName("User: infraasset, data, and admin permissions grant user read access")
+    void userEquivalenceAndParentDomains() {
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("infraasset:read"));
+        assertTrue(service.checkPermission(userId, "user:read"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("data:read"));
+        assertTrue(service.checkPermission(userId, "user:read"));
+
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("admin:view"));
+        assertTrue(service.checkPermission(userId, "user:read"));
+    }
 }
+

@@ -460,33 +460,43 @@ export default function LineObjectList() {
   ], [page, pageSize, symbols, userMap, openDetailDrawer]);
 
   // ── Row Actions ──────────────────────────────────────────────────
-  const rowActions = useCallback((record: SpatialObjectCategory) => [
-    {
-      key: 'view',
-      label: 'Xem chi tiết',
-      icon: icons.view,
-      onClick: () => openDetailDrawer(record),
-    },
-    {
-      key: 'edit',
-      label: 'Chỉnh sửa',
-      icon: icons.edit,
-      onClick: () => openEditDrawer(record),
-    },
-    {
-      key: 'history',
-      label: 'Lịch sử',
-      icon: icons.history,
-      onClick: () => void openHistoryDrawer(record),
-    },
-    {
-      key: 'delete',
-      label: 'Xóa',
-      icon: icons.delete,
-      danger: true,
-      onClick: () => openDeleteModal(record),
-    },
-  ], [openDetailDrawer, openEditDrawer, openHistoryDrawer, openDeleteModal]);
+  const rowActions = useCallback((record: SpatialObjectCategory) => {
+    const actions: any[] = [];
+    if (hasPerm('data:read')) {
+      actions.push({
+        key: 'view',
+        label: 'Xem chi tiết',
+        icon: icons.view,
+        onClick: () => openDetailDrawer(record),
+      });
+    }
+    if (hasPerm('data:update') || hasPerm('data:write')) {
+      actions.push({
+        key: 'edit',
+        label: 'Chỉnh sửa',
+        icon: icons.edit,
+        onClick: () => openEditDrawer(record),
+      });
+    }
+    if (hasPerm('history:read') || hasPerm('history:view')) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: icons.history,
+        onClick: () => void openHistoryDrawer(record),
+      });
+    }
+    if (hasPerm('data:delete')) {
+      actions.push({
+        key: 'delete',
+        label: 'Xóa',
+        icon: icons.delete,
+        danger: true,
+        onClick: () => openDeleteModal(record),
+      });
+    }
+    return actions;
+  }, [hasPerm, openDetailDrawer, openEditDrawer, openHistoryDrawer, openDeleteModal]);
 
   // ── Header Actions ───────────────────────────────────────────────
   const headerActions = useMemo(() => {

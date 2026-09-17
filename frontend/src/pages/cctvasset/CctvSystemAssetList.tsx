@@ -16,8 +16,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from '../../components/ToastNotification';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
 import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { fmtInputNumber } from '../../utils/numFmt';
 
 import {
@@ -209,6 +211,7 @@ const isValidationError = (cause: unknown) =>
   Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function CctvSystemAssetList() {
+  const perms = useAssetPermissions(['cctv', 'cctvasset']);
   const currentUser = useAuthStore((s) => s.user);
   const [data, setData] = useState<CctvSystemAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -1065,74 +1068,89 @@ export default function CctvSystemAssetList() {
         sortField: 'departmentApprovedAt',
       },
     ],
-    actions: (record: CctvSystemAsset) => [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: <EyeOutlined />,
-        onClick: () => void openDetail(record),
-      },
-      ...(isAssetRecordEditable(record.approvalStatus)
-        ? [
-            {
-              key: 'edit',
-              label: 'Sửa',
-              icon: <EditOutlined />,
-              onClick: () => openEdit(record),
-            },
-          ]
-        : []),
-      {
-        key: 'exploit',
-        label: 'Khai thác tài sản',
-        icon: <RocketOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('exploit');
-          operationForm.resetFields();
-          operationForm.setFieldsValue({
-            unitOfMeasure: record.quantityUnit,
-            quantity: record.quantity,
-          });
-        },
-      },
-      {
-        key: 'increase',
-        label: 'Tăng nguyên giá',
-        icon: <PlusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('increase');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'decrease',
-        label: 'Giảm nguyên giá',
-        icon: <MinusCircleOutlined />,
-        onClick: () => {
-          setSelected(record);
-          setOperationMode('decrease');
-          operationForm.resetFields();
-        },
-      },
-      {
-        key: 'history',
-        label: 'Lịch sử thay đổi',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      },
-      {
-        key: 'delete',
-        label: 'Xóa',
-        icon: <DeleteOutlined />,
-        onClick: () => setDeleteTarget(record),
-      },
-    ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap]);
+    actions: (record: CctvSystemAsset) => {
+      const actions: any[] = [];
+      if (perms.canRead) {
+        actions.push({
+          key: 'detail',
+          label: 'Xem chi tiết',
+          icon: <EyeOutlined />,
+          onClick: () => void openDetail(record),
+        });
+      }
+      if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+        actions.push({
+          key: 'edit',
+          label: 'Sửa',
+          icon: <EditOutlined />,
+          onClick: () => openEdit(record),
+        });
+      }
+      if (perms.canExploit) {
+        actions.push({
+          key: 'exploit',
+          label: 'Khai thác tài sản',
+          icon: <RocketOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('exploit');
+            operationForm.resetFields();
+            operationForm.setFieldsValue({
+              unitOfMeasure: record.quantityUnit,
+              quantity: record.quantity,
+            });
+          },
+        });
+      }
+      if (perms.canIncrease) {
+        actions.push({
+          key: 'increase',
+          label: 'Tăng nguyên giá',
+          icon: <PlusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('increase');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canDecrease) {
+        actions.push({
+          key: 'decrease',
+          label: 'Giảm nguyên giá',
+          icon: <MinusCircleOutlined />,
+          onClick: () => {
+            setSelected(record);
+            setOperationMode('decrease');
+            operationForm.resetFields();
+          },
+        });
+      }
+      if (perms.canHistory) {
+        actions.push({
+          key: 'history',
+          label: 'Lịch sử thay đổi',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
+      const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
+      if (isDraft && perms.canDelete) {
+        actions.push({
+          key: 'delete',
+          label: 'Xóa',
+          icon: <DeleteOutlined />,
+          danger: true,
+          onClick: () => setDeleteTarget(record),
+        });
+      }
+      return actions;
+    },
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap, perms]);
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1140,9 +1158,8 @@ export default function CctvSystemAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({

@@ -13,6 +13,7 @@ export default defineConfig({
       'src/config/**/*.test.ts',
       'src/pages/**/*.test.tsx',
       'src/hooks/useKcht*.test.ts',
+      'src/hooks/usePermissions.test.ts',
     ],
     exclude: ['node_modules', 'dist', 'tests/**', 'e2e/**', 'src/hooks/useUsers.test.ts'],
   },

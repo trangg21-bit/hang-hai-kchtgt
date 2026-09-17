@@ -142,7 +142,8 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         // Do not resolve the same user from DB/Redis again for this request.
         if (!permissionRoleService.checkPermission(auth, resource, action)) {
             String requiredPermission = resource + ":" + action;
-            log.warn("Permission denied for user {}: {} {}", auth.getName(), method, path);
+            log.warn("Permission denied for user '{}': requires '{}', path={} method={}", auth.getName(), requiredPermission, path, method);
+            log.debug("User '{}' authorities: {}", auth.getName(), auth.getAuthorities());
             writeForbiddenResponse(response, path, requiredPermission);
             return;
         }
@@ -164,6 +165,9 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         }
         if (HttpMethod.GET.name().equalsIgnoreCase(method)) {
             if (SKIP_PERMISSION_ORG_UNIT_PATHS.contains(path)) {
+                return true;
+            }
+            if (path.startsWith("/api/users") || path.startsWith("/api/v1/users")) {
                 return true;
             }
             if ("/api/permissions".equals(path) || "/api/v1/permissions".equals(path)
@@ -331,13 +335,37 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("siem", "security"),
             entry("admin", "admin"),
             entry("infra-assets", "infraasset"),
-            entry("coastal-station-assets", "infraasset"),
-            entry("transmission-assets", "infraasset"),
-            entry("vts-assets", "infraasset"),
-            entry("ais-assets", "infraasset"),
-            entry("radar-assets", "infraasset"),
-            entry("scada-assets", "infraasset"),
-            entry("cctv-assets", "infraasset"),
+            entry("vts-assets", "vtsasset"),
+            entry("vts-asset", "vtsasset"),
+            entry("radar-assets", "radarasset"),
+            entry("radar-asset", "radarasset"),
+            entry("ais-assets", "aisasset"),
+            entry("ais-asset", "aisasset"),
+            entry("cctv-assets", "cctvasset"),
+            entry("cctv-asset", "cctvasset"),
+            entry("scada-assets", "scadaasset"),
+            entry("scada-asset", "scadaasset"),
+            entry("transmission-assets", "transmissionasset"),
+            entry("transmission-asset", "transmissionasset"),
+            entry("coastal-station-assets", "coastalstationasset"),
+            entry("berth-assets", "berthasset"),
+            entry("transfer-area-assets", "transferareaasset"),
+            entry("storm-shelter-assets", "stormshelterasset"),
+            entry("buoy-berth-assets", "buoyberthasset"),
+            entry("pier-assets", "pierasset"),
+            entry("anchorage-assets", "anchorageasset"),
+            entry("lighthouse-assets", "lighthouseasset"),
+            entry("dike-revetment-assets", "dikerevetmentasset"),
+            entry("buoy-assets", "buoyasset"),
+            entry("channel-assets", "channelasset"),
+            entry("dry-port-assets", "dryportasset"),
+            entry("lrit-assets", "lritasset"),
+            entry("cospas-sarsat-assets", "cospassarsatasset"),
+            entry("ttxltt-assets", "ttxlttasset"),
+            entry("vts-assist-assets", "vtsassistasset"),
+            entry("vhf-assets", "vhfasset"),
+            entry("dai-ttdh-assets", "daittdhasset"),
+            entry("inmarsat-assets", "inmarsatasset"),
             entry("asset-decrease-requests", "assetdecrease"),
             entry("asset-increase-requests", "assetincrease"),
             entry("inventory-assets", "inventoryasset"),

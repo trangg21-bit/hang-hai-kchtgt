@@ -29,7 +29,8 @@ import Icon, {
   MonitorOutlined, FileTextOutlined, PieChartOutlined, RadarChartOutlined, DeploymentUnitOutlined,
   PlusCircleOutlined, MinusCircleOutlined, AuditOutlined, AppstoreOutlined,
   WarningOutlined, FileProtectOutlined, PictureOutlined, UserOutlined, TeamOutlined,
-  HistoryOutlined, SyncOutlined, FolderOutlined, SwapOutlined,
+  HistoryOutlined, SyncOutlined, FolderOutlined, SwapOutlined, ControlOutlined,
+  SoundOutlined, WifiOutlined,
 } from '@ant-design/icons';
 
 import { landingGroupIcons } from '../themetokenchk';
@@ -105,6 +106,9 @@ const icons = {
   sync: <SyncOutlined />,
   folder: <FolderOutlined />,
   swap: <SwapOutlined />,
+  control: <ControlOutlined />,
+  wifi: <WifiOutlined />,
+  sound: <SoundOutlined />,
 };
 
 /* ============ CÂY BÁO CÁO THỐNG KÊ — 8 nhóm biểu mẫu chuyên ngành ============ */
@@ -186,11 +190,11 @@ const kchtTree: NavNode[] = [
     key: '/vts-system',
     route: '/vts-system',
     label: 'Hệ thống VTS',
-    icon: icons.compass,
+    icon: icons.control,
     children: [
       { key: '/vts-operation-center', route: '/vts-operation-center', label: 'Trung tâm điều hành VTS', icon: icons.apartment },
       { key: '/radar-station', route: '/radar-station', label: 'Trạm radar', icon: icons.radar },
-      { key: '/ais-system', route: '/ais-system', label: 'Hệ thống trạm bờ AIS', icon: icons.api },
+      { key: '/ais-system', route: '/ais-system', label: 'Hệ thống trạm bờ AIS', icon: icons.wifi },
       { key: '/cctv', route: '/cctv', label: 'Hệ thống CCTV', icon: icons.video },
       { key: '/scada', route: '/scada', label: 'Hệ thống SCADA', icon: icons.monitor },
       { key: '/transmission', route: '/transmission', label: 'Hệ thống truyền dẫn', icon: icons.apartment },
@@ -202,7 +206,7 @@ const kchtTree: NavNode[] = [
     label: 'Đài viễn thông hàng hải',
     icon: icons.apartment,
     children: [
-      { key: '/dai-ttdh', route: '/dai-ttdh', label: 'Đài TTDH', icon: icons.aim },
+      { key: '/dai-ttdh', route: '/dai-ttdh', label: 'Đài TTDH', icon: icons.sound },
       { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat', icon: icons.global },
       { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat', icon: icons.safety },
       { key: '/station/lrit', route: '/station/lrit', label: 'Đài LRIT', icon: icons.compass },
@@ -240,15 +244,15 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: '/asset/lrit', route: '/asset/lrit', label: 'Tài sản đài LRIT', icon: icons.compass },
       { key: '/asset/cospas-sarsat', route: '/asset/cospas-sarsat', label: 'Tài sản đài Cospas-Sarsat', icon: icons.safety },
       { key: '/asset/ttxltt', route: '/asset/ttxltt', label: 'Tài sản đài TTXLTT', icon: icons.bank },
-      { key: '/asset/vts-system', route: '/asset/vts-system', label: 'Tài sản hệ thống VTS', icon: icons.compass },
-      { key: '/asset/radar-station', route: '/asset/radar-station', label: 'Tài sản trạm radar', icon: icons.compass },
-      { key: '/asset/ais-system', route: '/asset/ais-system', label: 'Tài sản hệ thống AIS', icon: icons.compass },
-      { key: '/asset/cctv-system', route: '/asset/cctv-system', label: 'Tài sản HT CCTV', icon: icons.compass },
-      { key: '/asset/scada-system', route: '/asset/scada-system', label: 'Tài sản HT SCADA', icon: icons.compass },
+      { key: '/asset/vts-system', route: '/asset/vts-system', label: 'Tài sản hệ thống VTS', icon: icons.control },
+      { key: '/asset/radar-station', route: '/asset/radar-station', label: 'Tài sản trạm radar', icon: icons.radar },
+      { key: '/asset/ais-system', route: '/asset/ais-system', label: 'Tài sản hệ thống AIS', icon: icons.wifi },
+      { key: '/asset/cctv-system', route: '/asset/cctv-system', label: 'Tài sản HT CCTV', icon: icons.video },
+      { key: '/asset/scada-system', route: '/asset/scada-system', label: 'Tài sản HT SCADA', icon: icons.monitor },
       { key: '/asset/transmission', route: '/asset/transmission', label: 'Tài sản HT truyền dẫn', icon: icons.deployment },
       { key: '/asset/vts-assist', route: '/asset/vts-assist', label: 'Tài sản hệ thống phụ trợ VTS', icon: icons.tool },
       { key: '/asset/vhf', route: '/asset/vhf', label: 'Tài sản HTTT liên lạc VHF', icon: icons.api },
-      { key: '/asset/dai-ttdh', route: '/asset/dai-ttdh', label: 'Tài sản đài TTDH', icon: icons.radar },
+      { key: '/asset/dai-ttdh', route: '/asset/dai-ttdh', label: 'Tài sản đài TTDH', icon: icons.sound },
       { key: '/asset/inmarsat', route: '/asset/inmarsat', label: 'Tài sản đài Inmarsat', icon: icons.global },
       { key: '/asset/increase', route: '/asset/increase', label: 'Yêu cầu tăng tài sản', icon: icons.plusCircle },
       { key: '/asset/decrease', route: '/asset/decrease', label: 'Yêu cầu giảm tài sản', icon: icons.minusCircle },

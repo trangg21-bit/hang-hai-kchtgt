@@ -18,6 +18,7 @@ export interface InfrastructureReferenceOption {
 
 export interface InfrastructureAssetScreenConfig {
   assetType: InfrastructureAssetType;
+  resource: string | string[];
   title: string;
   subjectLabel: string;
   relationField: InfrastructureRelationField;
@@ -32,6 +33,7 @@ export interface InfrastructureAssetScreenConfig {
 
 export const PORT_TERMINAL_ASSET_SCREEN: InfrastructureAssetScreenConfig = {
   assetType: INFRASTRUCTURE_ASSET_TYPE.PortTerminal,
+  resource: ['berthasset', 'berth', 'port', 'infraasset'],
   title: 'Tài sản bến cảng',
   subjectLabel: 'tài sản bến cảng',
   relationField: 'berthId',
@@ -46,6 +48,7 @@ export const PORT_TERMINAL_ASSET_SCREEN: InfrastructureAssetScreenConfig = {
 
 export const ANCHORAGE_ASSET_SCREEN: InfrastructureAssetScreenConfig = {
   assetType: INFRASTRUCTURE_ASSET_TYPE.Anchorage,
+  resource: ['anchorageasset', 'anchorage', 'port', 'infraasset'],
   title: 'Tài sản khu neo đậu',
   subjectLabel: 'tài sản khu neo đậu',
   relationField: 'anchorageId',
@@ -60,6 +63,7 @@ export const ANCHORAGE_ASSET_SCREEN: InfrastructureAssetScreenConfig = {
 
 export const LIGHTHOUSE_ASSET_SCREEN: InfrastructureAssetScreenConfig = {
   assetType: INFRASTRUCTURE_ASSET_TYPE.Lighthouse,
+  resource: ['lighthouseasset', 'lighthouse', 'beaconstation', 'beaconlight', 'infraasset'],
   title: 'Tài sản đèn biển và nhà trạm gắn liền đèn biển',
   subjectLabel: 'tài sản đèn biển và nhà trạm gắn liền đèn biển',
   relationField: 'beaconStationId',
@@ -74,6 +78,7 @@ export const LIGHTHOUSE_ASSET_SCREEN: InfrastructureAssetScreenConfig = {
 
 export const DIKE_REVETMENT_ASSET_SCREEN: InfrastructureAssetScreenConfig = {
   assetType: INFRASTRUCTURE_ASSET_TYPE.DikeRevetment,
+  resource: ['dikerevetmentasset', 'dikerevetment', 'infraasset'],
   title: 'Tài sản đê/kè',
   subjectLabel: 'tài sản đê/kè',
   relationField: 'dikeRevetmentId',
