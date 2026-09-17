@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormInstance } from 'antd/es/form';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { organizationService } from '../../../services/organizationService';
 import {
   findRootOrgUnitId,
   resolveOrgSubtreeIds,
   type OrgUnitTreeOption,
 } from '../../org-unit';
-import { organizationService } from '../../../services/organizationService';
 import {
+  FormFieldType,
   type DynamicCascadingHelper,
   type FormFieldConfig,
   type FormSectionConfig,
   type FormTabConfig,
-  FormFieldType,
 } from './dynamic-form-sidebar.model';
 import { useDynamicOrgUnitCascading } from './DynamicOrgUnitTreeSelect';
 
@@ -184,9 +184,11 @@ export function useDynamicFormOrgSync<T extends Record<string, unknown> = Record
 
   const handleValuesChange = useCallback(
     (changedValues: Partial<T>, allValues: T) => {
-      setTick((prev) => prev + 1);
-
       const changedRecord = changedValues as Record<string, unknown>;
+
+      if ('parentOrgUnitId' in changedRecord || 'orgUnitId' in changedRecord) {
+        setTick((prev) => prev + 1);
+      }
 
       if ('parentOrgUnitId' in changedRecord) {
         const newParentId = changedRecord.parentOrgUnitId;

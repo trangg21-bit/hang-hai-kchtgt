@@ -3,6 +3,7 @@ import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
 import { useMemo } from 'react';
 import {
+  createAssetAdjustmentFooterActions,
   createAssetAdjustmentOperationSection,
   handleAssetAdjustmentValuesChange,
 } from '../../components/shared/asset-value';
@@ -12,8 +13,14 @@ import {
   type FormSectionConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import {
+  ASSET_QUANTITY_UNIT_OPTIONS,
+  DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
+} from '../../constants/assetDropdown';
 import type { Organization } from '../../services/organizationService';
 import type { VhfAsset } from '../../services/vhfAsset/types';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -55,13 +62,6 @@ export interface OperationValues extends Record<string, unknown> {
   disposalMethod?: string;
 }
 
-import {
-  ASSET_QUANTITY_UNIT_OPTIONS,
-  DECREASE_REASON_OPTIONS,
-  INCREASE_REASON_OPTIONS,
-} from '../../constants/assetDropdown';
-import { fmtInputNumber } from '../../utils/numFmt';
-
 export interface VhfAssetOperationFormProps {
   open: boolean;
   operationMode?: OperationMode;
@@ -69,8 +69,9 @@ export interface VhfAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
 }
 
 export default function VhfAssetOperationForm({
@@ -80,6 +81,7 @@ export default function VhfAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: VhfAssetOperationFormProps) {
@@ -135,6 +137,7 @@ export default function VhfAssetOperationForm({
               type: FormFieldType.Number,
               required: true,
               min: 1,
+              maxLength: 5,
               formatter: fmtInputNumber,
               placeholder: '0',
               rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -153,6 +156,7 @@ export default function VhfAssetOperationForm({
               type: FormFieldType.Number,
               required: true,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
@@ -162,6 +166,7 @@ export default function VhfAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -170,6 +175,7 @@ export default function VhfAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -178,6 +184,7 @@ export default function VhfAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -251,27 +258,15 @@ export default function VhfAssetOperationForm({
   }, [operationMode, selected, organizations]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label:
-          operationMode === 'exploit'
-            ? 'Lưu khai thác'
-            : operationMode === 'increase'
-              ? 'Lưu tăng nguyên giá'
-              : 'Lưu giảm nguyên giá',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [operationMode, onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu khai thác',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   if (!open || !operationMode || !selected) return null;
 

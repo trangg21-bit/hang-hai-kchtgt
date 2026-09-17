@@ -27,4 +27,7 @@ public interface InfraAssetRepository extends JpaRepository<InfraAsset, UUID>, J
 
 
     Page<InfraAsset> findByAssetCode(String assetCode, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT a.assetCode FROM InfraAsset a WHERE a.assetCode LIKE CONCAT(:prefix, '%')")
+    List<String> findAssetCodesStartingWith(@org.springframework.data.repository.query.Param("prefix") String prefix);
 }

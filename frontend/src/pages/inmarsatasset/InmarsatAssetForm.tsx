@@ -1,23 +1,23 @@
-import { useMemo } from 'react';
+import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
+import { useMemo } from 'react';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import { createAssetDepreciationFormSection } from '../../components/shared/asset-value/assetValueFormFields';
+import {
+  DynamicFormSidebar,
+  FormFieldType,
+  type FormSidebarAction,
+  type FormTabConfig,
+} from '../../components/shared/dynamic-form-sidebar';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type {
   InmarsatAsset,
   InmarsatAssetPayload,
 } from '../../services/inmarsatAsset/types';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  DynamicFormSidebar,
-  FormFieldType,
-  type FormTabConfig,
-  type FormSidebarAction,
-} from '../../components/shared/dynamic-form-sidebar';
-import { createAssetDepreciationFormSection } from '../../components/shared/asset-value/assetValueFormFields';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type { Organization } from '../../services/organizationService';
 
 export type FormValues = Omit<
   InmarsatAssetPayload,
@@ -213,6 +213,7 @@ export default function InmarsatAssetForm({
                 label: 'Số lượng',
                 type: FormFieldType.Number,
                 min: 1,
+                maxLength: 5,
                 required: true,
                 rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
                 placeholder: 'Nhập số lượng',
@@ -271,6 +272,7 @@ export default function InmarsatAssetForm({
                 label: 'Diện tích đất (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích đất',
               },
               {
@@ -278,6 +280,7 @@ export default function InmarsatAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích sàn',
               },
               {

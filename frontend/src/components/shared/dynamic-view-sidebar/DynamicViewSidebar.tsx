@@ -1,21 +1,21 @@
-import React, { useState } from "react";
-import { Tabs, Spin, Tooltip } from "antd";
 import { DownOutlined, RightOutlined } from "@ant-design/icons";
+import { Spin, Tabs, Tooltip } from "antd";
 import dayjs from "dayjs";
-import { AppDrawer } from "../AppDrawer";
-import { fmtNum } from "../../../utils/numFmt";
+import React, { useState } from "react";
 import {
-  colors,
   actionPrimary,
-  textTertiary,
-  surfaceCard,
+  borderDefault,
+  colors,
+  DRAWER_FORM_WIDTH,
+  drawerTitleStyle,
   fontSizeMd,
   fontWeightBold,
   statusBadgeStyle,
-  borderDefault,
-  drawerTitleStyle,
-  DRAWER_FORM_WIDTH,
+  surfaceCard,
+  textTertiary,
 } from "../../../themetokenchk";
+import { fmtNum } from "../../../utils/numFmt";
+import { AppDrawer } from "../AppDrawer";
 import {
   type DynamicViewSidebarProps,
   type ViewFieldConfig,

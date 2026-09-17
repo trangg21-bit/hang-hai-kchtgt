@@ -836,9 +836,12 @@ export default function ScadaSystemAssetList() {
     setFilters({});
   }, []);
 
-  const handleOperationSubmit = async () => {
+  const handleOperationSubmit = async (targetAction?: any) => {
     if (!operationMode || !selected) return;
     try {
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       setSaving(true);
 
@@ -1365,6 +1368,7 @@ export default function ScadaSystemAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

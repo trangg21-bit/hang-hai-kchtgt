@@ -235,6 +235,7 @@ export default function ChannelAssetForm({
                 type: FormFieldType.Number,
                 required: true,
                 min: 0,
+                maxLength: 5,
                 placeholder: '0',
                 colSpan: 6,
                 rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -294,6 +295,7 @@ export default function ChannelAssetForm({
                 label: 'Diện tích (đất, sàn sử dụng: m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0.00',
               },
               {
@@ -301,6 +303,7 @@ export default function ChannelAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0.00',
               },
               {
@@ -382,6 +385,7 @@ export default function ChannelAssetForm({
                 label: 'Nguyên giá (VNĐ)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -390,6 +394,7 @@ export default function ChannelAssetForm({
                 type: FormFieldType.Number,
                 min: 0,
                 max: 100,
+                maxLength: 5,
                 placeholder: '0.00',
               },
               {
@@ -397,6 +402,7 @@ export default function ChannelAssetForm({
                 label: 'Khấu hao lũy kế (VNĐ)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -422,6 +428,7 @@ export default function ChannelAssetForm({
                 label: 'Số tháng tính khấu hao',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 placeholder: '0',
               },
               {

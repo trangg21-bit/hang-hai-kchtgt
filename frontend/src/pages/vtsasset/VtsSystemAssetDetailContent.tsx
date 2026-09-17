@@ -60,6 +60,7 @@ export interface VtsSystemAssetDetailContentProps {
 const fmtDateTime = (v?: string | null): string =>
   v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '—';
 
+
 export default function VtsSystemAssetDetailContent({
   open,
   selectedRecord: r,

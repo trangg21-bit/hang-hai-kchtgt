@@ -13,6 +13,7 @@ import {
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
 import {
+  createAssetAdjustmentFooterActions,
   createAssetAdjustmentOperationSection,
   handleAssetAdjustmentValuesChange,
 } from '../../components/shared/asset-value';
@@ -59,9 +60,10 @@ export interface PortTerminalAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   drawerClassName?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: 'PENDING_APPROVAL' | 'APPROVED') => Promise<void> | void;
 }
 
 export function PortTerminalAssetOperationForm({
@@ -71,6 +73,7 @@ export function PortTerminalAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   drawerClassName = 'berth-drawer-scope',
   onClose,
   onSubmit,
@@ -125,6 +128,7 @@ export function PortTerminalAssetOperationForm({
               label: 'Số lượng',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 5,
               required: true,
               formatter: fmtInputNumber,
               placeholder: '0',
@@ -143,6 +147,7 @@ export function PortTerminalAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               required: true,
               formatter: fmtInputNumber,
               placeholder: '0',
@@ -153,6 +158,7 @@ export function PortTerminalAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -161,6 +167,7 @@ export function PortTerminalAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
             },
@@ -169,6 +176,7 @@ export function PortTerminalAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               formatter: fmtInputNumber,
               placeholder: '0',
               colSpan: 24,
@@ -262,21 +270,15 @@ export function PortTerminalAssetOperationForm({
     ];
   }, [sections, operationMode]);
 
-  const footerActions = useMemo<FormSidebarAction[]>(() => [
-    {
-      key: 'cancel',
-      label: 'Hủy',
-      variant: 'outline',
-      onClick: onClose,
-    },
-    {
-      key: 'submit',
-      label: 'Lưu thông tin',
-      variant: 'primary',
-      loading: saving,
-      onClick: onSubmit,
-    },
-  ], [onClose, onSubmit, saving]);
+  const footerActions = useMemo<FormSidebarAction[]>(() => {
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onSubmit,
+      onClose,
+    });
+  }, [operationMode, saving, saveAction, onSubmit, onClose]);
 
   if (!operationMode || !selected) return null;
 

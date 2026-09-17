@@ -43,6 +43,7 @@ import {
   statusOperational,
   textTertiary,
 } from '../../themetokenchk';
+import { formatAssetCode } from '../../utils/assetCode';
 import { fmtNum } from '../../utils/numFmt';
 
 export interface TransmissionAssetDetailContentProps {
@@ -108,7 +109,7 @@ export default function TransmissionAssetDetailContent({
             const raw = (v as string) ?? '';
             if (!raw || (selectedRecord && raw === selectedRecord.assetName)) {
               return (
-                [selectedRecord?.assetCode, selectedRecord?.assetName]
+                [formatAssetCode(selectedRecord?.assetCode), selectedRecord?.assetName]
                   .filter(Boolean)
                   .join(' - ') ||
                 raw ||
@@ -337,6 +338,7 @@ export default function TransmissionAssetDetailContent({
                 name: 'assetCode',
                 label: 'Mã tài sản',
                 type: ViewFieldType.Tag,
+                render: (val) => formatAssetCode(val as string),
               },
               {
                 name: 'assetName',

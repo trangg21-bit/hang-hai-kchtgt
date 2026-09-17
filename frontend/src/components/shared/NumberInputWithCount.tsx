@@ -1,38 +1,38 @@
 import type { InputNumberProps } from 'antd';
 import { InputNumber } from 'antd';
-import { textSecondary, fontSizeMd } from '../../themetokenchk';
-import { normalizeDecimal20_4 } from '../../utils/numberRuleHelper';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fontSizeMd, textSecondary } from '../../themetokenchk';
+import { formatDotNumber, parseDotNumber } from '../../utils/numFmt';
 
 export type NumberInputWithCountProps = InputNumberProps<string | number> & { maxLength: number };
 
 /**
  * Hiển thị số ký tự / số chữ số đã nhập để giới hạn 5/20 chữ số dễ nhận biết.
- * Quy tắc nhập số thập phân (maxLength = 20):
- * - Chỉ chấp nhận chữ số và dấu "."
- * - Số sau dấu "." tối đa 4 chữ số
- * - Giới hạn 20 chữ số khi không có dấu "."
- * - Giới hạn chữ số phần nguyên khi có dấu "." là 16 (vẫn cho điền tối đa 4 chữ số sau dấu chấm)
+ * Hỗ trợ định dạng phân cách hàng nghìn (dấu chấm '.') và chuẩn hóa parseDotNumber.
  */
-export function NumberInputWithCount({ maxLength, value, onKeyDown, onPaste, formatter, ...inputProps }: NumberInputWithCountProps) {
+export function NumberInputWithCount({
+  maxLength,
+  value,
+  onKeyDown,
+  onPaste,
+  formatter,
+  parser,
+  ...inputProps
+}: NumberInputWithCountProps) {
+  const maxDigits = maxLength || 20;
   const valStr = String(value ?? '');
-  const cleanValStr = maxLength === 20 && valStr.includes('.') ? valStr.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1') : valStr;
-  const digitsCount = cleanValStr.replace(/\./g, '').length;
-  const hasDot = cleanValStr.includes('.');
-  const maxDigits = maxLength === 20 ? 20 : maxLength;
-  const htmlMaxLength = maxLength === 20 ? (hasDot ? 21 : 20) : maxLength;
-  // Formatter mặc định luôn có giá trị: nếu trước đây chỉ riêng maxLength === 20 mới được
-  // gắn fmtInputNumber thì mọi giới hạn khác (12, 15, ...) đều mất dấu chấm phân cách hàng nghìn.
-  // Caller vẫn có thể truyền formatter riêng để ghi đè.
-  const effectiveFormatter = formatter ?? fmtInputNumber;
+  // Đếm đúng số chữ số thực tế (loại bỏ các ký tự định dạng hiển thị như dấu chấm phân cách)
+  const digitsCount = valStr.replace(/\D/g, '').length;
+
+  const effectiveFormatter = formatter ?? formatDotNumber;
+  const effectiveParser = (parser ?? parseDotNumber) as (displayValue: string | undefined) => string | number;
 
   return (
     <InputNumber
       stringMode
       formatter={effectiveFormatter}
+      parser={effectiveParser}
       {...inputProps}
       value={value}
-      maxLength={htmlMaxLength}
       onKeyDown={(e) => {
         // Cho phép các tổ hợp phím tắt Ctrl/Meta/Alt
         if (e.ctrlKey || e.metaKey || e.altKey) {
@@ -50,113 +50,43 @@ export function NumberInputWithCount({ maxLength, value, onKeyDown, onPaste, for
           return;
         }
 
-        // Trường số lượng (maxLength === 5): chỉ cho phép chữ số nguyên
-        if (maxLength === 5) {
-          if (e.key < '0' || e.key > '9') {
-            e.preventDefault();
-            return;
-          }
-          const inputEl = e.currentTarget as HTMLInputElement;
-          const isReplacing = inputEl && inputEl.selectionStart !== null && inputEl.selectionStart !== inputEl.selectionEnd;
-          if (!isReplacing && digitsCount >= 5) {
-            e.preventDefault();
-            return;
-          }
-          onKeyDown?.(e);
-          return;
-        }
-
-        // Rule: Chỉ chấp nhận chữ số và dấu "."
-        if (e.key !== '.' && (e.key < '0' || e.key > '9')) {
+        // Chỉ cho phép nhập chữ số 0-9
+        if (e.key < '0' || e.key > '9') {
           e.preventDefault();
           return;
         }
 
         const inputEl = e.currentTarget as HTMLInputElement;
-        const currentStr = inputEl ? inputEl.value : valStr;
-        const start = inputEl ? (inputEl.selectionStart ?? 0) : currentStr.length;
-        const end = inputEl ? (inputEl.selectionEnd ?? start) : start;
-        const nextStr = currentStr.slice(0, start) + e.key + currentStr.slice(end);
+        const isReplacing = inputEl && inputEl.selectionStart !== null && inputEl.selectionStart !== inputEl.selectionEnd;
+        const currentDigits = (inputEl ? inputEl.value : valStr).replace(/\D/g, '');
 
-        // Rule: Tối đa 1 dấu "."
-        const dotCount = (nextStr.match(/\./g) || []).length;
-        if (dotCount > 1) {
+        if (!isReplacing && currentDigits.length >= maxDigits) {
           e.preventDefault();
           return;
-        }
-
-        const nextHasDot = nextStr.includes('.');
-        if (nextHasDot) {
-          const dotIdx = nextStr.indexOf('.');
-          const intPart = nextStr.slice(0, dotIdx);
-          const decPart = nextStr.slice(dotIdx + 1);
-
-          // Rule: Giới hạn chữ số khi có dấu "." là 16 (phần nguyên trước dấu "." tối đa 16 chữ số)
-          if (intPart.length > 16) {
-            e.preventDefault();
-            return;
-          }
-
-          // Rule: Số sau dấu "." tối đa 4 chữ số
-          if (decPart.length > 4) {
-            e.preventDefault();
-            return;
-          }
-
-          // Rule: Tổng chữ số tối đa 20 chữ số
-          const nextDigitsCount = nextStr.replace(/\./g, '').length;
-          if (nextDigitsCount > 20) {
-            e.preventDefault();
-            return;
-          }
-        } else {
-          // Rule: Giới hạn 20 chữ số khi không có dấu "."
-          const nextDigitsCount = nextStr.replace(/\./g, '').length;
-          if (nextDigitsCount > 20) {
-            e.preventDefault();
-            return;
-          }
         }
 
         onKeyDown?.(e);
       }}
       onPaste={(e) => {
-        if (maxLength === 5) {
-          e.preventDefault();
-          const pasteText = e.clipboardData.getData('text').replace(/\D/g, '');
-          const inputEl = e.currentTarget as HTMLInputElement;
-          const currentStr = inputEl ? inputEl.value : valStr;
-          const start = inputEl ? (inputEl.selectionStart ?? 0) : currentStr.length;
-          const end = inputEl ? (inputEl.selectionEnd ?? start) : start;
-          const rawCombined = (currentStr.slice(0, start) + pasteText + currentStr.slice(end)).replace(/\D/g, '').slice(0, 5);
+        e.preventDefault();
+        const pasteDigits = e.clipboardData.getData('text').replace(/\D/g, '');
+        const inputEl = e.currentTarget as HTMLInputElement;
+        const currentStr = inputEl ? inputEl.value : valStr;
+        const start = inputEl ? (inputEl.selectionStart ?? 0) : currentStr.length;
+        const end = inputEl ? (inputEl.selectionEnd ?? start) : start;
 
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype,
-            'value'
-          )?.set;
-          if (inputEl && nativeInputValueSetter) {
-            nativeInputValueSetter.call(inputEl, rawCombined);
-            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-        } else if (maxLength === 20) {
-          e.preventDefault();
-          const pasteText = e.clipboardData.getData('text');
-          const inputEl = e.currentTarget as HTMLInputElement;
-          const currentStr = inputEl ? inputEl.value : valStr;
-          const start = inputEl ? (inputEl.selectionStart ?? 0) : currentStr.length;
-          const end = inputEl ? (inputEl.selectionEnd ?? start) : start;
-          const rawCombined = currentStr.slice(0, start) + pasteText + currentStr.slice(end);
-          const normalized = normalizeDecimal20_4(rawCombined);
+        // Tách chuỗi trước và sau vị trí paste, giữ lại chữ số
+        const beforeDigits = currentStr.slice(0, start).replace(/\D/g, '');
+        const afterDigits = currentStr.slice(end).replace(/\D/g, '');
+        const combined = (beforeDigits + pasteDigits + afterDigits).slice(0, maxDigits);
 
-          // Gán giá trị chuẩn hóa vào DOM input và dispatch event
-          const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype,
-            'value'
-          )?.set;
-          if (inputEl && nativeInputValueSetter) {
-            nativeInputValueSetter.call(inputEl, normalized);
-            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-          }
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype,
+          'value'
+        )?.set;
+        if (inputEl && nativeInputValueSetter) {
+          nativeInputValueSetter.call(inputEl, combined);
+          inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         }
         onPaste?.(e);
       }}

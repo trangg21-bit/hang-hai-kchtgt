@@ -13,13 +13,12 @@ import {
 import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import toast from '../../components/ToastNotification';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import toast from '../../components/ToastNotification';
 import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
-import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 
 import {
@@ -33,9 +32,10 @@ import {
   type ScreenHeaderAction,
   type TableOption,
 } from '../../components/list-view';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
   createAssetDecrease,
@@ -85,6 +85,7 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
@@ -96,7 +97,6 @@ import CctvSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './CctvSystemAssetOperationForm';
-import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
@@ -777,9 +777,12 @@ export default function CctvSystemAssetList() {
     setFilters({});
   }, []);
 
-  const handleOperationSubmit = async () => {
+  const handleOperationSubmit = async (targetAction?: any) => {
     if (!operationMode || !selected) return;
     try {
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       setSaving(true);
 
@@ -796,7 +799,7 @@ export default function CctvSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -1067,85 +1070,71 @@ export default function CctvSystemAssetList() {
         sortField: 'departmentApprovedAt',
       },
     ],
-    actions: (record: CctvSystemAsset) => {
-      const actions: any[] = [];
-      if (perms.canRead) {
-        actions.push({
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        });
-      }
-      if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
-        actions.push({
-          key: 'edit',
-          label: 'Sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        });
-      }
-      if (perms.canExploit) {
-        actions.push({
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('exploit');
-            operationForm.resetFields();
-            operationForm.setFieldsValue({
-              unitOfMeasure: record.quantityUnit,
-              quantity: record.quantity,
-            });
-          },
-        });
-      }
-      if (perms.canIncrease) {
-        actions.push({
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('increase');
-            operationForm.resetFields();
-          },
-        });
-      }
-      if (perms.canDecrease) {
-        actions.push({
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('decrease');
-            operationForm.resetFields();
-          },
-        });
-      }
-      if (perms.canHistory) {
-        actions.push({
-          key: 'history',
-          label: 'Lịch sử thay đổi',
-          icon: <HistoryOutlined />,
-          onClick: () => void openHistory(record),
-        });
-      }
-      const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
-      if (isDraft && perms.canDelete) {
-        actions.push({
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
-        });
-      }
-      return actions;
-    },
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap, perms]);
+    actions: (record: CctvSystemAsset) => [
+      {
+        key: 'detail',
+        label: 'Xem chi tiết',
+        icon: <EyeOutlined />,
+        onClick: () => void openDetail(record),
+      },
+      ...(isAssetRecordEditable(record.approvalStatus)
+        ? [
+            {
+              key: 'edit',
+              label: 'Sửa',
+              icon: <EditOutlined />,
+              onClick: () => openEdit(record),
+            },
+          ]
+        : []),
+      {
+        key: 'exploit',
+        label: 'Khai thác tài sản',
+        icon: <RocketOutlined />,
+        onClick: () => {
+          setSelected(record);
+          setOperationMode('exploit');
+          operationForm.resetFields();
+          operationForm.setFieldsValue({
+            unitOfMeasure: record.quantityUnit,
+            quantity: record.quantity,
+          });
+        },
+      },
+      {
+        key: 'increase',
+        label: 'Tăng nguyên giá',
+        icon: <PlusCircleOutlined />,
+        onClick: () => {
+          setSelected(record);
+          setOperationMode('increase');
+          operationForm.resetFields();
+        },
+      },
+      {
+        key: 'decrease',
+        label: 'Giảm nguyên giá',
+        icon: <MinusCircleOutlined />,
+        onClick: () => {
+          setSelected(record);
+          setOperationMode('decrease');
+          operationForm.resetFields();
+        },
+      },
+      {
+        key: 'history',
+        label: 'Lịch sử thay đổi',
+        icon: <HistoryOutlined />,
+        onClick: () => void openHistory(record),
+      },
+      {
+        key: 'delete',
+        label: 'Xóa',
+        icon: <DeleteOutlined />,
+        onClick: () => setDeleteTarget(record),
+      },
+    ],
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(() => {
     if (!perms.canCreate) return [];
@@ -1296,6 +1285,7 @@ export default function CctvSystemAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

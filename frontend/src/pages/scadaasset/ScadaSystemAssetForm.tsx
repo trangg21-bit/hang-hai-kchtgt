@@ -1,23 +1,23 @@
-import { useCallback, useMemo } from 'react';
-import { InputNumber } from 'antd';
+import { BankOutlined, ProfileOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
+import { Form, InputNumber } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { BankOutlined, SlidersOutlined, ProfileOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { ScadaSystemAsset, ScadaSystemAssetPayload, ScadaDeviceOption } from '../../services/scadaasset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
-import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import { radiusPill } from '../../themetokenchk';
+import { useCallback, useMemo } from 'react';
 import {
   DynamicFormSidebar,
   FormFieldType,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import type { Organization } from '../../services/organizationService';
+import type { ScadaDeviceOption, ScadaSystemAsset, ScadaSystemAssetPayload } from '../../services/scadaasset/types';
+import { radiusPill } from '../../themetokenchk';
+import { getOrGenerateAttachmentBlob } from '../../utils/attachmentStorage';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type FormValues = Omit<
   ScadaSystemAssetPayload,
@@ -37,11 +37,11 @@ export type FormValues = Omit<
 
 import {
   ASSET_CONDITION_OPTIONS,
-  USAGE_STATUS_OPTIONS,
   ASSET_GROUP_OPTIONS,
   ASSET_ORIGIN_OPTIONS,
   ASSET_QUANTITY_UNIT_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  USAGE_STATUS_OPTIONS,
 } from '../../constants/assetDropdown';
 
 export interface ScadaSystemAssetFormProps {
@@ -228,9 +228,12 @@ export default function ScadaSystemAssetForm({
             name: 'quantity',
             label: 'Số lượng',
             type: FormFieldType.Number,
+            maxLength: 5,
             required: true,
             rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
             placeholder: 'Nhập số lượng',
+            min: 1,
+            formatter: fmtInputNumber,
             colSpan: 12,
             renderInput: () => (
               <InputNumber
@@ -301,14 +304,20 @@ export default function ScadaSystemAssetForm({
             name: 'landArea',
             label: 'Diện tích (đất, sàn sử dụng: m²)',
             type: FormFieldType.Number,
+            maxLength: 20,
             placeholder: 'Nhập diện tích',
+            min: 0,
+            formatter: fmtInputNumber,
             colSpan: 12,
           },
           {
             name: 'floorArea',
             label: 'Diện tích (sàn sử dụng: m²)',
             type: FormFieldType.Number,
+            maxLength: 20,
             placeholder: 'Nhập diện tích sàn',
+            min: 0,
+            formatter: fmtInputNumber,
             colSpan: 12,
           },
           {
@@ -353,49 +362,51 @@ export default function ScadaSystemAssetForm({
           },
           {
             name: 'originalValue',
-            label: 'Nguyên giá (nguồn ngân sách, nguồn khác)',
+            label: 'Nguyên giá (nguồn ngân sách, nguồn khác) (VNĐ)',
             type: FormFieldType.Number,
-            placeholder: 'Nhập nguyên giá',
+            maxLength: 20,
+            min: 0,
+            formatter: fmtInputNumber,
+            placeholder: '0',
             colSpan: 12,
-            renderInput: () => (
-              <InputNumber
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                min={0}
-                placeholder="Nhập nguyên giá"
-                {...fmtInputNumber}
-                onChange={(val) => {
-                  const original = Number(val || 0);
-                  const accum = Number(form.getFieldValue('accumulatedDepreciation') || 0);
-                  form.setFieldValue('remainingValue', Math.max(0, original - accum));
-                  const months = Number(form.getFieldValue('depreciationMonths') || 0);
-                  if (months > 0) {
-                    form.setFieldValue('monthlyDepreciation', Math.round(original / months));
-                  }
-                }}
-              />
-            ),
           },
           {
             name: 'depreciationRate',
             label: 'Tỷ lệ hao mòn/Khấu hao (%)',
             type: FormFieldType.Number,
-            placeholder: 'Nhập tỷ lệ (%)',
+            maxLength: 5,
+            min: 0,
+            max: 100,
+            placeholder: '0',
             colSpan: 12,
           },
           {
             name: 'remainingValue',
-            label: 'Giá trị còn lại',
-            type: FormFieldType.Number,
-            disabled: true,
-            placeholder: 'Tự động tính',
+            label: 'Giá trị còn lại (VNĐ)',
+            type: FormFieldType.Custom,
             colSpan: 12,
-            renderInput: () => (
-              <InputNumber
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                disabled
-                placeholder="Tự động tính"
-                {...fmtInputNumber}
-              />
+            customRender: () => (
+              <Form.Item noStyle shouldUpdate>
+                {({ getFieldValue }) => {
+                  const orig = Number(getFieldValue('originalValue')) || 0;
+                  const acc = Number(getFieldValue('accumulatedDepreciation')) || 0;
+                  const rem = Math.max(0, orig - acc);
+                  return (
+                    <InputNumber
+                      value={rem}
+                      disabled
+                      formatter={fmtInputNumber}
+                      style={{
+                        width: '100%',
+                        borderRadius: radiusPill,
+                        height: 40,
+                        background: '#f8fafc',
+                      }}
+                      placeholder="Tự động tính"
+                    />
+                  );
+                }}
+              </Form.Item>
             ),
           },
           {
@@ -426,22 +437,10 @@ export default function ScadaSystemAssetForm({
             name: 'depreciationMonths',
             label: 'Số tháng tính khấu hao',
             type: FormFieldType.Number,
+            maxLength: 5,
+            min: 0,
             placeholder: 'Nhập số tháng',
             colSpan: 12,
-            renderInput: () => (
-              <InputNumber
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                min={0}
-                placeholder="Nhập số tháng"
-                onChange={(val) => {
-                  const months = Number(val || 0);
-                  const original = Number(form.getFieldValue('originalValue') || 0);
-                  if (months > 0 && original > 0) {
-                    form.setFieldValue('monthlyDepreciation', Math.round(original / months));
-                  }
-                }}
-              />
-            ),
           },
           {
             name: 'depreciationEndDate',
@@ -452,38 +451,41 @@ export default function ScadaSystemAssetForm({
           },
           {
             name: 'accumulatedDepreciation',
-            label: 'Khấu hao lũy kế',
+            label: 'Khấu hao lũy kế (VNĐ)',
             type: FormFieldType.Number,
-            placeholder: 'Nhập khấu hao lũy kế',
+            maxLength: 20,
+            min: 0,
+            formatter: fmtInputNumber,
+            placeholder: '0',
             colSpan: 12,
-            renderInput: () => (
-              <InputNumber
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                min={0}
-                placeholder="Nhập khấu hao lũy kế"
-                {...fmtInputNumber}
-                onChange={(val) => {
-                  const accum = Number(val || 0);
-                  const original = Number(form.getFieldValue('originalValue') || 0);
-                  form.setFieldValue('remainingValue', Math.max(0, original - accum));
-                }}
-              />
-            ),
           },
           {
             name: 'monthlyDepreciation',
-            label: 'Khấu hao tháng',
-            type: FormFieldType.Number,
-            disabled: true,
-            placeholder: 'Tự động tính',
+            label: 'Khấu hao tháng (VNĐ)',
+            type: FormFieldType.Custom,
             colSpan: 12,
-            renderInput: () => (
-              <InputNumber
-                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                disabled
-                placeholder="Tự động tính"
-                {...fmtInputNumber}
-              />
+            customRender: () => (
+              <Form.Item noStyle shouldUpdate>
+                {({ getFieldValue }) => {
+                  const orig = Number(getFieldValue('originalValue')) || 0;
+                  const months = Number(getFieldValue('depreciationMonths')) || 0;
+                  const mDep = months > 0 ? Math.round(orig / months) : 0;
+                  return (
+                    <InputNumber
+                      value={mDep}
+                      disabled
+                      formatter={fmtInputNumber}
+                      style={{
+                        width: '100%',
+                        borderRadius: radiusPill,
+                        height: 40,
+                        background: '#f8fafc',
+                      }}
+                      placeholder="Tự động tính"
+                    />
+                  );
+                }}
+              </Form.Item>
             ),
           },
           {

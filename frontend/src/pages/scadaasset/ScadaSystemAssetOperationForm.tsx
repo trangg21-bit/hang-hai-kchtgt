@@ -1,22 +1,25 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { ScadaSystemAsset } from '../../services/scadaasset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DECREASE_REASON_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
+import type { Organization } from '../../services/organizationService';
+import type { ScadaSystemAsset } from '../../services/scadaasset/types';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -52,8 +55,9 @@ export interface ScadaSystemAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (targetAction?: any) => void | Promise<void>;
 }
 
 export default function ScadaSystemAssetOperationForm({
@@ -63,6 +67,7 @@ export default function ScadaSystemAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: ScadaSystemAssetOperationFormProps) {
@@ -104,9 +109,11 @@ export default function ScadaSystemAssetOperationForm({
           name: 'quantity',
           label: 'Số lượng',
           type: FormFieldType.Number,
+          maxLength: 5,
           min: 1,
           required: true,
           rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
+          formatter: fmtInputNumber,
           placeholder: 'Nhập số lượng',
           colSpan: 12,
         },
@@ -126,36 +133,43 @@ export default function ScadaSystemAssetOperationForm({
           name: 'totalRevenue',
           label: 'Tổng số tiền thu được (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
           min: 0,
           required: true,
           rules: [{ required: true, message: 'Vui lòng nhập số tiền thu được' }],
+          formatter: fmtInputNumber,
           placeholder: 'Nhập số tiền thu được',
           colSpan: 12,
-          inputNumberProps: fmtInputNumber,
         },
         {
           name: 'relatedCosts',
           label: 'Chi phí có liên quan (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
+          min: 0,
+          formatter: fmtInputNumber,
           placeholder: 'Nhập chi phí liên quan',
           colSpan: 12,
-          inputNumberProps: fmtInputNumber,
         },
         {
           name: 'stateBudgetPayment',
           label: 'Nộp NSNN (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
+          min: 0,
+          formatter: fmtInputNumber,
           placeholder: 'Nhập số tiền nộp NSNN',
           colSpan: 12,
-          inputNumberProps: fmtInputNumber,
         },
         {
           name: 'projectAmount',
           label: 'Số tiền được thực hiện dự án (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
+          min: 0,
+          formatter: fmtInputNumber,
           placeholder: 'Nhập số tiền thực hiện dự án',
           colSpan: 12,
-          inputNumberProps: fmtInputNumber,
         },
         {
           name: 'notes',
@@ -225,16 +239,21 @@ export default function ScadaSystemAssetOperationForm({
           name: 'originalValue',
           label: isIncrease ? 'Nguyên giá mới sau khi tăng (VNĐ)' : 'Nguyên giá mới sau khi giảm (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
+          min: 0,
+          formatter: fmtInputNumber,
           placeholder: 'Nhập nguyên giá mới',
           required: true,
           rules: [{ required: true, message: 'Vui lòng nhập nguyên giá mới' }],
           colSpan: 12,
-          inputNumberProps: fmtInputNumber,
         },
         {
           name: 'depreciationRate',
           label: 'Tỷ lệ hao mòn/Khấu hao (%)',
           type: FormFieldType.Number,
+          maxLength: 5,
+          min: 0,
+          max: 100,
           placeholder: 'Nhập tỷ lệ',
           colSpan: 12,
         },
@@ -263,6 +282,8 @@ export default function ScadaSystemAssetOperationForm({
           name: 'depreciationMonths',
           label: 'Số tháng tính khấu hao',
           type: FormFieldType.Number,
+          maxLength: 5,
+          min: 0,
           placeholder: 'Nhập số tháng',
           colSpan: 12,
         },
@@ -277,11 +298,13 @@ export default function ScadaSystemAssetOperationForm({
           name: 'accumulatedDepreciation',
           label: 'Khấu hao lũy kế (VNĐ)',
           type: FormFieldType.Number,
+          maxLength: 20,
+          min: 0,
+          formatter: fmtInputNumber,
           required: true,
           rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
           placeholder: 'Nhập khấu hao lũy kế',
           colSpan: 12,
-          inputNumberProps: fmtInputNumber,
         },
       ],
     },
@@ -308,15 +331,16 @@ export default function ScadaSystemAssetOperationForm({
     ];
   }, [isExploit, isIncrease, exploitSections, adjustmentSections]);
 
-  const sidebarActions = useMemo<FormSidebarAction[]>(() => [
-    {
-      key: 'submit',
-      label: isExploit ? 'Lưu hồ sơ khai thác' : isIncrease ? 'Tạo yêu cầu tăng nguyên giá' : 'Tạo yêu cầu giảm nguyên giá',
-      variant: 'primary',
-      loading: saving,
-      onClick: onSubmit,
-    },
-  ], [isExploit, isIncrease, saving, onSubmit]);
+  const footerActions = useMemo<FormSidebarAction[]>(() => {
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu hồ sơ khai thác',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar
@@ -324,7 +348,7 @@ export default function ScadaSystemAssetOperationForm({
       title={title}
       form={form}
       tabs={tabs}
-      actions={sidebarActions}
+      footerActions={footerActions}
       onClose={onClose}
     />
   );

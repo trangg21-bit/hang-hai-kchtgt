@@ -337,15 +337,15 @@ describe('Module 4: Tài sản bến phao (docs/checklists/CHECKLIST-TAI-SAN-BEN
     // Kiểm tra hiển thị đầy đủ thông tin Khai thác tài sản
     expect(html).toContain('Hợp đồng khai thác bến phao Thị Vải');
     expect(html).toContain('31/12/2026');
-    expect(html).toContain('1,200,000,000 VNĐ');
-    expect(html).toContain('120,000,000 VNĐ');
-    expect(html).toContain('250,000,000 VNĐ');
-    expect(html).toContain('830,000,000 VNĐ');
+    expect(html).toContain('1.200.000.000 VNĐ');
+    expect(html).toContain('120.000.000 VNĐ');
+    expect(html).toContain('250.000.000 VNĐ');
+    expect(html).toContain('830.000.000 VNĐ');
 
     // Kiểm tra hiển thị đầy đủ thông tin Thay đổi nguyên giá
     expect(html).toContain('130/QĐ-TANG-BP');
     expect(html).toContain('01/09/2026');
-    expect(html).toContain('+5,000,000,000 VNĐ');
+    expect(html).toContain('+5.000.000.000 VNĐ');
     expect(html).toContain('Đầu tư bổ sung');
   });
 

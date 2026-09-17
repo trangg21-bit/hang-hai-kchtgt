@@ -16,6 +16,9 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from "../../components/shared/dynamic-form-sidebar";
+import {
+  createAssetAdjustmentFooterActions,
+} from "../../components/shared/asset-value";
 
 export type OperationMode = "exploit" | "increase" | "decrease";
 
@@ -59,8 +62,9 @@ export interface AisSystemAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (targetAction?: any) => void | Promise<void>;
 }
 
 export default function AisSystemAssetOperationForm({
@@ -70,6 +74,7 @@ export default function AisSystemAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: AisSystemAssetOperationFormProps) {
@@ -129,6 +134,7 @@ export default function AisSystemAssetOperationForm({
                   name: "quantity",
                   label: "Số lượng",
                   type: FormFieldType.Number,
+                  maxLength: 5,
                   min: 1,
                   required: true,
                   rules: [{ required: true, message: "Vui lòng nhập số lượng" }],
@@ -140,6 +146,7 @@ export default function AisSystemAssetOperationForm({
                   name: "totalRevenue",
                   label: "Tổng số tiền thu được (VNĐ)",
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   required: true,
                   rules: [{ required: true, message: "Vui lòng nhập tổng số tiền thu được" }],
@@ -151,6 +158,7 @@ export default function AisSystemAssetOperationForm({
                   name: "relatedCosts",
                   label: "Chi phí có liên quan (VNĐ)",
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   formatter: fmtInputNumber,
                   placeholder: "0",
@@ -160,6 +168,7 @@ export default function AisSystemAssetOperationForm({
                   name: "stateBudgetPayment",
                   label: "Nộp NSNN (VNĐ)",
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   formatter: fmtInputNumber,
                   placeholder: "0",
@@ -169,6 +178,7 @@ export default function AisSystemAssetOperationForm({
                   name: "projectAmount",
                   label: "Số tiền thực hiện dự án (VNĐ)",
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   formatter: fmtInputNumber,
                   placeholder: "0",
@@ -240,6 +250,7 @@ export default function AisSystemAssetOperationForm({
               ? "Nguyên giá sau khi tăng (VNĐ)"
               : "Nguyên giá sau khi giảm (VNĐ)",
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             formatter: fmtInputNumber,
             required: true,
@@ -256,6 +267,7 @@ export default function AisSystemAssetOperationForm({
             name: "accumulatedDepreciation",
             label: "Khấu hao lũy kế sau thay đổi (VNĐ)",
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             rules: [{ required: true, message: "Khấu hao lũy kế là bắt buộc" }],
@@ -287,6 +299,7 @@ export default function AisSystemAssetOperationForm({
             name: "depreciationRate",
             label: "Tỷ lệ hao mòn/Khấu hao (%)",
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             max: 100,
             placeholder: "0",
@@ -310,6 +323,7 @@ export default function AisSystemAssetOperationForm({
             name: "depreciationMonths",
             label: "Số tháng tính khấu hao",
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             placeholder: "Nhập số tháng...",
             colSpan: 12,
@@ -346,22 +360,15 @@ export default function AisSystemAssetOperationForm({
   }, [operationMode, isExploit, isIncrease, organizations]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: "cancel",
-        label: "Đóng",
-        onClick: onClose,
-        disabled: saving,
-      },
-      {
-        key: "submit",
-        label: isExploit ? "Lưu hồ sơ khai thác" : "Lưu lại",
-        variant: "primary",
-        loading: saving,
-        onClick: onSubmit,
-      },
-    ];
-  }, [isExploit, saving, onClose, onSubmit]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu hồ sơ khai thác',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar<OperationValues>

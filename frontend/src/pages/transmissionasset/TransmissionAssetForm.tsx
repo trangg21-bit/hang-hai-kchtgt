@@ -149,7 +149,7 @@ export default function TransmissionAssetForm({
                 label: 'Mã tài sản',
                 type: FormFieldType.Text,
                 disabled: true,
-                placeholder: 'Hệ thống tự sinh (TS-TD-xxxx)',
+                placeholder: 'Hệ thống tự sinh (TSKCHT_TD-000001)',
               },
               {
                 name: 'assetName',
@@ -224,7 +224,7 @@ export default function TransmissionAssetForm({
                 required: true,
                 min: 0,
                 initialValue: 1,
-                maxLength: 12,
+                maxLength: 5,
                 rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               },
               {
@@ -281,7 +281,7 @@ export default function TransmissionAssetForm({
                 label: 'Diện tích đất (m²)',
                 type: FormFieldType.Number,
                 min: 0,
-                maxLength: 15,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích đất',
               },
               {
@@ -289,7 +289,7 @@ export default function TransmissionAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
-                maxLength: 15,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích sàn',
               },
               {

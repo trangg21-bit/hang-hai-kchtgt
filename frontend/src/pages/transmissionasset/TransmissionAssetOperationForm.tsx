@@ -1,19 +1,21 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { TransmissionAsset } from '../../services/transmissionAsset/types';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+  createAssetAdjustmentOperationSection,
+  handleAssetAdjustmentValuesChange,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
-import {
-  createAssetAdjustmentOperationSection,
-  handleAssetAdjustmentValuesChange,
-} from '../../components/shared/asset-value';
+import type { Organization } from '../../services/organizationService';
+import type { TransmissionAsset } from '../../services/transmissionAsset/types';
+import { formatAssetCode } from '../../utils/assetCode';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -59,8 +61,8 @@ export interface OperationValues extends Record<string, unknown> {
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
   DECREASE_REASON_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
 
 export interface TransmissionAssetOperationFormProps {
@@ -70,8 +72,9 @@ export interface TransmissionAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: 'PENDING_APPROVAL' | 'APPROVED') => Promise<void> | void;
 }
 
 export default function TransmissionAssetOperationForm({
@@ -81,6 +84,7 @@ export default function TransmissionAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: TransmissionAssetOperationFormProps) {
@@ -117,9 +121,9 @@ export default function TransmissionAssetOperationForm({
               name: 'assetCategory',
               label: 'Danh mục tài sản',
               type: FormFieldType.Readonly,
-              initialValue: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
+              initialValue: [formatAssetCode(selected.assetCode), selected.assetName].filter(Boolean).join(' - '),
               valueFormatter: () =>
-                [selected.assetCode, selected.assetName].filter(Boolean).join(' - ') || '—',
+                [formatAssetCode(selected.assetCode), selected.assetName].filter(Boolean).join(' - ') || '—',
             },
             {
               name: 'unitOfMeasure',
@@ -137,6 +141,7 @@ export default function TransmissionAssetOperationForm({
               required: true,
               rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               min: 0,
+              maxLength: 5,
               initialValue: 1,
             },
             {
@@ -152,6 +157,7 @@ export default function TransmissionAssetOperationForm({
               required: true,
               rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
               min: 0,
+              maxLength: 20,
               placeholder: 'Nhập tổng thu',
             },
             {
@@ -159,6 +165,7 @@ export default function TransmissionAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: 'Nhập chi phí',
             },
             {
@@ -166,6 +173,7 @@ export default function TransmissionAssetOperationForm({
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: 'Nhập số tiền nộp NSNN',
             },
             {
@@ -173,6 +181,7 @@ export default function TransmissionAssetOperationForm({
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: 'Nhập số tiền dự án',
             },
             {
@@ -248,29 +257,16 @@ export default function TransmissionAssetOperationForm({
   }, [operationMode, selected, organizations]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label:
-          operationMode === 'exploit'
-            ? 'Lưu khai thác'
-            : operationMode === 'increase'
-              ? 'Lưu tăng nguyên giá'
-              : 'Lưu giảm nguyên giá',
-        variant: 'primary',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [operationMode, onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onSubmit,
+      onClose,
+    });
+  }, [operationMode, saving, saveAction, onSubmit, onClose]);
 
-  if (!open || !operationMode || !selected) return null;
+  if (!operationMode || !selected) return null;
 
   return (
     <DynamicFormSidebar<OperationValues>

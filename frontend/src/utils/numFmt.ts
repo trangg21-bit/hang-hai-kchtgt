@@ -8,21 +8,21 @@ export function fmtNum(v: number | string | null | undefined, maxDec = 2): strin
   if (s === '100000000000000000000' || s === '10000000000000000000' ||
       s === '100.000.000.000.000.000.000' || s === '100,000,000,000,000,000,000' ||
       /^10{19,20}$/.test(s) || s.toLowerCase() === '1e+20' || s.toLowerCase() === '1e+19') {
-    return '99,999,999,999,999,999,999';
+    return '99.999.999.999.999.999.999';
   }
-  // Nếu là số thuần: tách nguyên và thập phân, định dạng phần nguyên bằng dấu phẩy ',' mà không ép kiểu sang Number()
+  // Nếu là số thuần: tách nguyên và thập phân, định dạng phần nguyên bằng dấu chấm '.' chuẩn vi-VN
   const m = s.match(/^(-?\d+)(\.\d+)?$/);
   if (m) {
-    const intPart = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    const intPart = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     let decPart = m[2] ? m[2].substring(1) : '';
     if (decPart && maxDec >= 0) {
       decPart = decPart.substring(0, maxDec);
     }
-    return decPart ? `${intPart}.${decPart}` : intPart;
+    return decPart ? `${intPart},${decPart}` : intPart;
   }
   const num = Number(v);
   if (isNaN(num)) return s;
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('vi-VN', {
     maximumFractionDigits: maxDec,
   }).format(num);
 }

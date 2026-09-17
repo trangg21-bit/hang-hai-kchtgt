@@ -1,23 +1,26 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { RadarStationAsset } from '../../services/radarasset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
   DECREASE_REASON_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
+import type { Organization } from '../../services/organizationService';
+import type { RadarStationAsset } from '../../services/radarasset/types';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -53,8 +56,9 @@ export interface RadarStationAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
 }
 
 export default function RadarStationAssetOperationForm({
@@ -64,6 +68,7 @@ export default function RadarStationAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: RadarStationAssetOperationFormProps) {
@@ -117,6 +122,7 @@ export default function RadarStationAssetOperationForm({
               name: 'quantity',
               label: 'Số lượng',
               type: FormFieldType.Number,
+              maxLength: 5,
               min: 1,
               required: true,
               rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
@@ -135,6 +141,7 @@ export default function RadarStationAssetOperationForm({
               name: 'totalRevenue',
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
+              maxLength: 20,
               min: 0,
               required: true,
               rules: [{ required: true, message: 'Vui lòng nhập tổng số tiền thu được' }],
@@ -145,6 +152,7 @@ export default function RadarStationAssetOperationForm({
               name: 'relatedCosts',
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
+              maxLength: 20,
               min: 0,
               formatter: fmtInputNumber,
               placeholder: '0',
@@ -153,6 +161,7 @@ export default function RadarStationAssetOperationForm({
               name: 'stateBudgetPayment',
               label: 'Nộp NSNN (VNĐ)',
               type: FormFieldType.Number,
+              maxLength: 20,
               min: 0,
               formatter: fmtInputNumber,
               placeholder: '0',
@@ -161,6 +170,7 @@ export default function RadarStationAssetOperationForm({
               name: 'projectAmount',
               label: 'Số tiền được thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
+              maxLength: 20,
               min: 0,
               formatter: fmtInputNumber,
               placeholder: '0',
@@ -247,6 +257,7 @@ export default function RadarStationAssetOperationForm({
             name: 'originalValue',
             label: `Nguyên giá sau khi ${actionLabel} (VNĐ)`,
             type: FormFieldType.Number,
+            maxLength: 20,
             required: true,
             min: 0,
             formatter: fmtInputNumber,
@@ -313,6 +324,7 @@ export default function RadarStationAssetOperationForm({
             name: 'depreciationRate',
             label: 'Tỷ lệ hao mòn/Khấu hao (%)',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             max: 100,
             placeholder: '0',
@@ -333,6 +345,7 @@ export default function RadarStationAssetOperationForm({
             name: 'depreciationMonths',
             label: 'Số tháng tính khấu hao',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             placeholder: 'Nhập số tháng',
           },
@@ -346,6 +359,7 @@ export default function RadarStationAssetOperationForm({
             name: 'accumulatedDepreciation',
             label: 'Khấu hao lũy kế (VNĐ)',
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
@@ -391,22 +405,15 @@ export default function RadarStationAssetOperationForm({
   }, [sections]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Đóng',
-        onClick: onClose,
-        disabled: saving,
-      },
-      {
-        key: 'submit',
-        label: 'Lưu lại',
-        variant: 'primary',
-        loading: saving,
-        onClick: onSubmit,
-      },
-    ];
-  }, [onClose, onSubmit, saving]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu lại',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar<OperationValues>

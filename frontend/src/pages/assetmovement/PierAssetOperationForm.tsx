@@ -11,6 +11,7 @@ import {
   type FormTabConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
+import { createAssetAdjustmentFooterActions } from '../../components/shared/asset-value';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -54,8 +55,9 @@ export interface PierAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (targetAction?: 'PENDING_APPROVAL' | 'APPROVED') => Promise<void> | void;
 }
 
 export function PierAssetOperationForm({
@@ -65,6 +67,7 @@ export function PierAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: PierAssetOperationFormProps) {
@@ -120,6 +123,7 @@ export function PierAssetOperationForm({
               label: 'Số lượng',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 5,
               required: true,
               rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
               placeholder: 'Nhập số lượng khai thác',
@@ -135,6 +139,7 @@ export function PierAssetOperationForm({
               label: 'Tổng số tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               required: true,
               rules: [{ required: true, message: 'Tổng số tiền thu được là bắt buộc' }],
               placeholder: 'Nhập tổng số tiền',
@@ -144,6 +149,7 @@ export function PierAssetOperationForm({
               label: 'Chi phí có liên quan',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: 'Nhập chi phí liên quan',
             },
             {
@@ -151,6 +157,7 @@ export function PierAssetOperationForm({
               label: 'Nộp NSNN',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: 'Nhập số tiền nộp NSNN',
             },
             {
@@ -158,6 +165,7 @@ export function PierAssetOperationForm({
               label: 'Số tiền được thực hiện dự án',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: 'Nhập số tiền thực hiện dự án',
             },
             {
@@ -225,6 +233,7 @@ export function PierAssetOperationForm({
             name: 'originalValueBefore',
             label: 'Nguyên giá trước khi tăng/giảm',
             type: FormFieldType.Number,
+            maxLength: 20,
             disabled: true,
             initialValue: selected.originalValue,
           },
@@ -235,6 +244,7 @@ export function PierAssetOperationForm({
                 ? 'Giá trị tăng thêm (VNĐ)'
                 : 'Giá trị giảm bớt (VNĐ)',
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             rules: [{ required: true, message: 'Vui lòng nhập giá trị' }],
@@ -250,6 +260,7 @@ export function PierAssetOperationForm({
             name: 'depreciationRate',
             label: 'Tỷ lệ hao mòn/Khấu hao (%)',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             max: 100,
             placeholder: 'Nhập tỷ lệ (%)',
@@ -270,6 +281,7 @@ export function PierAssetOperationForm({
             name: 'depreciationMonths',
             label: 'Số tháng tính khấu hao',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             placeholder: 'Nhập số tháng tính khấu hao',
           },
@@ -283,6 +295,7 @@ export function PierAssetOperationForm({
             name: 'accumulatedDepreciation',
             label: 'Khấu hao lũy kế',
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
@@ -313,29 +326,14 @@ export function PierAssetOperationForm({
   }, [sections]);
 
   const actions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Hủy',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label:
-          operationMode === 'exploit'
-            ? 'Lưu khai thác'
-            : operationMode === 'increase'
-              ? 'Lưu tăng nguyên giá'
-              : operationMode === 'decrease'
-                ? 'Lưu giảm nguyên giá'
-                : 'Lưu thông tin',
-        variant: 'primary',
-        loading: saving,
-        onClick: onSubmit,
-      },
-    ];
-  }, [operationMode, onClose, saving, onSubmit]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onSubmit,
+      onClose,
+    });
+  }, [operationMode, saving, saveAction, onSubmit, onClose]);
 
   return (
     <DynamicFormSidebar<OperationValues>

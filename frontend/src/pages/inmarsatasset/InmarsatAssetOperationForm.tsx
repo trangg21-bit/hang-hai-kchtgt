@@ -1,19 +1,20 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { InmarsatAsset } from '../../services/inmarsatAsset/types';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+  createAssetAdjustmentOperationSection,
+  handleAssetAdjustmentValuesChange,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
   type FormSidebarAction,
 } from '../../components/shared/dynamic-form-sidebar';
-import {
-  createAssetAdjustmentOperationSection,
-  handleAssetAdjustmentValuesChange,
-} from '../../components/shared/asset-value';
+import type { InmarsatAsset } from '../../services/inmarsatAsset/types';
+import type { Organization } from '../../services/organizationService';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -70,8 +71,9 @@ export interface InmarsatAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
 }
 
 export default function InmarsatAssetOperationForm({
@@ -81,6 +83,7 @@ export default function InmarsatAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: InmarsatAssetOperationFormProps) {
@@ -127,6 +130,7 @@ export default function InmarsatAssetOperationForm({
               label: 'Số lượng khai thác',
               type: FormFieldType.Number,
               min: 1,
+              maxLength: 5,
               required: true,
               rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
               placeholder: '1',
@@ -144,6 +148,7 @@ export default function InmarsatAssetOperationForm({
               label: 'Tổng tiền thu được (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               required: true,
               rules: [{ required: true, message: 'Vui lòng nhập tổng tiền thu được' }],
               placeholder: '0',
@@ -153,6 +158,7 @@ export default function InmarsatAssetOperationForm({
               label: 'Chi phí có liên quan (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: '0',
             },
             {
@@ -160,6 +166,7 @@ export default function InmarsatAssetOperationForm({
               label: 'Nộp ngân sách nhà nước (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: '0',
             },
             {
@@ -167,6 +174,7 @@ export default function InmarsatAssetOperationForm({
               label: 'Số tiền thực hiện dự án (VNĐ)',
               type: FormFieldType.Number,
               min: 0,
+              maxLength: 20,
               placeholder: '0',
             },
             {
@@ -234,26 +242,15 @@ export default function InmarsatAssetOperationForm({
   }, [isExploit, isIncrease, reasonOptions, organizations, operationMode, selected]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Đóng',
-        variant: 'outline',
-        onClick: onClose,
-      },
-      {
-        key: 'submit',
-        label: isExploit
-          ? 'Lưu thông tin khai thác'
-          : isIncrease
-            ? 'Lưu tăng nguyên giá'
-            : 'Lưu giảm nguyên giá',
-        variant: isIncrease ? 'success' : isExploit ? 'primary' : 'danger',
-        loading: saving,
-        onClick: () => void onSubmit(),
-      },
-    ];
-  }, [isExploit, isIncrease, saving, onClose, onSubmit]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu thông tin khai thác',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   const title = isExploit
     ? `Khai thác tài sản đài Inmarsat — ${selected?.assetName || ''}`

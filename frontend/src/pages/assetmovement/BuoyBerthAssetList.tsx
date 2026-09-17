@@ -627,9 +627,12 @@ export default function BuoyBerthAssetList() {
     }
   }, [operationForm]);
 
-  const saveOperation = async () => {
+  const saveOperation = async (targetAction?: any) => {
     if (!selected || !operationMode) return;
     try {
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       const origVal = values.originalValue;
       if (operationMode !== 'exploit' && origVal == null) {
@@ -1184,6 +1187,7 @@ export default function BuoyBerthAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

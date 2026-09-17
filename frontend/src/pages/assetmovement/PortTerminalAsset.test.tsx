@@ -416,9 +416,9 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     // Tab Khai thác tài sản
     expect(html).toContain('Hợp đồng khai thác cầu cảng container');
     expect(html).toContain('31/12/2026');
-    expect(html).toContain('2,500,000,000 VNĐ');
-    expect(html).toContain('250,000,000 VNĐ');
-    expect(html).toContain('500,000,000 VNĐ');
+    expect(html).toContain('2.500.000.000 VNĐ');
+    expect(html).toContain('250.000.000 VNĐ');
+    expect(html).toContain('500.000.000 VNĐ');
 
     // Tab Thay đổi nguyên giá
     expect(html).toContain('180/QĐ-TANG-BC');

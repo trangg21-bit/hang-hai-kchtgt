@@ -13,12 +13,6 @@ import { Button, DatePicker, Form, Input, Space } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import toast from '../../components/ToastNotification';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { AppDrawer } from '../../components/shared/AppDrawer';
-import api from '../../services/api';
-import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
 import {
   CommonStatusTabs,
   CommonTable,
@@ -30,12 +24,16 @@ import {
   type ScreenHeaderAction,
   type TableOption,
 } from '../../components/list-view';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { useAssetPermissions } from '../../hooks/useAssetPermissions';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
-import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import {
   createAssetDecrease,
   createAssetIncrease,
@@ -85,6 +83,8 @@ import {
   getAttachmentPreviewUrl,
   saveAttachmentFile,
 } from '../../utils/attachmentStorage';
+import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 import RadarStationAssetDetailContent from './RadarStationAssetDetailContent';
 import RadarStationAssetForm, { type FormValues } from './RadarStationAssetForm';
 import RadarStationAssetOperationForm, {
@@ -648,9 +648,12 @@ export default function RadarStationAssetList() {
     }
   };
 
-  const handleOperationSubmit = async () => {
+  const handleOperationSubmit = async (targetAction?: any) => {
     if (!operationMode || !selected) return;
     try {
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       setSaving(true);
 
@@ -667,7 +670,7 @@ export default function RadarStationAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -1184,6 +1187,7 @@ export default function RadarStationAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

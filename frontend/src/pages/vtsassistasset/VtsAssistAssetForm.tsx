@@ -1,25 +1,25 @@
-import { useMemo } from 'react';
+import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
+import { useMemo } from 'react';
+import { createAssetDepreciationFormSection } from '../../components/shared/asset-value';
+import {
+  DynamicFormSidebar,
+  FormFieldType,
+  type FormSidebarAction,
+  type FormTabConfig,
+} from '../../components/shared/dynamic-form-sidebar';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type { Organization } from '../../services/organizationService';
 import type { VtsAssistOptionResponse } from '../../services/vtsassist/types';
 import type {
   VtsAssistAsset,
   VtsAssistAssetPayload,
 } from '../../services/vtsAssistAsset/types';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
 import { spaceFormField } from '../../themetokenchk';
-import { createAssetDepreciationFormSection } from '../../components/shared/asset-value';
-import {
-  DynamicFormSidebar,
-  FormFieldType,
-  type FormTabConfig,
-  type FormSidebarAction,
-} from '../../components/shared/dynamic-form-sidebar';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 
 export type FormValues = Omit<
   VtsAssistAssetPayload,
@@ -39,10 +39,10 @@ export type FormValues = Omit<
 
 import {
   ASSET_CONDITION_OPTIONS,
-  USAGE_STATUS_OPTIONS,
   ASSET_GROUP_OPTIONS,
   ASSET_ORIGIN_OPTIONS,
   ASSET_QUANTITY_UNIT_OPTIONS,
+  USAGE_STATUS_OPTIONS,
 } from '../../constants/assetDropdown';
 import { fmtInputNumber } from '../../utils/numFmt';
 
@@ -226,7 +226,7 @@ export default function VtsAssistAssetForm({
                 type: FormFieldType.Number,
                 required: true,
                 min: 1,
-                maxLength: 12,
+                maxLength: 5,
                 formatter: fmtInputNumber,
                 placeholder: '0',
                 rules: [{ required: true, message: 'Số lượng là bắt buộc' }],
@@ -285,7 +285,7 @@ export default function VtsAssistAssetForm({
                 label: 'Diện tích đất (m²)',
                 type: FormFieldType.Number,
                 min: 0,
-                maxLength: 15,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích đất',
               },
               {
@@ -293,7 +293,7 @@ export default function VtsAssistAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
-                maxLength: 15,
+                maxLength: 20,
                 placeholder: 'Nhập diện tích sàn',
               },
               {

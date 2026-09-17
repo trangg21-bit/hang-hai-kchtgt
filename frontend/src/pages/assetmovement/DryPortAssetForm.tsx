@@ -234,6 +234,7 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Number,
                 required: true,
                 min: 0,
+                maxLength: 5,
                 formatter: fmtInputNumber,
                 placeholder: '0',
                 colSpan: 6,
@@ -294,6 +295,7 @@ export default function DryPortAssetForm({
                 label: 'Diện tích đất, sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -301,6 +303,7 @@ export default function DryPortAssetForm({
                 label: 'Diện tích sàn sử dụng (m²)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -360,6 +363,7 @@ export default function DryPortAssetForm({
                 label: 'Nguyên giá (VNĐ)',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {
@@ -368,6 +372,7 @@ export default function DryPortAssetForm({
                 type: FormFieldType.Number,
                 min: 0,
                 max: 100,
+                maxLength: 5,
                 placeholder: '0',
               },
               {
@@ -410,6 +415,7 @@ export default function DryPortAssetForm({
                 label: 'Số tháng tính khấu hao',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 5,
                 placeholder: '0',
               },
               {
@@ -423,6 +429,7 @@ export default function DryPortAssetForm({
                 label: 'Khấu hao lũy kế',
                 type: FormFieldType.Number,
                 min: 0,
+                maxLength: 20,
                 placeholder: '0',
               },
               {

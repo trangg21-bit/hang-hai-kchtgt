@@ -1,4 +1,3 @@
-
 import {
   DeleteOutlined,
   EditOutlined,
@@ -36,7 +35,7 @@ import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { isAssetRecordEditable, normalizeApprovalStatus, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import {
@@ -88,7 +87,6 @@ import {
   getAttachmentPreviewUrl,
   saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
 import AisSystemAssetDetailContent from './AisSystemAssetDetailContent';
 import AisSystemAssetOperationForm, {
@@ -770,9 +768,12 @@ export default function AisSystemAssetList() {
     setFilters({});
   }, []);
 
-  const handleOperationSubmit = async () => {
+  const handleOperationSubmit = async (targetAction?: any) => {
     if (!operationMode || !selected) return;
     try {
+      if (typeof targetAction === 'string') {
+        setSaveAction(targetAction);
+      }
       const values = await operationForm.validateFields();
       setSaving(true);
 
@@ -789,7 +790,7 @@ export default function AisSystemAssetList() {
           depreciation: values.relatedCosts || 0,
           description: values.notes || '',
           operatorOrgUnitId: values.operatorOrgUnitId,
-          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),  
+          assetCategory: [selected.assetCode, selected.assetName].filter(Boolean).join(' - '),
           unitOfMeasure: values.unitOfMeasure,
           quantity: values.quantity,
           exploitationDeadline: values.exploitationDeadline
@@ -884,6 +885,7 @@ export default function AisSystemAssetList() {
       placeholder: 'Chọn đơn vị...',
     },
     {
+
       key: 'assetType',
       label: 'Loại tài sản',
       type: 'select',
@@ -1257,6 +1259,7 @@ export default function AisSystemAssetList() {
           organizations={organizations}
           form={operationForm}
           saving={saving}
+          saveAction={saveAction}
           onClose={() => {
             setOperationMode(undefined);
             operationForm.resetFields();

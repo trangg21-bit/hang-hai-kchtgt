@@ -1,23 +1,26 @@
-import { useMemo } from 'react';
+import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { AuditOutlined, RocketOutlined, SlidersOutlined } from '@ant-design/icons';
-import type { Organization } from '../../services/organizationService';
-import type { CctvSystemAsset } from '../../services/cctvasset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { useMemo } from 'react';
+import {
+  createAssetAdjustmentFooterActions,
+} from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
   type FormSectionConfig,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
 import {
   ASSET_QUANTITY_UNIT_OPTIONS,
   DECREASE_REASON_OPTIONS,
-  INCREASE_REASON_OPTIONS,
   DISPOSAL_METHOD_OPTIONS,
+  INCREASE_REASON_OPTIONS,
 } from '../../constants/assetDropdown';
+import type { CctvSystemAsset } from '../../services/cctvasset/types';
+import type { Organization } from '../../services/organizationService';
+import { fmtInputNumber } from '../../utils/numFmt';
 
 export type OperationMode = 'exploit' | 'increase' | 'decrease';
 
@@ -53,8 +56,9 @@ export interface CctvSystemAssetOperationFormProps {
   organizations: Organization[];
   form: FormInstance<OperationValues>;
   saving: boolean;
+  saveAction?: string;
   onClose: () => void;
-  onSubmit: () => void | Promise<void>;
+  onSubmit: (targetAction?: any) => void | Promise<void>;
 }
 
 export default function CctvSystemAssetOperationForm({
@@ -64,6 +68,7 @@ export default function CctvSystemAssetOperationForm({
   organizations,
   form,
   saving,
+  saveAction,
   onClose,
   onSubmit,
 }: CctvSystemAssetOperationFormProps) {
@@ -123,6 +128,7 @@ export default function CctvSystemAssetOperationForm({
                   name: 'quantity',
                   label: 'Số lượng',
                   type: FormFieldType.Number,
+                  maxLength: 5,
                   min: 1,
                   required: true,
                   rules: [{ required: true, message: 'Vui lòng nhập số lượng' }],
@@ -134,6 +140,7 @@ export default function CctvSystemAssetOperationForm({
                   name: 'totalRevenue',
                   label: 'Tổng số tiền thu được (VNĐ)',
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   required: true,
                   rules: [{ required: true, message: 'Vui lòng nhập tổng số tiền thu được' }],
@@ -145,6 +152,7 @@ export default function CctvSystemAssetOperationForm({
                   name: 'relatedCosts',
                   label: 'Chi phí có liên quan (VNĐ)',
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   formatter: fmtInputNumber,
                   placeholder: '0',
@@ -154,6 +162,7 @@ export default function CctvSystemAssetOperationForm({
                   name: 'stateBudgetPayment',
                   label: 'Nộp NSNN (VNĐ)',
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   formatter: fmtInputNumber,
                   placeholder: '0',
@@ -163,6 +172,7 @@ export default function CctvSystemAssetOperationForm({
                   name: 'projectAmount',
                   label: 'Số tiền thực hiện dự án (VNĐ)',
                   type: FormFieldType.Number,
+                  maxLength: 20,
                   min: 0,
                   formatter: fmtInputNumber,
                   placeholder: '0',
@@ -228,6 +238,7 @@ export default function CctvSystemAssetOperationForm({
             name: 'originalValue',
             label: isIncrease ? 'Nguyên giá sau khi tăng (VNĐ)' : 'Nguyên giá sau khi giảm (VNĐ)',
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             formatter: fmtInputNumber,
             required: true,
@@ -239,6 +250,7 @@ export default function CctvSystemAssetOperationForm({
             name: 'accumulatedDepreciation',
             label: 'Khấu hao lũy kế sau thay đổi (VNĐ)',
             type: FormFieldType.Number,
+            maxLength: 20,
             min: 0,
             required: true,
             rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
@@ -270,6 +282,7 @@ export default function CctvSystemAssetOperationForm({
             name: 'depreciationRate',
             label: 'Tỷ lệ hao mòn/Khấu hao (%)',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             max: 100,
             placeholder: '0',
@@ -293,6 +306,7 @@ export default function CctvSystemAssetOperationForm({
             name: 'depreciationMonths',
             label: 'Số tháng tính khấu hao',
             type: FormFieldType.Number,
+            maxLength: 5,
             min: 0,
             placeholder: 'Nhập số tháng...',
             colSpan: 12,
@@ -327,22 +341,15 @@ export default function CctvSystemAssetOperationForm({
   }, [operationMode, isExploit, isIncrease, organizations]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    return [
-      {
-        key: 'cancel',
-        label: 'Đóng',
-        onClick: onClose,
-        disabled: saving,
-      },
-      {
-        key: 'submit',
-        label: isExploit ? 'Lưu hồ sơ khai thác' : 'Lưu lại',
-        variant: 'primary',
-        loading: saving,
-        onClick: onSubmit,
-      },
-    ];
-  }, [isExploit, saving, onClose, onSubmit]);
+    return createAssetAdjustmentFooterActions({
+      operationMode,
+      saving,
+      saveAction,
+      onClose,
+      onSubmit,
+      exploitSubmitLabel: 'Lưu hồ sơ khai thác',
+    });
+  }, [operationMode, saving, saveAction, onClose, onSubmit]);
 
   return (
     <DynamicFormSidebar<OperationValues>

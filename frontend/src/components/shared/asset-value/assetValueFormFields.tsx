@@ -1,20 +1,20 @@
 import { SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
+import { DISPOSAL_METHOD_OPTIONS } from '../../../constants/assetDropdown';
+import {
+  calculateAssetAdjustmentValues,
+  calculateInitialRemainingValue,
+} from '../../../utils/assetValueCalculation';
+import {
+  formatDotNumber,
+  formatVndCurrency
+} from '../../../utils/numFmt';
 import {
   FormFieldType,
   type FormFieldConfig,
   type FormSectionConfig,
+  type FormSidebarAction,
 } from '../dynamic-form-sidebar';
-import {
-  formatDotNumber,
-  parseDotNumber,
-  formatVndCurrency,
-} from '../../../utils/numFmt';
-import {
-  calculateInitialRemainingValue,
-  calculateAssetAdjustmentValues,
-} from '../../../utils/assetValueCalculation';
-import { DISPOSAL_METHOD_OPTIONS } from '../../../constants/assetDropdown';
 
 export interface AssetDepreciationSectionOptions<T extends Record<string, unknown> = Record<string, unknown>> {
   key?: string;
@@ -49,8 +49,8 @@ export function createAssetDepreciationFormSection<T extends Record<string, unkn
         label: 'Nguyên giá (VNĐ)',
         type: isReadonly ? FormFieldType.Readonly : FormFieldType.Number,
         min: 0,
+        maxLength: 20,
         formatter: formatDotNumber,
-        parser: parseDotNumber as any,
         placeholder: '0',
         valueFormatter: (v) => formatVndCurrency(v as any),
       },
@@ -58,8 +58,7 @@ export function createAssetDepreciationFormSection<T extends Record<string, unkn
         name: 'depreciationRate' as keyof T,
         label: 'Tỷ lệ hao mòn/Khấu hao (%)',
         type: isReadonly ? FormFieldType.Readonly : FormFieldType.Number,
-        min: 0,
-        max: 100,
+        maxLength: 5,
         placeholder: '0',
         valueFormatter: (v) => (v != null ? `${v}%` : ''),
       },
@@ -103,6 +102,7 @@ export function createAssetDepreciationFormSection<T extends Record<string, unkn
         label: 'Số tháng tính khấu hao',
         type: isReadonly ? FormFieldType.Readonly : FormFieldType.Number,
         min: 0,
+        maxLength: 5,
         placeholder: '0',
         valueFormatter: (v) => (v != null ? `${v} tháng` : ''),
       },
@@ -118,8 +118,8 @@ export function createAssetDepreciationFormSection<T extends Record<string, unkn
         label: 'Khấu hao lũy kế',
         type: isReadonly ? FormFieldType.Readonly : FormFieldType.Number,
         min: 0,
+        maxLength: 20,
         formatter: formatDotNumber,
-        parser: parseDotNumber as any,
         placeholder: '0',
         valueFormatter: (v) => formatVndCurrency(v as any),
       },
@@ -174,161 +174,168 @@ export function createAssetAdjustmentOperationSection<T extends Record<string, u
   const isIncrease = options.operationMode === 'increase';
   const actionLabel = isIncrease ? 'tăng' : 'giảm';
 
+  const baseFields: FormFieldConfig<T>[] = [
+    {
+      name: 'originalValueBefore' as keyof T,
+      label: 'Nguyên giá trước điều chỉnh',
+      type: FormFieldType.Readonly,
+      computedValue: () => selected.originalValue,
+      valueFormatter: () =>
+        formatVndCurrency(selected.originalValue) || '0 VNĐ',
+    },
+    {
+      name: 'originalValue' as keyof T,
+      label: `Nguyên giá sau khi ${actionLabel} (VNĐ)`,
+      type: FormFieldType.Number,
+      required: true,
+      min: 0,
+      maxLength: 20,
+      formatter: formatDotNumber,
+      placeholder: '0',
+      rules: [{ required: true, message: 'Nguyên giá sau điều chỉnh là bắt buộc' }],
+    },
+    {
+      name: 'remainingValueBefore' as keyof T,
+      label: 'Giá trị còn lại trước điều chỉnh (VNĐ)',
+      type: FormFieldType.Readonly,
+      computedValue: () => selected.remainingValue,
+      valueFormatter: () =>
+        formatVndCurrency(selected.remainingValue) || '0 VNĐ',
+    },
+    {
+      name: 'remainingValueAfter' as keyof T,
+      label: `Giá trị còn lại sau khi ${actionLabel} (VNĐ)`,
+      type: FormFieldType.Readonly,
+      dependencies: [
+        'originalValue',
+        'originalValueAfter',
+        'depreciationRate',
+        'depreciationStartDate',
+        'depreciationEndDate',
+        'accumulatedDepreciation',
+        'depreciationMonths',
+      ],
+      computedValue: (_form: FormInstance, vals: any) => {
+        const origAfter = vals?.originalValue ?? vals?.originalValueAfter;
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origAfter,
+          depreciationRate: vals?.depreciationRate,
+          depreciationStartDate: vals?.depreciationStartDate,
+          depreciationEndDate: vals?.depreciationEndDate,
+          accumulatedDepreciationManual: vals?.accumulatedDepreciation,
+          depreciationMonths: vals?.depreciationMonths,
+        });
+        return calc.remainingValueAfter;
+      },
+      valueFormatter: (v) => formatVndCurrency(v as any),
+    },
+    {
+      name: 'declarationDate' as keyof T,
+      label: 'Ngày kê khai tài sản',
+      type: FormFieldType.Date,
+      placeholder: 'Chọn ngày kê khai',
+    },
+    {
+      name: 'depreciationRate' as keyof T,
+      label: 'Tỷ lệ hao mòn/Khấu hao (%)',
+      type: FormFieldType.Number,
+      min: 0,
+      max: 100,
+      maxLength: 5,
+      placeholder: '0',
+    },
+    {
+      name: 'assignmentDecisionNumber' as keyof T,
+      label: 'Số quyết định giao (bao gồm cả tăng vốn)',
+      type: FormFieldType.Text,
+      placeholder: 'Nhập số quyết định',
+    },
+    {
+      name: 'depreciationStartDate' as keyof T,
+      label: 'Ngày tính khấu hao',
+      type: FormFieldType.Date,
+      placeholder: 'Chọn ngày tính',
+    },
+    {
+      name: 'depreciationMonths' as keyof T,
+      label: 'Số tháng tính khấu hao',
+      type: FormFieldType.Number,
+      min: 0,
+      maxLength: 5,
+      placeholder: '0',
+    },
+    {
+      name: 'depreciationEndDate' as keyof T,
+      label: 'Ngày hết khấu hao',
+      type: FormFieldType.Date,
+      placeholder: 'Chọn ngày hết',
+    },
+    {
+      name: 'accumulatedDepreciation' as keyof T,
+      label: 'Khấu hao lũy kế',
+      type: FormFieldType.Number,
+      required: true,
+      min: 0,
+      maxLength: 20,
+      formatter: formatDotNumber,
+      placeholder: '0',
+      rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
+    },
+    {
+      name: 'disposalMethod' as keyof T,
+      label: 'Hình thức xử lý tài sản',
+      type: FormFieldType.Select,
+      required: true,
+      placeholder: 'Chọn hình thức xử lý',
+      options: DISPOSAL_METHOD_OPTIONS,
+      rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
+    },
+    {
+      name: 'monthlyDepreciation' as keyof T,
+      label: 'Khấu hao tháng',
+      type: FormFieldType.Readonly,
+      dependencies: [
+        'originalValue',
+        'originalValueAfter',
+        'depreciationRate',
+        'depreciationStartDate',
+        'depreciationEndDate',
+        'accumulatedDepreciation',
+        'depreciationMonths',
+      ],
+      computedValue: (_form: FormInstance, vals: any) => {
+        const origAfter = vals?.originalValue ?? vals?.originalValueAfter;
+        const calc = calculateAssetAdjustmentValues({
+          originalValueAfter: origAfter,
+          depreciationRate: vals?.depreciationRate,
+          depreciationStartDate: vals?.depreciationStartDate,
+          depreciationEndDate: vals?.depreciationEndDate,
+          accumulatedDepreciationManual: vals?.accumulatedDepreciation,
+          depreciationMonths: vals?.depreciationMonths,
+        });
+        return calc.monthlyDepreciation;
+      },
+      valueFormatter: (v) => formatVndCurrency(v as any),
+    },
+    {
+      name: 'notes' as keyof T,
+      label: 'Ghi chú điều chỉnh',
+      type: FormFieldType.TextArea,
+      rows: 3,
+      placeholder: 'Nhập ghi chú điều chỉnh',
+      colSpan: 24,
+    },
+  ];
+
+  const extraFields = (options.extraFields || []).filter(
+    (extra) => !baseFields.some((bf) => String(bf.name) === String(extra.name))
+  );
+
   return {
     key: options.key || 'value_section',
     title: options.title || 'Giá trị & Khấu hao điều chỉnh',
     icon: <SlidersOutlined />,
-    fields: [
-      {
-        name: 'originalValueBefore' as keyof T,
-        label: 'Nguyên giá trước điều chỉnh',
-        type: FormFieldType.Readonly,
-        computedValue: () => selected.originalValue,
-        valueFormatter: () =>
-          formatVndCurrency(selected.originalValue) || '0 VNĐ',
-      },
-      {
-        name: 'originalValue' as keyof T,
-        label: `Nguyên giá sau khi ${actionLabel} (VNĐ)`,
-        type: FormFieldType.Number,
-        required: true,
-        min: 0,
-        formatter: formatDotNumber,
-        parser: parseDotNumber as any,
-        placeholder: '0',
-        rules: [{ required: true, message: 'Nguyên giá sau điều chỉnh là bắt buộc' }],
-      },
-      {
-        name: 'remainingValueBefore' as keyof T,
-        label: 'Giá trị còn lại trước điều chỉnh (VNĐ)',
-        type: FormFieldType.Readonly,
-        computedValue: () => selected.remainingValue,
-        valueFormatter: () =>
-          formatVndCurrency(selected.remainingValue) || '0 VNĐ',
-      },
-      {
-        name: 'remainingValueAfter' as keyof T,
-        label: `Giá trị còn lại sau khi ${actionLabel} (VNĐ)`,
-        type: FormFieldType.Readonly,
-        dependencies: [
-          'originalValue',
-          'originalValueAfter',
-          'depreciationRate',
-          'depreciationStartDate',
-          'depreciationEndDate',
-          'accumulatedDepreciation',
-          'depreciationMonths',
-        ],
-        computedValue: (_form: FormInstance, vals: any) => {
-          const origAfter = vals?.originalValue ?? vals?.originalValueAfter;
-          const calc = calculateAssetAdjustmentValues({
-            originalValueAfter: origAfter,
-            depreciationRate: vals?.depreciationRate,
-            depreciationStartDate: vals?.depreciationStartDate,
-            depreciationEndDate: vals?.depreciationEndDate,
-            accumulatedDepreciationManual: vals?.accumulatedDepreciation,
-            depreciationMonths: vals?.depreciationMonths,
-          });
-          return calc.remainingValueAfter;
-        },
-        valueFormatter: (v) => formatVndCurrency(v as any),
-      },
-      {
-        name: 'declarationDate' as keyof T,
-        label: 'Ngày kê khai tài sản',
-        type: FormFieldType.Date,
-        placeholder: 'Chọn ngày kê khai',
-      },
-      {
-        name: 'depreciationRate' as keyof T,
-        label: 'Tỷ lệ hao mòn/Khấu hao (%)',
-        type: FormFieldType.Number,
-        min: 0,
-        max: 100,
-        placeholder: '0',
-      },
-      {
-        name: 'assignmentDecisionNumber' as keyof T,
-        label: 'Số quyết định giao (bao gồm cả tăng vốn)',
-        type: FormFieldType.Text,
-        placeholder: 'Nhập số quyết định',
-      },
-      {
-        name: 'depreciationStartDate' as keyof T,
-        label: 'Ngày tính khấu hao',
-        type: FormFieldType.Date,
-        placeholder: 'Chọn ngày tính',
-      },
-      {
-        name: 'depreciationMonths' as keyof T,
-        label: 'Số tháng tính khấu hao',
-        type: FormFieldType.Number,
-        min: 0,
-        placeholder: '0',
-      },
-      {
-        name: 'depreciationEndDate' as keyof T,
-        label: 'Ngày hết khấu hao',
-        type: FormFieldType.Date,
-        placeholder: 'Chọn ngày hết',
-      },
-      {
-        name: 'accumulatedDepreciation' as keyof T,
-        label: 'Khấu hao lũy kế',
-        type: FormFieldType.Number,
-        required: true,
-        min: 0,
-        formatter: formatDotNumber,
-        parser: parseDotNumber as any,
-        placeholder: '0',
-        rules: [{ required: true, message: 'Khấu hao lũy kế là bắt buộc' }],
-      },
-      {
-        name: 'disposalMethod' as keyof T,
-        label: 'Hình thức xử lý tài sản',
-        type: FormFieldType.Select,
-        required: true,
-        placeholder: 'Chọn hình thức xử lý',
-        options: DISPOSAL_METHOD_OPTIONS,
-        rules: [{ required: true, message: 'Hình thức xử lý tài sản là bắt buộc' }],
-      },
-      {
-        name: 'monthlyDepreciation' as keyof T,
-        label: 'Khấu hao tháng',
-        type: FormFieldType.Readonly,
-        dependencies: [
-          'originalValue',
-          'originalValueAfter',
-          'depreciationRate',
-          'depreciationStartDate',
-          'depreciationEndDate',
-          'accumulatedDepreciation',
-          'depreciationMonths',
-        ],
-        computedValue: (_form: FormInstance, vals: any) => {
-          const origAfter = vals?.originalValue ?? vals?.originalValueAfter;
-          const calc = calculateAssetAdjustmentValues({
-            originalValueAfter: origAfter,
-            depreciationRate: vals?.depreciationRate,
-            depreciationStartDate: vals?.depreciationStartDate,
-            depreciationEndDate: vals?.depreciationEndDate,
-            accumulatedDepreciationManual: vals?.accumulatedDepreciation,
-            depreciationMonths: vals?.depreciationMonths,
-          });
-          return calc.monthlyDepreciation;
-        },
-        valueFormatter: (v) => formatVndCurrency(v as any),
-      },
-      {
-        name: 'notes' as keyof T,
-        label: 'Ghi chú điều chỉnh',
-        type: FormFieldType.TextArea,
-        rows: 3,
-        placeholder: 'Nhập ghi chú điều chỉnh',
-        colSpan: 24,
-      },
-      ...(options.extraFields || []),
-    ],
+    fields: [...baseFields, ...extraFields],
   };
 }
 
@@ -364,5 +371,73 @@ export function handleAssetAdjustmentValuesChange<T extends Record<string, unkno
       form.setFieldValue('accumulatedDepreciation' as any, calc.accumulatedDepreciation);
     }
   }
+}
+
+export interface AssetAdjustmentFooterActionOptions {
+  operationMode?: 'increase' | 'decrease' | 'exploit';
+  isIncrease?: boolean;
+  isExploit?: boolean;
+  saving?: boolean;
+  saveAction?: string;
+  exploitSubmitLabel?: string;
+  onSubmit: (targetAction?: any) => Promise<void> | void;
+  onClose?: () => void;
+}
+
+/**
+ * Tạo danh sách nút bấm footer dùng chung cho Drawer Biến động tài sản (Khai thác / Tăng / Giảm nguyên giá).
+ * - Ở chế độ Tăng/Giảm nguyên giá: BỎ nút "Hủy", chỉ hiển thị 2 nút:
+ *   1. "Lưu và gửi phê duyệt" (variant: 'primary')
+ *   2. "Lưu và phê duyệt" (variant: 'success')
+ * - Ở chế độ Khai thác: hiển thị nút "Hủy" (outline) và "Lưu khai thác" (primary).
+ */
+export function createAssetAdjustmentFooterActions(
+  options: AssetAdjustmentFooterActionOptions
+): FormSidebarAction[] {
+  const { operationMode, isExploit, isIncrease, saving, saveAction, exploitSubmitLabel, onSubmit, onClose } = options;
+
+  const isAdjustment =
+    operationMode === 'increase' ||
+    operationMode === 'decrease' ||
+    Boolean(isExploit === false && isIncrease !== undefined);
+
+  if (isAdjustment) {
+    return [
+      {
+        key: 'submit_approval',
+        label: 'Lưu và gửi phê duyệt',
+        variant: 'primary',
+        loading: Boolean(saving && saveAction === 'PENDING_APPROVAL'),
+        onClick: () => void onSubmit('PENDING_APPROVAL'),
+      },
+      {
+        key: 'submit_approve',
+        label: 'Lưu và phê duyệt',
+        variant: 'success',
+        loading: Boolean(saving && saveAction === 'APPROVED'),
+        onClick: () => void onSubmit('APPROVED'),
+      },
+    ];
+  }
+
+  return [
+    ...(onClose
+      ? [
+          {
+            key: 'cancel',
+            label: 'Hủy',
+            variant: 'outline' as const,
+            onClick: onClose,
+          },
+        ]
+      : []),
+    {
+      key: 'submit',
+      label: exploitSubmitLabel || 'Lưu khai thác',
+      variant: 'primary' as const,
+      loading: Boolean(saving),
+      onClick: () => void onSubmit(),
+    },
+  ];
 }
 
