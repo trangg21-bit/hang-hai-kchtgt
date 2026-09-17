@@ -221,6 +221,7 @@ export function canDeleteApprovalRecord(
   const perms = [
     ...(resource ? [`${resource}:delete`, `${resource}:manage`] : []),
     ...extraDeletePerms,
+    'admin:manage',
   ];
   return perms.some(checkPerm);
 }

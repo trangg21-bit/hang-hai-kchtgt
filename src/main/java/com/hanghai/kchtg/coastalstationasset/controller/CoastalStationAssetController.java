@@ -40,7 +40,7 @@ public class CoastalStationAssetController {
     private final CoastalStationAssetService service;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'coastalstation:create', 'coastalstation:manage')")
     public ResponseEntity<ApiResponse<CoastalStationAssetResponse>> create(
             @RequestBody CoastalStationAssetRequest request) {
         CoastalStationAssetResponse response = service.create(request);
@@ -48,14 +48,14 @@ public class CoastalStationAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'coastalstation:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<ApiResponse<CoastalStationAssetResponse>> getById(
             @PathVariable UUID id) {
         CoastalStationAssetResponse response = service.getById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    private static final java.util.Set<String> SORTABLE_FIELDS = java.util.Set.of(
+    public static final java.util.Set<String> SORTABLE_FIELDS = java.util.Set.of(
             "id", "assetCode", "assetName", "parentOrgUnitId", "orgUnitId", "usingOrgUnitId",
             "stationId", "daiTtdhId", "inmarsatId", "assetType", "barcode", "assetCondition",
             "usageStatus", "assetGroup", "assetSubgroup", "address", "origin", "quantity",
@@ -79,7 +79,7 @@ public class CoastalStationAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'coastalstation:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<CoastalStationAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -105,7 +105,7 @@ public class CoastalStationAssetController {
     }
 
     @GetMapping("/counts")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'coastalstation:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<ApiResponse<Map<String, Long>>> countByApprovalStatus(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -124,7 +124,7 @@ public class CoastalStationAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'coastalstation:update', 'coastalstation:manage')")
     public ResponseEntity<ApiResponse<CoastalStationAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody CoastalStationAssetRequest request) {
@@ -133,26 +133,26 @@ public class CoastalStationAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'coastalstation:delete', 'coastalstation:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đài đã được xóa thành công", null));
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'coastalstation:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản đài thành công", service.getHistory(id)));
     }
 
     @GetMapping("/{id}/exploitations")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'coastalstation:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<CoastalStationAssetExploitation>>> getExploitations(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getExploitations(id)));
     }
 
     @PostMapping("/{id}/exploitations")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'coastalstation:update', 'coastalstation:manage')")
     public ResponseEntity<ApiResponse<CoastalStationAssetExploitation>> addExploitation(
             @PathVariable UUID id,
             @RequestBody CoastalStationExploitationRequest request) {
@@ -161,7 +161,7 @@ public class CoastalStationAssetController {
     }
 
     @GetMapping("/{id}/adjustments")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'coastalstation:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<CoastalStationAssetAdjustment>>> getAdjustments(
             @PathVariable UUID id,
             @RequestParam(required = false) String type) {
@@ -169,7 +169,7 @@ public class CoastalStationAssetController {
     }
 
     @PostMapping("/{id}/adjustments")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'coastalstation:update', 'coastalstation:manage')")
     public ResponseEntity<ApiResponse<CoastalStationAssetAdjustment>> addAdjustment(
             @PathVariable UUID id,
             @RequestBody CoastalStationAdjustmentRequest request) {

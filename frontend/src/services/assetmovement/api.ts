@@ -252,6 +252,45 @@ export async function fetchInfraAssetList(params?: {
   return res.data.data;
 }
 
+export function getEndpointForAssetType(assetType?: InfrastructureAssetType | string): string {
+  switch (assetType) {
+    case "PORT_TERMINAL":
+      return "/v1/asset/berth-assets";
+    case "ANCHORAGE":
+      return "/v1/asset/anchorage-assets";
+    case "LIGHTHOUSE":
+      return "/v1/asset/lighthouse-assets";
+    case "DIKE_REVETMENT":
+      return "/v1/asset/dike-revetment-assets";
+    case "TRANSFER_AREA":
+      return "/v1/asset/transfer-area-assets";
+    case "STORM_SHELTER":
+      return "/v1/asset/storm-shelter-assets";
+    case "BUOY_BERTH":
+      return "/v1/asset/buoy-berth-assets";
+    case "PIER":
+      return "/v1/asset/pier-assets";
+    case "BUOY":
+      return "/v1/asset/buoy-assets";
+    case "NAVIGATION_CHANNEL":
+      return "/v1/asset/channel-assets";
+    case "DRY_PORT":
+      return "/v1/asset/dry-port-assets";
+    case "LRIT_STATION":
+      return "/v1/asset/lrit-assets";
+    case "COSPAS_SARSAT_STATION":
+      return "/v1/asset/cospas-sarsat-assets";
+    case "TTXLTT_STATION":
+      return "/v1/asset/ttxltt-assets";
+    case "TTDH_STATION":
+      return "/v1/asset/dai-ttdh-assets";
+    case "INMARSAT_STATION":
+      return "/v1/asset/inmarsat-assets";
+    default:
+      return "/v1/asset/infra-assets";
+  }
+}
+
 export async function fetchInfrastructureAssets(
   assetType: InfrastructureAssetType,
   params: PortTerminalAssetFilters,
@@ -260,7 +299,8 @@ export async function fetchInfrastructureAssets(
   Object.entries({ ...params, assetType }).forEach(([key, value]) => {
     if (value !== undefined && value !== "") sp.set(key, String(value));
   });
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.get(`${endpoint}?${sp}`);
   return res.data.data;
 }
 
@@ -268,7 +308,8 @@ export async function createInfrastructureAsset(
   assetType: InfrastructureAssetType,
   payload: PortTerminalAssetPayload,
 ): Promise<PortTerminalAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.post(endpoint, {
     ...payload,
     assetType,
   });
@@ -280,19 +321,22 @@ export async function updateInfrastructureAsset(
   assetType: InfrastructureAssetType,
   payload: PortTerminalAssetPayload,
 ): Promise<PortTerminalAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.put(`${endpoint}/${id}`, {
     ...payload,
     assetType,
   });
   return res.data.data;
 }
 
-export async function deleteInfrastructureAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+export async function deleteInfrastructureAsset(id: string, assetType?: InfrastructureAssetType): Promise<void> {
+  const endpoint = getEndpointForAssetType(assetType);
+  await api.delete(`${endpoint}/${id}`);
 }
 
-export async function fetchInfraAssetHistory(id: string): Promise<any> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}/history`);
+export async function fetchInfraAssetHistory(id: string, assetType?: InfrastructureAssetType): Promise<any> {
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.get(`${endpoint}/${id}/history`);
   return res.data?.data;
 }
 
@@ -305,7 +349,7 @@ export async function fetchPortTerminalAssets(
 export async function fetchPortTerminalAsset(
   id: string,
 ): Promise<PortTerminalAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/berth-assets/${id}`);
   return res.data.data;
 }
 
@@ -323,7 +367,7 @@ export async function updatePortTerminalAsset(
 }
 
 export async function deletePortTerminalAsset(id: string): Promise<void> {
-  await deleteInfrastructureAsset(id);
+  await api.delete(`/v1/asset/berth-assets/${id}`);
 }
 
 // ==========================================
@@ -343,19 +387,19 @@ export async function fetchBuoyAssets(
   Object.entries(merged).forEach(([key, value]) => {
     if (value !== undefined && value !== "") sp.set(key, String(value));
   });
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const res = await api.get(`/v1/asset/buoy-assets?${sp}`);
   return res.data.data;
 }
 
 export async function fetchBuoyAsset(id: string): Promise<BuoyAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/buoy-assets/${id}`);
   return res.data.data;
 }
 
 export async function createBuoyAsset(
   payload: BuoyAssetPayload,
 ): Promise<BuoyAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const res = await api.post("/v1/asset/buoy-assets", {
     ...payload,
     assetType: "BUOY",
   });
@@ -366,7 +410,7 @@ export async function updateBuoyAsset(
   id: string,
   payload: BuoyAssetPayload,
 ): Promise<BuoyAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const res = await api.put(`/v1/asset/buoy-assets/${id}`, {
     ...payload,
     assetType: "BUOY",
   });
@@ -374,7 +418,7 @@ export async function updateBuoyAsset(
 }
 
 export async function deleteBuoyAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+  await api.delete(`/v1/asset/buoy-assets/${id}`);
 }
 
 export async function fetchTransferAreaAssets(
@@ -386,21 +430,21 @@ export async function fetchTransferAreaAssets(
       if (value !== undefined && value !== "") sp.set(key, String(value));
     },
   );
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const res = await api.get(`/v1/asset/transfer-area-assets?${sp}`);
   return res.data.data;
 }
 
 export async function fetchTransferAreaAsset(
   id: string,
 ): Promise<TransferAreaAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/transfer-area-assets/${id}`);
   return res.data.data;
 }
 
 export async function createTransferAreaAsset(
   payload: TransferAreaAssetPayload,
 ): Promise<TransferAreaAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const res = await api.post("/v1/asset/transfer-area-assets", {
     ...payload,
     assetType: "TRANSFER_AREA",
   });
@@ -411,7 +455,7 @@ export async function updateTransferAreaAsset(
   id: string,
   payload: TransferAreaAssetPayload,
 ): Promise<TransferAreaAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const res = await api.put(`/v1/asset/transfer-area-assets/${id}`, {
     ...payload,
     assetType: "TRANSFER_AREA",
   });
@@ -419,7 +463,7 @@ export async function updateTransferAreaAsset(
 }
 
 export async function deleteTransferAreaAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+  await api.delete(`/v1/asset/transfer-area-assets/${id}`);
 }
 
 export async function fetchStormShelterAssetList(
@@ -431,21 +475,21 @@ export async function fetchStormShelterAssetList(
       if (value !== undefined && value !== "") sp.set(key, String(value));
     },
   );
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const res = await api.get(`/v1/asset/storm-shelter-assets?${sp}`);
   return res.data.data;
 }
 
 export async function fetchStormShelterAsset(
   id: string,
 ): Promise<StormShelterAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/storm-shelter-assets/${id}`);
   return res.data.data;
 }
 
 export async function createStormShelterAsset(
   payload: StormShelterAssetPayload,
 ): Promise<StormShelterAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const res = await api.post("/v1/asset/storm-shelter-assets", {
     ...payload,
     assetType: "STORM_SHELTER",
   });
@@ -456,7 +500,7 @@ export async function updateStormShelterAsset(
   id: string,
   payload: StormShelterAssetPayload,
 ): Promise<StormShelterAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const res = await api.put(`/v1/asset/storm-shelter-assets/${id}`, {
     ...payload,
     assetType: "STORM_SHELTER",
   });
@@ -464,7 +508,7 @@ export async function updateStormShelterAsset(
 }
 
 export async function deleteStormShelterAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+  await api.delete(`/v1/asset/storm-shelter-assets/${id}`);
 }
 
 export async function fetchBuoyBerthAssets(
@@ -476,19 +520,19 @@ export async function fetchBuoyBerthAssets(
       if (value !== undefined && value !== "") sp.set(key, String(value));
     },
   );
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const res = await api.get(`/v1/asset/buoy-berth-assets?${sp}`);
   return res.data.data;
 }
 
 export async function fetchBuoyBerthAsset(id: string): Promise<BuoyBerthAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/buoy-berth-assets/${id}`);
   return res.data.data;
 }
 
 export async function createBuoyBerthAsset(
   payload: BuoyBerthAssetPayload,
 ): Promise<BuoyBerthAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const res = await api.post("/v1/asset/buoy-berth-assets", {
     ...payload,
     assetType: "BUOY_BERTH",
   });
@@ -499,7 +543,7 @@ export async function updateBuoyBerthAsset(
   id: string,
   payload: BuoyBerthAssetPayload,
 ): Promise<BuoyBerthAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const res = await api.put(`/v1/asset/buoy-berth-assets/${id}`, {
     ...payload,
     assetType: "BUOY_BERTH",
   });
@@ -507,7 +551,7 @@ export async function updateBuoyBerthAsset(
 }
 
 export async function deleteBuoyBerthAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+  await api.delete(`/v1/asset/buoy-berth-assets/${id}`);
 }
 
 export async function fetchPierAssets(
@@ -517,19 +561,19 @@ export async function fetchPierAssets(
   Object.entries({ ...params, assetType: "PIER" }).forEach(([key, value]) => {
     if (value !== undefined && value !== "") sp.set(key, String(value));
   });
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const res = await api.get(`/v1/asset/pier-assets?${sp}`);
   return res.data.data;
 }
 
 export async function fetchPierAsset(id: string): Promise<PierAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/pier-assets/${id}`);
   return res.data.data;
 }
 
 export async function createPierAsset(
   payload: PierAssetPayload,
 ): Promise<PierAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const res = await api.post("/v1/asset/pier-assets", {
     ...payload,
     assetType: "PIER",
   });
@@ -540,7 +584,7 @@ export async function updatePierAsset(
   id: string,
   payload: PierAssetPayload,
 ): Promise<PierAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const res = await api.put(`/v1/asset/pier-assets/${id}`, {
     ...payload,
     assetType: "PIER",
   });
@@ -548,7 +592,7 @@ export async function updatePierAsset(
 }
 
 export async function deletePierAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+  await api.delete(`/v1/asset/pier-assets/${id}`);
 }
 
 export async function approveAssetIncrease(
@@ -661,19 +705,19 @@ export async function fetchChannelAssets(
   Object.entries(merged).forEach(([key, value]) => {
     if (value !== undefined && value !== "") sp.set(key, String(value));
   });
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const res = await api.get(`/v1/asset/channel-assets?${sp}`);
   return res.data.data;
 }
 
 export async function fetchChannelAsset(id: string): Promise<ChannelAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/channel-assets/${id}`);
   return res.data.data;
 }
 
 export async function createChannelAsset(
   payload: ChannelAssetPayload,
 ): Promise<ChannelAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const res = await api.post("/v1/asset/channel-assets", {
     ...payload,
     assetType: "NAVIGATION_CHANNEL",
   });
@@ -684,7 +728,7 @@ export async function updateChannelAsset(
   id: string,
   payload: ChannelAssetPayload,
 ): Promise<ChannelAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const res = await api.put(`/v1/asset/channel-assets/${id}`, {
     ...payload,
     assetType: "NAVIGATION_CHANNEL",
   });
@@ -692,7 +736,7 @@ export async function updateChannelAsset(
 }
 
 export async function deleteChannelAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+  await api.delete(`/v1/asset/channel-assets/${id}`);
 }
 
 // ==========================================
@@ -710,12 +754,14 @@ export async function fetchStationAssets(
   Object.entries(merged).forEach(([key, value]) => {
     if (value !== undefined && value !== "") sp.set(key, String(value));
   });
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.get(`${endpoint}?${sp}`);
   return res.data.data;
 }
 
-export async function fetchStationAsset(id: string): Promise<StationAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+export async function fetchStationAsset(id: string, assetType?: InfrastructureAssetType): Promise<StationAsset> {
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.get(`${endpoint}/${id}`);
   return res.data.data;
 }
 
@@ -723,7 +769,8 @@ export async function createStationAsset(
   payload: StationAssetPayload,
   assetType: InfrastructureAssetType = "LRIT_STATION",
 ): Promise<StationAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.post(endpoint, {
     ...payload,
     assetType,
   });
@@ -735,15 +782,17 @@ export async function updateStationAsset(
   payload: StationAssetPayload,
   assetType: InfrastructureAssetType = "LRIT_STATION",
 ): Promise<StationAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const endpoint = getEndpointForAssetType(assetType);
+  const res = await api.put(`${endpoint}/${id}`, {
     ...payload,
     assetType,
   });
   return res.data.data;
 }
 
-export async function deleteStationAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+export async function deleteStationAsset(id: string, assetType?: InfrastructureAssetType): Promise<void> {
+  const endpoint = getEndpointForAssetType(assetType);
+  await api.delete(`${endpoint}/${id}`);
 }
 
 // ==========================================
@@ -760,19 +809,19 @@ export async function fetchDryPortAssets(
   Object.entries(merged).forEach(([key, value]) => {
     if (value !== undefined && value !== "") sp.set(key, String(value));
   });
-  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
+  const res = await api.get(`/v1/asset/dry-port-assets?${sp}`);
   return res.data.data;
 }
 
 export async function fetchDryPortAsset(id: string): Promise<DryPortAsset> {
-  const res = await api.get(`/v1/asset/infra-assets/${id}`);
+  const res = await api.get(`/v1/asset/dry-port-assets/${id}`);
   return res.data.data;
 }
 
 export async function createDryPortAsset(
   payload: DryPortAssetPayload,
 ): Promise<DryPortAsset> {
-  const res = await api.post("/v1/asset/infra-assets", {
+  const res = await api.post("/v1/asset/dry-port-assets", {
     ...payload,
     assetType: "DRY_PORT",
   });
@@ -783,7 +832,7 @@ export async function updateDryPortAsset(
   id: string,
   payload: DryPortAssetPayload,
 ): Promise<DryPortAsset> {
-  const res = await api.put(`/v1/asset/infra-assets/${id}`, {
+  const res = await api.put(`/v1/asset/dry-port-assets/${id}`, {
     ...payload,
     assetType: "DRY_PORT",
   });
@@ -791,7 +840,7 @@ export async function updateDryPortAsset(
 }
 
 export async function deleteDryPortAsset(id: string): Promise<void> {
-  await api.delete(`/v1/asset/infra-assets/${id}`);
+  await api.delete(`/v1/asset/dry-port-assets/${id}`);
 }
 
 // ==========================================

@@ -1,6 +1,7 @@
 export interface StationTypeConfig {
   type: string;
   types: string;
+  resource: string | string[];
   title: string;
   stationFieldName: string;
   stationLabel: string;
@@ -14,6 +15,7 @@ export interface StationTypeConfig {
 export const LRIT_CONFIG: StationTypeConfig = {
   type: 'LRIT_STATION',
   types: 'LRIT_STATION',
+  resource: ['lritasset', 'lrit', 'coastalstationlrit', 'specialstation', 'coastalstation', 'infraasset'],
   title: 'Tài sản đài LRIT',
   stationFieldName: 'lritStationId',
   stationLabel: 'Mã đài',
@@ -26,6 +28,7 @@ export const LRIT_CONFIG: StationTypeConfig = {
 export const TTDH_CONFIG: StationTypeConfig = {
   type: 'TTDH_STATION',
   types: 'TTDH_STATION',
+  resource: ['daittdhasset', 'daittdh', 'coastalstation', 'specialstation', 'infraasset'],
   title: 'Tài sản đài TTDH',
   stationFieldName: 'ttdhStationId',
   stationLabel: 'Mã đài TTDH',
@@ -38,6 +41,7 @@ export const TTDH_CONFIG: StationTypeConfig = {
 export const INMARSAT_CONFIG: StationTypeConfig = {
   type: 'INMARSAT_STATION',
   types: 'INMARSAT_STATION',
+  resource: ['inmarsatasset', 'inmarsat', 'coastalstationinmarsat', 'specialstation', 'coastalstation', 'infraasset'],
   title: 'Tài sản đài Inmarsat',
   stationFieldName: 'inmarsatStationId',
   stationLabel: 'Mã đài Inmarsat',
@@ -50,6 +54,7 @@ export const INMARSAT_CONFIG: StationTypeConfig = {
 export const COSPAS_SARSAT_CONFIG: StationTypeConfig = {
   type: 'COSPAS_SARSAT_STATION',
   types: 'COSPAS_SARSAT_STATION',
+  resource: ['cospassarsatasset', 'cospassarsat', 'coastalstationcospassarsat', 'specialstation', 'coastalstation', 'infraasset'],
   title: 'Tài sản đài Cospas-Sarsat',
   stationFieldName: 'cospasSarsatStationId',
   stationLabel: 'Mã đài Cospas-Sarsat',
@@ -62,6 +67,7 @@ export const COSPAS_SARSAT_CONFIG: StationTypeConfig = {
 export const TTXLTT_CONFIG: StationTypeConfig = {
   type: 'TTXLTT_STATION',
   types: 'TTXLTT_STATION',
+  resource: ['ttxlttasset', 'ttxltt', 'coastalstationhaiphong', 'specialstation', 'coastalstation', 'infraasset'],
   title: 'Tài sản đài TTXLTT',
   stationFieldName: 'ttxlttStationId',
   stationLabel: 'Mã đài TTXLTT',

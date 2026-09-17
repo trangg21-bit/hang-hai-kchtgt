@@ -31,6 +31,7 @@ import {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -92,6 +93,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function InmarsatAssetList() {
+  const perms = useAssetPermissions(['coastalstationinmarsat', 'specialstation', 'coastalstation', 'inmarsatasset']);
   const [data, setData] = useState<InmarsatAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [inmarsatStations, setInmarsatStations] = useState<Array<{ id: string; code: string; name: string }>>([]);
@@ -728,67 +730,78 @@ export default function InmarsatAssetList() {
           Boolean((record as { deletedAt?: string | null }).deletedAt);
 
         if (isArchived) {
-          return [
-            {
+          const arcActions: TableActionOption<InmarsatAsset>[] = [];
+          if (perms.canRead) {
+            arcActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void openDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            arcActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return arcActions;
         }
 
-        const rowActions: TableActionOption<InmarsatAsset>[] = [
-          {
+        const rowActions: TableActionOption<InmarsatAsset>[] = [];
+        if (perms.canRead) {
+          rowActions.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
-          },
-          ...(isAssetRecordEditable(record.approvalStatus)
-            ? [
-                {
-                  key: 'edit',
-                  label: 'Chỉnh sửa',
-                  icon: <EditOutlined />,
-                  onClick: () => openEdit(record),
-                },
-              ]
-            : []),
-          {
+          });
+        }
+        if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+          rowActions.push({
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
+          });
+        }
+        if (perms.canHistory) {
+          rowActions.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
+          });
+        }
+        if (perms.canExploit) {
+          rowActions.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
             onClick: () => openOperation(record, 'exploit'),
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          rowActions.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
             onClick: () => openOperation(record, 'increase'),
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          rowActions.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
             onClick: () => openOperation(record, 'decrease'),
-          },
-        ];
+          });
+        }
 
         const isDraft = normalizeApprovalStatus(record.approvalStatus) === 'DRAFT';
-        if (isDraft) {
+        if (isDraft && perms.canDelete) {
           rowActions.push({
             key: 'delete',
             label: 'Xóa',
@@ -801,11 +814,12 @@ export default function InmarsatAssetList() {
         return rowActions;
       },
     }),
-    [inmarsatMap, openDetail, openEdit, openHistory, openOperation, orgName]
+    [inmarsatMap, openDetail, openEdit, openHistory, openOperation, orgName, perms]
   );
 
-  const headerActions = useMemo<ScreenHeaderAction[]>(
-    () => [
+  const headerActions = useMemo<ScreenHeaderAction[]>(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -813,9 +827,8 @@ export default function InmarsatAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={customTokens as unknown as import('../../context/ThemeTokenContext').ThemeToken}>

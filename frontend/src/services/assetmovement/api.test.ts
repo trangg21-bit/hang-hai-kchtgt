@@ -70,7 +70,7 @@ describe('station asset API', () => {
     await fetchStationAssets({ page: 0, size: 20 }, 'LRIT_STATION');
 
     expect(api.get).toHaveBeenCalledWith(
-      '/v1/asset/infra-assets?page=0&size=20&assetType=LRIT_STATION',
+      '/v1/asset/lrit-assets?page=0&size=20&assetType=LRIT_STATION',
     );
   });
 
@@ -90,7 +90,7 @@ describe('station asset API', () => {
       'LRIT_STATION',
     );
     expect(created.id).toBe('station-1');
-    expect(api.post).toHaveBeenCalledWith('/v1/asset/infra-assets', {
+    expect(api.post).toHaveBeenCalledWith('/v1/asset/lrit-assets', {
       assetName: 'Đài LRIT 1',
       assetType: 'LRIT_STATION',
     });
@@ -101,7 +101,7 @@ describe('station asset API', () => {
       'LRIT_STATION',
     );
     expect(updated.id).toBe('station-1');
-    expect(api.put).toHaveBeenCalledWith('/v1/asset/infra-assets/station-1', {
+    expect(api.put).toHaveBeenCalledWith('/v1/asset/lrit-assets/station-1', {
       assetName: 'Đài LRIT 1 cập nhật',
       assetType: 'LRIT_STATION',
     });
@@ -124,7 +124,7 @@ describe('dry port asset API', () => {
     await fetchDryPortAssets({ page: 0, size: 10 });
 
     expect(api.get).toHaveBeenCalledWith(
-      '/v1/asset/infra-assets?page=0&size=10&assetType=DRY_PORT',
+      '/v1/asset/dry-port-assets?page=0&size=10&assetType=DRY_PORT',
     );
   });
 
@@ -140,18 +140,18 @@ describe('dry port asset API', () => {
     } as Awaited<ReturnType<typeof api.delete>>);
 
     await createDryPortAsset({ assetName: 'Cảng cạn 1' } as never);
-    expect(api.post).toHaveBeenCalledWith('/v1/asset/infra-assets', {
+    expect(api.post).toHaveBeenCalledWith('/v1/asset/dry-port-assets', {
       assetName: 'Cảng cạn 1',
       assetType: 'DRY_PORT',
     });
 
     await updateDryPortAsset('dp-1', { assetName: 'Cảng cạn 1 cập nhật' } as never);
-    expect(api.put).toHaveBeenCalledWith('/v1/asset/infra-assets/dp-1', {
+    expect(api.put).toHaveBeenCalledWith('/v1/asset/dry-port-assets/dp-1', {
       assetName: 'Cảng cạn 1 cập nhật',
       assetType: 'DRY_PORT',
     });
 
     await deleteDryPortAsset('dp-1');
-    expect(api.delete).toHaveBeenCalledWith('/v1/asset/infra-assets/dp-1');
+    expect(api.delete).toHaveBeenCalledWith('/v1/asset/dry-port-assets/dp-1');
   });
 });

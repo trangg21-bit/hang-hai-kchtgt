@@ -51,7 +51,7 @@ public class RadarStationAssetController {
     private final RadarStationAssetService service;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'radarstation:create', 'radarstation:manage')")
     public ResponseEntity<ApiResponse<RadarStationAssetResponse>> create(
             @RequestBody RadarStationAssetRequest request) {
         RadarStationAssetResponse response = service.create(request);
@@ -59,7 +59,7 @@ public class RadarStationAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'radarstation:read', 'tramradar:read', 'data:read')")
     public ResponseEntity<ApiResponse<RadarStationAssetResponse>> getById(
             @PathVariable UUID id) {
         RadarStationAssetResponse response = service.getById(id);
@@ -67,7 +67,7 @@ public class RadarStationAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'radarstation:read', 'tramradar:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<RadarStationAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -92,7 +92,7 @@ public class RadarStationAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'radarstation:update', 'radarstation:manage')")
     public ResponseEntity<ApiResponse<RadarStationAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody RadarStationAssetRequest request) {
@@ -101,7 +101,7 @@ public class RadarStationAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'radarstation:delete', 'radarstation:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
@@ -109,7 +109,7 @@ public class RadarStationAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'radarstation:read', 'tramradar:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

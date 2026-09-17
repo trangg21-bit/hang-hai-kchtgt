@@ -15,6 +15,7 @@ import {
   Typography,
 } from 'antd';
 import { message } from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -44,6 +45,7 @@ const { Title } = Typography;
 const { Option } = Select;
 
 export default function InventoryList() {
+  const perms = useAssetPermissions(['inventoryasset', 'inventoryplan', 'inventoryreport']);
   const [activeTab, setActiveTab] = useState('1');
   const [plans, setPlans] = useState<InventoryPlanResponse[]>([]);
   const [reports, setReports] = useState<InventoryReportResponse[]>([]);
@@ -270,9 +272,10 @@ export default function InventoryList() {
       key: 'action',
       render: (_: any, record: InventoryPlanResponse) => {
         const s = record.status ? record.status.toUpperCase() : 'CHO_PHE_DUYET';
+        const canApprove = perms.canApproveC1 || perms.canApproveC2 || perms.canUpdate;
         return (
           <Space size="middle">
-            {s === 'CHO_PHE_DUYET' && (
+            {s === 'CHO_PHE_DUYET' && canApprove && (
               <>
                 <Tooltip title="Duyệt">
                   <Button
@@ -292,7 +295,7 @@ export default function InventoryList() {
                 </Tooltip>
               </>
             )}
-            {s === 'DA_PHE_DUYET' && (
+            {s === 'DA_PHE_DUYET' && perms.canUpdate && (
               <Tooltip title="Bắt đầu thực hiện">
                 <Button
                   type="text"
@@ -302,7 +305,7 @@ export default function InventoryList() {
                 />
               </Tooltip>
             )}
-            {s === 'DANG_THUC_HIEN' && (
+            {s === 'DANG_THUC_HIEN' && perms.canUpdate && (
               <Tooltip title="Hoàn thành kiểm kê">
                 <Button
                   type="text"
@@ -361,9 +364,10 @@ export default function InventoryList() {
       key: 'action',
       render: (_: any, record: InventoryReportResponse) => {
         const s = record.result ? record.result.toUpperCase() : 'CHO_PHE_DUYET';
+        const canApprove = perms.canApproveC1 || perms.canApproveC2 || perms.canUpdate;
         return (
           <Space size="middle">
-            {s === 'CHO_PHE_DUYET' && (
+            {s === 'CHO_PHE_DUYET' && canApprove && (
               <>
                 <Tooltip title="Duyệt">
                   <Button
@@ -399,21 +403,25 @@ export default function InventoryList() {
             onClick={() => (activeTab === '1' ? loadPlans() : loadReports())}
           />
           {activeTab === '1' ? (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setIsPlanModalOpen(true)}
-            >
-              Lập kế hoạch
-            </Button>
+            perms.canCreate && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setIsPlanModalOpen(true)}
+              >
+                Lập kế hoạch
+              </Button>
+            )
           ) : (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setIsReportModalOpen(true)}
-            >
-              Lập báo cáo
-            </Button>
+            perms.canCreate && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setIsReportModalOpen(true)}
+              >
+                Lập báo cáo
+              </Button>
+            )
           )}
         </Space>
       }

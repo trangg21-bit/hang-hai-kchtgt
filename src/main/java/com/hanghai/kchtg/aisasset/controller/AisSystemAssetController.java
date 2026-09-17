@@ -51,7 +51,7 @@ public class AisSystemAssetController {
     private final AisSystemAssetService service;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'aissystem:create', 'aissystem:manage')")
     public ResponseEntity<ApiResponse<AisSystemAssetResponse>> create(
             @RequestBody AisSystemAssetRequest request) {
         AisSystemAssetResponse response = service.create(request);
@@ -59,7 +59,7 @@ public class AisSystemAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'aissystem:read', 'data:read')")
     public ResponseEntity<ApiResponse<AisSystemAssetResponse>> getById(
             @PathVariable UUID id) {
         AisSystemAssetResponse response = service.getById(id);
@@ -67,7 +67,7 @@ public class AisSystemAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'aissystem:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<AisSystemAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -92,7 +92,7 @@ public class AisSystemAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'aissystem:update', 'aissystem:manage')")
     public ResponseEntity<ApiResponse<AisSystemAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody AisSystemAssetRequest request) {
@@ -101,7 +101,7 @@ public class AisSystemAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'aissystem:delete', 'aissystem:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
@@ -109,7 +109,7 @@ public class AisSystemAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'aissystem:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

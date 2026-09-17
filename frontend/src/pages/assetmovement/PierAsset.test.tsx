@@ -169,7 +169,7 @@ describe('Module 5: Tài sản cầu cảng (docs/checklists/CHECKLIST-TAI-SAN-C
         orgUnitId: 'org-6',
         role: 'ADMIN',
         status: 'authenticated',
-        permissions: ['infraasset:manage'],
+        permissions: ['infraasset:manage', 'pier:manage', 'pierasset:manage'],
       },
       isAuthenticated: true,
       token: 'admin-jwt-token',

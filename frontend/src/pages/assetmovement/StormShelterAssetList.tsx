@@ -61,6 +61,7 @@ import {
   updateStormShelterAsset,
   uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
+
 import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
@@ -73,6 +74,7 @@ import type {
 import { organizationService, type Organization } from '../../services/organizationService';
 import { stormShelterCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
   actionPrimary,
@@ -154,6 +156,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function StormShelterAssetList() {
+  const perms = useAssetPermissions(['stormshelter', 'stormshelterasset']);
   const [data, setData] = useState<StormShelterAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [stormShelters, setStormShelters] = useState<StormShelterArea[]>([]);
@@ -776,15 +779,18 @@ export default function StormShelterAssetList() {
     }
   };
 
-  const headerActions: ScreenHeaderAction[] = useMemo(() => [
-    {
-      key: 'create',
-      label: 'Thêm mới',
-      icon: <PlusOutlined />,
-      variant: 'primary',
-      onClick: openCreate,
-    },
-  ], [openCreate]);
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
+      {
+        key: 'create',
+        label: 'Thêm mới',
+        icon: <PlusOutlined />,
+        variant: 'primary',
+        onClick: openCreate,
+      },
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   const filterConfigs = useMemo<FilterOption[]>(() => [
     {
@@ -1021,16 +1027,18 @@ export default function StormShelterAssetList() {
     ],
     actions: (record: StormShelterAsset) => {
       const st = record.approvalStatus || (record as any).status || '';
-      const actionsList: any[] = [
-        {
+      const actionsList: any[] = [];
+
+      if (perms.canRead) {
+        actionsList.push({
           key: 'detail',
           label: 'Xem chi tiết',
           icon: <EyeOutlined />,
           onClick: () => void openDetail(record),
-        },
-      ];
+        });
+      }
 
-      if (isAssetRecordEditable(st)) {
+      if (perms.canUpdate && isAssetRecordEditable(st)) {
         actionsList.push({
           key: 'edit',
           label: 'Chỉnh sửa',
@@ -1039,89 +1047,102 @@ export default function StormShelterAssetList() {
         });
       }
 
-      if (st === 'DRAFT') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi Cảng vụ phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
-      } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi lại phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
+      if (perms.canUpdate) {
+        if (st === 'DRAFT') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi Cảng vụ phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi lại phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        }
       }
 
       if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
-        actionsList.push(
-          {
+        if (perms.canApproveC1) {
+          actionsList.push({
             key: 'approveC1',
             label: 'Phê duyệt cấp Cảng vụ/Chi cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c1'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC1) {
+          actionsList.push({
             key: 'rejectC1',
             label: 'Từ chối cấp Cảng vụ/Chi cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c1'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED_LEVEL1') {
-        actionsList.push(
-          {
+        if (perms.canApproveC2) {
+          actionsList.push({
             key: 'approveC2',
             label: 'Phê duyệt cấp Cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c2'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC2) {
+          actionsList.push({
             key: 'rejectC2',
             label: 'Từ chối cấp Cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c2'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-        actionsList.push(
-          {
+        if (perms.canExploit) {
+          actionsList.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
             onClick: () => openOperation('exploit', record),
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          actionsList.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
             onClick: () => openOperation('increase', record),
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          actionsList.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
             onClick: () => openOperation('decrease', record),
-          }
-        );
+          });
+        }
       }
 
-      actionsList.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      });
+      if (perms.canHistory) {
+        actionsList.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
 
-      if (st === 'DRAFT') {
+      const isDraft = normalizeApprovalStatus(st) === 'DRAFT' || st === 'DRAFT';
+      if (isDraft && perms.canDelete) {
         actionsList.push({
           key: 'delete',
           label: 'Xóa',
@@ -1143,6 +1164,7 @@ export default function StormShelterAssetList() {
     handleSubmitApproval,
     orgName,
     stormShelterMap,
+    perms,
   ]);
 
   return (

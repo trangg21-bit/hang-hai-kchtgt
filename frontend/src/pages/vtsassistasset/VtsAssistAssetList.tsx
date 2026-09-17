@@ -31,6 +31,7 @@ import {
     type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -99,6 +100,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function VtsAssistAssetList() {
+  const perms = useAssetPermissions(['vtsassist', 'vtsassistasset']);
   const [data, setData] = useState<VtsAssistAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [vtsAssists, setVtsAssists] = useState<VtsAssistOptionResponse[]>([]);
@@ -758,46 +760,53 @@ export default function VtsAssistAssetList() {
           Boolean((record as { deletedAt?: string | null }).deletedAt);
 
         if (isArchived) {
-          return [
-            {
+          const arcActions: TableActionOption<VtsAssistAsset>[] = [];
+          if (perms.canRead) {
+            arcActions.push({
               key: 'detail',
               label: 'Xem chi tiết',
               icon: <EyeOutlined />,
               onClick: () => void openDetail(record),
-            },
-            {
+            });
+          }
+          if (perms.canHistory) {
+            arcActions.push({
               key: 'history',
               label: 'Lịch sử',
               icon: <HistoryOutlined />,
               onClick: () => void openHistory(record),
-            },
-          ];
+            });
+          }
+          return arcActions;
         }
 
-        const rowActions: TableActionOption<VtsAssistAsset>[] = [
-          {
+        const rowActions: TableActionOption<VtsAssistAsset>[] = [];
+        if (perms.canRead) {
+          rowActions.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void openDetail(record),
-          },
-          ...(isAssetRecordEditable(record.approvalStatus)
-            ? [
-                {
-                  key: 'edit',
-                  label: 'Chỉnh sửa',
-                  icon: <EditOutlined />,
-                  onClick: () => openEdit(record),
-                },
-              ]
-            : []),
-          {
+          });
+        }
+        if (perms.canUpdate && isAssetRecordEditable(record.approvalStatus)) {
+          rowActions.push({
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
+          });
+        }
+        if (perms.canHistory) {
+          rowActions.push({
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
-          },
-          {
+          });
+        }
+        if (perms.canExploit) {
+          rowActions.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
@@ -806,8 +815,10 @@ export default function VtsAssistAssetList() {
               setOperationMode('exploit');
               operationForm.resetFields();
             },
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          rowActions.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
@@ -827,8 +838,10 @@ export default function VtsAssistAssetList() {
                 accumulatedDepreciation: record.accumulatedDepreciation,
               });
             },
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          rowActions.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
@@ -848,10 +861,10 @@ export default function VtsAssistAssetList() {
                 accumulatedDepreciation: record.accumulatedDepreciation,
               });
             },
-          },
-        ];
+          });
+        }
 
-        if (canDeleteApprovalRecord(record.approvalStatus, { resource: 'infraasset' })) {
+        if (perms.canDelete && canDeleteApprovalRecord(record.approvalStatus, { resource: 'vtsassist' })) {
           rowActions.push({
             key: 'delete',
             label: 'Xóa',
@@ -864,11 +877,12 @@ export default function VtsAssistAssetList() {
         return rowActions;
       },
     }),
-    [openDetail, openEdit, openHistory, operationForm, orgName, vtsAssistMap]
+    [openDetail, openEdit, openHistory, operationForm, orgName, vtsAssistMap, perms]
   );
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -876,9 +890,8 @@ export default function VtsAssistAssetList() {
         variant: 'primary',
         onClick: openCreate,
       },
-    ],
-    [openCreate]
-  );
+    ];
+  }, [openCreate, perms.canCreate, perms.userPermissions]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>

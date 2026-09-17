@@ -40,26 +40,27 @@ public class BeaconStationController {
     private final BeaconStationService beaconStationService;
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:manage', 'lighthouse:read', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<BeaconStationResponse>>> findAll() {
             return ResponseEntity.ok(ApiResponse.success(beaconStationService.findAll()));
     }
 
     @GetMapping("/generate-code")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:create')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:create', 'lighthouseasset:manage', 'lighthouseasset:create', 'lighthouse:manage', 'lighthouse:create', 'data:create')")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> generateCode() {
         String code = beaconStationService.generateBeaconStationCode();
         return ResponseEntity.ok(ApiResponse.success("Sinh mã đèn biển thành công", java.util.Map.of("code", code)));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:manage', 'lighthouse:read', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> findById(
                     @PathVariable UUID id) {
             return ResponseEntity.ok(ApiResponse.success(beaconStationService.findById(id)));
     }
 
     @GetMapping("/search")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:manage', 'lighthouse:read', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<BeaconStationResponse>>> search(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
@@ -88,6 +89,7 @@ public class BeaconStationController {
     }
 
     @GetMapping("/search-paged")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:manage', 'lighthouse:read', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<BeaconStationResponse>>> searchPaged(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
@@ -120,7 +122,7 @@ public class BeaconStationController {
     }
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:create') or @auth.check(authentication, 'data:create')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:create', 'lighthouseasset:manage', 'lighthouseasset:create', 'lighthouse:manage', 'lighthouse:create', 'data:create')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> create(
                     @Valid @RequestBody CreateBeaconStationRequest request) {
             BeaconStationResponse response = beaconStationService.create(request);
@@ -129,7 +131,7 @@ public class BeaconStationController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:update') or @auth.check(authentication, 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:update', 'lighthouseasset:manage', 'lighthouseasset:update', 'lighthouse:manage', 'lighthouse:update', 'data:update')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> update(
                     @PathVariable UUID id,
                     @Valid @RequestBody UpdateBeaconStationRequest request) {
@@ -139,7 +141,7 @@ public class BeaconStationController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:delete') or @auth.check(authentication, 'data:delete')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:delete', 'lighthouseasset:manage', 'lighthouseasset:delete', 'lighthouse:manage', 'lighthouse:delete', 'data:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
             beaconStationService.delete(id);
             return ResponseEntity.ok(
@@ -147,7 +149,7 @@ public class BeaconStationController {
     }
 
     @PostMapping("/{id}/submit-approval")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:create') or @auth.check(authentication, 'beaconstation:update') or @auth.check(authentication, 'data:create') or @auth.check(authentication, 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:create', 'beaconstation:update', 'lighthouseasset:manage', 'lighthouseasset:create', 'lighthouseasset:update', 'lighthouse:manage', 'lighthouse:create', 'lighthouse:update', 'data:create', 'data:update')")
     public ResponseEntity<ApiResponse<Void>> submitForApproval(
                     @PathVariable UUID id) {
             beaconStationService.submitForApproval(id);
@@ -156,7 +158,7 @@ public class BeaconStationController {
     }
 
     @PostMapping("/{id}/approve-l1")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec1') or @auth.check(authentication, 'beaconstation:approvel1') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvel1')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:approvec1', 'beaconstation:approvel1', 'lighthouseasset:manage', 'lighthouseasset:approvec1', 'lighthouseasset:approvel1', 'lighthouse:manage', 'lighthouse:approvec1', 'lighthouse:approvel1', 'data:approvec1', 'data:approvel1')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL1(
                     @PathVariable UUID id,
                     @RequestParam(required = false) java.util.UUID approverId,
@@ -168,7 +170,7 @@ public class BeaconStationController {
     }
 
     @PostMapping("/{id}/approve-l2")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec2') or @auth.check(authentication, 'data:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:approvec2', 'beaconstation:approvel2', 'lighthouseasset:manage', 'lighthouseasset:approvec2', 'lighthouseasset:approvel2', 'lighthouse:manage', 'lighthouse:approvec2', 'lighthouse:approvel2', 'data:approvec2', 'data:approvel2')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL2(
                     @PathVariable UUID id,
                     @RequestParam(required = false) java.util.UUID approverId,
@@ -180,7 +182,7 @@ public class BeaconStationController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:approvec1') or @auth.check(authentication, 'beaconstation:approvec2') or @auth.check(authentication, 'data:approvec1') or @auth.check(authentication, 'data:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:approvec1', 'beaconstation:approvec2', 'beaconstation:approvel1', 'beaconstation:approvel2', 'lighthouseasset:manage', 'lighthouseasset:approvec1', 'lighthouseasset:approvec2', 'lighthouseasset:approvel1', 'lighthouseasset:approvel2', 'lighthouse:manage', 'lighthouse:approvec1', 'lighthouse:approvec2', 'data:approvec1', 'data:approvel2')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> reject(
             @PathVariable UUID id,
             @RequestParam String rejectReason,
@@ -194,7 +196,7 @@ public class BeaconStationController {
     // ── Attachment endpoints ────────────────────────────────────────
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:history') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'beaconstation:history', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouseasset:history', 'lighthouse:manage', 'lighthouse:read', 'lighthouse:history', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<BeaconHistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(required = false) Integer page,
@@ -207,7 +209,7 @@ public class BeaconStationController {
     }
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:create') or @auth.check(authentication, 'beaconstation:update') or @auth.check(authentication, 'data:create') or @auth.check(authentication, 'data:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:create', 'beaconstation:update', 'lighthouseasset:manage', 'lighthouseasset:create', 'lighthouseasset:update', 'lighthouse:manage', 'lighthouse:create', 'lighthouse:update', 'data:create', 'data:update')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files) {
@@ -217,7 +219,7 @@ public class BeaconStationController {
     }
 
     @GetMapping("/{id}/attachments")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:manage', 'lighthouse:read', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Lấy danh sách file đính kèm thành công",
@@ -225,7 +227,7 @@ public class BeaconStationController {
     }
 
     @DeleteMapping("/{id}/attachments/{attachmentId}")
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:delete') or @auth.check(authentication, 'beaconstation:update') or @auth.check(authentication, 'data:delete')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:delete', 'beaconstation:update', 'lighthouseasset:manage', 'lighthouseasset:delete', 'lighthouseasset:update', 'lighthouse:manage', 'lighthouse:delete', 'lighthouse:update', 'data:delete')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attachmentId) {
@@ -233,7 +235,7 @@ public class BeaconStationController {
         return ResponseEntity.ok(ApiResponse.success("Đã xóa file đính kèm", null));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:manage', 'lighthouse:read', 'beaconlight:read', 'data:read')")
     @GetMapping("/{id}/attachments/{attachmentId}/download")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable UUID id,

@@ -165,7 +165,7 @@ describe('Module 2: Tài sản khu chuyển tải (docs/checklists/CHECKLIST-TAI
         orgUnitId: 'org-3',
         role: 'ADMIN',
         status: 'authenticated',
-        permissions: ['infraasset:manage'],
+        permissions: ['infraasset:manage', 'transferarea:manage', 'transferareaasset:manage'],
       },
       isAuthenticated: true,
       token: 'admin-jwt-token',

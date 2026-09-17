@@ -8,7 +8,7 @@ import type {
   VhfAssetAdjustment,
 } from './types';
 
-const BASE_URL = '/v1/asset/transmission-assets';
+const BASE_URL = '/v1/asset/vhf-assets';
 export const VHF_ASSET_TYPE = 'Tài sản HTTT liên lạc VHF';
 
 export async function fetchVhfAssets(params: VhfAssetFilters): Promise<PageResponse<VhfAsset>> {

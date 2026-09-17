@@ -164,7 +164,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
         orgUnitId: 'org-2',
         role: 'ADMIN',
         status: 'authenticated',
-        permissions: ['infraasset:manage'],
+        permissions: ['infraasset:manage', 'berth:manage', 'berthasset:manage'],
       },
       isAuthenticated: true,
       token: 'admin-jwt-token',

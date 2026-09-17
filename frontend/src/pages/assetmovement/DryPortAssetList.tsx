@@ -66,6 +66,7 @@ import type {
 import { organizationService, type Organization } from '../../services/organizationService';
 import { dryPortCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
   actionPrimary,
@@ -212,6 +213,7 @@ const parseYearToDayjs = (val: unknown): dayjs.Dayjs | undefined => {
 };
 
 export default function DryPortAssetList() {
+  const perms = useAssetPermissions(['dryport', 'dryportasset']);
   const [data, setData] = useState<DryPortAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [dryPorts, setDryPorts] = useState<{ id: string; name: string; code?: string }[]>([]);
@@ -1138,16 +1140,41 @@ export default function DryPortAssetList() {
       ],
       actions: (record: DryPortAsset) => {
         const st = record.approvalStatus || (record as any).status || '';
-        const actionsList: any[] = [
-          {
+        const isDraft = st === 'DRAFT' || !st;
+        const isArchived = st === 'ARCHIVED';
+
+        if (isArchived) {
+          const archivedActions: any[] = [];
+          if (perms.canRead) {
+            archivedActions.push({
+              key: 'detail',
+              label: 'Xem chi tiết',
+              icon: <EyeOutlined />,
+              onClick: () => void handleOpenDetail(record),
+            });
+          }
+          if (perms.canHistory) {
+            archivedActions.push({
+              key: 'history',
+              label: 'Lịch sử',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            });
+          }
+          return archivedActions;
+        }
+
+        const actionsList: any[] = [];
+        if (perms.canRead) {
+          actionsList.push({
             key: 'detail',
             label: 'Xem chi tiết',
             icon: <EyeOutlined />,
             onClick: () => void handleOpenDetail(record),
-          },
-        ];
+          });
+        }
 
-        if (isAssetRecordEditable(st)) {
+        if (perms.canUpdate && isAssetRecordEditable(st)) {
           actionsList.push({
             key: 'edit',
             label: 'Chỉnh sửa',
@@ -1156,61 +1183,67 @@ export default function DryPortAssetList() {
           });
         }
 
-        if (st === 'DRAFT') {
-          actionsList.push({
-            key: 'submit',
-            label: 'Gửi Cảng vụ phê duyệt',
-            icon: <SendOutlined />,
-            onClick: () => void handleSubmitApproval(record),
-          });
-        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
-          actionsList.push({
-            key: 'submit',
-            label: 'Gửi lại phê duyệt',
-            icon: <SendOutlined />,
-            onClick: () => void handleSubmitApproval(record),
-          });
+        if (perms.canUpdate) {
+          if (st === 'DRAFT') {
+            actionsList.push({
+              key: 'submit',
+              label: 'Gửi Cảng vụ phê duyệt',
+              icon: <SendOutlined />,
+              onClick: () => void handleSubmitApproval(record),
+            });
+          } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+            actionsList.push({
+              key: 'submit',
+              label: 'Gửi lại phê duyệt',
+              icon: <SendOutlined />,
+              onClick: () => void handleSubmitApproval(record),
+            });
+          }
         }
 
         if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
-          actionsList.push(
-            {
+          if (perms.canApproveC1) {
+            actionsList.push({
               key: 'approveC1',
               label: 'Phê duyệt cấp Cảng vụ/Chi cục',
               icon: <CheckOutlined />,
               onClick: () => handleOpenApproveModal(record, 'c1'),
-            },
-            {
+            });
+          }
+          if (perms.canReject || perms.canApproveC1) {
+            actionsList.push({
               key: 'rejectC1',
               label: 'Từ chối cấp Cảng vụ/Chi cục',
               icon: <CloseOutlined />,
               danger: true,
               onClick: () => handleOpenRejectModal(record, 'c1'),
-            }
-          );
+            });
+          }
         }
 
         if (st === 'APPROVED_LEVEL1') {
-          actionsList.push(
-            {
+          if (perms.canApproveC2) {
+            actionsList.push({
               key: 'approveC2',
               label: 'Phê duyệt cấp Cục',
               icon: <CheckOutlined />,
               onClick: () => handleOpenApproveModal(record, 'c2'),
-            },
-            {
+            });
+          }
+          if (perms.canReject || perms.canApproveC2) {
+            actionsList.push({
               key: 'rejectC2',
               label: 'Từ chối cấp Cục',
               icon: <CloseOutlined />,
               danger: true,
               onClick: () => handleOpenRejectModal(record, 'c2'),
-            }
-          );
+            });
+          }
         }
 
         if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-          actionsList.push(
-            {
+          if (perms.canExploit) {
+            actionsList.push({
               key: 'exploit',
               label: 'Khai thác tài sản',
               icon: <RocketOutlined />,
@@ -1219,8 +1252,10 @@ export default function DryPortAssetList() {
                 setOperationMode('exploit');
                 operationForm.resetFields();
               },
-            },
-            {
+            });
+          }
+          if (perms.canIncrease) {
+            actionsList.push({
               key: 'increase',
               label: 'Tăng nguyên giá',
               icon: <PlusCircleOutlined />,
@@ -1229,8 +1264,10 @@ export default function DryPortAssetList() {
                 setOperationMode('increase');
                 operationForm.resetFields();
               },
-            },
-            {
+            });
+          }
+          if (perms.canDecrease) {
+            actionsList.push({
               key: 'decrease',
               label: 'Giảm nguyên giá',
               icon: <MinusCircleOutlined />,
@@ -1239,18 +1276,20 @@ export default function DryPortAssetList() {
                 setOperationMode('decrease');
                 operationForm.resetFields();
               },
-            }
-          );
+            });
+          }
         }
 
-        actionsList.push({
-          key: 'history',
-          label: 'Lịch sử',
-          icon: <HistoryOutlined />,
-          onClick: () => void openHistory(record),
-        });
+        if (perms.canHistory) {
+          actionsList.push({
+            key: 'history',
+            label: 'Lịch sử',
+            icon: <HistoryOutlined />,
+            onClick: () => void openHistory(record),
+          });
+        }
 
-        if (st === 'DRAFT') {
+        if (isDraft && perms.canDelete) {
           actionsList.push({
             key: 'delete',
             label: 'Xóa',
@@ -1272,11 +1311,13 @@ export default function DryPortAssetList() {
       handleSubmitApproval,
       orgName,
       dryPortMap,
+      perms,
     ],
   );
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: 'create',
         label: 'Thêm mới',
@@ -1284,9 +1325,8 @@ export default function DryPortAssetList() {
         variant: 'primary',
         onClick: handleOpenCreate,
       },
-    ],
-    [handleOpenCreate],
-  );
+    ];
+  }, [handleOpenCreate, perms.canCreate, perms.userPermissions]);
 
   const customTokens = useMemo(
     () => ({

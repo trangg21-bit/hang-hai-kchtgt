@@ -16,6 +16,10 @@ import { Button, DatePicker, Form, Input, Space } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
+import { useAssetPermissions } from "../../hooks/useAssetPermissions";
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from "../../utils/approvalEditPolicy";
+import { countStandardHistoryCards, renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, type RawHistoryRecord } from "../../utils/changeHistoryRenderer";
+import { formatHistoryNumber } from "../../utils/numFmt";
 import { ASSET_CONDITION_OPTIONS } from "../../constants/assetDropdown";
 import toast from "../../components/ToastNotification";
 import { KchtApprovalModals } from "../../components/kcht/KchtApprovalModals";
@@ -92,9 +96,7 @@ import {
     spaceXl,
     textTertiary,
 } from "../../themetokenchk";
-import { isAssetRecordEditable } from "../../utils/approvalEditPolicy";
-import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from "../../utils/changeHistoryRenderer";
-import { formatHistoryNumber } from "../../utils/numFmt";
+
 import PortTerminalAssetDetailContent from "./PortTerminalAssetDetailContent";
 import PortTerminalAssetForm, {
     type FormValues,
@@ -228,6 +230,11 @@ export interface PortTerminalAssetListProps {
 function PortTerminalAssetList({
   screenConfig = PORT_TERMINAL_ASSET_SCREEN,
 }: PortTerminalAssetListProps = {}) {
+  const perms = useAssetPermissions(
+    Array.isArray(screenConfig.resource)
+      ? screenConfig.resource
+      : [screenConfig.resource || 'berth', 'berthasset']
+  );
   const [data, setData] = useState<PortTerminalAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [relatedInfrastructure, setRelatedInfrastructure] = useState<
@@ -415,19 +422,25 @@ function PortTerminalAssetList({
   }, [loadData]);
 
   useEffect(() => {
-    void Promise.all([
+    void Promise.allSettled([
       organizationService.getAll(),
       loadRelatedInfrastructure(screenConfig),
-    ])
-      .then(([orgs, relatedItems]) => {
-        setOrganizations(orgs);
-        setRelatedInfrastructure(relatedItems);
-      })
-      .catch(() =>
+    ]).then(([orgsResult, relatedResult]) => {
+      if (orgsResult.status === "fulfilled") {
+        setOrganizations(orgsResult.value);
+      } else {
+        toast.error("Không thể tải danh mục đơn vị.");
+      }
+
+      if (relatedResult.status === "fulfilled") {
+        setRelatedInfrastructure(relatedResult.value);
+      } else {
+        setRelatedInfrastructure([]);
         toast.error(
-          `Không thể tải danh mục đơn vị hoặc ${screenConfig.relationNameLabel.toLowerCase()}.`,
-        ),
-      );
+          `Không thể tải danh mục ${screenConfig.relationNameLabel.toLowerCase()}.`,
+        );
+      }
+    });
   }, [screenConfig]);
 
   // ── Approval state & handlers ──────────────────────────────────────
@@ -1012,9 +1025,10 @@ function PortTerminalAssetList({
         dataIndex: 'assetName',
         type: TableColumnType.TwoLine,
         subField: 'assetCode',
-        width: 230,
+        width: 240,
         fixed: 'left',
         allowSort: true,
+        sortField: 'assetName',
         onClick: (record) => void openDetail(record),
       },
       {
@@ -1024,6 +1038,7 @@ function PortTerminalAssetList({
         width: 250,
         bold: true,
         allowSort: true,
+        sortField: 'orgUnitId',
         render: (v) => <span style={{ fontWeight: fontWeightBold }}>{orgName.get(v as string) || ''}</span>,
       },
       {
@@ -1032,14 +1047,16 @@ function PortTerminalAssetList({
         type: TableColumnType.Text,
         width: 250,
         allowSort: true,
+        sortField: 'usingOrgUnitId',
         render: (v) => orgName.get(v as string) || '',
       },
       {
         title: screenConfig.relationColumnTitle,
         dataIndex: screenConfig.relationField,
         type: TableColumnType.Text,
-        width: screenConfig.relationColumnWidth,
+        width: Math.max(screenConfig.relationColumnWidth || 200, 220),
         allowSort: true,
+        sortField: screenConfig.relationField,
         render: (v, record) => {
           const relId = (v || record[screenConfig.relationField]) as string | undefined;
           const item = relId ? relatedInfrastructureMap.get(relId) : undefined;
@@ -1056,21 +1073,24 @@ function PortTerminalAssetList({
         type: TableColumnType.Text,
         width: 220,
         allowSort: true,
+        sortField: 'assetType',
         render: () => screenConfig.title,
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
         dataIndex: 'assetCondition',
         type: TableColumnType.Status,
-        width: 190,
+        width: 210,
         allowSort: true,
+        sortField: 'assetCondition',
       },
       {
         title: 'HIỆN TRẠNG SỬ DỤNG',
         dataIndex: 'usageStatus',
         type: TableColumnType.Status,
-        width: 190,
+        width: 210,
         allowSort: true,
+        sortField: 'usageStatus',
       },
       {
         title: 'NHÓM TÀI SẢN',
@@ -1078,13 +1098,15 @@ function PortTerminalAssetList({
         type: TableColumnType.Text,
         width: 210,
         allowSort: true,
+        sortField: 'assetGroup',
       },
       {
         title: 'NGÀY SỬ DỤNG TÀI SẢN',
         dataIndex: 'useDate',
         type: TableColumnType.Date,
-        width: 190,
+        width: 240,
         allowSort: true,
+        sortField: 'useDate',
       },
       {
         title: 'TRẠNG THÁI',
@@ -1092,15 +1114,16 @@ function PortTerminalAssetList({
         type: TableColumnType.Status,
         width: 260,
         allowSort: true,
+        sortField: 'approvalStatus',
       },
       {
         title: 'CÁN BỘ CẬP NHẬT',
         dataIndex: 'updatedByName',
         type: TableColumnType.TwoLine,
         subField: 'updatedAt',
-        width: 210,
+        width: 220,
         allowSort: true,
-        sortField: 'updatedBy',
+        sortField: 'updatedAt',
       },
       {
         title: 'CÁN BỘ GỬI PHÊ DUYỆT',
@@ -1109,53 +1132,57 @@ function PortTerminalAssetList({
         subField: 'submittedAt',
         width: 240,
         allowSort: true,
-        sortField: 'submittedBy',
+        sortField: 'submittedAt',
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
         dataIndex: 'portAuthorityApprovedByName',
         type: TableColumnType.TwoLine,
         subField: 'portAuthorityApprovedAt',
-        width: 340,
+        width: 380,
         allowSort: true,
-        sortField: 'portAuthorityApprovedBy',
+        sortField: 'portAuthorityApprovedAt',
       },
       {
         title: 'NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
         dataIndex: 'portAuthorityApprovalContent',
         type: TableColumnType.Text,
-        width: 280,
+        width: 400,
         allowSort: true,
+        sortField: 'portAuthorityApprovalContent',
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
         dataIndex: 'departmentApprovedByName',
         type: TableColumnType.TwoLine,
         subField: 'departmentApprovedAt',
-        width: 260,
+        width: 280,
         allowSort: true,
-        sortField: 'departmentApprovedBy',
+        sortField: 'departmentApprovedAt',
       },
       {
         title: 'NỘI DUNG PHÊ DUYỆT CẤP CỤC',
         dataIndex: 'departmentApprovalContent',
         type: TableColumnType.Text,
-        width: 260,
+        width: 290,
         allowSort: true,
+        sortField: 'departmentApprovalContent',
       },
     ],
     actions: (record: PortTerminalAsset) => {
       const st = record.approvalStatus || (record as any).status || '';
-      const actionsList: any[] = [
-        {
+      const actionsList: any[] = [];
+
+      if (perms.canRead) {
+        actionsList.push({
           key: 'detail',
           label: 'Xem chi tiết',
           icon: <EyeOutlined />,
           onClick: () => void openDetail(record),
-        },
-      ];
+        });
+      }
 
-      if (isAssetRecordEditable(st)) {
+      if (perms.canUpdate && isAssetRecordEditable(st)) {
         actionsList.push({
           key: 'edit',
           label: 'Chỉnh sửa',
@@ -1164,61 +1191,67 @@ function PortTerminalAssetList({
         });
       }
 
-      if (st === 'DRAFT') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi Cảng vụ phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
-      } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi lại phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
+      if (perms.canUpdate) {
+        if (st === 'DRAFT') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi Cảng vụ phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi lại phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        }
       }
 
       if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
-        actionsList.push(
-          {
+        if (perms.canApproveC1) {
+          actionsList.push({
             key: 'approveC1',
             label: 'Phê duyệt cấp Cảng vụ/Chi cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c1'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC1) {
+          actionsList.push({
             key: 'rejectC1',
             label: 'Từ chối cấp Cảng vụ/Chi cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c1'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED_LEVEL1') {
-        actionsList.push(
-          {
+        if (perms.canApproveC2) {
+          actionsList.push({
             key: 'approveC2',
             label: 'Phê duyệt cấp Cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c2'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC2) {
+          actionsList.push({
             key: 'rejectC2',
             label: 'Từ chối cấp Cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c2'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-        actionsList.push(
-          {
+        if (perms.canExploit) {
+          actionsList.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
@@ -1227,8 +1260,10 @@ function PortTerminalAssetList({
               setOperationMode('exploit');
               operationForm.resetFields();
             },
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          actionsList.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
@@ -1237,8 +1272,10 @@ function PortTerminalAssetList({
               setOperationMode('increase');
               operationForm.resetFields();
             },
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          actionsList.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
@@ -1247,18 +1284,20 @@ function PortTerminalAssetList({
               setOperationMode('decrease');
               operationForm.resetFields();
             },
-          }
-        );
+          });
+        }
       }
 
-      actionsList.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      });
+      if (perms.canHistory) {
+        actionsList.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
 
-      if (st === 'DRAFT') {
+      if (st === 'DRAFT' && perms.canDelete) {
         actionsList.push({
           key: 'delete',
           label: 'Xóa',
@@ -1281,10 +1320,12 @@ function PortTerminalAssetList({
     orgName,
     relatedInfrastructureMap,
     screenConfig,
+    perms,
   ]);
 
-  const headerActions: ScreenHeaderAction[] = useMemo(
-    () => [
+  const headerActions: ScreenHeaderAction[] = useMemo(() => {
+    if (!perms.canCreate) return [];
+    return [
       {
         key: "create",
         label: "Thêm mới",
@@ -1292,9 +1333,8 @@ function PortTerminalAssetList({
         variant: "primary",
         onClick: openCreate,
       },
-    ],
-    [openCreate],
-  );
+    ];
+  }, [openCreate, perms.canCreate]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk as unknown as ThemeToken}>

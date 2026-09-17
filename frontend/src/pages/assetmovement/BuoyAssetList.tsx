@@ -18,19 +18,28 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
-    CommonStatusTabs,
-    CommonTable,
-    FilterTableLayout,
-    ScreenHeader,
-    TableColumnType,
-    TableFilter,
-    type FilterOption,
-    type ScreenHeaderAction,
-    type TableOption,
+  CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
+  TableColumnType,
+  TableFilter,
+  type FilterOption,
+  type ScreenHeaderAction,
+  type TableActionOption,
+  type TableOption,
 } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { fetchBuoyStationList } from '../../services/buoy-station/api';
+import type { BuoyStationResponse } from '../../services/buoy-station/types';
+import { fetchAllBuoys } from '../../services/buoy/api';
+import { organizationService, type Organization } from '../../services/organizationService';
+import type { Buoy } from '../../types/buoy';
+import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import {
     triggerBlobDownload,
     type InfrastructureAttachmentItem,
@@ -75,6 +84,7 @@ import type { BuoyStationResponse } from '../../services/buoy-station/types';
 import { fetchAllBuoys } from '../../services/buoy/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -166,6 +176,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function BuoyAssetList() {
+  const perms = useAssetPermissions(['buoy', 'buoystation', 'buoyasset']);
   const [data, setData] = useState<BuoyAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [buoys, setBuoys] = useState<Buoy[]>([]);
@@ -307,17 +318,24 @@ export default function BuoyAssetList() {
   }, [loadData]);
 
   useEffect(() => {
-    void Promise.all([
+    void Promise.allSettled([
       organizationService.getAll(),
       fetchAllBuoys(),
       fetchBuoyStationList({}),
-    ])
-      .then(([orgs, buoyList, stationPage]) => {
-        setOrganizations(orgs);
-        setBuoys(buoyList || []);
-        setBuoyStations(stationPage.content || []);
-      })
-      .catch(() => toast.error('Không thể tải danh mục đơn vị, phao tiêu hoặc nhà trạm.'));
+    ]).then(([orgsRes, buoyRes, stationRes]) => {
+      if (orgsRes.status === 'fulfilled') {
+        setOrganizations(orgsRes.value);
+      }
+      if (buoyRes.status === 'fulfilled') {
+        setBuoys(buoyRes.value || []);
+      }
+      if (stationRes.status === 'fulfilled') {
+        setBuoyStations(stationRes.value.content || []);
+      }
+      if (orgsRes.status === 'rejected' || buoyRes.status === 'rejected' || stationRes.status === 'rejected') {
+        toast.error('Không thể tải danh mục đơn vị, phao tiêu hoặc nhà trạm.');
+      }
+    });
   }, []);
 
   // ── Approval state & handlers ──────────────────────────────────────
@@ -1092,16 +1110,18 @@ export default function BuoyAssetList() {
     ],
     actions: (record: BuoyAsset) => {
       const st = record.approvalStatus || (record as any).status || '';
-      const actionsList: any[] = [
-        {
+      const actionsList: any[] = [];
+
+      if (perms.canRead) {
+        actionsList.push({
           key: 'view',
           label: 'Xem chi tiết',
           icon: <EyeOutlined />,
           onClick: () => void openDetail(record),
-        },
-      ];
+        });
+      }
 
-      if (isAssetRecordEditable(st)) {
+      if (perms.canUpdate && isAssetRecordEditable(st)) {
         actionsList.push({
           key: 'edit',
           label: 'Chỉnh sửa',
@@ -1110,89 +1130,102 @@ export default function BuoyAssetList() {
         });
       }
 
-      if (st === 'DRAFT') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi Cảng vụ phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
-      } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
-        actionsList.push({
-          key: 'submit',
-          label: 'Gửi lại phê duyệt',
-          icon: <SendOutlined />,
-          onClick: () => void handleSubmitApproval(record),
-        });
+      if (perms.canUpdate) {
+        if (st === 'DRAFT') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi Cảng vụ phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        } else if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED') {
+          actionsList.push({
+            key: 'submit',
+            label: 'Gửi lại phê duyệt',
+            icon: <SendOutlined />,
+            onClick: () => void handleSubmitApproval(record),
+          });
+        }
       }
 
       if (st === 'PENDING_APPROVAL' || st === 'PROPOSED') {
-        actionsList.push(
-          {
+        if (perms.canApproveC1) {
+          actionsList.push({
             key: 'approveC1',
             label: 'Phê duyệt cấp Cảng vụ/Chi cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c1'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC1) {
+          actionsList.push({
             key: 'rejectC1',
             label: 'Từ chối cấp Cảng vụ/Chi cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c1'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED_LEVEL1') {
-        actionsList.push(
-          {
+        if (perms.canApproveC2) {
+          actionsList.push({
             key: 'approveC2',
             label: 'Phê duyệt cấp Cục',
             icon: <CheckOutlined />,
             onClick: () => handleOpenApproveModal(record, 'c2'),
-          },
-          {
+          });
+        }
+        if (perms.canReject || perms.canApproveC2) {
+          actionsList.push({
             key: 'rejectC2',
             label: 'Từ chối cấp Cục',
             icon: <CloseOutlined />,
             danger: true,
             onClick: () => handleOpenRejectModal(record, 'c2'),
-          }
-        );
+          });
+        }
       }
 
       if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-        actionsList.push(
-          {
+        if (perms.canExploit) {
+          actionsList.push({
             key: 'exploit',
             label: 'Khai thác tài sản',
             icon: <RocketOutlined />,
             onClick: () => openOperation(record, 'exploit'),
-          },
-          {
+          });
+        }
+        if (perms.canIncrease) {
+          actionsList.push({
             key: 'increase',
             label: 'Tăng nguyên giá',
             icon: <PlusCircleOutlined />,
             onClick: () => openOperation(record, 'increase'),
-          },
-          {
+          });
+        }
+        if (perms.canDecrease) {
+          actionsList.push({
             key: 'decrease',
             label: 'Giảm nguyên giá',
             icon: <MinusCircleOutlined />,
             onClick: () => openOperation(record, 'decrease'),
-          }
-        );
+          });
+        }
       }
 
-      actionsList.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      });
+      if (perms.canHistory) {
+        actionsList.push({
+          key: 'history',
+          label: 'Lịch sử',
+          icon: <HistoryOutlined />,
+          onClick: () => void openHistory(record),
+        });
+      }
 
-      if (st === 'DRAFT') {
+      const isDraft = normalizeApprovalStatus(st) === 'DRAFT' || st === 'DRAFT';
+      if (isDraft && perms.canDelete) {
         actionsList.push({
           key: 'delete',
           label: 'Xóa',
@@ -1215,17 +1248,21 @@ export default function BuoyAssetList() {
     handleOpenRejectModal,
     handleSubmitApproval,
     orgName,
+    perms,
   ]);
 
-  const headerActions = useMemo<ScreenHeaderAction[]>(() => [
-    {
-      key: 'create',
-      label: 'Thêm mới',
-      icon: <PlusOutlined />,
-      variant: 'primary',
-      onClick: openCreate,
-    },
-  ], [openCreate]);
+  const headerActions = useMemo<ScreenHeaderAction[]>(() => {
+    if (!perms.canCreate) return [];
+    return [
+      {
+        key: 'create',
+        label: 'Thêm mới',
+        icon: <PlusOutlined />,
+        variant: 'primary',
+        onClick: openCreate,
+      },
+    ];
+  }, [openCreate, perms.canCreate]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>
