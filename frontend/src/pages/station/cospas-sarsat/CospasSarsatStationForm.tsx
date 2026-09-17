@@ -44,7 +44,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
-import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../../components/org-unit';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -649,7 +649,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
 
     if (isCreate) {
       form.resetFields();
-      const defaultUnitId = resolveDefaultOrgUnitId(user, effectiveOrgUnits);
+      const defaultUnitId = resolveDefaultFormOrgUnitId(user, effectiveOrgUnits);
       const initialCode = generateStationCode();
       form.setFieldsValue({
         stationCode: initialCode,

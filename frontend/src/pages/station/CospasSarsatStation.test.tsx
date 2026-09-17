@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import OrgUnitTreeSelect from '../../components/org-unit/OrgUnitTreeSelect';
-import { resolveDefaultOrgUnitId } from '../../components/org-unit/useUserDefaultOrgUnit';
+import { resolveDefaultOrgUnitId, resolveDefaultFormOrgUnitId } from '../../components/org-unit/useUserDefaultOrgUnit';
 import CospasSarsatStationList from './cospas-sarsat/CospasSarsatStationList';
 import CospasSarsatStationForm, {
   resolveCospasGeometryType,
@@ -143,6 +143,39 @@ describe('OrgUnitTreeSelect & useUserDefaultOrgUnit', () => {
       roles: ['CAN_BO_CV'],
     } as any);
     expect(defaultId).toBe('org-hp');
+  });
+
+  it('resolveDefaultOrgUnitId should return undefined for admin / ministry user so filter shows "Tất cả"', () => {
+    const adminUser = {
+      id: 'u-admin',
+      username: 'admin',
+      role: 'ADMIN',
+      orgUnitId: '00000000-0000-0000-0000-000000000017',
+    } as any;
+    const orgs = [{ id: 'org-1', name: 'Cục Hàng hải' }];
+    expect(resolveDefaultOrgUnitId(adminUser, orgs)).toBeUndefined();
+  });
+
+  it('resolveDefaultFormOrgUnitId should return first unit for admin in create form', () => {
+    const adminUser = {
+      id: 'u-admin',
+      username: 'admin',
+      role: 'ADMIN',
+      orgUnitId: '00000000-0000-0000-0000-000000000017',
+    } as any;
+    const orgs = [{ id: 'org-1', name: 'Cục Hàng hải' }, { id: 'org-2', name: 'Cảng vụ Hải Phòng' }];
+    expect(resolveDefaultFormOrgUnitId(adminUser, orgs)).toBe('org-1');
+  });
+
+  it('resolveDefaultFormOrgUnitId should return user orgUnitId for subordinate user', () => {
+    const subUser = {
+      id: 'u-sub',
+      username: 'user_sub',
+      role: 'USER',
+      orgUnitId: 'org-2',
+    } as any;
+    const orgs = [{ id: 'org-1', name: 'Cục Hàng hải' }, { id: 'org-2', name: 'Cảng vụ Hải Phòng' }];
+    expect(resolveDefaultFormOrgUnitId(subUser, orgs)).toBe('org-2');
   });
 
   it('resolveDefaultOrgUnitId should return undefined for null/undefined user or empty orgUnitId', () => {

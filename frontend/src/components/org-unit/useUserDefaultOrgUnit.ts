@@ -25,10 +25,10 @@ export function getFirstOrgUnitId(
 
 /**
  * Kiểm tra xem người dùng hiện tại có thuộc cấp cao nhất Bộ Giao thông Vận tải hay không.
- * Các trường hợp là cấp Bộ:
- * 1. user.role === 'SUPER_ADMIN' hoặc 'ADMIN'
+ * Các trường hợp là cấp Bộ / Quản trị viên:
+ * 1. user.role === 'SUPER_ADMIN' hoặc 'ADMIN' hoặc permissions có '*'
  * 2. user.orgUnitCode === 'G17' hoặc user.orgUnitId === '00000000-0000-0000-0000-000000000017'
- * 3. Đơn vị trong danh mục có code 'G17' hoặc tên chứa 'bộ giao thông'
+ * 3. Đơn vị trong danh mục có code 'G17', tên chứa 'bộ giao thông', hoặc node gốc không có parentId (level 0)
  */
 export function isMinistryLevelUser(
   user: User | null | undefined,
@@ -36,7 +36,19 @@ export function isMinistryLevelUser(
 ): boolean {
   if (!user) return true; // Chưa đăng nhập hoặc fallback an toàn -> không giới hạn
 
-  // Nếu user đã được gán đơn vị trực thuộc cụ thể:
+  // 1. Tài khoản quản trị toàn hệ thống (SUPER_ADMIN, ADMIN, hoặc có wildcard permission '*')
+  const role = (user.role || (user as any).roleName || '').toUpperCase();
+  const perms = user.permissions || [];
+  if (
+    role === 'SUPER_ADMIN' ||
+    role === 'ADMIN' ||
+    role.includes('ADMIN') ||
+    perms.includes('*')
+  ) {
+    return true;
+  }
+
+  // 2. Tài khoản ở đơn vị cao nhất (Bộ GTVT / đơn vị gốc level 0)
   if (user.orgUnitId) {
     const orgIdStr = String(user.orgUnitId);
     if (orgIdStr === MINISTRY_ROOT_ID || user.orgUnitCode === MINISTRY_ROOT_CODE) {
@@ -47,7 +59,11 @@ export function isMinistryLevelUser(
       if (org) {
         const code = (org.code || '').toUpperCase();
         const name = (org.name || '').toLowerCase();
-        if (code === MINISTRY_ROOT_CODE || name.includes('bộ giao thông')) {
+        if (
+          code === MINISTRY_ROOT_CODE ||
+          name.includes('bộ giao thông') ||
+          (!org.parentId && (org as any).level === 0)
+        ) {
           return true;
         }
       }
@@ -55,18 +71,16 @@ export function isMinistryLevelUser(
     return false;
   }
 
-  const role = (user.role || (user as any).roleName || '').toUpperCase();
-  if (role === 'SUPER_ADMIN' || role === 'ADMIN') return true;
-
   return false;
 }
 
 /**
- * Xác định giá trị orgUnitId mặc định cho dropdown / bộ lọc:
- * - Khi bắt đầu vào màn danh sách, filter mặc định chọn đơn vị mà user đấy trực thuộc.
- * - Nếu user thuộc cấp cao nhất Bộ GTVT (G17) hoặc vai trò quản trị toàn quyền: mặc định chọn giá trị đầu tiên trong dropdown chứ không hardcode.
- * - Nếu user có orgUnitId hợp lệ thuộc đơn vị cấp dưới (Cảng vụ, Chi cục...): trả về chính orgUnitId của user.
- * - Nếu không xác định được: trả về undefined.
+ * Xác định giá trị orgUnitId mặc định cho dropdown BỘ LỌC danh sách (Filter Sidebar / Header):
+ * - Đối với tài khoản cấp Bộ GTVT / Admin toàn hệ thống: mặc định trả về undefined ("Tất cả")
+ *   để bảng danh sách hiển thị toàn bộ tài sản trong hệ thống, không bị lọc hẹp.
+ * - Đối với tài khoản trực thuộc đơn vị cấp dưới cụ thể (Cảng vụ, Chi cục...):
+ *   mặc định chọn chính đơn vị mà user đấy trực thuộc.
+ * - Nếu không có thông tin user: trả về undefined ("Tất cả").
  */
 export function resolveDefaultOrgUnitId(
   user: User | null | undefined,
@@ -76,9 +90,9 @@ export function resolveDefaultOrgUnitId(
     return undefined;
   }
 
-  // Nếu user thuộc cấp Bộ GTVT hoặc vai trò Quản trị toàn hệ thống -> mặc định chọn giá trị đầu tiên trong dropdown
+  // Nếu user thuộc cấp Bộ GTVT hoặc vai trò Quản trị toàn hệ thống -> mặc định "Tất cả" (undefined)
   if (isMinistryLevelUser(user, organizations)) {
-    return getFirstOrgUnitId(organizations);
+    return undefined;
   }
 
   if (!user.orgUnitId) {
@@ -91,6 +105,34 @@ export function resolveDefaultOrgUnitId(
     return org ? orgIdStr : undefined;
   }
   return orgIdStr;
+}
+
+/**
+ * Xác định giá trị orgUnitId mặc định cho Form THÊM MỚI / SỬA (Drawer / Modal form):
+ * Trường "Đơn vị quản lý *" trong Form là bắt buộc:
+ * - Nếu user trực thuộc đơn vị cấp dưới cụ thể: chọn chính đơn vị của user (user.orgUnitId).
+ * - Nếu user là cấp cao nhất / Admin: tự động chọn giá trị đầu tiên trong danh mục (getFirstOrgUnitId(organizations)).
+ */
+export function resolveDefaultFormOrgUnitId(
+  user: User | null | undefined,
+  organizations?: readonly OrgUnitTreeOption[]
+): string | undefined {
+  if (!user) {
+    return getFirstOrgUnitId(organizations);
+  }
+
+  // Nếu user trực thuộc đơn vị con cụ thể (không phải cấp Bộ/Admin cao nhất)
+  if (!isMinistryLevelUser(user, organizations) && user.orgUnitId) {
+    const orgIdStr = String(user.orgUnitId);
+    if (organizations && organizations.length > 0) {
+      const org = organizations.find((o) => String(o.id) === orgIdStr);
+      if (org) return orgIdStr;
+    }
+    return orgIdStr;
+  }
+
+  // Tài khoản Admin / Cấp cao nhất: tự động chọn đơn vị đầu tiên trong dropdown
+  return getFirstOrgUnitId(organizations) || (user.orgUnitId ? String(user.orgUnitId) : undefined);
 }
 
 /**

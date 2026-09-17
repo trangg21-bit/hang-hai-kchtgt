@@ -46,7 +46,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
-import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../../components/org-unit';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
@@ -418,7 +418,7 @@ export default function InmarsatStationForm({
       setAttachmentsLoaded(true);
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
-      const defOrgId = resolveDefaultOrgUnitId(currentUser, effectiveOrgUnits);
+      const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
       form.setFieldsValue({
         conditionStatus: 'OPERATIONAL',
         orgUnitId: defOrgId || (currentUser?.orgUnitId ? String(currentUser.orgUnitId) : undefined),
@@ -521,7 +521,7 @@ export default function InmarsatStationForm({
     if (isCreateMode && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
       const currentVal = form.getFieldValue('orgUnitId');
       if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
-        const defOrgId = resolveDefaultOrgUnitId(currentUser, effectiveOrgUnits);
+        const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
         if (defOrgId) {
           form.setFieldValue('orgUnitId', defOrgId);
         }

@@ -51,7 +51,7 @@ import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
-import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../../components/org-unit';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -294,7 +294,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         displayRule: undefined,
       });
 
-      const defOrgId = resolveDefaultOrgUnitId(currentUser, effectiveOrgUnits);
+      const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
       if (defOrgId) {
         form.setFieldValue('orgUnitId', defOrgId);
       } else if ((currentUser as any)?.orgUnitId) {
