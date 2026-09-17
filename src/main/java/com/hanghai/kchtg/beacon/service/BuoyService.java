@@ -540,7 +540,7 @@ public class BuoyService {
             if (wasApproved) {
                 String newWkt = wkt.trim();
                 GisGeometryType newGeomType = resolveGeometryType(entity.getGeometryType());
-                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 boolean typeChanged = oldGeomType != newGeomType;
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Tọa độ GIS",

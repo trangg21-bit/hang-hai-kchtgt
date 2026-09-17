@@ -609,18 +609,24 @@ export default function InmarsatStationDetailContent({
 
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                         <span className="chk-detail-value">
                           <ApprovalStatusBadge status={record.approvalStatus} />
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
                           {record.updatedByName || (record as any).createdByName ? (
                             <span style={{ fontWeight: fontWeightBold }}>{record.updatedByName || (record as any).createdByName}</span>
                           ) : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                        <span className="chk-detail-value">
+                          {fmtDateTime(record.updatedAt || (record as any).updatedDate || record.createdAt)}
                         </span>
                       </div>
 

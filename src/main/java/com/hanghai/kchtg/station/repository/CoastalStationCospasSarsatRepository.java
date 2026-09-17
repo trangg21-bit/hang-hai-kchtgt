@@ -59,17 +59,23 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
 
     @Query("""
         SELECT c FROM CoastalStationCospasSarsat c
-        WHERE c.deletedAt IS NULL
-          AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
+        LEFT JOIN OrgUnit o ON o.id = c.orgUnitId
+        LEFT JOIN OperatingOrganization oo ON oo.id = c.operatingOrgId
+        LEFT JOIN OrgUnit oorg ON oorg.id = c.operatingOrgId
+        LEFT JOIN User uu ON uu.id = c.updatedBy
+        WHERE (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)
           AND (:operatingOrgId IS NULL OR c.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR c.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR c.conditionStatus = :conditionStatus
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND c.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND c.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION))
-          AND ((:approvalStatus IS NULL AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
-               OR (:approvalStatus IS NOT NULL AND (
+          AND (:approvalStatus IS NULL
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
+                    AND (c.deletedAt IS NOT NULL OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
+               OR (c.deletedAt IS NULL
+                    AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
+                    AND (
                     c.approvalStatus = :approvalStatus
                     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
                     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
@@ -103,11 +109,11 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
     );
 
     @Query("""
-        SELECT c.approvalStatus, COUNT(c)
+        SELECT CASE WHEN (c.deletedAt IS NOT NULL OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
+                    THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
+                    ELSE c.approvalStatus END, COUNT(c)
         FROM CoastalStationCospasSarsat c
-        WHERE c.deletedAt IS NULL
-          AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
-          AND (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
+        WHERE (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)
           AND (:operatingOrgId IS NULL OR c.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR c.provinceId = :provinceId)
@@ -124,7 +130,9 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
             CAST(function('immutable_unaccent', LOWER(c.code)) AS string) LIKE CAST(:code AS string))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR c.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR c.updatedAt <= :updatedTo)
-        GROUP BY c.approvalStatus
+        GROUP BY CASE WHEN (c.deletedAt IS NOT NULL OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
+                      THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
+                      ELSE c.approvalStatus END
     """)
     List<Object[]> countByApprovalStatus(
         @Param("scopeEnabled") boolean scopeEnabled,

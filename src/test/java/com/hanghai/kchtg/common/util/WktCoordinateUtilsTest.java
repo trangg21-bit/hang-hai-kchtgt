@@ -20,4 +20,11 @@ class WktCoordinateUtilsTest {
                 "POINT(108 15)",
                 "POINT(108.1 15)"));
     }
+
+    @Test
+    void treatsDifferentWktTypesWithTheSamePositionsAsTheSameCoordinates() {
+        assertTrue(WktCoordinateUtils.coordinatesEqual(
+                "LINESTRING(108 15,109.5 16.25)",
+                "MULTIPOINT((108.0 15.00),(109.500 16.250))"));
+    }
 }

@@ -2649,19 +2649,23 @@ const TransmissionListPage = () => {
                       </div>
                       {detailApprovalOpen && (
                         <div className="chk-detail-grid">
-                          <div className="chk-detail-row">
-                            <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
                               {renderApprovalBadge(selectedRecord.approvalStatus, selectedRecord)}
                             </span>
                           </div>
                           <div className="chk-detail-row">
-                            <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                            <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                             <span className="chk-detail-value">
                               {selectedRecord.updatedByName ? (
                                 <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName}</span>
                               ) : ''}
                             </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                            <span className="chk-detail-value">{selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : '')}</span>
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>

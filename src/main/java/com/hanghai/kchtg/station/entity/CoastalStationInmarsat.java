@@ -52,10 +52,10 @@ public class CoastalStationInmarsat extends BaseEntity implements ApprovableEnti
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
-    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
+    private ConditionStatus conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL;
 
     // --- Thông tin đặc thù Inmarsat ---
-    @Column(name = "coverage_area", length = 1000)
+    @Column(name = "coverage_area", length = 2000)
     private String coverageArea;
 
     @Column(name = "services", length = 1000)

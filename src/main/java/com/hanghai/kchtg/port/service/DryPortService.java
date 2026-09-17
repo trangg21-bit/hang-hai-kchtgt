@@ -503,7 +503,7 @@ public class DryPortService {
             // "Loại đối tượng GIS", kèm approvedBy = user thật (chỉ khi hồ sơ đã duyệt).
             if (wasApproved) {
                 String newWkt = coordinates.trim();
-                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Tọa độ GIS",

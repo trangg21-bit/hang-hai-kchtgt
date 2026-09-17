@@ -677,7 +677,7 @@ export default function BuoyBerthDetailContent({
                             approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
                             approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục');
                           return (
-                            <div className={`chk-detail-row ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
+                            <div className={`chk-detail-row chk-detail-row--full ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                               <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                               <span className="chk-detail-value">
                                 {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
@@ -690,12 +690,16 @@ export default function BuoyBerthDetailContent({
                           );
                         })()}
                         <div className="chk-detail-row">
-                          <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
+                          <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                           <span className="chk-detail-value">
                             {userMap.get((r as any).updatedBy || '') || (r as any).updatedBy ? (
                               <span style={{ fontWeight: fontWeightBold }}>{userMap.get((r as any).updatedBy || '') || (r as any).updatedBy}</span>
                             ) : ''}
                           </span>
+                        </div>
+                        <div className="chk-detail-row">
+                          <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                          <span className="chk-detail-value">{fmtDateTime((r as any).updatedAt)}</span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>

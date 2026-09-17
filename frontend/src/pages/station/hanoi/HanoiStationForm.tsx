@@ -683,19 +683,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
       if (isCreateMode) {
         savedRecord = await hanoiStationService.create(payload, actionParam);
-        if (action === 'submit' && savedRecord?.id) {
-          if (savedRecord.approvalStatus !== ApprovalStatus.PENDING_APPROVAL && savedRecord.approvalStatus !== ApprovalStatus.APPROVED_LEVEL1) {
-            await hanoiStationService.submit(savedRecord.id).catch(() => {});
-          }
-        } else if (action === 'approve' && savedRecord?.id) {
-          if (savedRecord.approvalStatus !== ApprovalStatus.APPROVED) {
-            if (savedRecord.approvalStatus === ApprovalStatus.DRAFT || savedRecord.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || savedRecord.approvalStatus === ApprovalStatus.REJECTED_LEVEL2) {
-              await hanoiStationService.submit(savedRecord.id).catch(() => {});
-            }
-            await hanoiStationService.approveC1(savedRecord.id, 'Cấp Cục phê duyệt trực tiếp').catch(() => {});
-            await hanoiStationService.approveC2(savedRecord.id, 'Phê duyệt trực tiếp khi tạo mới').catch(() => {});
-          }
-        }
         toast.success(action === 'submit' ? 'Lưu và gửi phê duyệt thành công' : (action === 'approve' ? 'Lưu và phê duyệt thành công' : 'Lưu tạm thành công'));
 
         // Upload pending files if any
@@ -713,21 +700,9 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
         savedRecord = await hanoiStationService.update(record.id, updatePayload, actionParam);
 
-        // Xử lý gửi duyệt hoặc phê duyệt nếu chọn các nút tương ứng ở màn Sửa
         if (action === 'submit') {
-          if (savedRecord?.approvalStatus !== ApprovalStatus.PENDING_APPROVAL && savedRecord?.approvalStatus !== ApprovalStatus.APPROVED_LEVEL1) {
-            await hanoiStationService.submit(record.id).catch(() => {});
-          }
           toast.success('Cập nhật và gửi phê duyệt thành công');
         } else if (action === 'approve') {
-          const isAlreadyApproved = savedRecord?.approvalStatus === ApprovalStatus.APPROVED || (savedRecord?.approvalStatus as string) === 'APPROVED_LEVEL2';
-          if (!isAlreadyApproved) {
-            if (savedRecord?.approvalStatus === ApprovalStatus.DRAFT || savedRecord?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || savedRecord?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2) {
-              await hanoiStationService.submit(record.id).catch(() => {});
-            }
-            await hanoiStationService.approveC1(record.id, 'Cấp Cục phê duyệt trực tiếp').catch(() => {});
-            await hanoiStationService.approveC2(record.id, 'Phê duyệt trực tiếp khi chỉnh sửa').catch(() => {});
-          }
           toast.success('Cập nhật và phê duyệt thành công');
         } else {
           toast.success('Cập nhật Đài TTXLTT thành công');

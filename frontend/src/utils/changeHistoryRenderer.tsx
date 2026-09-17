@@ -44,6 +44,28 @@ export const isBlankOrDash = (v: unknown): boolean => {
   );
 };
 
+/**
+ * Compare the ordered coordinate positions only. Geometry serialization may
+ * legitimately differ (for example LINESTRING vs MULTIPOINT) while the user
+ * has not changed a single coordinate.
+ */
+export const areEquivalentCoordinatePositions = (
+  first: string | null | undefined,
+  second: string | null | undefined,
+): boolean => {
+  const normalize = (value: string | null | undefined): string | null => {
+    if (isBlankOrDash(value)) return null;
+    const withoutSrid = String(value).trim().replace(/^SRID=\d+\s*;/i, '');
+    const numbers = withoutSrid.match(/[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/g);
+    if (!numbers || numbers.length === 0) {
+      return withoutSrid.replace(/\s+/g, ' ').toUpperCase();
+    }
+    return numbers.map((number) => String(Number(number))).join(',');
+  };
+
+  return normalize(first) === normalize(second);
+};
+
 export function normalizeHistoryKey(key: string): string {
   return (key || '')
     .normalize('NFD')
@@ -789,6 +811,9 @@ export function buildHistoryUpdateSessions(options: ChangeHistoryRendererOptions
     const rows = Array.from(fieldMap.values()).filter((r) => {
       const o = r.oldValue?.trim() || '';
       const n = r.newValue?.trim() || '';
+      if (r.field === 'coordinates' && areEquivalentCoordinatePositions(o, n)) {
+        return false;
+      }
       return o !== n;
     });
 

@@ -564,57 +564,72 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
 
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                         <span className="chk-detail-value">
                           <ApprovalStatusBadge status={record.approvalStatus} />
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Người gửi duyệt</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-value">
+                          {formatPersonDisplayName(record.updatedByName, record.updatedBy) || '—'}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                        <span className="chk-detail-value">
+                          {record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : (record.createdAt ? dayjs(record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—')}
+                        </span>
+                      </div>
+
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                         <span className="chk-detail-value">
                           {formatPersonDisplayName(record.submittedByName, record.submittedBy) || '—'}
                         </span>
                       </div>
-
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày gửi duyệt</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
                         <span className="chk-detail-value">
                           {record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
                         </span>
                       </div>
+
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ duyệt C1</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">
                           {formatPersonDisplayName(record.approverLevel1Name, record.approverLevel1) || '—'}
                         </span>
                       </div>
-
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày duyệt C1</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">
                           {record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}
                         </span>
                       </div>
+
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cán bộ duyệt C2</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
                           {formatPersonDisplayName(record.approverLevel2Name, record.approverLevel2) || '—'}
                         </span>
                       </div>
-
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Ngày duyệt C2</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
                           {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
                         </span>
                       </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Lý do từ chối</span>
-                        <span className="chk-detail-value" style={{ color: record.rejectionReason ? statusCritical : undefined }}>
-                          {record.rejectionReason || '—'}
-                        </span>
-                      </div>
+
+                      {record.rejectionReason && (
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                          <span className="chk-detail-value" style={{ color: statusCritical, fontWeight: fontWeightMedium }}>
+                            {record.rejectionReason}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

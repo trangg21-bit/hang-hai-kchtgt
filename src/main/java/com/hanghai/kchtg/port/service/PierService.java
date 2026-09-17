@@ -517,7 +517,7 @@ public class PierService {
                 GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
                         : GisGeometryType.LINE;
                 String newWkt = request.getCoordinates().trim();
-                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("Pier", saved.getId(), "Tọa độ GIS",
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),

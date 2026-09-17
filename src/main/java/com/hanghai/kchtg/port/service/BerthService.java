@@ -443,7 +443,7 @@ public class BerthService {
             // "Tọa độ GIS" + "Loại đối tượng GIS", kèm approvedBy = user thật.
             if (wasApproved) {
                 String newWkt = coordinates.trim();
-                boolean wktChanged = oldWkt == null || !newWkt.equals(oldWkt.trim());
+                boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("Berth", saved.getId(), "Tọa độ GIS",

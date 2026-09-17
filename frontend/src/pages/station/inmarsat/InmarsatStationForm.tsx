@@ -29,7 +29,7 @@ import type {
   CoastalStationInmarsatResponse,
   CoastalStationInmarsatUpdateRequest,
 } from '../../../services/station/types';
-import { ApprovalStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../../types/vtsSystem';
+import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../../types/vtsSystem';
 import {
   drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
   drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
@@ -420,7 +420,7 @@ export default function InmarsatStationForm({
       setPendingDeletedAttachments([]);
       const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
       form.setFieldsValue({
-        conditionStatus: 'OPERATIONAL',
+        conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
         orgUnitId: defOrgId || (currentUser?.orgUnitId ? String(currentUser.orgUnitId) : undefined),
       });
       inmarsatStationService.generateCode()
@@ -724,30 +724,13 @@ export default function InmarsatStationForm({
       }
       setPendingDeletedAttachments([]);
 
+      // API create/update đã nhận action và backend thực hiện trọn vẹn chuyển trạng
+      // thái trong cùng một transaction. Không gọi submit/approve lần nữa ở đây:
+      // nếu lặp sẽ cố duyệt lại một hồ sơ đã chuyển trạng thái và sinh ba lỗi toast.
       if (resultId) {
         if (act === 'submit') {
-          await inmarsatStationService.submit(resultId);
           toast.success(isCreateMode ? 'Tạo mới và gửi phê duyệt thành công' : 'Lưu và gửi phê duyệt thành công');
         } else if (act === 'approve') {
-          const currentStatus = record?.approvalStatus;
-          const isDraftOrRejected = isCreateMode || !currentStatus || currentStatus === ApprovalStatus.DRAFT || currentStatus === ApprovalStatus.REJECTED_LEVEL1 || currentStatus === ApprovalStatus.REJECTED_LEVEL2;
-          if (isDraftOrRejected) {
-            await inmarsatStationService.submit(resultId).catch(() => {});
-          }
-          const isAlreadyApproved = currentStatus === ApprovalStatus.APPROVED || (currentStatus as string) === 'APPROVED_LEVEL2';
-          if (!isAlreadyApproved) {
-            if (canApproveL2) {
-              await inmarsatStationService.approveL1(resultId).catch(() => {});
-              await inmarsatStationService.approveL2(resultId);
-            } else if (canApproveL1) {
-              await inmarsatStationService.approveL1(resultId);
-            } else {
-              await inmarsatStationService.approveL1(resultId).catch(() => {});
-              await inmarsatStationService.approveL2(resultId).catch(async () => {
-                await inmarsatStationService.approveL1(resultId);
-              });
-            }
-          }
           toast.success(isCreateMode ? 'Thêm mới và phê duyệt thành công' : 'Lưu và phê duyệt thành công');
         } else {
           toast.success(isCreateMode ? 'Tạo mới (Lưu tạm) thành công' : 'Cập nhật thành công');
@@ -1069,7 +1052,7 @@ export default function InmarsatStationForm({
                               name="coverageZone"
                               style={{ marginBottom: spaceFormField }}
                             >
-                              <Input.TextArea placeholder="Nhập vùng phủ sóng" rows={3} maxLength={4000} showCount style={textAreaStyle} />
+                              <Input.TextArea placeholder="Nhập vùng phủ sóng" rows={3} maxLength={2000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
                           <Col span={12}>

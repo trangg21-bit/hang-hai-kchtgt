@@ -619,7 +619,7 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
         {approvalOpen && (
           <div className="chk-detail-grid">
             <div className="chk-detail-row chk-detail-row--full">
-              <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
+              <span className="chk-detail-label sec-col1-label">Trạng thái</span>
               <span className="chk-detail-value">{renderApprovalBadge(data.approvalStatus)}</span>
             </div>
 
@@ -634,10 +634,6 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
                   return '';
                 })()}
               </span>
-            </div>
-            <div className="chk-detail-row">
-              <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
-              <span className="chk-detail-value"><strong style={{ color: '#0F172A' }}>{data.updatedByName || data.updatedBy || '—'}</strong></span>
             </div>
             <div className="chk-detail-row">
               <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>

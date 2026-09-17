@@ -88,16 +88,29 @@ const sectionTitleStyle: React.CSSProperties = {
   gap: 8,
 };
 
-const gridRows = (rows: Array<[string, React.ReactNode, boolean?, boolean?]>) => (
-  <div className="chk-detail-grid">
-    {rows.map(([label, value, full, compact], index) => (
-      <div key={String(label)} className={`chk-detail-row ${full ? 'chk-detail-row--full' : ''} ${compact ? 'chk-detail-row--compact' : ''}`}>
-        <span className={`chk-detail-label ${full ? 'sec-full-label' : (index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label')}`}>{label}</span>
-        <span className="chk-detail-value">{value}</span>
-      </div>
-    ))}
-  </div>
-);
+const gridRows = (rows: Array<[string, React.ReactNode, boolean?, boolean?]>) => {
+  let colIndex = 0;
+  return (
+    <div className="chk-detail-grid">
+      {rows.map(([label, value, full, compact]) => {
+        let labelCls = 'sec-col1-label';
+        if (full) {
+          labelCls = 'sec-full-label';
+          colIndex = 0;
+        } else {
+          labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
+          colIndex += 1;
+        }
+        return (
+          <div key={String(label)} className={`chk-detail-row ${full ? 'chk-detail-row--full' : ''} ${compact ? 'chk-detail-row--compact' : ''}`}>
+            <span className={`chk-detail-label ${labelCls}`}>{label}</span>
+            <span className="chk-detail-value">{value}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) — POINT/MULTIPOINT từ form Phao tiêu;
 // fallback sang latitude/longitude (giống BuoyBerthDetailContent).
@@ -390,16 +403,16 @@ export default function BuoyDetailContent({
                     statusInfo?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
                     statusInfo?.label?.toLowerCase().includes('chi cục');
                   return gridRows([
-                    ['Trạng thái', statusBadge, false, isPendingPortAuthority],
+                    ['Trạng thái', statusBadge, true, isPendingPortAuthority],
                     ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{userName(r.updatedBy, r.updatedByName || r.createdByName)}</span>],
                     ['Ngày cập nhật', formatDate(r.updatedAt)],
                     ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy || r.submittedForApprovalBy, (r as any).submittedForApprovalByName)}</span>],
                     ['Ngày gửi phê duyệt', formatDate(r.submittedForApprovalAt)],
                     ['Cán bộ phê duyệt cấp Cảng vụ/Chi cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level1ApprovedBy, (r as any).level1ApprovedByName)}</span>],
                     ['Ngày phê duyệt cấp Cảng vụ/Chi cục', formatDate(r.level1ApprovedDate)],
+                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '', true],
                     ['Cán bộ phê duyệt cấp Cục', <span style={{ fontWeight: fontWeightBold }}>{userName(r.level2ApprovedBy, (r as any).level2ApprovedByName)}</span>],
                     ['Ngày phê duyệt cấp Cục', formatDate(r.level2ApprovedDate)],
-                    ['Nội dung phê duyệt cấp Cảng vụ/Chi cục', r.level1ApprovalContent || '', true],
                     ['Nội dung phê duyệt cấp Cục', r.level2ApprovalContent || '', true],
                   ]);
                 })()}

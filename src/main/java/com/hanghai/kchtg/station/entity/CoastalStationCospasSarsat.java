@@ -51,7 +51,7 @@ public class CoastalStationCospasSarsat extends BaseApprovableEntity {
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
     @Builder.Default
-    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
+    private ConditionStatus conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL;
 
     @Column(name = "operating_org_id")
     private UUID operatingOrgId;
@@ -69,7 +69,7 @@ public class CoastalStationCospasSarsat extends BaseApprovableEntity {
     @Column(name = "frequency", length = 255)
     private String frequency;
 
-    @Column(name = "coverage_area", length = 4000)
+    @Column(name = "coverage_area", length = 2000)
     private String coverageArea;
 
     @Column(name = "beacon_protocol", length = 255)

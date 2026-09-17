@@ -278,6 +278,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
   const [recordData, setRecordData] = useState<CoastalStationCospasSarsatResponse | null>(initialData);
   const lastLoadedKeyRef = useRef<string | null>(null);
+  const lastGeometryTypeRef = useRef<string | undefined>(undefined);
 
   const [symbols, setSymbols] = useState<any[]>(propSymbols || []);
   const [coordinateList, setCoordinateList] = useState<DmsPoint[]>([]);
@@ -324,6 +325,12 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   };
 
   useEffect(() => {
+    const geometryType = watchedGeometryType || undefined;
+    if (lastGeometryTypeRef.current === geometryType) {
+      return;
+    }
+    lastGeometryTypeRef.current = geometryType;
+
     if (!watchedGeometryType) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
@@ -589,6 +596,9 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
 
   const populateFormFromRecord = (rec: CoastalStationCospasSarsatResponse) => {
     const geom = resolveCospasGeometryType(rec.geometryType, rec.wktGeometry || (rec as any).coordinates);
+    // Hydrate GIS atomically: the geometry effect is only for a user changing
+    // the object type, never for padding coordinates that already came from WKT.
+    lastGeometryTypeRef.current = geom;
     form.setFieldsValue({
       stationCode: rec.stationCode || rec.code,
       stationName: rec.stationName || rec.name,
@@ -653,7 +663,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       const initialCode = generateStationCode();
       form.setFieldsValue({
         stationCode: initialCode,
-        conditionStatus: 'OPERATIONAL',
+        conditionStatus: 'NOT_YET_OPERATIONAL',
         geometryType: undefined,
         coordinateSystem: undefined,
         displayRule: undefined,
@@ -676,8 +686,13 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
     } else if (editId) {
       if (initialData) {
         setRecordData(initialData);
-        populateFormFromRecord(initialData);
       }
+      // A list row is only a summary and can carry stale/incomplete GIS data.
+      // Do not render its coordinate count before the detail endpoint responds.
+      form.resetFields();
+      lastGeometryTypeRef.current = undefined;
+      setCoordinateList([]);
+      setGpsError(null);
       setLoading(true);
       cospasSarsatStationService.getById(editId)
         .then((res) => {
@@ -953,7 +968,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
           onEdit={onEdit}
         />
       ) : (
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" initialValues={{ conditionStatus: 'NOT_YET_OPERATIONAL' }}>
           <style>{`
             ${requiredMarkStyle}
             .cospas-sarsat-drawer-scope,
@@ -1160,12 +1175,13 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                           <Form.Item
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
                             name="coverageArea"
+                            rules={[{ max: 2000, message: 'Vùng phủ sóng không được vượt quá 2000 ký tự' }]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea
                               placeholder="Nhập vùng phủ sóng"
                               rows={3}
-                              maxLength={4000}
+                              maxLength={2000}
                               showCount
                               style={textAreaStyle}
                             />

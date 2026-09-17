@@ -43,6 +43,16 @@ describe('historyAttachmentDedup helpers', () => {
     ]);
   });
 
+  it('applies the service delta when CommonHistoryDrawer receives legacy JSON snapshots', () => {
+    expect(parseHistoryEntryChanges({
+      changedField: 'services',
+      previousValue: '["INMARSAT_DISTRESS","COSPAS_SARSAT_DISTRESS","DSC_DISTRESS"]',
+      newValue: '["INMARSAT_DISTRESS","COSPAS_SARSAT_DISTRESS","DSC_DISTRESS","MSI_NAVTEX","LRIT"]',
+    })).toEqual([
+      { field: 'Dịch vụ cung cấp', oldValue: '', newValue: 'MSI_NAVTEX\nLRIT' },
+    ]);
+  });
+
   it('correctly identifies attachment fields', () => {
     expect(isAttachmentField('Tài liệu đính kèm')).toBe(true);
     expect(isAttachmentField('attachments')).toBe(true);

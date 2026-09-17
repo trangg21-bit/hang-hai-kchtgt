@@ -179,16 +179,29 @@ export default function BuoyStationDetailContent({
     ) : '';
   })();
 
-  const gridRows = (rows: Array<[string, React.ReactNode, boolean?, boolean?]>) => (
-    <div className="chk-detail-grid">
-      {rows.map(([label, value, full, compact], index) => (
-        <div key={String(label)} className={`chk-detail-row ${full ? 'chk-detail-row--full' : ''} ${compact ? 'chk-detail-row--compact' : ''}`}>
-          <span className={`chk-detail-label ${full ? 'sec-full-label' : (index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label')}`}>{label}</span>
-          <span className="chk-detail-value">{value}</span>
-        </div>
-      ))}
-    </div>
-  );
+  const gridRows = (rows: Array<[string, React.ReactNode, boolean?, boolean?]>) => {
+    let colIndex = 0;
+    return (
+      <div className="chk-detail-grid">
+        {rows.map(([label, value, full, compact]) => {
+          let labelCls = 'sec-col1-label';
+          if (full) {
+            labelCls = 'sec-full-label';
+            colIndex = 0;
+          } else {
+            labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
+            colIndex += 1;
+          }
+          return (
+            <div key={String(label)} className={`chk-detail-row ${full ? 'chk-detail-row--full' : ''} ${compact ? 'chk-detail-row--compact' : ''}`}>
+              <span className={`chk-detail-label ${labelCls}`}>{label}</span>
+              <span className="chk-detail-value">{value}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const coords = parseGisCoordinates(r);
 
@@ -394,7 +407,7 @@ export default function BuoyStationDetailContent({
                     APPROVAL_STYLE_MAP[r.status || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
                     APPROVAL_STYLE_MAP[r.status || '']?.label?.toLowerCase().includes('chi cục');
                   return gridRows([
-                    ['Trạng thái', statusBadge, false, isPendingPortAuthority],
+                    ['Trạng thái', statusBadge, true, isPendingPortAuthority],
                     ['Cán bộ cập nhật', <span style={{ fontWeight: fontWeightBold }}>{r.updatedByName || userName(r.updatedBy, r.createdByName)}</span>],
                     ['Ngày cập nhật', formatDateTime(r.updatedAt)],
                     ['Cán bộ gửi phê duyệt', <span style={{ fontWeight: fontWeightBold }}>{userName(r.sentApprovedBy)}</span>],

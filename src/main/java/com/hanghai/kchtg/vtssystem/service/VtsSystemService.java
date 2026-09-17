@@ -869,6 +869,7 @@ public class VtsSystemService {
             Map.entry("systemName", "t.systemName"),
             Map.entry("code", "t.code"),
             Map.entry("address", "t.address"),
+            Map.entry("provinceId", "t.provinceId"),
             Map.entry("operationStartDate", "t.operationStartDate"),
             Map.entry("conditionStatus", "t.conditionStatus"),
             Map.entry("approvalStatus", "t.approvalStatus"),

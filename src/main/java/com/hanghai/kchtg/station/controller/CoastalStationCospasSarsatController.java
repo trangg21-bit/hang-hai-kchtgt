@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,10 +33,32 @@ import java.util.*;
 public class CoastalStationCospasSarsatController {
 
     private static final int MAX_PAGE_SIZE = 200;
-    private static final Set<String> SORTABLE_LIST_FIELDS = Set.of(
-            "name", "code", "locationAddress", "conditionStatus", "approvalStatus",
-            "rejectionReason", "createdAt", "updatedAt", "submittedAt",
-            "approvedDateLevel1", "approvedDateLevel2");
+    /**
+     * Client sort keys mapped to the aliases defined by repository.search.
+     * This is deliberately a whitelist: the sort parameter comes from the browser,
+     * while a few visible columns are values from joined tables rather than fields
+     * of CoastalStationCospasSarsat itself.
+     */
+    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "c.name"),
+            Map.entry("stationName", "c.name"),
+            Map.entry("code", "c.code"),
+            Map.entry("stationCode", "c.code"),
+            Map.entry("orgUnitName", "o.name"),
+            Map.entry("orgUnitId", "c.orgUnitId"),
+            Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
+            Map.entry("operatingOrgId", "c.operatingOrgId"),
+            Map.entry("provinceId", "c.provinceId"),
+            Map.entry("locationAddress", "c.locationAddress"),
+            Map.entry("conditionStatus", "c.conditionStatus"),
+            Map.entry("approvalStatus", "c.approvalStatus"),
+            Map.entry("rejectionReason", "c.rejectionReason"),
+            Map.entry("updatedByName", "uu.fullName"),
+            Map.entry("updatedAt", "c.updatedAt"),
+            Map.entry("submittedAt", "c.submittedAt"),
+            Map.entry("approvedDateLevel1", "c.approvedDateLevel1"),
+            Map.entry("approvedDateLevel2", "c.approvedDateLevel2"),
+            Map.entry("createdAt", "c.createdAt"));
 
     private final CoastalStationCospasSarsatService service;
 
@@ -149,19 +172,19 @@ public class CoastalStationCospasSarsatController {
     }
 
     private static Sort resolveListSort(String sort) {
-        Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "c.createdAt");
         if (sort == null || sort.isBlank()) {
             return defaultSort;
         }
         String[] parts = sort.split(",", 2);
-        String property = parts[0].trim();
-        if (!SORTABLE_LIST_FIELDS.contains(property)) {
+        String property = SORTABLE_LIST_FIELDS.get(parts[0].trim());
+        if (property == null) {
             return defaultSort;
         }
         Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
-        return Sort.by(direction, property).and(defaultSort);
+        return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 
     @GetMapping("/options")
