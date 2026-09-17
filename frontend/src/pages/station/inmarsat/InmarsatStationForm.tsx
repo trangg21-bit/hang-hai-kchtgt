@@ -46,8 +46,8 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../../components/org-unit';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
-import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -65,15 +65,9 @@ import { resolveStationGeometryType } from '../../../utils/stationGeometryType';
 import InmarsatStationDetailContent, { getOperatingOrgName } from './InmarsatStationDetailContent';
 export { getOperatingOrgName };
 
-export const INMARSAT_SERVICE_OPTIONS = [
-  { value: 'INMARSAT-C', label: 'INMARSAT-C — Dịch vụ dữ liệu & điện báo hàng hải' },
-  { value: 'EGC', label: 'EGC — Báo gọi nhóm nâng cao (SafetyNET / FleetNET)' },
-  { value: 'GMDSS', label: 'GMDSS — Hệ thống cấp cứu và an toàn hàng hải toàn cầu' },
-  { value: 'SSAS', label: 'SSAS — Báo động an ninh tàu biển' },
-  { value: 'LRIT', label: 'LRIT — Nhận dạng và theo dõi tầm xa' },
-  { value: 'DISTRESS', label: 'DISTRESS — Phát báo nạn khẩn cấp' },
-  { value: 'FLEET_BROADBAND', label: 'FleetBroadband — Thoại & Dữ liệu tốc độ cao' },
-];
+import { MARITIME_SERVICES_OPTIONS } from '../../../constants/maritimeServices';
+
+export const INMARSAT_SERVICE_OPTIONS = MARITIME_SERVICES_OPTIONS;
 
 export interface InmarsatStationFormProps {
   open?: boolean;
@@ -424,9 +418,11 @@ export default function InmarsatStationForm({
       setAttachmentsLoaded(true);
       setPendingFiles([]);
       setPendingDeletedAttachments([]);
-      if ((currentUser as any)?.orgUnitId) {
-        form.setFieldValue('orgUnitId', String((currentUser as any).orgUnitId));
-      }
+      const defOrgId = resolveDefaultOrgUnitId(currentUser, effectiveOrgUnits);
+      form.setFieldsValue({
+        conditionStatus: 'OPERATIONAL',
+        orgUnitId: defOrgId || (currentUser?.orgUnitId ? String(currentUser.orgUnitId) : undefined),
+      });
       inmarsatStationService.generateCode()
         .then((res) => {
           if (res?.code) {
@@ -520,6 +516,18 @@ export default function InmarsatStationForm({
       })
       .finally(() => setIsLoading(false));
   }, [open, isCreateMode, editId, initialData, form]);
+
+  useEffect(() => {
+    if (isCreateMode && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
+      const currentVal = form.getFieldValue('orgUnitId');
+      if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
+        const defOrgId = resolveDefaultOrgUnitId(currentUser, effectiveOrgUnits);
+        if (defOrgId) {
+          form.setFieldValue('orgUnitId', defOrgId);
+        }
+      }
+    }
+  }, [isCreateMode, open, effectiveOrgUnits, currentUser, form]);
 
   const addGpsPoint = () => {
     if (watchedGeometryType === 'POINT' && coordinateList.length >= 1) {
@@ -1024,7 +1032,7 @@ export default function InmarsatStationForm({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
                               name="locationDetail"
@@ -1034,7 +1042,7 @@ export default function InmarsatStationForm({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Dịch vụ cung cấp</span>}
                               name="services"
@@ -1064,7 +1072,7 @@ export default function InmarsatStationForm({
                               <Input.TextArea placeholder="Nhập vùng phủ sóng" rows={3} maxLength={4000} showCount style={textAreaStyle} />
                             </Form.Item>
                           </Col>
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tần số</span>}
                               name="frequency"

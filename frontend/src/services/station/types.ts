@@ -210,7 +210,8 @@ export interface CoastalStationCospasSarsatRequest {
   symbolId?: string;
   coordinateSystem?: string;
   displayRule?: string;
-  coordinates?: Array<{ latitude: number; longitude: number; pointOrder?: number }>;
+  /** WKT geometry exchanged with the Cospas API (for example POINT(108 15)). */
+  coordinates?: string;
   wktGeometry?: string;
   latitude?: number;
   longitude?: number;
@@ -283,6 +284,7 @@ export interface CoastalStationCospasSarsatResponse {
   latitude?: number;
   longitude?: number;
   files?: any[];
+  attachments?: any[];
 }
 
 export interface CoastalStationCospasSarsatOptionResponse {

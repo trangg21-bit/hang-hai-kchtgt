@@ -29,11 +29,11 @@ import {
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import EmptyState from '../../components/EmptyState';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -838,8 +838,9 @@ export default function DikeRevetmentList() {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        defaultOrgUnitId.current = parentOrgUnits[0].id;
-        setFilterUnitId(parentOrgUnits[0].id);
+        const defaultId = resolveDefaultOrgUnitId(currentUser, parentOrgUnits);
+        defaultOrgUnitId.current = defaultId;
+        setFilterUnitId(defaultId);
       }
       setOrgUnitReady(true);
     } else {
@@ -850,18 +851,9 @@ export default function DikeRevetmentList() {
           setOrganizations(data);
           if (data.length > 0 && !defaultOrgApplied.current) {
             defaultOrgApplied.current = true;
-            try {
-              const profileRes = await api.get('/users/me');
-              const profile = profileRes.data?.data ?? profileRes.data;
-              const userOrgId = profile?.orgUnitId;
-              const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
-              defaultOrgUnitId.current = defaultId;
-              setFilterUnitId(defaultId === '__all__' ? undefined : defaultId);
-            } catch {
-              defaultOrgUnitId.current = data[0].id;
-              setFilterUnitId(data[0].id);
-            }
+            const defaultId = resolveDefaultOrgUnitId(currentUser, data);
+            defaultOrgUnitId.current = defaultId;
+            setFilterUnitId(defaultId);
           }
           setOrgUnitReady(true);
         } catch (err) {
@@ -870,7 +862,7 @@ export default function DikeRevetmentList() {
         }
       })();
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     (async () => {

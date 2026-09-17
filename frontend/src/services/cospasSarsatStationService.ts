@@ -30,6 +30,8 @@ export interface CospasSarsatListParams {
   page?: number;
   size?: number;
   sort?: string;
+  /** Skip status aggregation when only the page or sort order changes. */
+  includeCounts?: boolean;
 }
 
 export interface CospasSarsatSearchResponse {
@@ -61,6 +63,7 @@ export const cospasSarsatStationService = {
       page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,
       size: params?.size || 10,
       sort: params?.sort,
+      includeCounts: params?.includeCounts,
     });
 
     let listRes: any;
@@ -102,20 +105,14 @@ export const cospasSarsatStationService = {
     return res.data || [];
   },
 
-  async create(payload: CoastalStationCospasSarsatRequest, action = 'DRAFT'): Promise<CoastalStationCospasSarsatResponse> {
-    try {
-      const res = await api.post(`${BASE_PATH}?action=${action}`, payload);
-      return res.data;
-    } catch {
-      const res = await api.post(BASE_PATH, payload);
-      return res.data;
-    }
+  async create(payload: CoastalStationCospasSarsatRequest): Promise<CoastalStationCospasSarsatResponse> {
+    const res = await api.post(BASE_PATH, payload);
+    return res.data?.data || res.data;
   },
 
-  async update(id: string, payload: CoastalStationCospasSarsatRequest, action?: string): Promise<CoastalStationCospasSarsatResponse> {
-    const url = action ? `${BASE_PATH}/${id}?action=${action}` : `${BASE_PATH}/${id}`;
-    const res = await api.put(url, payload);
-    return res.data;
+  async update(id: string, payload: CoastalStationCospasSarsatRequest): Promise<CoastalStationCospasSarsatResponse> {
+    const res = await api.put(`${BASE_PATH}/${id}`, payload);
+    return res.data?.data || res.data;
   },
 
   async delete(id: string): Promise<void> {
@@ -170,16 +167,17 @@ export const cospasSarsatStationService = {
   },
 
   async uploadAttachment(id: string, file: File): Promise<any> {
+    return this.uploadAttachments(id, [file]).then((arr) => arr[0] || null);
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<any[]> {
     const formData = new FormData();
-    formData.append('files', file);
+    files.forEach((file) => formData.append('files', file));
     const res = await api.post(`${BASE_PATH}/${id}/attachments`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     const data = res.data?.data || res.data;
-    if (Array.isArray(data)) {
-      return data[0] || null;
-    }
-    return data;
+    return toArray<any>(data);
   },
 
   async deleteAttachment(id: string, attId: string): Promise<void> {
@@ -190,13 +188,31 @@ export const cospasSarsatStationService = {
     const res = await api.get(`${BASE_PATH}/${id}/attachments/${attId}/download`, {
       responseType: 'blob',
     });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
+    let resolvedName = fileName;
+    const disposition = res.headers?.['content-disposition'];
+    if (disposition && typeof disposition === 'string') {
+      const matchUtf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+      if (matchUtf8 && matchUtf8[1]) {
+        try {
+          resolvedName = decodeURIComponent(matchUtf8[1].trim());
+        } catch {
+          resolvedName = matchUtf8[1].trim();
+        }
+      } else {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          resolvedName = match[1].trim();
+        }
+      }
+    }
+    const blob = new Blob([res.data]);
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', fileName || 'attachment');
+    link.download = resolvedName || fileName || 'attachment';
     document.body.appendChild(link);
     link.click();
-    link.remove();
+    document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
   },
 };

@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Modal, Input, DatePicker, Select } from 'antd';
 import DeleteConfirmModal from '../../../components/shared/DeleteConfirmModal';
 import { inmarsatStationService, type InmarsatListParams } from '../../../services/inmarsatStationService';
-import { symbolService } from '../../../services/symbolService';
 import { organizationService } from '../../../services/organizationService';
 import type { CoastalStationInmarsatResponse } from '../../../services/station/types';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../../types/vtsSystem';
@@ -258,7 +257,6 @@ export default function InmarsatStationList() {
   const [isOptionsReady, setIsOptionsReady] = useState(false);
 
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
-  const [symbols, setSymbols] = useState<Array<{ id: string; code?: string; name?: string; image?: string }>>([]);
   const [filterValues, setFilterValues] = useState<Record<string, unknown>>({});
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
@@ -341,10 +339,7 @@ export default function InmarsatStationList() {
     let mounted = true;
     (async () => {
       try {
-        const [orgs, syms] = await Promise.all([
-          organizationService.getAll().catch(() => []),
-          symbolService.getOptions().catch(() => []),
-        ]);
+        const orgs = await organizationService.getAll().catch(() => []);
         if (!mounted) return;
         const list = Array.isArray(orgs) ? orgs : ((orgs as any)?.content || (orgs as any)?.data || []);
         const mappedOrgs = (list || []).map((o: any) => ({
@@ -354,8 +349,7 @@ export default function InmarsatStationList() {
           parentId: o.parentId ? String(o.parentId) : undefined,
         }));
         setOrgUnitOptions(mappedOrgs);
-        setSymbols(Array.isArray(syms) ? syms : []);
-        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, mappedOrgs);
+        const resolvedDefault = resolveDefaultOrgUnitId(useAuthStore.getState().user, mappedOrgs);
         defaultOrgUnitRef.current = resolvedDefault;
         if (resolvedDefault) {
           setFilterOrgUnitId(resolvedDefault);
@@ -372,7 +366,7 @@ export default function InmarsatStationList() {
     return () => {
       mounted = false;
     };
-  }, [currentUser]);
+  }, []);
 
   const fetchData = useCallback(async () => {
     const requestId = ++listRequestId.current;
@@ -447,9 +441,10 @@ export default function InmarsatStationList() {
   const serverSideSorter = () => 0;
 
   const refreshList = useCallback(() => {
+    if (!isOptionsReady) return;
     statusCountFilterKey.current = null;
     void fetchData();
-  }, [fetchData]);
+  }, [fetchData, isOptionsReady]);
 
 
   // ── Delete confirmation modal (Chuẩn Bến cảng) ───────────────────
@@ -660,10 +655,12 @@ export default function InmarsatStationList() {
       dataIndex: 'orgUnitName',
       width: 220,
       ellipsis: false,
-      sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('orgUnitName'),
-      render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={v}>{v || '—'}</div>,
+      render: (v: string) => {
+        const name = (v === '00000000-0000-0000-0000-000000000017' || v === 'G17') ? 'Bộ Giao thông Vận tải' : (v || '—');
+        return <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={name}>{name}</div>;
+      },
     },
     {
       key: 'operatingOrgName',
@@ -1063,7 +1060,6 @@ export default function InmarsatStationList() {
             initialData={selectedRecord}
             mode={modalMode}
             orgUnits={orgUnitOptions}
-            symbols={symbols}
             onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
             onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
           />

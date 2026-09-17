@@ -950,10 +950,6 @@ public class BeaconStationService {
                 : null;
     }
 
-    private Long resolveCurrentUserId() {
-        return 1L;
-    }
-
     private java.util.UUID resolveCreatedBy(BeaconStation entity) {
         return entity.getCreatedBy();
     }

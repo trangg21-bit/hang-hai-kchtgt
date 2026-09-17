@@ -536,6 +536,9 @@ export default function AnchorageListPage() {
         setOrgUnit(resolvedDefault);
         defaultOrgUnitRef.current = resolvedDefault;
       } catch {}
+      finally {
+        setInitialLoadDone(true);
+      }
     })();
 
     (async () => {
@@ -572,12 +575,6 @@ export default function AnchorageListPage() {
       } catch {}
     })();
   }, []);
-
-  useEffect(() => {
-    if (orgUnit !== undefined && !initialLoadDone) {
-      setInitialLoadDone(true);
-    }
-  }, [orgUnit, initialLoadDone]);
 
   // Luồng hàng hải (bộ lọc: chỉ lấy đã phê duyệt)
   useEffect(() => {

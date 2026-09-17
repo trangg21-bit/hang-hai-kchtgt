@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- DataTable is the adapter for heterogeneous Ant Design records and column renderers. */
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Table, Dropdown, Button, Empty } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
@@ -146,6 +147,7 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
 const DataTable: React.FC<DataTableProps> = ({
   columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, resetScrollKey, ...rest
 }) => {
+  void fill;
   const t = useThemeToken();
   const {
     textPrimary, textSecondary, textTertiary, fontWeightMedium, fontSizeSm, fontSizeMd, fontWeightBold,
@@ -156,7 +158,6 @@ const DataTable: React.FC<DataTableProps> = ({
   const actionColumnHeaderCellStyle = actionColumnHeaderCellStyleFor(t);
 
   const tableShellRef = useRef<HTMLDivElement>(null);
-  const initialLoadDoneRef = useRef(false);
   const [measuredTableWidth, setMeasuredTableWidth] = useState<number>();
   const resolvedScroll = scroll;
 
@@ -170,16 +171,17 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   useEffect(() => {
-    if (!initialLoadDoneRef.current && !loading) {
-      initialLoadDoneRef.current = true;
-      resetHorizontalScroll();
-      const frameId = window.requestAnimationFrame(resetHorizontalScroll);
-      const timer = setTimeout(resetHorizontalScroll, 100);
-      return () => {
-        window.cancelAnimationFrame(frameId);
-        clearTimeout(timer);
-      };
-    }
+    // A number of list pages mount before their first request sets `loading`.
+    // Resetting only once can therefore happen before AntD creates the actual
+    // scroll container, leaving a stale horizontal offset that puts fixed
+    // columns over the beginning of the following columns.
+    resetHorizontalScroll();
+    const frameId = window.requestAnimationFrame(resetHorizontalScroll);
+    const timer = setTimeout(resetHorizontalScroll, 100);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      clearTimeout(timer);
+    };
   }, [loading]);
 
   useEffect(() => {

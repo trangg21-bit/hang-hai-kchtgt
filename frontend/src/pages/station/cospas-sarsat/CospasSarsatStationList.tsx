@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Modal, Input, DatePicker, Select } from 'antd';
 import DeleteConfirmModal from '../../../components/shared/DeleteConfirmModal';
 import { cospasSarsatStationService, type CospasSarsatListParams } from '../../../services/cospasSarsatStationService';
-import { symbolService } from '../../../services/symbolService';
 import { organizationService } from '../../../services/organizationService';
 import type { CoastalStationCospasSarsatResponse } from '../../../services/station/types';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../../types/vtsSystem';
@@ -31,7 +30,6 @@ import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/co
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { useStandardApprovalStatusTabs } from '../../../components/shared/approvalStatusTabs';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { getOperatingOrgName } from './CospasSarsatStationDetailContent';
 
 const fontSizeMd = 13.5;
@@ -205,7 +203,6 @@ export default function CospasSarsatStationList() {
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState<string | undefined>();
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [organizations, setOrganizations] = useState<OrgUnitTreeOption[]>([]);
-  const [symbols, setSymbols] = useState<any[]>([]);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const [sortField, setSortField] = useState<string | undefined>();
@@ -250,16 +247,16 @@ export default function CospasSarsatStationList() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const statusCountFilterKey = useRef<string | null>(null);
   const listRequestId = useRef(0);
+  const [isLookupReady, setIsLookupReady] = useState(false);
 
   const canCreate = hasPerm('coastalstationcospassarsat:create') || hasPerm('station:create') || hasPerm('data:create');
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
-        const [orgs, syms] = await Promise.all([
-          organizationService.getAll(),
-          symbolService.getAll().catch(() => []),
-        ]);
+        const orgs = await organizationService.getAll();
+        if (!mounted) return;
         const mappedOrgs: OrgUnitTreeOption[] = (orgs || []).map((o: any) => ({
           id: String(o.id),
           name: o.name || o.unitName || 'Đơn vị',
@@ -267,8 +264,7 @@ export default function CospasSarsatStationList() {
           parentId: o.parentId ? String(o.parentId) : undefined,
         }));
         setOrganizations(mappedOrgs);
-        setSymbols(syms || []);
-        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, mappedOrgs);
+        const resolvedDefault = resolveDefaultOrgUnitId(useAuthStore.getState().user, mappedOrgs);
         defaultOrgUnitRef.current = resolvedDefault;
         if (resolvedDefault) {
           setFilterOrgUnitId(resolvedDefault);
@@ -276,9 +272,14 @@ export default function CospasSarsatStationList() {
         }
       } catch (e) {
         console.error('Failed to fetch org units for filter', e);
+      } finally {
+        if (mounted) setIsLookupReady(true);
       }
     })();
-  }, [currentUser]);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const fetchData = useCallback(async () => {
     const requestId = ++listRequestId.current;
@@ -289,6 +290,7 @@ export default function CospasSarsatStationList() {
         filterStationName, filterCode, filterConditionStatus, filterOrgUnitId, filterProvinceId,
         filterUpdatedFrom, filterUpdatedTo,
       ]);
+      const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
       const params: CospasSarsatListParams = {
         page,
         size: pageSize,
@@ -301,13 +303,14 @@ export default function CospasSarsatStationList() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         sort: sortField ? `${sortField},${sortDirection}` : undefined,
+        includeCounts: shouldIncludeCounts,
       };
       const res = await cospasSarsatStationService.search(params);
       if (requestId !== listRequestId.current) return;
       setDataSource(res.items);
       setTotal(res.total);
 
-      if (res.statusCounts) {
+      if (shouldIncludeCounts && res.statusCounts) {
         setStatusCounts(res.statusCounts);
         statusCountFilterKey.current = currentStatusCountFilterKey;
       }
@@ -322,16 +325,15 @@ export default function CospasSarsatStationList() {
     filterUpdatedFrom, filterUpdatedTo, sortField, sortDirection]);
 
   useEffect(() => {
+    if (!isLookupReady) return;
     let mounted = true;
     queueMicrotask(() => {
-      if (mounted) {
-        void fetchData();
-      }
+      if (mounted) void fetchData();
     });
     return () => {
       mounted = false;
     };
-  }, [fetchData]);
+  }, [fetchData, isLookupReady]);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
     setSortField(field);
@@ -340,9 +342,10 @@ export default function CospasSarsatStationList() {
   }, []);
 
   const refreshList = useCallback(() => {
+    if (!isLookupReady) return;
     statusCountFilterKey.current = null;
     void fetchData();
-  }, [fetchData]);
+  }, [fetchData, isLookupReady]);
 
   const openDeleteModal = useCallback((record: CoastalStationCospasSarsatResponse) => {
     setDeletingRecord(record);
@@ -544,9 +547,6 @@ export default function CospasSarsatStationList() {
       dataIndex: 'orgUnitName',
       width: 240,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('orgUnitName'),
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const id = record.orgUnitId || record.unitId;
         const org = organizations.find((o) => String(o.id) === String(id));
@@ -564,9 +564,6 @@ export default function CospasSarsatStationList() {
       dataIndex: 'operatingOrgName',
       width: 200,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('operatingOrgName'),
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const opName = getOperatingOrgName(record.operatingOrgId, val || record.operatingOrgName);
         return (
@@ -640,9 +637,6 @@ export default function CospasSarsatStationList() {
       dataIndex: 'updatedByName',
       width: 220,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('updatedByName'),
       render: (val: string, record: CoastalStationCospasSarsatResponse) => {
         const name = val || record.updatedByName || record.updatedBy || record.createdByName || '—';
         const date = record.updatedAt || record.createdAt;
@@ -1113,7 +1107,6 @@ export default function CospasSarsatStationList() {
             initialData={selectedRecord}
             mode={modalMode}
             orgUnits={organizations}
-            symbols={symbols}
             onCancel={() => {
               setIsModalOpen(false);
               setEditingId(null);

@@ -63,6 +63,7 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
           AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)
+          AND (:operatingOrgId IS NULL OR c.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR c.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR c.conditionStatus = :conditionStatus
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND c.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
@@ -78,6 +79,10 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
             CAST(function('immutable_unaccent', LOWER(c.name)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(c.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(c.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(c.name)) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(c.code)) AS string) LIKE CAST(:code AS string))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR c.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR c.updatedAt <= :updatedTo)
     """)
@@ -85,10 +90,13 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
+        @Param("operatingOrgId") UUID operatingOrgId,
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("approvalStatus") ApprovalStatus approvalStatus,
         @Param("keyword") String keyword,
+        @Param("name") String name,
+        @Param("code") String code,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo,
         Pageable pageable
@@ -101,6 +109,7 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
           AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED
           AND (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)
+          AND (:operatingOrgId IS NULL OR c.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR c.provinceId = :provinceId)
           AND (:conditionStatus IS NULL OR c.conditionStatus = :conditionStatus
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND c.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
@@ -109,6 +118,10 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
             CAST(function('immutable_unaccent', LOWER(c.name)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(c.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(c.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(c.name)) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(c.code)) AS string) LIKE CAST(:code AS string))
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR c.updatedAt >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR c.updatedAt <= :updatedTo)
         GROUP BY c.approvalStatus
@@ -117,9 +130,12 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
+        @Param("operatingOrgId") UUID operatingOrgId,
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("keyword") String keyword,
+        @Param("name") String name,
+        @Param("code") String code,
         @Param("updatedFrom") LocalDateTime updatedFrom,
         @Param("updatedTo") LocalDateTime updatedTo
     );

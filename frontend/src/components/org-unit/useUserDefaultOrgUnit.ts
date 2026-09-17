@@ -2,10 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthStore, type User } from '../../store/authStore';
 import { organizationService, type Organization } from '../../services/organizationService';
 import type { OrgUnitTreeOption } from './OrgUnitTreeSelect';
-import { resolveOrgLevel2Name } from './OrgUnitTreeSelect';
+import { buildOrgUnitTreeData, resolveOrgLevel2Name } from './OrgUnitTreeSelect';
 
 export const MINISTRY_ROOT_ID = '00000000-0000-0000-0000-000000000017';
 export const MINISTRY_ROOT_CODE = 'G17';
+
+/**
+ * Lấy giá trị ID của đơn vị đầu tiên trong dropdown (node đầu tiên của cây đơn vị).
+ * Mặc định chọn giá trị đầu tiên trong dropdown chứ không hardcode mã/tên đơn vị.
+ */
+export function getFirstOrgUnitId(
+  organizations?: readonly OrgUnitTreeOption[]
+): string | undefined {
+  if (!organizations || organizations.length === 0) return undefined;
+  const tree = buildOrgUnitTreeData(organizations);
+  if (tree.length > 0 && tree[0]?.value) {
+    return String(tree[0].value);
+  }
+  const first = organizations.find((o) => o && o.id !== undefined && o.id !== null);
+  return first ? String(first.id) : undefined;
+}
 
 /**
  * Kiểm tra xem người dùng hiện tại có thuộc cấp cao nhất Bộ Giao thông Vận tải hay không.
@@ -20,7 +36,7 @@ export function isMinistryLevelUser(
 ): boolean {
   if (!user) return true; // Chưa đăng nhập hoặc fallback an toàn -> không giới hạn
 
-  // Nếu user đã được gán đơn vị trực thuộc cụ thể (không phải G17 Bộ GTVT), thì không phải cấp Bộ chung
+  // Nếu user đã được gán đơn vị trực thuộc cụ thể:
   if (user.orgUnitId) {
     const orgIdStr = String(user.orgUnitId);
     if (orgIdStr === MINISTRY_ROOT_ID || user.orgUnitCode === MINISTRY_ROOT_CODE) {
@@ -41,35 +57,38 @@ export function isMinistryLevelUser(
 
   const role = (user.role || (user as any).roleName || '').toUpperCase();
   if (role === 'SUPER_ADMIN' || role === 'ADMIN') return true;
+
   return false;
 }
 
 /**
- * Xác định giá trị orgUnitId mặc định cho bộ lọc:
- * - Khi bắt đầu vào màn danh sách, filter mặc định chọn đầu tiên là đơn vị mà user đấy trực thuộc.
- * - Nếu user có orgUnitId hợp lệ (khác G17 Bộ GTVT): trả về chính orgUnitId của user.
- * - Nếu user thuộc cấp Bộ GTVT (G17) hoặc không có đơn vị trực thuộc: trả về undefined ("Tất cả").
+ * Xác định giá trị orgUnitId mặc định cho dropdown / bộ lọc:
+ * - Khi bắt đầu vào màn danh sách, filter mặc định chọn đơn vị mà user đấy trực thuộc.
+ * - Nếu user thuộc cấp cao nhất Bộ GTVT (G17) hoặc vai trò quản trị toàn quyền: mặc định chọn giá trị đầu tiên trong dropdown chứ không hardcode.
+ * - Nếu user có orgUnitId hợp lệ thuộc đơn vị cấp dưới (Cảng vụ, Chi cục...): trả về chính orgUnitId của user.
+ * - Nếu không xác định được: trả về undefined.
  */
 export function resolveDefaultOrgUnitId(
   user: User | null | undefined,
   organizations?: readonly OrgUnitTreeOption[]
 ): string | undefined {
-  if (!user || !user.orgUnitId) {
+  if (!user) {
     return undefined;
   }
+
+  // Nếu user thuộc cấp Bộ GTVT hoặc vai trò Quản trị toàn hệ thống -> mặc định chọn giá trị đầu tiên trong dropdown
+  if (isMinistryLevelUser(user, organizations)) {
+    return getFirstOrgUnitId(organizations);
+  }
+
+  if (!user.orgUnitId) {
+    return undefined;
+  }
+
   const orgIdStr = String(user.orgUnitId);
-  if (orgIdStr === MINISTRY_ROOT_ID || user.orgUnitCode === MINISTRY_ROOT_CODE) {
-    return undefined;
-  }
   if (organizations && organizations.length > 0) {
     const org = organizations.find((o) => String(o.id) === orgIdStr);
-    if (org) {
-      const code = (org.code || '').toUpperCase();
-      const name = (org.name || '').toLowerCase();
-      if (code === MINISTRY_ROOT_CODE || name.includes('bộ giao thông')) {
-        return undefined;
-      }
-    }
+    return org ? orgIdStr : undefined;
   }
   return orgIdStr;
 }

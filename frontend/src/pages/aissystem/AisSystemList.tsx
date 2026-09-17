@@ -236,6 +236,7 @@ export function AisSystemList() {
   const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
   const [opCenters, setOpCenters] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
   const [radarStations, setRadarStations] = useState<{ id: string; name: string; orgUnitId?: string }[]>([]);
+  const [areAdvancedOptionsLoaded, setAreAdvancedOptionsLoaded] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
@@ -298,22 +299,32 @@ export function AisSystemList() {
 
   const loadReferenceData = useCallback(async () => {
     try {
-      const [orgRes, opRes, radarRes, operatingRes] = await Promise.allSettled([
-        organizationService.getAll(),
-        vtsOperationCenterService.getOptions(),
-        radarStationService.getOptions(),
-        vtsSystemCRUD.getOperatingOrganizationOptions(),
-      ]);
-
-      if (orgRes.status === 'fulfilled' && Array.isArray(orgRes.value)) {
-        setOrgUnitOptions(orgRes.value);
-        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, orgRes.value);
+      const orgUnits = await organizationService.getAll();
+      if (Array.isArray(orgUnits)) {
+        setOrgUnitOptions(orgUnits);
+        const resolvedDefault = resolveDefaultOrgUnitId(useAuthStore.getState().user, orgUnits);
         defaultOrgUnitRef.current = resolvedDefault;
         if (resolvedDefault) {
           setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
           setAppliedFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
         }
       }
+    } catch {
+      // Ignored
+    } finally {
+      setIsOptionsReady(true);
+    }
+  }, []);
+
+  const loadAdvancedReferenceData = useCallback(async () => {
+    if (areAdvancedOptionsLoaded) return;
+    try {
+      const [opRes, radarRes, operatingRes] = await Promise.allSettled([
+        vtsOperationCenterService.getOptions(),
+        radarStationService.getOptions(),
+        vtsSystemCRUD.getOperatingOrganizationOptions(),
+      ]);
+
       if (opRes.status === 'fulfilled' && Array.isArray(opRes.value)) {
         setOpCenters(opRes.value.map((item: any) => ({
           id: item.id,
@@ -334,13 +345,18 @@ export function AisSystemList() {
     } catch {
       // Ignored
     } finally {
-      setIsOptionsReady(true);
+      setAreAdvancedOptionsLoaded(true);
     }
-  }, [currentUser]);
+  }, [areAdvancedOptionsLoaded]);
 
   useEffect(() => {
-    loadReferenceData();
+    void loadReferenceData();
   }, [loadReferenceData]);
+
+  useEffect(() => {
+    if (!filterCollapsed) return;
+    void loadAdvancedReferenceData();
+  }, [filterCollapsed, loadAdvancedReferenceData]);
 
   const operatingUnitOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -1169,9 +1185,9 @@ export function AisSystemList() {
             initialData={selectedRecord}
             mode={modalMode}
             orgUnits={orgUnitOptions}
-            opCenterOptions={opCenters}
-            radarStationOptions={radarStations}
-            operatingOrganizationOptions={operatingOrganizations}
+            opCenterOptions={areAdvancedOptionsLoaded ? opCenters : undefined}
+            radarStationOptions={areAdvancedOptionsLoaded ? radarStations : undefined}
+            operatingOrganizationOptions={areAdvancedOptionsLoaded ? operatingOrganizations : undefined}
             onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
             onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
           />

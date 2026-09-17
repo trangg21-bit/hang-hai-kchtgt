@@ -330,8 +330,8 @@ describe('CospasSarsatStationForm & DetailContent', () => {
       />
     );
     expect(detailHtml).toContain('Dịch vụ cung cấp');
-    expect(detailHtml).toContain('COSPAS-SARSAT — Tìm kiếm cứu nạn vệ tinh');
-    expect(detailHtml).toContain('LRIT — Nhận dạng và theo dõi tầm xa');
+    expect(detailHtml).toContain('Dịch vụ trực canh cấp cứu COSPAS-SARSAT (COSPASSARSAT Distress Watch-keeping Service)');
+    expect(detailHtml).toContain('Dịch vụ thông tin nhận dạng và truy theo tầm xa LRIT (Longrange Identification and Tracking...)');
   });
 
   it('renders attached files in both detail content and form', () => {
@@ -457,6 +457,33 @@ describe('CospasSarsatStationForm & DetailContent', () => {
 
       // Nút 3: Lưu và phê duyệt (xanh lá statusOperational #1BAF7A)
       expect(html).toContain('#1BAF7A');
+    });
+
+    it('renders Tab Thông tin vị trí with VTS standards (controls, buttons, table)', () => {
+      const html = renderToStaticMarkup(
+        <CospasSarsatStationForm
+          open={true}
+          mode="create"
+          initialData={null}
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />
+      );
+
+      // Tab label with count
+      expect(html).toContain('Thông tin vị trí');
+      // Section header
+      expect(html).toContain('Thông số đối tượng bản đồ');
+      expect(html).toContain('Loại đối tượng');
+      expect(html).toContain('Biểu tượng');
+      expect(html).toContain('Hệ quy chiếu');
+      expect(html).toContain('Quy tắc hiển thị');
+      // Section GPS
+      expect(html).toContain('Tọa độ GPS');
+      expect(html).toContain('Chọn tọa độ trên bản đồ');
+      expect(html).toContain('Thêm tọa độ');
+      expect(html).toContain('Vĩ độ (Latitude - N)');
+      expect(html).toContain('Kinh độ (Longitude - E)');
     });
   });
 

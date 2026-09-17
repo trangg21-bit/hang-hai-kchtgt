@@ -32,6 +32,10 @@ import java.util.*;
 public class CoastalStationCospasSarsatController {
 
     private static final int MAX_PAGE_SIZE = 200;
+    private static final Set<String> SORTABLE_LIST_FIELDS = Set.of(
+            "name", "code", "locationAddress", "conditionStatus", "approvalStatus",
+            "rejectionReason", "createdAt", "updatedAt", "submittedAt",
+            "approvedDateLevel1", "approvedDateLevel2");
 
     private final CoastalStationCospasSarsatService service;
 
@@ -47,20 +51,8 @@ public class CoastalStationCospasSarsatController {
     @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:create', 'specialstation:create', 'data:create')")
     @Operation(summary = "Tạo mới Đài Cospas-Sarsat")
     public ResponseEntity<CoastalStationCospasSarsat> createStation(
-            @RequestParam(defaultValue = "DRAFT") String action,
             @Valid @RequestBody CoastalStationCospasSarsatRequest request) {
         CoastalStationCospasSarsat created = service.createStation(request);
-        if ("SUBMIT".equalsIgnoreCase(action)) {
-            created = service.submit(created.getId());
-        } else if ("APPROVE".equalsIgnoreCase(action)) {
-            created = service.submit(created.getId());
-            if (created.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL) {
-                created = service.approveLevel1(created.getId());
-            }
-            if (created.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
-                created = service.approveLevel2(created.getId());
-            }
-        }
         return ResponseEntity.ok(created);
     }
 
@@ -69,28 +61,8 @@ public class CoastalStationCospasSarsatController {
     @Operation(summary = "Cập nhật Đài Cospas-Sarsat")
     public ResponseEntity<CoastalStationCospasSarsat> updateStation(
             @PathVariable UUID id,
-            @RequestParam(required = false) String action,
             @Valid @RequestBody CoastalStationCospasSarsatUpdateRequest request) {
         CoastalStationCospasSarsat updated = service.updateStation(id, request);
-        if ("SUBMIT".equalsIgnoreCase(action)) {
-            if (updated.getApprovalStatus() == ApprovalStatus.DRAFT
-                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1
-                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2) {
-                updated = service.submit(updated.getId());
-            }
-        } else if ("APPROVE".equalsIgnoreCase(action)) {
-            if (updated.getApprovalStatus() == ApprovalStatus.DRAFT
-                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL1
-                    || updated.getApprovalStatus() == ApprovalStatus.REJECTED_LEVEL2) {
-                updated = service.submit(updated.getId());
-            }
-            if (updated.getApprovalStatus() == ApprovalStatus.PENDING_APPROVAL) {
-                updated = service.approveLevel1(updated.getId());
-            }
-            if (updated.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
-                updated = service.approveLevel2(updated.getId());
-            }
-        }
         return ResponseEntity.ok(updated);
     }
 
@@ -115,7 +87,10 @@ public class CoastalStationCospasSarsatController {
     @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài Cospas-Sarsat chuẩn VTS")
     public ResponseEntity<?> searchOrList(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) ConditionStatus conditionStatus,
             @RequestParam(required = false) ApprovalStatus approvalStatus,
@@ -128,23 +103,18 @@ public class CoastalStationCospasSarsatController {
             @RequestParam(required = false) String sort) {
 
         // Tương thích ngược: nếu không truyền tham số phân trang / bộ lọc nào, trả về danh sách đầy đủ
-        if (page == null && size == null && keyword == null && orgUnitId == null && conditionStatus == null && approvalStatus == null && provinceId == null) {
+        if (page == null && size == null && keyword == null && name == null && code == null
+                && orgUnitId == null && operatingOrgId == null && conditionStatus == null
+                && approvalStatus == null && provinceId == null) {
             return ResponseEntity.ok(service.getAllStations());
         }
 
         int pageNum = page != null ? Math.max(0, page) : 0;
         int pageSize = size != null ? Math.min(Math.max(size, 1), MAX_PAGE_SIZE) : 10;
-        Sort sortOrder = Sort.by(Sort.Direction.DESC, "createdAt");
-        if (sort != null && !sort.isBlank()) {
-            String[] parts = sort.split(",");
-            String prop = parts[0].trim();
-            Sort.Direction dir = (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())) ? Sort.Direction.ASC : Sort.Direction.DESC;
-            sortOrder = Sort.by(dir, prop).and(sortOrder);
-        }
-
-        Pageable pageable = PageRequest.of(pageNum, pageSize, sortOrder);
+        Pageable pageable = PageRequest.of(pageNum, pageSize, resolveListSort(sort));
         Page<CoastalStationCospasSarsatResponse> pageResult = service.searchPaged(
-                orgUnitId, provinceId, conditionStatus, approvalStatus, keyword, updatedFrom, updatedTo, pageable);
+                orgUnitId, operatingOrgId, provinceId, conditionStatus, approvalStatus,
+                keyword, name, code, updatedFrom, updatedTo, pageable);
 
         Map<String, Object> response = new HashMap<>();
         response.put("content", pageResult.getContent());
@@ -154,7 +124,8 @@ public class CoastalStationCospasSarsatController {
         response.put("number", pageResult.getNumber());
 
         if (includeCounts) {
-            response.put("statusCounts", service.countByApprovalStatus(orgUnitId, provinceId, conditionStatus, keyword, updatedFrom, updatedTo));
+            response.put("statusCounts", service.countByApprovalStatus(
+                    orgUnitId, operatingOrgId, provinceId, conditionStatus, keyword, name, code, updatedFrom, updatedTo));
         }
 
         return ResponseEntity.ok(response);
@@ -164,13 +135,33 @@ public class CoastalStationCospasSarsatController {
     @PreAuthorize("@auth.checkAny(authentication, 'coastalstationcospassarsat:read', 'specialstation:read', 'data:read')")
     @Operation(summary = "Đếm số lượng bản ghi theo từng tab trạng thái phê duyệt")
     public ResponseEntity<Map<String, Long>> getCounts(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) ConditionStatus conditionStatus,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo) {
-        return ResponseEntity.ok(service.countByApprovalStatus(orgUnitId, provinceId, conditionStatus, keyword, updatedFrom, updatedTo));
+        return ResponseEntity.ok(service.countByApprovalStatus(
+                orgUnitId, operatingOrgId, provinceId, conditionStatus, keyword, name, code, updatedFrom, updatedTo));
+    }
+
+    private static Sort resolveListSort(String sort) {
+        Sort defaultSort = Sort.by(Sort.Direction.DESC, "createdAt");
+        if (sort == null || sort.isBlank()) {
+            return defaultSort;
+        }
+        String[] parts = sort.split(",", 2);
+        String property = parts[0].trim();
+        if (!SORTABLE_LIST_FIELDS.contains(property)) {
+            return defaultSort;
+        }
+        Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        return Sort.by(direction, property).and(defaultSort);
     }
 
     @GetMapping("/options")

@@ -292,7 +292,7 @@ export default function VtsOperationCenterList() {
         setOrgUnitOptions(mappedOrgs);
         setPortOptions(Array.isArray(ports) ? ports : []);
         setVtsSystemOptions(Array.isArray(systems) ? systems : []);
-        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, mappedOrgs);
+        const resolvedDefault = resolveDefaultOrgUnitId(useAuthStore.getState().user, mappedOrgs);
         defaultOrgUnitRef.current = resolvedDefault;
         if (resolvedDefault) {
           setFilterOrgUnitId(resolvedDefault);
@@ -309,7 +309,7 @@ export default function VtsOperationCenterList() {
     return () => {
       mounted = false;
     };
-  }, [currentUser]);
+  }, []);
 
   const filteredPortOptions = useMemo(() => {
     if (!filterValues.orgUnitId) return portOptions;
@@ -398,9 +398,10 @@ export default function VtsOperationCenterList() {
   const serverSideSorter = () => 0;
 
   const refreshList = useCallback(() => {
+    if (!isOptionsReady) return;
     statusCountFilterKey.current = null;
     void fetchData();
-  }, [fetchData]);
+  }, [fetchData, isOptionsReady]);
 
   // ── Delete confirmation modal (Chuẩn Bến cảng) ───────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);

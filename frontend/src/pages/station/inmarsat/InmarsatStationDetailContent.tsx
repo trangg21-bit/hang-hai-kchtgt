@@ -42,6 +42,7 @@ import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { parseWktToCoordinates } from '../../../utils/gisGeometry';
+import { resolveMaritimeServiceLabel } from '../../../constants/maritimeServices';
 
 const fontSizeMd = 13.5;
 
@@ -177,7 +178,7 @@ const renderServicesBadges = (services?: string[] | string) => {
             whiteSpace: 'nowrap',
           }}
         >
-          {srv}
+          {resolveMaritimeServiceLabel(srv)}
         </span>
       ))}
     </div>
@@ -529,7 +530,13 @@ export default function InmarsatStationDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Đơn vị quản lý</span>
                       <span className="chk-detail-value">
-                        {record.orgUnitName ? <span style={{ fontWeight: fontWeightBold }}>{record.orgUnitName}</span> : ''}
+                        {record.orgUnitName ? (
+                          <span style={{ fontWeight: fontWeightBold }}>
+                            {(record.orgUnitName === '00000000-0000-0000-0000-000000000017' || record.orgUnitName === 'G17')
+                              ? 'Bộ Giao thông Vận tải'
+                              : record.orgUnitName}
+                          </span>
+                        ) : '—'}
                       </span>
                     </div>
                     <div className="chk-detail-row">

@@ -3,7 +3,6 @@ import { Modal, Input, DatePicker, Select } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../../components/shared/DeleteConfirmModal';
 import { hanoiStationService, type HanoiStationListParams } from '../../../services/hanoiStationService';
-import { symbolService } from '../../../services/symbolService';
 import { organizationService } from '../../../services/organizationService';
 import type { HanoiStationItem } from '../../../types/hanoiStation';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../../types/vtsSystem';
@@ -290,25 +289,29 @@ export default function HanoiStationList() {
   const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
 
   const [orgUnits, setOrgUnits] = useState<OrgUnitTreeOption[]>([]);
-  const [symbols, setSymbols] = useState<any[]>([]);
+  const [isLookupReady, setIsLookupReady] = useState(false);
 
   const canCreate = hasPerm('coastalstationhaiphong:create') || hasPerm('specialstation:create') || hasPerm('data:create') || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
 
   useEffect(() => {
+    let mounted = true;
     organizationService.getAll().then((res) => {
+      if (!mounted) return;
       const items = Array.isArray(res) ? res : ((res as any)?.data || []);
       setOrgUnits(items);
-      const resolvedDefault = resolveDefaultOrgUnitId(currentUser, items);
+      const resolvedDefault = resolveDefaultOrgUnitId(useAuthStore.getState().user, items);
       defaultOrgUnitRef.current = resolvedDefault;
       if (resolvedDefault) {
         setFilterOrgUnitId(resolvedDefault);
         setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedDefault }));
       }
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      if (mounted) setIsLookupReady(true);
+    });
 
-    symbolService.getOptions().then((res) => {
-      if (Array.isArray(res) && res.length > 0) setSymbols(res);
-    }).catch(() => {});
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -356,8 +359,15 @@ export default function HanoiStationList() {
   ]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!isLookupReady) return;
+    let mounted = true;
+    queueMicrotask(() => {
+      if (mounted) void fetchData();
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [fetchData, isLookupReady]);
 
   // Hỗ trợ mở tự động qua URL query parameters: ?action=detail|edit&id=...
   useEffect(() => {
@@ -1128,7 +1138,6 @@ export default function HanoiStationList() {
             editId={editingId}
             initialData={selectedRecord}
             orgUnits={orgUnits}
-            symbols={symbols}
             onCancel={() => setIsModalOpen(false)}
             onClose={() => setIsModalOpen(false)}
             onSuccess={() => {

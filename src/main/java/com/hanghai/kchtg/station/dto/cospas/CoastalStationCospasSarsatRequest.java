@@ -3,6 +3,8 @@ package com.hanghai.kchtg.station.dto.cospas;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,9 +20,13 @@ import java.util.UUID;
 @FieldNameConstants
 public class CoastalStationCospasSarsatRequest {
 
+    @Size(max = 50)
     private String stationCode;
+    @Size(max = 255)
     private String stationName;
+    @Size(max = 50)
     private String code;
+    @Size(max = 255)
     private String name;
 
     private UUID orgUnitId;
@@ -31,29 +37,46 @@ public class CoastalStationCospasSarsatRequest {
 
     private ConditionStatus conditionStatus;
 
+    @Size(max = 255)
     private String frequency;
+    @Size(max = 4000)
     private String coverageArea;
+    @Size(max = 255)
     private String beaconProtocol;
+    @Size(max = 255)
     private String emergencyChannel;
+    @Size(max = 255)
     private String antennaType;
+    @Size(max = 500)
     private String locationAddress;
+    @Size(max = 255)
     private String contactPerson;
+    @Size(max = 255)
     private String contactPhone;
+    @PositiveOrZero
     private Double signalRange;
+    @Size(max = 255)
     private String operatingMode;
+    @Size(max = 1000)
     private String servicesProvided;
     private Object services;
 
+    @Size(max = 2000)
     private String description;
+    @Size(max = 2000)
     private String note;
 
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
     private UUID symbolId;
+    @Size(max = 50)
     private String coordinateReferenceSystem;
+    @Size(max = 50)
     private String objectType;
+    @Size(max = 50)
     private String coordinateSystem;
+    @Size(max = 255)
     private String displayRule;
     private String wktGeometry;
     private Double latitude;

@@ -167,13 +167,11 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
   },
 
   hasAnyPermission: (keys: string[]) => {
-    const store = usePermissionStore.getState();
-    return keys.some((k) => store.hasPermission(k));
+    return keys.some((k) => get().hasPermission(k));
   },
 
   hasAllPermissions: (keys: string[]) => {
-    const store = usePermissionStore.getState();
-    return keys.every((k) => store.hasPermission(k));
+    return keys.every((k) => get().hasPermission(k));
   },
 
   setPermissions: (permissions: string[]) => set({ permissions }),

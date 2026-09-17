@@ -19,7 +19,7 @@ export interface ServiceOption {
 }
 
 export interface ServiceMultiSelectProps {
-  options?: ServiceOption[];
+  options?: readonly ServiceOption[] | ServiceOption[];
   value?: string[] | string;
   onChange?: (value: string[]) => void;
   placeholder?: string;
@@ -37,13 +37,12 @@ const serviceTagRender: SelectProps['tagRender'] = ({ label, value, closable, on
     <span
       style={{
         ...multiSelectTagStyle,
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
         gap: spaceSm,
-        width: '100%',
-        minWidth: 0,
+        maxWidth: '100%',
         boxSizing: 'border-box',
-        margin: 0,
+        margin: '2px 4px 2px 0',
         padding: `2px ${spaceSm}px`,
         border: `1px solid ${borderDefault}`,
         borderRadius: radiusMd,
@@ -55,7 +54,7 @@ const serviceTagRender: SelectProps['tagRender'] = ({ label, value, closable, on
       }}
     >
       <span
-        style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         title={displayValue}
       >
         {displayValue}
@@ -117,7 +116,7 @@ export default function ServiceMultiSelect({
       showSearch={showSearch}
       value={cleanValue}
       onChange={onChange}
-      options={options}
+      options={options as SelectProps['options']}
       placeholder={placeholder}
       disabled={disabled}
       tagRender={serviceTagRender}

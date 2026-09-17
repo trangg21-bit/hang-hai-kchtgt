@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import toast from '../../../components/ToastNotification';
+import { MARITIME_SERVICES_OPTIONS, resolveMaritimeServiceLabel } from '../../../constants/maritimeServices';
 import { cospasSarsatStationService } from '../../../services/cospasSarsatStationService';
 import type { CoastalStationCospasSarsatResponse } from '../../../services/station/types';
 import { ConditionStatus, ApprovalStatus } from '../../../types/vtsSystem';
@@ -45,7 +46,6 @@ import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import GisLocationSelector from '../../../components/gis/GisLocationSelector';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { parseWktToCoordinates } from '../../../utils/gisGeometry';
-import { LRIT_SERVICE_OPTIONS } from '../../../types/lritStation';
 
 const fontSizeMd = 13.5;
 
@@ -337,25 +337,13 @@ export function getOperatingOrgName(idOrCode?: string | null, name?: string | nu
   return found ? found.name : (/^[0-9a-fA-F-]{36}$/.test(idOrCode) ? '—' : idOrCode);
 }
 
-export const COSPAS_SERVICE_OPTIONS = LRIT_SERVICE_OPTIONS;
-
-export const LEGACY_COSPAS_SERVICE_OPTIONS = [
-  { value: '406_MHZ_BEACON', label: '406 MHz Distress Beacon — Phao phát tín hiệu báo nạn 406 MHz' },
-  { value: 'GEOSAR', label: 'GEOSAR — Hệ thống vệ tinh địa tĩnh Cospas-Sarsat' },
-  { value: 'LEOSAR', label: 'LEOSAR — Hệ thống vệ tinh quỹ đạo thấp Cospas-Sarsat' },
-  { value: 'MEOSAR', label: 'MEOSAR — Hệ thống vệ tinh quỹ đạo tầm trung thế hệ mới' },
-  { value: 'EPIRB', label: 'EPIRB — Phao vô tuyến chỉ báo vị trí khẩn cấp hàng hải' },
-  { value: 'ELT', label: 'ELT — Thiết bị phát sóng khẩn cấp cho máy bay' },
-  { value: 'PLB', label: 'PLB — Thiết bị định vị cá nhân tìm kiếm cứu nạn' },
-  { value: 'LUT', label: 'LUT — Trạm thu mặt đất xử lý tín hiệu cấp cứu' },
-  { value: 'MCC', label: 'MCC — Trung tâm kiểm soát điều phối tìm kiếm cứu nạn' },
-];
+/**
+ * Danh mục dịch vụ viễn thông hàng hải dùng chung, đồng bộ với dự án gốc.
+ */
+export const COSPAS_SERVICE_OPTIONS = MARITIME_SERVICES_OPTIONS;
 
 export function getServiceName(code: string): string {
-  const found =
-    LRIT_SERVICE_OPTIONS.find((s) => s.value === code || s.label === code) ||
-    LEGACY_COSPAS_SERVICE_OPTIONS.find((s) => s.value === code || s.label === code);
-  return found ? found.label : code;
+  return resolveMaritimeServiceLabel(code);
 }
 
 export const renderServicesBadges = (services?: string[] | string) => {
@@ -440,8 +428,17 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
   }, [id, data]);
 
   useEffect(() => {
+    if (initialData) {
+      setData(initialData);
+    }
+  }, [initialData]);
+
+  useEffect(() => {
     let cancelled = false;
     if (!id) return;
+    if (data && (data.id === id || String((data as any).id) === String(id))) {
+      return;
+    }
     setLoading(true);
     cospasSarsatStationService.getById(id)
       .then((res) => {
@@ -458,7 +455,7 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, data]);
 
   if (loading && !data) {
     return (
@@ -479,11 +476,19 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
   const orgName = (() => {
     const uId = data.unitId || data.orgUnitId;
     if (!uId) return '';
+    if (String(uId) === '00000000-0000-0000-0000-000000000017') {
+      return data.orgUnitName && !/^[0-9a-fA-F-]{36}$/.test(data.orgUnitName)
+        ? data.orgUnitName
+        : 'Bộ Giao thông Vận tải';
+    }
     if (Array.isArray(orgUnits)) {
       const found = orgUnits.find((o) => String(o.id) === String(uId));
       if (found) return found.name || found.code || uId;
     }
-    return data.orgUnitName || uId;
+    if (data.orgUnitName && !/^[0-9a-fA-F-]{36}$/.test(data.orgUnitName)) {
+      return data.orgUnitName;
+    }
+    return uId;
   })();
 
   const operatingOrg = getOperatingOrgName(data.operatingOrgId, (data as any).operatingOrgName);
@@ -753,11 +758,9 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
               {
                 label: 'Hệ quy chiếu',
                 value:
-                  data?.coordinateSystem === 1
-                    ? 'WGS-84'
-                    : data?.coordinateSystem === 2
-                      ? 'VN-2000'
-                      : (data?.coordinateSystem ? String(data?.coordinateSystem) : 'WGS-84'),
+                  data?.coordinateSystem === 'VN-2000' || String(data?.coordinateSystem) === '2'
+                    ? 'VN-2000'
+                    : 'WGS-84',
               },
               {
                 label: 'Quy tắc hiển thị',
@@ -1102,7 +1105,7 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

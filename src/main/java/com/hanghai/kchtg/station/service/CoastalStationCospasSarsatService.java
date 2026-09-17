@@ -97,10 +97,13 @@ public class CoastalStationCospasSarsatService {
     @Transactional(readOnly = true)
     public Page<CoastalStationCospasSarsatResponse> searchPaged(
             UUID orgUnitId,
+            UUID operatingOrgId,
             Integer provinceId,
             ConditionStatus conditionStatus,
             ApprovalStatus approvalStatus,
             String keyword,
+            String name,
+            String code,
             LocalDateTime updatedFrom,
             LocalDateTime updatedTo,
             Pageable pageable) {
@@ -111,10 +114,13 @@ public class CoastalStationCospasSarsatService {
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
                 orgUnitId,
+                operatingOrgId,
                 provinceId,
                 conditionStatus,
                 approvalStatus,
                 toKeywordLike(keyword),
+                toKeywordLike(name),
+                toKeywordLike(code),
                 updatedFrom,
                 updatedTo,
                 pageable);
@@ -129,9 +135,12 @@ public class CoastalStationCospasSarsatService {
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(
             UUID orgUnitId,
+            UUID operatingOrgId,
             Integer provinceId,
             ConditionStatus conditionStatus,
             String keyword,
+            String name,
+            String code,
             LocalDateTime updatedFrom,
             LocalDateTime updatedTo) {
 
@@ -141,9 +150,12 @@ public class CoastalStationCospasSarsatService {
                 !effectiveScope.unrestricted(),
                 effectiveScope.orgUnitIds(),
                 orgUnitId,
+                operatingOrgId,
                 provinceId,
                 conditionStatus,
                 toKeywordLike(keyword),
+                toKeywordLike(name),
+                toKeywordLike(code),
                 updatedFrom,
                 updatedTo);
 
@@ -193,8 +205,18 @@ public class CoastalStationCospasSarsatService {
         }
 
         UUID effectiveOrgUnitId = request.getEffectiveOrgUnitId();
-        if (effectiveOrgUnitId != null) {
-            validateAllowedOrgUnit(effectiveOrgUnitId);
+        if (effectiveOrgUnitId == null) {
+            throw new IllegalArgumentException("Đơn vị quản lý không được để trống");
+        }
+        validateAllowedOrgUnit(effectiveOrgUnitId);
+        if (request.getProvinceId() == null) {
+            throw new IllegalArgumentException("Tỉnh/Thành phố không được để trống");
+        }
+        if (request.getConditionStatus() == null) {
+            throw new IllegalArgumentException("Tình trạng không được để trống");
+        }
+        if (request.getLocationAddress() == null || request.getLocationAddress().isBlank()) {
+            throw new IllegalArgumentException("Địa điểm chi tiết không được để trống");
         }
 
         CoastalStationCospasSarsat entity = new CoastalStationCospasSarsat();
@@ -202,7 +224,7 @@ public class CoastalStationCospasSarsatService {
         entity.setName(effectiveName);
         entity.setOrgUnitId(effectiveOrgUnitId);
         entity.setProvinceId(request.getProvinceId());
-        entity.setConditionStatus(request.getConditionStatus() != null ? request.getConditionStatus() : ConditionStatus.OPERATIONAL);
+        entity.setConditionStatus(request.getConditionStatus());
         entity.setOperatingOrgId(request.getOperatingOrgId());
         entity.setOwningOrgId(request.getOwningOrgId());
         entity.setSymbolId(request.getSymbolId());

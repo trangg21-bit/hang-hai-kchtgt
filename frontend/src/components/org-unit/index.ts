@@ -27,6 +27,7 @@ export {
   useOrgUnitFilter,
   resolveDefaultOrgUnitId,
   isMinistryLevelUser,
+  getFirstOrgUnitId,
   MINISTRY_ROOT_ID,
   MINISTRY_ROOT_CODE,
 } from './useUserDefaultOrgUnit';
